@@ -108,7 +108,7 @@ export const SOURCE_DEFS = [
 export const CLASSES = ['Warrior', 'Sentinel'];
 export const SPECS_BY_CLASS = {
   Warrior: [
-    { key: 'fury', label: 'Fury' },
+    { key: 'arms', label: 'Arms' },
     { key: 'protection', label: 'Protection' },
   ],
   Sentinel: [
