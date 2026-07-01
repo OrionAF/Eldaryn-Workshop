@@ -120,10 +120,10 @@ it('a talent allocation on a different loadout does not leak into this one (per-
 it('two different talents contributing to the same stat sum together', () => {
   const t1 = talent('a', 'attack_pct', [4]);
   const t2 = talent('b', 'attack_pct', [6]);
-  const talentTrees = { fury: { description: '', tiers: [tier('t1', 0, [t1, t2])] } };
+  const talentTrees = { arms: { description: '', tiers: [tier('t1', 0, [t1, t2])] } };
 
   const c = newCharacter();
-  c.loadouts[0].spec = 'fury';
+  c.loadouts[0].spec = 'arms';
   c.loadouts[0].talentAllocation = { [t1.id]: 1, [t2.id]: 1 };
 
   const totals = computeCalculatedTotals(c, 0, talentTrees);
@@ -132,10 +132,10 @@ it('two different talents contributing to the same stat sum together', () => {
 
 it('an allocation of rank 0 (or absent) contributes nothing', () => {
   const untouched = talent('untouched', 'lifesteal', [7]);
-  const talentTrees = { fury: { description: '', tiers: [tier('t1', 0, [untouched])] } };
+  const talentTrees = { arms: { description: '', tiers: [tier('t1', 0, [untouched])] } };
 
   const c = newCharacter();
-  c.loadouts[0].spec = 'fury';
+  c.loadouts[0].spec = 'arms';
   c.loadouts[0].talentAllocation = {}; // nothing allocated
 
   const totals = computeCalculatedTotals(c, 0, talentTrees);

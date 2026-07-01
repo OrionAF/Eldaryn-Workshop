@@ -193,19 +193,19 @@ it('setGlyphEquipped enforces the 3 Minor / 2 Major / 1 Mythic cap and rejects p
 // --- Phase: Talents ---
 it('setCharacterClass sets the class and resets both loadouts spec/talentAllocation', () => {
   const id = rosterStore.current.id;
-  rosterStore.setLoadoutSpec(0, 'fury'); // pretend a spec was set (class check isn't enforced at this layer)
+  rosterStore.setLoadoutSpec(0, 'arms'); // pretend a spec was set (class check isn't enforced at this layer)
   rosterStore.setCharacterClass(id, 'Warrior');
   expect(rosterStore.current.class).toBe('Warrior');
   expect(rosterStore.current.loadouts[0].spec).toBe(null);
   expect(rosterStore.current.loadouts[0].talentAllocation).toEqual({});
 
-  rosterStore.setLoadoutSpec(0, 'fury');
+  rosterStore.setLoadoutSpec(0, 'arms');
   rosterStore.setCharacterClass(id, 'Sentinel'); // switching class again also resets
   expect(rosterStore.current.loadouts[0].spec).toBe(null);
 });
 
 it('setLoadoutSpec clears any prior talentAllocation (different tree, different talent ids)', () => {
-  rosterStore.setLoadoutSpec(0, 'fury');
+  rosterStore.setLoadoutSpec(0, 'arms');
   rosterStore.current.loadouts[0].talentAllocation = { 'stale-id': 3 };
   rosterStore.setLoadoutSpec(0, 'protection');
   expect(rosterStore.current.loadouts[0].talentAllocation).toEqual({});

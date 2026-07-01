@@ -12,7 +12,7 @@ function seedTwoTierTree() {
   // instance TalentTierList/rosterStore import).
   const sharpAim = { id: 'sharp-aim', name: 'Sharp Aim', statKey: 'crit', ranks: [2, 4, 6] };
   const gated = { id: 'gated-talent', name: 'Gated Talent', statKey: 'attack_pct', ranks: [10] };
-  TALENT_TREES.fury = {
+  TALENT_TREES.arms = {
     description: '',
     tiers: [
       { id: 'tier-0', threshold: 0, talents: [sharpAim] }, // tier 0: always unlocked
@@ -25,13 +25,13 @@ function seedTwoTierTree() {
 beforeEach(() => {
   localStorage.clear();
   rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
-  rosterStore.setLoadoutSpec(0, 'fury');
+  rosterStore.setLoadoutSpec(0, 'arms');
   target = document.createElement('div');
   document.body.appendChild(target);
 });
 
 function render() {
-  app = mount(TalentTierList, { target, props: { specKey: 'fury', loadoutIndex: 0 } });
+  app = mount(TalentTierList, { target, props: { specKey: 'arms', loadoutIndex: 0 } });
   flushSync();
 }
 

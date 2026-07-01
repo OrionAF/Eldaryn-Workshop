@@ -172,7 +172,7 @@ it('selecting a Class persists it, and switching class clears both loadouts spec
   target.querySelector('[aria-label="Rename or delete character"]').click();
   flushSync();
 
-  rosterStore.setLoadoutSpec(0, 'fury'); // pretend a spec was already assigned
+  rosterStore.setLoadoutSpec(0, 'arms'); // pretend a spec was already assigned
 
   const classSelect = target.querySelector('.class-select select');
   classSelect.value = 'Warrior';
@@ -182,7 +182,7 @@ it('selecting a Class persists it, and switching class clears both loadouts spec
   expect(rosterStore.current.class).toBe('Warrior');
   expect(rosterStore.current.loadouts[0].spec).toBe(null); // reset by the class change
 
-  rosterStore.setLoadoutSpec(0, 'fury');
+  rosterStore.setLoadoutSpec(0, 'arms');
   classSelect.value = 'Sentinel';
   classSelect.dispatchEvent(new Event('change', { bubbles: true }));
   flushSync();

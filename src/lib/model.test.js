@@ -29,7 +29,7 @@ it('normaliseRoster rejects an invalid class and a spec that does not belong to 
         id: 'x',
         name: 'Bad',
         class: 'Wizard', // not a real class
-        loadouts: [{ name: 'Loadout 1', spec: 'fury' }, { name: 'Loadout 2' }], // fury requires Warrior
+        loadouts: [{ name: 'Loadout 1', spec: 'arms' }, { name: 'Loadout 2' }], // arms requires Warrior
       },
     ],
     currentId: 'x',

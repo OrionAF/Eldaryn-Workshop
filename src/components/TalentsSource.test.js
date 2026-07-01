@@ -42,13 +42,13 @@ it('assigning a spec to Set A and a different one to Set B works independently (
   flushSync();
 
   const [setA, setB] = [...target.querySelectorAll('.set-card select')];
-  setA.value = 'fury';
+  setA.value = 'arms';
   setA.dispatchEvent(new Event('change', { bubbles: true }));
   setB.value = 'protection';
   setB.dispatchEvent(new Event('change', { bubbles: true }));
   flushSync();
 
-  expect(rosterStore.current.loadouts[0].spec).toBe('fury');
+  expect(rosterStore.current.loadouts[0].spec).toBe('arms');
   expect(rosterStore.current.loadouts[1].spec).toBe('protection');
   cleanup();
 });
@@ -58,24 +58,24 @@ it('assigning the same spec to both sets works too ("two of one")', () => {
   flushSync();
 
   const [setA, setB] = [...target.querySelectorAll('.set-card select')];
-  setA.value = 'fury';
+  setA.value = 'arms';
   setA.dispatchEvent(new Event('change', { bubbles: true }));
-  setB.value = 'fury';
+  setB.value = 'arms';
   setB.dispatchEvent(new Event('change', { bubbles: true }));
   flushSync();
 
-  expect(rosterStore.current.loadouts[0].spec).toBe('fury');
-  expect(rosterStore.current.loadouts[1].spec).toBe('fury');
+  expect(rosterStore.current.loadouts[0].spec).toBe('arms');
+  expect(rosterStore.current.loadouts[1].spec).toBe('arms');
   cleanup();
 });
 
 it('once a spec is assigned, the tier list renders and Reset Talents clears the allocation', () => {
   rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
-  rosterStore.setLoadoutSpec(0, 'fury');
+  rosterStore.setLoadoutSpec(0, 'arms');
   flushSync();
 
   expect(target.querySelector('.tier-section')).not.toBeNull();
-  const talentId = TALENT_TREES.fury.tiers[0].talents[0].id; // the real (placeholder) tier-1 talent
+  const talentId = TALENT_TREES.arms.tiers[0].talents[0].id; // the real (placeholder) tier-1 talent
   rosterStore.setTalentRank(0, talentId, 1);
   flushSync();
   expect(rosterStore.current.loadouts[0].talentAllocation[talentId]).toBe(1);
