@@ -17,41 +17,62 @@
  * Shape (matches model.js's TalentTree/Tier/Talent):
  *   TalentTree = { description: string, tiers: Tier[] }
  *   Tier       = { id, threshold: number, talents: Talent[] }  // threshold =
- *                points required spent in ALL previous tiers combined
+ *                points required spent in ALL previous tiers combined to
+ *                unlock this tier. A tier can hold multiple talents (see the
+ *                screenshots in docs/Talent Screenshots/ - Tier 1 had three:
+ *                Sharp Aim, Hunter's Drain, Quick Draw).
  *   Talent     = { id, name, statKey, ranks: number[] }  // ranks[i] = the
  *                assigned (not computed) value AT rank i+1
  *
- * PLACEHOLDER DATA: every tier currently holds one placeholder talent and a
- * placeholder threshold (a simple +3-per-tier guess, not the real game's
- * thresholds). Replace name/statKey/ranks/threshold and add more
- * tiers/talents as real data is confirmed - see the screenshots in
- * docs/Talent Screenshots/ for the reference UI (tiers 1, 2, 5, 6 were seen
- * unlocked, implying at least 6 tiers exist per tree).
+ * Each spec below is one placeholder tier with one placeholder talent - a
+ * starting point to build the real tree from, not a guessed structure. Add
+ * more tiers to a spec's `tiers` array and more talents to a tier's
+ * `talents` array as needed; every spec's tier count/thresholds/talents are
+ * independent of the others.
  */
 
-function placeholderTiers(specKey, count = 6) {
-  const tiers = [];
-  for (let i = 0; i < count; i++) {
-    const tierNumber = i + 1;
-    tiers.push({
-      id: `${specKey}-tier-${tierNumber}`,
-      threshold: i * 3, // PLACEHOLDER: guessed +3/tier, not confirmed
-      talents: [
-        {
-          id: `${specKey}-tier-${tierNumber}-placeholder`,
-          name: `Placeholder Talent (Tier ${tierNumber})`,
-          statKey: 'attack_pct',
-          ranks: [0],
-        },
-      ],
-    });
-  }
-  return tiers;
-}
-
 export const TALENT_TREES = {
-  fury: { description: '', tiers: placeholderTiers('fury') },
-  protection: { description: '', tiers: placeholderTiers('protection') },
-  marksmanship: { description: '', tiers: placeholderTiers('marksmanship') },
-  disruption: { description: '', tiers: placeholderTiers('disruption') },
+  fury: {
+    description: '',
+    tiers: [
+      {
+        id: 'fury-tier-1',
+        threshold: 0,
+        talents: [{ id: 'fury-placeholder', name: 'Placeholder Talent', statKey: 'attack_pct', ranks: [0] }],
+      },
+    ],
+  },
+
+  protection: {
+    description: '',
+    tiers: [
+      {
+        id: 'protection-tier-1',
+        threshold: 0,
+        talents: [{ id: 'protection-placeholder', name: 'Placeholder Talent', statKey: 'attack_pct', ranks: [0] }],
+      },
+    ],
+  },
+
+  marksmanship: {
+    description: '',
+    tiers: [
+      {
+        id: 'marksmanship-tier-1',
+        threshold: 0,
+        talents: [{ id: 'marksmanship-placeholder', name: 'Placeholder Talent', statKey: 'attack_pct', ranks: [0] }],
+      },
+    ],
+  },
+
+  disruption: {
+    description: '',
+    tiers: [
+      {
+        id: 'disruption-tier-1',
+        threshold: 0,
+        talents: [{ id: 'disruption-placeholder', name: 'Placeholder Talent', statKey: 'attack_pct', ranks: [0] }],
+      },
+    ],
+  },
 };
