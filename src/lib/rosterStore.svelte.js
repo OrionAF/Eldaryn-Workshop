@@ -13,6 +13,7 @@ import { newCharacter, getCurrent, emptyStats, newPetEntry, newMountEntry, newMo
 import { applySwap } from './dps.js';
 import { SLOTS, SOURCE_DEFS, TALENT_TOTAL_POINTS } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
+import { AWAKENING_PATHS, AWAKENING_TOTAL_POINTS } from './awakeningData.js';
 
 const MOUNT_GLYPH_TIER_CAPS = SOURCE_DEFS.find((d) => d.key === 'mountGlyphs').tierCaps;
 
@@ -250,6 +251,29 @@ function createRosterStore() {
     persist();
   }
 
+  // --- Awakening (Character.awakening - one path/point count shared by both loadouts) ---
+  function setAwakeningPath(path) {
+    if (path !== null && !(path in AWAKENING_PATHS)) return false;
+    current.awakening.path = path;
+    current.awakening.points = 0; // a different path's stats don't carry over
+    persist();
+    return true;
+  }
+
+  /** Returns false (no-op) if no path is chosen yet. */
+  function setAwakeningPoints(points) {
+    if (!current.awakening.path) return false;
+    current.awakening.points = Math.max(0, Math.min(points, AWAKENING_TOTAL_POINTS));
+    persist();
+    return true;
+  }
+
+  function resetAwakening() {
+    current.awakening.path = null;
+    current.awakening.points = 0;
+    persist();
+  }
+
   // --- Drop comparison (roster-level, survives character switches) ---
   function startDrop(slot) {
     roster.drop = { slot: slot || SLOTS[0], piece: emptyStats() };
@@ -331,6 +355,9 @@ function createRosterStore() {
     setLoadoutSpec,
     setTalentRank,
     resetTalents,
+    setAwakeningPath,
+    setAwakeningPoints,
+    resetAwakening,
     startDrop,
     setDropSlot,
     setDropField,

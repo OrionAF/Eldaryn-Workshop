@@ -3,18 +3,21 @@
  *
  * Roster      = { characters: Character[], currentId, drop: DropState | null }
  * Character   = { id, name, class: 'Warrior'|'Sentinel'|null, loadouts: [Loadout, Loadout],
- *                 sources: SourceState }
+ *                 sources: SourceState, awakening: { path: 'shadow'|'radiant'|null, points: number } }
  * Loadout     = { name, profileTotals: OffensiveStats, manualTotals: bool,
  *                 gear: Record<Slot, OffensiveStats>,
  *                 stones: Record<Slot, OffensiveStats>,   // stones = per-set
  *                 spec: specKey|null, talentAllocation: Record<talentId, rank> }
- * SourceState = one entry per character-scoped SOURCE_DEFS[].key, shape per its `selection`:
+ * SourceState = one entry per character-scoped, `selection`-bearing SOURCE_DEFS[].key, shape per `selection`:
  *   'all'/'tiered' -> { entries: [] }        (Mount Glyphs/Sigils/Relics)
- *   'single'       -> { entries: [], activeId: string|null }  (Awakening, Transcendence, Pets, Mounts)
+ *   'single'       -> { entries: [], activeId: string|null }  (Transcendence, Pets, Mounts)
  * Talents is scope:'loadout' (Dual Spec = Loadout 1/2 = Set A/B) - its data lives on
  * Loadout.spec/talentAllocation. Tree CONTENT (tiers/talents/values) is static
  * code data in talentTreeData.js, not part of the persisted Roster - the same
  * spec's tree is identical for every player, so it isn't user-authored.
+ * Awakening is scope:'character' but has no `selection` (bypasses SourceState
+ * entirely) - one path + point count shared by both loadouts, lives on
+ * Character.awakening directly. Static per-point content is in awakeningData.js.
  * DropState   = { slot, piece: OffensiveStats }  // persists across char switches
  *
  * Phase 0: profileTotals are a manual input. Phase 1 adds `manualTotals` as a
@@ -24,6 +27,7 @@
 import { offensiveStats } from './dps.js';
 import { SLOTS, SOURCE_DEFS, CLASSES, SPECS_BY_CLASS } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
+import { AWAKENING_PATHS, AWAKENING_TOTAL_POINTS } from './awakeningData.js';
 
 let _idCounter = 0;
 function newId() {
@@ -48,13 +52,18 @@ function emptySourceState(def) {
   return def.selection === 'single' ? { entries: [], activeId: null } : { entries: [] };
 }
 
-/** Empty source state for every character-scoped source (SOURCE_DEFS). */
+/** Empty source state for every character-scoped, `selection`-bearing source (SOURCE_DEFS). */
 export function emptySources() {
   const s = {};
   for (const def of SOURCE_DEFS) {
-    if (def.scope === 'character') s[def.key] = emptySourceState(def);
+    if (def.scope === 'character' && def.selection) s[def.key] = emptySourceState(def);
   }
   return s;
+}
+
+/** Empty Awakening state: no path chosen, no points invested. */
+function emptyAwakening() {
+  return { path: null, points: 0 };
 }
 
 // --- Pets ---
@@ -91,6 +100,7 @@ export function newCharacter(name = 'New Character') {
     class: null, // 'Warrior' | 'Sentinel' | null - gates which specs the loadouts can use
     loadouts: [newLoadout('Loadout 1'), newLoadout('Loadout 2')],
     sources: emptySources(),
+    awakening: emptyAwakening(),
   };
 }
 
@@ -129,7 +139,16 @@ function normaliseCharacter(c) {
     normaliseLoadout(loadouts[1], 'Loadout 2', base.class),
   ];
   base.sources = normaliseSources(c?.sources);
+  base.awakening = normaliseAwakening(c?.awakening);
   return base;
+}
+
+/** Validates path against the static AWAKENING_PATHS, clamps points to [0, cap], forces points to 0 with no path. */
+function normaliseAwakening(raw) {
+  const path = raw?.path in AWAKENING_PATHS ? raw.path : null;
+  if (!path) return emptyAwakening();
+  const points = Math.max(0, Math.min(Number(raw?.points) || 0, AWAKENING_TOTAL_POINTS));
+  return { path, points };
 }
 
 /**
@@ -141,7 +160,7 @@ function normaliseCharacter(c) {
 function normaliseSources(raw) {
   const s = {};
   for (const def of SOURCE_DEFS) {
-    if (def.scope !== 'character') continue;
+    if (def.scope !== 'character' || !def.selection) continue;
     const empty = emptySourceState(def);
     const rawState = raw?.[def.key];
     let entries = Array.isArray(rawState?.entries) ? rawState.entries : [];

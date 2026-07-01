@@ -242,3 +242,29 @@ it('setTalentRank enforces the 29-point cap and rejects raising a rank in a lock
   rosterStore.resetTalents(0);
   expect(rosterStore.current.loadouts[0].talentAllocation).toEqual({});
 });
+
+it('setAwakeningPath/setAwakeningPoints/resetAwakening round-trip; switching path resets points', () => {
+  expect(rosterStore.setAwakeningPath('shadow')).toBe(true);
+  expect(rosterStore.current.awakening).toEqual({ path: 'shadow', points: 0 });
+
+  expect(rosterStore.setAwakeningPoints(5)).toBe(true);
+  expect(rosterStore.current.awakening.points).toBe(5);
+
+  expect(rosterStore.setAwakeningPoints(999)).toBe(true); // clamps to the 15-point cap
+  expect(rosterStore.current.awakening.points).toBe(15);
+
+  expect(rosterStore.setAwakeningPath('radiant')).toBe(true); // switching paths resets points
+  expect(rosterStore.current.awakening).toEqual({ path: 'radiant', points: 0 });
+
+  expect(rosterStore.setAwakeningPath('not-a-real-path')).toBe(false); // rejected, no change
+  expect(rosterStore.current.awakening.path).toBe('radiant');
+
+  rosterStore.resetAwakening();
+  expect(rosterStore.current.awakening).toEqual({ path: null, points: 0 });
+});
+
+it('setAwakeningPoints is a no-op with no path chosen yet', () => {
+  rosterStore.resetAwakening();
+  expect(rosterStore.setAwakeningPoints(5)).toBe(false);
+  expect(rosterStore.current.awakening.points).toBe(0);
+});

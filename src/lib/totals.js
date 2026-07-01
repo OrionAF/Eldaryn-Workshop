@@ -21,6 +21,7 @@
 import { offensiveStats, finalAttack } from './dps.js';
 import { SLOTS, STAT_FIELDS, SOURCE_DEFS } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
+import { resolveAwakeningPerPoint } from './awakeningData.js';
 
 const FLAT_PAIR_KEYS = ['attack', 'health'];
 const PCT_PAIR_OF = { attack: 'attack_pct', health: 'health_pct' };
@@ -103,10 +104,31 @@ function talentContribution(loadout, talentTrees) {
 }
 
 /**
- * Sum base + gear + stones + talents (all per-loadout) + every character-
- * scoped source (shared across both loadouts) into one set of final totals
- * for `loadout`. `talentTrees` defaults to the static tree content
- * (talentTreeData.js); the param exists mainly so tests can substitute fixtures.
+ * A character's Awakening contribution: each invested point contributes the
+ * SAME flat per-point amount to every stat in the chosen path (linear, no
+ * per-rank table like Talents) - Radiant's per-point stats depend on class,
+ * resolved via resolveAwakeningPerPoint. Shared by both loadouts (character-
+ * scoped, not per-loadout), so this is computed identically regardless of
+ * which loadout is being totalled.
+ */
+function awakeningContribution(character) {
+  const { path, points } = character.awakening || {};
+  if (!path || !points) return null;
+  const perPoint = resolveAwakeningPerPoint(path, character.class);
+  if (!perPoint) return null;
+  const overrides = {};
+  for (const [statKey, value] of Object.entries(perPoint)) {
+    overrides[statKey] = value * points;
+  }
+  return offensiveStats(overrides);
+}
+
+/**
+ * Sum base + gear + stones + talents (all per-loadout) + Awakening + every
+ * character-scoped, `selection`-bearing source (shared across both loadouts)
+ * into one set of final totals for `loadout`. `talentTrees` defaults to the
+ * static tree content (talentTreeData.js); the param exists mainly so tests
+ * can substitute fixtures.
  */
 export function computeCalculatedTotals(character, loadoutIndex, talentTrees = TALENT_TREES) {
   const loadout = character.loadouts[loadoutIndex];
@@ -117,9 +139,10 @@ export function computeCalculatedTotals(character, loadoutIndex, talentTrees = T
     accumulate(acc, loadout.stones[slot]);
   }
   accumulate(acc, talentContribution(loadout, talentTrees));
+  accumulate(acc, awakeningContribution(character));
 
   for (const def of SOURCE_DEFS) {
-    if (def.scope !== 'character') continue;
+    if (def.scope !== 'character' || !def.selection) continue;
     const sourceState = character.sources[def.key];
     for (const entry of selectedEntries(def, sourceState)) {
       accumulate(acc, entryToStats(def.key, entry));

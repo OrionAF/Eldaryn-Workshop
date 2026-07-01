@@ -8,11 +8,13 @@
   import PetsSource from './PetsSource.svelte';
   import MountsSource from './MountsSource.svelte';
   import TalentsSource from './TalentsSource.svelte';
+  import AwakeningSource from './AwakeningSource.svelte';
 
   const SUB_TABS = [
     { id: 'pets', label: 'Pets' },
     { id: 'mounts', label: 'Mounts' },
     { id: 'talents', label: 'Talents' },
+    { id: 'awakening', label: 'Awakening' },
   ];
 
   let activeSubTab = $state('pets');
@@ -25,8 +27,10 @@
       <PetsSource />
     {:else if activeSubTab === 'mounts'}
       <MountsSource />
-    {:else}
+    {:else if activeSubTab === 'talents'}
       <TalentsSource />
+    {:else}
+      <AwakeningSource />
     {/if}
   </div>
 </section>
