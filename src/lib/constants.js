@@ -94,9 +94,13 @@ export const RARITIES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Myt
  *   'all'    -> every entry contributes (Talents: many simultaneous bonuses)
  *   'single' -> only the entry matching sourceState.activeId contributes
  *   'tiered' -> only entries with equipped:true contribute, capped per tierCaps
- * Only pets/mounts/mountGlyphs have real UI (Phase 1); the rest are scaffold
- * only (empty entries, contributing nothing) until a future pass builds them -
- * see the Phase 1 plan's "Deferred sources" section for what's known/unknown.
+ * No `selection` at all (Talents, Awakening) means the source is special-cased
+ * in totals.js entirely, bypassing the generic entries[]/activeId sum - see
+ * each source's own comment below for why.
+ * Only pets/mounts/mountGlyphs/talents/awakening have real UI; the rest are
+ * scaffold only (empty entries, contributing nothing) until a future pass
+ * builds them - see the Phase 1 plan's "Deferred sources" section for what's
+ * known/unknown.
  */
 export const SOURCE_DEFS = [
   // scope: 'loadout' - Talents maps onto Dual Spec (Set A/B = Loadout 1/2), the
@@ -105,7 +109,12 @@ export const SOURCE_DEFS = [
   // character-scoped sources below, and totals.js sums it alongside gear/
   // stones rather than through the generic character-scoped loop.
   { key: 'talents', label: 'Talents', scope: 'loadout' },
-  { key: 'awakening', label: 'Awakening', scope: 'character', selection: 'single' },
+  // scope: 'character' but no `selection` - Awakening is one path + a single
+  // point count shared by BOTH loadouts (not a collection of user-created
+  // entries the generic 'single' selection picks one of). Its path/points
+  // live on Character.awakening directly (model.js); static per-point
+  // content is in awakeningData.js, same reasoning as Talents' static tree.
+  { key: 'awakening', label: 'Awakening', scope: 'character' },
   { key: 'transcendence', label: 'Transcendence', scope: 'character', selection: 'single' },
   { key: 'pets', label: 'Pets (Companions)', scope: 'character', selection: 'single' },
   { key: 'mounts', label: 'Mounts', scope: 'character', selection: 'single' },

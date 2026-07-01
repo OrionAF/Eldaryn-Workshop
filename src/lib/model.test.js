@@ -10,6 +10,43 @@ it('newCharacter defaults class to null; newLoadout defaults spec/talentAllocati
   expect(l.talentAllocation).toEqual({});
 });
 
+it('newCharacter defaults Awakening to no path/no points', () => {
+  const c = newCharacter('Test');
+  expect(c.awakening).toEqual({ path: null, points: 0 });
+});
+
+it('normaliseRoster rejects an invalid Awakening path and clamps over-cap points, forcing points to 0 with no path', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'Test',
+        awakening: { path: 'nonsense', points: 999 },
+      },
+    ],
+    currentId: 'x',
+    drop: null,
+  };
+  const roster = normaliseRoster(raw);
+  expect(roster.characters[0].awakening).toEqual({ path: null, points: 0 });
+});
+
+it('normaliseRoster keeps a valid Awakening path and clamps points to the 15-point cap', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'Test',
+        awakening: { path: 'shadow', points: 999 },
+      },
+    ],
+    currentId: 'x',
+    drop: null,
+  };
+  const roster = normaliseRoster(raw);
+  expect(roster.characters[0].awakening).toEqual({ path: 'shadow', points: 15 });
+});
+
 it('newRoster does not carry talent tree content - that is static code data, not persisted', () => {
   const roster = newRoster();
   expect(roster.talentTrees).toBeUndefined();

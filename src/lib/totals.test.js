@@ -141,3 +141,53 @@ it('an allocation of rank 0 (or absent) contributes nothing', () => {
   const totals = computeCalculatedTotals(c, 0, talentTrees);
   expect(totals.lifesteal).toBe(0);
 });
+
+// --- Awakening (scope: 'character' - one path/point count shared by both loadouts) ---
+it('Shadow Path contributes linearly per point, the same for either class', () => {
+  const c = newCharacter();
+  c.class = 'Warrior';
+  c.awakening = { path: 'shadow', points: 3 };
+
+  const totals = computeCalculatedTotals(c, 0);
+  expect(approx(totals.attack_pct, 6)).toBe(true); // 2%/point * 3
+  expect(approx(totals.crit, 1.5)).toBe(true); // 0.5%/point * 3
+  expect(approx(totals.penetration, 4.5)).toBe(true); // 1.5%/point * 3
+});
+
+it("Radiant Path's per-point stats depend on class", () => {
+  const warrior = newCharacter();
+  warrior.class = 'Warrior';
+  warrior.awakening = { path: 'radiant', points: 2 };
+  const warriorTotals = computeCalculatedTotals(warrior, 0);
+  expect(approx(warriorTotals.block_chance, 1)).toBe(true); // 0.5%/point * 2
+  expect(warriorTotals.miss_chance).toBe(0); // Sentinel-only stat, not granted to a Warrior
+
+  const sentinel = newCharacter();
+  sentinel.class = 'Sentinel';
+  sentinel.awakening = { path: 'radiant', points: 2 };
+  const sentinelTotals = computeCalculatedTotals(sentinel, 0);
+  expect(approx(sentinelTotals.miss_chance, 1)).toBe(true); // 0.5%/point * 2
+  expect(sentinelTotals.block_chance).toBe(0); // Warrior-only stat, not granted to a Sentinel
+});
+
+it('Awakening is shared by both loadouts, unlike per-loadout Talents', () => {
+  const c = newCharacter();
+  c.class = 'Warrior';
+  c.awakening = { path: 'shadow', points: 4 };
+
+  const l1 = computeCalculatedTotals(c, 0);
+  const l2 = computeCalculatedTotals(c, 1);
+  expect(approx(l1.attack_pct, l2.attack_pct)).toBe(true);
+  expect(approx(l1.attack_pct, 8)).toBe(true); // 2%/point * 4
+});
+
+it('no path chosen, or 0 points invested, contributes nothing', () => {
+  const c = newCharacter();
+  c.class = 'Warrior';
+  const noPath = computeCalculatedTotals(c, 0);
+  expect(noPath.attack_pct).toBe(0);
+
+  c.awakening = { path: 'shadow', points: 0 };
+  const zeroPoints = computeCalculatedTotals(c, 0);
+  expect(zeroPoints.attack_pct).toBe(0);
+});
