@@ -10,6 +10,7 @@
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { SPECS_BY_CLASS, TALENT_TOTAL_POINTS } from '../lib/constants.js';
   import TalentTierList from './TalentTierList.svelte';
+  import ConfirmButton from './ConfirmButton.svelte';
 
   const SET_NAMES = ['Set A', 'Set B'];
 
@@ -63,9 +64,14 @@
     </p>
   {:else}
     <TalentTierList specKey={character.loadouts[selectedSet].spec} loadoutIndex={selectedSet} />
-    <button type="button" class="reset-button" onclick={() => rosterStore.resetTalents(selectedSet)}>
-      Reset Talents
-    </button>
+    <div class="reset-button">
+      <ConfirmButton
+        label="Reset Talents"
+        confirmLabel="Confirm reset"
+        prompt={`Reset all points spent in ${setLabel(selectedSet, character.loadouts[selectedSet])}?`}
+        onConfirm={() => rosterStore.resetTalents(selectedSet)}
+      />
+    </div>
   {/if}
 {/if}
 
@@ -75,6 +81,11 @@
     grid-template-columns: 1fr 1fr;
     gap: var(--space-4, 1rem);
     margin-bottom: var(--space-3, 0.75rem);
+  }
+  @media (max-width: 640px) {
+    .set-selector {
+      grid-template-columns: 1fr;
+    }
   }
   .set-card {
     display: flex;

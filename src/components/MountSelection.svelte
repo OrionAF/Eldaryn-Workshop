@@ -8,6 +8,7 @@
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { RARITIES } from '../lib/constants.js';
   import { formatPct, parsePct } from '../lib/format.js';
+  import ConfirmButton from './ConfirmButton.svelte';
 
   let newName = $state('');
   let newRarity = $state(RARITIES[0]);
@@ -69,7 +70,12 @@
               onblur={(e) => rosterStore.updateMount(mount.id, 'baseAtkPct', parsePct(e.target.value))}
             />
           </label>
-          <button type="button" onclick={() => rosterStore.removeMount(mount.id)}>Remove</button>
+          <ConfirmButton
+            label="Remove"
+            confirmLabel="Confirm remove"
+            prompt={`Remove "${mount.name}"?`}
+            onConfirm={() => rosterStore.removeMount(mount.id)}
+          />
         </li>
       {/each}
     </ul>

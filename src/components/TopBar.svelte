@@ -8,6 +8,7 @@
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { CLASSES } from '../lib/constants.js';
   import SettingsPanel from './SettingsPanel.svelte';
+  import ConfirmButton from './ConfirmButton.svelte';
 
   const CHOOSE_CLASS_VALUE = '__none__';
 
@@ -17,7 +18,6 @@
   let newCharacterName = $state('');
   let editOpen = $state(false);
   let editName = $state('');
-  let confirmDelete = $state(false);
   let importError = $state('');
   let fileInput = $state();
   let settingsOpen = $state(false);
@@ -48,7 +48,6 @@
 
   function openEdit() {
     editName = rosterStore.current.name;
-    confirmDelete = false;
     editOpen = true;
   }
 
@@ -66,13 +65,11 @@
 
   function closeEdit() {
     editOpen = false;
-    confirmDelete = false;
   }
 
-  function confirmDeleteNow() {
+  function deleteCurrentCharacter() {
     rosterStore.deleteCharacter(rosterStore.current.id);
     editOpen = false;
-    confirmDelete = false;
   }
 
   function onExport() {
@@ -151,15 +148,13 @@
         {#each CLASSES as c (c)}<option value={c}>{c}</option>{/each}
       </select>
     </label>
-    {#if !confirmDelete}
-      <button type="button" onclick={() => (confirmDelete = true)} disabled={rosterStore.roster.characters.length <= 1}>
-        Delete
-      </button>
-    {:else}
-      <span>Delete "{rosterStore.current.name}"?</span>
-      <button type="button" onclick={confirmDeleteNow}>Confirm delete</button>
-      <button type="button" onclick={() => (confirmDelete = false)}>Cancel</button>
-    {/if}
+    <ConfirmButton
+      label="Delete"
+      confirmLabel="Confirm delete"
+      prompt={`Delete "${rosterStore.current.name}"?`}
+      disabled={rosterStore.roster.characters.length <= 1}
+      onConfirm={deleteCurrentCharacter}
+    />
     <button type="button" onclick={closeEdit}>Close</button>
   </div>
 {/if}
@@ -171,26 +166,31 @@
 <style>
   .top-bar {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem 1rem;
   }
   .character-select {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     flex: 1;
+    min-width: 0; /* let the select shrink/wrap instead of forcing row overflow */
   }
   .character-select select {
     flex: 1;
+    min-width: 0;
     max-width: 24rem;
   }
   .top-bar-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
   }
   .inline-panel {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
     margin-top: 0.5rem;

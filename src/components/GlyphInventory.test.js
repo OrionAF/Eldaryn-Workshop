@@ -69,10 +69,15 @@ it('equipping past the tier cap is rejected with a visible error, and the checkb
   cleanup();
 });
 
-it('Remove deletes the glyph from inventory', () => {
+it('Remove requires a second click (Confirm remove) before it deletes the glyph', () => {
   const id = rosterStore.addMountGlyph('major', 'speed', 25);
   flushSync();
-  [...target.querySelectorAll('.entry-list li button')].find((b) => b.textContent === 'Remove').click();
+  const row = target.querySelector('.entry-list li');
+  [...row.querySelectorAll('button')].find((b) => b.textContent === 'Remove').click();
+  flushSync();
+
+  expect(rosterStore.current.sources.mountGlyphs.entries.some((g) => g.id === id)).toBe(true);
+  [...row.querySelectorAll('button')].find((b) => b.textContent === 'Confirm remove').click();
   flushSync();
   expect(rosterStore.current.sources.mountGlyphs.entries.some((g) => g.id === id)).toBe(false);
   cleanup();

@@ -54,6 +54,25 @@ it('editing Base HP%/Base ATK% on a mount row writes through updateMount', () =>
   cleanup();
 });
 
+it('Remove requires a second click (Confirm remove) before it takes effect', () => {
+  const id = rosterStore.addMount('Crystal Beast', 'Uncommon');
+  flushSync();
+
+  const row = target.querySelector('.entry-list li');
+  [...row.querySelectorAll('button')].find((b) => b.textContent === 'Remove').click();
+  flushSync();
+
+  expect(rosterStore.current.sources.mounts.entries.some((m) => m.id === id)).toBe(true);
+  const rowButtons = [...row.querySelectorAll('button')].map((b) => b.textContent);
+  expect(rowButtons).toContain('Confirm remove');
+  expect(rowButtons).not.toContain('Remove');
+
+  [...row.querySelectorAll('button')].find((b) => b.textContent === 'Confirm remove').click();
+  flushSync();
+  expect(rosterStore.current.sources.mounts.entries.some((m) => m.id === id)).toBe(false);
+  cleanup();
+});
+
 it('Riding radio switches the active mount', () => {
   const a = rosterStore.addMount('A', 'Common');
   const b = rosterStore.addMount('B', 'Common');

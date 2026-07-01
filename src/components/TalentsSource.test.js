@@ -78,7 +78,7 @@ it('assigning the same spec to both sets works too ("two of one")', () => {
   cleanup();
 });
 
-it('once a spec is assigned, the tier list renders and Reset Talents clears the allocation', () => {
+it('once a spec is assigned, the tier list renders and Reset Talents (2-click confirm) clears the allocation', () => {
   rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
   rosterStore.setLoadoutSpec(0, 'arms');
   flushSync();
@@ -89,7 +89,11 @@ it('once a spec is assigned, the tier list renders and Reset Talents clears the 
   flushSync();
   expect(rosterStore.current.loadouts[0].talentAllocation[talentId]).toBe(1);
 
-  target.querySelector('.reset-button').click();
+  target.querySelector('.reset-button button').click(); // "Reset Talents"
+  flushSync();
+  expect(rosterStore.current.loadouts[0].talentAllocation[talentId]).toBe(1); // not yet - just revealed the confirm step
+
+  [...target.querySelector('.reset-button').querySelectorAll('button')].find((b) => b.textContent === 'Confirm reset').click();
   flushSync();
   expect(rosterStore.current.loadouts[0].talentAllocation).toEqual({});
   cleanup();
