@@ -191,3 +191,67 @@ it('no path chosen, or 0 points invested, contributes nothing', () => {
   const zeroPoints = computeCalculatedTotals(c, 0);
   expect(zeroPoints.attack_pct).toBe(0);
 });
+
+// --- Stat caps (game-enforced ceilings on Crit, Double Hit, Penetration,
+// HP Regen, DMG Reduction, Block/Miss/Blind/Paralyze Chance) ---
+it('Calculated totals clamp a capped stat when stacked sources exceed the cap', () => {
+  const c = newCharacter();
+  c.loadouts[0].gear.Weapon = emptyStats({ crit: 60 });
+  c.loadouts[0].gear.Ring = emptyStats({ crit: 50 }); // 60 + 50 = 110, over the 80 cap
+
+  const totals = computeCalculatedTotals(c, 0);
+  expect(totals.crit).toBe(80);
+});
+
+it('Calculated totals leave a capped stat untouched when under the cap', () => {
+  const c = newCharacter();
+  c.loadouts[0].gear.Weapon = emptyStats({ crit: 30 });
+
+  const totals = computeCalculatedTotals(c, 0);
+  expect(approx(totals.crit, 30)).toBe(true);
+});
+
+it('Manual totals are also clamped by resolveEffectiveTotals', () => {
+  const c = newCharacter();
+  c.loadouts[0].manualTotals = true;
+  c.loadouts[0].profileTotals = emptyStats({ paralyze_chance: 99 }); // way over the 15 cap
+
+  const effective = resolveEffectiveTotals(c, 0);
+  expect(effective.paralyze_chance).toBe(15);
+  // The clamp only affects the read - stored profileTotals stays as typed.
+  expect(c.loadouts[0].profileTotals.paralyze_chance).toBe(99);
+});
+
+it('every requested cap is enforced at its documented value', () => {
+  const c = newCharacter();
+  c.loadouts[0].gear.Weapon = emptyStats({
+    crit: 999,
+    double_hit: 999,
+    penetration: 999,
+    hp_regen: 999,
+    dmg_reduction: 999,
+    block_chance: 999,
+    miss_chance: 999,
+    blind_chance: 999,
+    paralyze_chance: 999,
+  });
+
+  const totals = computeCalculatedTotals(c, 0);
+  expect(totals.crit).toBe(80);
+  expect(totals.double_hit).toBe(40);
+  expect(totals.penetration).toBe(90);
+  expect(totals.hp_regen).toBe(60);
+  expect(totals.dmg_reduction).toBe(60);
+  expect(totals.block_chance).toBe(80);
+  expect(totals.miss_chance).toBe(80);
+  expect(totals.blind_chance).toBe(40);
+  expect(totals.paralyze_chance).toBe(15);
+});
+
+it('an uncapped stat (e.g. Lifesteal) is never clamped', () => {
+  const c = newCharacter();
+  c.loadouts[0].gear.Weapon = emptyStats({ lifesteal: 500 });
+
+  const totals = computeCalculatedTotals(c, 0);
+  expect(approx(totals.lifesteal, 500)).toBe(true);
+});

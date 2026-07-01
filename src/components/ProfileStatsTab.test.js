@@ -23,6 +23,18 @@ it('renders both loadout columns with names and independent field sets', () => {
   cleanup();
 });
 
+it('a manually-entered value above a stat cap displays clamped to the cap', () => {
+  rosterStore.setProfileField(0, 'crit', 999); // cap is 80
+  flushSync();
+
+  const columns = [...target.querySelectorAll('.loadout-column')];
+  const critInput = [...columns[0].querySelectorAll('label')].find((l) => l.textContent.includes('Critical %')).querySelector('input');
+  expect(critInput.value).toBe('80');
+  // The raw stored value is untouched - only the displayed/effective read clamps.
+  expect(rosterStore.current.loadouts[0].profileTotals.crit).toBe(999);
+  cleanup();
+});
+
 it('with no class chosen, neither Warrior- nor Sentinel-only fields show', () => {
   const labels = [...target.querySelectorAll('.field-label')].map((l) => l.textContent);
   expect(labels).not.toContain('Block Chance %');

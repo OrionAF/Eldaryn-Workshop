@@ -124,6 +124,22 @@ function awakeningContribution(character) {
 }
 
 /**
+ * Clamps every STAT_FIELDS entry with a `cap` (the game's own hard ceiling -
+ * e.g. Crit 80%, Paralyze Chance 15%) down to that cap. Stacking many
+ * sources (gear, talents, Awakening) can otherwise sum past what the game
+ * allows; applied to both Calculated totals and Manual entry (see
+ * resolveEffectiveTotals) so neither can display or feed DPS/HPS math with
+ * an impossible value. Never mutates its input - returns a new object.
+ */
+function applyStatCaps(stats) {
+  const capped = { ...stats };
+  for (const f of STAT_FIELDS) {
+    if (f.cap != null && capped[f.key] > f.cap) capped[f.key] = f.cap;
+  }
+  return capped;
+}
+
+/**
  * Sum base + gear + stones + talents (all per-loadout) + Awakening + every
  * character-scoped, `selection`-bearing source (shared across both loadouts)
  * into one set of final totals for `loadout`. `talentTrees` defaults to the
@@ -153,11 +169,12 @@ export function computeCalculatedTotals(character, loadoutIndex, talentTrees = T
   for (const key of FLAT_PAIR_KEYS) {
     result[key] = finalAttack(acc.flatSums[key], acc.totals[PCT_PAIR_OF[key]]);
   }
-  return offensiveStats(result);
+  return applyStatCaps(offensiveStats(result));
 }
 
 /** The totals a loadout should actually use right now: manual entry, or Calculated. */
 export function resolveEffectiveTotals(character, loadoutIndex, talentTrees = TALENT_TREES) {
   const loadout = character.loadouts[loadoutIndex];
-  return loadout.manualTotals ? loadout.profileTotals : computeCalculatedTotals(character, loadoutIndex, talentTrees);
+  if (loadout.manualTotals) return applyStatCaps(loadout.profileTotals);
+  return computeCalculatedTotals(character, loadoutIndex, talentTrees); // already capped
 }
