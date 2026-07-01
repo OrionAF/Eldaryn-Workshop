@@ -1,7 +1,18 @@
 import { it, expect } from 'vitest';
 import { computeCalculatedTotals, resolveEffectiveTotals } from './totals.js';
-import { newCharacter, newPetEntry, newMountEntry, newMountGlyphEntry, emptyStats, newTalent, newTier, emptyTalentTrees } from './model.js';
+import { newCharacter, newPetEntry, newMountEntry, newMountGlyphEntry, emptyStats } from './model.js';
 import { BASE_ATTACK, BASE_SPEED, BASE_CRIT_MULT } from './dps.js';
+
+// Talent test fixtures: plain object literals matching talentTreeData.js's
+// shape (Tier = {id, threshold, talents}, Talent = {id, name, statKey, ranks}).
+// Tests build their own tiny trees rather than using the real static
+// TALENT_TREES, which only holds placeholder content.
+function talent(id, statKey, ranks) {
+  return { id, name: id, statKey, ranks };
+}
+function tier(id, threshold, talents) {
+  return { id, threshold, talents };
+}
 
 function approx(a, b, tol = 1e-6) {
   return Math.abs(a - b) <= tol * Math.max(1, Math.abs(b));
@@ -82,26 +93,24 @@ it('resolveEffectiveTotals returns the Calculated sum when manualTotals is false
 
 // --- Talents (scope: 'loadout' - Dual Spec = Set A/B = Loadout 1/2) ---
 it('a talent contributes the value ASSIGNED to the allocated rank, not a sum of prior ranks', () => {
-  const talent = newTalent({ name: 'Sharp Aim', statKey: 'crit', ranks: [2, 5, 9] }); // non-linear on purpose
-  const tier = newTier({ threshold: 0, talents: [talent] });
-  const talentTrees = { ...emptyTalentTrees(), marksmanship: { description: '', tiers: [tier] } };
+  const sharpAim = talent('sharp-aim', 'crit', [2, 5, 9]); // non-linear on purpose
+  const talentTrees = { marksmanship: { description: '', tiers: [tier('t1', 0, [sharpAim])] } };
 
   const c = newCharacter();
   c.loadouts[0].spec = 'marksmanship';
-  c.loadouts[0].talentAllocation = { [talent.id]: 2 }; // rank 2 -> assigned value 5, NOT 2+5=7
+  c.loadouts[0].talentAllocation = { [sharpAim.id]: 2 }; // rank 2 -> assigned value 5, NOT 2+5=7
 
   const totals = computeCalculatedTotals(c, 0, talentTrees);
   expect(approx(totals.crit, 5)).toBe(true);
 });
 
 it('a talent allocation on a different loadout does not leak into this one (per-loadout, not shared)', () => {
-  const talent = newTalent({ name: 'Sharp Aim', statKey: 'crit', ranks: [2, 5, 9] });
-  const tier = newTier({ threshold: 0, talents: [talent] });
-  const talentTrees = { ...emptyTalentTrees(), marksmanship: { description: '', tiers: [tier] } };
+  const sharpAim = talent('sharp-aim', 'crit', [2, 5, 9]);
+  const talentTrees = { marksmanship: { description: '', tiers: [tier('t1', 0, [sharpAim])] } };
 
   const c = newCharacter();
   c.loadouts[0].spec = 'marksmanship';
-  c.loadouts[0].talentAllocation = { [talent.id]: 3 };
+  c.loadouts[0].talentAllocation = { [sharpAim.id]: 3 };
   // Loadout 2 has no spec/allocation - should contribute nothing.
 
   const totalsL2 = computeCalculatedTotals(c, 1, talentTrees);
@@ -109,10 +118,9 @@ it('a talent allocation on a different loadout does not leak into this one (per-
 });
 
 it('two different talents contributing to the same stat sum together', () => {
-  const t1 = newTalent({ name: 'A', statKey: 'attack_pct', ranks: [4] });
-  const t2 = newTalent({ name: 'B', statKey: 'attack_pct', ranks: [6] });
-  const tier = newTier({ threshold: 0, talents: [t1, t2] });
-  const talentTrees = { ...emptyTalentTrees(), fury: { description: '', tiers: [tier] } };
+  const t1 = talent('a', 'attack_pct', [4]);
+  const t2 = talent('b', 'attack_pct', [6]);
+  const talentTrees = { fury: { description: '', tiers: [tier('t1', 0, [t1, t2])] } };
 
   const c = newCharacter();
   c.loadouts[0].spec = 'fury';
@@ -123,9 +131,8 @@ it('two different talents contributing to the same stat sum together', () => {
 });
 
 it('an allocation of rank 0 (or absent) contributes nothing', () => {
-  const talent = newTalent({ name: 'Untouched', statKey: 'lifesteal', ranks: [7] });
-  const tier = newTier({ threshold: 0, talents: [talent] });
-  const talentTrees = { ...emptyTalentTrees(), fury: { description: '', tiers: [tier] } };
+  const untouched = talent('untouched', 'lifesteal', [7]);
+  const talentTrees = { fury: { description: '', tiers: [tier('t1', 0, [untouched])] } };
 
   const c = newCharacter();
   c.loadouts[0].spec = 'fury';

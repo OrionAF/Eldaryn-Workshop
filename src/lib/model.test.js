@@ -1,14 +1,6 @@
 import { it, expect } from 'vitest';
-import { newRoster, newCharacter, newLoadout, normaliseRoster, newTalent, newTier } from './model.js';
-import { TALENT_TREE_KEYS } from './constants.js';
-
-it('newRoster seeds all 4 talent trees empty', () => {
-  const roster = newRoster();
-  expect(Object.keys(roster.talentTrees).sort()).toEqual([...TALENT_TREE_KEYS].sort());
-  for (const key of TALENT_TREE_KEYS) {
-    expect(roster.talentTrees[key]).toEqual({ description: '', tiers: [] });
-  }
-});
+import { newRoster, newCharacter, newLoadout, normaliseRoster } from './model.js';
+import { TALENT_TREES } from './talentTreeData.js';
 
 it('newCharacter defaults class to null; newLoadout defaults spec/talentAllocation empty', () => {
   const c = newCharacter('Test');
@@ -18,10 +10,14 @@ it('newCharacter defaults class to null; newLoadout defaults spec/talentAllocati
   expect(l.talentAllocation).toEqual({});
 });
 
-it('normaliseRoster fills in talentTrees for an old export that predates the field', () => {
+it('newRoster does not carry talent tree content - that is static code data, not persisted', () => {
+  const roster = newRoster();
+  expect(roster.talentTrees).toBeUndefined();
+});
+
+it('normaliseRoster handles an old export that predates class/spec', () => {
   const oldExport = { characters: [{ id: 'x', name: 'Old' }], currentId: 'x', drop: null };
   const roster = normaliseRoster(oldExport);
-  expect(Object.keys(roster.talentTrees).sort()).toEqual([...TALENT_TREE_KEYS].sort());
   expect(roster.characters[0].class).toBe(null);
   expect(roster.characters[0].loadouts[0].spec).toBe(null);
 });
@@ -63,9 +59,8 @@ it('normaliseRoster keeps a valid class+spec combination', () => {
   expect(roster.characters[0].loadouts[1].spec).toBe('disruption');
 });
 
-it('normaliseRoster drops talentAllocation entries for talents that no longer exist, and clamps over-max ranks', () => {
-  const talent = newTalent({ name: 'Sharp Aim', ranks: [2, 4, 6] }); // maxRank 3
-  const tier = newTier({ threshold: 0, talents: [talent] });
+it('normaliseRoster drops talentAllocation entries for talents that no longer exist in the static tree, and clamps over-max ranks', () => {
+  const realTalent = TALENT_TREES.marksmanship.tiers[0].talents[0]; // a real placeholder talent
   const raw = {
     characters: [
       {
@@ -76,7 +71,7 @@ it('normaliseRoster drops talentAllocation entries for talents that no longer ex
           {
             name: 'Loadout 1',
             spec: 'marksmanship',
-            talentAllocation: { [talent.id]: 99, 'ghost-talent-id': 3 },
+            talentAllocation: { [realTalent.id]: 99, 'ghost-talent-id': 3 },
           },
           { name: 'Loadout 2' },
         ],
@@ -84,10 +79,9 @@ it('normaliseRoster drops talentAllocation entries for talents that no longer ex
     ],
     currentId: 'x',
     drop: null,
-    talentTrees: { marksmanship: { description: '', tiers: [tier] } },
   };
   const roster = normaliseRoster(raw);
   const allocation = roster.characters[0].loadouts[0].talentAllocation;
-  expect(allocation[talent.id]).toBe(3); // clamped to maxRank
+  expect(allocation[realTalent.id]).toBe(realTalent.ranks.length); // clamped to maxRank
   expect(allocation['ghost-talent-id']).toBeUndefined(); // dropped, talent doesn't exist
 });

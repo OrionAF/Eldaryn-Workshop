@@ -3,8 +3,9 @@
    * TalentsSource.svelte - Talents (Dual Spec = Set A/B = Loadout 1/Loadout 2).
    * Set A/Set B cards assign a spec (scoped to the character's class) to
    * each loadout independently - "either one of each, or two of one".
-   * Tier/talent display + rank allocation (build step 21) and tree-authoring
-   * (build step 22) render below the selected Set, once a spec is assigned.
+   * Tier/talent display + rank allocation (TalentTierList) renders below the
+   * selected Set, once a spec is assigned. Tree content is static code data
+   * (talentTreeData.js) - there's no in-app tree-authoring UI.
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { SPECS_BY_CLASS, TALENT_TOTAL_POINTS } from '../lib/constants.js';

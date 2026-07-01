@@ -22,7 +22,7 @@
   const fields = fieldsForTab('profile');
 
   function effective(i) {
-    return resolveEffectiveTotals(rosterStore.current, i, rosterStore.roster.talentTrees);
+    return resolveEffectiveTotals(rosterStore.current, i);
   }
 </script>
 
