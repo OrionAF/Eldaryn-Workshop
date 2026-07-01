@@ -68,6 +68,27 @@ it('assigning the same spec to both sets works too ("two of one")', () => {
   cleanup();
 });
 
+it('once a spec is assigned, the tier list renders and Reset Talents clears the allocation', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
+  rosterStore.roster.talentTrees.fury.tiers = [];
+  rosterStore.addTalentTier('fury', 0);
+  const tier = rosterStore.roster.talentTrees.fury.tiers[0];
+  const talentId = rosterStore.addTalent('fury', tier.id, 'Sharp Aim', 'crit');
+  rosterStore.updateTalent('fury', talentId, 'ranks', [2]);
+  rosterStore.setLoadoutSpec(0, 'fury');
+  flushSync();
+
+  expect(target.querySelector('.tier-section')).not.toBeNull();
+  rosterStore.setTalentRank(0, talentId, 1);
+  flushSync();
+  expect(rosterStore.current.loadouts[0].talentAllocation[talentId]).toBe(1);
+
+  target.querySelector('.reset-button').click();
+  flushSync();
+  expect(rosterStore.current.loadouts[0].talentAllocation).toEqual({});
+  cleanup();
+});
+
 it('the points readout tracks the selected Set independently', () => {
   rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
   flushSync();
