@@ -6,6 +6,7 @@
    * silent auto-save every rosterStore mutator already performs.
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
+  import SettingsPanel from './SettingsPanel.svelte';
 
   const NEW_CHARACTER_VALUE = '__new__';
 
@@ -16,6 +17,7 @@
   let confirmDelete = $state(false);
   let importError = $state('');
   let fileInput = $state();
+  let settingsOpen = $state(false);
 
   function onSelectChange(e) {
     const value = e.target.value;
@@ -112,8 +114,13 @@
     <button type="button" onclick={onExport}>Export</button>
     <button type="button" onclick={onImportClick}>Import</button>
     <input type="file" accept="application/json" bind:this={fileInput} onchange={onImportFile} hidden />
+    <button type="button" onclick={() => (settingsOpen = !settingsOpen)} aria-label="Settings" title="Settings">
+      ⚙
+    </button>
   </div>
 </div>
+
+<SettingsPanel open={settingsOpen} onClose={() => (settingsOpen = false)} />
 
 {#if newCharacterOpen}
   <div class="inline-panel" role="group" aria-label="New character">
