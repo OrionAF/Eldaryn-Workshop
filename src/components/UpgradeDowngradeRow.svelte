@@ -6,14 +6,19 @@
    * GearPanelTab in Compare mode.
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
+  import { settingsStore } from '../lib/settingsStore.svelte.js';
   import { compareSwap } from '../lib/dps.js';
 
   let drop = $derived(rosterStore.roster.drop);
-  let results = $derived(
-    drop
-      ? rosterStore.current.loadouts.map((loadout) => compareSwap(loadout.profileTotals, loadout.gear[drop.slot], drop.piece))
-      : []
-  );
+  let results = $derived.by(() => {
+    // dps.js's applySwap reads the Speed/CritMult stacking flag internally
+    // (module state, not itself reactive) - this read of the settings store
+    // is otherwise unused here, but it's what makes Svelte recompute this
+    // block when the user flips the toggle mid-comparison.
+    void settingsStore.speedCritMultMultiplicative;
+    if (!drop) return [];
+    return rosterStore.current.loadouts.map((loadout) => compareSwap(loadout.profileTotals, loadout.gear[drop.slot], drop.piece));
+  });
 
   function pct(n) {
     if (!Number.isFinite(n)) return '—';

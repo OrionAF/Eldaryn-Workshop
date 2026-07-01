@@ -60,3 +60,29 @@ export function downloadRoster(roster, filename = 'eldaryn-optimiser.json') {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+const SETTINGS_KEY = 'eldaryn_optimiser_settings_v1';
+const DEFAULT_SETTINGS = { speedCritMultMultiplicative: false };
+
+/** Load app settings (the Speed/Crit Mult stacking switch) from localStorage. */
+export function loadSettings() {
+  if (!hasLocalStorage) return { ...DEFAULT_SETTINGS };
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return { ...DEFAULT_SETTINGS };
+    const parsed = JSON.parse(raw);
+    return { speedCritMultMultiplicative: !!parsed.speedCritMultMultiplicative };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+/** Persist app settings to localStorage. */
+export function saveSettings(settings) {
+  if (!hasLocalStorage) return;
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    // quota / private-mode failures are non-fatal
+  }
+}
