@@ -90,7 +90,11 @@ it('switching path resets points to 0, and Reset Awakening clears the path entir
   flushSync();
   expect(target.textContent).toContain('0 / 15 points');
 
-  target.querySelector('.reset-button').click();
+  target.querySelector('.reset-button button').click(); // "Reset Awakening"
+  flushSync();
+  expect(target.querySelector('.empty-hint')).toBeNull(); // not yet - just revealed the confirm step
+
+  [...target.querySelector('.reset-button').querySelectorAll('button')].find((b) => b.textContent === 'Confirm reset').click();
   flushSync();
   expect(target.querySelector('.empty-hint')).not.toBeNull();
   cleanup();

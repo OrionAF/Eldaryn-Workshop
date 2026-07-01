@@ -84,6 +84,12 @@
     gap: 2rem;
     justify-items: center;
   }
+  @media (max-width: 640px) {
+    .silhouette-columns {
+      grid-template-columns: 1fr;
+      gap: var(--space-6, 1.5rem);
+    }
+  }
   .caption {
     text-align: center;
     color: var(--color-muted, #999);

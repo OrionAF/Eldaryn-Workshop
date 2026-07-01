@@ -11,6 +11,7 @@
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { STAT_FIELDS, SOURCE_DEFS } from '../lib/constants.js';
   import { formatPct, parsePct } from '../lib/format.js';
+  import ConfirmButton from './ConfirmButton.svelte';
 
   const PCT_FIELDS = STAT_FIELDS.filter((f) => f.kind === 'pct');
   const TIER_CAPS = SOURCE_DEFS.find((d) => d.key === 'mountGlyphs').tierCaps;
@@ -79,7 +80,11 @@
             <input type="checkbox" checked={glyph.equipped} onchange={() => toggleEquip(glyph)} />
             Equipped
           </label>
-          <button type="button" onclick={() => rosterStore.removeMountGlyph(glyph.id)}>Remove</button>
+          <ConfirmButton
+            label="Remove"
+            confirmLabel="Confirm remove"
+            onConfirm={() => rosterStore.removeMountGlyph(glyph.id)}
+          />
         </li>
       {/each}
     </ul>
@@ -114,6 +119,7 @@
   .entry-list li {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: var(--space-3, 0.75rem);
     padding: var(--space-2, 0.4rem);
     border: 1px solid var(--color-border, #444);

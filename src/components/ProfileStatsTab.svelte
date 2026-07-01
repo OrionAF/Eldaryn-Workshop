@@ -69,6 +69,14 @@
     grid-template-columns: 1fr 1fr;
     gap: 2rem;
   }
+  /* Two full stat-field columns side by side is unreadable below ~640px
+     (a phone in portrait) - stack instead of crushing both. */
+  @media (max-width: 640px) {
+    .loadout-columns {
+      grid-template-columns: 1fr;
+      gap: var(--space-6, 1.5rem);
+    }
+  }
   .loadout-header {
     display: flex;
     align-items: baseline;

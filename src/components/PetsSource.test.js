@@ -78,15 +78,25 @@ it('Edit stats opens the StatsFields editor bound to that pet, and changes write
   cleanup();
 });
 
-it('Remove deletes the pet and closes its editor if it was open', () => {
+it('Remove requires a second click (Confirm remove) before it takes effect', () => {
   const petId = rosterStore.addPet('Removable', 'Common', 1);
   flushSync();
   target.querySelector('.entry-list li button').click(); // "Edit stats"
   flushSync();
   expect(target.querySelector('.pet-editor')).not.toBeNull();
 
-  const buttons = [...target.querySelectorAll('.entry-list li button')];
-  buttons.find((b) => b.textContent === 'Remove').click();
+  const row = target.querySelector('.entry-list li');
+  [...row.querySelectorAll('button')].find((b) => b.textContent === 'Remove').click();
+  flushSync();
+
+  // First click only reveals the confirm step - the pet isn't gone yet.
+  expect(rosterStore.current.sources.pets.entries.some((p) => p.id === petId)).toBe(true);
+  const rowButtons = [...row.querySelectorAll('button')].map((b) => b.textContent);
+  expect(rowButtons).toContain('Confirm remove');
+  expect(rowButtons).toContain('Cancel');
+  expect(rowButtons).not.toContain('Remove');
+
+  [...row.querySelectorAll('button')].find((b) => b.textContent === 'Confirm remove').click();
   flushSync();
 
   expect(rosterStore.current.sources.pets.entries.some((p) => p.id === petId)).toBe(false);

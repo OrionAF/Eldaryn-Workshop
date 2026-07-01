@@ -8,6 +8,7 @@
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { STAT_FIELDS } from '../lib/constants.js';
   import { AWAKENING_PATHS, AWAKENING_TOTAL_POINTS, resolveAwakeningPerPoint } from '../lib/awakeningData.js';
+  import ConfirmButton from './ConfirmButton.svelte';
 
   const character = $derived(rosterStore.current);
   const awakening = $derived(character.awakening);
@@ -62,7 +63,14 @@
     </div>
   {/if}
 
-  <button type="button" class="reset-button" onclick={() => rosterStore.resetAwakening()}>Reset Awakening</button>
+  <div class="reset-button">
+    <ConfirmButton
+      label="Reset Awakening"
+      confirmLabel="Confirm reset"
+      prompt="Reset your path choice and all invested points?"
+      onConfirm={() => rosterStore.resetAwakening()}
+    />
+  </div>
 {/if}
 
 <style>
@@ -71,6 +79,11 @@
     grid-template-columns: 1fr 1fr;
     gap: var(--space-4, 1rem);
     margin-bottom: var(--space-3, 0.75rem);
+  }
+  @media (max-width: 640px) {
+    .path-selector {
+      grid-template-columns: 1fr;
+    }
   }
   .path-card {
     padding: var(--space-2, 0.5rem);

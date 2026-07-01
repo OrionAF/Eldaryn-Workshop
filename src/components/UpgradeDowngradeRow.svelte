@@ -51,6 +51,12 @@
     gap: 2rem;
     margin-top: 1rem;
   }
+  @media (max-width: 640px) {
+    .upgrade-downgrade-row {
+      grid-template-columns: 1fr;
+      gap: var(--space-4, 1rem);
+    }
+  }
   .result-card {
     background: var(--color-surface, none);
     border: 1px solid var(--color-border, #444);

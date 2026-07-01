@@ -8,6 +8,7 @@
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { RARITIES, fieldsForTab } from '../lib/constants.js';
   import StatsFields from './StatsFields.svelte';
+  import ConfirmButton from './ConfirmButton.svelte';
 
   const fields = fieldsForTab('gear'); // full CORE + bonus field set
 
@@ -76,7 +77,12 @@
           <button type="button" onclick={() => (selectedPetId = pet.id)}>
             {selectedPetId === pet.id ? 'Hide stats' : 'Edit stats'}
           </button>
-          <button type="button" onclick={() => removePet(pet.id)}>Remove</button>
+          <ConfirmButton
+            label="Remove"
+            confirmLabel="Confirm remove"
+            prompt={`Remove "${pet.name}"?`}
+            onConfirm={() => removePet(pet.id)}
+          />
         </li>
       {/each}
     </ul>
@@ -112,6 +118,7 @@
   .entry-list li {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: var(--space-2, 0.5rem);
     padding: var(--space-2, 0.4rem);
     border: 1px solid var(--color-border, #444);

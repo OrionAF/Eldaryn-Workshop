@@ -35,4 +35,10 @@
     gap: 2rem;
     margin-top: 1rem;
   }
+  @media (max-width: 640px) {
+    .stats-summary-row {
+      grid-template-columns: 1fr;
+      gap: var(--space-6, 1.5rem);
+    }
+  }
 </style>
