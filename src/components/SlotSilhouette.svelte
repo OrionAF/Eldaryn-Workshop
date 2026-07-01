@@ -47,22 +47,35 @@
       'weapon chest     offhand'
       'ring   leggings  trinket'
       '.      boots     .';
-    gap: 0.4rem;
+    gap: var(--space-2, 0.5rem);
     max-width: 16rem;
   }
   .slot {
-    padding: 0.5rem 0.25rem;
+    position: relative;
+    padding: var(--space-2, 0.5rem) var(--space-1, 0.25rem);
     border: 1px solid var(--color-border, #444);
-    background: none;
+    background: var(--color-surface, none);
     cursor: pointer;
     font-size: 0.75rem;
     color: inherit;
-  }
-  .slot.selected {
-    border-color: var(--color-accent, #7aa2f7);
-    border-width: 2px;
+    border-radius: var(--radius, 4px);
   }
   .slot.filled {
-    background: rgba(122, 162, 247, 0.1);
+    background: var(--color-surface-raised, rgba(122, 162, 247, 0.1));
+  }
+  /* Signature: the selected slot "sockets" - an ember dot, like a gem set
+     into the gear, rather than just a heavier border. */
+  .slot.selected {
+    border-color: var(--color-accent, #7aa2f7);
+  }
+  .slot.selected::after {
+    content: '';
+    position: absolute;
+    top: 0.3rem;
+    right: 0.3rem;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: var(--color-accent, #7aa2f7);
   }
 </style>
