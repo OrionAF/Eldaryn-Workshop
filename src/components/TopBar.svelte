@@ -6,7 +6,10 @@
    * silent auto-save every rosterStore mutator already performs.
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
+  import { CLASSES } from '../lib/constants.js';
   import SettingsPanel from './SettingsPanel.svelte';
+
+  const CHOOSE_CLASS_VALUE = '__none__';
 
   const NEW_CHARACTER_VALUE = '__new__';
 
@@ -52,6 +55,13 @@
   function confirmRename() {
     rosterStore.renameCharacter(rosterStore.current.id, editName);
     editOpen = false;
+  }
+
+  function onClassChange(e) {
+    const value = e.target.value;
+    // Changing class resets both loadouts' Talents spec/allocation
+    // (rosterStore.setCharacterClass) - a different class's specs don't apply.
+    rosterStore.setCharacterClass(rosterStore.current.id, value === CHOOSE_CLASS_VALUE ? null : value);
   }
 
   function closeEdit() {
@@ -134,6 +144,13 @@
   <div class="inline-panel" role="group" aria-label="Edit character">
     <input type="text" bind:value={editName} />
     <button type="button" onclick={confirmRename}>Rename</button>
+    <label class="class-select">
+      Class
+      <select value={rosterStore.current.class ?? CHOOSE_CLASS_VALUE} onchange={onClassChange}>
+        <option value={CHOOSE_CLASS_VALUE}>Choose class...</option>
+        {#each CLASSES as c (c)}<option value={c}>{c}</option>{/each}
+      </select>
+    </label>
     {#if !confirmDelete}
       <button type="button" onclick={() => (confirmDelete = true)} disabled={rosterStore.roster.characters.length <= 1}>
         Delete
@@ -180,5 +197,13 @@
   }
   .import-error {
     color: var(--color-danger, #e05252);
+  }
+  .class-select {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--color-muted, #999);
+    white-space: nowrap;
   }
 </style>
