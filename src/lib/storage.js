@@ -6,7 +6,7 @@
  * the model so malformed/old files are safe to load).
  */
 
-import { newRoster, normaliseRoster } from './model.js';
+import { newRoster, normaliseRoster, getCurrent } from './model.js';
 
 const KEY = 'eldaryn_optimiser_state_v1';
 
@@ -50,8 +50,25 @@ export function importRoster(jsonText) {
   return normaliseRoster(JSON.parse(jsonText));
 }
 
+/**
+ * "CharacterName_2026-07-01_1442.json" - the currently-selected character's
+ * name (sanitised - filenames can't contain most punctuation) plus a local
+ * datetime stamp, so repeated exports/backups don't overwrite each other and
+ * are easy to tell apart. The export itself still contains the whole roster
+ * (every character), same as before - this only names the file after
+ * whoever you had selected when you exported.
+ */
+export function defaultExportFilename(roster) {
+  const name = getCurrent(roster)?.name || 'roster';
+  const safeName = name.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'roster';
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+  return `${safeName}_${stamp}.json`;
+}
+
 /** Trigger a browser download of the roster as a .json file. */
-export function downloadRoster(roster, filename = 'eldaryn-optimiser.json') {
+export function downloadRoster(roster, filename = defaultExportFilename(roster)) {
   const blob = new Blob([exportRoster(roster)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

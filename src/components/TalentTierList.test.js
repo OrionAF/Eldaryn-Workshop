@@ -80,6 +80,28 @@ it('at max rank, only CURRENT shows and + is disabled', () => {
   cleanup();
 });
 
+it('the locked message counts down remaining points as earlier-tier ranks change', () => {
+  seedTwoTierTree(); // tier 1 threshold is 3
+  render();
+
+  const tierBadge = () => target.querySelectorAll('.tier-section')[1].querySelector('.tier-badge');
+  expect(tierBadge().textContent).toContain('needs 3 more pts');
+
+  const plusButton = () => [...target.querySelectorAll('.talent-row')].find((r) => r.textContent.includes('Sharp Aim')).querySelectorAll('.rank-controls button')[1];
+  plusButton().click();
+  flushSync();
+  expect(tierBadge().textContent).toContain('needs 2 more pts');
+
+  plusButton().click();
+  flushSync();
+  expect(tierBadge().textContent).toContain('needs 1 more pts');
+
+  plusButton().click(); // 3/3 now - meets the threshold
+  flushSync();
+  expect(tierBadge().textContent).toContain('Unlocked');
+  cleanup();
+});
+
 it('Tier 1 has no lock badge; a later tier shows Locked/Unlocked and gates its talent rows', () => {
   seedTwoTierTree();
   render();
