@@ -23,6 +23,55 @@ it('renders both loadout columns with names and independent field sets', () => {
   cleanup();
 });
 
+it('with no class chosen, neither Warrior- nor Sentinel-only fields show', () => {
+  const labels = [...target.querySelectorAll('.field-label')].map((l) => l.textContent);
+  expect(labels).not.toContain('Block Chance %');
+  expect(labels).not.toContain('DMG Reduction %');
+  expect(labels).not.toContain('Miss Chance %');
+  expect(labels).not.toContain('Blind Chance %');
+  expect(labels).not.toContain('Paralyze Chance %');
+  cleanup();
+});
+
+it('Warrior shows Block Chance/DMG Reduction but not the Sentinel-only fields', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
+  flushSync();
+
+  const labels = [...target.querySelectorAll('.field-label')].map((l) => l.textContent);
+  expect(labels).toContain('Block Chance %');
+  expect(labels).toContain('DMG Reduction %');
+  expect(labels).not.toContain('Miss Chance %');
+  expect(labels).not.toContain('Blind Chance %');
+  expect(labels).not.toContain('Paralyze Chance %');
+  cleanup();
+});
+
+it('Sentinel shows Miss/Blind/Paralyze Chance but not the Warrior-only fields', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Sentinel');
+  flushSync();
+
+  const labels = [...target.querySelectorAll('.field-label')].map((l) => l.textContent);
+  expect(labels).toContain('Miss Chance %');
+  expect(labels).toContain('Blind Chance %');
+  expect(labels).toContain('Paralyze Chance %');
+  expect(labels).not.toContain('Block Chance %');
+  expect(labels).not.toContain('DMG Reduction %');
+  cleanup();
+});
+
+it('switching class updates the visible field set live', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
+  flushSync();
+  expect([...target.querySelectorAll('.field-label')].map((l) => l.textContent)).toContain('Block Chance %');
+
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Sentinel');
+  flushSync();
+  const labels = [...target.querySelectorAll('.field-label')].map((l) => l.textContent);
+  expect(labels).not.toContain('Block Chance %');
+  expect(labels).toContain('Miss Chance %');
+  cleanup();
+});
+
 it('editing a field in one loadout column updates only that loadout', () => {
   const columns = [...target.querySelectorAll('.loadout-column')];
   const l1AttackInput = columns[0].querySelectorAll('input')[0]; // "attack" is first field
