@@ -15,11 +15,26 @@
 
 <main>
   <h1>Eldaryn Gear Optimiser</h1>
-  <TopBar />
+  <div class="top-bar-wrap">
+    <TopBar />
+  </div>
   <Tabs tabs={TABS} active={activeTab} onSelect={(id) => (activeTab = id)} />
-  {#if activeTab === 'profile'}
-    <ProfileStatsTab />
-  {:else}
-    <GearPanelTab />
-  {/if}
+  <div class="tab-content">
+    {#if activeTab === 'profile'}
+      <ProfileStatsTab />
+    {:else}
+      <GearPanelTab />
+    {/if}
+  </div>
 </main>
+
+<style>
+  .top-bar-wrap {
+    margin-bottom: var(--space-6);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .tab-content {
+    padding-top: var(--space-6);
+  }
+</style>

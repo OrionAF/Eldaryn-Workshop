@@ -1,10 +1,133 @@
+/**
+ * Design direction: "smith's ledger" - a warm charcoal workshop, not a
+ * generic near-black/acid-accent dark theme. Copper/ember accent (the tool
+ * "sockets" a candidate item into a slot); moss-green/rust verdicts instead
+ * of pure red/green. Signature move: every numeric value (DPS/HPS, stat
+ * fields, deltas) renders in tabular monospace so columns of numbers
+ * actually align - this is a data-dense stat-crunching tool, so that's a
+ * functional choice, not decoration. Labels stay in the plain UI sans.
+ */
 :root {
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --color-bg: #1b1815;
+  --color-surface: #241f19;
+  --color-surface-raised: #2b251e;
+  --color-border: #40382c;
+  --color-ink: #ece5d8;
+  --color-muted: #a89b89;
+
+  --color-accent: #c97d3f;
+  --color-accent-soft: rgba(201, 125, 63, 0.16);
+
+  --color-upgrade: #7cad5e;
+  --color-upgrade-soft: rgba(124, 173, 94, 0.12);
+  --color-downgrade: #c1594f;
+  --color-downgrade-soft: rgba(193, 89, 79, 0.12);
+  --color-danger: #c1594f;
+
+  --font-ui: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  --font-data: ui-monospace, 'Cascadia Code', 'SF Mono', Consolas, 'Liberation Mono', monospace;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --radius: 4px;
+
+  font-family: var(--font-ui);
   color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  background: #14161c;
-  color: #e6e8ee;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  line-height: 1.5;
+}
+
+main {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-8);
+}
+
+h1 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  margin: 0 0 var(--space-4);
+}
+
+h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 var(--space-2);
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 var(--space-2);
+}
+
+button {
+  font-family: inherit;
+  border-radius: var(--radius);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--color-accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input,
+select {
+  font-family: inherit;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border);
+  padding: 0.3rem 0.5rem;
+}
+
+/* Signature: numeric data reads as a ledger - tabular, monospaced, aligned. */
+input[type='text'],
+.dps-hps-readout,
+.field-value,
+.field-derived,
+.stats-fields input,
+.deltas,
+.footer-line {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
 }

@@ -53,14 +53,19 @@
     margin-top: 1rem;
   }
   .result-card {
+    background: var(--color-surface, none);
     border: 1px solid var(--color-border, #444);
-    padding: 0.75rem;
+    border-left-width: 4px;
+    border-radius: var(--radius, 4px);
+    padding: var(--space-3, 0.75rem);
   }
   .result-card.upgrade {
-    border-color: var(--color-success, #4caf7d);
+    border-left-color: var(--color-upgrade, #4caf7d);
+    background: var(--color-upgrade-soft, none);
   }
   .result-card.downgrade {
-    border-color: var(--color-danger, #e05252);
+    border-left-color: var(--color-downgrade, #e05252);
+    background: var(--color-downgrade-soft, none);
   }
   .deltas {
     display: flex;
