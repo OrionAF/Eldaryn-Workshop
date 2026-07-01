@@ -90,3 +90,88 @@ it('startDrop then clearDrop discards without applying', () => {
   rosterStore.clearDrop();
   expect(rosterStore.roster.drop).toBe(null);
 });
+
+// --- Phase 1: Manual/Calculated toggle ---
+it('setLoadoutTotalsMode flips manualTotals and persists', () => {
+  rosterStore.setLoadoutTotalsMode(0, 'calculated');
+  expect(rosterStore.current.loadouts[0].manualTotals).toBe(false);
+  rosterStore.setLoadoutTotalsMode(0, 'manual');
+  expect(rosterStore.current.loadouts[0].manualTotals).toBe(true);
+});
+
+// --- Phase 1: Pets ---
+it('addPet auto-activates the first pet; adding a second does not steal activeId', () => {
+  const firstId = rosterStore.addPet('First Pet', 'Common', 1);
+  expect(rosterStore.current.sources.pets.activeId).toBe(firstId);
+
+  const secondId = rosterStore.addPet('Second Pet', 'Epic', 16);
+  expect(rosterStore.current.sources.pets.activeId).toBe(firstId);
+
+  rosterStore.setActivePet(secondId);
+  expect(rosterStore.current.sources.pets.activeId).toBe(secondId);
+
+  rosterStore.updatePetStat(secondId, 'attack', 2664);
+  expect(rosterStore.current.sources.pets.entries.find((p) => p.id === secondId).stats.attack).toBe(2664);
+
+  rosterStore.updatePetField(secondId, 'level', 20);
+  expect(rosterStore.current.sources.pets.entries.find((p) => p.id === secondId).level).toBe(20);
+});
+
+it('removePet clears activeId when the active pet is removed, falling back to another owned pet', () => {
+  // rosterStore is a shared singleton across tests in this file - drain any
+  // pets left by earlier tests so entries[0] below is deterministic.
+  for (const p of [...rosterStore.current.sources.pets.entries]) rosterStore.removePet(p.id);
+
+  const a = rosterStore.addPet('A', 'Common', 1);
+  const b = rosterStore.addPet('B', 'Common', 1);
+  rosterStore.setActivePet(a);
+  rosterStore.removePet(a);
+  expect(rosterStore.current.sources.pets.activeId).toBe(b);
+  rosterStore.removePet(b);
+  expect(rosterStore.current.sources.pets.activeId).toBe(null);
+  expect(rosterStore.current.sources.pets.entries.length).toBe(0);
+});
+
+// --- Phase 1: Mounts ---
+it('addMount/setActiveMount/updateMount/removeMount round-trip', () => {
+  const id = rosterStore.addMount('Crystal Beast', 'Uncommon');
+  expect(rosterStore.current.sources.mounts.activeId).toBe(id);
+
+  rosterStore.updateMount(id, 'baseHpPct', 19);
+  rosterStore.updateMount(id, 'baseAtkPct', 10);
+  const mount = rosterStore.current.sources.mounts.entries.find((m) => m.id === id);
+  expect(mount.baseHpPct).toBe(19);
+  expect(mount.baseAtkPct).toBe(10);
+
+  rosterStore.removeMount(id);
+  expect(rosterStore.current.sources.mounts.entries.length).toBe(0);
+  expect(rosterStore.current.sources.mounts.activeId).toBe(null);
+});
+
+// --- Phase 1: Mount Glyphs (tier-capped equip) ---
+it('setGlyphEquipped enforces the 3 Minor / 2 Major / 1 Mythic cap and rejects past it', () => {
+  const minors = [
+    rosterStore.addMountGlyph('minor', 'attack_pct', 1),
+    rosterStore.addMountGlyph('minor', 'attack_pct', 2),
+    rosterStore.addMountGlyph('minor', 'attack_pct', 3),
+    rosterStore.addMountGlyph('minor', 'attack_pct', 4), // 4th - should be rejectable
+  ];
+  expect(rosterStore.setGlyphEquipped(minors[0], true)).toBe(true);
+  expect(rosterStore.setGlyphEquipped(minors[1], true)).toBe(true);
+  expect(rosterStore.setGlyphEquipped(minors[2], true)).toBe(true);
+  expect(rosterStore.setGlyphEquipped(minors[3], true)).toBe(false); // cap is 3
+
+  const equippedMinors = rosterStore.current.sources.mountGlyphs.entries.filter((g) => g.tier === 'minor' && g.equipped);
+  expect(equippedMinors.length).toBe(3);
+
+  const mythics = [rosterStore.addMountGlyph('mythic', 'crit', 5), rosterStore.addMountGlyph('mythic', 'crit', 6)];
+  expect(rosterStore.setGlyphEquipped(mythics[0], true)).toBe(true);
+  expect(rosterStore.setGlyphEquipped(mythics[1], true)).toBe(false); // cap is 1
+
+  // Unequipping frees a slot for another of the same tier.
+  rosterStore.setGlyphEquipped(minors[0], false);
+  expect(rosterStore.setGlyphEquipped(minors[3], true)).toBe(true);
+
+  rosterStore.removeMountGlyph(minors[3]);
+  expect(rosterStore.current.sources.mountGlyphs.entries.some((g) => g.id === minors[3])).toBe(false);
+});
