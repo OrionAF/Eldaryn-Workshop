@@ -206,7 +206,7 @@
   .rank-value {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: var(--space-1, 0.25rem);
     font-size: 0.75rem;
     color: var(--color-muted, #999);
   }
@@ -241,7 +241,7 @@
   }
   .rank-controls {
     display: flex;
-    gap: 0.25rem;
+    gap: var(--space-1, 0.25rem);
   }
   .rank-controls button {
     width: 1.75rem;
@@ -287,7 +287,7 @@
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
-    gap: 0.5rem;
+    gap: var(--space-2, 0.5rem);
   }
   .add-talent {
     font-size: 0.85rem;
