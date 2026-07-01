@@ -79,8 +79,8 @@
 <style>
   .add-form {
     display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
+    gap: var(--space-2, 0.5rem);
+    margin-bottom: var(--space-4, 1rem);
     flex-wrap: wrap;
   }
   .entry-list {
@@ -89,13 +89,13 @@
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: var(--space-1, 0.4rem);
   }
   .entry-list li {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.4rem;
+    gap: var(--space-2, 0.5rem);
+    padding: var(--space-2, 0.4rem);
     border: 1px solid var(--color-border, #444);
     border-radius: var(--radius, 4px);
     flex-wrap: wrap;
