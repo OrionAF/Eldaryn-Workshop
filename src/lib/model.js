@@ -1,17 +1,24 @@
 /**
  * model.js - the typed data model + factories for the optimiser.
  *
- * Roster      = { characters: Character[], currentId, drop: DropState | null }
- * Character   = { id, name, loadouts: [Loadout, Loadout], sources: SourceState }
+ * Roster      = { characters: Character[], currentId, drop: DropState | null,
+ *                 talentTrees: Record<specKey, TalentTree> }  // roster-level, shared
+ * Character   = { id, name, class: 'Warrior'|'Sentinel'|null, loadouts: [Loadout, Loadout],
+ *                 sources: SourceState }
  * Loadout     = { name, profileTotals: OffensiveStats, manualTotals: bool,
  *                 gear: Record<Slot, OffensiveStats>,
- *                 stones: Record<Slot, OffensiveStats> }   // stones = per-set
- * SourceState = one entry per SOURCE_DEFS[].key, shape per its `selection`:
- *   'all'/'tiered' -> { entries: [] }        (Talents; Mount Glyphs/Sigils/Relics)
+ *                 stones: Record<Slot, OffensiveStats>,   // stones = per-set
+ *                 spec: specKey|null, talentAllocation: Record<talentId, rank> }
+ * SourceState = one entry per character-scoped SOURCE_DEFS[].key, shape per its `selection`:
+ *   'all'/'tiered' -> { entries: [] }        (Mount Glyphs/Sigils/Relics)
  *   'single'       -> { entries: [], activeId: string|null }  (Awakening, Transcendence, Pets, Mounts)
- * Only pets/mounts/mountGlyphs have real entry shapes so far (Phase 1) - see
- * PET_ENTRY/MOUNT_ENTRY/MOUNT_GLYPH_ENTRY factories below. The rest stay an
- * empty scaffold (SOURCE_DEFS, Phase 1 plan's "Deferred sources").
+ * Talents is scope:'loadout' (Dual Spec = Loadout 1/2 = Set A/B) - its data lives on
+ * Loadout.spec/talentAllocation and Roster.talentTrees, not in SourceState.
+ * TalentTree  = { description: string, tiers: Tier[] }
+ * Tier        = { id, threshold: number, talents: Talent[] }  // threshold = points
+ *               required spent in ALL previous tiers combined to unlock this one
+ * Talent      = { id, name, statKey, ranks: number[] }  // ranks[i] = the assigned
+ *               (not computed) value AT rank i+1; maxRank = ranks.length
  * DropState   = { slot, piece: OffensiveStats }  // persists across char switches
  *
  * Phase 0: profileTotals are a manual input. Phase 1 adds `manualTotals` as a
@@ -19,7 +26,7 @@
  */
 
 import { offensiveStats } from './dps.js';
-import { SLOTS, SOURCE_DEFS } from './constants.js';
+import { SLOTS, SOURCE_DEFS, CLASSES, SPECS_BY_CLASS, TALENT_TREE_KEYS } from './constants.js';
 
 let _idCounter = 0;
 function newId() {
@@ -68,6 +75,26 @@ export function newMountGlyphEntry({ tier = 'minor', statKey = 'attack_pct', val
   return { id: newId(), tier, statKey, value, equipped };
 }
 
+// --- Talents: roster-level tree definitions (shared across every character/loadout using a spec) ---
+export function newTalent({ name = 'New Talent', statKey = 'attack_pct', ranks = [0] } = {}) {
+  return { id: newId(), name, statKey, ranks: ranks.length ? [...ranks] : [0] };
+}
+
+export function newTier({ threshold = 0, talents = [] } = {}) {
+  return { id: newId(), threshold, talents };
+}
+
+export function newTalentTree({ description = '' } = {}) {
+  return { description, tiers: [] };
+}
+
+/** One empty tree per spec key (fury/protection/marksmanship/disruption). */
+export function emptyTalentTrees() {
+  const trees = {};
+  for (const key of TALENT_TREE_KEYS) trees[key] = newTalentTree();
+  return trees;
+}
+
 export function newLoadout(name) {
   return {
     name,
@@ -75,6 +102,8 @@ export function newLoadout(name) {
     manualTotals: true, // Phase 0: totals typed directly
     gear: emptyGear(),
     stones: emptyGear(), // enchant stones, per-set (handoff 8.8) - SCAFFOLD
+    spec: null, // Talents: Dual Spec - Loadout 1 = Set A, Loadout 2 = Set B
+    talentAllocation: {}, // { [talentId]: rankInvested }
   };
 }
 
@@ -82,6 +111,7 @@ export function newCharacter(name = 'New Character') {
   return {
     id: newId(),
     name,
+    class: null, // 'Warrior' | 'Sentinel' | null - gates which specs the loadouts can use
     loadouts: [newLoadout('Loadout 1'), newLoadout('Loadout 2')],
     sources: emptySources(),
   };
@@ -89,7 +119,7 @@ export function newCharacter(name = 'New Character') {
 
 export function newRoster() {
   const c = newCharacter('Character 1');
-  return { characters: [c], currentId: c.id, drop: null };
+  return { characters: [c], currentId: c.id, drop: null, talentTrees: emptyTalentTrees() };
 }
 
 export function getCurrent(roster) {
@@ -104,19 +134,54 @@ export function normaliseRoster(raw) {
   if (!raw || !Array.isArray(raw.characters) || raw.characters.length === 0) {
     return newRoster();
   }
-  const characters = raw.characters.map((c) => normaliseCharacter(c));
+  const talentTrees = normaliseTalentTrees(raw.talentTrees);
+  const characters = raw.characters.map((c) => normaliseCharacter(c, talentTrees));
   const currentId = characters.some((c) => c.id === raw.currentId)
     ? raw.currentId
     : characters[0].id;
   const drop = normaliseDrop(raw.drop);
-  return { characters, currentId, drop };
+  return { characters, currentId, drop, talentTrees };
 }
 
-function normaliseCharacter(c) {
+function normaliseTalentTrees(raw) {
+  const trees = {};
+  for (const key of TALENT_TREE_KEYS) {
+    const rawTree = raw?.[key];
+    trees[key] = {
+      description: typeof rawTree?.description === 'string' ? rawTree.description : '',
+      tiers: Array.isArray(rawTree?.tiers) ? rawTree.tiers.map(normaliseTier) : [],
+    };
+  }
+  return trees;
+}
+
+function normaliseTier(rawTier) {
+  return {
+    id: rawTier?.id || newId(),
+    threshold: Number(rawTier?.threshold) || 0,
+    talents: Array.isArray(rawTier?.talents) ? rawTier.talents.map(normaliseTalent) : [],
+  };
+}
+
+function normaliseTalent(rawTalent) {
+  const ranks = Array.isArray(rawTalent?.ranks) ? rawTalent.ranks.map((r) => Number(r) || 0) : [];
+  return {
+    id: rawTalent?.id || newId(),
+    name: rawTalent?.name || 'Talent',
+    statKey: rawTalent?.statKey || 'attack_pct',
+    ranks: ranks.length ? ranks : [0],
+  };
+}
+
+function normaliseCharacter(c, talentTrees) {
   const base = newCharacter(c?.name || 'Character');
   if (c?.id) base.id = c.id;
+  base.class = CLASSES.includes(c?.class) ? c.class : null;
   const loadouts = Array.isArray(c?.loadouts) ? c.loadouts : [];
-  base.loadouts = [normaliseLoadout(loadouts[0], 'Loadout 1'), normaliseLoadout(loadouts[1], 'Loadout 2')];
+  base.loadouts = [
+    normaliseLoadout(loadouts[0], 'Loadout 1', base.class, talentTrees),
+    normaliseLoadout(loadouts[1], 'Loadout 2', base.class, talentTrees),
+  ];
   base.sources = normaliseSources(c?.sources);
   return base;
 }
@@ -149,7 +214,7 @@ function normaliseSources(raw) {
   return s;
 }
 
-function normaliseLoadout(l, fallbackName) {
+function normaliseLoadout(l, fallbackName, characterClass, talentTrees) {
   const base = newLoadout(l?.name || fallbackName);
   base.profileTotals = emptyStats(l?.profileTotals || {});
   base.manualTotals = l?.manualTotals !== false;
@@ -157,7 +222,28 @@ function normaliseLoadout(l, fallbackName) {
     base.gear[slot] = emptyStats(l?.gear?.[slot] || {});
     base.stones[slot] = emptyStats(l?.stones?.[slot] || {});
   }
+  const validSpecKeys = (SPECS_BY_CLASS[characterClass] || []).map((s) => s.key);
+  base.spec = validSpecKeys.includes(l?.spec) ? l.spec : null;
+  base.talentAllocation = normaliseTalentAllocation(l?.talentAllocation, base.spec, talentTrees);
   return base;
+}
+
+/** Drops allocations pointing at talents/ranks that no longer exist in the tree. */
+function normaliseTalentAllocation(raw, spec, talentTrees) {
+  const tree = spec ? talentTrees?.[spec] : null;
+  if (!tree || !raw || typeof raw !== 'object') return {};
+  const talentById = new Map();
+  for (const tier of tree.tiers) {
+    for (const t of tier.talents) talentById.set(t.id, t);
+  }
+  const allocation = {};
+  for (const [talentId, rank] of Object.entries(raw)) {
+    const talent = talentById.get(talentId);
+    if (!talent) continue;
+    const clamped = Math.max(0, Math.min(Number(rank) || 0, talent.ranks.length));
+    if (clamped > 0) allocation[talentId] = clamped;
+  }
+  return allocation;
 }
 
 function normaliseDrop(d) {

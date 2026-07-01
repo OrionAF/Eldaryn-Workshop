@@ -85,7 +85,12 @@ export const RARITIES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Myt
  * see the Phase 1 plan's "Deferred sources" section for what's known/unknown.
  */
 export const SOURCE_DEFS = [
-  { key: 'talents', label: 'Talents', scope: 'character', selection: 'all' },
+  // scope: 'loadout' - Talents maps onto Dual Spec (Set A/B = Loadout 1/2), the
+  // same way gear/stones already do. Its per-loadout spec + rank allocation
+  // live on Loadout directly (model.js), not in Character.sources like the
+  // character-scoped sources below, and totals.js sums it alongside gear/
+  // stones rather than through the generic character-scoped loop.
+  { key: 'talents', label: 'Talents', scope: 'loadout' },
   { key: 'awakening', label: 'Awakening', scope: 'character', selection: 'single' },
   { key: 'transcendence', label: 'Transcendence', scope: 'character', selection: 'single' },
   { key: 'pets', label: 'Pets (Companions)', scope: 'character', selection: 'single' },
@@ -95,3 +100,23 @@ export const SOURCE_DEFS = [
   { key: 'relics', label: 'Relics', scope: 'character', selection: 'tiered', tierCaps: { equipped: 3 } },
   { key: 'stones', label: 'Enchant Stones', scope: 'loadout' },
 ];
+
+/**
+ * Class/spec structure for Talents. Spec keys are lowercased for storage
+ * (matches the lowercase convention already used for Mount Glyph tiers).
+ */
+export const CLASSES = ['Warrior', 'Sentinel'];
+export const SPECS_BY_CLASS = {
+  Warrior: [
+    { key: 'fury', label: 'Fury' },
+    { key: 'protection', label: 'Protection' },
+  ],
+  Sentinel: [
+    { key: 'marksmanship', label: 'Marksmanship' },
+    { key: 'disruption', label: 'Disruption' },
+  ],
+};
+export const TALENT_TREE_KEYS = Object.values(SPECS_BY_CLASS).flat().map((s) => s.key);
+
+/** Hard cap on talent points spendable in one loadout's build. */
+export const TALENT_TOTAL_POINTS = 29;
