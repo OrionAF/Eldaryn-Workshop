@@ -33,7 +33,7 @@
 
 export const TALENT_TREES = {
   arms: {
-    description: '',
+    description: 'A RELENTLESS FIGHTER WHO OVERWHELMS ENEMIES WITH RAW POWER AND SPEED.',
     tiers: [
       {
         id: 'arms-tier-1',
@@ -89,7 +89,7 @@ export const TALENT_TREES = {
   },
 
   protection: {
-    description: '',
+    description: 'A STALWART DEFENDER WHO ABSORBS PUNISHMENT AND OUTLASTS ANY FOE.',
     tiers: [
       {
         id: 'protection-tier-1',
@@ -145,7 +145,7 @@ export const TALENT_TREES = {
   },
 
   marksmanship: {
-    description: '',
+    description: 'A RELENTLESS HUNTER WHO DRAINS FOES WITH RAPID, LETHAL STRIKES.',
     tiers: [
       {
         id: 'marksmanship-tier-1',
@@ -201,7 +201,7 @@ export const TALENT_TREES = {
   },
 
   disruption: {
-    description: '',
+    description: 'AN ELUSIVE CONTROLLER WHO BLINDS FOES AND SLIPTS THEIR BLOWS TO LOCK DOWN THE FIGHT.',
     tiers: [
       {
         id: 'disruption-tier-1',
