@@ -19,7 +19,7 @@
   import StatsFields from './StatsFields.svelte';
   import DpsHpsReadout from './DpsHpsReadout.svelte';
 
-  const fields = fieldsForTab('profile');
+  const fields = $derived(fieldsForTab('profile', rosterStore.current.class));
 
   function effective(i) {
     return resolveEffectiveTotals(rosterStore.current, i);
