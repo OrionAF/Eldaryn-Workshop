@@ -9,9 +9,11 @@
  */
 
 import { loadRoster, saveRoster, importRoster as parseRosterJson, downloadRoster } from './storage.js';
-import { newCharacter, getCurrent, emptyStats } from './model.js';
+import { newCharacter, getCurrent, emptyStats, newPetEntry, newMountEntry, newMountGlyphEntry } from './model.js';
 import { applySwap } from './dps.js';
-import { SLOTS } from './constants.js';
+import { SLOTS, SOURCE_DEFS } from './constants.js';
+
+const MOUNT_GLYPH_TIER_CAPS = SOURCE_DEFS.find((d) => d.key === 'mountGlyphs').tierCaps;
 
 function createRosterStore() {
   let roster = $state(loadRoster());
@@ -67,6 +69,111 @@ function createRosterStore() {
   function setGearField(slot, loadoutIndex, key, value) {
     current.loadouts[loadoutIndex].gear[slot][key] = value;
     persist();
+  }
+
+  // --- Profile Stats: Manual / Calculated totals mode ---
+  function setLoadoutTotalsMode(loadoutIndex, mode) {
+    current.loadouts[loadoutIndex].manualTotals = mode === 'manual';
+    persist();
+  }
+
+  // --- Pets (character-scoped, one active at a time) ---
+  function addPet(name, rarity, level) {
+    const pet = newPetEntry({ name, rarity, level });
+    current.sources.pets.entries.push(pet);
+    if (!current.sources.pets.activeId) current.sources.pets.activeId = pet.id;
+    persist();
+    return pet.id;
+  }
+
+  function updatePetField(petId, field, value) {
+    const pet = current.sources.pets.entries.find((p) => p.id === petId);
+    if (pet) {
+      pet[field] = value;
+      persist();
+    }
+  }
+
+  function updatePetStat(petId, key, value) {
+    const pet = current.sources.pets.entries.find((p) => p.id === petId);
+    if (pet) {
+      pet.stats[key] = value;
+      persist();
+    }
+  }
+
+  function setActivePet(petId) {
+    current.sources.pets.activeId = petId;
+    persist();
+  }
+
+  function removePet(petId) {
+    const pets = current.sources.pets;
+    pets.entries = pets.entries.filter((p) => p.id !== petId);
+    if (pets.activeId === petId) {
+      pets.activeId = pets.entries[0]?.id ?? null;
+    }
+    persist();
+  }
+
+  // --- Mounts (character-scoped, one active/"riding" at a time) ---
+  function addMount(name, rarity) {
+    const mount = newMountEntry({ name, rarity });
+    current.sources.mounts.entries.push(mount);
+    if (!current.sources.mounts.activeId) current.sources.mounts.activeId = mount.id;
+    persist();
+    return mount.id;
+  }
+
+  function updateMount(mountId, field, value) {
+    const mount = current.sources.mounts.entries.find((m) => m.id === mountId);
+    if (mount) {
+      mount[field] = value;
+      persist();
+    }
+  }
+
+  function setActiveMount(mountId) {
+    current.sources.mounts.activeId = mountId;
+    persist();
+  }
+
+  function removeMount(mountId) {
+    const mounts = current.sources.mounts;
+    mounts.entries = mounts.entries.filter((m) => m.id !== mountId);
+    if (mounts.activeId === mountId) {
+      mounts.activeId = mounts.entries[0]?.id ?? null;
+    }
+    persist();
+  }
+
+  // --- Mount Glyphs (character-scoped inventory; up to 3 Minor/2 Major/1 Mythic equipped) ---
+  function addMountGlyph(tier, statKey, value) {
+    const glyph = newMountGlyphEntry({ tier, statKey, value });
+    current.sources.mountGlyphs.entries.push(glyph);
+    persist();
+    return glyph.id;
+  }
+
+  function removeMountGlyph(glyphId) {
+    const glyphs = current.sources.mountGlyphs;
+    glyphs.entries = glyphs.entries.filter((g) => g.id !== glyphId);
+    persist();
+  }
+
+  /** Returns false (no-op) if equipping would exceed that tier's cap. */
+  function setGlyphEquipped(glyphId, equipped) {
+    const glyphs = current.sources.mountGlyphs.entries;
+    const glyph = glyphs.find((g) => g.id === glyphId);
+    if (!glyph) return false;
+    if (equipped && !glyph.equipped) {
+      const cap = MOUNT_GLYPH_TIER_CAPS[glyph.tier];
+      const equippedInTier = glyphs.filter((g) => g.tier === glyph.tier && g.equipped).length;
+      if (equippedInTier >= cap) return false;
+    }
+    glyph.equipped = equipped;
+    persist();
+    return true;
   }
 
   // --- Drop comparison (roster-level, survives character switches) ---
@@ -127,6 +234,19 @@ function createRosterStore() {
     selectCharacter,
     setProfileField,
     setGearField,
+    setLoadoutTotalsMode,
+    addPet,
+    updatePetField,
+    updatePetStat,
+    setActivePet,
+    removePet,
+    addMount,
+    updateMount,
+    setActiveMount,
+    removeMount,
+    addMountGlyph,
+    removeMountGlyph,
+    setGlyphEquipped,
     startDrop,
     setDropSlot,
     setDropField,
