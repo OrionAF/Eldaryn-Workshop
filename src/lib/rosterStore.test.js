@@ -99,6 +99,19 @@ it('setLoadoutTotalsMode flips manualTotals and persists', () => {
   expect(rosterStore.current.loadouts[0].manualTotals).toBe(true);
 });
 
+it('applyDropToLoadout always updates gear, but only overwrites profileTotals in Manual mode', () => {
+  rosterStore.setLoadoutTotalsMode(0, 'calculated');
+  const staleManualValue = rosterStore.current.loadouts[0].profileTotals.attack;
+  rosterStore.startDrop('Ring');
+  rosterStore.setDropField('attack', 42);
+  rosterStore.applyDropToLoadout(0);
+
+  expect(rosterStore.current.loadouts[0].gear.Ring.attack).toBe(42); // gear always updates
+  expect(rosterStore.current.loadouts[0].profileTotals.attack).toBe(staleManualValue); // untouched in Calculated mode
+
+  rosterStore.setLoadoutTotalsMode(0, 'manual');
+});
+
 // --- Phase 1: Pets ---
 it('addPet auto-activates the first pet; adding a second does not steal activeId', () => {
   const firstId = rosterStore.addPet('First Pet', 'Common', 1);

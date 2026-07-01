@@ -48,3 +48,31 @@ it('the higher loadout value is bolded via the highlight class on both columns',
   expect(l2AttackLabel.classList.contains('highlight')).toBe(false);
   cleanup();
 });
+
+it('Calculated mode shows a read-only computed total and preserves the manual value underneath, unchanged on switching back', () => {
+  rosterStore.setLoadoutTotalsMode(0, 'manual');
+  rosterStore.setProfileField(0, 'attack', 12345);
+  rosterStore.setGearField('Weapon', 0, 'attack', 500);
+  flushSync();
+
+  let columns = [...target.querySelectorAll('.loadout-column')];
+  expect(columns[0].querySelectorAll('input').length).toBeGreaterThan(0); // manual: editable
+
+  const calcButton = [...columns[0].querySelectorAll('.totals-toggle button')].find((b) => b.textContent.trim() === 'Calculated');
+  calcButton.click();
+  flushSync();
+
+  columns = [...target.querySelectorAll('.loadout-column')];
+  expect(columns[0].querySelectorAll('input').length).toBe(0); // read-only now
+  expect(columns[0].textContent).toContain('510'); // BASE_ATTACK(10) + gear(500) = 510, Calculated
+  expect(rosterStore.current.loadouts[0].profileTotals.attack).toBe(12345); // manual value untouched underneath
+
+  const manualButton = [...columns[0].querySelectorAll('.totals-toggle button')].find((b) => b.textContent.trim() === 'Manual');
+  manualButton.click();
+  flushSync();
+
+  columns = [...target.querySelectorAll('.loadout-column')];
+  const attackInput = columns[0].querySelectorAll('input')[0];
+  expect(attackInput.value).toBe('12.345'); // restored, unchanged
+  cleanup();
+});
