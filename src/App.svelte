@@ -3,10 +3,12 @@
   import Tabs from './components/Tabs.svelte';
   import ProfileStatsTab from './components/ProfileStatsTab.svelte';
   import GearPanelTab from './components/GearPanelTab.svelte';
+  import SourcesTab from './components/SourcesTab.svelte';
 
   const TABS = [
     { id: 'profile', label: 'Profile Stats' },
     { id: 'gear', label: 'Gear Panel' },
+    { id: 'sources', label: 'Sources' },
   ];
 
   // View-only, not persisted - which tab is showing.
@@ -22,8 +24,10 @@
   <div class="tab-content">
     {#if activeTab === 'profile'}
       <ProfileStatsTab />
-    {:else}
+    {:else if activeTab === 'gear'}
       <GearPanelTab />
+    {:else}
+      <SourcesTab />
     {/if}
   </div>
 </main>
