@@ -89,16 +89,16 @@
 <style>
   .add-form {
     display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
+    gap: var(--space-2, 0.5rem);
+    margin-bottom: var(--space-3, 0.75rem);
     flex-wrap: wrap;
   }
   .tier-counters {
     display: flex;
-    gap: 1.5rem;
+    gap: var(--space-6, 1.5rem);
     color: var(--color-muted, #999);
     font-size: 0.85rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: var(--space-3, 0.75rem);
   }
   .equip-error {
     color: var(--color-danger, #e05252);
@@ -109,13 +109,13 @@
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: var(--space-1, 0.4rem);
   }
   .entry-list li {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.4rem;
+    gap: var(--space-3, 0.75rem);
+    padding: var(--space-2, 0.4rem);
     border: 1px solid var(--color-border, #444);
     border-radius: var(--radius, 4px);
   }

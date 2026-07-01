@@ -97,23 +97,23 @@
 <style>
   .add-form {
     display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
+    gap: var(--space-2, 0.5rem);
+    margin-bottom: var(--space-4, 1rem);
     flex-wrap: wrap;
   }
   .entry-list {
     list-style: none;
     padding: 0;
-    margin: 0 0 1rem;
+    margin: 0 0 var(--space-4, 1rem);
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: var(--space-1, 0.4rem);
   }
   .entry-list li {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.4rem;
+    gap: var(--space-2, 0.5rem);
+    padding: var(--space-2, 0.4rem);
     border: 1px solid var(--color-border, #444);
     border-radius: var(--radius, 4px);
   }
@@ -140,7 +140,7 @@
   }
   .pet-editor {
     border-top: 1px solid var(--color-border, #444);
-    padding-top: 1rem;
+    padding-top: var(--space-4, 1rem);
   }
   .pet-editor :global(.stats-fields) {
     flex-direction: row;
