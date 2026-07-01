@@ -4,3 +4,7 @@ node_modules
 dist
 *.local
 .DS_Store
+
+# Internal planning/domain notes - kept locally, not published to the public repo.
+/docs
+/CONTEXT.md
