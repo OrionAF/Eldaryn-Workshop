@@ -2,6 +2,7 @@ import { it, expect, beforeEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import TalentsSource from './TalentsSource.svelte';
 import { rosterStore } from '../lib/rosterStore.svelte.js';
+import { TALENT_TREES } from '../lib/talentTreeData.js';
 
 let target, app;
 beforeEach(() => {
@@ -70,15 +71,11 @@ it('assigning the same spec to both sets works too ("two of one")', () => {
 
 it('once a spec is assigned, the tier list renders and Reset Talents clears the allocation', () => {
   rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
-  rosterStore.roster.talentTrees.fury.tiers = [];
-  rosterStore.addTalentTier('fury', 0);
-  const tier = rosterStore.roster.talentTrees.fury.tiers[0];
-  const talentId = rosterStore.addTalent('fury', tier.id, 'Sharp Aim', 'crit');
-  rosterStore.updateTalent('fury', talentId, 'ranks', [2]);
   rosterStore.setLoadoutSpec(0, 'fury');
   flushSync();
 
   expect(target.querySelector('.tier-section')).not.toBeNull();
+  const talentId = TALENT_TREES.fury.tiers[0].talents[0].id; // the real (placeholder) tier-1 talent
   rosterStore.setTalentRank(0, talentId, 1);
   flushSync();
   expect(rosterStore.current.loadouts[0].talentAllocation[talentId]).toBe(1);

@@ -21,7 +21,7 @@
     // resolveEffectiveTotals (manual or Calculated, per loadout) - Profile
     // Stats and Gear Panel must never disagree about a loadout's current totals.
     return rosterStore.current.loadouts.map((loadout, i) =>
-      compareSwap(resolveEffectiveTotals(rosterStore.current, i, rosterStore.roster.talentTrees), loadout.gear[drop.slot], drop.piece)
+      compareSwap(resolveEffectiveTotals(rosterStore.current, i), loadout.gear[drop.slot], drop.piece)
     );
   });
 

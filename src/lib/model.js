@@ -1,8 +1,7 @@
 /**
  * model.js - the typed data model + factories for the optimiser.
  *
- * Roster      = { characters: Character[], currentId, drop: DropState | null,
- *                 talentTrees: Record<specKey, TalentTree> }  // roster-level, shared
+ * Roster      = { characters: Character[], currentId, drop: DropState | null }
  * Character   = { id, name, class: 'Warrior'|'Sentinel'|null, loadouts: [Loadout, Loadout],
  *                 sources: SourceState }
  * Loadout     = { name, profileTotals: OffensiveStats, manualTotals: bool,
@@ -13,12 +12,9 @@
  *   'all'/'tiered' -> { entries: [] }        (Mount Glyphs/Sigils/Relics)
  *   'single'       -> { entries: [], activeId: string|null }  (Awakening, Transcendence, Pets, Mounts)
  * Talents is scope:'loadout' (Dual Spec = Loadout 1/2 = Set A/B) - its data lives on
- * Loadout.spec/talentAllocation and Roster.talentTrees, not in SourceState.
- * TalentTree  = { description: string, tiers: Tier[] }
- * Tier        = { id, threshold: number, talents: Talent[] }  // threshold = points
- *               required spent in ALL previous tiers combined to unlock this one
- * Talent      = { id, name, statKey, ranks: number[] }  // ranks[i] = the assigned
- *               (not computed) value AT rank i+1; maxRank = ranks.length
+ * Loadout.spec/talentAllocation. Tree CONTENT (tiers/talents/values) is static
+ * code data in talentTreeData.js, not part of the persisted Roster - the same
+ * spec's tree is identical for every player, so it isn't user-authored.
  * DropState   = { slot, piece: OffensiveStats }  // persists across char switches
  *
  * Phase 0: profileTotals are a manual input. Phase 1 adds `manualTotals` as a
@@ -26,7 +22,8 @@
  */
 
 import { offensiveStats } from './dps.js';
-import { SLOTS, SOURCE_DEFS, CLASSES, SPECS_BY_CLASS, TALENT_TREE_KEYS } from './constants.js';
+import { SLOTS, SOURCE_DEFS, CLASSES, SPECS_BY_CLASS } from './constants.js';
+import { TALENT_TREES } from './talentTreeData.js';
 
 let _idCounter = 0;
 function newId() {
@@ -75,26 +72,6 @@ export function newMountGlyphEntry({ tier = 'minor', statKey = 'attack_pct', val
   return { id: newId(), tier, statKey, value, equipped };
 }
 
-// --- Talents: roster-level tree definitions (shared across every character/loadout using a spec) ---
-export function newTalent({ name = 'New Talent', statKey = 'attack_pct', ranks = [0] } = {}) {
-  return { id: newId(), name, statKey, ranks: ranks.length ? [...ranks] : [0] };
-}
-
-export function newTier({ threshold = 0, talents = [] } = {}) {
-  return { id: newId(), threshold, talents };
-}
-
-export function newTalentTree({ description = '' } = {}) {
-  return { description, tiers: [] };
-}
-
-/** One empty tree per spec key (fury/protection/marksmanship/disruption). */
-export function emptyTalentTrees() {
-  const trees = {};
-  for (const key of TALENT_TREE_KEYS) trees[key] = newTalentTree();
-  return trees;
-}
-
 export function newLoadout(name) {
   return {
     name,
@@ -119,7 +96,7 @@ export function newCharacter(name = 'New Character') {
 
 export function newRoster() {
   const c = newCharacter('Character 1');
-  return { characters: [c], currentId: c.id, drop: null, talentTrees: emptyTalentTrees() };
+  return { characters: [c], currentId: c.id, drop: null };
 }
 
 export function getCurrent(roster) {
@@ -134,53 +111,22 @@ export function normaliseRoster(raw) {
   if (!raw || !Array.isArray(raw.characters) || raw.characters.length === 0) {
     return newRoster();
   }
-  const talentTrees = normaliseTalentTrees(raw.talentTrees);
-  const characters = raw.characters.map((c) => normaliseCharacter(c, talentTrees));
+  const characters = raw.characters.map((c) => normaliseCharacter(c));
   const currentId = characters.some((c) => c.id === raw.currentId)
     ? raw.currentId
     : characters[0].id;
   const drop = normaliseDrop(raw.drop);
-  return { characters, currentId, drop, talentTrees };
+  return { characters, currentId, drop };
 }
 
-function normaliseTalentTrees(raw) {
-  const trees = {};
-  for (const key of TALENT_TREE_KEYS) {
-    const rawTree = raw?.[key];
-    trees[key] = {
-      description: typeof rawTree?.description === 'string' ? rawTree.description : '',
-      tiers: Array.isArray(rawTree?.tiers) ? rawTree.tiers.map(normaliseTier) : [],
-    };
-  }
-  return trees;
-}
-
-function normaliseTier(rawTier) {
-  return {
-    id: rawTier?.id || newId(),
-    threshold: Number(rawTier?.threshold) || 0,
-    talents: Array.isArray(rawTier?.talents) ? rawTier.talents.map(normaliseTalent) : [],
-  };
-}
-
-function normaliseTalent(rawTalent) {
-  const ranks = Array.isArray(rawTalent?.ranks) ? rawTalent.ranks.map((r) => Number(r) || 0) : [];
-  return {
-    id: rawTalent?.id || newId(),
-    name: rawTalent?.name || 'Talent',
-    statKey: rawTalent?.statKey || 'attack_pct',
-    ranks: ranks.length ? ranks : [0],
-  };
-}
-
-function normaliseCharacter(c, talentTrees) {
+function normaliseCharacter(c) {
   const base = newCharacter(c?.name || 'Character');
   if (c?.id) base.id = c.id;
   base.class = CLASSES.includes(c?.class) ? c.class : null;
   const loadouts = Array.isArray(c?.loadouts) ? c.loadouts : [];
   base.loadouts = [
-    normaliseLoadout(loadouts[0], 'Loadout 1', base.class, talentTrees),
-    normaliseLoadout(loadouts[1], 'Loadout 2', base.class, talentTrees),
+    normaliseLoadout(loadouts[0], 'Loadout 1', base.class),
+    normaliseLoadout(loadouts[1], 'Loadout 2', base.class),
   ];
   base.sources = normaliseSources(c?.sources);
   return base;
@@ -214,7 +160,7 @@ function normaliseSources(raw) {
   return s;
 }
 
-function normaliseLoadout(l, fallbackName, characterClass, talentTrees) {
+function normaliseLoadout(l, fallbackName, characterClass) {
   const base = newLoadout(l?.name || fallbackName);
   base.profileTotals = emptyStats(l?.profileTotals || {});
   base.manualTotals = l?.manualTotals !== false;
@@ -224,13 +170,13 @@ function normaliseLoadout(l, fallbackName, characterClass, talentTrees) {
   }
   const validSpecKeys = (SPECS_BY_CLASS[characterClass] || []).map((s) => s.key);
   base.spec = validSpecKeys.includes(l?.spec) ? l.spec : null;
-  base.talentAllocation = normaliseTalentAllocation(l?.talentAllocation, base.spec, talentTrees);
+  base.talentAllocation = normaliseTalentAllocation(l?.talentAllocation, base.spec);
   return base;
 }
 
-/** Drops allocations pointing at talents/ranks that no longer exist in the tree. */
-function normaliseTalentAllocation(raw, spec, talentTrees) {
-  const tree = spec ? talentTrees?.[spec] : null;
+/** Drops allocations pointing at talents/ranks that no longer exist in the (static) tree. */
+function normaliseTalentAllocation(raw, spec) {
+  const tree = spec ? TALENT_TREES[spec] : null;
   if (!tree || !raw || typeof raw !== 'object') return {};
   const talentById = new Map();
   for (const tier of tree.tiers) {

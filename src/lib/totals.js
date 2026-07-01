@@ -13,13 +13,14 @@
  * flat contributions are summed separately from their % contributions, then
  * recombined once via the same finalAttack() used everywhere in dps.js.
  *
- * Talent trees are roster-level (shared across characters/loadouts), not
- * character-level, so computeCalculatedTotals/resolveEffectiveTotals take an
- * explicit `talentTrees` param (callers pass rosterStore.roster.talentTrees)
- * rather than reading it off `character`.
+ * Talent tree content is static code data (talentTreeData.js), not part of
+ * the persisted Roster/Character - computeCalculatedTotals/
+ * resolveEffectiveTotals default to it, with an optional override param kept
+ * for test fixtures.
  */
 import { offensiveStats, finalAttack } from './dps.js';
 import { SLOTS, STAT_FIELDS, SOURCE_DEFS } from './constants.js';
+import { TALENT_TREES } from './talentTreeData.js';
 
 const FLAT_PAIR_KEYS = ['attack', 'health'];
 const PCT_PAIR_OF = { attack: 'attack_pct', health: 'health_pct' };
@@ -104,9 +105,10 @@ function talentContribution(loadout, talentTrees) {
 /**
  * Sum base + gear + stones + talents (all per-loadout) + every character-
  * scoped source (shared across both loadouts) into one set of final totals
- * for `loadout`. `talentTrees` is roster-level shared data (rosterStore.roster.talentTrees).
+ * for `loadout`. `talentTrees` defaults to the static tree content
+ * (talentTreeData.js); the param exists mainly so tests can substitute fixtures.
  */
-export function computeCalculatedTotals(character, loadoutIndex, talentTrees) {
+export function computeCalculatedTotals(character, loadoutIndex, talentTrees = TALENT_TREES) {
   const loadout = character.loadouts[loadoutIndex];
   const acc = newAccumulator();
 
@@ -132,7 +134,7 @@ export function computeCalculatedTotals(character, loadoutIndex, talentTrees) {
 }
 
 /** The totals a loadout should actually use right now: manual entry, or Calculated. */
-export function resolveEffectiveTotals(character, loadoutIndex, talentTrees) {
+export function resolveEffectiveTotals(character, loadoutIndex, talentTrees = TALENT_TREES) {
   const loadout = character.loadouts[loadoutIndex];
   return loadout.manualTotals ? loadout.profileTotals : computeCalculatedTotals(character, loadoutIndex, talentTrees);
 }
