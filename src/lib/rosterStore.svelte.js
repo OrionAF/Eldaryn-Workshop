@@ -9,11 +9,37 @@
  */
 
 import { loadRoster, saveRoster, importRoster as parseRosterJson, downloadRoster } from './storage.js';
-import { newCharacter, getCurrent, emptyStats, newPetEntry, newMountEntry, newMountGlyphEntry } from './model.js';
+import { newCharacter, getCurrent, emptyStats, newPetEntry, newMountEntry, newMountGlyphEntry, newTier, newTalent } from './model.js';
 import { applySwap } from './dps.js';
-import { SLOTS, SOURCE_DEFS } from './constants.js';
+import { SLOTS, SOURCE_DEFS, TALENT_TOTAL_POINTS } from './constants.js';
 
 const MOUNT_GLYPH_TIER_CAPS = SOURCE_DEFS.find((d) => d.key === 'mountGlyphs').tierCaps;
+
+/** Points spent across a tier's own talents, per a loadout's talentAllocation. */
+function pointsSpentInTier(tier, talentAllocation) {
+  return tier.talents.reduce((sum, t) => sum + (talentAllocation[t.id] || 0), 0);
+}
+
+/** Tier 0 is always accessible (matches the screenshot: no lock badge on Tier 1). */
+function isTierUnlocked(tree, tierIndex, talentAllocation) {
+  if (tierIndex === 0) return true;
+  let spent = 0;
+  for (let i = 0; i < tierIndex; i++) spent += pointsSpentInTier(tree.tiers[i], talentAllocation);
+  return spent >= tree.tiers[tierIndex].threshold;
+}
+
+function totalPointsSpent(talentAllocation) {
+  return Object.values(talentAllocation || {}).reduce((sum, r) => sum + r, 0);
+}
+
+/** Finds {tier, tierIndex, talent} for a talentId within a tree, or null. */
+function findTalent(tree, talentId) {
+  for (let i = 0; i < (tree?.tiers.length ?? 0); i++) {
+    const talent = tree.tiers[i].talents.find((t) => t.id === talentId);
+    if (talent) return { tier: tree.tiers[i], tierIndex: i, talent };
+  }
+  return null;
+}
 
 function createRosterStore() {
   let roster = $state(loadRoster());
@@ -176,6 +202,127 @@ function createRosterStore() {
     return true;
   }
 
+  // --- Talents (Character.class; Loadout.spec/talentAllocation; roster.talentTrees shared) ---
+  function setCharacterClass(id, className) {
+    const c = roster.characters.find((ch) => ch.id === id);
+    if (!c) return;
+    c.class = className;
+    // A different class's specs/talent IDs are meaningless for this character now.
+    for (const loadout of c.loadouts) {
+      loadout.spec = null;
+      loadout.talentAllocation = {};
+    }
+    persist();
+  }
+
+  function setLoadoutSpec(loadoutIndex, spec) {
+    const loadout = current.loadouts[loadoutIndex];
+    loadout.spec = spec;
+    loadout.talentAllocation = {}; // a different tree's talent IDs don't apply
+    persist();
+  }
+
+  /** Returns false (no-op) if the tier is locked or the 29-point cap would be exceeded. */
+  function setTalentRank(loadoutIndex, talentId, rank) {
+    const loadout = current.loadouts[loadoutIndex];
+    const tree = loadout.spec ? roster.talentTrees[loadout.spec] : null;
+    const found = tree ? findTalent(tree, talentId) : null;
+    if (!found) return false;
+    if (!isTierUnlocked(tree, found.tierIndex, loadout.talentAllocation)) return false;
+
+    const clampedRank = Math.max(0, Math.min(rank, found.talent.ranks.length));
+    const currentRank = loadout.talentAllocation[talentId] || 0;
+    const delta = clampedRank - currentRank;
+    if (totalPointsSpent(loadout.talentAllocation) + delta > TALENT_TOTAL_POINTS) return false;
+
+    if (clampedRank === 0) {
+      delete loadout.talentAllocation[talentId];
+    } else {
+      loadout.talentAllocation[talentId] = clampedRank;
+    }
+    persist();
+    return true;
+  }
+
+  function resetTalents(loadoutIndex) {
+    current.loadouts[loadoutIndex].talentAllocation = {};
+    persist();
+  }
+
+  // --- Talent tree authoring (roster.talentTrees - shared reference data, not per-character) ---
+  function addTalentTier(specKey, threshold) {
+    const tree = roster.talentTrees[specKey];
+    if (!tree) return;
+    tree.tiers.push(newTier({ threshold: Number(threshold) || 0, talents: [] }));
+    persist();
+  }
+
+  function updateTalentTier(specKey, tierId, field, value) {
+    const tier = roster.talentTrees[specKey]?.tiers.find((t) => t.id === tierId);
+    if (tier) {
+      tier[field] = value;
+      persist();
+    }
+  }
+
+  function removeTalentTier(specKey, tierId) {
+    const tree = roster.talentTrees[specKey];
+    if (!tree) return;
+    tree.tiers = tree.tiers.filter((t) => t.id !== tierId);
+    persist();
+  }
+
+  function addTalent(specKey, tierId, name, statKey) {
+    const tier = roster.talentTrees[specKey]?.tiers.find((t) => t.id === tierId);
+    if (!tier) return null;
+    const talent = newTalent({ name, statKey, ranks: [0] });
+    tier.talents.push(talent);
+    persist();
+    return talent.id;
+  }
+
+  function updateTalent(specKey, talentId, field, value) {
+    const found = findTalent(roster.talentTrees[specKey], talentId);
+    if (found) {
+      found.talent[field] = value;
+      persist();
+    }
+  }
+
+  function removeTalent(specKey, talentId) {
+    const tree = roster.talentTrees[specKey];
+    const found = tree ? findTalent(tree, talentId) : null;
+    if (found) {
+      found.tier.talents = found.tier.talents.filter((t) => t.id !== talentId);
+      persist();
+    }
+  }
+
+  function setTalentRankValue(specKey, talentId, rankIndex, value) {
+    const found = findTalent(roster.talentTrees[specKey], talentId);
+    if (found) {
+      found.talent.ranks[rankIndex] = value;
+      persist();
+    }
+  }
+
+  function addTalentRank(specKey, talentId) {
+    const found = findTalent(roster.talentTrees[specKey], talentId);
+    if (found) {
+      found.talent.ranks.push(0);
+      persist();
+    }
+  }
+
+  /** Refuses to remove the last rank - a talent always has at least one. */
+  function removeTalentRank(specKey, talentId) {
+    const found = findTalent(roster.talentTrees[specKey], talentId);
+    if (found && found.talent.ranks.length > 1) {
+      found.talent.ranks.pop();
+      persist();
+    }
+  }
+
   // --- Drop comparison (roster-level, survives character switches) ---
   function startDrop(slot) {
     roster.drop = { slot: slot || SLOTS[0], piece: emptyStats() };
@@ -253,6 +400,19 @@ function createRosterStore() {
     addMountGlyph,
     removeMountGlyph,
     setGlyphEquipped,
+    setCharacterClass,
+    setLoadoutSpec,
+    setTalentRank,
+    resetTalents,
+    addTalentTier,
+    updateTalentTier,
+    removeTalentTier,
+    addTalent,
+    updateTalent,
+    removeTalent,
+    setTalentRankValue,
+    addTalentRank,
+    removeTalentRank,
     startDrop,
     setDropSlot,
     setDropField,

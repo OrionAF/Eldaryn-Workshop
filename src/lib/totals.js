@@ -1,7 +1,8 @@
 /**
  * totals.js - the "Calculated" totals engine (Phase 1): sums base character
- * stats + gear + stones + every character-scoped source into one set of
- * final display totals, for the Manual/Calculated toggle on Profile Stats.
+ * stats + gear + stones + talents (all per-loadout) + every character-scoped
+ * source into one set of final display totals, for the Manual/Calculated
+ * toggle on Profile Stats.
  *
  * Additive-only, deliberately: summing many sources at once is a different
  * operation from dps.js's two-item swap delta (which has its own additive-
@@ -11,6 +12,11 @@
  * Health 10, everything else 0). Attack/Health are the one exception: their
  * flat contributions are summed separately from their % contributions, then
  * recombined once via the same finalAttack() used everywhere in dps.js.
+ *
+ * Talent trees are roster-level (shared across characters/loadouts), not
+ * character-level, so computeCalculatedTotals/resolveEffectiveTotals take an
+ * explicit `talentTrees` param (callers pass rosterStore.roster.talentTrees)
+ * rather than reading it off `character`.
  */
 import { offensiveStats, finalAttack } from './dps.js';
 import { SLOTS, STAT_FIELDS, SOURCE_DEFS } from './constants.js';
@@ -74,10 +80,33 @@ function entryToStats(sourceKey, entry) {
 }
 
 /**
- * Sum base + gear + stones (per-loadout) + every character-scoped source
- * (shared across both loadouts) into one set of final totals for `loadout`.
+ * A loadout's talent contribution: for each invested talent, the value
+ * ASSIGNED to the currently-allocated rank (talent.ranks[rank-1]) - never a
+ * sum of prior ranks or a rank*base formula (see model.js's Talent shape).
  */
-export function computeCalculatedTotals(character, loadoutIndex) {
+function talentContribution(loadout, talentTrees) {
+  const tree = loadout.spec ? talentTrees?.[loadout.spec] : null;
+  if (!tree) return null;
+  const talentById = new Map();
+  for (const tier of tree.tiers) {
+    for (const t of tier.talents) talentById.set(t.id, t);
+  }
+  const overrides = {};
+  for (const [talentId, rank] of Object.entries(loadout.talentAllocation || {})) {
+    const talent = talentById.get(talentId);
+    if (!talent || rank <= 0) continue;
+    const value = talent.ranks[rank - 1] || 0;
+    overrides[talent.statKey] = (overrides[talent.statKey] || 0) + value;
+  }
+  return offensiveStats(overrides);
+}
+
+/**
+ * Sum base + gear + stones + talents (all per-loadout) + every character-
+ * scoped source (shared across both loadouts) into one set of final totals
+ * for `loadout`. `talentTrees` is roster-level shared data (rosterStore.roster.talentTrees).
+ */
+export function computeCalculatedTotals(character, loadoutIndex, talentTrees) {
   const loadout = character.loadouts[loadoutIndex];
   const acc = newAccumulator();
 
@@ -85,6 +114,7 @@ export function computeCalculatedTotals(character, loadoutIndex) {
     accumulate(acc, loadout.gear[slot]);
     accumulate(acc, loadout.stones[slot]);
   }
+  accumulate(acc, talentContribution(loadout, talentTrees));
 
   for (const def of SOURCE_DEFS) {
     if (def.scope !== 'character') continue;
@@ -102,7 +132,7 @@ export function computeCalculatedTotals(character, loadoutIndex) {
 }
 
 /** The totals a loadout should actually use right now: manual entry, or Calculated. */
-export function resolveEffectiveTotals(character, loadoutIndex) {
+export function resolveEffectiveTotals(character, loadoutIndex, talentTrees) {
   const loadout = character.loadouts[loadoutIndex];
-  return loadout.manualTotals ? loadout.profileTotals : computeCalculatedTotals(character, loadoutIndex);
+  return loadout.manualTotals ? loadout.profileTotals : computeCalculatedTotals(character, loadoutIndex, talentTrees);
 }

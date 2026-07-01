@@ -188,3 +188,70 @@ it('setGlyphEquipped enforces the 3 Minor / 2 Major / 1 Mythic cap and rejects p
   rosterStore.removeMountGlyph(minors[3]);
   expect(rosterStore.current.sources.mountGlyphs.entries.some((g) => g.id === minors[3])).toBe(false);
 });
+
+// --- Phase: Talents ---
+it('setCharacterClass sets the class and resets both loadouts spec/talentAllocation', () => {
+  const id = rosterStore.current.id;
+  rosterStore.setLoadoutSpec(0, 'fury'); // pretend a spec was set (class check isn't enforced at this layer)
+  rosterStore.setCharacterClass(id, 'Warrior');
+  expect(rosterStore.current.class).toBe('Warrior');
+  expect(rosterStore.current.loadouts[0].spec).toBe(null);
+  expect(rosterStore.current.loadouts[0].talentAllocation).toEqual({});
+
+  rosterStore.setLoadoutSpec(0, 'fury');
+  rosterStore.setCharacterClass(id, 'Sentinel'); // switching class again also resets
+  expect(rosterStore.current.loadouts[0].spec).toBe(null);
+});
+
+it('setLoadoutSpec clears any prior talentAllocation (different tree, different talent ids)', () => {
+  rosterStore.setLoadoutSpec(0, 'fury');
+  rosterStore.current.loadouts[0].talentAllocation = { 'stale-id': 3 };
+  rosterStore.setLoadoutSpec(0, 'protection');
+  expect(rosterStore.current.loadouts[0].talentAllocation).toEqual({});
+  expect(rosterStore.current.loadouts[0].spec).toBe('protection');
+});
+
+it('talent tree authoring: addTalentTier/addTalent/setTalentRankValue/removeTalent round-trip', () => {
+  rosterStore.addTalentTier('fury', 0);
+  const tier = rosterStore.roster.talentTrees.fury.tiers.at(-1);
+  const talentId = rosterStore.addTalent('fury', tier.id, 'Sharp Aim', 'crit');
+  expect(rosterStore.roster.talentTrees.fury.tiers.at(-1).talents.some((t) => t.id === talentId)).toBe(true);
+
+  rosterStore.addTalentRank('fury', talentId); // now 2 ranks: [0, 0]
+  rosterStore.setTalentRankValue('fury', talentId, 0, 2);
+  rosterStore.setTalentRankValue('fury', talentId, 1, 5);
+  const found = rosterStore.roster.talentTrees.fury.tiers.at(-1).talents.find((t) => t.id === talentId);
+  expect(found.ranks).toEqual([2, 5]);
+
+  rosterStore.removeTalent('fury', talentId);
+  expect(rosterStore.roster.talentTrees.fury.tiers.at(-1).talents.some((t) => t.id === talentId)).toBe(false);
+});
+
+it('setTalentRank enforces the 29-point cap and rejects raising a rank in a locked tier', () => {
+  // Build a tiny 2-tier tree: tier 0 threshold 0 (always unlocked), tier 1 threshold 5.
+  // Points spent = the rank NUMBER itself (1 point per rank), independent of the stat
+  // value stored at that rank - a talent needs 30 ranks for raising it to rank 30 to
+  // cost 30 points (> the 29 cap), regardless of what stat values are assigned.
+  rosterStore.addTalentTier('protection', 0);
+  rosterStore.addTalentTier('protection', 5);
+  const tiers = rosterStore.roster.talentTrees.protection.tiers;
+  const tier0 = tiers.at(-2);
+  const tier1 = tiers.at(-1);
+  const bigTalentId = rosterStore.addTalent('protection', tier0.id, 'Big One', 'attack_pct');
+  rosterStore.updateTalent('protection', bigTalentId, 'ranks', Array.from({ length: 30 }, (_, i) => i + 1));
+  const gatedTalentId = rosterStore.addTalent('protection', tier1.id, 'Gated', 'crit');
+  rosterStore.updateTalent('protection', gatedTalentId, 'ranks', [1]);
+
+  rosterStore.setLoadoutSpec(0, 'protection');
+  expect(rosterStore.setTalentRank(0, bigTalentId, 30)).toBe(false); // would spend 30 points > 29 cap
+  expect(rosterStore.setTalentRank(0, gatedTalentId, 1)).toBe(false); // tier 1 locked (0 spent in tier 0, needs 5)
+
+  const smallTalentId = rosterStore.addTalent('protection', tier0.id, 'Small One', 'attack_pct');
+  rosterStore.updateTalent('protection', smallTalentId, 'ranks', [1, 2, 3, 4, 5]); // 5 ranks
+  expect(rosterStore.setTalentRank(0, smallTalentId, 5)).toBe(true); // spends 5 points in tier 0
+  expect(rosterStore.setTalentRank(0, gatedTalentId, 1)).toBe(true); // tier 1 now unlocked (5 spent >= threshold 5)
+  expect(rosterStore.current.loadouts[0].talentAllocation[gatedTalentId]).toBe(1);
+
+  rosterStore.resetTalents(0);
+  expect(rosterStore.current.loadouts[0].talentAllocation).toEqual({});
+});
