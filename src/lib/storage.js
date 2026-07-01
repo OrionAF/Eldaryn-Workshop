@@ -78,27 +78,17 @@ export function downloadRoster(roster, filename = defaultExportFilename(roster))
   URL.revokeObjectURL(url);
 }
 
-const SETTINGS_KEY = 'eldaryn_optimiser_settings_v1';
-const DEFAULT_SETTINGS = { speedCritMultMultiplicative: false };
+// Removed feature (the Speed/Crit Mult stacking toggle) used to persist
+// under this key - still cleared by clearAllData() below in case an
+// existing user's browser still has it from before the removal.
+const LEGACY_SETTINGS_KEY = 'eldaryn_optimiser_settings_v1';
 
-/** Load app settings (the Speed/Crit Mult stacking switch) from localStorage. */
-export function loadSettings() {
-  if (!hasLocalStorage) return { ...DEFAULT_SETTINGS };
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { ...DEFAULT_SETTINGS };
-    const parsed = JSON.parse(raw);
-    return { speedCritMultMultiplicative: !!parsed.speedCritMultMultiplicative };
-  } catch {
-    return { ...DEFAULT_SETTINGS };
-  }
-}
-
-/** Persist app settings to localStorage. */
-export function saveSettings(settings) {
+/** Hard reset: wipe every Eldaryn Workshop key from localStorage. */
+export function clearAllData() {
   if (!hasLocalStorage) return;
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    localStorage.removeItem(KEY);
+    localStorage.removeItem(LEGACY_SETTINGS_KEY);
   } catch {
     // quota / private-mode failures are non-fatal
   }

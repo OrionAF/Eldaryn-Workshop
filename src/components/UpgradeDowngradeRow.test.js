@@ -1,14 +1,7 @@
-/**
- * Proves the specific reactivity fix: dps.js's Speed/CritMult stacking flag
- * is plain module state, not itself reactive - UpgradeDowngradeRow's
- * $derived must read settingsStore to know to recompute when the user
- * flips the toggle mid-comparison, or the displayed deltas would go stale.
- */
-import { it, expect, beforeEach, afterEach } from 'vitest';
+import { it, expect, beforeEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import UpgradeDowngradeRow from './UpgradeDowngradeRow.svelte';
 import { rosterStore } from '../lib/rosterStore.svelte.js';
-import { settingsStore } from '../lib/settingsStore.svelte.js';
 
 let target, app;
 beforeEach(() => {
@@ -17,27 +10,42 @@ beforeEach(() => {
   rosterStore.setProfileField(0, 'speed', 200);
   rosterStore.setProfileField(1, 'attack', 100);
   rosterStore.setProfileField(1, 'speed', 200);
-  rosterStore.startDrop('Weapon');
-  rosterStore.setDropField('speed', 100); // candidate adds +100 speed, differently under each stacking mode
   target = document.createElement('div');
   document.body.appendChild(target);
   app = mount(UpgradeDowngradeRow, { target });
   flushSync();
 });
-afterEach(() => {
-  settingsStore.setMultiplicative(false);
+
+function cleanup() {
   unmount(app);
   target.remove();
+}
+
+it('renders nothing without an active drop', () => {
+  expect(target.querySelector('.result-card')).toBeNull();
+  cleanup();
 });
 
-it('recomputes DPS when the multiplicative toggle flips, with no other trigger', () => {
-  // Additive (default): newSpeed = 200 - 0 + 100 = 300 -> DPS = 100 * 3 = 300
-  expect(target.textContent).toContain('300.0');
-
-  settingsStore.setMultiplicative(true);
+it('shows an upgrade/downgrade card per loadout with the new DPS once a drop starts', () => {
+  rosterStore.startDrop('Weapon');
+  rosterStore.setDropField('speed', 100); // +100 speed -> 200-0+100 = 300 -> DPS = 100*3 = 300
   flushSync();
 
-  // Multiplicative: M = (200/100)/1 * (1+100/100) = 2*2 = 4 -> newSpeed=400 -> DPS = 100*4 = 400
-  expect(target.textContent).toContain('400.0');
-  expect(target.textContent).not.toContain('300.0');
+  const cards = target.querySelectorAll('.result-card');
+  expect(cards.length).toBe(2);
+  expect(target.textContent).toContain('300.0');
+  expect(cards[0].classList.contains('upgrade')).toBe(true);
+  cleanup();
+});
+
+it('Apply applies the drop to that loadout only; Discard clears it for both', () => {
+  rosterStore.startDrop('Weapon');
+  rosterStore.setDropField('speed', 100);
+  flushSync();
+
+  [...target.querySelectorAll('.result-card')][0].querySelector('button').click();
+  flushSync();
+  expect(rosterStore.current.loadouts[0].gear.Weapon.speed).toBe(100);
+  expect(rosterStore.roster.drop).toBeNull(); // applying clears the shared drop
+  cleanup();
 });
