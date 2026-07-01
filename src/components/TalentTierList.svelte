@@ -27,11 +27,21 @@
     return tier.talents.reduce((sum, t) => sum + (allocation[t.id] || 0), 0);
   }
 
-  function isUnlocked(tierIndex) {
-    if (tierIndex === 0) return true;
+  /** Total points spent across every tier before tierIndex (combined, per the unlock rule). */
+  function pointsSpentBeforeTier(tierIndex) {
     let spent = 0;
     for (let i = 0; i < tierIndex; i++) spent += pointsSpentInTier(tree.tiers[i]);
-    return spent >= tree.tiers[tierIndex].threshold;
+    return spent;
+  }
+
+  function isUnlocked(tierIndex) {
+    if (tierIndex === 0) return true;
+    return pointsSpentBeforeTier(tierIndex) >= tree.tiers[tierIndex].threshold;
+  }
+
+  /** How many more points (in earlier tiers) are needed to unlock this tier. */
+  function pointsRemainingToUnlock(tierIndex) {
+    return Math.max(0, tree.tiers[tierIndex].threshold - pointsSpentBeforeTier(tierIndex));
   }
 
   function rankOf(talent) {
@@ -54,7 +64,7 @@
       <span class="tier-title">Tier {tierIndex + 1}</span>
       {#if tierIndex > 0}
         <span class="tier-badge" class:unlocked>
-          {unlocked ? 'Unlocked' : `Locked - needs ${tier.threshold} pts in earlier tiers`}
+          {unlocked ? 'Unlocked' : `Locked - needs ${pointsRemainingToUnlock(tierIndex)} more pts in earlier tiers`}
         </span>
       {/if}
     </div>
@@ -63,7 +73,10 @@
       {@const rank = rankOf(talent)}
       {@const maxRank = talent.ranks.length}
       <div class="talent-row" class:locked={!unlocked}>
-        <span class="talent-name">{talent.name}</span>
+        <div class="talent-title">
+          <span class="talent-name">{talent.name}</span>
+          <span class="stat-name-label">({statLabel(talent.statKey)})</span>
+        </div>
         <span class="talent-rank-badge">{rank}/{maxRank}</span>
         <div class="rank-controls">
           <button type="button" disabled={!unlocked || rank <= 0} onclick={() => changeRank(talent, -1)}>
@@ -76,7 +89,6 @@
         <span class="talent-value">
           {#if rank > 0}
             <strong>+{talent.ranks[rank - 1]}% CURRENT</strong>
-            <span class="stat-name">({statLabel(talent.statKey)})</span>
           {/if}
           {#if rank < maxRank}
             {#if rank > 0}&middot;{/if}
@@ -125,8 +137,13 @@
   .talent-row.locked {
     opacity: 0.5;
   }
-  .talent-name {
+  .talent-title {
     flex: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+  }
+  .talent-name {
     font-weight: 600;
   }
   .talent-rank-badge {
@@ -150,7 +167,9 @@
   .talent-value strong {
     color: var(--color-accent, #7aa2f7);
   }
-  .stat-name {
+  .stat-name-label {
     font-size: 0.75rem;
+    font-weight: normal;
+    color: var(--color-muted, #999);
   }
 </style>

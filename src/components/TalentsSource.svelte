@@ -11,7 +11,13 @@
   import { SPECS_BY_CLASS, TALENT_TOTAL_POINTS } from '../lib/constants.js';
   import TalentTierList from './TalentTierList.svelte';
 
-  const SET_LABELS = ['Set A', 'Set B'];
+  const SET_NAMES = ['Set A', 'Set B'];
+
+  // "Set A (Loadout 1)" - reads the loadout's actual name rather than
+  // hardcoding it, so this stays correct if loadouts are ever renamed.
+  function setLabel(i, loadout) {
+    return `${SET_NAMES[i]} (${loadout.name})`;
+  }
 
   // View-only, not persisted - which Set's tree is shown below.
   let selectedSet = $state(0);
@@ -34,7 +40,7 @@
     {#each character.loadouts as loadout, i (loadout.name)}
       <div class="set-card" class:active={selectedSet === i}>
         <button type="button" class="set-label" onclick={() => (selectedSet = i)}>
-          {SET_LABELS[i]}
+          {setLabel(i, loadout)}
         </button>
         <select
           value={loadout.spec ?? ''}
@@ -52,7 +58,9 @@
   </div>
 
   {#if !character.loadouts[selectedSet].spec}
-    <p class="empty-hint">Choose a specialization above for {SET_LABELS[selectedSet]} to see its talent tree.</p>
+    <p class="empty-hint">
+      Choose a specialization above for {setLabel(selectedSet, character.loadouts[selectedSet])} to see its talent tree.
+    </p>
   {:else}
     <TalentTierList specKey={character.loadouts[selectedSet].spec} loadoutIndex={selectedSet} />
     <button type="button" class="reset-button" onclick={() => rosterStore.resetTalents(selectedSet)}>

@@ -26,6 +26,15 @@ it('shows a hint instead of Set cards when the character has no class chosen', (
   cleanup();
 });
 
+it('Set labels spell out which loadout each maps to, to avoid Set/Loadout mismatch confusion', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
+  flushSync();
+
+  const labels = [...target.querySelectorAll('.set-label')].map((l) => l.textContent.trim());
+  expect(labels).toEqual(['Set A (Loadout 1)', 'Set B (Loadout 2)']);
+  cleanup();
+});
+
 it('once a class is set, Set A/Set B cards offer only that class\'s two specs', () => {
   rosterStore.setCharacterClass(rosterStore.current.id, 'Sentinel');
   flushSync();
