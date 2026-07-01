@@ -8,6 +8,7 @@
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { SPECS_BY_CLASS, TALENT_TOTAL_POINTS } from '../lib/constants.js';
+  import TalentTierList from './TalentTierList.svelte';
 
   const SET_LABELS = ['Set A', 'Set B'];
 
@@ -51,6 +52,11 @@
 
   {#if !character.loadouts[selectedSet].spec}
     <p class="empty-hint">Choose a specialization above for {SET_LABELS[selectedSet]} to see its talent tree.</p>
+  {:else}
+    <TalentTierList specKey={character.loadouts[selectedSet].spec} loadoutIndex={selectedSet} />
+    <button type="button" class="reset-button" onclick={() => rosterStore.resetTalents(selectedSet)}>
+      Reset Talents
+    </button>
   {/if}
 {/if}
 
@@ -84,5 +90,9 @@
   }
   .empty-hint {
     color: var(--color-muted, #999);
+  }
+  .reset-button {
+    display: block;
+    margin: var(--space-4, 1rem) auto 0;
   }
 </style>
