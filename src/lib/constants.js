@@ -66,16 +66,32 @@ export const SWAP_SPECIAL_KEYS = ['attack', 'attack_pct', 'health', 'health_pct'
 export const SWAP_ADDITIVE_KEYS = STAT_FIELDS.map((f) => f.key).filter((k) => !SWAP_SPECIAL_KEYS.includes(k));
 
 /**
- * Future stat sources (handoff 8). SCAFFOLD ONLY: shape + scope, no scaling
- * formulas. `scope: 'loadout'` means per-set (e.g. enchant stones bind to Set
- * 1/Set 2); 'character' means one active across both loadouts.
+ * The 9-tier rarity scale (handoff §2), used by Pets/Mounts (and eventually
+ * other sources) for a rarity dropdown. Didn't exist before Phase 1 - gear
+ * entries in Phase 0 are raw stat blocks with no rarity tracking.
+ */
+export const RARITIES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Ancient', 'Divine', 'Eternal'];
+
+/**
+ * Stat sources beyond gear (handoff §8). `scope: 'loadout'` means per-set
+ * (enchant stones bind to Set 1/Set 2); 'character' means one shared across
+ * both loadouts. `selection` tells the generic Calculated-totals sum
+ * (totals.js) which entries count, without per-source special-casing:
+ *   'all'    -> every entry contributes (Talents: many simultaneous bonuses)
+ *   'single' -> only the entry matching sourceState.activeId contributes
+ *   'tiered' -> only entries with equipped:true contribute, capped per tierCaps
+ * Only pets/mounts/mountGlyphs have real UI (Phase 1); the rest are scaffold
+ * only (empty entries, contributing nothing) until a future pass builds them -
+ * see the Phase 1 plan's "Deferred sources" section for what's known/unknown.
  */
 export const SOURCE_DEFS = [
-  { key: 'talents', label: 'Talents', scope: 'character' },
-  { key: 'awakening', label: 'Awakening', scope: 'character' },
-  { key: 'pets', label: 'Pets (Companions)', scope: 'character' },
-  { key: 'mounts', label: 'Mounts', scope: 'character' },
-  { key: 'sigils', label: 'Sigils', scope: 'character' },
-  { key: 'relics', label: 'Relics', scope: 'character' },
+  { key: 'talents', label: 'Talents', scope: 'character', selection: 'all' },
+  { key: 'awakening', label: 'Awakening', scope: 'character', selection: 'single' },
+  { key: 'transcendence', label: 'Transcendence', scope: 'character', selection: 'single' },
+  { key: 'pets', label: 'Pets (Companions)', scope: 'character', selection: 'single' },
+  { key: 'mounts', label: 'Mounts', scope: 'character', selection: 'single' },
+  { key: 'mountGlyphs', label: 'Mount Glyphs', scope: 'character', selection: 'tiered', tierCaps: { minor: 3, major: 2, mythic: 1 } },
+  { key: 'sigils', label: 'Sigils', scope: 'character', selection: 'tiered', tierCaps: { equipped: 3 } },
+  { key: 'relics', label: 'Relics', scope: 'character', selection: 'tiered', tierCaps: { equipped: 3 } },
   { key: 'stones', label: 'Enchant Stones', scope: 'loadout' },
 ];
