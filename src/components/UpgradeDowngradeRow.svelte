@@ -7,6 +7,7 @@
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { settingsStore } from '../lib/settingsStore.svelte.js';
+  import { resolveEffectiveTotals } from '../lib/totals.js';
   import { compareSwap } from '../lib/dps.js';
 
   let drop = $derived(rosterStore.roster.drop);
@@ -17,7 +18,11 @@
     // block when the user flips the toggle mid-comparison.
     void settingsStore.speedCritMultMultiplicative;
     if (!drop) return [];
-    return rosterStore.current.loadouts.map((loadout) => compareSwap(loadout.profileTotals, loadout.gear[drop.slot], drop.piece));
+    // resolveEffectiveTotals (manual or Calculated, per loadout) - Profile
+    // Stats and Gear Panel must never disagree about a loadout's current totals.
+    return rosterStore.current.loadouts.map((loadout, i) =>
+      compareSwap(resolveEffectiveTotals(rosterStore.current, i), loadout.gear[drop.slot], drop.piece)
+    );
   });
 
   function pct(n) {

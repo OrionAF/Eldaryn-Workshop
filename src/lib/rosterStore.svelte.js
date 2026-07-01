@@ -205,7 +205,13 @@ function createRosterStore() {
     if (!roster.drop) return;
     const { slot, piece } = roster.drop;
     const loadout = current.loadouts[loadoutIndex];
-    loadout.profileTotals = applySwap(loadout.profileTotals, loadout.gear[slot], piece);
+    // In Calculated mode, profileTotals is inert manual data the user isn't
+    // looking at - only touch it in Manual mode, or it'd silently store a
+    // stale swap result that resurfaces as a surprise if they switch back.
+    // The gear slot always updates either way (Calculated re-derives from it).
+    if (loadout.manualTotals) {
+      loadout.profileTotals = applySwap(loadout.profileTotals, loadout.gear[slot], piece);
+    }
     loadout.gear[slot] = piece;
     roster.drop = null;
     persist();
