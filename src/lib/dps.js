@@ -28,8 +28,8 @@
  *    defensive/PVP-adjacent % fields all have base 0 so they can only be
  *    ADDITIVE.
  *  - Attack/Health (flat) sum, then the summed % multiplies the flat total.
- *  - Speed (base 100%) and Crit Mult (base 150%) have non-zero bases, so
- *    additive vs multiplicative is ambiguous. Default ADDITIVE, with a switch.
+ *  - Speed (base 100%) and Crit Mult (base 150%) have non-zero bases, but
+ *    stack additively, same as everything else.
  *  - PVP Attack/Defense are flat "rating" stats (sum additively like Attack)
  *    with a derived, non-stored percentage: see pvpEffect().
  */
@@ -42,20 +42,6 @@ export const BASE_SPEED = 100.0; // %
 export const BASE_CRIT = 0.0; // %
 export const BASE_CRIT_MULT = 150.0; // %
 export const BASE_DOUBLE_HIT = 0.0; // %
-
-// Module-level stacking switch for Speed / Crit Mult. Flip to true if those
-// gear bonuses turn out to stack multiplicatively (pending dev confirmation).
-// The Python original was a module global; here it is mutable module state so
-// the UI Settings toggle can drive it. Tests toggle it the same way.
-let _speedCritMultMultiplicative = false;
-
-export function getSpeedCritMultMultiplicative() {
-  return _speedCritMultMultiplicative;
-}
-
-export function setSpeedCritMultMultiplicative(value) {
-  _speedCritMultMultiplicative = !!value;
-}
 
 /**
  * Factory for an OffensiveStats record. Carries every field in STAT_FIELDS
@@ -132,29 +118,14 @@ function combineAdditive(total, remove, add) {
 }
 
 /**
- * Multiplicative stacking for a stat with a non-zero base. The total is
- * base * combinedMultiplier. We model each piece as a factor (1 + x/100) on top
- * of base, so removing divides it out and adding multiplies it in. Used only
- * for Speed/Crit Mult when the multiplicative switch is on.
- */
-function combineMultiplicative(total, base, remove, add) {
-  let M = base ? total / base : 1.0;
-  const oldF = 1 + remove / 100.0;
-  const newF = 1 + add / 100.0;
-  if (oldF === 0) return total; // guard
-  M = (M / oldF) * newF;
-  return base * M;
-}
-
-/**
  * Given the character's FINAL profile totals, the OLD piece in a slot, and the
  * NEW piece to test, return the new profile totals as they'd display after the
  * swap. profileTotals.attack is the displayed final Attack; old/new .attack are
  * flat Attack contributions.
  *
  * Every field in STAT_FIELDS is carried through: attack/health decompose+
- * recombine via their %, speed/crit_mult are additive-by-default (switch for
- * multiplicative), and everything else (SWAP_ADDITIVE_KEYS - crit, double_hit,
+ * recombine via their %, speed/crit_mult stack additively (same as
+ * everything else), and everything else (SWAP_ADDITIVE_KEYS - crit, double_hit,
  * hp_regen, lifesteal, the defensive fields, pvp_attack, pvp_defense, ...) is
  * combined additively (base 0, so additive is the only option).
  */
@@ -171,16 +142,9 @@ export function applySwap(profileTotals, oldPiece, newPiece) {
   const newHealthPct = combineAdditive(profileTotals.health_pct, oldPiece.health_pct, newPiece.health_pct);
   const newHealth = finalAttack(newFlatHealth, newHealthPct);
 
-  // Speed & Crit Mult: additive by default, multiplicative if flagged.
-  let newSpeed;
-  let newCritMult;
-  if (_speedCritMultMultiplicative) {
-    newSpeed = combineMultiplicative(profileTotals.speed, BASE_SPEED, oldPiece.speed, newPiece.speed);
-    newCritMult = combineMultiplicative(profileTotals.crit_mult, BASE_CRIT_MULT, oldPiece.crit_mult, newPiece.crit_mult);
-  } else {
-    newSpeed = combineAdditive(profileTotals.speed, oldPiece.speed, newPiece.speed);
-    newCritMult = combineAdditive(profileTotals.crit_mult, oldPiece.crit_mult, newPiece.crit_mult);
-  }
+  // Speed & Crit Mult: additive, same as every other field.
+  const newSpeed = combineAdditive(profileTotals.speed, oldPiece.speed, newPiece.speed);
+  const newCritMult = combineAdditive(profileTotals.crit_mult, oldPiece.crit_mult, newPiece.crit_mult);
 
   // Every other field (base 0): additive.
   const additive = {};

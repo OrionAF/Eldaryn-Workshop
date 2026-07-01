@@ -4,7 +4,7 @@
  * produces plausible-but-wrong numbers if a base value or stacking rule is off,
  * so coverage here is worth it.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import * as dps from './dps.js';
 
 const S = dps.offensiveStats;
@@ -13,11 +13,6 @@ const S = dps.offensiveStats;
 function approx(a, b, tol = 1e-6) {
   return Math.abs(a - b) <= tol * Math.max(1, Math.abs(b));
 }
-
-beforeEach(() => {
-  // Ensure each test starts with the default (additive) stacking mode.
-  dps.setSpeedCritMultMultiplicative(false);
-});
 
 // --- Attack decompose / recombine ---
 it('Attack decompose/recombine matches the real profile screenshot (48.124 @ +34.3%)', () => {
@@ -101,27 +96,13 @@ it('Double Hit swaps stack additively (base 0)', () => {
   expect(approx(r.after.double_hit, 2.8 - 2.8 + 10)).toBe(true);
 });
 
-it('Speed and Crit Mult are additive by default', () => {
+it('Speed and Crit Mult stack additively', () => {
   const profile = S({ attack: 48.124, attack_pct: 34.3, speed: 232, crit: 6, crit_mult: 162, double_hit: 2.8 });
   const old = S({ speed: 30, crit_mult: 12 });
   const nw = S({ speed: 50, crit_mult: 20 });
   const r = dps.compareSwap(profile, old, nw);
   expect(approx(r.after.speed, 232 - 30 + 50)).toBe(true);
   expect(approx(r.after.crit_mult, 162 - 12 + 20)).toBe(true);
-});
-
-it('Multiplicative stacking switch is wired and no-op-safe', () => {
-  const profile = S({ attack: 48.124, attack_pct: 34.3, speed: 200, crit: 6, crit_mult: 150, double_hit: 2.8 });
-  const old = S({ speed: 0 });
-  const nw = S({ speed: 0 });
-  const orig = dps.getSpeedCritMultMultiplicative();
-  try {
-    dps.setSpeedCritMultMultiplicative(true);
-    const r = dps.compareSwap(profile, old, nw);
-    expect(approx(r.pct_change, 0.0, 1e-6)).toBe(true);
-  } finally {
-    dps.setSpeedCritMultMultiplicative(orig);
-  }
 });
 
 // --- HPS ---

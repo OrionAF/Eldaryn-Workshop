@@ -16,7 +16,7 @@
 </script>
 
 <main>
-  <h1>Eldaryn Gear Optimiser</h1>
+  <h1>Eldaryn Workshop</h1>
   <div class="top-bar-wrap">
     <TopBar />
   </div>
