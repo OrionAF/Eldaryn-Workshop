@@ -167,3 +167,26 @@ it('importing valid roster JSON replaces the roster and clears any error', async
   expect(target.querySelector('.import-error')).toBeNull();
   cleanup();
 });
+
+it('selecting a Class persists it, and switching class clears both loadouts spec/talentAllocation', () => {
+  target.querySelector('[aria-label="Rename or delete character"]').click();
+  flushSync();
+
+  rosterStore.setLoadoutSpec(0, 'fury'); // pretend a spec was already assigned
+
+  const classSelect = target.querySelector('.class-select select');
+  classSelect.value = 'Warrior';
+  classSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+
+  expect(rosterStore.current.class).toBe('Warrior');
+  expect(rosterStore.current.loadouts[0].spec).toBe(null); // reset by the class change
+
+  rosterStore.setLoadoutSpec(0, 'fury');
+  classSelect.value = 'Sentinel';
+  classSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+  expect(rosterStore.current.class).toBe('Sentinel');
+  expect(rosterStore.current.loadouts[0].spec).toBe(null); // reset again
+  cleanup();
+});
