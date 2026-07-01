@@ -7,10 +7,12 @@
   import Tabs from './Tabs.svelte';
   import PetsSource from './PetsSource.svelte';
   import MountsSource from './MountsSource.svelte';
+  import TalentsSource from './TalentsSource.svelte';
 
   const SUB_TABS = [
     { id: 'pets', label: 'Pets' },
     { id: 'mounts', label: 'Mounts' },
+    { id: 'talents', label: 'Talents' },
   ];
 
   let activeSubTab = $state('pets');
@@ -21,8 +23,10 @@
   <div class="sub-tab-content">
     {#if activeSubTab === 'pets'}
       <PetsSource />
-    {:else}
+    {:else if activeSubTab === 'mounts'}
       <MountsSource />
+    {:else}
+      <TalentsSource />
     {/if}
   </div>
 </section>
