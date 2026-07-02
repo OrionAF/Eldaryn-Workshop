@@ -19,6 +19,13 @@ function cleanup() {
   target.remove();
 }
 
+it('add-form fields are labeled for assistive tech', () => {
+  expect(target.querySelector('.add-form input[aria-label="Pet name"]')).not.toBeNull();
+  expect(target.querySelector('.add-form select[aria-label="Rarity"]')).not.toBeNull();
+  expect(target.querySelector('.add-form input[aria-label="Level"]')).not.toBeNull();
+  cleanup();
+});
+
 it('shows an empty hint with no pets, and adds a pet via the form', () => {
   expect(target.querySelector('.empty-hint')).not.toBeNull();
 

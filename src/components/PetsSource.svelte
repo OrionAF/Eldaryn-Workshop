@@ -35,11 +35,11 @@
 
 <div class="pets-source">
   <div class="add-form">
-    <input type="text" placeholder="Pet name" bind:value={newName} />
-    <select bind:value={newRarity}>
+    <input type="text" placeholder="Pet name" aria-label="Pet name" bind:value={newName} />
+    <select aria-label="Rarity" bind:value={newRarity}>
       {#each RARITIES as r (r)}<option value={r}>{r}</option>{/each}
     </select>
-    <input type="number" placeholder="Level" bind:value={newLevel} min="1" />
+    <input type="number" placeholder="Level" aria-label="Level" bind:value={newLevel} min="1" />
     <button type="button" onclick={addPet}>Add Pet</button>
   </div>
 

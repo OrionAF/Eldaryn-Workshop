@@ -26,6 +26,14 @@ it('shows a hint instead of Set cards when the character has no class chosen', (
   cleanup();
 });
 
+it('each spec select is labeled for assistive tech, distinguishing Set A from Set B', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
+  flushSync();
+  expect(target.querySelector('select[aria-label="Specialization for Set A (Loadout 1)"]')).not.toBeNull();
+  expect(target.querySelector('select[aria-label="Specialization for Set B (Loadout 2)"]')).not.toBeNull();
+  cleanup();
+});
+
 it('Set labels spell out which loadout each maps to, to avoid Set/Loadout mismatch confusion', () => {
   rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
   flushSync();

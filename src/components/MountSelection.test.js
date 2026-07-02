@@ -18,6 +18,12 @@ function cleanup() {
   target.remove();
 }
 
+it('add-form fields are labeled for assistive tech', () => {
+  expect(target.querySelector('.add-form input[aria-label="Mount name"]')).not.toBeNull();
+  expect(target.querySelector('.add-form select[aria-label="Rarity"]')).not.toBeNull();
+  cleanup();
+});
+
 it('adds a mount via the form, auto-activating the first one', () => {
   target.querySelector('.add-form input[type="text"]').value = 'Crystal Beast';
   target.querySelector('.add-form input[type="text"]').dispatchEvent(new Event('input', { bubbles: true }));

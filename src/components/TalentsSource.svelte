@@ -44,6 +44,7 @@
           {setLabel(i, loadout)}
         </button>
         <select
+          aria-label={`Specialization for ${setLabel(i, loadout)}`}
           value={loadout.spec ?? ''}
           onchange={(e) => rosterStore.setLoadoutSpec(i, e.target.value || null)}
         >

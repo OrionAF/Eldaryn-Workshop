@@ -18,6 +18,15 @@ function cleanup() {
   target.remove();
 }
 
+it('add-form fields are labeled for assistive tech, and the value input uses a decimal keyboard on mobile', () => {
+  expect(target.querySelector('.add-form select[aria-label="Tier"]')).not.toBeNull();
+  expect(target.querySelector('.add-form select[aria-label="Stat"]')).not.toBeNull();
+  const valueInput = target.querySelector('.add-form input[aria-label="Value"]');
+  expect(valueInput).not.toBeNull();
+  expect(valueInput.inputMode).toBe('decimal');
+  cleanup();
+});
+
 it('adds a glyph via the form with tier/stat/value, labeled like the in-game card', () => {
   const [tierSelect, statSelect] = target.querySelectorAll('.add-form select');
   tierSelect.value = 'minor';
