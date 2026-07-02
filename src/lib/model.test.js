@@ -2,6 +2,7 @@ import { it, expect } from 'vitest';
 import { newRoster, newCharacter, newLoadout, normaliseRoster } from './model.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { RELICS_BY_CLASS, RELIC_EQUIP_CAP } from './relicsData.js';
+import { TRANSCENDENCE_TREES } from './transcendenceData.js';
 
 it('newCharacter defaults class to null; newLoadout defaults spec/talentAllocation/relics empty', () => {
   const c = newCharacter('Test');
@@ -47,6 +48,80 @@ it('normaliseRoster keeps a valid Awakening path and clamps points to the 15-poi
   };
   const roster = normaliseRoster(raw);
   expect(roster.characters[0].awakening).toEqual({ path: 'shadow', points: 15 });
+});
+
+it('newCharacter defaults Transcendence to no nodes unlocked', () => {
+  const c = newCharacter('Test');
+  expect(c.transcendence).toEqual({ unlockedPositions: [] });
+});
+
+it('normaliseRoster drops Transcendence positions that do not belong to the tree, and glyph sockets (always inert)', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'Test',
+        class: 'Sentinel',
+        // 14:25 is the start - included here so 14:24 stays reachable; it's
+        // stored like any other unlocked node (see transcendence.js), not
+        // implicitly granted for free.
+        transcendence: { unlockedPositions: ['14:25', '14:24', '999:999', '5:10'] }, // 5:10 is a real glyph socket
+      },
+    ],
+    currentId: 'x',
+    drop: null,
+  };
+  const roster = normaliseRoster(raw);
+  expect(roster.characters[0].transcendence.unlockedPositions).toEqual(['14:25', '14:24']);
+});
+
+it('normaliseRoster drops everything if the start position itself was never unlocked - it is not granted for free', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'Test',
+        class: 'Sentinel',
+        transcendence: { unlockedPositions: ['14:24'] }, // 14:25 (the start) is missing
+      },
+    ],
+    currentId: 'x',
+    drop: null,
+  };
+  const roster = normaliseRoster(raw);
+  expect(roster.characters[0].transcendence.unlockedPositions).toEqual([]);
+});
+
+it('normaliseRoster drops Transcendence positions orphaned from the start (no unbroken adjacency chain)', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'Test',
+        class: 'Sentinel',
+        // 14:23 is only adjacent to 14:24, which isn't listed here - not
+        // reachable from the start (14:25) through this set alone.
+        transcendence: { unlockedPositions: ['14:23'] },
+      },
+    ],
+    currentId: 'x',
+    drop: null,
+  };
+  const roster = normaliseRoster(raw);
+  expect(roster.characters[0].transcendence.unlockedPositions).toEqual([]);
+});
+
+it('normaliseRoster clears Transcendence for a class with no tree data yet (Warrior)', () => {
+  expect(TRANSCENDENCE_TREES.Warrior).toBe(null); // guards this test's premise
+  const raw = {
+    characters: [
+      { id: 'x', name: 'Test', class: 'Warrior', transcendence: { unlockedPositions: ['14:24'] } },
+    ],
+    currentId: 'x',
+    drop: null,
+  };
+  const roster = normaliseRoster(raw);
+  expect(roster.characters[0].transcendence.unlockedPositions).toEqual([]);
 });
 
 it('newRoster does not carry talent tree content - that is static code data, not persisted', () => {
