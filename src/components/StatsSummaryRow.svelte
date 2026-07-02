@@ -6,11 +6,26 @@
    * gets in (see CONTEXT.md "Mode: Compare vs. Edit").
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
-  import { fieldsForTab } from '../lib/constants.js';
+  import { fieldsForTab, DEFENSIVE_STAT_KEYS } from '../lib/constants.js';
   import StatsFields from './StatsFields.svelte';
 
   let { selectedSlot, mode } = $props();
-  const fields = fieldsForTab('gear');
+
+  // Compare mode: drop a defensive/bonus field entirely if it's 0 for BOTH
+  // loadouts at this slot - most pieces don't touch most of them, and a long
+  // tail of zeroes is noise. Keep both columns showing the same row set (hide
+  // by "either loadout has it", not independently) so rows stay aligned for
+  // comparison. Edit mode always shows every field - you need to be able to
+  // type into a currently-zero one.
+  const fields = $derived.by(() => {
+    const allFields = fieldsForTab('gear', rosterStore.current.class);
+    if (mode === 'edit') return allFields;
+    const [a, b] = rosterStore.current.loadouts;
+    return allFields.filter((f) => {
+      if (!DEFENSIVE_STAT_KEYS.includes(f.key)) return true;
+      return (a.gear[selectedSlot][f.key] || 0) !== 0 || (b.gear[selectedSlot][f.key] || 0) !== 0;
+    });
+  });
 </script>
 
 <div class="stats-summary-row">

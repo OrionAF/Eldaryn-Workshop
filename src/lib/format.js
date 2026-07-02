@@ -32,11 +32,15 @@ export function parseFlat(input) {
 /**
  * Parse a percentage value where "." is a decimal point.
  * "6.2" -> 6.2. Empty / non-numeric -> 0. Accepts a number unchanged.
+ * "," is accepted as an alternate decimal separator ("2,3" -> 2.3) - some
+ * locales/numeric keyboards produce a comma instead of a period. Without
+ * this, the comma would just get stripped by the character filter below,
+ * silently concatenating the digits on either side ("2,3" -> "23").
  */
 export function parsePct(input) {
   if (typeof input === 'number') return Number.isFinite(input) ? input : 0;
   if (input == null) return 0;
-  const s = String(input).trim().replace(/[^\d.\-]/g, '');
+  const s = String(input).trim().replace(/,/g, '.').replace(/[^\d.\-]/g, '');
   if (s === '' || s === '-' || s === '.') return 0;
   const n = parseFloat(s);
   return Number.isFinite(n) ? n : 0;
