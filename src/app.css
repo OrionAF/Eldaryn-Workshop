@@ -115,7 +115,10 @@ input[type='text'],
 .field-derived,
 .stats-fields input,
 .deltas,
-.footer-line {
+.footer-line,
+.talent-value,
+.bonus-value,
+.per-point {
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums;
 }

@@ -23,8 +23,8 @@
 
 <div class="mount-selection">
   <div class="add-form">
-    <input type="text" placeholder="Mount name" bind:value={newName} />
-    <select bind:value={newRarity}>
+    <input type="text" placeholder="Mount name" aria-label="Mount name" bind:value={newName} />
+    <select aria-label="Rarity" bind:value={newRarity}>
       {#each RARITIES as r (r)}<option value={r}>{r}</option>{/each}
     </select>
     <button type="button" onclick={addMount}>Add Mount</button>

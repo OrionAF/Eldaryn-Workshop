@@ -49,13 +49,13 @@
 
 <div class="glyph-inventory">
   <div class="add-form">
-    <select bind:value={newTier}>
+    <select aria-label="Tier" bind:value={newTier}>
       {#each TIERS as t (t)}<option value={t}>{TIER_LABELS[t]}</option>{/each}
     </select>
-    <select bind:value={newStatKey}>
+    <select aria-label="Stat" bind:value={newStatKey}>
       {#each PCT_FIELDS as f (f.key)}<option value={f.key}>{f.label}</option>{/each}
     </select>
-    <input type="text" placeholder="Value (e.g. 4.1)" bind:value={newValue} />
+    <input type="text" inputmode="decimal" placeholder="Value (e.g. 4.1)" aria-label="Value" bind:value={newValue} />
     <button type="button" onclick={addGlyph}>Save to Inventory</button>
   </div>
 
