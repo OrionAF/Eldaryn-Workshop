@@ -7,9 +7,10 @@
  * Loadout     = { name, profileTotals: OffensiveStats, manualTotals: bool,
  *                 gear: Record<Slot, OffensiveStats>,
  *                 stones: Record<Slot, OffensiveStats>,   // stones = per-set
- *                 spec: specKey|null, talentAllocation: Record<talentId, rank> }
+ *                 spec: specKey|null, talentAllocation: Record<talentId, rank>,
+ *                 relics: { entries: [{defId, level, equipped}] } }
  * SourceState = one entry per character-scoped, `selection`-bearing SOURCE_DEFS[].key, shape per `selection`:
- *   'all'/'tiered' -> { entries: [] }        (Mount Glyphs/Sigils/Relics)
+ *   'all'/'tiered' -> { entries: [] }        (Mount Glyphs/Sigils)
  *   'single'       -> { entries: [], activeId: string|null }  (Transcendence, Pets, Mounts)
  * Talents is scope:'loadout' (Dual Spec = Loadout 1/2 = Set A/B) - its data lives on
  * Loadout.spec/talentAllocation. Tree CONTENT (tiers/talents/values) is static
@@ -18,6 +19,11 @@
  * Awakening is scope:'character' but has no `selection` (bypasses SourceState
  * entirely) - one path + point count shared by both loadouts, lives on
  * Character.awakening directly. Static per-point content is in awakeningData.js.
+ * Relics is also scope:'loadout' like Talents (equip set is independent per
+ * Set A/B, not shared) - its data lives on Loadout.relics. Static per-relic
+ * content (tier/maxLevel/stat min-max) is in relicsData.js; a relic's LEVEL
+ * (like its equip status) is per-loadout too - there's no separate
+ * account-wide "ownership" tracked, matching Awakening's dropped currency.
  * DropState   = { slot, piece: OffensiveStats }  // persists across char switches
  *
  * Phase 0: profileTotals are a manual input. Phase 1 adds `manualTotals` as a
@@ -28,6 +34,7 @@ import { offensiveStats } from './dps.js';
 import { SLOTS, SOURCE_DEFS, CLASSES, SPECS_BY_CLASS } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { AWAKENING_PATHS, AWAKENING_TOTAL_POINTS } from './awakeningData.js';
+import { RELICS_BY_CLASS, RELIC_EQUIP_CAP } from './relicsData.js';
 
 let _idCounter = 0;
 function newId() {
@@ -90,6 +97,7 @@ export function newLoadout(name) {
     stones: emptyGear(), // enchant stones, per-set (handoff 8.8) - SCAFFOLD
     spec: null, // Talents: Dual Spec - Loadout 1 = Set A, Loadout 2 = Set B
     talentAllocation: {}, // { [talentId]: rankInvested }
+    relics: { entries: [] }, // { defId, level, equipped }[] - independent per loadout, like Talents
   };
 }
 
@@ -190,7 +198,34 @@ function normaliseLoadout(l, fallbackName, characterClass) {
   const validSpecKeys = (SPECS_BY_CLASS[characterClass] || []).map((s) => s.key);
   base.spec = validSpecKeys.includes(l?.spec) ? l.spec : null;
   base.talentAllocation = normaliseTalentAllocation(l?.talentAllocation, base.spec);
+  base.relics = normaliseRelics(l?.relics, characterClass);
   return base;
+}
+
+/**
+ * Drops entries whose defId no longer exists for this class's (static)
+ * relics, de-dupes repeated defIds, clamps level to [1, maxLevel], and caps
+ * the equipped count at RELIC_EQUIP_CAP (unmarking any excess rather than
+ * dropping the entry - an over-cap import still keeps its level/ownership).
+ */
+function normaliseRelics(raw, characterClass) {
+  const defs = RELICS_BY_CLASS[characterClass] || [];
+  const defById = new Map(defs.map((d) => [d.id, d]));
+  const rawEntries = Array.isArray(raw?.entries) ? raw.entries : [];
+  const seen = new Set();
+  const entries = [];
+  let equippedCount = 0;
+  for (const e of rawEntries) {
+    const def = defById.get(e?.defId);
+    if (!def || seen.has(def.id)) continue;
+    seen.add(def.id);
+    const level = Math.max(1, Math.min(Number(e?.level) || 1, def.maxLevel));
+    let equipped = !!e?.equipped;
+    if (equipped && equippedCount >= RELIC_EQUIP_CAP) equipped = false;
+    if (equipped) equippedCount += 1;
+    entries.push({ defId: def.id, level, equipped });
+  }
+  return { entries };
 }
 
 /** Drops allocations pointing at talents/ranks that no longer exist in the (static) tree. */

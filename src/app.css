@@ -118,7 +118,8 @@ input[type='text'],
 .footer-line,
 .talent-value,
 .bonus-value,
-.per-point {
+.per-point,
+.relic-stats {
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums;
 }
