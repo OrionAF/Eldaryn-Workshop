@@ -27,6 +27,12 @@ it('parsePct treats "." as a decimal point', () => {
   expect(parsePct(150)).toBe(150);
 });
 
+it('parsePct also accepts "," as a decimal point, instead of silently dropping it', () => {
+  expect(parsePct('2,3')).toBe(2.3); // the exact bug report: was becoming 23
+  expect(parsePct('34,3')).toBe(34.3);
+  expect(parsePct('6,2')).toBe(6.2);
+});
+
 // --- parseStat dispatches by field kind ---
 it('parseStat parses flats and percentages by key', () => {
   expect(parseStat('attack', '2.664')).toBe(2664); // flat

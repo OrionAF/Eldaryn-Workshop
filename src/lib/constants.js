@@ -62,14 +62,28 @@ export const STAT_FIELDS = [
 export const FLAT_KEYS = STAT_FIELDS.filter((f) => f.kind === 'flat').map((f) => f.key);
 
 /**
+ * The 6 "defensive" fields not yet used in DPS/HPS calc (see the note
+ * above). StatsSummaryRow hides these specifically when they're 0 for both
+ * loadouts in Compare mode - most gear pieces don't touch most of them, so
+ * a long tail of zeroes is pure noise. The primary combat/sustain stats
+ * (Attack, Speed, Crit, HP Regen, Lifesteal, ...) always stay visible even
+ * at 0, since "this piece grants none" is itself useful info for those.
+ */
+export const DEFENSIVE_STAT_KEYS = ['block_chance', 'miss_chance', 'blind_chance', 'penetration', 'dmg_reduction', 'paralyze_chance'];
+
+/**
  * Fields shown on a given tab ('profile' | 'gear'), in STAT_FIELDS order.
- * `characterClass` only matters for 'profile' - it hides fields tagged
- * `classOnly` for a different class (or all of them, while no class is set).
+ * Passing `characterClass` (Profile Stats, Gear Panel) hides fields tagged
+ * `classOnly` for a different class (or all of them, while no class is set
+ * yet - `null` still counts as "passed"). Omit the argument entirely (e.g.
+ * Pets' stat block, which reuses the 'gear' field set but isn't scoped to
+ * who's wearing anything) to skip class filtering altogether - the presence
+ * of the argument is the switch, not which tab was asked for.
  */
 export function fieldsForTab(tab, characterClass) {
   return STAT_FIELDS.filter((f) => {
     if (!f.tabs.includes(tab)) return false;
-    if (tab === 'profile' && f.classOnly && f.classOnly !== characterClass) return false;
+    if (characterClass !== undefined && f.classOnly && f.classOnly !== characterClass) return false;
     return true;
   });
 }

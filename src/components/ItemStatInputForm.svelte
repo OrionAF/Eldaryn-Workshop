@@ -8,7 +8,7 @@
   import { fieldsForTab } from '../lib/constants.js';
   import StatsFields from './StatsFields.svelte';
 
-  const fields = fieldsForTab('gear');
+  const fields = $derived(fieldsForTab('gear', rosterStore.current.class));
 </script>
 
 {#if rosterStore.roster.drop}

@@ -88,6 +88,15 @@
     align-items: center;
     gap: 0.5rem;
     justify-content: space-between;
+    padding: 0.25rem 0.4rem;
+    border-radius: var(--radius, 4px);
+    border-bottom: 1px solid var(--color-border, #444);
+  }
+  .stats-fields label:last-child {
+    border-bottom: none;
+  }
+  .stats-fields label:hover {
+    background: var(--color-surface, rgba(255, 255, 255, 0.04));
   }
   .stats-fields label.highlight .field-value,
   .stats-fields label.highlight input {
