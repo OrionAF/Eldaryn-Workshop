@@ -4,12 +4,14 @@
   import ProfileStatsTab from './components/ProfileStatsTab.svelte';
   import GearPanelTab from './components/GearPanelTab.svelte';
   import SourcesTab from './components/SourcesTab.svelte';
+  import TranscendenceTab from './components/TranscendenceTab.svelte';
   import { rosterStore } from './lib/rosterStore.svelte.js';
 
   const TABS = [
     { id: 'profile', label: 'Profile Stats' },
     { id: 'gear', label: 'Gear Panel' },
     { id: 'sources', label: 'Sources' },
+    { id: 'transcendence', label: 'Transcendence' },
   ];
 
   // View-only, not persisted - which tab is showing.
@@ -38,8 +40,10 @@
         <ProfileStatsTab />
       {:else if activeTab === 'gear'}
         <GearPanelTab />
-      {:else}
+      {:else if activeTab === 'sources'}
         <SourcesTab />
+      {:else}
+        <TranscendenceTab />
       {/if}
     </div>
   {/if}

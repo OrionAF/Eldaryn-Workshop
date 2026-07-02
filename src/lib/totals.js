@@ -1,8 +1,8 @@
 /**
  * totals.js - the "Calculated" totals engine (Phase 1): sums base character
- * stats + gear + stones + talents + Relics (all per-loadout) + Awakening and
- * every character-scoped source into one set of final display totals, for
- * the Manual/Calculated toggle on Profile Stats.
+ * stats + gear + stones + talents + Relics (all per-loadout) + Awakening +
+ * Transcendence and every character-scoped source into one set of final
+ * display totals, for the Manual/Calculated toggle on Profile Stats.
  *
  * Additive-only, deliberately: summing many sources at once is a different
  * operation from dps.js's two-item swap delta (which has its own additive-
@@ -23,6 +23,8 @@ import { SLOTS, STAT_FIELDS, SOURCE_DEFS } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { resolveAwakeningPerPoint } from './awakeningData.js';
 import { RELICS_BY_CLASS, relicLevelValue } from './relicsData.js';
+import { TRANSCENDENCE_TREES } from './transcendenceData.js';
+import { effectiveUnlockedSet } from './transcendence.js';
 
 const FLAT_PAIR_KEYS = ['attack', 'health'];
 const PCT_PAIR_OF = { attack: 'attack_pct', health: 'health_pct' };
@@ -75,10 +77,10 @@ function entryToStats(sourceKey, entry) {
     case 'mountGlyphs':
       return offensiveStats({ [entry.statKey]: entry.value });
     default:
-      // Deferred sources (transcendence/sigils) are scaffold-only (empty
-      // entries) this pass, so this branch doesn't run for them yet -
-      // default shape in case a future generic {label, stats} entry lands
-      // here first. Talents/Awakening/Relics are special-cased above
+      // Deferred sources (sigils) are scaffold-only (empty entries) this
+      // pass, so this branch doesn't run for them yet - default shape in
+      // case a future generic {label, stats} entry lands here first.
+      // Talents/Awakening/Transcendence/Relics are special-cased above
       // (their own *Contribution() functions), never reach this switch.
       return entry.stats || offensiveStats();
   }
@@ -151,6 +153,32 @@ function relicsContribution(loadout, characterClass) {
 }
 
 /**
+ * A character's Transcendence contribution: every unlocked node's stats sum
+ * in directly, no per-rank/level scaling (each node's flat value applies
+ * once). Nothing is unlocked by default - including the tree's start
+ * position, which has no adjacency prerequisite but still has to be
+ * unlocked by the player like any other node (see transcendence.js).
+ * Glyph/Sigil nodes have empty `stats` and so contribute nothing. Shared by
+ * both loadouts (character-scoped, like Awakening), so this is computed
+ * identically regardless of which loadout is being totalled.
+ */
+function transcendenceContribution(character) {
+  const tree = TRANSCENDENCE_TREES[character.class];
+  if (!tree) return null;
+  const byPosition = new Map(tree.nodes.map((n) => [n.position, n]));
+  const unlocked = effectiveUnlockedSet(character.transcendence?.unlockedPositions || []);
+  const overrides = {};
+  for (const position of unlocked) {
+    const node = byPosition.get(position);
+    if (!node) continue;
+    for (const s of node.stats) {
+      overrides[s.statKey] = (overrides[s.statKey] || 0) + s.value;
+    }
+  }
+  return offensiveStats(overrides);
+}
+
+/**
  * Clamps every STAT_FIELDS entry with a `cap` (the game's own hard ceiling -
  * e.g. Crit 80%, Paralyze Chance 15%) down to that cap. Stacking many
  * sources (gear, talents, Awakening) can otherwise sum past what the game
@@ -183,6 +211,7 @@ export function computeCalculatedTotals(character, loadoutIndex, talentTrees = T
   }
   accumulate(acc, talentContribution(loadout, talentTrees));
   accumulate(acc, awakeningContribution(character));
+  accumulate(acc, transcendenceContribution(character));
   accumulate(acc, relicsContribution(loadout, character.class));
 
   for (const def of SOURCE_DEFS) {

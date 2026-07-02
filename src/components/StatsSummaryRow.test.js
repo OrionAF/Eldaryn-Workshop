@@ -40,29 +40,44 @@ it('Compare mode renders read-only text, no inputs', () => {
   cleanup();
 });
 
-it('Compare mode hides a defensive/bonus field only when it is 0 in BOTH loadouts', () => {
+function columnLabels(i) {
+  const column = target.querySelectorAll('.stats-summary-column')[i];
+  return [...column.querySelectorAll('.field-label')].map((l) => l.textContent);
+}
+
+it('Compare mode hides a field independently per column - non-zero in one loadout does not force it to show in the other', () => {
   rosterStore.setGearField('Weapon', 0, 'block_chance', 5); // Loadout 1 has it, Loadout 2 doesn't
   render({ selectedSlot: 'Weapon', mode: 'compare' });
 
-  let labels = [...target.querySelectorAll('.field-label')].map((l) => l.textContent);
-  expect(labels).toContain('Block Chance %'); // kept - non-zero in at least one loadout
-  expect(labels).not.toContain('Miss Chance %'); // 0 in both - hidden
+  expect(columnLabels(0)).toContain('Block Chance %'); // Loadout 1 - non-zero, shown
+  expect(columnLabels(1)).not.toContain('Block Chance %'); // Loadout 2 - 0 for this column, hidden
+  expect(columnLabels(0)).not.toContain('Miss Chance %'); // 0 in this column too - hidden
 
-  rosterStore.setGearField('Weapon', 0, 'block_chance', 0); // now 0 in both
-  flushSync();
-  labels = [...target.querySelectorAll('.field-label')].map((l) => l.textContent);
-  expect(labels).not.toContain('Block Chance %');
+  rosterStore.setGearField('Weapon', 0, 'block_chance', 0); // reset - rosterStore is a shared singleton across tests
   cleanup();
 });
 
-it('Compare mode never hides the primary combat/sustain stats, even at 0', () => {
+it('Compare mode hides EVERY field at 0 for a column, not just the defensive ones', () => {
   render({ selectedSlot: 'Weapon', mode: 'compare' });
-  const labels = [...target.querySelectorAll('.field-label')].map((l) => l.textContent);
-  expect(labels).toContain('Attack');
-  expect(labels).toContain('Speed %');
-  expect(labels).toContain('Critical %');
-  expect(labels).toContain('Lifesteal %');
-  expect(labels).toContain('HP Regen %/s');
+  expect(columnLabels(0)).toEqual([]); // a completely empty slot has nothing worth comparing
+  expect(columnLabels(1)).toEqual([]);
+  cleanup();
+});
+
+it('Compare mode keeps a primary stat only on the column(s) where it is actually non-zero', () => {
+  rosterStore.setGearField('Weapon', 0, 'attack', 1500);
+  rosterStore.setGearField('Weapon', 1, 'speed', 10);
+  render({ selectedSlot: 'Weapon', mode: 'compare' });
+
+  expect(columnLabels(0)).toContain('Attack');
+  expect(columnLabels(0)).not.toContain('Speed %'); // 0 on this loadout - hidden here
+  expect(columnLabels(1)).toContain('Speed %');
+  expect(columnLabels(1)).not.toContain('Attack'); // 0 on this loadout - hidden here
+  expect(columnLabels(0)).not.toContain('Critical %'); // 0 on both - hidden everywhere
+  expect(columnLabels(1)).not.toContain('Critical %');
+
+  rosterStore.setGearField('Weapon', 0, 'attack', 0); // reset - rosterStore is a shared singleton across tests
+  rosterStore.setGearField('Weapon', 1, 'speed', 0);
   cleanup();
 });
 

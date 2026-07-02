@@ -62,16 +62,6 @@ export const STAT_FIELDS = [
 export const FLAT_KEYS = STAT_FIELDS.filter((f) => f.kind === 'flat').map((f) => f.key);
 
 /**
- * The 6 "defensive" fields not yet used in DPS/HPS calc (see the note
- * above). StatsSummaryRow hides these specifically when they're 0 for both
- * loadouts in Compare mode - most gear pieces don't touch most of them, so
- * a long tail of zeroes is pure noise. The primary combat/sustain stats
- * (Attack, Speed, Crit, HP Regen, Lifesteal, ...) always stay visible even
- * at 0, since "this piece grants none" is itself useful info for those.
- */
-export const DEFENSIVE_STAT_KEYS = ['block_chance', 'miss_chance', 'blind_chance', 'penetration', 'dmg_reduction', 'paralyze_chance'];
-
-/**
  * Fields shown on a given tab ('profile' | 'gear'), in STAT_FIELDS order.
  * Passing `characterClass` (Profile Stats, Gear Panel) hides fields tagged
  * `classOnly` for a different class (or all of them, while no class is set
@@ -112,13 +102,13 @@ export const RARITIES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Myt
  *   'all'    -> every entry contributes (Talents: many simultaneous bonuses)
  *   'single' -> only the entry matching sourceState.activeId contributes
  *   'tiered' -> only entries with equipped:true contribute, capped per tierCaps
- * No `selection` at all (Talents, Awakening, Relics) means the source is
- * special-cased in totals.js entirely, bypassing the generic entries[]/
- * activeId sum - see each source's own comment below for why.
- * Only pets/mounts/mountGlyphs/talents/awakening/relics have real UI; the
- * rest are scaffold only (empty entries, contributing nothing) until a
- * future pass builds them - see the Phase 1 plan's "Deferred sources"
- * section for what's known/unknown.
+ * No `selection` at all (Talents, Awakening, Transcendence, Relics) means the
+ * source is special-cased in totals.js entirely, bypassing the generic
+ * entries[]/activeId sum - see each source's own comment below for why.
+ * Only pets/mounts/mountGlyphs/talents/awakening/transcendence/relics have
+ * real UI; the rest (sigils) are scaffold only (empty entries, contributing
+ * nothing) until a future pass builds them - see the Phase 1 plan's
+ * "Deferred sources" section for what's known/unknown.
  */
 export const SOURCE_DEFS = [
   // scope: 'loadout' - Talents maps onto Dual Spec (Set A/B = Loadout 1/2), the
@@ -133,7 +123,12 @@ export const SOURCE_DEFS = [
   // live on Character.awakening directly (model.js); static per-point
   // content is in awakeningData.js, same reasoning as Talents' static tree.
   { key: 'awakening', label: 'Awakening', scope: 'character' },
-  { key: 'transcendence', label: 'Transcendence', scope: 'character', selection: 'single' },
+  // scope: 'character', no `selection` - one shared unlocked-node set per
+  // character (like Awakening, not per-loadout like Talents/Relics), special-
+  // cased in totals.js. Static tree content (node positions/types/stats) is
+  // in transcendenceData.js; the player's unlocked positions live on
+  // Character.transcendence directly (model.js).
+  { key: 'transcendence', label: 'Transcendence', scope: 'character' },
   { key: 'pets', label: 'Pets (Companions)', scope: 'character', selection: 'single' },
   { key: 'mounts', label: 'Mounts', scope: 'character', selection: 'single' },
   { key: 'mountGlyphs', label: 'Mount Glyphs', scope: 'character', selection: 'tiered', tierCaps: { minor: 3, major: 2, mythic: 1 } },
@@ -165,3 +160,31 @@ export const TALENT_TREE_KEYS = Object.values(SPECS_BY_CLASS).flat().map((s) => 
 
 /** Hard cap on talent points spendable in one loadout's build. */
 export const TALENT_TOTAL_POINTS = 29;
+
+/**
+ * Transcendence's tiered Ichor cost table (docs/Transcendence Screenshots):
+ * the Nth node unlocked (1-indexed, counting only common/uncommon nodes -
+ * Ancient Sigils have their own flat cost, see TRANSCENDENCE_SIGIL_COST)
+ * costs whatever tier `n` falls into. Uncommon nodes cost x3 that tier's
+ * price. Shown as info in the UI (Ichor isn't a tracked/gated balance - see
+ * transcendence.js), not enforced as a hard affordability check.
+ */
+export const TRANSCENDENCE_COST_TIERS = [
+  { upTo: 4, cost: 1 },
+  { upTo: 9, cost: 2 },
+  { upTo: 16, cost: 3 },
+  { upTo: 26, cost: 5 },
+  { upTo: 41, cost: 8 },
+  { upTo: 61, cost: 12 },
+  { upTo: 86, cost: 18 },
+  { upTo: 116, cost: 26 },
+  { upTo: 156, cost: 38 },
+  { upTo: 206, cost: 55 },
+  { upTo: Infinity, cost: 80 },
+];
+
+/** Flat Ichor cost for an Ancient Sigil - not affected by the tiered table above. */
+export const TRANSCENDENCE_SIGIL_COST = 30;
+
+/** Uncommon nodes cost this multiple of the tiered common cost. */
+export const TRANSCENDENCE_UNCOMMON_COST_MULTIPLIER = 3;

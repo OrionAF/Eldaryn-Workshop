@@ -19,6 +19,11 @@
  * Awakening is scope:'character' but has no `selection` (bypasses SourceState
  * entirely) - one path + point count shared by both loadouts, lives on
  * Character.awakening directly. Static per-point content is in awakeningData.js.
+ * Transcendence is also scope:'character' with no `selection` - one shared
+ * unlocked-node set (an ORDERED array, not a bare Set: unlock order matters
+ * for the displayed Ichor-spent total, see transcendence.js), lives on
+ * Character.transcendence directly. Static per-class tree content (node
+ * positions/types/stats) is in transcendenceData.js.
  * Relics is also scope:'loadout' like Talents (equip set is independent per
  * Set A/B, not shared) - its data lives on Loadout.relics. Static per-relic
  * content (tier/maxLevel/stat min-max) is in relicsData.js; a relic's LEVEL
@@ -35,6 +40,8 @@ import { SLOTS, SOURCE_DEFS, CLASSES, SPECS_BY_CLASS } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { AWAKENING_PATHS, AWAKENING_TOTAL_POINTS } from './awakeningData.js';
 import { RELICS_BY_CLASS, RELIC_EQUIP_CAP } from './relicsData.js';
+import { TRANSCENDENCE_TREES } from './transcendenceData.js';
+import { reachableFrom, effectiveUnlockedSet } from './transcendence.js';
 
 let _idCounter = 0;
 function newId() {
@@ -73,6 +80,11 @@ function emptyAwakening() {
   return { path: null, points: 0 };
 }
 
+/** Empty Transcendence state: no nodes unlocked. */
+function emptyTranscendence() {
+  return { unlockedPositions: [] };
+}
+
 // --- Pets ---
 export function newPetEntry({ name = 'New Pet', rarity = 'Common', level = 1, stats = {} } = {}) {
   return { id: newId(), name, rarity, level, stats: emptyStats(stats) };
@@ -109,6 +121,7 @@ export function newCharacter(name = 'New Character') {
     loadouts: [newLoadout('Loadout 1'), newLoadout('Loadout 2')],
     sources: emptySources(),
     awakening: emptyAwakening(),
+    transcendence: emptyTranscendence(),
   };
 }
 
@@ -148,6 +161,7 @@ function normaliseCharacter(c) {
   ];
   base.sources = normaliseSources(c?.sources);
   base.awakening = normaliseAwakening(c?.awakening);
+  base.transcendence = normaliseTranscendence(c?.transcendence, base.class);
   return base;
 }
 
@@ -157,6 +171,34 @@ function normaliseAwakening(raw) {
   if (!path) return emptyAwakening();
   const points = Math.max(0, Math.min(Number(raw?.points) || 0, AWAKENING_TOTAL_POINTS));
   return { path, points };
+}
+
+/**
+ * Drops positions that no longer exist in this class's (static) tree, drops
+ * glyph sockets (inert - never a legal stored entry, even from old/corrupt
+ * data), de-dupes while preserving unlock order (order feeds the Ichor-spent
+ * display, see transcendence.js), and drops anything no longer reachable
+ * from the tree's start position via the remaining unlocked set - the same
+ * cascade rule applied live when a node is removed through the UI, reapplied
+ * here in case a class change or manual import left an orphaned position.
+ * The start position has no special exemption here - it's stored like any
+ * other unlocked node (see transcendence.js: it has no adjacency
+ * prerequisite, but it's still something the player had to unlock).
+ */
+function normaliseTranscendence(raw, characterClass) {
+  const tree = characterClass ? TRANSCENDENCE_TREES[characterClass] : null;
+  if (!tree) return emptyTranscendence();
+  const byPosition = new Map(tree.nodes.map((n) => [n.position, n]));
+  const seen = new Set();
+  const ordered = [];
+  for (const position of Array.isArray(raw?.unlockedPositions) ? raw.unlockedPositions : []) {
+    const node = byPosition.get(position);
+    if (!node || node.type === 'glyph' || seen.has(position)) continue;
+    seen.add(position);
+    ordered.push(position);
+  }
+  const reachable = reachableFrom(tree.startPosition, effectiveUnlockedSet(ordered), tree);
+  return { unlockedPositions: ordered.filter((p) => reachable.has(p)) };
 }
 
 /**

@@ -270,6 +270,48 @@ it('setAwakeningPoints is a no-op with no path chosen yet', () => {
   expect(rosterStore.current.awakening.points).toBe(0);
 });
 
+it('setTranscendenceNode: nothing is unlocked by default, not even the start - it has no adjacency prerequisite but still has to be unlocked', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Sentinel');
+
+  expect(rosterStore.setTranscendenceNode('14:24', true)).toBe(false); // adjacent to the start, but the start isn't unlocked yet
+  expect(rosterStore.setTranscendenceNode('20:3', true)).toBe(false); // far from everything, no prerequisite met
+  expect(rosterStore.setTranscendenceNode('5:10', true)).toBe(false); // a real glyph socket - never unlockable
+
+  expect(rosterStore.setTranscendenceNode('14:25', true)).toBe(true); // the start - selectable/unlockable like any other node
+  expect(rosterStore.current.transcendence.unlockedPositions).toEqual(['14:25']);
+  expect(rosterStore.setTranscendenceNode('14:25', true)).toBe(false); // already unlocked, no-op
+
+  expect(rosterStore.setTranscendenceNode('14:24', true)).toBe(true); // now unlockable, adjacent to the unlocked start
+  expect(rosterStore.current.transcendence.unlockedPositions).toEqual(['14:25', '14:24']);
+});
+
+it('setTranscendenceNode removal cascades: removing a bridge node drops what it was the only connection for', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Sentinel');
+  rosterStore.setTranscendenceNode('14:25', true); // the start - unlocked explicitly, like any other node
+  rosterStore.setTranscendenceNode('14:24', true); // adjacent to the start
+  rosterStore.setTranscendenceNode('14:23', true); // adjacent to 14:24 only, not to the start directly
+  expect(rosterStore.current.transcendence.unlockedPositions).toEqual(['14:25', '14:24', '14:23']);
+
+  expect(rosterStore.setTranscendenceNode('14:24', false)).toBe(true);
+  // 14:23's only connection back to the start was through 14:24 - cascades away too.
+  expect(rosterStore.current.transcendence.unlockedPositions).toEqual(['14:25']);
+});
+
+it('setTranscendenceNode removal cascades away everything if the start itself is removed', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Sentinel');
+  rosterStore.setTranscendenceNode('14:25', true);
+  rosterStore.setTranscendenceNode('14:24', true);
+  expect(rosterStore.current.transcendence.unlockedPositions).toEqual(['14:25', '14:24']);
+
+  expect(rosterStore.setTranscendenceNode('14:25', false)).toBe(true);
+  expect(rosterStore.current.transcendence.unlockedPositions).toEqual([]);
+});
+
+it('setTranscendenceNode is a no-op for a class with no tree data yet (Warrior)', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
+  expect(rosterStore.setTranscendenceNode('14:24', true)).toBe(false);
+});
+
 it('setRelicLevel/setRelicEquipped round-trip and reject an invalid defId', () => {
   rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
   const def = RELICS_BY_CLASS.Warrior.find((r) => r.id === 'basalt-guard');

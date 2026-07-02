@@ -3,6 +3,7 @@ import { computeCalculatedTotals, resolveEffectiveTotals } from './totals.js';
 import { newCharacter, newPetEntry, newMountEntry, newMountGlyphEntry, emptyStats } from './model.js';
 import { BASE_ATTACK, BASE_SPEED, BASE_CRIT_MULT } from './dps.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
+import { TRANSCENDENCE_TREES } from './transcendenceData.js';
 
 // Talent test fixtures: plain object literals matching talentTreeData.js's
 // shape (Tier = {id, threshold, talents}, Talent = {id, name, statKey, ranks}).
@@ -191,6 +192,65 @@ it('no path chosen, or 0 points invested, contributes nothing', () => {
   c.awakening = { path: 'shadow', points: 0 };
   const zeroPoints = computeCalculatedTotals(c, 0);
   expect(zeroPoints.attack_pct).toBe(0);
+});
+
+// --- Transcendence (scope: 'character' - one shared unlocked-node set, like Awakening) ---
+it('nothing is unlocked by default, including the start position - it contributes nothing until unlocked', () => {
+  const c = newCharacter();
+  c.class = 'Sentinel';
+  const totals = computeCalculatedTotals(c, 0);
+  expect(totals.health_pct).toBe(0);
+
+  c.transcendence.unlockedPositions = ['14:25']; // the start, unlocked like any other node
+  const afterUnlock = computeCalculatedTotals(c, 0);
+  expect(approx(afterUnlock.health_pct, 1)).toBe(true); // 14:25's own Health% value
+});
+
+it('unlocking a common node adds its one stat', () => {
+  const c = newCharacter();
+  c.class = 'Sentinel';
+  c.transcendence.unlockedPositions = ['2:2']; // common, penetration +1 (see transcendenceData.js)
+  const totals = computeCalculatedTotals(c, 0);
+  expect(approx(totals.penetration, 1)).toBe(true);
+});
+
+it('unlocking an uncommon node adds both of its stats', () => {
+  const c = newCharacter();
+  c.class = 'Sentinel';
+  c.transcendence.unlockedPositions = ['14:16']; // uncommon, attack_pct +1.6 and lifesteal +1
+  const totals = computeCalculatedTotals(c, 0);
+  expect(approx(totals.attack_pct, 1.6)).toBe(true);
+  expect(approx(totals.lifesteal, 1)).toBe(true);
+});
+
+it('an unlocked Ancient Sigil contributes no stat (special effect, not modeled)', () => {
+  const c = newCharacter();
+  c.class = 'Sentinel';
+  c.transcendence.unlockedPositions = ['14:25', '1:1']; // the start (Health%) + a sigil (empty stats)
+  const totals = computeCalculatedTotals(c, 0);
+  // The start's own Health% shows up; the sigil adds nothing on top.
+  expect(approx(totals.health_pct, 1)).toBe(true);
+  expect(totals.attack_pct).toBe(0);
+});
+
+it('Transcendence is shared by both loadouts, unlike per-loadout Talents/Relics', () => {
+  const c = newCharacter();
+  c.class = 'Sentinel';
+  c.transcendence.unlockedPositions = ['2:2'];
+  const l1 = computeCalculatedTotals(c, 0);
+  const l2 = computeCalculatedTotals(c, 1);
+  expect(approx(l1.penetration, l2.penetration)).toBe(true);
+  expect(approx(l1.penetration, 1)).toBe(true);
+});
+
+it('a class with no Transcendence tree data yet (Warrior) contributes nothing beyond base', () => {
+  expect(TRANSCENDENCE_TREES.Warrior).toBe(null); // not transcribed yet - guards this test's premise
+  const c = newCharacter();
+  c.class = 'Warrior';
+  c.transcendence.unlockedPositions = ['2:2']; // would-be Sentinel position, meaningless for Warrior
+  const totals = computeCalculatedTotals(c, 0);
+  expect(totals.penetration).toBe(0);
+  expect(totals.health_pct).toBe(0);
 });
 
 // --- Stat caps (game-enforced ceilings on Crit, Double Hit, Penetration,

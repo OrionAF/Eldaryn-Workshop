@@ -15,6 +15,8 @@ import { SLOTS, SOURCE_DEFS, TALENT_TOTAL_POINTS } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { AWAKENING_PATHS, AWAKENING_TOTAL_POINTS } from './awakeningData.js';
 import { RELICS_BY_CLASS, RELIC_EQUIP_CAP } from './relicsData.js';
+import { TRANSCENDENCE_TREES } from './transcendenceData.js';
+import { canUnlock, reachableFrom, effectiveUnlockedSet } from './transcendence.js';
 
 const MOUNT_GLYPH_TIER_CAPS = SOURCE_DEFS.find((d) => d.key === 'mountGlyphs').tierCaps;
 
@@ -210,12 +212,16 @@ function createRosterStore() {
     const c = roster.characters.find((ch) => ch.id === id);
     if (!c) return;
     c.class = className;
-    // A different class's specs/talent/relic IDs are meaningless for this character now.
+    // A different class's specs/talent/relic/Transcendence positions are
+    // meaningless for this character now (a different class has an entirely
+    // different tree - old unlocked positions wouldn't even correspond to
+    // the same node types/stats).
     for (const loadout of c.loadouts) {
       loadout.spec = null;
       loadout.talentAllocation = {};
       loadout.relics = { entries: [] };
     }
+    c.transcendence = { unlockedPositions: [] };
     persist();
   }
 
@@ -274,6 +280,38 @@ function createRosterStore() {
     current.awakening.path = null;
     current.awakening.points = 0;
     persist();
+  }
+
+  // --- Transcendence (Character.transcendence - one shared unlocked-node set across both loadouts, like Awakening) ---
+  /**
+   * Returns false (no-op) if unlocking isn't adjacency-valid, or removing a
+   * position that isn't unlocked. Nothing is unlocked by default, including
+   * the tree's start position - it has no adjacency prerequisite (see
+   * canUnlock in transcendence.js), but it's still something the player has
+   * to unlock themselves before anything else becomes reachable. Removing
+   * it therefore cascades away the entire unlocked set, same as removing any
+   * other bridge node that everything else was routed through.
+   */
+  function setTranscendenceNode(position, unlock) {
+    const tree = TRANSCENDENCE_TREES[current.class];
+    if (!tree) return false;
+    const unlockedPositions = current.transcendence.unlockedPositions;
+    if (unlock) {
+      if (!canUnlock(position, unlockedPositions, tree)) return false;
+      unlockedPositions.push(position);
+      persist();
+      return true;
+    }
+    if (!unlockedPositions.includes(position)) return false;
+    // Cascade: removing a node also drops every other unlocked node that
+    // becomes disconnected from the start as a result (recomputed via BFS
+    // over what's left), rather than leaving orphaned nodes stranded or
+    // blocking the removal outright.
+    const remaining = unlockedPositions.filter((p) => p !== position);
+    const reachable = reachableFrom(tree.startPosition, effectiveUnlockedSet(remaining), tree);
+    current.transcendence.unlockedPositions = remaining.filter((p) => reachable.has(p));
+    persist();
+    return true;
   }
 
   // --- Relics (Loadout.relics - independent per Set A/B, like Talents; static content in relicsData.js) ---
@@ -401,6 +439,7 @@ function createRosterStore() {
     setAwakeningPath,
     setAwakeningPoints,
     resetAwakening,
+    setTranscendenceNode,
     setRelicLevel,
     setRelicEquipped,
     startDrop,
