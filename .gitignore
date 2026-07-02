@@ -10,3 +10,5 @@ dist
 # Internal planning/domain notes - kept locally, not published to the public repo.
 /docs
 /CONTEXT.md
+CLAUDE.md
+/graphify-out
