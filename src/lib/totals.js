@@ -1,8 +1,8 @@
 /**
  * totals.js - the "Calculated" totals engine (Phase 1): sums base character
- * stats + gear + stones + talents (all per-loadout) + every character-scoped
- * source into one set of final display totals, for the Manual/Calculated
- * toggle on Profile Stats.
+ * stats + gear + stones + talents + Relics (all per-loadout) + Awakening and
+ * every character-scoped source into one set of final display totals, for
+ * the Manual/Calculated toggle on Profile Stats.
  *
  * Additive-only, deliberately: summing many sources at once is a different
  * operation from dps.js's two-item swap delta (which has its own additive-
@@ -22,6 +22,7 @@ import { offensiveStats, finalAttack } from './dps.js';
 import { SLOTS, STAT_FIELDS, SOURCE_DEFS } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { resolveAwakeningPerPoint } from './awakeningData.js';
+import { RELICS_BY_CLASS, relicLevelValue } from './relicsData.js';
 
 const FLAT_PAIR_KEYS = ['attack', 'health'];
 const PCT_PAIR_OF = { attack: 'attack_pct', health: 'health_pct' };
@@ -74,9 +75,11 @@ function entryToStats(sourceKey, entry) {
     case 'mountGlyphs':
       return offensiveStats({ [entry.statKey]: entry.value });
     default:
-      // Deferred sources (talents/awakening/transcendence/sigils/relics) are
-      // scaffold-only (empty entries) this pass, so this branch doesn't run
-      // yet - default shape in case a future generic {label, stats} entry lands here first.
+      // Deferred sources (transcendence/sigils) are scaffold-only (empty
+      // entries) this pass, so this branch doesn't run for them yet -
+      // default shape in case a future generic {label, stats} entry lands
+      // here first. Talents/Awakening/Relics are special-cased above
+      // (their own *Contribution() functions), never reach this switch.
       return entry.stats || offensiveStats();
   }
 }
@@ -124,6 +127,30 @@ function awakeningContribution(character) {
 }
 
 /**
+ * A loadout's Relic contribution: for each equipped relic, each of its 1-2
+ * fixed stats contributes the value linearly interpolated between the
+ * relic's min (level 1) and max (its tier's maxLevel) at the invested
+ * level - like Talents, independent per loadout (Set A/B have their own
+ * equipped relics and levels), not shared across both like Awakening.
+ */
+function relicsContribution(loadout, characterClass) {
+  const defs = RELICS_BY_CLASS[characterClass];
+  if (!defs) return null;
+  const defById = new Map(defs.map((d) => [d.id, d]));
+  const overrides = {};
+  for (const entry of loadout.relics?.entries || []) {
+    if (!entry.equipped) continue;
+    const def = defById.get(entry.defId);
+    if (!def) continue;
+    for (const s of def.stats) {
+      const value = relicLevelValue(s.min, s.max, entry.level, def.maxLevel);
+      overrides[s.statKey] = (overrides[s.statKey] || 0) + value;
+    }
+  }
+  return offensiveStats(overrides);
+}
+
+/**
  * Clamps every STAT_FIELDS entry with a `cap` (the game's own hard ceiling -
  * e.g. Crit 80%, Paralyze Chance 15%) down to that cap. Stacking many
  * sources (gear, talents, Awakening) can otherwise sum past what the game
@@ -140,11 +167,11 @@ function applyStatCaps(stats) {
 }
 
 /**
- * Sum base + gear + stones + talents (all per-loadout) + Awakening + every
- * character-scoped, `selection`-bearing source (shared across both loadouts)
- * into one set of final totals for `loadout`. `talentTrees` defaults to the
- * static tree content (talentTreeData.js); the param exists mainly so tests
- * can substitute fixtures.
+ * Sum base + gear + stones + talents + Relics (all per-loadout) + Awakening
+ * + every character-scoped, `selection`-bearing source (shared across both
+ * loadouts) into one set of final totals for `loadout`. `talentTrees`
+ * defaults to the static tree content (talentTreeData.js); the param exists
+ * mainly so tests can substitute fixtures.
  */
 export function computeCalculatedTotals(character, loadoutIndex, talentTrees = TALENT_TREES) {
   const loadout = character.loadouts[loadoutIndex];
@@ -156,6 +183,7 @@ export function computeCalculatedTotals(character, loadoutIndex, talentTrees = T
   }
   accumulate(acc, talentContribution(loadout, talentTrees));
   accumulate(acc, awakeningContribution(character));
+  accumulate(acc, relicsContribution(loadout, character.class));
 
   for (const def of SOURCE_DEFS) {
     if (def.scope !== 'character' || !def.selection) continue;

@@ -98,13 +98,13 @@ export const RARITIES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Myt
  *   'all'    -> every entry contributes (Talents: many simultaneous bonuses)
  *   'single' -> only the entry matching sourceState.activeId contributes
  *   'tiered' -> only entries with equipped:true contribute, capped per tierCaps
- * No `selection` at all (Talents, Awakening) means the source is special-cased
- * in totals.js entirely, bypassing the generic entries[]/activeId sum - see
- * each source's own comment below for why.
- * Only pets/mounts/mountGlyphs/talents/awakening have real UI; the rest are
- * scaffold only (empty entries, contributing nothing) until a future pass
- * builds them - see the Phase 1 plan's "Deferred sources" section for what's
- * known/unknown.
+ * No `selection` at all (Talents, Awakening, Relics) means the source is
+ * special-cased in totals.js entirely, bypassing the generic entries[]/
+ * activeId sum - see each source's own comment below for why.
+ * Only pets/mounts/mountGlyphs/talents/awakening/relics have real UI; the
+ * rest are scaffold only (empty entries, contributing nothing) until a
+ * future pass builds them - see the Phase 1 plan's "Deferred sources"
+ * section for what's known/unknown.
  */
 export const SOURCE_DEFS = [
   // scope: 'loadout' - Talents maps onto Dual Spec (Set A/B = Loadout 1/2), the
@@ -124,7 +124,11 @@ export const SOURCE_DEFS = [
   { key: 'mounts', label: 'Mounts', scope: 'character', selection: 'single' },
   { key: 'mountGlyphs', label: 'Mount Glyphs', scope: 'character', selection: 'tiered', tierCaps: { minor: 3, major: 2, mythic: 1 } },
   { key: 'sigils', label: 'Sigils', scope: 'character', selection: 'tiered', tierCaps: { equipped: 3 } },
-  { key: 'relics', label: 'Relics', scope: 'character', selection: 'tiered', tierCaps: { equipped: 3 } },
+  // scope: 'loadout' like Talents - equipped Relics are independent per Set
+  // A/B, not shared across both loadouts like Awakening. A relic's fixed
+  // stats/tiers/levels are static per-class content (relicsData.js); the
+  // player's owned/leveled/equipped state lives on Loadout.relics.
+  { key: 'relics', label: 'Relics', scope: 'loadout' },
   { key: 'stones', label: 'Enchant Stones', scope: 'loadout' },
 ];
 

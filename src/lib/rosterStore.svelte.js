@@ -14,6 +14,7 @@ import { applySwap } from './dps.js';
 import { SLOTS, SOURCE_DEFS, TALENT_TOTAL_POINTS } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { AWAKENING_PATHS, AWAKENING_TOTAL_POINTS } from './awakeningData.js';
+import { RELICS_BY_CLASS, RELIC_EQUIP_CAP } from './relicsData.js';
 
 const MOUNT_GLYPH_TIER_CAPS = SOURCE_DEFS.find((d) => d.key === 'mountGlyphs').tierCaps;
 
@@ -209,10 +210,11 @@ function createRosterStore() {
     const c = roster.characters.find((ch) => ch.id === id);
     if (!c) return;
     c.class = className;
-    // A different class's specs/talent IDs are meaningless for this character now.
+    // A different class's specs/talent/relic IDs are meaningless for this character now.
     for (const loadout of c.loadouts) {
       loadout.spec = null;
       loadout.talentAllocation = {};
+      loadout.relics = { entries: [] };
     }
     persist();
   }
@@ -272,6 +274,47 @@ function createRosterStore() {
     current.awakening.path = null;
     current.awakening.points = 0;
     persist();
+  }
+
+  // --- Relics (Loadout.relics - independent per Set A/B, like Talents; static content in relicsData.js) ---
+  function findRelicDef(defId) {
+    return (RELICS_BY_CLASS[current.class] || []).find((d) => d.id === defId);
+  }
+
+  function findOrCreateRelicEntry(loadout, defId) {
+    let entry = loadout.relics.entries.find((e) => e.defId === defId);
+    if (!entry) {
+      entry = { defId, level: 1, equipped: false };
+      loadout.relics.entries.push(entry);
+    }
+    return entry;
+  }
+
+  /** Returns false (no-op) if defId isn't a relic for this character's class. */
+  function setRelicLevel(loadoutIndex, defId, level) {
+    const def = findRelicDef(defId);
+    if (!def) return false;
+    const loadout = current.loadouts[loadoutIndex];
+    const entry = findOrCreateRelicEntry(loadout, defId);
+    entry.level = Math.max(1, Math.min(level, def.maxLevel));
+    persist();
+    return true;
+  }
+
+  /** Returns false (no-op) if defId is invalid, or equipping would exceed the 4-relic cap for this loadout. */
+  function setRelicEquipped(loadoutIndex, defId, equipped) {
+    const def = findRelicDef(defId);
+    if (!def) return false;
+    const loadout = current.loadouts[loadoutIndex];
+    if (equipped) {
+      const existing = loadout.relics.entries.find((e) => e.defId === defId);
+      const alreadyEquipped = loadout.relics.entries.filter((e) => e.equipped).length;
+      if (!(existing && existing.equipped) && alreadyEquipped >= RELIC_EQUIP_CAP) return false;
+    }
+    const entry = findOrCreateRelicEntry(loadout, defId);
+    entry.equipped = equipped;
+    persist();
+    return true;
   }
 
   // --- Drop comparison (roster-level, survives character switches) ---
@@ -358,6 +401,8 @@ function createRosterStore() {
     setAwakeningPath,
     setAwakeningPoints,
     resetAwakening,
+    setRelicLevel,
+    setRelicEquipped,
     startDrop,
     setDropSlot,
     setDropField,

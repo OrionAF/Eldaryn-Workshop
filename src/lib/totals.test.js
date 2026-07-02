@@ -2,6 +2,7 @@ import { it, expect } from 'vitest';
 import { computeCalculatedTotals, resolveEffectiveTotals } from './totals.js';
 import { newCharacter, newPetEntry, newMountEntry, newMountGlyphEntry, emptyStats } from './model.js';
 import { BASE_ATTACK, BASE_SPEED, BASE_CRIT_MULT } from './dps.js';
+import { RELICS_BY_CLASS } from './relicsData.js';
 
 // Talent test fixtures: plain object literals matching talentTreeData.js's
 // shape (Tier = {id, threshold, talents}, Talent = {id, name, statKey, ranks}).
@@ -254,4 +255,51 @@ it('an uncapped stat (e.g. Lifesteal) is never clamped', () => {
 
   const totals = computeCalculatedTotals(c, 0);
   expect(approx(totals.lifesteal, 500)).toBe(true);
+});
+
+// --- Relics (scope: 'loadout' - independent per Set A/B, like Talents) ---
+it('an equipped relic contributes its stat(s) interpolated at the current level', () => {
+  const c = newCharacter();
+  c.class = 'Warrior';
+  const def = RELICS_BY_CLASS.Warrior.find((r) => r.id === 'basalt-guard'); // dmg_reduction 3.0 -> 12.0, maxLevel 10
+  c.loadouts[0].relics.entries = [{ defId: def.id, level: 1, equipped: true }];
+
+  const totals = computeCalculatedTotals(c, 0);
+  expect(approx(totals.dmg_reduction, 3.0)).toBe(true); // level 1 = min
+
+  c.loadouts[0].relics.entries[0].level = 10;
+  const maxed = computeCalculatedTotals(c, 0);
+  expect(approx(maxed.dmg_reduction, 12.0)).toBe(true); // maxLevel = max
+});
+
+it('an unequipped (owned but not equipped) relic contributes nothing', () => {
+  const c = newCharacter();
+  c.class = 'Warrior';
+  const def = RELICS_BY_CLASS.Warrior.find((r) => r.id === 'basalt-guard');
+  c.loadouts[0].relics.entries = [{ defId: def.id, level: 10, equipped: false }];
+
+  const totals = computeCalculatedTotals(c, 0);
+  expect(totals.dmg_reduction).toBe(0);
+});
+
+it('a silver/gold relic with 2 stats contributes both simultaneously', () => {
+  const c = newCharacter();
+  c.class = 'Warrior';
+  const def = RELICS_BY_CLASS.Warrior.find((r) => r.id === 'fortune-token'); // crit + crit_mult
+  c.loadouts[0].relics.entries = [{ defId: def.id, level: 15, equipped: true }]; // maxLevel -> both at max
+
+  const totals = computeCalculatedTotals(c, 0);
+  expect(approx(totals.crit, 14.0)).toBe(true);
+  expect(approx(totals.crit_mult, BASE_CRIT_MULT + 80.0)).toBe(true); // crit_mult's base is 150, additive on top
+});
+
+it('Relics are independent per loadout, unlike shared Awakening', () => {
+  const c = newCharacter();
+  c.class = 'Warrior';
+  const def = RELICS_BY_CLASS.Warrior.find((r) => r.id === 'basalt-guard');
+  c.loadouts[0].relics.entries = [{ defId: def.id, level: 10, equipped: true }];
+  // Loadout 2 has no relics equipped - should not see Loadout 1's relic.
+
+  const l2Totals = computeCalculatedTotals(c, 1);
+  expect(l2Totals.dmg_reduction).toBe(0);
 });

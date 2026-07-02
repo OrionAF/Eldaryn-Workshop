@@ -8,6 +8,7 @@
 import { it, expect, beforeEach } from 'vitest';
 import { rosterStore } from './rosterStore.svelte.js';
 import { TALENT_TREES } from './talentTreeData.js';
+import { RELICS_BY_CLASS, RELIC_EQUIP_CAP } from './relicsData.js';
 
 const STORAGE_KEY = 'eldaryn_optimiser_state_v1';
 
@@ -267,4 +268,50 @@ it('setAwakeningPoints is a no-op with no path chosen yet', () => {
   rosterStore.resetAwakening();
   expect(rosterStore.setAwakeningPoints(5)).toBe(false);
   expect(rosterStore.current.awakening.points).toBe(0);
+});
+
+it('setRelicLevel/setRelicEquipped round-trip and reject an invalid defId', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
+  const def = RELICS_BY_CLASS.Warrior.find((r) => r.id === 'basalt-guard');
+
+  expect(rosterStore.setRelicLevel(0, def.id, 5)).toBe(true);
+  expect(rosterStore.current.loadouts[0].relics.entries[0]).toEqual({ defId: def.id, level: 5, equipped: false });
+
+  expect(rosterStore.setRelicLevel(0, def.id, 999)).toBe(true); // clamps to maxLevel
+  expect(rosterStore.current.loadouts[0].relics.entries[0].level).toBe(def.maxLevel);
+
+  expect(rosterStore.setRelicEquipped(0, def.id, true)).toBe(true);
+  expect(rosterStore.current.loadouts[0].relics.entries[0].equipped).toBe(true);
+
+  expect(rosterStore.setRelicLevel(0, 'not-a-real-relic', 5)).toBe(false);
+  expect(rosterStore.setRelicEquipped(0, 'not-a-real-relic', true)).toBe(false);
+});
+
+it('setRelicEquipped enforces the 4-relic cap independently per loadout', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
+  const relics = RELICS_BY_CLASS.Warrior.slice(0, RELIC_EQUIP_CAP + 1);
+
+  for (const r of relics.slice(0, RELIC_EQUIP_CAP)) {
+    expect(rosterStore.setRelicEquipped(0, r.id, true)).toBe(true);
+  }
+  const fifth = relics[RELIC_EQUIP_CAP];
+  expect(rosterStore.setRelicEquipped(0, fifth.id, true)).toBe(false); // 5th rejected
+  expect(rosterStore.current.loadouts[0].relics.entries.filter((e) => e.equipped).length).toBe(RELIC_EQUIP_CAP);
+
+  // Loadout 2 has its own independent cap - equipping there is unaffected by Loadout 1 being full.
+  expect(rosterStore.setRelicEquipped(1, fifth.id, true)).toBe(true);
+
+  // Re-toggling an already-equipped relic (not adding a new one) never counts against the cap.
+  expect(rosterStore.setRelicEquipped(0, relics[0].id, true)).toBe(true);
+});
+
+it("changing class resets both loadouts' relics", () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
+  const def = RELICS_BY_CLASS.Warrior.find((r) => r.id === 'basalt-guard');
+  rosterStore.setRelicEquipped(0, def.id, true);
+  expect(rosterStore.current.loadouts[0].relics.entries.length).toBe(1);
+
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Sentinel');
+  expect(rosterStore.current.loadouts[0].relics.entries).toEqual([]);
+  expect(rosterStore.current.loadouts[1].relics.entries).toEqual([]);
 });
