@@ -58,7 +58,7 @@ export const TALENT_TREES = {
         threshold: 10,
         talents: [
           { id: 'arms_t3_savage_blows', name: 'Savage Blows', statKey: 'crit_mult', ranks: [8, 16, 24] },
-          { id: 'arms_t3_relentless_assault', name: 'Relentless Assault', statKey: 'speed', ranks: [3, 6, 9, 12, 15] },
+          { id: 'arms_t3_relentless_assault', name: 'Relentless Assault', statKey: 'attack_pct', ranks: [3, 6, 9, 12, 15] },
           { id: 'arms_t3_vampiric_strikes', name: 'Vampiric Strikes', statKey: 'lifesteal', ranks: [0.5, 1, 1.5]}
         ],
       },
