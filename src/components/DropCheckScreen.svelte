@@ -90,6 +90,12 @@
       display: flex;
       flex-direction: column;
     }
+    /* Altar first regardless of DOM order once stacked - the drop
+       inputs/verdicts are the primary task, the loadout columns are
+       reference material below them. */
+    .altar {
+      order: -1;
+    }
   }
   .loadout-col {
     display: flex;
@@ -138,7 +144,13 @@
     gap: 12px;
     margin-top: var(--space-4);
   }
-  @media (max-width: 640px) {
+  @media (max-width: 700px) {
+    .slot-chips {
+      flex-wrap: nowrap;
+      justify-content: flex-start;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
     .verdict-cards {
       grid-template-columns: 1fr;
     }
