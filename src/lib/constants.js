@@ -95,51 +95,29 @@ export const SWAP_ADDITIVE_KEYS = STAT_FIELDS.map((f) => f.key).filter((k) => !S
 export const RARITIES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Ancient', 'Divine', 'Eternal'];
 
 /**
- * Stat sources beyond gear (handoff §8). `scope: 'loadout'` means per-set
- * (enchant stones bind to Set 1/Set 2); 'character' means one shared across
- * both loadouts. `selection` tells the generic Calculated-totals sum
- * (totals.js) which entries count, without per-source special-casing:
- *   'all'    -> every entry contributes (Talents: many simultaneous bonuses)
- *   'single' -> only the entry matching sourceState.activeId contributes
- *   'tiered' -> only entries with equipped:true contribute, capped per tierCaps
- * No `selection` at all (Talents, Awakening, Transcendence, Relics) means the
- * source is special-cased in totals.js entirely, bypassing the generic
- * entries[]/activeId sum - see each source's own comment below for why.
- * Only pets/mounts/mountGlyphs/talents/awakening/transcendence/relics have
- * real UI; the rest (sigils) are scaffold only (empty entries, contributing
- * nothing) until a future pass builds them - see the Phase 1 plan's
- * "Deferred sources" section for what's known/unknown.
+ * Character-wide sources that still use the generic entries[]/selection sum
+ * (totals.js): 'single' -> only the entry matching sourceState.activeId
+ * contributes (Mounts - one ridden at a time); 'tiered' -> only entries with
+ * equipped:true contribute, capped per tierCaps (Glyphs - tier-capped
+ * sockets). Every other source (Talents, Awakening, Transcendence, Relics,
+ * Pets, Presets, Enchant Stones, Sigils) is explicitly modeled on
+ * Character/Preset (model.js) and hand-summed in totals.js - see each
+ * source's own comment there for why. Pets/Relics moved OFF this generic
+ * list in the Preset redesign: Pets are a shared collection a Preset points
+ * at (no single character-wide "active" pointer anymore), and Relics are
+ * leveled character-wide but equipped per-preset (up to
+ * PRESET_RELIC_CAP), not per-loadout.
  */
 export const SOURCE_DEFS = [
-  // scope: 'loadout' - Talents maps onto Dual Spec (Set A/B = Loadout 1/2), the
-  // same way gear/stones already do. Its per-loadout spec + rank allocation
-  // live on Loadout directly (model.js), not in Character.sources like the
-  // character-scoped sources below, and totals.js sums it alongside gear/
-  // stones rather than through the generic character-scoped loop.
-  { key: 'talents', label: 'Talents', scope: 'loadout' },
-  // scope: 'character' but no `selection` - Awakening is one path + a single
-  // point count shared by BOTH loadouts (not a collection of user-created
-  // entries the generic 'single' selection picks one of). Its path/points
-  // live on Character.awakening directly (model.js); static per-point
-  // content is in awakeningData.js, same reasoning as Talents' static tree.
-  { key: 'awakening', label: 'Awakening', scope: 'character' },
-  // scope: 'character', no `selection` - one shared unlocked-node set per
-  // character (like Awakening, not per-loadout like Talents/Relics), special-
-  // cased in totals.js. Static tree content (node positions/types/stats) is
-  // in transcendenceData.js; the player's unlocked positions live on
-  // Character.transcendence directly (model.js).
-  { key: 'transcendence', label: 'Transcendence', scope: 'character' },
-  { key: 'pets', label: 'Pets (Companions)', scope: 'character', selection: 'single' },
   { key: 'mounts', label: 'Mounts', scope: 'character', selection: 'single' },
-  { key: 'mountGlyphs', label: 'Mount Glyphs', scope: 'character', selection: 'tiered', tierCaps: { minor: 3, major: 2, mythic: 1 } },
-  { key: 'sigils', label: 'Sigils', scope: 'character', selection: 'tiered', tierCaps: { equipped: 3 } },
-  // scope: 'loadout' like Talents - equipped Relics are independent per Set
-  // A/B, not shared across both loadouts like Awakening. A relic's fixed
-  // stats/tiers/levels are static per-class content (relicsData.js); the
-  // player's owned/leveled/equipped state lives on Loadout.relics.
-  { key: 'relics', label: 'Relics', scope: 'loadout' },
-  { key: 'stones', label: 'Enchant Stones', scope: 'loadout' },
+  { key: 'glyphs', label: 'Mount Glyphs', scope: 'character', selection: 'tiered', tierCaps: { minor: 3, major: 2, mythic: 1 } },
 ];
+
+/** Max relics a single Preset may equip (character-wide levels, per-preset equip - see relicsData.js's RELIC_EQUIP_CAP, same numeric cap). */
+export const PRESET_RELIC_CAP = 4;
+
+/** Max Sigils a single Preset may equip. Scaffold only - no Sigil content/UI exists yet, same as Enchant Stones. */
+export const PRESET_SIGIL_CAP = 3;
 
 /**
  * Class/spec structure for Talents. Spec keys are lowercased for storage

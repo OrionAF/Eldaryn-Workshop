@@ -1,45 +1,48 @@
 /**
  * model.js - the typed data model + factories for the optimiser.
  *
- * Roster      = { characters: Character[], currentId, drop: DropState | null }
- * Character   = { id, name, class: 'Warrior'|'Sentinel'|null, loadouts: [Loadout, Loadout],
- *                 sources: SourceState, awakening: { path: 'shadow'|'radiant'|null, points: number } }
- * Loadout     = { name, profileTotals: OffensiveStats, manualTotals: bool,
- *                 gear: Record<Slot, OffensiveStats>,
- *                 stones: Record<Slot, OffensiveStats>,   // stones = per-set
- *                 spec: specKey|null, talentAllocation: Record<talentId, rank>,
- *                 relics: { entries: [{defId, level, equipped}] } }
- * SourceState = one entry per character-scoped, `selection`-bearing SOURCE_DEFS[].key, shape per `selection`:
- *   'all'/'tiered' -> { entries: [] }        (Mount Glyphs/Sigils)
- *   'single'       -> { entries: [], activeId: string|null }  (Transcendence, Pets, Mounts)
- * Talents is scope:'loadout' (Dual Spec = Loadout 1/2 = Set A/B) - its data lives on
- * Loadout.spec/talentAllocation. Tree CONTENT (tiers/talents/values) is static
- * code data in talentTreeData.js, not part of the persisted Roster - the same
- * spec's tree is identical for every player, so it isn't user-authored.
- * Awakening is scope:'character' but has no `selection` (bypasses SourceState
- * entirely) - one path + point count shared by both loadouts, lives on
- * Character.awakening directly. Static per-point content is in awakeningData.js.
- * Transcendence is also scope:'character' with no `selection` - one shared
- * unlocked-node set (an ORDERED array, not a bare Set: unlock order matters
- * for the displayed Ichor-spent total, see transcendence.js), lives on
- * Character.transcendence directly. Static per-class tree content (node
- * positions/types/stats) is in transcendenceData.js.
- * Relics is also scope:'loadout' like Talents (equip set is independent per
- * Set A/B, not shared) - its data lives on Loadout.relics. Static per-relic
- * content (tier/maxLevel/stat min-max) is in relicsData.js; a relic's LEVEL
- * (like its equip status) is per-loadout too - there's no separate
- * account-wide "ownership" tracked, matching Awakening's dropped currency.
- * DropState   = { slot, piece: OffensiveStats }  // persists across char switches
+ * Roster      = { characters: Character[], currentId }
+ * Character   = { id, name, class: 'Warrior'|'Sentinel'|null,
+ *                 loadouts: [Loadout, Loadout],           // gear only
+ *                 talentSets: [TalentSet, TalentSet],      // Set A / Set B
+ *                 pets: PetEntry[],                        // shared collection, no per-pet level
+ *                 petLevel: number,                        // ONE level for every pet (character-wide)
+ *                 relicLevels: Record<defId, level>,       // character-wide levels
+ *                 mounts: { entries, activeId },           // character-wide, one ridden at a time
+ *                 glyphs: { entries },                      // character-wide, tier-capped equip (see SOURCE_DEFS)
+ *                 awakening: { path, points },              // character-wide
+ *                 transcendence: { unlockedPositions },     // character-wide
+ *                 presets: Preset[],
+ *                 drop: DropState | null }                  // per-character (Preset redesign moved this off Roster)
+ * Loadout     = { name, gear: Record<Slot, OffensiveStats>, stones: Record<Slot, OffensiveStats> }
+ * TalentSet   = { spec: specKey|null, allocation: Record<talentId, rank> }
+ *   No `name` field - Set A/Set B are fixed labels derived from index (talentSetLabel), not
+ *   user-renamable. Tree CONTENT (tiers/talents/values) is static code data in
+ *   talentTreeData.js, not part of the persisted Roster.
+ * PetEntry    = { id, name, rarity, stats: OffensiveStats }  // no level - see Character.petLevel
+ * Preset      = { id, name, loadout: 0|1, talentSet: 0|1, petId: string|null,
+ *                 relicIds: string[] (max PRESET_RELIC_CAP),
+ *                 sigilIds: string[] (max PRESET_SIGIL_CAP, scaffold - no Sigil content/UI yet),
+ *                 manualTotals: boolean, manualStats: OffensiveStats }
+ *   A preset is the unit that ties one gear loadout + one talent set + a pet + up to 4
+ *   relics together, with its own totals (manual OR calculated - see totals.js's
+ *   computePresetTotals/resolveEffectiveTotals). Mounts, Glyphs, Awakening, and
+ *   Transcendence are NOT part of a preset - they're character-wide and shared by
+ *   every preset (model.js Character fields above), matching how Awakening/
+ *   Transcendence already worked pre-redesign.
+ * DropState   = { slot, piece: OffensiveStats }
  *
- * Phase 0: profileTotals are a manual input. Phase 1 adds `manualTotals` as a
- * live toggle (was hardcoded true) - see totals.js for the "Calculated" sum.
+ * Enchant Stones stay per-loadout (Loadout.stones) and Sigils are per-preset
+ * (Preset.sigilIds) - both remain scaffold-only (no real content/UI), same as before
+ * the redesign, just relocated to match where a future pass would build real UI for
+ * them (stones alongside gear, sigils alongside relics in the preset editor).
  */
 
 import { offensiveStats } from './dps.js';
-import { SLOTS, SOURCE_DEFS, CLASSES, SPECS_BY_CLASS } from './constants.js';
+import { SLOTS, SOURCE_DEFS, CLASSES, SPECS_BY_CLASS, RARITIES, PRESET_RELIC_CAP, PRESET_SIGIL_CAP } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { AWAKENING_PATHS, AWAKENING_TOTAL_POINTS } from './awakeningData.js';
-import { RELICS_BY_CLASS, RELIC_EQUIP_CAP } from './relicsData.js';
+import { RELICS_BY_CLASS } from './relicsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
 import { reachableFrom, effectiveUnlockedSet } from './transcendence.js';
 
@@ -61,33 +64,33 @@ function emptyGear() {
   return g;
 }
 
-/** The correctly-shaped empty state for one SOURCE_DEFS entry. */
+/** The correctly-shaped empty state for one SOURCE_DEFS entry (Mounts/Glyphs only - see constants.js). */
 function emptySourceState(def) {
   return def.selection === 'single' ? { entries: [], activeId: null } : { entries: [] };
 }
 
-/** Empty source state for every character-scoped, `selection`-bearing source (SOURCE_DEFS). */
-export function emptySources() {
-  const s = {};
-  for (const def of SOURCE_DEFS) {
-    if (def.scope === 'character' && def.selection) s[def.key] = emptySourceState(def);
-  }
-  return s;
+function findSourceDef(key) {
+  return SOURCE_DEFS.find((d) => d.key === key);
 }
 
-/** Empty Awakening state: no path chosen, no points invested. */
-function emptyAwakening() {
-  return { path: null, points: 0 };
+/** 'Set A' | 'Set B' - fixed, non-renamable label for a talent-set index. */
+export function talentSetLabel(index) {
+  return index === 1 ? 'Set B' : 'Set A';
 }
 
-/** Empty Transcendence state: no nodes unlocked. */
-function emptyTranscendence() {
-  return { unlockedPositions: [] };
+// --- Loadouts ---
+export function newLoadout(name) {
+  return { name, gear: emptyGear(), stones: emptyGear() };
 }
 
-// --- Pets ---
-export function newPetEntry({ name = 'New Pet', rarity = 'Common', level = 1, stats = {} } = {}) {
-  return { id: newId(), name, rarity, level, stats: emptyStats(stats) };
+// --- Talent Sets (Character.talentSets - moved off Loadout) ---
+function newTalentSet() {
+  return { spec: null, allocation: {} };
+}
+
+// --- Pets (shared collection; level lives on Character.petLevel, not here) ---
+export function newPetEntry({ name = 'New Pet', rarity = 'Common', stats = {} } = {}) {
+  return { id: newId(), name, rarity, stats: emptyStats(stats) };
 }
 
 // --- Mounts ---
@@ -100,16 +103,28 @@ export function newMountGlyphEntry({ tier = 'minor', statKey = 'attack_pct', val
   return { id: newId(), tier, statKey, value, equipped };
 }
 
-export function newLoadout(name) {
+/** Empty Awakening state: no path chosen, no points invested. */
+function emptyAwakening() {
+  return { path: null, points: 0 };
+}
+
+/** Empty Transcendence state: no nodes unlocked. */
+function emptyTranscendence() {
+  return { unlockedPositions: [] };
+}
+
+// --- Presets (the unit that ties a loadout + talent set + pet + relics together) ---
+export function newPreset(name, { loadout = 0, talentSet = 0, manualTotals = false } = {}) {
   return {
+    id: newId(),
     name,
-    profileTotals: emptyStats(),
-    manualTotals: true, // Phase 0: totals typed directly
-    gear: emptyGear(),
-    stones: emptyGear(), // enchant stones, per-set (handoff 8.8) - SCAFFOLD
-    spec: null, // Talents: Dual Spec - Loadout 1 = Set A, Loadout 2 = Set B
-    talentAllocation: {}, // { [talentId]: rankInvested }
-    relics: { entries: [] }, // { defId, level, equipped }[] - independent per loadout, like Talents
+    loadout,
+    talentSet,
+    petId: null,
+    relicIds: [],
+    sigilIds: [],
+    manualTotals,
+    manualStats: emptyStats(),
   };
 }
 
@@ -117,17 +132,28 @@ export function newCharacter(name = 'New Character') {
   return {
     id: newId(),
     name,
-    class: null, // 'Warrior' | 'Sentinel' | null - gates which specs the loadouts can use
+    class: null, // 'Warrior' | 'Sentinel' | null
     loadouts: [newLoadout('Loadout 1'), newLoadout('Loadout 2')],
-    sources: emptySources(),
+    talentSets: [newTalentSet(), newTalentSet()],
+    pets: [],
+    petLevel: 1,
+    relicLevels: {},
+    mounts: emptySourceState(findSourceDef('mounts')),
+    glyphs: emptySourceState(findSourceDef('glyphs')),
     awakening: emptyAwakening(),
     transcendence: emptyTranscendence(),
+    // A fresh character has nothing to calculate totals from yet - the seeded
+    // preset starts in Manual mode (matches today's onboarding, which starts
+    // Profile Stats in Manual mode too). A preset created later via "+ New
+    // Preset" starts in Calculated mode instead - see rosterStore.addPreset.
+    presets: [newPreset('Preset 1', { manualTotals: true })],
+    drop: null,
   };
 }
 
 export function newRoster() {
   const c = newCharacter('Character 1');
-  return { characters: [c], currentId: c.id, drop: null };
+  return { characters: [c], currentId: c.id };
 }
 
 export function getCurrent(roster) {
@@ -142,27 +168,195 @@ export function normaliseRoster(raw) {
   if (!raw || !Array.isArray(raw.characters) || raw.characters.length === 0) {
     return newRoster();
   }
-  const characters = raw.characters.map((c) => normaliseCharacter(c));
-  const currentId = characters.some((c) => c.id === raw.currentId)
-    ? raw.currentId
-    : characters[0].id;
-  const drop = normaliseDrop(raw.drop);
-  return { characters, currentId, drop };
+  const characters = raw.characters.map((c) =>
+    normaliseCharacter(isLegacyCharacter(c) ? migrateLegacyCharacter(c) : c)
+  );
+  const currentId = characters.some((c) => c.id === raw.currentId) ? raw.currentId : characters[0].id;
+  return { characters, currentId };
+}
+
+/**
+ * A pre-redesign save has `talentAllocation` directly on a loadout - the new
+ * shape never has that key (talent allocation moved to Character.talentSets).
+ * That's a reliable, cheap discriminator without needing a version number.
+ */
+function isLegacyCharacter(c) {
+  return Array.isArray(c?.loadouts) && c.loadouts.some((l) => l && 'talentAllocation' in l);
+}
+
+/**
+ * Converts a pre-redesign Character (two loadouts each carrying their own
+ * spec/talentAllocation/relics, Character.sources.{pets,mounts,mountGlyphs})
+ * into the new shape. Deliberately best-effort/loose - the result is run
+ * through normaliseCharacter() right after, which clamps/repairs anything
+ * this pass gets approximately right.
+ *
+ * Seeds exactly 2 presets, one per old loadout/talent-set index (Set A/B
+ * already *was* Loadout 1/2 pre-redesign, so this is a relocation, not a
+ * semantic change). Old per-loadout relic `equipped` entries become that
+ * preset's relicIds (already capped at 4 by the old RELIC_EQUIP_CAP); old
+ * per-loadout relic `level` values collapse into one character-wide level
+ * per defId (max across both loadouts - the least-surprising default, since
+ * the new model can't represent two different levels for the same relic).
+ * The old "active pet" (already character-wide/shared pre-redesign, just
+ * modeled as a single-select source) becomes both seeded presets' petId, and
+ * its `level` becomes the new character-wide petLevel. Old roster-level drop
+ * state is NOT migrated (Preset redesign moves Drop to per-character and
+ * starts it empty - an in-flight comparison isn't worth preserving across a
+ * one-time migration).
+ */
+function migrateLegacyCharacter(oldChar) {
+  const oldLoadouts = Array.isArray(oldChar?.loadouts) ? oldChar.loadouts : [];
+  const characterClass = CLASSES.includes(oldChar?.class) ? oldChar.class : null;
+
+  const loadouts = [0, 1].map((i) => ({
+    name: oldLoadouts[i]?.name || `Loadout ${i + 1}`,
+    gear: oldLoadouts[i]?.gear || {},
+    stones: oldLoadouts[i]?.stones || {},
+  }));
+
+  const talentSets = [0, 1].map((i) => ({
+    spec: oldLoadouts[i]?.spec ?? null,
+    allocation: oldLoadouts[i]?.talentAllocation || {},
+  }));
+
+  const relicLevels = {};
+  const presetRelicIds = [[], []];
+  oldLoadouts.forEach((loadout, i) => {
+    for (const entry of loadout?.relics?.entries || []) {
+      if (!entry?.defId) continue;
+      const level = Number(entry.level) || 1;
+      relicLevels[entry.defId] = Math.max(relicLevels[entry.defId] || 0, level);
+      if (entry.equipped) presetRelicIds[i].push(entry.defId);
+    }
+  });
+
+  const oldPetEntries = Array.isArray(oldChar?.sources?.pets?.entries) ? oldChar.sources.pets.entries : [];
+  const activePetId = oldChar?.sources?.pets?.activeId ?? null;
+  const activePet = oldPetEntries.find((p) => p?.id === activePetId);
+  const pets = oldPetEntries.map((p) => ({ id: p.id, name: p.name, rarity: p.rarity, stats: p.stats || {} }));
+  const petLevel = Number(activePet?.level) || 1;
+
+  const presets = [0, 1].map((i) => ({
+    id: `${oldChar.id || 'char'}-preset-${i + 1}`,
+    name: oldLoadouts[i]?.name || `Preset ${i + 1}`,
+    loadout: i,
+    talentSet: i,
+    petId: activePetId,
+    relicIds: presetRelicIds[i],
+    sigilIds: [],
+    manualTotals: oldLoadouts[i]?.manualTotals !== false,
+    manualStats: oldLoadouts[i]?.profileTotals || {},
+  }));
+
+  return {
+    id: oldChar.id,
+    name: oldChar.name,
+    class: characterClass,
+    loadouts,
+    talentSets,
+    pets,
+    petLevel,
+    relicLevels,
+    mounts: oldChar?.sources?.mounts || { entries: [], activeId: null },
+    glyphs: oldChar?.sources?.mountGlyphs || { entries: [] },
+    awakening: oldChar?.awakening || { path: null, points: 0 },
+    transcendence: oldChar?.transcendence || { unlockedPositions: [] },
+    presets,
+    drop: null,
+  };
 }
 
 function normaliseCharacter(c) {
   const base = newCharacter(c?.name || 'Character');
   if (c?.id) base.id = c.id;
   base.class = CLASSES.includes(c?.class) ? c.class : null;
+
   const loadouts = Array.isArray(c?.loadouts) ? c.loadouts : [];
   base.loadouts = [
-    normaliseLoadout(loadouts[0], 'Loadout 1', base.class),
-    normaliseLoadout(loadouts[1], 'Loadout 2', base.class),
+    normaliseLoadout(loadouts[0], 'Loadout 1'),
+    normaliseLoadout(loadouts[1], 'Loadout 2'),
   ];
-  base.sources = normaliseSources(c?.sources);
+
+  const talentSets = Array.isArray(c?.talentSets) ? c.talentSets : [];
+  base.talentSets = [
+    normaliseTalentSet(talentSets[0], base.class),
+    normaliseTalentSet(talentSets[1], base.class),
+  ];
+
+  base.pets = normalisePets(c?.pets);
+  base.petLevel = Math.max(1, Number(c?.petLevel) || 1);
+  base.relicLevels = normaliseRelicLevels(c?.relicLevels, base.class);
+
+  base.mounts = normaliseMounts(c?.mounts);
+  base.glyphs = normaliseGlyphs(c?.glyphs);
   base.awakening = normaliseAwakening(c?.awakening);
   base.transcendence = normaliseTranscendence(c?.transcendence, base.class);
+
+  const petIds = new Set(base.pets.map((p) => p.id));
+  const relicDefIds = new Set(Object.keys(base.relicLevels));
+  const rawPresets = Array.isArray(c?.presets) ? c.presets : [];
+  base.presets = rawPresets.length
+    ? rawPresets.map((p) => normalisePreset(p, petIds, relicDefIds))
+    : [newPreset('Preset 1', { manualTotals: true })];
+
+  base.drop = normaliseDrop(c?.drop);
   return base;
+}
+
+function normaliseLoadout(l, fallbackName) {
+  const base = newLoadout(l?.name || fallbackName);
+  for (const slot of SLOTS) {
+    base.gear[slot] = emptyStats(l?.gear?.[slot] || {});
+    base.stones[slot] = emptyStats(l?.stones?.[slot] || {});
+  }
+  return base;
+}
+
+function normaliseTalentSet(raw, characterClass) {
+  const validSpecKeys = (SPECS_BY_CLASS[characterClass] || []).map((s) => s.key);
+  const spec = validSpecKeys.includes(raw?.spec) ? raw.spec : null;
+  return { spec, allocation: normaliseTalentAllocation(raw?.allocation, spec) };
+}
+
+/** Drops malformed entries (missing id, dupes); defends stats shape like gear/stones do. */
+function normalisePets(raw) {
+  const seen = new Set();
+  const pets = [];
+  for (const p of Array.isArray(raw) ? raw : []) {
+    if (!p?.id || seen.has(p.id)) continue;
+    seen.add(p.id);
+    pets.push({
+      id: p.id,
+      name: p.name || 'Pet',
+      rarity: RARITIES.includes(p.rarity) ? p.rarity : 'Common',
+      stats: emptyStats(p.stats || {}),
+    });
+  }
+  return pets;
+}
+
+/** Drops levels for defIds that no longer exist for this class's (static) relics, clamps to [1, maxLevel]. */
+function normaliseRelicLevels(raw, characterClass) {
+  const defs = RELICS_BY_CLASS[characterClass] || [];
+  const defById = new Map(defs.map((d) => [d.id, d]));
+  const levels = {};
+  for (const [defId, level] of Object.entries(raw && typeof raw === 'object' ? raw : {})) {
+    const def = defById.get(defId);
+    if (!def) continue;
+    levels[defId] = Math.max(1, Math.min(Number(level) || 1, def.maxLevel));
+  }
+  return levels;
+}
+
+function normaliseMounts(raw) {
+  const entries = Array.isArray(raw?.entries) ? raw.entries : [];
+  const activeId = entries.some((e) => e?.id === raw?.activeId) ? raw.activeId : null;
+  return { entries, activeId };
+}
+
+function normaliseGlyphs(raw) {
+  return { entries: Array.isArray(raw?.entries) ? raw.entries : [] };
 }
 
 /** Validates path against the static AWAKENING_PATHS, clamps points to [0, cap], forces points to 0 with no path. */
@@ -181,9 +375,6 @@ function normaliseAwakening(raw) {
  * from the tree's start position via the remaining unlocked set - the same
  * cascade rule applied live when a node is removed through the UI, reapplied
  * here in case a class change or manual import left an orphaned position.
- * The start position has no special exemption here - it's stored like any
- * other unlocked node (see transcendence.js: it has no adjacency
- * prerequisite, but it's still something the player had to unlock).
  */
 function normaliseTranscendence(raw, characterClass) {
   const tree = characterClass ? TRANSCENDENCE_TREES[characterClass] : null;
@@ -202,72 +393,25 @@ function normaliseTranscendence(raw, characterClass) {
 }
 
 /**
- * Deep-normalise source state per SOURCE_DEFS (not a shallow spread): a raw
- * import/reload might predate a source existing at all (emptySources()
- * fills it in), predate `activeId` on a 'single' source (Phase 0's pets/
- * mounts scaffold had no activeId), or carry a malformed entries array.
+ * Preset normalisation defends against dangling references left by deleting
+ * a pet/relic out from under a preset that used it (petIds/relicDefIds are
+ * this character's already-normalised pet/relic-level sets) - a stale
+ * petId/relicId just gets dropped rather than crashing or being kept as a
+ * ghost reference.
  */
-function normaliseSources(raw) {
-  const s = {};
-  for (const def of SOURCE_DEFS) {
-    if (def.scope !== 'character' || !def.selection) continue;
-    const empty = emptySourceState(def);
-    const rawState = raw?.[def.key];
-    let entries = Array.isArray(rawState?.entries) ? rawState.entries : [];
-    if (def.key === 'pets') {
-      // Pets are the only source with an embedded OffensiveStats sub-object
-      // this pass - defend against a malformed import the way gear/stones already do.
-      entries = entries.map((e) => ({ ...e, stats: emptyStats(e?.stats || {}) }));
-    }
-    if (def.selection === 'single') {
-      const activeId = entries.some((e) => e?.id === rawState?.activeId) ? rawState.activeId : null;
-      s[def.key] = { entries, activeId };
-    } else {
-      s[def.key] = { ...empty, entries };
-    }
-  }
-  return s;
-}
-
-function normaliseLoadout(l, fallbackName, characterClass) {
-  const base = newLoadout(l?.name || fallbackName);
-  base.profileTotals = emptyStats(l?.profileTotals || {});
-  base.manualTotals = l?.manualTotals !== false;
-  for (const slot of SLOTS) {
-    base.gear[slot] = emptyStats(l?.gear?.[slot] || {});
-    base.stones[slot] = emptyStats(l?.stones?.[slot] || {});
-  }
-  const validSpecKeys = (SPECS_BY_CLASS[characterClass] || []).map((s) => s.key);
-  base.spec = validSpecKeys.includes(l?.spec) ? l.spec : null;
-  base.talentAllocation = normaliseTalentAllocation(l?.talentAllocation, base.spec);
-  base.relics = normaliseRelics(l?.relics, characterClass);
+function normalisePreset(raw, petIds, relicDefIds) {
+  const base = newPreset(raw?.name || 'Preset');
+  if (raw?.id) base.id = raw.id;
+  base.loadout = raw?.loadout === 1 ? 1 : 0;
+  base.talentSet = raw?.talentSet === 1 ? 1 : 0;
+  base.petId = petIds.has(raw?.petId) ? raw.petId : null;
+  const relicIds = Array.isArray(raw?.relicIds) ? raw.relicIds.filter((id) => relicDefIds.has(id)) : [];
+  base.relicIds = [...new Set(relicIds)].slice(0, PRESET_RELIC_CAP);
+  const sigilIds = Array.isArray(raw?.sigilIds) ? raw.sigilIds : [];
+  base.sigilIds = [...new Set(sigilIds)].slice(0, PRESET_SIGIL_CAP);
+  base.manualTotals = raw?.manualTotals !== false;
+  base.manualStats = emptyStats(raw?.manualStats || {});
   return base;
-}
-
-/**
- * Drops entries whose defId no longer exists for this class's (static)
- * relics, de-dupes repeated defIds, clamps level to [1, maxLevel], and caps
- * the equipped count at RELIC_EQUIP_CAP (unmarking any excess rather than
- * dropping the entry - an over-cap import still keeps its level/ownership).
- */
-function normaliseRelics(raw, characterClass) {
-  const defs = RELICS_BY_CLASS[characterClass] || [];
-  const defById = new Map(defs.map((d) => [d.id, d]));
-  const rawEntries = Array.isArray(raw?.entries) ? raw.entries : [];
-  const seen = new Set();
-  const entries = [];
-  let equippedCount = 0;
-  for (const e of rawEntries) {
-    const def = defById.get(e?.defId);
-    if (!def || seen.has(def.id)) continue;
-    seen.add(def.id);
-    const level = Math.max(1, Math.min(Number(e?.level) || 1, def.maxLevel));
-    let equipped = !!e?.equipped;
-    if (equipped && equippedCount >= RELIC_EQUIP_CAP) equipped = false;
-    if (equipped) equippedCount += 1;
-    entries.push({ defId: def.id, level, equipped });
-  }
-  return { entries };
 }
 
 /** Drops allocations pointing at talents/ranks that no longer exist in the (static) tree. */
