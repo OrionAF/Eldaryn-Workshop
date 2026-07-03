@@ -82,9 +82,10 @@
           <span class="glyph">{verdictGlyph(result.verdict)}</span>
           <span class="preset-name">{preset.name}</span>
           <span class="deltas">
-            DPS {formatFlat(result.current_dps)} → {formatFlat(result.new_dps)} ({pct(result.pct_change)}) · HPS ({pct(
-              result.hps_pct_change
-            )})
+            DPS {formatFlat(result.current_dps)} → {formatFlat(result.new_dps)}
+            <span class="pct" class:up={result.verdict === 'upgrade'} class:down={result.verdict === 'downgrade'}
+              >({pct(result.pct_change)}) · HPS ({pct(result.hps_pct_change)})</span
+            >
           </span>
         </li>
       {/each}
@@ -184,6 +185,15 @@
     font-size: 11px;
     color: var(--color-muted);
     white-space: nowrap;
+  }
+  .pct {
+    font-weight: 600;
+  }
+  .pct.up {
+    color: var(--color-upgrade);
+  }
+  .pct.down {
+    color: var(--color-downgrade);
   }
   @media (max-width: 1500px) {
     .deltas {
