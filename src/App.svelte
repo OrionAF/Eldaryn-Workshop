@@ -123,7 +123,7 @@
     border-radius: 50%;
     border: 2px solid var(--color-gold);
     flex-shrink: 0;
-    background: repeating-linear-gradient(45deg, var(--color-inset) 0 4px, var(--color-panel) 4px 8px);
+    background: repeating-linear-gradient(45deg, var(--color-border-hairline), var(--color-border-hairline) 4px, #1a1733 4px, #1a1733  8px);
   }
   .banner-text {
     flex: 1;
