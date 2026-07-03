@@ -18,10 +18,10 @@
   import { STAT_FIELDS } from '../lib/constants.js';
   import { TALENT_TREES } from '../lib/talentTreeData.js';
 
-  let { specKey, loadoutIndex } = $props();
+  let { specKey, talentSetIndex } = $props();
 
   const tree = $derived(TALENT_TREES[specKey]);
-  const allocation = $derived(rosterStore.current.loadouts[loadoutIndex].talentAllocation);
+  const allocation = $derived(rosterStore.current.talentSets[talentSetIndex].allocation);
 
   function pointsSpentInTier(tier) {
     return tier.talents.reduce((sum, t) => sum + (allocation[t.id] || 0), 0);
@@ -53,7 +53,7 @@
   }
 
   function changeRank(talent, delta) {
-    rosterStore.setTalentRank(loadoutIndex, talent.id, rankOf(talent) + delta);
+    rosterStore.setTalentSetRank(talentSetIndex, talent.id, rankOf(talent) + delta);
   }
 </script>
 
@@ -116,22 +116,23 @@
   .tier-badge {
     font-size: 0.75rem;
     padding: 0.1rem 0.5rem;
-    border: 1px solid var(--color-border, #444);
-    border-radius: var(--radius, 4px);
-    color: var(--color-muted, #999);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-chip);
+    color: var(--color-muted);
   }
   .tier-badge.unlocked {
-    border-color: var(--color-accent, #7aa2f7);
-    color: var(--color-accent, #7aa2f7);
+    border-color: var(--color-gold);
+    color: var(--color-gold-light);
   }
   .talent-row {
     display: flex;
     align-items: center;
-    gap: var(--space-3, 0.75rem);
-    padding: var(--space-2, 0.4rem);
-    border: 1px solid var(--color-border, #444);
-    border-radius: var(--radius, 4px);
-    margin-bottom: var(--space-1, 0.25rem);
+    gap: var(--space-3);
+    padding: var(--space-2);
+    background: var(--color-inset);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-field);
+    margin-bottom: var(--space-1);
     flex-wrap: wrap;
   }
   .talent-row.locked {
@@ -147,29 +148,29 @@
     font-weight: 600;
   }
   .talent-rank-badge {
-    font-family: var(--font-data, monospace);
-    color: var(--color-muted, #999);
+    font-family: var(--font-data);
+    color: var(--color-muted);
   }
   .rank-controls {
     display: flex;
-    gap: var(--space-1, 0.25rem);
+    gap: var(--space-1);
   }
   .rank-controls button {
-    width: 1.75rem;
-    padding: 0.1rem 0;
+    width: 26px;
+    padding: 2px 0;
   }
   .talent-value {
     min-width: 12rem;
     text-align: right;
-    color: var(--color-muted, #999);
+    color: var(--color-muted);
     font-size: 0.85rem;
   }
   .talent-value strong {
-    color: var(--color-accent, #7aa2f7);
+    color: var(--color-gold-light);
   }
   .stat-name-label {
     font-size: 0.75rem;
     font-weight: normal;
-    color: var(--color-muted, #999);
+    color: var(--color-muted);
   }
 </style>
