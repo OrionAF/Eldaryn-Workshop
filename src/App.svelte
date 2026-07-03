@@ -61,7 +61,7 @@
         click the ✎ next to the character, and pick a class.
       </p>
     {:else if activeScreen === 'presets'}
-      <PresetsScreen {setStatus} />
+      <PresetsScreen {setStatus} onNavigate={selectScreen} />
     {:else if activeScreen === 'drop'}
       <DropCheckScreen {setStatus} />
     {:else if activeScreen === 'gear'}
