@@ -96,7 +96,7 @@
     border-bottom: none;
   }
   .stats-fields label:hover {
-    background: var(--color-surface, rgba(255, 255, 255, 0.04));
+    background: var(--color-field);
   }
   .stats-fields label.highlight .field-value,
   .stats-fields label.highlight input {

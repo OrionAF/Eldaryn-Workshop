@@ -52,21 +52,21 @@
   }
   .slot {
     position: relative;
-    padding: var(--space-2, 0.5rem) var(--space-1, 0.25rem);
-    border: 1px solid var(--color-border, #444);
-    background: var(--color-surface, none);
+    padding: var(--space-2) var(--space-1);
+    border: 1px solid var(--color-border);
+    background: var(--color-field);
     cursor: pointer;
     font-size: 0.75rem;
     color: inherit;
-    border-radius: var(--radius, 4px);
+    border-radius: var(--radius-field);
   }
   .slot.filled {
-    background: var(--color-surface-raised, rgba(122, 162, 247, 0.1));
+    background: var(--color-inset);
   }
-  /* Signature: the selected slot "sockets" - an ember dot, like a gem set
+  /* Signature: the selected slot "sockets" - a gold dot, like a gem set
      into the gear, rather than just a heavier border. */
   .slot.selected {
-    border-color: var(--color-accent, #7aa2f7);
+    border-color: var(--color-gold);
   }
   .slot.selected::after {
     content: '';
@@ -76,6 +76,6 @@
     width: 0.4rem;
     height: 0.4rem;
     border-radius: 50%;
-    background: var(--color-accent, #7aa2f7);
+    background: var(--color-gold);
   }
 </style>
