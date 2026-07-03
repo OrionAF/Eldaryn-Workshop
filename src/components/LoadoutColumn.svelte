@@ -17,6 +17,11 @@
     return Object.values(piece).some((v) => v !== 0);
   }
 
+  function rowState(slot) {
+    if (selectedSlot === slot) return 'selected';
+    return hasAnyStat(loadout.gear[slot]) ? 'filled' : 'empty';
+  }
+
   /** "12.664 +6.2% ATK" (both), "12.664 ATK" (flat only), "+6.2% ATK" (pct only) - never a leading "0" when the flat part is unset. */
   function statBit(flat, pct, unit) {
     if (!flat && !pct) return null;
@@ -36,17 +41,15 @@
 </script>
 
 <div class="loadout-panel">
-  <h3 class:primary={loadoutIndex === 0}>{loadout.name}</h3>
-  {#if usedBy.length}
-    <p class="used-by">used by {usedBy.join(', ')}</p>
-  {:else}
-    <p class="used-by">No presets use this loadout yet.</p>
-  {/if}
+  <div class="loadout-title-row">
+    <h3 class:primary={loadoutIndex === 0}>{loadout.name}</h3>
+    <span class="used-by">{usedBy.length ? `used by ${usedBy.join(', ')}` : 'No presets use this loadout yet.'}</span>
+  </div>
   <div class="section-label">CORE STATS PER SLOT</div>
   <ul class="slot-rows">
     {#each SLOTS as slot (slot)}
       <li>
-        <button type="button" class="slot-row" class:selected={selectedSlot === slot} onclick={() => onSelectSlot(slot)}>
+        <button type="button" class="slot-row {rowState(slot)}" class:selected={selectedSlot === slot} onclick={() => onSelectSlot(slot)}>
           <span class="slot-label">{slot}</span>
           <span class="slot-summary">{coreSummary(loadout.gear[slot])}</span>
         </button>
@@ -72,30 +75,47 @@
 </div>
 
 <style>
-  .loadout-panel,
+  .loadout-panel {
+    background: var(--color-panel);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-panel);
+    padding: 14px 16px;
+  }
   .bonus-panel {
     background: var(--color-inset);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-panel);
-    padding: 12px 14px;
+    padding: 12px 16px;
+  }
+  .loadout-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
   }
   .loadout-panel h3 {
-    margin: 0 0 2px;
+    margin: 0;
     font-family: var(--font-heading);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
     color: var(--color-muted);
   }
   .loadout-panel h3.primary {
     color: var(--nav-gear);
   }
   .used-by {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--color-muted);
-    margin: 0 0 var(--space-3);
+    white-space: nowrap;
+    text-align: right;
   }
   .section-label {
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.14em;
     color: var(--color-dim);
     margin-bottom: 6px;
   }
@@ -112,25 +132,37 @@
     display: flex;
     justify-content: space-between;
     gap: var(--space-2);
-    background: var(--color-field);
+    background: none;
     border: 1px solid transparent;
     border-radius: var(--radius-field);
     padding: 6px 8px;
     text-align: left;
+  }
+  .slot-row.filled {
+    background: var(--color-field);
   }
   .slot-row.selected {
     border-color: var(--color-gold);
     background: var(--color-gold-tint);
   }
   .slot-label {
-    font-size: 11px;
+    font-size: 11.5px;
+    font-weight: 400;
+  }
+  .slot-row.selected .slot-label {
     font-weight: 600;
   }
   .slot-summary {
     font-family: var(--font-data);
     font-variant-numeric: tabular-nums;
     font-size: 10.5px;
+    color: var(--color-dim);
+  }
+  .slot-row.filled .slot-summary {
     color: var(--color-muted);
+  }
+  .slot-row.selected .slot-summary {
+    color: var(--color-gold-light);
   }
   .bonus-list {
     list-style: none;

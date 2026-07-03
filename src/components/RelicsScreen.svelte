@@ -39,7 +39,7 @@
 
   {#each RELIC_TIERS as tier (tier)}
     <div class="tier-section">
-      <h3>{RELIC_TIER_LABELS[tier]}</h3>
+      <h3 class="subheading">{RELIC_TIER_LABELS[tier]}</h3>
       {#each relicDefs.filter((d) => d.tier === tier) as def (def.id)}
         {@const level = levelOf(def.id)}
         {@const used = usedBy(def.id)}
@@ -91,10 +91,10 @@
     align-items: center;
     flex-wrap: wrap;
     gap: var(--space-3);
-    padding: var(--space-2);
+    padding: 8px 10px;
     background: var(--color-inset);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-field);
+    border-radius: 7px;
     margin-bottom: var(--space-1);
   }
   .relic-title {
@@ -105,34 +105,31 @@
     min-width: 8rem;
   }
   .relic-name {
+    font-size: 13px;
     font-weight: 600;
   }
   .relic-level-badge {
     font-family: var(--font-data);
     color: var(--color-muted);
-    font-size: 0.8rem;
+    font-size: 11px;
   }
   .rank-controls {
     display: flex;
     gap: var(--space-1);
   }
-  .rank-controls button {
-    width: 26px;
-    padding: 2px 0;
-  }
   .relic-stats {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    min-width: 10rem;
+    min-width: 180px;
     text-align: right;
     color: var(--tier-gold);
-    font-size: 0.85rem;
+    font-size: 11.5px;
   }
   .used-by {
-    font-size: 11px;
-    color: var(--color-dim);
-    min-width: 8rem;
+    font-size: 10.5px;
+    color: var(--color-muted);
+    min-width: 130px;
     text-align: right;
   }
 </style>

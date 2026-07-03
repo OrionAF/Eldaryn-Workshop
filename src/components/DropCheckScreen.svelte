@@ -101,13 +101,15 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+    min-width: 0;
   }
   .altar {
     background: var(--color-panel);
     border: 1px solid var(--color-gold);
     box-shadow: var(--color-gold-glow-strong);
     border-radius: var(--radius-panel);
-    padding: 18px;
+    padding: 20px 22px;
+    min-width: 0;
   }
   .altar-header {
     display: flex;
@@ -116,19 +118,25 @@
   }
   .altar-header h2 {
     font-size: 16px;
+    letter-spacing: 0.16em;
     color: var(--color-gold-light);
     margin: 0;
     white-space: nowrap;
   }
+  .altar-header .rule:first-child {
+    background: linear-gradient(90deg, transparent, var(--color-gold));
+  }
+  .altar-header .rule:last-child {
+    background: linear-gradient(270deg, transparent, var(--color-gold));
+  }
   .rule {
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
   }
   .subline {
     text-align: center;
     color: var(--color-muted);
-    font-size: 11px;
+    font-size: 11.5px;
     margin: 6px 0 var(--space-4);
   }
   @media (min-width: 900px) {

@@ -47,21 +47,22 @@
       'weapon chest     offhand'
       'ring   leggings  trinket'
       '.      boots     .';
-    gap: var(--space-2, 0.5rem);
+    gap: 8px;
     max-width: 16rem;
   }
   .slot {
     position: relative;
-    padding: var(--space-2) var(--space-1);
+    padding: 10px 4px;
     border: 1px solid var(--color-border);
     background: var(--color-inset);
     cursor: pointer;
-    font-size: 0.75rem;
-    color: inherit;
-    border-radius: var(--radius-field);
+    font-size: 11px;
+    color: var(--color-dim);
+    border-radius: 7px;
   }
   .slot.filled {
     background: var(--color-field);
+    color: var(--color-soft);
   }
   /* Signature: the selected slot "sockets" - a gold dot, like a gem set
      into the gear, rather than just a heavier border. */

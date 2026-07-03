@@ -46,7 +46,7 @@
     <p class="hint">a preset picks which pet contributes · all pets level together</p>
   </div>
   <label class="pet-level">
-    PET LEVEL
+    <span class="pet-level-label">PET LEVEL</span>
     <input
       type="number"
       min="1"
@@ -61,7 +61,7 @@
   <select aria-label="Rarity" bind:value={newRarity}>
     {#each RARITIES as r (r)}<option value={r}>{r}</option>{/each}
   </select>
-  <button type="button" onclick={addPet}>Add Pet</button>
+  <button type="button" class="btn-gold" onclick={addPet}>Add Pet</button>
 </div>
 
 {#if character.pets.length === 0}
@@ -82,10 +82,10 @@
         </select>
         <span class="summary">{petSummary(pet)}</span>
         <span class="used-by">{used.length ? `used by ${used.join(', ')}` : 'unused'}</span>
-        <button type="button" onclick={() => (selectedPetId = pet.id === selectedPetId ? null : pet.id)}>
+        <button type="button" class="btn-ghost" onclick={() => (selectedPetId = pet.id === selectedPetId ? null : pet.id)}>
           {selectedPetId === pet.id ? 'Hide stats' : 'Edit stats'}
         </button>
-        <ConfirmButton label="Remove" confirmLabel="Confirm remove" prompt={`Remove "${pet.name}"?`} onConfirm={() => removePet(pet.id)} />
+        <ConfirmButton class="btn-danger" label="Remove" confirmLabel="Confirm remove" prompt={`Remove "${pet.name}"?`} onConfirm={() => removePet(pet.id)} />
       </li>
     {/each}
   </ul>
@@ -93,7 +93,7 @@
 
 {#if selectedPet}
   <div class="pet-editor">
-    <h3>{selectedPet.name} - stat contribution</h3>
+    <p class="micro-label">{selectedPet.name.toUpperCase()} — STAT CONTRIBUTION</p>
     <StatsFields values={selectedPet.stats} {fields} onChange={(key, value) => rosterStore.updatePetStat(selectedPet.id, key, value)} />
   </div>
 {/if}
@@ -116,15 +116,20 @@
   }
   .pet-level {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    align-items: center;
+    gap: 7px;
+  }
+  .pet-level-label {
     font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--color-muted);
     font-weight: 700;
-    letter-spacing: 0.06em;
-    color: var(--color-dim);
   }
   .pet-level input {
-    width: 5rem;
+    width: 64px;
+    text-align: right;
+    font-family: var(--font-data);
+    font-size: 12.5px;
   }
   .add-form {
     display: flex;
@@ -145,10 +150,10 @@
     align-items: center;
     flex-wrap: wrap;
     gap: var(--space-2);
-    padding: var(--space-2);
+    padding: 8px 10px;
     background: var(--color-inset);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-field);
+    border-radius: 7px;
   }
   .entry-list li.selected {
     border-color: var(--color-gold);
@@ -160,29 +165,33 @@
   .summary {
     font-family: var(--font-data);
     font-variant-numeric: tabular-nums;
-    font-size: 11px;
+    font-size: 10.5px;
     color: var(--color-muted);
   }
   .used-by {
-    font-size: 11px;
-    color: var(--color-dim);
+    font-family: var(--font-data);
+    font-size: 10.5px;
+    color: var(--color-muted);
+    min-width: 110px;
     white-space: nowrap;
   }
   .empty-hint {
     color: var(--color-muted);
   }
   .pet-editor {
-    border-top: 1px solid var(--color-border-hairline);
-    padding-top: var(--space-4);
+    background: var(--color-panel);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 16px 18px;
   }
-  .pet-editor :global(.stats-fields) {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 1rem;
+  .pet-editor .micro-label {
+    margin: 0 0 10px;
   }
-  .pet-editor :global(.stats-fields label) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.15rem;
+  @media (min-width: 900px) {
+    .pet-editor :global(.stats-fields) {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px 26px;
+    }
   }
 </style>

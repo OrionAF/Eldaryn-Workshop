@@ -39,7 +39,7 @@
   </div>
 
   <div class="field-col">
-    <h3>{loadout.name} — {selectedSlot}</h3>
+    <p class="micro-label">{loadout.name} — {selectedSlot}</p>
     <StatsFields
       values={loadout.gear[selectedSlot]}
       {fields}
@@ -80,10 +80,23 @@
   }
   .used-by {
     font-size: 11px;
-    color: var(--color-muted);
+    color: var(--color-dim);
     margin-top: var(--space-3);
   }
-  .field-col h3 {
-    margin-top: 0;
+  .field-col {
+    background: var(--color-panel);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .field-col .micro-label {
+    margin: 0 0 10px;
+  }
+  @media (min-width: 900px) {
+    .field-col :global(.stats-fields) {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px 26px;
+    }
   }
 </style>

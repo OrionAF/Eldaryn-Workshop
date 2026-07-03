@@ -61,7 +61,7 @@
   {@const unlocked = isUnlocked(tierIndex)}
   <div class="tier-section">
     <div class="tier-header">
-      <span class="tier-title">Tier {tierIndex + 1}</span>
+      <span class="tier-title subheading">Tier {tierIndex + 1}</span>
       {#if tierIndex > 0}
         <span class="tier-badge" class:unlocked>
           {unlocked ? 'Unlocked' : `Locked - needs ${pointsRemainingToUnlock(tierIndex)} more pts in earlier tiers`}
@@ -88,11 +88,11 @@
         </div>
         <span class="talent-value">
           {#if rank > 0}
-            <strong>+{talent.ranks[rank - 1]}% CURRENT</strong>
+            <strong>+{talent.ranks[rank - 1]}% NOW</strong>
           {/if}
           {#if rank < maxRank}
             {#if rank > 0}&middot;{/if}
-            NEXT: +{talent.ranks[rank]}%
+            NEXT +{talent.ranks[rank]}%
           {/if}
         </span>
       </div>
@@ -110,15 +110,12 @@
     gap: var(--space-2, 0.5rem);
     margin-bottom: var(--space-2, 0.5rem);
   }
-  .tier-title {
-    font-weight: 600;
-  }
   .tier-badge {
-    font-size: 0.75rem;
-    padding: 0.1rem 0.5rem;
+    font-size: 10px;
+    padding: 1px 8px;
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-chip);
-    color: var(--color-muted);
+    border-radius: var(--radius-pill);
+    color: var(--color-dim, var(--color-muted));
   }
   .tier-badge.unlocked {
     border-color: var(--color-gold);
@@ -128,10 +125,10 @@
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    padding: var(--space-2);
+    padding: 7px 10px;
     background: var(--color-inset);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-field);
+    border-radius: 7px;
     margin-bottom: var(--space-1);
     flex-wrap: wrap;
   }
@@ -145,32 +142,31 @@
     gap: 0.35rem;
   }
   .talent-name {
+    font-size: 13px;
     font-weight: 600;
   }
   .talent-rank-badge {
     font-family: var(--font-data);
+    font-size: 12px;
     color: var(--color-muted);
   }
   .rank-controls {
     display: flex;
     gap: var(--space-1);
   }
-  .rank-controls button {
-    width: 26px;
-    padding: 2px 0;
-  }
   .talent-value {
-    min-width: 12rem;
+    font-family: var(--font-data);
+    font-size: 11.5px;
+    min-width: 180px;
     text-align: right;
     color: var(--color-muted);
-    font-size: 0.85rem;
   }
   .talent-value strong {
     color: var(--color-gold-light);
   }
   .stat-name-label {
-    font-size: 0.75rem;
+    font-size: 11px;
     font-weight: normal;
-    color: var(--color-muted);
+    color: var(--color-dim);
   }
 </style>

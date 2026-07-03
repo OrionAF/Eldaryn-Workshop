@@ -46,8 +46,8 @@ it('rank 0 shows only NEXT; clicking + raises the rank and shows CURRENT (and NE
 
   const row = [...target.querySelectorAll('.talent-row')].find((r) => r.textContent.includes('Sharp Aim'));
   expect(row.querySelector('.talent-rank-badge').textContent).toBe('0/3');
-  expect(row.querySelector('.talent-value').textContent).toContain('NEXT: +2%');
-  expect(row.querySelector('.talent-value').textContent).not.toContain('CURRENT');
+  expect(row.querySelector('.talent-value').textContent).toContain('NEXT +2%');
+  expect(row.querySelector('.talent-value').textContent).not.toContain('NOW');
 
   row.querySelectorAll('.rank-controls button')[1].click(); // "+"
   flushSync();
@@ -55,8 +55,8 @@ it('rank 0 shows only NEXT; clicking + raises the rank and shows CURRENT (and NE
   expect(rosterStore.current.talentSets[0].allocation[sharpAimId]).toBe(1);
   const rowAfter = [...target.querySelectorAll('.talent-row')].find((r) => r.textContent.includes('Sharp Aim'));
   expect(rowAfter.querySelector('.talent-rank-badge').textContent).toBe('1/3');
-  expect(rowAfter.querySelector('.talent-value').textContent).toContain('+2% CURRENT');
-  expect(rowAfter.querySelector('.talent-value').textContent).toContain('NEXT: +4%');
+  expect(rowAfter.querySelector('.talent-value').textContent).toContain('+2% NOW');
+  expect(rowAfter.querySelector('.talent-value').textContent).toContain('NEXT +4%');
   cleanup();
 });
 
@@ -74,7 +74,7 @@ it('at max rank, only CURRENT shows and + is disabled', () => {
 
   const row = [...target.querySelectorAll('.talent-row')].find((r) => r.textContent.includes('Sharp Aim'));
   expect(row.querySelector('.talent-rank-badge').textContent).toBe('3/3');
-  expect(row.querySelector('.talent-value').textContent).toContain('+6% CURRENT');
+  expect(row.querySelector('.talent-value').textContent).toContain('+6% NOW');
   expect(row.querySelector('.talent-value').textContent).not.toContain('NEXT');
   expect(plusButton().disabled).toBe(true);
   cleanup();

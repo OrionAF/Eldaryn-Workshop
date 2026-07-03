@@ -13,6 +13,7 @@
   class="chip"
   class:selected
   class:small={size === 'small'}
+  class:compact={size === 'compact'}
   style={selected && color ? `--chip-color: ${color}` : ''}
   {disabled}
   onclick={onClick}
@@ -23,11 +24,11 @@
 <style>
   .chip {
     border-radius: var(--radius-chip);
-    border: 1px solid var(--color-border-strong);
-    background: var(--color-field);
-    color: var(--color-muted);
-    font-size: 0.8rem;
-    padding: 0.35rem 0.7rem;
+    border: 1px solid #3a3468;
+    background: none;
+    color: #8d86b8;
+    font-size: 12px;
+    padding: 6px 13px;
     white-space: nowrap;
   }
   .chip.small {
@@ -35,10 +36,23 @@
     font-size: 10.5px;
     padding: 3px 9px;
   }
+  .chip.compact {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 7px;
+    border: 1px solid var(--color-border);
+    color: var(--color-dim);
+  }
   .chip.selected {
+    font-weight: 600;
     border-color: var(--chip-color, var(--color-gold));
     color: var(--chip-color, var(--color-gold-light));
     background: var(--chip-color-tint, var(--color-gold-tint));
+  }
+  .chip.compact.selected {
+    border-color: var(--chip-color, var(--color-gold));
+    background: rgba(217, 169, 75, 0.08);
+    color: var(--chip-color, var(--color-gold));
   }
   .chip:hover:not(:disabled) {
     border-color: var(--chip-color, var(--color-gold));

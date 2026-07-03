@@ -64,7 +64,7 @@
     <select aria-label="Rarity" bind:value={newMountRarity}>
       {#each RARITIES as r (r)}<option value={r}>{r}</option>{/each}
     </select>
-    <button type="button" onclick={addMount}>Add Mount</button>
+    <button type="button" class="btn-gold" onclick={addMount}>Add Mount</button>
   </div>
 
   {#if mounts.entries.length === 0}
@@ -82,21 +82,21 @@
             {#each RARITIES as r (r)}<option value={r}>{r}</option>{/each}
           </select>
           <label class="base-stat">
-            Base HP%
+            HP%
             <input type="text" value={formatPct(mount.baseHpPct)} onblur={(e) => rosterStore.updateMount(mount.id, 'baseHpPct', parsePct(e.target.value))} />
           </label>
           <label class="base-stat">
-            Base ATK%
+            ATK%
             <input type="text" value={formatPct(mount.baseAtkPct)} onblur={(e) => rosterStore.updateMount(mount.id, 'baseAtkPct', parsePct(e.target.value))} />
           </label>
-          <ConfirmButton label="Remove" confirmLabel="Confirm remove" prompt={`Remove "${mount.name}"?`} onConfirm={() => rosterStore.removeMount(mount.id)} />
+          <ConfirmButton class="btn-danger" label="Remove" confirmLabel="Confirm remove" prompt={`Remove "${mount.name}"?`} onConfirm={() => rosterStore.removeMount(mount.id)} />
         </li>
       {/each}
     </ul>
   {/if}
 </section>
 
-<h3 class="glyphs-heading">Glyph Inventory</h3>
+<h3 class="glyphs-heading subheading">Glyph Inventory</h3>
 <section class="glyphs-section">
   <div class="add-form">
     <select aria-label="Tier" bind:value={newGlyphTier}>
@@ -106,7 +106,7 @@
       {#each PCT_FIELDS as f (f.key)}<option value={f.key}>{f.label}</option>{/each}
     </select>
     <input type="text" inputmode="decimal" placeholder="Value (e.g. 4.1)" aria-label="Value" bind:value={newGlyphValue} />
-    <button type="button" onclick={addGlyph}>Save to Inventory</button>
+    <button type="button" class="btn-gold" onclick={addGlyph}>Save to Inventory</button>
   </div>
 
   <div class="tier-counters">
@@ -130,7 +130,7 @@
             <input type="checkbox" checked={glyph.equipped} onchange={() => toggleGlyphEquip(glyph)} />
             Socketed
           </label>
-          <ConfirmButton label="Remove" confirmLabel="Confirm remove" onConfirm={() => rosterStore.removeMountGlyph(glyph.id)} />
+          <ConfirmButton class="btn-danger" label="Remove" confirmLabel="Confirm remove" onConfirm={() => rosterStore.removeMountGlyph(glyph.id)} />
         </li>
       {/each}
     </ul>
@@ -146,7 +146,7 @@
   }
   .hint {
     font-size: 11px;
-    color: var(--color-muted);
+    color: var(--color-dim);
     margin: 2px 0 0;
   }
   .glyphs-heading {
@@ -160,13 +160,15 @@
   }
   .tier-counters {
     display: flex;
-    gap: var(--space-6);
+    gap: 18px;
     color: var(--color-muted);
-    font-size: 0.85rem;
+    font-family: var(--font-data);
+    font-size: 11.5px;
     margin-bottom: var(--space-3);
   }
   .glyph-error {
     color: var(--color-downgrade);
+    font-size: 12px;
   }
   .entry-list {
     list-style: none;
@@ -194,7 +196,7 @@
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    font-size: 0.8rem;
+    font-size: 11px;
     color: var(--color-muted);
     white-space: nowrap;
   }
@@ -206,15 +208,19 @@
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    font-size: 0.8rem;
+    font-size: 11px;
     color: var(--color-muted);
   }
   .base-stat input {
-    width: 4rem;
+    width: 56px;
+    text-align: right;
+    font-size: 12.5px;
+    font-family: var(--font-data);
   }
   .glyph-label {
     flex: 1;
     font-family: var(--font-data);
+    font-size: 12px;
   }
   .equip-checkbox {
     display: flex;
