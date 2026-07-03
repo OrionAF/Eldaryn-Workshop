@@ -1,8 +1,9 @@
 /**
- * totals.js - the "Calculated" totals engine (Phase 1): sums base character
- * stats + gear + stones + talents + Relics (all per-loadout) + Awakening +
- * Transcendence and every character-scoped source into one set of final
- * display totals, for the Manual/Calculated toggle on Profile Stats.
+ * totals.js - the "Calculated" totals engine: sums base character stats +
+ * a Preset's gear/stones + its talent set + its pet + its equipped relics +
+ * every character-wide source (Mounts, Glyphs, Awakening, Transcendence)
+ * into one set of final display totals, for a Preset's Manual/Calculated
+ * toggle.
  *
  * Additive-only, deliberately: summing many sources at once is a different
  * operation from dps.js's two-item swap delta (which has its own additive-
@@ -14,9 +15,8 @@
  * recombined once via the same finalAttack() used everywhere in dps.js.
  *
  * Talent tree content is static code data (talentTreeData.js), not part of
- * the persisted Roster/Character - computeCalculatedTotals/
- * resolveEffectiveTotals default to it, with an optional override param kept
- * for test fixtures.
+ * the persisted Roster/Character - computePresetTotals/resolveEffectiveTotals
+ * default to it, with an optional override param kept for test fixtures.
  */
 import { offensiveStats, finalAttack } from './dps.js';
 import { SLOTS, STAT_FIELDS, SOURCE_DEFS } from './constants.js';
@@ -56,10 +56,9 @@ function accumulate(acc, contribution) {
   }
 }
 
-/** Pick which entries of a source's state contribute, per its `selection` mode. */
+/** Pick which entries of a character-wide source's state contribute, per its `selection` mode. */
 function selectedEntries(def, sourceState) {
   const entries = sourceState?.entries || [];
-  if (def.selection === 'all') return entries;
   if (def.selection === 'single') {
     const active = entries.find((e) => e.id === sourceState.activeId);
     return active ? [active] : [];
@@ -67,39 +66,34 @@ function selectedEntries(def, sourceState) {
   return entries.filter((e) => e.equipped); // 'tiered'
 }
 
-/** Per-source: how to turn one entry into an OffensiveStats-shaped contribution. */
+/** Mounts/Glyphs (the only sources still on the generic SOURCE_DEFS entries[]/selection sum): one entry -> an OffensiveStats-shaped contribution. */
 function entryToStats(sourceKey, entry) {
   switch (sourceKey) {
-    case 'pets':
-      return entry.stats;
     case 'mounts':
       return offensiveStats({ health_pct: entry.baseHpPct, attack_pct: entry.baseAtkPct });
-    case 'mountGlyphs':
+    case 'glyphs':
       return offensiveStats({ [entry.statKey]: entry.value });
     default:
-      // Deferred sources (sigils) are scaffold-only (empty entries) this
-      // pass, so this branch doesn't run for them yet - default shape in
-      // case a future generic {label, stats} entry lands here first.
-      // Talents/Awakening/Transcendence/Relics are special-cased above
-      // (their own *Contribution() functions), never reach this switch.
-      return entry.stats || offensiveStats();
+      return offensiveStats();
   }
 }
 
 /**
- * A loadout's talent contribution: for each invested talent, the value
- * ASSIGNED to the currently-allocated rank (talent.ranks[rank-1]) - never a
- * sum of prior ranks or a rank*base formula (see model.js's Talent shape).
+ * A preset's talent contribution: for each invested talent in its talent
+ * set's allocation, the value ASSIGNED to the currently-allocated rank
+ * (talent.ranks[rank-1]) - never a sum of prior ranks or a rank*base
+ * formula (see model.js's TalentSet shape).
  */
-function talentContribution(loadout, talentTrees) {
-  const tree = loadout.spec ? talentTrees?.[loadout.spec] : null;
+function talentContribution(character, preset, talentTrees) {
+  const talentSet = character.talentSets[preset.talentSet];
+  const tree = talentSet?.spec ? talentTrees?.[talentSet.spec] : null;
   if (!tree) return null;
   const talentById = new Map();
   for (const tier of tree.tiers) {
     for (const t of tier.talents) talentById.set(t.id, t);
   }
   const overrides = {};
-  for (const [talentId, rank] of Object.entries(loadout.talentAllocation || {})) {
+  for (const [talentId, rank] of Object.entries(talentSet.allocation || {})) {
     const talent = talentById.get(talentId);
     if (!talent || rank <= 0) continue;
     const value = talent.ranks[rank - 1] || 0;
@@ -112,9 +106,9 @@ function talentContribution(loadout, talentTrees) {
  * A character's Awakening contribution: each invested point contributes the
  * SAME flat per-point amount to every stat in the chosen path (linear, no
  * per-rank table like Talents) - Radiant's per-point stats depend on class,
- * resolved via resolveAwakeningPerPoint. Shared by both loadouts (character-
- * scoped, not per-loadout), so this is computed identically regardless of
- * which loadout is being totalled.
+ * resolved via resolveAwakeningPerPoint. Character-wide, shared by every
+ * preset, so this is computed identically regardless of which preset is
+ * being totalled.
  */
 function awakeningContribution(character) {
   const { path, points } = character.awakening || {};
@@ -129,23 +123,36 @@ function awakeningContribution(character) {
 }
 
 /**
- * A loadout's Relic contribution: for each equipped relic, each of its 1-2
- * fixed stats contributes the value linearly interpolated between the
- * relic's min (level 1) and max (its tier's maxLevel) at the invested
- * level - like Talents, independent per loadout (Set A/B have their own
- * equipped relics and levels), not shared across both like Awakening.
+ * A preset's pet contribution: the chosen pet's stats contribute directly,
+ * no level-based scaling (Character.petLevel is informational/display only,
+ * matching pre-redesign behavior where a pet's own `level` field never fed
+ * into this math either).
  */
-function relicsContribution(loadout, characterClass) {
-  const defs = RELICS_BY_CLASS[characterClass];
+function petContribution(character, preset) {
+  if (!preset.petId) return null;
+  const pet = character.pets.find((p) => p.id === preset.petId);
+  return pet ? pet.stats : null;
+}
+
+/**
+ * A preset's Relic contribution: for each equipped relic (preset.relicIds,
+ * up to PRESET_RELIC_CAP), each of its 1-2 fixed stats contributes the value
+ * linearly interpolated between the relic's min (level 1) and max (its
+ * tier's maxLevel) at its CHARACTER-WIDE level (character.relicLevels) -
+ * unlike Talents/gear, a relic's level is no longer per-preset, only which
+ * relics are equipped is.
+ */
+function relicsContribution(character, preset) {
+  const defs = RELICS_BY_CLASS[character.class];
   if (!defs) return null;
   const defById = new Map(defs.map((d) => [d.id, d]));
   const overrides = {};
-  for (const entry of loadout.relics?.entries || []) {
-    if (!entry.equipped) continue;
-    const def = defById.get(entry.defId);
+  for (const defId of preset.relicIds || []) {
+    const def = defById.get(defId);
     if (!def) continue;
+    const level = character.relicLevels?.[defId] || 1;
     for (const s of def.stats) {
-      const value = relicLevelValue(s.min, s.max, entry.level, def.maxLevel);
+      const value = relicLevelValue(s.min, s.max, level, def.maxLevel);
       overrides[s.statKey] = (overrides[s.statKey] || 0) + value;
     }
   }
@@ -155,12 +162,8 @@ function relicsContribution(loadout, characterClass) {
 /**
  * A character's Transcendence contribution: every unlocked node's stats sum
  * in directly, no per-rank/level scaling (each node's flat value applies
- * once). Nothing is unlocked by default - including the tree's start
- * position, which has no adjacency prerequisite but still has to be
- * unlocked by the player like any other node (see transcendence.js).
- * Glyph/Sigil nodes have empty `stats` and so contribute nothing. Shared by
- * both loadouts (character-scoped, like Awakening), so this is computed
- * identically regardless of which loadout is being totalled.
+ * once). Glyph/Sigil tree nodes have empty `stats` and so contribute
+ * nothing. Character-wide, shared by every preset, like Awakening.
  */
 function transcendenceContribution(character) {
   const tree = TRANSCENDENCE_TREES[character.class];
@@ -195,28 +198,28 @@ function applyStatCaps(stats) {
 }
 
 /**
- * Sum base + gear + stones + talents + Relics (all per-loadout) + Awakening
- * + every character-scoped, `selection`-bearing source (shared across both
- * loadouts) into one set of final totals for `loadout`. `talentTrees`
- * defaults to the static tree content (talentTreeData.js); the param exists
- * mainly so tests can substitute fixtures.
+ * Sum base + a preset's loadout gear/stones + its talent set + its pet +
+ * its equipped relics + every character-wide source (Awakening,
+ * Transcendence, Mounts, Glyphs) into one set of final totals for `preset`.
+ * `talentTrees` defaults to the static tree content (talentTreeData.js); the
+ * param exists mainly so tests can substitute fixtures.
  */
-export function computeCalculatedTotals(character, loadoutIndex, talentTrees = TALENT_TREES) {
-  const loadout = character.loadouts[loadoutIndex];
+export function computePresetTotals(character, preset, talentTrees = TALENT_TREES) {
+  const loadout = character.loadouts[preset.loadout];
   const acc = newAccumulator();
 
   for (const slot of SLOTS) {
     accumulate(acc, loadout.gear[slot]);
     accumulate(acc, loadout.stones[slot]);
   }
-  accumulate(acc, talentContribution(loadout, talentTrees));
+  accumulate(acc, talentContribution(character, preset, talentTrees));
   accumulate(acc, awakeningContribution(character));
   accumulate(acc, transcendenceContribution(character));
-  accumulate(acc, relicsContribution(loadout, character.class));
+  accumulate(acc, relicsContribution(character, preset));
+  accumulate(acc, petContribution(character, preset));
 
   for (const def of SOURCE_DEFS) {
-    if (def.scope !== 'character' || !def.selection) continue;
-    const sourceState = character.sources[def.key];
+    const sourceState = character[def.key];
     for (const entry of selectedEntries(def, sourceState)) {
       accumulate(acc, entryToStats(def.key, entry));
     }
@@ -229,9 +232,8 @@ export function computeCalculatedTotals(character, loadoutIndex, talentTrees = T
   return applyStatCaps(offensiveStats(result));
 }
 
-/** The totals a loadout should actually use right now: manual entry, or Calculated. */
-export function resolveEffectiveTotals(character, loadoutIndex, talentTrees = TALENT_TREES) {
-  const loadout = character.loadouts[loadoutIndex];
-  if (loadout.manualTotals) return applyStatCaps(loadout.profileTotals);
-  return computeCalculatedTotals(character, loadoutIndex, talentTrees); // already capped
+/** The totals a preset should actually use right now: manual entry, or Calculated. */
+export function resolveEffectiveTotals(character, preset, talentTrees = TALENT_TREES) {
+  if (preset.manualTotals) return applyStatCaps(preset.manualStats);
+  return computePresetTotals(character, preset, talentTrees); // already capped
 }

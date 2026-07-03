@@ -1,40 +1,40 @@
 /**
  * rosterStore.svelte.js - the single reactive source of truth for the app.
  *
- * Wraps model.js/storage.js/dps.js exactly as built (no signature changes).
- * Every mutator ends with persist() (explicit save-to-localStorage on every
- * mutating action, per the handoff's persistence model) rather than a
- * background $effect, so save timing is deterministic - important right
- * before downloadRoster/character switches.
+ * Wraps model.js/storage.js/dps.js/totals.js exactly as built (no signature
+ * changes). Every mutator ends with persist() (explicit save-to-localStorage
+ * on every mutating action) rather than a background $effect, so save timing
+ * is deterministic - important right before downloadRoster/character
+ * switches.
  */
 
 import { loadRoster, saveRoster, importRoster as parseRosterJson, downloadRoster } from './storage.js';
-import { newCharacter, getCurrent, emptyStats, newPetEntry, newMountEntry, newMountGlyphEntry } from './model.js';
-import { applySwap } from './dps.js';
-import { SLOTS, SOURCE_DEFS, TALENT_TOTAL_POINTS } from './constants.js';
+import { newCharacter, getCurrent, emptyStats, newPetEntry, newMountEntry, newMountGlyphEntry, newPreset } from './model.js';
+import { computePresetTotals } from './totals.js';
+import { SLOTS, SOURCE_DEFS, TALENT_TOTAL_POINTS, PRESET_RELIC_CAP } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { AWAKENING_PATHS, AWAKENING_TOTAL_POINTS } from './awakeningData.js';
-import { RELICS_BY_CLASS, RELIC_EQUIP_CAP } from './relicsData.js';
+import { RELICS_BY_CLASS } from './relicsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
 import { canUnlock, reachableFrom, effectiveUnlockedSet } from './transcendence.js';
 
-const MOUNT_GLYPH_TIER_CAPS = SOURCE_DEFS.find((d) => d.key === 'mountGlyphs').tierCaps;
+const MOUNT_GLYPH_TIER_CAPS = SOURCE_DEFS.find((d) => d.key === 'glyphs').tierCaps;
 
-/** Points spent across a tier's own talents, per a loadout's talentAllocation. */
-function pointsSpentInTier(tier, talentAllocation) {
-  return tier.talents.reduce((sum, t) => sum + (talentAllocation[t.id] || 0), 0);
+/** Points spent across a tier's own talents, per a talent set's allocation. */
+function pointsSpentInTier(tier, allocation) {
+  return tier.talents.reduce((sum, t) => sum + (allocation[t.id] || 0), 0);
 }
 
 /** Tier 0 is always accessible (matches the screenshot: no lock badge on Tier 1). */
-function isTierUnlocked(tree, tierIndex, talentAllocation) {
+function isTierUnlocked(tree, tierIndex, allocation) {
   if (tierIndex === 0) return true;
   let spent = 0;
-  for (let i = 0; i < tierIndex; i++) spent += pointsSpentInTier(tree.tiers[i], talentAllocation);
+  for (let i = 0; i < tierIndex; i++) spent += pointsSpentInTier(tree.tiers[i], allocation);
   return spent >= tree.tiers[tierIndex].threshold;
 }
 
-function totalPointsSpent(talentAllocation) {
-  return Object.values(talentAllocation || {}).reduce((sum, r) => sum + r, 0);
+function totalPointsSpent(allocation) {
+  return Object.values(allocation || {}).reduce((sum, r) => sum + r, 0);
 }
 
 /** Finds {tier, tierIndex, talent} for a talentId within a tree, or null. */
@@ -90,35 +90,45 @@ function createRosterStore() {
     }
   }
 
-  // --- Profile totals (Profile Stats tab) ---
-  function setProfileField(loadoutIndex, key, value) {
-    current.loadouts[loadoutIndex].profileTotals[key] = value;
+  /**
+   * A different class's specs/talents/relic defs/Transcendence positions are
+   * meaningless for this character now (a different class has an entirely
+   * different tree - old allocations/levels/unlocked positions wouldn't even
+   * correspond to the same node types/stats). Pets are untouched - their
+   * stats aren't class-scoped.
+   */
+  function setCharacterClass(id, className) {
+    const c = roster.characters.find((ch) => ch.id === id);
+    if (!c) return;
+    c.class = className;
+    for (const talentSet of c.talentSets) {
+      talentSet.spec = null;
+      talentSet.allocation = {};
+    }
+    c.relicLevels = {};
+    for (const preset of c.presets) {
+      preset.relicIds = [];
+    }
+    c.transcendence = { unlockedPositions: [] };
     persist();
   }
 
-  // --- Gear (Gear Panel tab, Edit mode) ---
+  // --- Gear (Gear Loadouts screen) ---
   function setGearField(slot, loadoutIndex, key, value) {
     current.loadouts[loadoutIndex].gear[slot][key] = value;
     persist();
   }
 
-  // --- Profile Stats: Manual / Calculated totals mode ---
-  function setLoadoutTotalsMode(loadoutIndex, mode) {
-    current.loadouts[loadoutIndex].manualTotals = mode === 'manual';
-    persist();
-  }
-
-  // --- Pets (character-scoped, one active at a time) ---
-  function addPet(name, rarity, level) {
-    const pet = newPetEntry({ name, rarity, level });
-    current.sources.pets.entries.push(pet);
-    if (!current.sources.pets.activeId) current.sources.pets.activeId = pet.id;
+  // --- Pets (character-scoped shared collection; a Preset picks which one contributes) ---
+  function addPet(name, rarity) {
+    const pet = newPetEntry({ name, rarity });
+    current.pets.push(pet);
     persist();
     return pet.id;
   }
 
   function updatePetField(petId, field, value) {
-    const pet = current.sources.pets.entries.find((p) => p.id === petId);
+    const pet = current.pets.find((p) => p.id === petId);
     if (pet) {
       pet[field] = value;
       persist();
@@ -126,23 +136,24 @@ function createRosterStore() {
   }
 
   function updatePetStat(petId, key, value) {
-    const pet = current.sources.pets.entries.find((p) => p.id === petId);
+    const pet = current.pets.find((p) => p.id === petId);
     if (pet) {
       pet.stats[key] = value;
       persist();
     }
   }
 
-  function setActivePet(petId) {
-    current.sources.pets.activeId = petId;
+  /** Character-wide - every pet levels together, unlike pre-redesign's per-pet level. */
+  function setPetLevel(level) {
+    current.petLevel = Math.max(1, level);
     persist();
   }
 
+  /** Nulls petId on every preset that used this pet, rather than leaving a dangling reference. */
   function removePet(petId) {
-    const pets = current.sources.pets;
-    pets.entries = pets.entries.filter((p) => p.id !== petId);
-    if (pets.activeId === petId) {
-      pets.activeId = pets.entries[0]?.id ?? null;
+    current.pets = current.pets.filter((p) => p.id !== petId);
+    for (const preset of current.presets) {
+      if (preset.petId === petId) preset.petId = null;
     }
     persist();
   }
@@ -150,14 +161,14 @@ function createRosterStore() {
   // --- Mounts (character-scoped, one active/"riding" at a time) ---
   function addMount(name, rarity) {
     const mount = newMountEntry({ name, rarity });
-    current.sources.mounts.entries.push(mount);
-    if (!current.sources.mounts.activeId) current.sources.mounts.activeId = mount.id;
+    current.mounts.entries.push(mount);
+    if (!current.mounts.activeId) current.mounts.activeId = mount.id;
     persist();
     return mount.id;
   }
 
   function updateMount(mountId, field, value) {
-    const mount = current.sources.mounts.entries.find((m) => m.id === mountId);
+    const mount = current.mounts.entries.find((m) => m.id === mountId);
     if (mount) {
       mount[field] = value;
       persist();
@@ -165,12 +176,12 @@ function createRosterStore() {
   }
 
   function setActiveMount(mountId) {
-    current.sources.mounts.activeId = mountId;
+    current.mounts.activeId = mountId;
     persist();
   }
 
   function removeMount(mountId) {
-    const mounts = current.sources.mounts;
+    const mounts = current.mounts;
     mounts.entries = mounts.entries.filter((m) => m.id !== mountId);
     if (mounts.activeId === mountId) {
       mounts.activeId = mounts.entries[0]?.id ?? null;
@@ -181,20 +192,20 @@ function createRosterStore() {
   // --- Mount Glyphs (character-scoped inventory; up to 3 Minor/2 Major/1 Mythic equipped) ---
   function addMountGlyph(tier, statKey, value) {
     const glyph = newMountGlyphEntry({ tier, statKey, value });
-    current.sources.mountGlyphs.entries.push(glyph);
+    current.glyphs.entries.push(glyph);
     persist();
     return glyph.id;
   }
 
   function removeMountGlyph(glyphId) {
-    const glyphs = current.sources.mountGlyphs;
+    const glyphs = current.glyphs;
     glyphs.entries = glyphs.entries.filter((g) => g.id !== glyphId);
     persist();
   }
 
   /** Returns false (no-op) if equipping would exceed that tier's cap. */
   function setGlyphEquipped(glyphId, equipped) {
-    const glyphs = current.sources.mountGlyphs.entries;
+    const glyphs = current.glyphs.entries;
     const glyph = glyphs.find((g) => g.id === glyphId);
     if (!glyph) return false;
     if (equipped && !glyph.equipped) {
@@ -207,59 +218,42 @@ function createRosterStore() {
     return true;
   }
 
-  // --- Talents (Character.class; Loadout.spec/talentAllocation; tree content is static, see talentTreeData.js) ---
-  function setCharacterClass(id, className) {
-    const c = roster.characters.find((ch) => ch.id === id);
-    if (!c) return;
-    c.class = className;
-    // A different class's specs/talent/relic/Transcendence positions are
-    // meaningless for this character now (a different class has an entirely
-    // different tree - old unlocked positions wouldn't even correspond to
-    // the same node types/stats).
-    for (const loadout of c.loadouts) {
-      loadout.spec = null;
-      loadout.talentAllocation = {};
-      loadout.relics = { entries: [] };
-    }
-    c.transcendence = { unlockedPositions: [] };
-    persist();
-  }
-
-  function setLoadoutSpec(loadoutIndex, spec) {
-    const loadout = current.loadouts[loadoutIndex];
-    loadout.spec = spec;
-    loadout.talentAllocation = {}; // a different tree's talent IDs don't apply
+  // --- Talent Sets (Character.talentSets - Set A/Set B; tree content is static, see talentTreeData.js) ---
+  function setTalentSetSpec(talentSetIndex, spec) {
+    const talentSet = current.talentSets[talentSetIndex];
+    talentSet.spec = spec;
+    talentSet.allocation = {}; // a different tree's talent IDs don't apply
     persist();
   }
 
   /** Returns false (no-op) if the tier is locked or the 29-point cap would be exceeded. */
-  function setTalentRank(loadoutIndex, talentId, rank) {
-    const loadout = current.loadouts[loadoutIndex];
-    const tree = loadout.spec ? TALENT_TREES[loadout.spec] : null;
+  function setTalentSetRank(talentSetIndex, talentId, rank) {
+    const talentSet = current.talentSets[talentSetIndex];
+    const tree = talentSet.spec ? TALENT_TREES[talentSet.spec] : null;
     const found = tree ? findTalent(tree, talentId) : null;
     if (!found) return false;
-    if (!isTierUnlocked(tree, found.tierIndex, loadout.talentAllocation)) return false;
+    if (!isTierUnlocked(tree, found.tierIndex, talentSet.allocation)) return false;
 
     const clampedRank = Math.max(0, Math.min(rank, found.talent.ranks.length));
-    const currentRank = loadout.talentAllocation[talentId] || 0;
+    const currentRank = talentSet.allocation[talentId] || 0;
     const delta = clampedRank - currentRank;
-    if (totalPointsSpent(loadout.talentAllocation) + delta > TALENT_TOTAL_POINTS) return false;
+    if (totalPointsSpent(talentSet.allocation) + delta > TALENT_TOTAL_POINTS) return false;
 
     if (clampedRank === 0) {
-      delete loadout.talentAllocation[talentId];
+      delete talentSet.allocation[talentId];
     } else {
-      loadout.talentAllocation[talentId] = clampedRank;
+      talentSet.allocation[talentId] = clampedRank;
     }
     persist();
     return true;
   }
 
-  function resetTalents(loadoutIndex) {
-    current.loadouts[loadoutIndex].talentAllocation = {};
+  function resetTalentSet(talentSetIndex) {
+    current.talentSets[talentSetIndex].allocation = {};
     persist();
   }
 
-  // --- Awakening (Character.awakening - one path/point count shared by both loadouts) ---
+  // --- Awakening (Character.awakening - one path/point count shared by every preset) ---
   function setAwakeningPath(path) {
     if (path !== null && !(path in AWAKENING_PATHS)) return false;
     current.awakening.path = path;
@@ -282,15 +276,11 @@ function createRosterStore() {
     persist();
   }
 
-  // --- Transcendence (Character.transcendence - one shared unlocked-node set across both loadouts, like Awakening) ---
+  // --- Transcendence (Character.transcendence - one shared unlocked-node set, like Awakening) ---
   /**
    * Returns false (no-op) if unlocking isn't adjacency-valid, or removing a
-   * position that isn't unlocked. Nothing is unlocked by default, including
-   * the tree's start position - it has no adjacency prerequisite (see
-   * canUnlock in transcendence.js), but it's still something the player has
-   * to unlock themselves before anything else becomes reachable. Removing
-   * it therefore cascades away the entire unlocked set, same as removing any
-   * other bridge node that everything else was routed through.
+   * position that isn't unlocked. Removing a node cascades away every other
+   * unlocked node that becomes disconnected from the start as a result.
    */
   function setTranscendenceNode(position, unlock) {
     const tree = TRANSCENDENCE_TREES[current.class];
@@ -303,10 +293,6 @@ function createRosterStore() {
       return true;
     }
     if (!unlockedPositions.includes(position)) return false;
-    // Cascade: removing a node also drops every other unlocked node that
-    // becomes disconnected from the start as a result (recomputed via BFS
-    // over what's left), rather than leaving orphaned nodes stranded or
-    // blocking the removal outright.
     const remaining = unlockedPositions.filter((p) => p !== position);
     const reachable = reachableFrom(tree.startPosition, effectiveUnlockedSet(remaining), tree);
     current.transcendence.unlockedPositions = remaining.filter((p) => reachable.has(p));
@@ -314,85 +300,150 @@ function createRosterStore() {
     return true;
   }
 
-  // --- Relics (Loadout.relics - independent per Set A/B, like Talents; static content in relicsData.js) ---
+  // --- Relics (character-wide levels; equipped per-preset, up to PRESET_RELIC_CAP) ---
   function findRelicDef(defId) {
     return (RELICS_BY_CLASS[current.class] || []).find((d) => d.id === defId);
   }
 
-  function findOrCreateRelicEntry(loadout, defId) {
-    let entry = loadout.relics.entries.find((e) => e.defId === defId);
-    if (!entry) {
-      entry = { defId, level: 1, equipped: false };
-      loadout.relics.entries.push(entry);
-    }
-    return entry;
-  }
-
   /** Returns false (no-op) if defId isn't a relic for this character's class. */
-  function setRelicLevel(loadoutIndex, defId, level) {
+  function setRelicLevel(defId, level) {
     const def = findRelicDef(defId);
     if (!def) return false;
-    const loadout = current.loadouts[loadoutIndex];
-    const entry = findOrCreateRelicEntry(loadout, defId);
-    entry.level = Math.max(1, Math.min(level, def.maxLevel));
+    current.relicLevels[defId] = Math.max(1, Math.min(level, def.maxLevel));
     persist();
     return true;
   }
 
-  /** Returns false (no-op) if defId is invalid, or equipping would exceed the 4-relic cap for this loadout. */
-  function setRelicEquipped(loadoutIndex, defId, equipped) {
+  /** Returns false (no-op) if defId is invalid, or equipping would exceed the per-preset relic cap. */
+  function toggleRelicOnPreset(presetId, defId, equipped) {
     const def = findRelicDef(defId);
     if (!def) return false;
-    const loadout = current.loadouts[loadoutIndex];
+    const preset = current.presets.find((p) => p.id === presetId);
+    if (!preset) return false;
     if (equipped) {
-      const existing = loadout.relics.entries.find((e) => e.defId === defId);
-      const alreadyEquipped = loadout.relics.entries.filter((e) => e.equipped).length;
-      if (!(existing && existing.equipped) && alreadyEquipped >= RELIC_EQUIP_CAP) return false;
+      if (preset.relicIds.includes(defId)) return true;
+      if (preset.relicIds.length >= PRESET_RELIC_CAP) return false;
+      preset.relicIds.push(defId);
+      if (!(defId in current.relicLevels)) current.relicLevels[defId] = 1;
+    } else {
+      preset.relicIds = preset.relicIds.filter((id) => id !== defId);
     }
-    const entry = findOrCreateRelicEntry(loadout, defId);
-    entry.equipped = equipped;
     persist();
     return true;
   }
 
-  // --- Drop comparison (roster-level, survives character switches) ---
+  // --- Presets (Character.presets - the unit a Drop Check verdict/preset editor operates on) ---
+  function addPreset(name) {
+    const preset = newPreset(name || `Preset ${current.presets.length + 1}`);
+    // Unlike a freshly seeded character's first preset (Manual - nothing to
+    // calculate from yet), a preset added later starts Calculated: the
+    // character already has loadouts/talents/relics worth calculating from.
+    preset.manualTotals = false;
+    current.presets.push(preset);
+    persist();
+    return preset.id;
+  }
+
+  function renamePreset(presetId, name) {
+    const preset = current.presets.find((p) => p.id === presetId);
+    if (preset && name && name.trim()) {
+      preset.name = name.trim();
+      persist();
+    }
+  }
+
+  /** Returns false (no-op) if this is the last remaining preset. */
+  function deletePreset(presetId) {
+    if (current.presets.length <= 1) return false;
+    const idx = current.presets.findIndex((p) => p.id === presetId);
+    if (idx === -1) return false;
+    current.presets.splice(idx, 1);
+    persist();
+    return true;
+  }
+
+  function setPresetLoadout(presetId, loadoutIndex) {
+    const preset = current.presets.find((p) => p.id === presetId);
+    if (preset) {
+      preset.loadout = loadoutIndex;
+      persist();
+    }
+  }
+
+  function setPresetTalentSet(presetId, talentSetIndex) {
+    const preset = current.presets.find((p) => p.id === presetId);
+    if (preset) {
+      preset.talentSet = talentSetIndex;
+      persist();
+    }
+  }
+
+  function setPresetPet(presetId, petId) {
+    const preset = current.presets.find((p) => p.id === presetId);
+    if (preset) {
+      preset.petId = petId;
+      persist();
+    }
+  }
+
+  /** Switching TO manual snapshots the preset's current calculated totals first, so Manual mode starts from real numbers, not zeros. */
+  function setPresetTotalsMode(presetId, mode) {
+    const preset = current.presets.find((p) => p.id === presetId);
+    if (!preset) return;
+    const manual = mode === 'manual';
+    if (manual && !preset.manualTotals) {
+      preset.manualStats = computePresetTotals(current, preset);
+    }
+    preset.manualTotals = manual;
+    persist();
+  }
+
+  function setPresetManualStat(presetId, key, value) {
+    const preset = current.presets.find((p) => p.id === presetId);
+    if (preset) {
+      preset.manualStats[key] = value;
+      persist();
+    }
+  }
+
+  // --- Drop comparison (character-scoped, survives screen switches, resets on character switch) ---
   function startDrop(slot) {
-    roster.drop = { slot: slot || SLOTS[0], piece: emptyStats() };
+    current.drop = { slot: slot || SLOTS[0], piece: emptyStats() };
     persist();
   }
 
   function setDropSlot(slot) {
-    if (roster.drop) {
-      roster.drop.slot = slot;
+    if (current.drop) {
+      current.drop.slot = slot;
       persist();
     }
   }
 
   function setDropField(key, value) {
-    if (roster.drop) {
-      roster.drop.piece[key] = value;
+    if (current.drop) {
+      current.drop.piece[key] = value;
       persist();
     }
   }
 
   function clearDrop() {
-    roster.drop = null;
+    current.drop = null;
     persist();
   }
 
+  /**
+   * The gear slot always updates - every Calculated-mode preset referencing
+   * this loadout re-derives from it automatically (it reads the loadout
+   * live). Manual-mode presets are deliberately NOT touched: manualStats is
+   * an explicit, player-owned value, not something silently overwritten by
+   * a gear change on a loadout it happens to reference (switching that
+   * preset to Calculated and back re-snapshots it, if that's what's wanted).
+   */
   function applyDropToLoadout(loadoutIndex) {
-    if (!roster.drop) return;
-    const { slot, piece } = roster.drop;
-    const loadout = current.loadouts[loadoutIndex];
-    // In Calculated mode, profileTotals is inert manual data the user isn't
-    // looking at - only touch it in Manual mode, or it'd silently store a
-    // stale swap result that resurfaces as a surprise if they switch back.
-    // The gear slot always updates either way (Calculated re-derives from it).
-    if (loadout.manualTotals) {
-      loadout.profileTotals = applySwap(loadout.profileTotals, loadout.gear[slot], piece);
-    }
-    loadout.gear[slot] = piece;
-    roster.drop = null;
+    if (!current.drop) return;
+    const { slot, piece } = current.drop;
+    current.loadouts[loadoutIndex].gear[slot] = piece;
+    current.drop = null;
     persist();
   }
 
@@ -417,13 +468,12 @@ function createRosterStore() {
     renameCharacter,
     deleteCharacter,
     selectCharacter,
-    setProfileField,
+    setCharacterClass,
     setGearField,
-    setLoadoutTotalsMode,
     addPet,
     updatePetField,
     updatePetStat,
-    setActivePet,
+    setPetLevel,
     removePet,
     addMount,
     updateMount,
@@ -432,16 +482,23 @@ function createRosterStore() {
     addMountGlyph,
     removeMountGlyph,
     setGlyphEquipped,
-    setCharacterClass,
-    setLoadoutSpec,
-    setTalentRank,
-    resetTalents,
+    setTalentSetSpec,
+    setTalentSetRank,
+    resetTalentSet,
     setAwakeningPath,
     setAwakeningPoints,
     resetAwakening,
     setTranscendenceNode,
     setRelicLevel,
-    setRelicEquipped,
+    toggleRelicOnPreset,
+    addPreset,
+    renamePreset,
+    deletePreset,
+    setPresetLoadout,
+    setPresetTalentSet,
+    setPresetPet,
+    setPresetTotalsMode,
+    setPresetManualStat,
     startDrop,
     setDropSlot,
     setDropField,

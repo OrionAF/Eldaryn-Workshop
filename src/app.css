@@ -1,40 +1,104 @@
 /**
- * Design direction: "smith's ledger" - a warm charcoal workshop, not a
- * generic near-black/acid-accent dark theme. Copper/ember accent (the tool
- * "sockets" a candidate item into a slot); moss-green/rust verdicts instead
- * of pure red/green. Signature move: every numeric value (DPS/HPS, stat
- * fields, deltas) renders in tabular monospace so columns of numbers
- * actually align - this is a data-dense stat-crunching tool, so that's a
- * functional choice, not decoration. Labels stay in the plain UI sans.
+ * Design direction: "midnight violet + gold" - a deep violet-black workshop
+ * lit by gold accents (the "focused/editing" signal throughout: selected
+ * chips, active nav items, the Drop Check altar). Cyan marks DPS, green
+ * marks HPS, functional upgrade/downgrade colors stay green/red (not the
+ * old moss/rust pairing). Signature move carried over from the previous
+ * theme: every numeric value (DPS/HPS, stat fields, deltas) renders in
+ * tabular monospace so columns of numbers actually align - this is a
+ * data-dense stat-crunching tool, so that's a functional choice, not
+ * decoration. Headings/brand text use Cinzel (a small-caps-flavored serif)
+ * for a "workshop ledger" feel; body/labels stay in a plain UI sans.
  */
 :root {
-  --color-bg: #1b1815;
-  --color-surface: #241f19;
-  --color-surface-raised: #2b251e;
-  --color-border: #40382c;
-  --color-ink: #ece5d8;
-  --color-muted: #a89b89;
+  --color-bg: #100e1c;
+  --color-rail: #0b0918;
+  --color-panel: #161331;
+  --color-inset: #14112a;
+  --color-field: #1c1840;
+  --color-canvas: #0d0b18;
 
-  --color-accent: #c97d3f;
-  --color-accent-soft: rgba(201, 125, 63, 0.16);
+  --color-border-hairline: #241f42;
+  --color-border: #2c2650;
+  --color-border-strong: #3a3468;
 
-  --color-upgrade: #7cad5e;
-  --color-upgrade-soft: rgba(124, 173, 94, 0.12);
-  --color-downgrade: #c1594f;
-  --color-downgrade-soft: rgba(193, 89, 79, 0.12);
-  --color-danger: #c1594f;
+  --color-ink: #e8e4f5;
+  --color-soft: #c9c2ea;
+  --color-muted: #8d86b8;
+  --color-dim: #665f96;
 
-  --font-ui: -apple-system, 'Segoe UI', system-ui, sans-serif;
-  --font-data: ui-monospace, 'Cascadia Code', 'SF Mono', Consolas, 'Liberation Mono', monospace;
+  --color-gold: #d9a94b;
+  --color-gold-light: #f3d78d;
+  --color-gold-tint: rgba(217, 169, 75, 0.12);
+  --color-gold-glow: 0 0 26px rgba(217, 169, 75, 0.08);
+  --color-gold-glow-strong: 0 0 34px rgba(217, 169, 75, 0.12);
 
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
+  --color-dps: #54d0ff;
+  --color-dps-dim: #3f9dc2;
+  --color-hps: #4be38a;
+  --color-hps-dim: #3fb576;
 
-  --radius: 4px;
+  --color-upgrade: #7fe0a6;
+  --color-upgrade-border: #2f7a4c;
+  --color-upgrade-soft: rgba(64, 180, 111, 0.12);
+  --color-downgrade: #f08b8e;
+  --color-downgrade-border: #83383a;
+  --color-downgrade-soft: rgba(214, 84, 88, 0.1);
+  --color-warning: #f5c66b;
+  --color-warning-soft: rgba(245, 198, 107, 0.08);
+  --color-danger: #f08b8e;
+
+  /* Nav / domain hues - one per rail item and its matching screen accents. */
+  --nav-presets: #d9a94b;
+  --nav-presets-light: #f3d78d;
+  --nav-presets-tint: rgba(217, 169, 75, 0.13);
+  --nav-drop: #ff8f73;
+  --nav-drop-light: #ffbfa8;
+  --nav-drop-tint: rgba(255, 143, 115, 0.12);
+  --nav-gear: #b06cff;
+  --nav-gear-light: #d3b3ff;
+  --nav-gear-tint: rgba(176, 108, 255, 0.12);
+  --nav-talents: #54d0ff;
+  --nav-talents-light: #a8e5ff;
+  --nav-talents-tint: rgba(84, 208, 255, 0.1);
+  --nav-pets: #ff7ac2;
+  --nav-pets-light: #ffb8dd;
+  --nav-pets-tint: rgba(255, 122, 194, 0.1);
+  --nav-relics: #e8c84f;
+  --nav-relics-light: #f4df9a;
+  --nav-relics-tint: rgba(232, 200, 79, 0.1);
+  --nav-mounts: #67c26b;
+  --nav-mounts-light: #a8e0ab;
+  --nav-mounts-tint: rgba(103, 194, 107, 0.1);
+  --nav-awakening: #f5c66b;
+  --nav-awakening-light: #f9dda6;
+  --nav-awakening-tint: rgba(245, 198, 107, 0.1);
+  --nav-transcendence: #c084fc;
+  --nav-transcendence-light: #dcbafd;
+  --nav-transcendence-tint: rgba(192, 132, 252, 0.1);
+
+  /* Relic tier accents. */
+  --tier-gold: #e8c84f;
+  --tier-silver: #c0cbe0;
+  --tier-bronze: #c98d5e;
+
+  --font-ui: 'IBM Plex Sans', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  --font-data: 'IBM Plex Mono', ui-monospace, 'Cascadia Code', 'SF Mono', Consolas, monospace;
+  --font-heading: 'Cinzel', var(--font-ui);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 18px;
+  --space-6: 26px;
+  --space-8: 34px;
+
+  --radius-chip: 7px;
+  --radius-pill: 999px;
+  --radius-panel: 10px;
+  --radius-field: 6px;
+  --radius: var(--radius-field);
 
   font-family: var(--font-ui);
   color-scheme: dark;
@@ -48,7 +112,7 @@ body {
   margin: 0;
   background: var(--color-bg);
   color: var(--color-ink);
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 main {
@@ -58,17 +122,19 @@ main {
 }
 
 h1 {
+  font-family: var(--font-heading);
   font-size: 1.35rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.01em;
   margin: 0 0 var(--space-4);
 }
 
 h2 {
+  font-family: var(--font-heading);
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   margin: 0 0 var(--space-2);
-  color: var(--color-muted);
+  color: var(--color-gold-light);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -81,16 +147,16 @@ h3 {
 
 button {
   font-family: inherit;
-  border-radius: var(--radius);
+  border-radius: var(--radius-field);
   color: var(--color-ink);
   border: 1px solid var(--color-border);
-  background: var(--color-surface);
+  background: var(--color-field);
   padding: 0.4rem 0.75rem;
   cursor: pointer;
 }
 
 button:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-gold);
 }
 
 button:disabled {
@@ -101,15 +167,16 @@ button:disabled {
 input,
 select {
   font-family: inherit;
-  border-radius: var(--radius);
-  background: var(--color-surface);
+  border-radius: var(--radius-field);
+  background: var(--color-field);
   color: var(--color-ink);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   padding: 0.3rem 0.5rem;
 }
 
 /* Signature: numeric data reads as a ledger - tabular, monospaced, aligned. */
 input[type='text'],
+input[type='number'],
 .dps-hps-readout,
 .field-value,
 .field-derived,
@@ -119,13 +186,14 @@ input[type='text'],
 .talent-value,
 .bonus-value,
 .per-point,
-.relic-stats {
+.relic-stats,
+.mono {
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums;
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-gold);
   outline-offset: 2px;
 }
 
