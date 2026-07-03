@@ -1,6 +1,6 @@
 import { it, expect, beforeEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
-import AwakeningSource from './AwakeningSource.svelte';
+import AwakeningScreen from './AwakeningScreen.svelte';
 import { rosterStore } from '../lib/rosterStore.svelte.js';
 
 let target, app;
@@ -9,7 +9,7 @@ beforeEach(() => {
   rosterStore.resetAwakening();
   target = document.createElement('div');
   document.body.appendChild(target);
-  app = mount(AwakeningSource, { target });
+  app = mount(AwakeningScreen, { target });
   flushSync();
 });
 
@@ -90,11 +90,11 @@ it('switching path resets points to 0, and Reset Awakening clears the path entir
   flushSync();
   expect(target.textContent).toContain('0 / 15 points');
 
-  target.querySelector('.reset-button button').click(); // "Reset Awakening"
+  [...target.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Reset Awakening').click();
   flushSync();
   expect(target.querySelector('.empty-hint')).toBeNull(); // not yet - just revealed the confirm step
 
-  [...target.querySelector('.reset-button').querySelectorAll('button')].find((b) => b.textContent === 'Confirm reset').click();
+  target.querySelector('.confirm-yes').click();
   flushSync();
   expect(target.querySelector('.empty-hint')).not.toBeNull();
   cleanup();

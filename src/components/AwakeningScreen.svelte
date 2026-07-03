@@ -1,11 +1,159 @@
 <script>
-  // Stub - built out in a later step of the preset-redesign plan.
+  /**
+   * AwakeningScreen.svelte - path choice (Shadow / Radiant) + a single point
+   * allocator (0-15), character-wide - shared by every preset, not per
+   * talent set. Radiant's per-point stats depend on the character's class.
+   */
+  import { rosterStore } from '../lib/rosterStore.svelte.js';
+  import { STAT_FIELDS } from '../lib/constants.js';
+  import { AWAKENING_PATHS, AWAKENING_TOTAL_POINTS, resolveAwakeningPerPoint } from '../lib/awakeningData.js';
+  import ConfirmButton from './ConfirmButton.svelte';
+
+  const character = $derived(rosterStore.current);
+  const awakening = $derived(character.awakening);
+  const perPoint = $derived(awakening.path ? resolveAwakeningPerPoint(awakening.path, character.class) : null);
+
+  function statLabel(key) {
+    return STAT_FIELDS.find((f) => f.key === key)?.label ?? key;
+  }
+
+  function changePoints(delta) {
+    rosterStore.setAwakeningPoints(awakening.points + delta);
+  }
 </script>
 
-<p class="stub">AwakeningScreen - coming soon.</p>
+<div class="header-row">
+  <h2>Awakening</h2>
+  <p class="hint">character-wide — one path, shared by all presets</p>
+</div>
+
+<div class="path-selector">
+  {#each Object.entries(AWAKENING_PATHS) as [key, path] (key)}
+    <button type="button" class="path-card" class:active={awakening.path === key} onclick={() => rosterStore.setAwakeningPath(key)}>
+      {path.label}
+    </button>
+  {/each}
+</div>
+
+{#if !awakening.path}
+  <p class="empty-hint">Choose a path above to begin allocating Awakening points.</p>
+{:else}
+  <div class="points-row">
+    <span class="points-readout">{awakening.points} / {AWAKENING_TOTAL_POINTS} points</span>
+    <div class="rank-controls">
+      <button type="button" disabled={awakening.points <= 0} onclick={() => changePoints(-1)}>&minus;</button>
+      <button type="button" disabled={awakening.points >= AWAKENING_TOTAL_POINTS} onclick={() => changePoints(1)}>+</button>
+    </div>
+    <ConfirmButton
+      class="reset-btn"
+      label="Reset Awakening"
+      confirmLabel="Confirm reset"
+      prompt="Reset your path choice and all invested points?"
+      onConfirm={() => rosterStore.resetAwakening()}
+    />
+  </div>
+
+  {#if perPoint}
+    <div class="bonus-list">
+      {#each Object.entries(perPoint) as [statKey, value] (statKey)}
+        <div class="bonus-row">
+          <span class="bonus-label">{statLabel(statKey)}</span>
+          <span class="bonus-value">
+            +{(value * awakening.points).toFixed(1)}%
+            <span class="per-point">({value >= 0 ? '+' : ''}{value}%/point)</span>
+          </span>
+        </div>
+      {/each}
+    </div>
+  {/if}
+{/if}
 
 <style>
-  .stub {
+  .header-row {
+    margin-bottom: var(--space-4);
+  }
+  .header-row h2 {
+    margin: 0;
+  }
+  .hint {
+    font-size: 11px;
     color: var(--color-muted);
+    margin: 2px 0 0;
+  }
+  .path-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    margin-bottom: var(--space-3);
+    max-width: 560px;
+  }
+  @media (max-width: 640px) {
+    .path-selector {
+      grid-template-columns: 1fr;
+    }
+  }
+  .path-card {
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-panel);
+    font-family: var(--font-heading);
+    font-weight: 700;
+    background: var(--color-inset);
+  }
+  .path-card.active {
+    border-color: var(--color-gold);
+    color: var(--color-gold-light);
+  }
+  .empty-hint {
+    color: var(--color-muted);
+  }
+  .points-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+    max-width: 560px;
+  }
+  .points-readout {
+    font-family: var(--font-data);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-muted);
+  }
+  .rank-controls {
+    display: flex;
+    gap: var(--space-1);
+  }
+  .rank-controls button {
+    width: 26px;
+    padding: 2px 0;
+  }
+  :global(.reset-btn) {
+    margin-left: auto;
+  }
+  .bonus-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: var(--space-4);
+    max-width: 560px;
+  }
+  .bonus-row {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--space-2);
+    background: var(--color-inset);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-field);
+  }
+  .bonus-label {
+    color: var(--color-muted);
+    font-size: 0.85rem;
+  }
+  .bonus-value {
+    color: var(--color-gold-light);
+  }
+  .per-point {
+    color: var(--color-muted);
+    font-size: 0.75rem;
   }
 </style>
