@@ -82,14 +82,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--color-surface);
-    border: 1.5px solid var(--color-border);
+    background: var(--color-field);
+    border: 1.5px solid var(--color-border-strong);
     color: var(--color-muted);
     cursor: not-allowed;
     transition: none;
   }
   .tnode:hover {
-    border-color: var(--color-border);
+    border-color: var(--color-border-strong);
   }
 
   /* Rarity shapes */
@@ -136,12 +136,12 @@
 
   .tnode.unlocked {
     cursor: pointer;
-    background: var(--color-accent-soft);
-    border-color: var(--color-accent);
-    color: var(--color-accent);
+    background: rgba(217, 169, 75, 0.18);
+    border-color: var(--color-gold);
+    color: var(--color-gold-light);
   }
   .tnode.unlocked:hover {
-    background: var(--color-accent);
+    background: var(--color-gold);
     color: var(--color-bg);
   }
 

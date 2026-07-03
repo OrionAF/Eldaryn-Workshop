@@ -55,11 +55,11 @@
     right: 0;
     bottom: 0;
     z-index: 31;
-    background: var(--color-surface-raised, #2b251e);
+    background: var(--color-panel);
     border-top: 1px solid var(--color-border);
-    border-radius: var(--radius) var(--radius) 0 0;
-    padding: var(--space-4, 1rem);
-    padding-bottom: calc(var(--space-4, 1rem) + env(safe-area-inset-bottom, 0px));
+    border-radius: var(--radius-field) var(--radius-field) 0 0;
+    padding: var(--space-4);
+    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
   }
   .drawer-title {
     font-weight: 600;
@@ -71,14 +71,14 @@
   }
   .drawer-cost {
     font-size: 0.85rem;
-    color: var(--color-muted, #999);
+    color: var(--color-muted);
     margin: 0.3rem 0 0.6rem;
   }
   .allocate-button {
     width: 100%;
-    margin-top: var(--space-3, 0.75rem);
-    background: var(--color-accent);
-    border-color: var(--color-accent);
+    margin-top: var(--space-3);
+    background: var(--color-gold);
+    border-color: var(--color-gold);
     color: var(--color-bg);
     font-weight: 600;
   }
