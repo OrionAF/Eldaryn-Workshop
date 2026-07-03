@@ -1,11 +1,83 @@
 <script>
-  // Stub - built out in a later step of the preset-redesign plan.
+  /**
+   * GearLoadoutsScreen.svelte - direct gear editing for a loadout/slot (the
+   * old Gear Panel's Edit mode; Compare mode moved entirely into Drop Check).
+   */
+  import { rosterStore } from '../lib/rosterStore.svelte.js';
+  import { fieldsForTab } from '../lib/constants.js';
+  import Chip from './Chip.svelte';
+  import SlotSilhouette from './SlotSilhouette.svelte';
+  import StatsFields from './StatsFields.svelte';
+
+  const character = $derived(rosterStore.current);
+
+  let loadoutIndex = $state(0);
+  let selectedSlot = $state('Weapon');
+
+  const loadout = $derived(character.loadouts[loadoutIndex]);
+  const fields = $derived(fieldsForTab('gear', character.class));
+  const usedBy = $derived(character.presets.filter((p) => p.loadout === loadoutIndex).map((p) => p.name));
 </script>
 
-<p class="stub">GearLoadoutsScreen - coming soon.</p>
+<div class="header-row">
+  <h2>Gear Loadouts</h2>
+  <div class="chip-list">
+    {#each character.loadouts as l, i (i)}
+      <Chip label={l.name} selected={loadoutIndex === i} onClick={() => (loadoutIndex = i)} />
+    {/each}
+  </div>
+</div>
+
+<div class="layout">
+  <div class="silhouette-col">
+    <SlotSilhouette gear={loadout.gear} {selectedSlot} onSelect={(slot) => (selectedSlot = slot)} loadoutLabel={loadout.name} />
+    {#if usedBy.length}
+      <p class="used-by">This loadout is used by: {usedBy.join(', ')}</p>
+    {:else}
+      <p class="used-by">No presets use this loadout yet.</p>
+    {/if}
+  </div>
+
+  <div class="field-col">
+    <h3>{loadout.name} — {selectedSlot}</h3>
+    <StatsFields
+      values={loadout.gear[selectedSlot]}
+      {fields}
+      onChange={(key, value) => rosterStore.setGearField(selectedSlot, loadoutIndex, key, value)}
+    />
+  </div>
+</div>
 
 <style>
-  .stub {
+  .header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+  }
+  .header-row h2 {
+    margin: 0;
+  }
+  .chip-list {
+    display: flex;
+    gap: 6px;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: var(--space-6);
+  }
+  @media (max-width: 640px) {
+    .layout {
+      grid-template-columns: 1fr;
+    }
+  }
+  .used-by {
+    font-size: 11px;
     color: var(--color-muted);
+    margin-top: var(--space-3);
+  }
+  .field-col h3 {
+    margin-top: 0;
   }
 </style>
