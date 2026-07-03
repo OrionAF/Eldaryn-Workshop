@@ -19,7 +19,7 @@ function cleanup() {
 }
 
 it('defaults to Loadout 1, Weapon slot, showing the seeded preset as a user', () => {
-  expect(target.querySelector('.field-col h3').textContent).toBe('Loadout 1 — Weapon');
+  expect(target.querySelector('.field-col .micro-label').textContent).toBe('Loadout 1 — Weapon');
   expect(target.querySelector('.used-by').textContent).toContain('used by');
   cleanup();
 });
@@ -28,7 +28,7 @@ it('switching the loadout chip changes which loadout is shown, and its own used-
   const chips = [...target.querySelectorAll('.chip-list .chip')];
   chips[1].click(); // Loadout 2
   flushSync();
-  expect(target.querySelector('.field-col h3').textContent).toBe('Loadout 2 — Weapon');
+  expect(target.querySelector('.field-col .micro-label').textContent).toBe('Loadout 2 — Weapon');
   expect(target.querySelector('.used-by').textContent).toContain('No presets use this loadout yet');
   cleanup();
 });
@@ -37,7 +37,7 @@ it('clicking a silhouette slot switches which slot is being edited', () => {
   target.querySelector('.slot[aria-pressed]:not(.selected)').click();
   flushSync();
   const selected = target.querySelector('.slot.selected');
-  expect(target.querySelector('.field-col h3').textContent).toContain(selected.textContent.trim());
+  expect(target.querySelector('.field-col .micro-label').textContent).toContain(selected.textContent.trim());
   cleanup();
 });
 

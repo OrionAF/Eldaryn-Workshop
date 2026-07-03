@@ -6,6 +6,7 @@
   import { computeDps, computeHps } from '../lib/dps.js';
   import { resolveEffectiveTotals } from '../lib/totals.js';
   import { talentSetLabel } from '../lib/model.js';
+  import { formatFlat } from '../lib/format.js';
   import Chip from './Chip.svelte';
   import ConfirmButton from './ConfirmButton.svelte';
   import StatsFields from './StatsFields.svelte';
@@ -70,12 +71,12 @@
 
   <div class="editor-grid">
     <div class="field-group">
-      <span class="field-group-label">Name</span>
+      <span class="field-group-label micro-label">Name</span>
       <input type="text" value={preset.name} onblur={rename} onkeydown={(e) => e.key === 'Enter' && e.target.blur()} />
     </div>
 
     <div class="field-group">
-      <span class="field-group-label">Gear Loadout</span>
+      <span class="field-group-label micro-label"><span class="diamond" style="color: var(--nav-gear)">◆</span> Gear Loadout</span>
       <div class="chip-list">
         {#each character.loadouts as loadout, i (i)}
           <Chip
@@ -88,7 +89,7 @@
     </div>
 
     <div class="field-group">
-      <span class="field-group-label">Talent Set</span>
+      <span class="field-group-label micro-label"><span class="diamond" style="color: var(--nav-talents)">◆</span> Talent Set</span>
       <div class="chip-list">
         {#each character.talentSets as _, i (i)}
           <Chip
@@ -101,7 +102,7 @@
     </div>
 
     <div class="field-group">
-      <span class="field-group-label">Totals</span>
+      <span class="field-group-label micro-label">Totals</span>
       <div class="chip-list">
         <Chip label="Manual" selected={preset.manualTotals} onClick={() => rosterStore.setPresetTotalsMode(preset.id, 'manual')} />
         <Chip
@@ -113,7 +114,7 @@
     </div>
 
     <div class="field-group">
-      <span class="field-group-label">Pet</span>
+      <span class="field-group-label micro-label"><span class="diamond" style="color: var(--nav-pets)">◆</span> Pet</span>
       <div class="chip-list">
         <Chip label="None" selected={!preset.petId} onClick={() => rosterStore.setPresetPet(preset.id, null)} />
         {#each character.pets as pet (pet.id)}
@@ -127,7 +128,9 @@
     </div>
 
     <div class="field-group">
-      <span class="field-group-label">Relics — {preset.relicIds.length}/4 slots</span>
+      <span class="field-group-label micro-label"
+        ><span class="diamond" style="color: var(--nav-relics)">◆</span> Relics — {preset.relicIds.length}/4 slots</span
+      >
       <div class="chip-list">
         {#each relicDefs as def (def.id)}
           <Chip
@@ -135,6 +138,7 @@
             selected={preset.relicIds.includes(def.id)}
             color={preset.relicIds.includes(def.id) ? tierColorVar(def.tier) : null}
             onClick={() => toggleRelic(def.id)}
+            size="compact"
           />
         {/each}
       </div>
@@ -147,9 +151,9 @@
   <div class="totals-divider"></div>
   <div class="totals-section">
     <div class="totals-header">
-      <span class="totals-mode">EFFECTIVE TOTALS — {preset.manualTotals ? 'MANUAL (editable)' : 'CALCULATED (read-only)'}</span>
-      <span class="dps-readout">DPS <strong>{dps.toFixed(1)}</strong></span>
-      <span class="hps-readout">HPS <strong>{hps.toFixed(1)}</strong></span>
+      <span class="totals-mode micro-label">EFFECTIVE TOTALS — {preset.manualTotals ? 'MANUAL (editable)' : 'CALCULATED (read-only)'}</span>
+      <span class="dps-readout"><span class="value">{formatFlat(Math.round(dps))}</span><span class="unit">DPS</span></span>
+      <span class="hps-readout"><span class="value">{formatFlat(Math.round(hps))}</span><span class="unit">HPS</span></span>
     </div>
     <StatsFields
       values={totals}
@@ -162,11 +166,12 @@
 
 <style>
   .editor {
-    margin-top: var(--space-6);
+    margin-top: 14px;
+    background: var(--color-panel);
     border: 1px solid var(--color-gold);
     box-shadow: var(--color-gold-glow);
     border-radius: var(--radius-panel);
-    padding: 16px 18px;
+    padding: 18px 20px;
   }
   .editor-header {
     display: flex;
@@ -175,7 +180,8 @@
     margin-bottom: var(--space-4);
   }
   .editor-header h2 {
-    font-size: 13px;
+    font-size: 12.5px;
+    letter-spacing: 0.14em;
     color: var(--color-gold-light);
     white-space: nowrap;
     margin: 0;
@@ -207,11 +213,10 @@
     gap: 6px;
   }
   .field-group-label {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--color-dim);
+    margin-bottom: 7px;
+  }
+  .field-group-label .diamond {
+    font-size: 9px;
   }
   .field-group input[type='text'] {
     font-family: var(--font-data);
@@ -227,9 +232,9 @@
     margin: 0;
   }
   .totals-divider {
-    height: 1px;
-    background: var(--color-border-hairline);
-    margin: var(--space-4) 0;
+    border-top: 1px solid var(--color-border);
+    margin-top: 14px;
+    padding-top: 14px;
   }
   .totals-header {
     display: flex;
@@ -239,22 +244,32 @@
     flex-wrap: wrap;
   }
   .totals-mode {
-    font-size: 10.5px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--color-dim);
     flex: 1;
   }
   .dps-readout,
   .hps-readout {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+  }
+  .dps-readout .value,
+  .hps-readout .value {
     font-family: var(--font-data);
     font-variant-numeric: tabular-nums;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .dps-readout .unit,
+  .hps-readout .unit {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
     color: var(--color-muted);
   }
-  .dps-readout strong {
+  .dps-readout .value {
     color: var(--color-dps);
   }
-  .hps-readout strong {
+  .hps-readout .value {
     color: var(--color-hps);
   }
   @media (min-width: 900px) {

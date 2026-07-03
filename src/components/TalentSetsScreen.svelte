@@ -86,12 +86,13 @@
   }
   .points-readout {
     font-family: var(--font-data);
+    font-size: 12.5px;
     font-variant-numeric: tabular-nums;
     color: var(--color-muted);
   }
   .used-by {
     font-size: 11px;
-    color: var(--color-muted);
+    color: var(--color-dim);
   }
   :global(.reset-btn) {
     margin-left: auto;

@@ -97,7 +97,7 @@
   --radius-chip: 7px;
   --radius-mini-chip: 12px;
   --radius-pill: 999px;
-  --radius-panel: 12px;
+  --radius-panel: 10px;
   --radius-field: 6px;
   --radius: var(--radius-field);
 
@@ -145,10 +145,11 @@ h3 {
 
 button {
   font-family: inherit;
+  font-size: 12px;
   border-radius: var(--radius-field);
   color: var(--color-ink);
-  border: 1px solid var(--color-border);
-  background: var(--color-field);
+  border: 1px solid transparent;
+  background: none;
   padding: 0.4rem 0.75rem;
   cursor: pointer;
 }
@@ -162,14 +163,94 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Recurring button treatments from the design reference. */
+.btn-gold {
+  background: none;
+  border: 1px solid var(--color-gold);
+  color: var(--color-gold-light);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 7px;
+  padding: 6px 14px;
+}
+
+.btn-gold:hover {
+  background: var(--color-gold-tint);
+}
+
+.btn-ghost {
+  background: none;
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-soft);
+  font-size: 11.5px;
+  border-radius: 6px;
+  padding: 5px 12px;
+}
+
+.btn-ghost:hover {
+  border-color: var(--color-gold);
+}
+
+.btn-danger {
+  background: none;
+  font-size: 11.5px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid #5c4a4e;
+  color: #a08b8d;
+}
+
+.btn-danger:hover {
+  border-color: var(--color-danger);
+}
+
+.btn-danger.is-confirming {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.rank-controls button {
+  width: 26px;
+  padding: 2px 0;
+  font-size: 13px;
+  border-radius: 5px;
+  background: var(--color-field);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-ink);
+}
+
+.rank-controls button:hover {
+  border-color: var(--color-gold);
+}
+
+/* Recurring in-screen subheading style (tier/section titles). */
+.subheading {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--color-soft);
+  text-transform: uppercase;
+}
+
+/* Recurring panel micro-label style (panel titles, field-group labels). */
+.micro-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--color-muted);
+  text-transform: uppercase;
+}
+
 input,
 select {
   font-family: inherit;
+  font-size: 12.5px;
   border-radius: var(--radius-field);
   background: var(--color-field);
   color: var(--color-ink);
   border: 1px solid var(--color-border-strong);
-  padding: 0.3rem 0.5rem;
+  padding: 6px 10px;
 }
 
 /* Signature: numeric data reads as a ledger - tabular, monospaced, aligned. */

@@ -61,7 +61,8 @@
     <PresetCard {preset} {character} editing={preset.id === editingId} onSelect={() => selectForEdit(preset.id)} />
   {/each}
   <button type="button" class="new-preset-card" onclick={addPreset}>
-    <span class="plus">+ New preset</span>
+    <span class="plus">+</span>
+    <span class="title">New preset</span>
     <span class="sub">pick a loadout, talents, pet &amp; relics</span>
   </button>
 </div>
@@ -74,11 +75,14 @@
   <div class="strip-label">
     <span class="label-text">CHARACTER-WIDE</span>
     <span class="sub">shared by every preset</span>
+    <span class="strip-fill"></span>
   </div>
   <div class="tiles">
     <button type="button" class="tile" onclick={() => onNavigate?.('mounts')}>
-      <span class="dot mounts"></span>
-      <span class="tile-title">Mount &amp; Glyphs</span>
+      <div class="tile-head">
+        <span class="dot mounts"></span>
+        <span class="tile-title">Mount &amp; Glyphs</span>
+      </div>
       {#if activeMount}
         <span class="tile-primary">{activeMount.name} ({activeMount.rarity})</span>
         <span class="tile-detail">+{activeMount.baseHpPct}% HP · +{activeMount.baseAtkPct}% ATK · glyphs {equippedGlyphCount}/6</span>
@@ -88,8 +92,10 @@
       {/if}
     </button>
     <button type="button" class="tile" onclick={() => onNavigate?.('awakening')}>
-      <span class="dot awakening"></span>
-      <span class="tile-title">Awakening</span>
+      <div class="tile-head">
+        <span class="dot awakening"></span>
+        <span class="tile-title">Awakening</span>
+      </div>
       {#if awakeningLabel}
         <span class="tile-primary">{character.awakening.points} / 15 · {awakeningLabel}</span>
       {:else}
@@ -98,8 +104,10 @@
       {/if}
     </button>
     <button type="button" class="tile" onclick={() => onNavigate?.('transcendence')}>
-      <span class="dot transcendence"></span>
-      <span class="tile-title">Transcendence</span>
+      <div class="tile-head">
+        <span class="dot transcendence"></span>
+        <span class="tile-title">Transcendence</span>
+      </div>
       <span class="tile-primary">{nodesPlaced} node{nodesPlaced === 1 ? '' : 's'}</span>
       <span class="tile-detail">{ichorSpent} ichor spent · one build per character</span>
     </button>
@@ -142,13 +150,19 @@
     border-radius: var(--radius-panel);
     background: transparent;
     color: var(--color-muted);
-    min-height: 100px;
+    min-height: 130px;
   }
   .new-preset-card .plus {
-    font-weight: 600;
+    font-size: 22px;
+    color: var(--color-dim);
+  }
+  .new-preset-card .title {
+    font-size: 12px;
+    color: var(--color-muted);
   }
   .new-preset-card .sub {
-    font-size: 11px;
+    font-size: 10.5px;
+    color: var(--color-dim);
   }
   .character-wide-strip {
     margin-top: var(--space-8);
@@ -157,19 +171,23 @@
     display: flex;
     align-items: baseline;
     gap: var(--space-2);
-    border-bottom: 1px solid var(--color-border-hairline);
-    padding-bottom: var(--space-2);
     margin-bottom: var(--space-3);
   }
   .label-text {
-    font-size: 10px;
+    font-size: 10.5px;
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.16em;
     color: var(--color-dim);
   }
   .strip-label .sub {
     font-size: 10.5px;
-    color: var(--color-muted);
+    color: var(--color-dim);
+  }
+  .strip-fill {
+    height: 1px;
+    flex: 1;
+    background: var(--color-border);
+    align-self: center;
   }
   .tiles {
     display: grid;
@@ -188,7 +206,13 @@
     text-align: left;
   }
   .tile:hover {
-    border-color: var(--color-gold);
+    border-color: var(--color-border-strong);
+  }
+  .tile-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
   }
   .dot {
     width: 9px;
@@ -205,8 +229,8 @@
     background: var(--nav-transcendence);
   }
   .tile-title {
-    font-weight: 600;
-    font-size: 13px;
+    font-weight: 700;
+    font-size: 12px;
   }
   .tile-primary {
     font-size: 16px;

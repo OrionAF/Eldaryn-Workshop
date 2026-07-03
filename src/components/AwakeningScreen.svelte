@@ -45,7 +45,7 @@
       <button type="button" disabled={awakening.points >= AWAKENING_TOTAL_POINTS} onclick={() => changePoints(1)}>+</button>
     </div>
     <ConfirmButton
-      class="reset-btn"
+      class="reset-btn btn-danger"
       label="Reset Awakening"
       confirmLabel="Confirm reset"
       prompt="Reset your path choice and all invested points?"
@@ -93,14 +93,18 @@
     }
   }
   .path-card {
-    padding: var(--space-2);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-panel);
+    padding: 10px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 7px;
     font-family: var(--font-heading);
-    font-weight: 700;
-    background: var(--color-inset);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    background: none;
+    color: var(--color-muted);
   }
   .path-card.active {
+    background: var(--color-gold-tint);
     border-color: var(--color-gold);
     color: var(--color-gold-light);
   }
@@ -117,15 +121,12 @@
   .points-readout {
     font-family: var(--font-data);
     font-variant-numeric: tabular-nums;
-    color: var(--color-muted);
+    font-size: 13px;
+    color: var(--color-soft);
   }
   .rank-controls {
     display: flex;
     gap: var(--space-1);
-  }
-  .rank-controls button {
-    width: 26px;
-    padding: 2px 0;
   }
   :global(.reset-btn) {
     margin-left: auto;
@@ -140,20 +141,22 @@
   .bonus-row {
     display: flex;
     justify-content: space-between;
-    padding: var(--space-2);
+    padding: 8px 10px;
     background: var(--color-inset);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-field);
+    border-radius: 7px;
   }
   .bonus-label {
     color: var(--color-muted);
-    font-size: 0.85rem;
+    font-size: 12px;
   }
   .bonus-value {
+    font-family: var(--font-data);
+    font-size: 12.5px;
     color: var(--color-gold-light);
   }
   .per-point {
-    color: var(--color-muted);
-    font-size: 0.75rem;
+    color: var(--color-dim);
+    font-size: 10.5px;
   }
 </style>

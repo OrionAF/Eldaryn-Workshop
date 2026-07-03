@@ -51,7 +51,27 @@
 </script>
 
 <div class="verdict-card" class:mixed class:upgrade={aggregate === 'upgrade'} class:downgrade={aggregate === 'downgrade'}>
-  <h3>{loadout.name}</h3>
+  <div class="card-header">
+    <div class="title-group">
+      <h3>{loadout.name}</h3>
+      {#if presetsUsingLoadout.length}
+        <span class="preset-count">{presetsUsingLoadout.length} preset{presetsUsingLoadout.length === 1 ? '' : 's'}</span>
+      {/if}
+    </div>
+    {#if presetsUsingLoadout.length}
+      {#if mixed}
+        <ConfirmButton
+          class="equip-btn mixed"
+          label={`Equip → ${loadout.name}`}
+          confirmLabel="Confirm mixed equip"
+          prompt="This helps some presets and hurts others."
+          onConfirm={equip}
+        />
+      {:else}
+        <button type="button" class="equip-btn" class:clean-upgrade={anyUp} onclick={equip}>Equip → {loadout.name}</button>
+      {/if}
+    {/if}
+  </div>
 
   {#if presetsUsingLoadout.length === 0}
     <p class="empty-note">No presets use this loadout — equipping changes nothing yet.</p>
@@ -72,15 +92,6 @@
 
     {#if mixed}
       <p class="warning-strip">Mixed verdict: this loadout is shared — equipping helps some presets and hurts others.</p>
-      <ConfirmButton
-        class="equip-btn mixed"
-        label={`Equip → ${loadout.name}`}
-        confirmLabel="Confirm mixed equip"
-        prompt="This helps some presets and hurts others."
-        onConfirm={equip}
-      />
-    {:else}
-      <button type="button" class="equip-btn" class:clean-upgrade={anyUp} onclick={equip}>Equip → {loadout.name}</button>
     {/if}
   {/if}
 </div>
@@ -89,13 +100,34 @@
   .verdict-card {
     background: var(--color-inset);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-panel);
-    padding: 14px 16px;
+    border-radius: 8px;
+    padding: 11px 14px;
+  }
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
+  .title-group {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
   }
   .verdict-card h3 {
-    margin: 0 0 var(--space-2);
+    margin: 0;
     font-family: var(--font-heading);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
     color: var(--color-ink);
+  }
+  .preset-count {
+    font-size: 10px;
+    color: var(--color-muted);
   }
   .verdict-card.upgrade {
     border-color: var(--color-upgrade-border);
@@ -141,6 +173,9 @@
   .preset-name {
     font-family: var(--font-heading);
     font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
   .deltas {
     margin-left: auto;
@@ -150,23 +185,40 @@
     color: var(--color-muted);
     white-space: nowrap;
   }
+  @media (max-width: 1500px) {
+    .deltas {
+      white-space: normal;
+      text-align: right;
+    }
+  }
   .warning-strip {
     font-size: 11px;
     color: var(--color-warning);
     margin: 0 0 var(--space-2);
   }
   .equip-btn {
-    width: 100%;
-    border-color: var(--color-border-strong);
-    color: var(--color-muted);
+    width: auto;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 6px;
+    background: none;
+    border: 1px solid #5c4a4e;
+    color: #a08b8d;
   }
   .equip-btn.clean-upgrade {
-    border-color: var(--color-upgrade-border);
-    color: var(--color-upgrade);
+    background: rgba(64, 180, 111, 0.18);
+    border: 1px solid #7fe0a6;
+    color: #baf1d1;
   }
   :global(.equip-btn.mixed) {
-    width: 100%;
-    border-color: var(--color-warning);
+    width: auto;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 6px;
+    background: var(--color-warning-soft);
+    border: 1px solid var(--color-warning);
     color: var(--color-warning);
   }
 </style>

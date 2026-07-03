@@ -91,7 +91,7 @@ it('picking a pet chip sets petId; None clears it', () => {
   rosterStore.addPet('Ashfang', 'Epic');
   flushSync();
   const petGroup = [...target.querySelectorAll('.field-group')].find((g) =>
-    g.querySelector('.field-group-label').textContent === 'Pet'
+    g.querySelector('.field-group-label').textContent.trim().endsWith('Pet')
   );
   const petChip = [...petGroup.querySelectorAll('.chip')].find((c) => c.textContent.includes('Ashfang'));
   petChip.click();
