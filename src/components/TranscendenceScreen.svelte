@@ -1,13 +1,11 @@
 <script>
   /**
-   * TranscendenceTab.svelte - top-level tab (not a Sources sub-tab: the
-   * pan/zoom canvas needs its own full-height/width real estate rather than
-   * fitting inside the existing scrollable sub-tab content area).
-   *
-   * Character-scoped, shared across both loadouts (like Awakening) - one
-   * unlocked-node set per character, not per Set A/B. Ichor cost is shown
-   * as info (running total + the hovered/selected node's own cost), never
-   * gated against an owned balance - unlocking is gated purely on adjacency.
+   * TranscendenceScreen.svelte - character-scoped, shared across every
+   * preset (like Awakening) - one unlocked-node set per character. Ichor
+   * cost is shown as info (running total + the hovered/selected node's own
+   * cost), never gated against an owned balance - unlocking is gated purely
+   * on adjacency. Grid/Node/Drawer logic is unchanged from the pre-redesign
+   * TranscendenceTab.svelte - only this wrapper's styling/copy changed.
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { STAT_FIELDS } from '../lib/constants.js';
@@ -26,10 +24,6 @@
   let hovered = $state(null); // { node, x, y } - desktop hover tooltip
   let drawerNode = $state(null); // mobile tap target - the drawer's own button does the actual toggle
 
-  // Same 640px breakpoint the rest of the app uses for mobile layout
-  // (AwakeningSource/GearPanelTab/etc.), but read in JS here too: mobile
-  // needs a genuinely different interaction (tap opens a drawer instead of
-  // toggling immediately), not just a different look for the same click.
   let isMobile = $state(false);
   $effect(() => {
     if (typeof window.matchMedia !== 'function') return; // not available in the test environment
@@ -81,8 +75,6 @@
 
   function onDrawerAllocate() {
     if (drawerNode) toggleNode(drawerNode);
-    // Stays open: the button's label/action flips (Allocate <-> Remove) as
-    // `unlockedSet` re-derives, so the player sees the result immediately.
   }
 
   function closeDrawer() {
@@ -91,15 +83,14 @@
 </script>
 
 {#if !character.class}
-  <p class="empty-hint">
-    Choose a class for this character (the ✎ edit icon next to the character selector) before
-    opening Transcendence.
-  </p>
+  <p class="empty-hint">Choose a class for this character (⇄ Change character) before opening Transcendence.</p>
 {:else if !tree}
-  <p class="empty-hint">
-    The Transcendence tree for {character.class} hasn't been added yet.
-  </p>
+  <p class="empty-hint">The Transcendence tree for {character.class} has not been added yet.</p>
 {:else}
+  <div class="header-row">
+    <h2>Transcendence</h2>
+    <p class="hint">character-wide — one build, shared by all presets</p>
+  </div>
   <div class="header-bar">
     <span class="readout">Nodes placed: <strong>{unlockedSet.size}</strong></span>
     <span class="readout">Ichor spent: <strong>{ichorSpent}</strong></span>
@@ -139,16 +130,24 @@
 
 <style>
   .empty-hint {
-    color: var(--color-muted, #999);
-    padding-top: var(--space-6, 1.5rem);
+    color: var(--color-muted);
+    padding-top: var(--space-6);
+  }
+  .header-row {
+    margin-bottom: var(--space-2);
+  }
+  .hint {
+    font-size: 11px;
+    color: var(--color-muted);
+    margin: 0;
   }
   .header-bar {
     display: flex;
-    gap: var(--space-6, 1.5rem);
-    margin-bottom: var(--space-3, 0.75rem);
+    gap: var(--space-6);
+    margin-bottom: var(--space-3);
   }
   .readout {
-    color: var(--color-muted, #999);
+    color: var(--color-muted);
   }
   .readout strong {
     color: var(--color-ink);
@@ -158,16 +157,18 @@
   .tooltip {
     position: fixed;
     z-index: 20;
-    background: var(--color-surface-raised, #2b251e);
+    background: var(--color-panel);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-field);
     padding: 0.5rem 0.65rem;
     pointer-events: none;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    max-width: 14rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    max-width: 15rem;
   }
   .tooltip-title {
-    font-weight: 600;
+    font-family: var(--font-heading);
+    font-weight: 700;
+    color: var(--color-gold-light);
     margin-bottom: 0.2rem;
   }
   .tooltip-stat {
@@ -176,7 +177,7 @@
   }
   .tooltip-cost {
     font-size: 0.8rem;
-    color: var(--color-muted, #999);
+    color: var(--color-muted);
     margin-top: 0.2rem;
   }
 </style>

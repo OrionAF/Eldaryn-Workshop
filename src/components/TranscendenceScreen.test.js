@@ -1,6 +1,6 @@
 import { it, expect, beforeEach, afterEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
-import TranscendenceTab from './TranscendenceTab.svelte';
+import TranscendenceScreen from './TranscendenceScreen.svelte';
 import { rosterStore } from '../lib/rosterStore.svelte.js';
 
 let target, app;
@@ -9,7 +9,7 @@ beforeEach(() => {
   rosterStore.setCharacterClass(rosterStore.current.id, null);
   target = document.createElement('div');
   document.body.appendChild(target);
-  app = mount(TranscendenceTab, { target });
+  app = mount(TranscendenceScreen, { target });
   flushSync();
 });
 
@@ -30,7 +30,7 @@ function remountAsMobile() {
   });
   target = document.createElement('div');
   document.body.appendChild(target);
-  app = mount(TranscendenceTab, { target });
+  app = mount(TranscendenceScreen, { target });
   flushSync();
 }
 
@@ -48,7 +48,7 @@ it('shows a "tree not available" hint for a class with no tree data yet (Warrior
   rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
   flushSync();
   expect(target.querySelector('.empty-hint')).not.toBeNull();
-  expect(target.textContent).toContain("hasn't been added yet");
+  expect(target.textContent).toContain("has not been added yet");
   cleanup();
 });
 

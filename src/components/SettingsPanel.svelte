@@ -1,6 +1,6 @@
 <script>
   /**
-   * SettingsPanel.svelte - hard reset. Shown via TopBar's header trigger.
+   * SettingsPanel.svelte - hard reset. Shown via Sidebar's "Reset all data" trigger.
    * Two-step: click "Reset all data" to reveal a confirm row, then type the
    * exact word RESET and press Enter (or click Confirm) - a plain "are you
    * sure?" click is too easy to fat-finger for something this destructive
