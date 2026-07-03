@@ -25,13 +25,13 @@ function seedTwoTierTree() {
 beforeEach(() => {
   localStorage.clear();
   rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
-  rosterStore.setLoadoutSpec(0, 'arms');
+  rosterStore.setTalentSetSpec(0, 'arms');
   target = document.createElement('div');
   document.body.appendChild(target);
 });
 
 function render() {
-  app = mount(TalentTierList, { target, props: { specKey: 'arms', loadoutIndex: 0 } });
+  app = mount(TalentTierList, { target, props: { specKey: 'arms', talentSetIndex: 0 } });
   flushSync();
 }
 
@@ -52,7 +52,7 @@ it('rank 0 shows only NEXT; clicking + raises the rank and shows CURRENT (and NE
   row.querySelectorAll('.rank-controls button')[1].click(); // "+"
   flushSync();
 
-  expect(rosterStore.current.loadouts[0].talentAllocation[sharpAimId]).toBe(1);
+  expect(rosterStore.current.talentSets[0].allocation[sharpAimId]).toBe(1);
   const rowAfter = [...target.querySelectorAll('.talent-row')].find((r) => r.textContent.includes('Sharp Aim'));
   expect(rowAfter.querySelector('.talent-rank-badge').textContent).toBe('1/3');
   expect(rowAfter.querySelector('.talent-value').textContent).toContain('+2% CURRENT');
@@ -135,7 +135,7 @@ it('unlocking a later tier by spending enough in the earlier one lifts the gate'
   expect(gatedRow.classList.contains('locked')).toBe(false);
   gatedRow.querySelectorAll('.rank-controls button')[1].click(); // now allowed
   flushSync();
-  expect(rosterStore.current.loadouts[0].talentAllocation[gatedId]).toBe(1);
-  expect(rosterStore.current.loadouts[0].talentAllocation[sharpAimId]).toBe(3);
+  expect(rosterStore.current.talentSets[0].allocation[gatedId]).toBe(1);
+  expect(rosterStore.current.talentSets[0].allocation[sharpAimId]).toBe(3);
   cleanup();
 });
