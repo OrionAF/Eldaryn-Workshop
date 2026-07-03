@@ -5,13 +5,14 @@
    * editor, drop-check slot picker). Selected state defaults to gold; pass
    * `color` to override (e.g. a relic's tier color).
    */
-  let { label, selected = false, color = null, onClick, disabled = false } = $props();
+  let { label, selected = false, color = null, onClick, disabled = false, size = 'default' } = $props();
 </script>
 
 <button
   type="button"
   class="chip"
   class:selected
+  class:small={size === 'small'}
   style={selected && color ? `--chip-color: ${color}` : ''}
   {disabled}
   onclick={onClick}
@@ -28,6 +29,11 @@
     font-size: 0.8rem;
     padding: 0.35rem 0.7rem;
     white-space: nowrap;
+  }
+  .chip.small {
+    border-radius: var(--radius-pill);
+    font-size: 10.5px;
+    padding: 3px 9px;
   }
   .chip.selected {
     border-color: var(--chip-color, var(--color-gold));

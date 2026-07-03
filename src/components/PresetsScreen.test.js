@@ -181,3 +181,27 @@ it('character-wide tiles show mount/awakening/transcendence summaries and naviga
   expect(navigatedTo).toBe('awakening');
   cleanup();
 });
+
+it('switching characters re-points the editor at the new character\'s own preset', () => {
+  const firstCharacterId = rosterStore.current.id;
+  const firstPresetId = rosterStore.current.presets[0].id;
+  expect(target.querySelector('.editor-header h2').textContent).toContain(rosterStore.current.presets[0].name.toUpperCase());
+
+  const altId = rosterStore.addCharacter('Alt');
+  flushSync();
+  const altPresetId = rosterStore.current.presets[0].id;
+  expect(altPresetId).not.toBe(firstPresetId);
+
+  // The editor must follow the new character, not silently disappear
+  // (stale editingId pointing at a preset id that no longer exists here).
+  expect(target.querySelector('.editor')).not.toBeNull();
+  expect(target.querySelector('.editor-header h2').textContent).toContain(rosterStore.current.presets[0].name.toUpperCase());
+  expect(target.querySelector('.preset-card.editing')).not.toBeNull();
+
+  rosterStore.selectCharacter(firstCharacterId);
+  flushSync();
+  expect(target.querySelector('.editor-header h2').textContent).toContain(rosterStore.current.presets[0].name.toUpperCase());
+
+  rosterStore.deleteCharacter(altId); // cleanup
+  cleanup();
+});

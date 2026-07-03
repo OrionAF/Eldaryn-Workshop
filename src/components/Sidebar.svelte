@@ -278,12 +278,14 @@
   .sidebar {
     width: 212px;
     background: var(--color-rail);
-    border-right: 1px solid var(--color-border-hairline);
+    border-right: 1px solid var(--color-border);
     padding: 18px 12px;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    height: 100%;
+    position: sticky;
+    top: 0;
+    height: 100vh;
     overflow-y: auto;
   }
   .brand {
@@ -291,7 +293,7 @@
     font-weight: 700;
     font-size: 12px;
     letter-spacing: 0.18em;
-    color: var(--color-gold-light);
+    color: var(--color-gold);
     line-height: 1.4;
     padding: 0 var(--space-2);
   }
@@ -451,7 +453,7 @@
     z-index: 40;
     display: flex;
     background: var(--color-rail);
-    border-top: 1px solid var(--color-border-hairline);
+    border-top: 1px solid var(--color-border);
     padding: 4px calc(4px + env(safe-area-inset-left, 0px)) calc(4px + env(safe-area-inset-bottom, 0px)) calc(4px + env(safe-area-inset-right, 0px));
   }
   .bottom-item {

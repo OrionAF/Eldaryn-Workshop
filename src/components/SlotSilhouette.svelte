@@ -54,19 +54,20 @@
     position: relative;
     padding: var(--space-2) var(--space-1);
     border: 1px solid var(--color-border);
-    background: var(--color-field);
+    background: var(--color-inset);
     cursor: pointer;
     font-size: 0.75rem;
     color: inherit;
     border-radius: var(--radius-field);
   }
   .slot.filled {
-    background: var(--color-inset);
+    background: var(--color-field);
   }
   /* Signature: the selected slot "sockets" - a gold dot, like a gem set
      into the gear, rather than just a heavier border. */
   .slot.selected {
     border-color: var(--color-gold);
+    color: var(--color-gold-light);
   }
   .slot.selected::after {
     content: '';

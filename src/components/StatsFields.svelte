@@ -90,7 +90,7 @@
     justify-content: space-between;
     padding: 0.25rem 0.4rem;
     border-radius: var(--radius, 4px);
-    border-bottom: 1px solid var(--color-border, #444);
+    border-bottom: 1px solid var(--color-border-hairline, #444);
   }
   .stats-fields label:last-child {
     border-bottom: none;

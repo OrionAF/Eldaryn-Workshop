@@ -23,15 +23,15 @@
     {/if}
   </div>
   <div class="numbers">
-    <span class="dps">DPS {formatFlat(dps)}</span>
-    <span class="hps">HPS {formatFlat(hps)}</span>
+    <span class="dps"><span class="value">{formatFlat(dps)}</span><span class="unit">DPS</span></span>
+    <span class="hps"><span class="value">{formatFlat(hps)}</span><span class="unit">HPS</span></span>
   </div>
   <div class="chip-row">
     <span class="mini-chip">{loadout.name}</span>
     <span class="mini-chip">{talentSetLabel(preset.talentSet)}</span>
     <span class="mini-chip">{pet ? pet.name : 'No pet'}</span>
     <span class="mini-chip">{preset.relicIds.length} relic{preset.relicIds.length === 1 ? '' : 's'}</span>
-    <span class="mini-chip mode">{preset.manualTotals ? 'manual' : 'calculated'}</span>
+    <span class="mini-chip mode" class:calculated={!preset.manualTotals}>{preset.manualTotals ? 'manual' : 'calculated'}</span>
   </div>
 </button>
 
@@ -66,12 +66,12 @@
     color: var(--color-gold-light);
   }
   .badge {
-    font-size: 9.5px;
+    font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--color-gold-light);
-    border: 1px solid var(--color-gold);
+    background: var(--color-gold);
+    color: var(--color-bg);
     border-radius: var(--radius-pill);
     padding: 2px 8px;
   }
@@ -87,24 +87,37 @@
     align-items: baseline;
     gap: var(--space-4);
   }
-  .dps {
+  .dps,
+  .hps {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+  }
+  .dps .value {
     font-family: var(--font-data);
     font-variant-numeric: tabular-nums;
     font-size: 24px;
     font-weight: 600;
     color: var(--color-dps-dim);
   }
-  .hps {
+  .hps .value {
     font-family: var(--font-data);
     font-variant-numeric: tabular-nums;
     font-size: 17px;
     font-weight: 600;
     color: var(--color-hps-dim);
   }
-  .preset-card.editing .dps {
+  .dps .unit,
+  .hps .unit {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+  .preset-card.editing .dps .value {
     color: var(--color-dps);
   }
-  .preset-card.editing .hps {
+  .preset-card.editing .hps .value {
     color: var(--color-hps);
   }
   .chip-row {
@@ -115,12 +128,16 @@
   .mini-chip {
     font-size: 10.5px;
     color: var(--color-muted);
-    border: 1px solid var(--color-border-hairline);
-    border-radius: var(--radius-chip);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-mini-chip);
     padding: 2px 6px;
   }
-  .mini-chip.mode {
-    color: var(--color-dps-dim);
-    border-color: var(--color-border-hairline);
+  .preset-card.editing .mini-chip {
+    background: var(--color-field);
+    color: var(--color-soft);
+  }
+  .mini-chip.mode.calculated {
+    border-color: rgba(84, 208, 255, 0.4);
+    color: var(--color-dps);
   }
 </style>

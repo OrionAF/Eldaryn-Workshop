@@ -7,7 +7,7 @@
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { RARITIES, STAT_FIELDS, fieldsForTab } from '../lib/constants.js';
-  import { formatStat } from '../lib/format.js';
+  import { summarizeStats } from '../lib/format.js';
   import StatsFields from './StatsFields.svelte';
   import ConfirmButton from './ConfirmButton.svelte';
 
@@ -36,10 +36,7 @@
   }
 
   function petSummary(pet) {
-    const bits = STAT_FIELDS.filter((f) => (pet.stats[f.key] || 0) !== 0)
-      .map((f) => `${formatStat(f.key, pet.stats[f.key])}${f.kind === 'pct' ? '%' : ''} ${f.label}`)
-      .slice(0, 3);
-    return bits.length ? bits.join(' · ') : 'no stats yet';
+    return summarizeStats(pet.stats, STAT_FIELDS);
   }
 </script>
 

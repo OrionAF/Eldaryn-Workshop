@@ -158,3 +158,26 @@ it('the bonus panel reflects the selected slot per loadout column', () => {
   expect(bonusPanels[1].textContent).toContain('No bonus stats');
   cleanup();
 });
+
+it('the core-stat slot summary never shows a leading "0" for a %-only piece', () => {
+  rosterStore.setGearField(DEFAULT_SLOT, 0, 'attack_pct', 6.2); // no flat attack at all
+  flushSync();
+  const summary = target.querySelector('.slot-row.selected .slot-summary').textContent;
+  expect(summary).toBe('+6.2% ATK');
+  expect(summary).not.toContain('0');
+
+  rosterStore.setGearField(DEFAULT_SLOT, 0, 'attack_pct', 0); // cleanup
+  cleanup();
+});
+
+it('the core-stat slot summary shows both parts when flat and % are both set', () => {
+  rosterStore.setGearField(DEFAULT_SLOT, 0, 'attack', 12664);
+  rosterStore.setGearField(DEFAULT_SLOT, 0, 'attack_pct', 6.2);
+  flushSync();
+  const summary = target.querySelector('.slot-row.selected .slot-summary').textContent;
+  expect(summary).toBe('12.664 +6.2% ATK');
+
+  rosterStore.setGearField(DEFAULT_SLOT, 0, 'attack', 0); // cleanup
+  rosterStore.setGearField(DEFAULT_SLOT, 0, 'attack_pct', 0);
+  cleanup();
+});

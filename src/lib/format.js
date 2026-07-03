@@ -69,3 +69,34 @@ export function formatPct(value) {
 export function formatStat(key, value) {
   return FLAT_KEYS.includes(key) ? formatFlat(value) : formatPct(value);
 }
+
+/** Short labels for summarizeStats() - keeps a stat-roll summary chip to one line. Falls back to the field's full label if a key isn't listed here. */
+const SHORT_STAT_LABELS = {
+  attack: 'ATK',
+  attack_pct: 'ATK',
+  health: 'HP',
+  health_pct: 'HP',
+  speed: 'speed',
+  crit: 'crit',
+  crit_mult: 'crit mult',
+  double_hit: 'double hit',
+  lifesteal: 'lifesteal',
+  hp_regen: 'HP regen',
+};
+
+/**
+ * "1.200 ATK · +4% ATK · 1.5% crit" - a compact, capped summary of a stats
+ * object's non-zero fields (in `fields` order), for one-line display in a
+ * chip/summary row (Pets). `max` caps how many bits are shown.
+ */
+export function summarizeStats(stats, fields, max = 3) {
+  const bits = fields
+    .filter((f) => (stats[f.key] || 0) !== 0)
+    .map((f) => {
+      const label = SHORT_STAT_LABELS[f.key] || f.label;
+      const value = formatStat(f.key, stats[f.key]);
+      return f.kind === 'pct' ? `+${value}% ${label}` : `${value} ${label}`;
+    })
+    .slice(0, max);
+  return bits.length ? bits.join(' · ') : 'no stats yet';
+}

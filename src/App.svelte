@@ -11,16 +11,18 @@
   import TranscendenceScreen from './components/TranscendenceScreen.svelte';
   import { rosterStore } from './lib/rosterStore.svelte.js';
 
-  const SCREEN_LABELS = {
-    presets: 'Presets',
-    drop: 'Drop Check',
-    gear: 'Gear Loadouts',
-    talents: 'Talent Sets',
-    pets: 'Pets',
-    relics: 'Relics',
-    mounts: 'Mount and Glyphs',
-    awakening: 'Awakening',
-    transcendence: 'Transcendence',
+  // Per-screen suffix for the banner subline - what's actually in scope on
+  // that screen, not a redundant restatement of the screen's own <h2> title.
+  const SCREEN_CONTEXT = {
+    presets: (c) => `${c.presets.length} preset${c.presets.length === 1 ? '' : 's'} · 2 loadouts · 2 talent sets`,
+    drop: (c) => `${c.presets.length} preset${c.presets.length === 1 ? '' : 's'} watching this drop`,
+    gear: () => '2 loadouts',
+    talents: () => '2 talent sets',
+    pets: (c) => `${c.pets.length} pet${c.pets.length === 1 ? '' : 's'}`,
+    relics: () => 'character-wide levels',
+    mounts: () => 'character-wide',
+    awakening: () => 'character-wide',
+    transcendence: () => 'character-wide',
   };
 
   // View-only, not persisted.
@@ -29,6 +31,11 @@
 
   const character = $derived(rosterStore.current);
   const profileReady = $derived(!!character.class);
+  const contextSub = $derived.by(() => {
+    const cls = character.class || 'No class';
+    const suffix = SCREEN_CONTEXT[activeScreen]?.(character) ?? '';
+    return suffix ? `${cls} · ${suffix}` : cls;
+  });
 
   function selectScreen(id) {
     activeScreen = id;
@@ -48,7 +55,7 @@
       <div class="avatar" aria-hidden="true"></div>
       <div class="banner-text">
         <div class="character-name">{character.name}</div>
-        <div class="context-sub">{SCREEN_LABELS[activeScreen]}</div>
+        <div class="context-sub">{contextSub}</div>
       </div>
       {#if statusMessage}
         <div class="status-pill" role="status">{statusMessage}</div>
