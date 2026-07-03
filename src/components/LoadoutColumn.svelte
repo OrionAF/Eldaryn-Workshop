@@ -17,14 +17,16 @@
     return Object.values(piece).some((v) => v !== 0);
   }
 
+  /** "12.664 +6.2% ATK" (both), "12.664 ATK" (flat only), "+6.2% ATK" (pct only) - never a leading "0" when the flat part is unset. */
+  function statBit(flat, pct, unit) {
+    if (!flat && !pct) return null;
+    const flatPart = flat ? formatFlat(flat) : '';
+    const pctPart = pct ? `+${formatPct(pct)}%` : '';
+    return `${[flatPart, pctPart].filter(Boolean).join(' ')} ${unit}`;
+  }
+
   function coreSummary(piece) {
-    const bits = [];
-    if (piece.attack || piece.attack_pct) {
-      bits.push(`${formatFlat(piece.attack)}${piece.attack_pct ? ' +' + formatPct(piece.attack_pct) + '%' : ''} ATK`);
-    }
-    if (piece.health || piece.health_pct) {
-      bits.push(`${formatFlat(piece.health)}${piece.health_pct ? ' +' + formatPct(piece.health_pct) + '%' : ''} HP`);
-    }
+    const bits = [statBit(piece.attack, piece.attack_pct, 'ATK'), statBit(piece.health, piece.health_pct, 'HP')].filter(Boolean);
     if (bits.length) return bits.join(' · ');
     return hasAnyStat(piece) ? 'bonus only' : 'empty';
   }
@@ -34,7 +36,7 @@
 </script>
 
 <div class="loadout-panel">
-  <h3>{loadout.name}</h3>
+  <h3 class:primary={loadoutIndex === 0}>{loadout.name}</h3>
   {#if usedBy.length}
     <p class="used-by">used by {usedBy.join(', ')}</p>
   {:else}
@@ -80,6 +82,10 @@
   .loadout-panel h3 {
     margin: 0 0 2px;
     font-family: var(--font-heading);
+    color: var(--color-muted);
+  }
+  .loadout-panel h3.primary {
+    color: var(--nav-gear);
   }
   .used-by {
     font-size: 11px;

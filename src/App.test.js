@@ -35,18 +35,20 @@ it('shows an onboarding hint and no screen content until the character has a cla
   cleanup();
 });
 
-it('renders the sidebar nav and defaults to the Presets screen', () => {
+it('renders the sidebar nav and defaults to the Presets screen, banner subline showing class + scope', () => {
   expect(target.querySelector('nav.sidebar')).not.toBeNull();
-  expect(target.querySelector('.context-sub').textContent).toBe('Presets');
+  const sub = target.querySelector('.context-sub').textContent;
+  expect(sub).toContain('Warrior');
+  expect(sub).toContain('preset');
   cleanup();
 });
 
-it('clicking a nav item swaps the visible screen', () => {
+it('clicking a nav item swaps the visible screen and the banner subline', () => {
   const navButtons = [...target.querySelectorAll('.nav-item')];
   navButtons.find((b) => b.textContent.trim() === 'Transcendence').click();
   flushSync();
 
-  expect(target.querySelector('.context-sub').textContent).toBe('Transcendence');
+  expect(target.querySelector('.context-sub').textContent).toBe('Warrior · character-wide');
   expect(target.textContent).toContain('has not been added yet'); // Warrior has no tree yet
   cleanup();
 });

@@ -53,7 +53,7 @@
 
       <div class="slot-chips">
         {#each SLOTS as slot (slot)}
-          <Chip label={slot} selected={selectedSlot === slot} onClick={() => selectSlot(slot)} />
+          <Chip label={slot} selected={selectedSlot === slot} onClick={() => selectSlot(slot)} size="small" />
         {/each}
       </div>
 
@@ -131,6 +131,13 @@
     font-size: 11px;
     margin: 6px 0 var(--space-4);
   }
+  @media (min-width: 900px) {
+    .altar :global(.stats-fields) {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px 26px;
+    }
+  }
   .slot-chips {
     display: flex;
     flex-wrap: wrap;
@@ -139,9 +146,9 @@
     margin-bottom: var(--space-4);
   }
   .verdict-cards {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     margin-top: var(--space-4);
   }
   @media (max-width: 700px) {
@@ -150,9 +157,6 @@
       justify-content: flex-start;
       overflow-x: auto;
       padding-bottom: 4px;
-    }
-    .verdict-cards {
-      grid-template-columns: 1fr;
     }
   }
   .discard-btn {

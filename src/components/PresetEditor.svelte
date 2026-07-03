@@ -2,7 +2,7 @@
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { SLOTS, TALENT_TOTAL_POINTS, STAT_FIELDS, fieldsForTab } from '../lib/constants.js';
   import { RELICS_BY_CLASS } from '../lib/relicsData.js';
-  import { formatStat } from '../lib/format.js';
+  import { summarizeStats } from '../lib/format.js';
   import { computeDps, computeHps } from '../lib/dps.js';
   import { resolveEffectiveTotals } from '../lib/totals.js';
   import { talentSetLabel } from '../lib/model.js';
@@ -30,10 +30,7 @@
   }
 
   function petSummary(pet) {
-    const bits = STAT_FIELDS.filter((f) => (pet.stats[f.key] || 0) !== 0)
-      .map((f) => `${formatStat(f.key, pet.stats[f.key])}${f.kind === 'pct' ? '%' : ''} ${f.label}`)
-      .slice(0, 3);
-    return bits.length ? bits.join(' · ') : 'no stats yet';
+    return summarizeStats(pet.stats, STAT_FIELDS);
   }
 
   function tierColorVar(tier) {
@@ -58,9 +55,9 @@
 
 <div class="editor">
   <div class="editor-header">
-    <span class="rule"></span>
+    <span class="rule-left"></span>
     <h2>EDITING — {preset.name.toUpperCase()}</h2>
-    <span class="rule"></span>
+    <span class="rule-right"></span>
     <ConfirmButton
       class="delete-btn"
       label="Delete preset"
@@ -183,10 +180,16 @@
     white-space: nowrap;
     margin: 0;
   }
-  .rule {
+  .rule-left {
+    width: 26px;
+    height: 1px;
+    background: var(--color-gold);
+    flex-shrink: 0;
+  }
+  .rule-right {
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
+    background: linear-gradient(90deg, var(--color-gold), transparent);
   }
   .editor-grid {
     display: grid;
@@ -253,5 +256,12 @@
   }
   .hps-readout strong {
     color: var(--color-hps);
+  }
+  @media (min-width: 900px) {
+    .totals-section :global(.stats-fields) {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px 26px;
+    }
   }
 </style>

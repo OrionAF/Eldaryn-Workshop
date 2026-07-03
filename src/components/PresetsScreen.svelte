@@ -5,6 +5,7 @@
    * plus a strip linking out to the character-wide screens (Mount & Glyphs,
    * Awakening, Transcendence) that every preset shares.
    */
+  import { untrack } from 'svelte';
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { TRANSCENDENCE_TREES } from '../lib/transcendenceData.js';
   import { effectiveUnlockedSet, totalIchorSpent } from '../lib/transcendence.js';
@@ -17,6 +18,15 @@
 
   let editingId = $state(rosterStore.current.presets[0]?.id ?? null);
   const editingPreset = $derived(character.presets.find((p) => p.id === editingId) ?? null);
+
+  // Re-point the editor at the new character's first preset on a character
+  // switch. Tracks only character.id - the presets read is untracked so
+  // adding/renaming/reordering presets on the CURRENT character doesn't
+  // fight the user's own card selection.
+  $effect(() => {
+    character.id;
+    editingId = untrack(() => character.presets[0]?.id ?? null);
+  });
 
   function selectForEdit(id) {
     editingId = id;
@@ -70,24 +80,28 @@
       <span class="dot mounts"></span>
       <span class="tile-title">Mount &amp; Glyphs</span>
       {#if activeMount}
-        <span class="tile-sub">{activeMount.name} · +{activeMount.baseHpPct}% HP · +{activeMount.baseAtkPct}% ATK · glyphs {equippedGlyphCount}/6</span>
+        <span class="tile-primary">{activeMount.name} ({activeMount.rarity})</span>
+        <span class="tile-detail">+{activeMount.baseHpPct}% HP · +{activeMount.baseAtkPct}% ATK · glyphs {equippedGlyphCount}/6</span>
       {:else}
-        <span class="tile-sub">No mount · add one under Mount &amp; Glyphs</span>
+        <span class="tile-primary">No mount</span>
+        <span class="tile-detail">add one under Mount &amp; Glyphs</span>
       {/if}
     </button>
     <button type="button" class="tile" onclick={() => onNavigate?.('awakening')}>
       <span class="dot awakening"></span>
       <span class="tile-title">Awakening</span>
       {#if awakeningLabel}
-        <span class="tile-sub">{character.awakening.points} / 15 · {awakeningLabel}</span>
+        <span class="tile-primary">{character.awakening.points} / 15 · {awakeningLabel}</span>
       {:else}
-        <span class="tile-sub">No path · choose Shadow or Radiant</span>
+        <span class="tile-primary">No path</span>
+        <span class="tile-detail">choose Shadow or Radiant</span>
       {/if}
     </button>
     <button type="button" class="tile" onclick={() => onNavigate?.('transcendence')}>
       <span class="dot transcendence"></span>
       <span class="tile-title">Transcendence</span>
-      <span class="tile-sub">{nodesPlaced} nodes · {ichorSpent} ichor spent · one build per character</span>
+      <span class="tile-primary">{nodesPlaced} node{nodesPlaced === 1 ? '' : 's'}</span>
+      <span class="tile-detail">{ichorSpent} ichor spent · one build per character</span>
     </button>
   </div>
 </div>
@@ -105,8 +119,13 @@
     margin: 0;
   }
   .new-preset-btn {
-    border-color: var(--color-gold);
+    font-size: 12px;
+    font-weight: 600;
     color: var(--color-gold-light);
+    border: 1px solid var(--color-gold);
+    border-radius: 7px;
+    padding: 6px 14px;
+    background: none;
   }
   .preset-grid {
     display: grid;
@@ -155,7 +174,7 @@
   .tiles {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 12px;
+    gap: 14px;
   }
   .tile {
     display: flex;
@@ -165,16 +184,16 @@
     background: var(--color-inset);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-panel);
-    padding: 12px 14px;
+    padding: 14px 16px;
     text-align: left;
   }
   .tile:hover {
     border-color: var(--color-gold);
   }
   .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 2px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
   }
   .dot.mounts {
     background: var(--nav-mounts);
@@ -189,7 +208,14 @@
     font-weight: 600;
     font-size: 13px;
   }
-  .tile-sub {
+  .tile-primary {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--color-ink);
+  }
+  .tile-detail {
+    font-family: var(--font-data);
+    font-variant-numeric: tabular-nums;
     font-size: 11px;
     color: var(--color-muted);
   }

@@ -95,8 +95,9 @@
   --space-8: 34px;
 
   --radius-chip: 7px;
+  --radius-mini-chip: 12px;
   --radius-pill: 999px;
-  --radius-panel: 10px;
+  --radius-panel: 12px;
   --radius-field: 6px;
   --radius: var(--radius-field);
 

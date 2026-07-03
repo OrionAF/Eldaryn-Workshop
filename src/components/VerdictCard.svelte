@@ -95,7 +95,7 @@
   .verdict-card h3 {
     margin: 0 0 var(--space-2);
     font-family: var(--font-heading);
-    color: var(--nav-gear-light);
+    color: var(--color-ink);
   }
   .verdict-card.upgrade {
     border-color: var(--color-upgrade-border);
