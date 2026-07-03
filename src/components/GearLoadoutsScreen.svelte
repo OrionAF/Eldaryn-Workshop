@@ -71,6 +71,12 @@
     .layout {
       grid-template-columns: 1fr;
     }
+    .silhouette-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
   }
   .used-by {
     font-size: 11px;

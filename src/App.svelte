@@ -93,6 +93,17 @@
     padding: 18px 26px 34px;
     min-width: 0;
   }
+  /* Rail -> bottom tab bar (Sidebar.svelte) at the same breakpoint - the
+     shell drops to one column and reserves space at the bottom so page
+     content doesn't sit underneath the fixed bar. */
+  @media (max-width: 700px) {
+    .shell {
+      grid-template-columns: 1fr;
+    }
+    main {
+      padding: 12px 12px calc(64px + env(safe-area-inset-bottom, 0px));
+    }
+  }
   .banner {
     display: flex;
     align-items: center;
