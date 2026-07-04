@@ -1,5 +1,6 @@
 <script>
   import Sidebar from './components/Sidebar.svelte';
+  import WelcomeScreen from './components/WelcomeScreen.svelte';
   import PresetsScreen from './components/PresetsScreen.svelte';
   import DropCheckScreen from './components/DropCheckScreen.svelte';
   import GearLoadoutsScreen from './components/GearLoadoutsScreen.svelte';
@@ -47,47 +48,51 @@
   }
 </script>
 
-<div class="shell">
-  <Sidebar {activeScreen} onSelectScreen={selectScreen} onStatus={setStatus} />
+{#if rosterStore.roster.characters.length === 0}
+  <WelcomeScreen />
+{:else}
+  <div class="shell">
+    <Sidebar {activeScreen} onSelectScreen={selectScreen} onStatus={setStatus} />
 
-  <main>
-    <div class="banner">
-      <div class="avatar" aria-hidden="true"></div>
-      <div class="banner-text">
-        <div class="character-name">{character.name}</div>
-        <div class="context-sub">{contextSub}</div>
+    <main>
+      <div class="banner">
+        <div class="avatar" aria-hidden="true"></div>
+        <div class="banner-text">
+          <div class="character-name">{character.name}</div>
+          <div class="context-sub">{contextSub}</div>
+        </div>
+        {#if statusMessage}
+          <div class="status-pill" role="status">{statusMessage}</div>
+        {/if}
       </div>
-      {#if statusMessage}
-        <div class="status-pill" role="status">{statusMessage}</div>
-      {/if}
-    </div>
 
-    {#if !profileReady}
-      <p class="onboarding-hint">
-        Choose a class for this character to get started — open ⇄ Change character in the rail,
-        click the ✎ next to the character, and pick a class.
-      </p>
-    {:else if activeScreen === 'presets'}
-      <PresetsScreen {setStatus} onNavigate={selectScreen} />
-    {:else if activeScreen === 'drop'}
-      <DropCheckScreen {setStatus} />
-    {:else if activeScreen === 'gear'}
-      <GearLoadoutsScreen />
-    {:else if activeScreen === 'talents'}
-      <TalentSetsScreen />
-    {:else if activeScreen === 'pets'}
-      <PetsScreen />
-    {:else if activeScreen === 'relics'}
-      <RelicsScreen />
-    {:else if activeScreen === 'mounts'}
-      <MountAndGlyphsScreen />
-    {:else if activeScreen === 'awakening'}
-      <AwakeningScreen />
-    {:else}
-      <TranscendenceScreen />
-    {/if}
-  </main>
-</div>
+      {#if !profileReady}
+        <p class="onboarding-hint">
+          Choose a class for this character to get started — open ⇄ Change character in the rail,
+          click the ✎ next to the character, and pick a class.
+        </p>
+      {:else if activeScreen === 'presets'}
+        <PresetsScreen {setStatus} onNavigate={selectScreen} />
+      {:else if activeScreen === 'drop'}
+        <DropCheckScreen {setStatus} />
+      {:else if activeScreen === 'gear'}
+        <GearLoadoutsScreen />
+      {:else if activeScreen === 'talents'}
+        <TalentSetsScreen />
+      {:else if activeScreen === 'pets'}
+        <PetsScreen />
+      {:else if activeScreen === 'relics'}
+        <RelicsScreen />
+      {:else if activeScreen === 'mounts'}
+        <MountAndGlyphsScreen />
+      {:else if activeScreen === 'awakening'}
+        <AwakeningScreen />
+      {:else}
+        <TranscendenceScreen />
+      {/if}
+    </main>
+  </div>
+{/if}
 
 <style>
   .shell {

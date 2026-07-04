@@ -6,7 +6,7 @@
  * the model so malformed/old files are safe to load).
  */
 
-import { newRoster, normaliseRoster, getCurrent } from './model.js';
+import { emptyRoster, normaliseRoster, getCurrent } from './model.js';
 
 const KEY = 'eldaryn_optimiser_state_v1';
 
@@ -20,13 +20,13 @@ const hasLocalStorage = (() => {
 
 /** Load the roster from localStorage, or a fresh one if absent/corrupt. */
 export function loadRoster() {
-  if (!hasLocalStorage) return newRoster();
+  if (!hasLocalStorage) return emptyRoster();
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return newRoster();
+    if (!raw) return emptyRoster();
     return normaliseRoster(JSON.parse(raw));
   } catch {
-    return newRoster();
+    return emptyRoster();
   }
 }
 
