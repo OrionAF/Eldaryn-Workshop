@@ -1,6 +1,6 @@
 import { it, expect } from 'vitest';
 import { computePresetTotals, resolveEffectiveTotals } from './totals.js';
-import { newCharacter, newPetEntry, newMountEntry, newMountGlyphEntry, newPreset, emptyStats } from './model.js';
+import { newCharacter, newPetEntry, newMountEntry, newMountGlyphEntry, newPreset, newStoneEntry, emptyStats } from './model.js';
 import { BASE_ATTACK, BASE_SPEED, BASE_CRIT_MULT } from './dps.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
@@ -32,6 +32,32 @@ it("a gear slot on the preset's loadout contributes its flat Attack and Attack%"
   c.loadouts[0].gear.Weapon = emptyStats({ attack: 500, attack_pct: 10 });
   const totals = computePresetTotals(c, c.presets[0]); // preset 0 -> loadout 0
   expect(approx(totals.attack, (BASE_ATTACK + 500) * 1.1)).toBe(true);
+});
+
+it("a stone socketed into the preset's loadout contributes its rolled stats", () => {
+  const c = newCharacter();
+  const stone = newStoneEntry({ type: 'verdant', rolledKeys: ['attack_pct', 'crit'], stats: { attack_pct: 5, crit: 2 } });
+  c.stoneInventory = [stone];
+  c.loadouts[0].socketedStones.Weapon = stone.id;
+  const totals = computePresetTotals(c, c.presets[0]); // preset 0 -> loadout 0
+  expect(approx(totals.attack, BASE_ATTACK * 1.05)).toBe(true);
+  expect(totals.crit).toBe(2);
+});
+
+it('an empty socket (no stone id) and a dangling socket reference both contribute nothing', () => {
+  const c = newCharacter();
+  c.loadouts[0].socketedStones.Weapon = 'ghost-stone-id'; // not in stoneInventory
+  const totals = computePresetTotals(c, c.presets[0]);
+  expect(approx(totals.attack, BASE_ATTACK)).toBe(true);
+});
+
+it('a stone socketed in Loadout 2 does not contribute to a preset on Loadout 1', () => {
+  const c = newCharacter();
+  const stone = newStoneEntry({ type: 'crimson', rolledKeys: ['crit'], stats: { crit: 15 } });
+  c.stoneInventory = [stone];
+  c.loadouts[1].socketedStones.Weapon = stone.id;
+  const totals = computePresetTotals(c, c.presets[0]); // preset 0 -> loadout 0
+  expect(totals.crit).toBe(0);
 });
 
 it('gear is per-loadout - a preset on Loadout 2 is unaffected by Loadout 1 gear', () => {

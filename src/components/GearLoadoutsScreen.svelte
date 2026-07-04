@@ -4,19 +4,33 @@
    * old Gear Panel's Edit mode; Compare mode moved entirely into Drop Check).
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
-  import { fieldsForTab } from '../lib/constants.js';
+  import { fieldsForTab, SLOTS } from '../lib/constants.js';
+  import { stoneTypeDef } from '../lib/stonesData.js';
   import Chip from './Chip.svelte';
   import SlotSilhouette from './SlotSilhouette.svelte';
   import StatsFields from './StatsFields.svelte';
+  import StoneForm from './StoneForm.svelte';
+  import StoneGrid from './StoneGrid.svelte';
 
   const character = $derived(rosterStore.current);
 
   let loadoutIndex = $state(0);
   let selectedSlot = $state('Weapon');
+  let selectedStoneId = $state(null);
 
   const loadout = $derived(character.loadouts[loadoutIndex]);
   const fields = $derived(fieldsForTab('gear', character.class));
   const usedBy = $derived(character.presets.filter((p) => p.loadout === loadoutIndex).map((p) => p.name));
+
+  /** Slot -> socketed stone's type color, for SlotSilhouette's indicator dot (this loadout only). */
+  const stoneColors = $derived.by(() => {
+    const colors = {};
+    for (const slot of SLOTS) {
+      const stone = character.stoneInventory.find((s) => s.id === loadout.socketedStones[slot]);
+      colors[slot] = stone ? stoneTypeDef(stone.type)?.color : null;
+    }
+    return colors;
+  });
 </script>
 
 <div class="header-row">
@@ -30,12 +44,13 @@
 
 <div class="layout">
   <div class="silhouette-col">
-    <SlotSilhouette gear={loadout.gear} {selectedSlot} onSelect={(slot) => (selectedSlot = slot)} loadoutLabel={loadout.name} />
+    <SlotSilhouette gear={loadout.gear} {selectedSlot} onSelect={(slot) => (selectedSlot = slot)} loadoutLabel={loadout.name} {stoneColors} />
     {#if usedBy.length}
       <p class="used-by">This loadout is used by: {usedBy.join(', ')}</p>
     {:else}
       <p class="used-by">No presets use this loadout yet.</p>
     {/if}
+    <StoneForm {character} {loadoutIndex} {selectedSlot} {selectedStoneId} onDeselect={() => (selectedStoneId = null)} />
   </div>
 
   <div class="field-col">
@@ -44,6 +59,13 @@
       values={loadout.gear[selectedSlot]}
       {fields}
       onChange={(key, value) => rosterStore.setGearField(selectedSlot, loadoutIndex, key, value)}
+    />
+    <h3 class="subheading stones-heading">Socketed Stones</h3>
+    <StoneGrid
+      stoneInventory={character.stoneInventory}
+      loadouts={character.loadouts}
+      {selectedStoneId}
+      onSelect={(id) => (selectedStoneId = id)}
     />
   </div>
 </div>
@@ -91,6 +113,9 @@
   }
   .field-col .micro-label {
     margin: 0 0 10px;
+  }
+  .stones-heading {
+    margin: var(--space-4) 0 var(--space-2);
   }
   @media (min-width: 900px) {
     .field-col :global(.stats-fields) {

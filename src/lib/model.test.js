@@ -1,9 +1,9 @@
 import { it, expect } from 'vitest';
-import { newRoster, newCharacter, newLoadout, newPreset, talentSetLabel, normaliseRoster } from './model.js';
+import { newRoster, newCharacter, newLoadout, newPreset, newStoneEntry, talentSetLabel, normaliseRoster } from './model.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
-import { PRESET_RELIC_CAP, PRESET_SIGIL_CAP } from './constants.js';
+import { PRESET_RELIC_CAP, PRESET_SIGIL_CAP, SLOTS } from './constants.js';
 
 it('newCharacter defaults class to null, talent sets empty, one seeded Manual preset', () => {
   const c = newCharacter('Test');
@@ -22,9 +22,9 @@ it('newCharacter defaults class to null, talent sets empty, one seeded Manual pr
   expect(c.drop).toBe(null);
 });
 
-it('newLoadout has no talent/relic fields anymore - gear/stones only', () => {
+it('newLoadout has no talent/relic fields anymore - gear + a socketedStones reference map only', () => {
   const l = newLoadout('Loadout 1');
-  expect(l).toEqual({ name: 'Loadout 1', gear: expect.any(Object), stones: expect.any(Object) });
+  expect(l).toEqual({ name: 'Loadout 1', gear: expect.any(Object), socketedStones: expect.any(Object) });
   expect(l.spec).toBeUndefined();
   expect(l.talentAllocation).toBeUndefined();
   expect(l.relics).toBeUndefined();
@@ -44,6 +44,101 @@ it('newPreset defaults: no pet, no relics/sigils, empty manual stats', () => {
   expect(p.relicIds).toEqual([]);
   expect(p.sigilIds).toEqual([]);
   expect(p.manualTotals).toBe(false);
+});
+
+it('newCharacter defaults stoneInventory to empty, and every loadout starts with no socketed stones', () => {
+  const c = newCharacter('Test');
+  expect(c.stoneInventory).toEqual([]);
+  for (const loadout of c.loadouts) {
+    for (const slot of SLOTS) expect(loadout.socketedStones[slot]).toBe(null);
+  }
+});
+
+it('newStoneEntry defaults quality to 1, copies rolledKeys, defends stats shape', () => {
+  const s = newStoneEntry({ type: 'verdant', rolledKeys: ['attack_pct', 'crit'], stats: { attack_pct: 5 } });
+  expect(s.type).toBe('verdant');
+  expect(s.quality).toBe(1);
+  expect(s.rolledKeys).toEqual(['attack_pct', 'crit']);
+  expect(s.stats.attack_pct).toBe(5);
+  expect(s.stats.crit).toBe(0); // shape-defended, not actually set
+});
+
+it('normaliseRoster drops stone inventory entries missing an id/dupe id/invalid type, clamps quality, defends stats shape', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'Test',
+        stoneInventory: [
+          { id: 's1', type: 'verdant', quality: -5, rolledKeys: ['attack_pct'], stats: { attack_pct: 10 } },
+          { id: 's1', type: 'crimson', rolledKeys: [] }, // duplicate id, dropped
+          { id: 's2', type: 'not-a-real-type', rolledKeys: [] }, // invalid type, dropped
+          { type: 'azure', rolledKeys: [] }, // missing id, dropped
+        ],
+      },
+    ],
+    currentId: 'x',
+  };
+  const roster = normaliseRoster(raw);
+  const stones = roster.characters[0].stoneInventory;
+  expect(stones.length).toBe(1);
+  expect(stones[0].id).toBe('s1');
+  expect(stones[0].quality).toBe(0); // clamped, no negative quality
+  expect(stones[0].stats.attack_pct).toBe(10);
+});
+
+it('normaliseRoster drops a socketedStones reference to a stone that does not exist', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'Test',
+        loadouts: [{ name: 'Loadout 1', gear: {}, socketedStones: { Weapon: 'ghost-stone' } }],
+      },
+    ],
+    currentId: 'x',
+  };
+  const roster = normaliseRoster(raw);
+  expect(roster.characters[0].loadouts[0].socketedStones.Weapon).toBe(null);
+});
+
+it('normaliseRoster keeps a valid socketedStones reference, and allows the same stone in both loadouts at once', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'Test',
+        stoneInventory: [{ id: 's1', type: 'verdant', quality: 34, rolledKeys: [], stats: {} }],
+        loadouts: [
+          { name: 'Loadout 1', gear: {}, socketedStones: { Head: 's1' } },
+          { name: 'Loadout 2', gear: {}, socketedStones: { Leggings: 's1' } },
+        ],
+      },
+    ],
+    currentId: 'x',
+  };
+  const roster = normaliseRoster(raw);
+  const [l1, l2] = roster.characters[0].loadouts;
+  expect(l1.socketedStones.Head).toBe('s1');
+  expect(l2.socketedStones.Leggings).toBe('s1');
+});
+
+it('normaliseRoster drops a duplicate stoneId claiming a second slot within the SAME loadout, keeping only the first (SLOTS order)', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'Test',
+        stoneInventory: [{ id: 's1', type: 'verdant', quality: 1, rolledKeys: [], stats: {} }],
+        loadouts: [{ name: 'Loadout 1', gear: {}, socketedStones: { Head: 's1', Leggings: 's1' } }],
+      },
+    ],
+    currentId: 'x',
+  };
+  const roster = normaliseRoster(raw);
+  const loadout = roster.characters[0].loadouts[0];
+  expect(loadout.socketedStones.Head).toBe('s1'); // Head comes before Leggings in SLOTS
+  expect(loadout.socketedStones.Leggings).toBe(null);
 });
 
 it('newCharacter defaults Awakening to no path/no points', () => {

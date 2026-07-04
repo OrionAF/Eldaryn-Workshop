@@ -9,7 +9,7 @@
  */
 
 import { loadRoster, saveRoster, importRoster as parseRosterJson, downloadRoster } from './storage.js';
-import { newCharacter, getCurrent, emptyStats, newPetEntry, newMountEntry, newMountGlyphEntry, newPreset } from './model.js';
+import { newCharacter, getCurrent, emptyStats, newPetEntry, newMountEntry, newMountGlyphEntry, newPreset, newStoneEntry } from './model.js';
 import { computePresetTotals } from './totals.js';
 import { SLOTS, SOURCE_DEFS, TALENT_TOTAL_POINTS, PRESET_RELIC_CAP } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
@@ -216,6 +216,59 @@ function createRosterStore() {
     glyph.equipped = equipped;
     persist();
     return true;
+  }
+
+  // --- Socketed Stones (character-scoped shared inventory; socketed per-loadout-per-slot via Loadout.socketedStones) ---
+  function addStone({ type, quality, rolledKeys, stats }) {
+    const stone = newStoneEntry({ type, quality, rolledKeys, stats });
+    current.stoneInventory.push(stone);
+    persist();
+    return stone.id;
+  }
+
+  /** Only quality and each rolled stat's value are editable after creation - type/rolledKeys are locked in (see model.js's StoneEntry comment). */
+  function updateStone(stoneId, { quality, stats } = {}) {
+    const stone = current.stoneInventory.find((s) => s.id === stoneId);
+    if (!stone) return;
+    if (quality !== undefined) stone.quality = Math.max(0, quality);
+    if (stats) {
+      for (const key of stone.rolledKeys) {
+        if (key in stats) stone.stats[key] = stats[key];
+      }
+    }
+    persist();
+  }
+
+  /** Nulls this stone out of every loadout socket referencing it, rather than leaving a dangling reference. */
+  function removeStone(stoneId) {
+    current.stoneInventory = current.stoneInventory.filter((s) => s.id !== stoneId);
+    for (const loadout of current.loadouts) {
+      for (const slot of SLOTS) {
+        if (loadout.socketedStones[slot] === stoneId) loadout.socketedStones[slot] = null;
+      }
+    }
+    persist();
+  }
+
+  /**
+   * Sockets stoneId into loadoutIndex/slot. A stone can only occupy one slot
+   * per loadout - if it's already socketed elsewhere in THIS loadout, that
+   * slot is silently vacated first (auto-move, like pulling a gem out and
+   * re-socketing it elsewhere). The same stone may still be socketed
+   * independently in the other loadout at the same time (see model.js).
+   */
+  function socketStone(loadoutIndex, slot, stoneId) {
+    const loadout = current.loadouts[loadoutIndex];
+    for (const s of SLOTS) {
+      if (loadout.socketedStones[s] === stoneId) loadout.socketedStones[s] = null;
+    }
+    loadout.socketedStones[slot] = stoneId;
+    persist();
+  }
+
+  function unsocketStone(loadoutIndex, slot) {
+    current.loadouts[loadoutIndex].socketedStones[slot] = null;
+    persist();
   }
 
   // --- Talent Sets (Character.talentSets - Set A/Set B; tree content is static, see talentTreeData.js) ---
@@ -482,6 +535,11 @@ function createRosterStore() {
     addMountGlyph,
     removeMountGlyph,
     setGlyphEquipped,
+    addStone,
+    updateStone,
+    removeStone,
+    socketStone,
+    unsocketStone,
     setTalentSetSpec,
     setTalentSetRank,
     resetTalentSet,

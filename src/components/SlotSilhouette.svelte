@@ -10,10 +10,15 @@
    *            [Boots]
    * Selection state is owned by the parent (GearPanelTab) and shared across
    * both loadouts' silhouettes - selecting a slot in either selects it in both.
+   *
+   * `stoneColors`, if given, maps a slot to the CSS color of the stone
+   * currently socketed there (see model.js's Loadout.socketedStones) - shown
+   * as a small dot in the top-LEFT corner, colored per stone type, distinct
+   * from the top-right gold dot that marks "currently selected slot".
    */
   import { SLOTS } from '../lib/constants.js';
 
-  let { gear, selectedSlot, onSelect, loadoutLabel } = $props();
+  let { gear, selectedSlot, onSelect, loadoutLabel, stoneColors = {} } = $props();
 
   function hasData(slot) {
     const stats = gear[slot];
@@ -32,6 +37,9 @@
       onclick={() => onSelect(slot)}
       aria-pressed={selectedSlot === slot}
     >
+      {#if stoneColors[slot]}
+        <span class="stone-dot" style="background-color: {stoneColors[slot]}"></span>
+      {/if}
       {slot}
     </button>
   {/each}
@@ -79,5 +87,15 @@
     height: 0.4rem;
     border-radius: 50%;
     background: var(--color-gold);
+  }
+  /* Socketed-stone indicator - top-left, colored per stone type, so it never
+     collides visually with the top-right "selected slot" gold dot above. */
+  .stone-dot {
+    position: absolute;
+    top: 0.3rem;
+    left: 0.3rem;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
   }
 </style>

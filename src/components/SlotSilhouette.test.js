@@ -60,3 +60,18 @@ it('marks a slot as "filled" when its gear has any non-zero stat', () => {
   expect(head.classList.contains('filled')).toBe(false);
   unmount(app);
 });
+
+it('shows a socketed-stone indicator dot only on slots present in stoneColors', () => {
+  const app = mount(SlotSilhouette, {
+    target,
+    props: { gear: emptyGear(), selectedSlot: 'Head', onSelect: () => {}, loadoutLabel: 'Loadout 1', stoneColors: { Weapon: '#22c55e' } },
+  });
+  flushSync();
+
+  const weapon = [...target.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Weapon');
+  const head = [...target.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Head');
+  expect(weapon.querySelector('.stone-dot')).not.toBe(null);
+  expect(weapon.querySelector('.stone-dot').style.backgroundColor).toBe('rgb(34, 197, 94)');
+  expect(head.querySelector('.stone-dot')).toBe(null);
+  unmount(app);
+});
