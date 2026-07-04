@@ -51,3 +51,30 @@ it('editing a stat field writes through rosterStore.setGearField', () => {
   rosterStore.setGearField('Weapon', 0, 'attack', 0); // cleanup
   cleanup();
 });
+
+it('renders the Socketed Stones section, and a socketed stone shows its dot on the silhouette', () => {
+  const id = rosterStore.addStone({ type: 'verdant', quality: 1, rolledKeys: ['crit'], stats: { crit: 1 } });
+  rosterStore.socketStone(0, 'Weapon', id); // Weapon is the default-selected slot
+  flushSync();
+
+  expect(target.textContent).toContain('Socketed Stones');
+  expect(target.querySelector('.stone-tile')).not.toBeNull();
+  const weaponSlot = [...target.querySelectorAll('.slot')].find((b) => b.textContent.trim() === 'Weapon');
+  expect(weaponSlot.querySelector('.stone-dot')).not.toBeNull();
+
+  rosterStore.removeStone(id); // cleanup
+  cleanup();
+});
+
+it('selecting a stone tile switches the left panel into Details mode', () => {
+  const id = rosterStore.addStone({ type: 'crimson', quality: 12, rolledKeys: ['crit'], stats: { crit: 3 } });
+  flushSync();
+
+  target.querySelector('.stone-tile').click();
+  flushSync();
+  expect(target.textContent).toContain('Crimson Warstone');
+  expect([...target.querySelectorAll('button')].some((b) => b.textContent === 'Socket Stone')).toBe(true);
+
+  rosterStore.removeStone(id); // cleanup
+  cleanup();
+});

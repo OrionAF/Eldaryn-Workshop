@@ -10,16 +10,30 @@
  *                 relicLevels: Record<defId, level>,       // character-wide levels
  *                 mounts: { entries, activeId },           // character-wide, one ridden at a time
  *                 glyphs: { entries },                      // character-wide, tier-capped equip (see SOURCE_DEFS)
+ *                 stoneInventory: StoneEntry[],             // character-wide shared inventory (like pets)
  *                 awakening: { path, points },              // character-wide
  *                 transcendence: { unlockedPositions },     // character-wide
  *                 presets: Preset[],
  *                 drop: DropState | null }                  // per-character (Preset redesign moved this off Roster)
- * Loadout     = { name, gear: Record<Slot, OffensiveStats>, stones: Record<Slot, OffensiveStats> }
+ * Loadout     = { name, gear: Record<Slot, OffensiveStats>, socketedStones: Record<Slot, stoneId|null> }
+ *   socketedStones is just an ID reference into Character.stoneInventory per slot - never a
+ *   stat block. Replacing a slot's gear never touches this map, so a socketed stone survives
+ *   a gear swap untouched. The SAME stone id may appear in both loadouts at once (one slot
+ *   each), but at most once within a single loadout - see rosterStore.socketStone's auto-move.
  * TalentSet   = { spec: specKey|null, allocation: Record<talentId, rank> }
  *   No `name` field - Set A/Set B are fixed labels derived from index (talentSetLabel), not
  *   user-renamable. Tree CONTENT (tiers/talents/values) is static code data in
  *   talentTreeData.js, not part of the persisted Roster.
  * PetEntry    = { id, name, rarity, stats: OffensiveStats }  // no level - see Character.petLevel
+ * StoneEntry  = { id, type: 'verdant'|'crimson'|'azure'|'eldaryn'|'mythic', quality: number,
+ *                 rolledKeys: string[], stats: OffensiveStats }
+ *   quality is display-only (no calc effect, same principle as gear not tracking item level).
+ *   rolledKeys records which stat keys are actually on this stone (incl. pvp_attack/
+ *   pvp_defense where the type fixes them) - needed because a 0-value stat is otherwise
+ *   indistinguishable from "not rolled". Type + rolledKeys are fixed at creation (see
+ *   stonesData.js's STONE_TYPES for each type's fixed/free bonus-stat shape); only quality
+ *   and each rolled stat's value can be edited afterward. `stats` is the stone's resolved
+ *   contribution, accumulated directly into totals.js like gear/pet stats.
  * Preset      = { id, name, loadout: 0|1, talentSet: 0|1, petId: string|null,
  *                 relicIds: string[] (max PRESET_RELIC_CAP),
  *                 sigilIds: string[] (max PRESET_SIGIL_CAP, scaffold - no Sigil content/UI yet),
@@ -32,19 +46,22 @@
  *   Transcendence already worked pre-redesign.
  * DropState   = { slot, piece: OffensiveStats }
  *
- * Enchant Stones stay per-loadout (Loadout.stones) and Sigils are per-preset
- * (Preset.sigilIds) - both remain scaffold-only (no real content/UI), same as before
- * the redesign, just relocated to match where a future pass would build real UI for
- * them (stones alongside gear, sigils alongside relics in the preset editor).
+ * Socketed Stones (docs/socketed-stones-design.md) got real content/UI on the Gear
+ * Loadouts screen: a character-wide inventory (Character.stoneInventory) referenced
+ * per-slot-per-loadout via Loadout.socketedStones, deliberately separate from gear
+ * stats so Drop Check (which only ever reads Loadout.gear) can't be affected by them.
+ * Sigils are per-preset (Preset.sigilIds) and remain scaffold-only (no real content/UI
+ * yet), same as before the redesign.
  */
 
 import { offensiveStats } from './dps.js';
-import { SLOTS, SOURCE_DEFS, CLASSES, SPECS_BY_CLASS, RARITIES, PRESET_RELIC_CAP, PRESET_SIGIL_CAP } from './constants.js';
+import { SLOTS, STAT_FIELDS, SOURCE_DEFS, CLASSES, SPECS_BY_CLASS, RARITIES, PRESET_RELIC_CAP, PRESET_SIGIL_CAP } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { AWAKENING_PATHS, AWAKENING_TOTAL_POINTS } from './awakeningData.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
 import { reachableFrom, effectiveUnlockedSet } from './transcendence.js';
+import { stoneTypeDef } from './stonesData.js';
 
 let _idCounter = 0;
 function newId() {
@@ -64,6 +81,13 @@ function emptyGear() {
   return g;
 }
 
+/** Per-slot map of no socketed stone (see Loadout.socketedStones). */
+function emptySocketedStones() {
+  const s = {};
+  for (const slot of SLOTS) s[slot] = null;
+  return s;
+}
+
 /** The correctly-shaped empty state for one SOURCE_DEFS entry (Mounts/Glyphs only - see constants.js). */
 function emptySourceState(def) {
   return def.selection === 'single' ? { entries: [], activeId: null } : { entries: [] };
@@ -80,7 +104,7 @@ export function talentSetLabel(index) {
 
 // --- Loadouts ---
 export function newLoadout(name) {
-  return { name, gear: emptyGear(), stones: emptyGear() };
+  return { name, gear: emptyGear(), socketedStones: emptySocketedStones() };
 }
 
 // --- Talent Sets (Character.talentSets - moved off Loadout) ---
@@ -101,6 +125,11 @@ export function newMountEntry({ name = 'New Mount', rarity = 'Common', baseHpPct
 // --- Mount Glyphs ---
 export function newMountGlyphEntry({ tier = 'minor', statKey = 'attack_pct', value = 0, equipped = false } = {}) {
   return { id: newId(), tier, statKey, value, equipped };
+}
+
+// --- Socketed Stones (character-wide shared inventory; see stonesData.js for per-type shape) ---
+export function newStoneEntry({ type, quality = 1, rolledKeys = [], stats = {} } = {}) {
+  return { id: newId(), type, quality, rolledKeys: [...rolledKeys], stats: emptyStats(stats) };
 }
 
 /** Empty Awakening state: no path chosen, no points invested. */
@@ -140,6 +169,7 @@ export function newCharacter(name = 'New Character') {
     relicLevels: {},
     mounts: emptySourceState(findSourceDef('mounts')),
     glyphs: emptySourceState(findSourceDef('glyphs')),
+    stoneInventory: [],
     awakening: emptyAwakening(),
     transcendence: emptyTranscendence(),
     // A fresh character has nothing to calculate totals from yet - the seeded
@@ -217,7 +247,6 @@ function migrateLegacyCharacter(oldChar) {
   const loadouts = [0, 1].map((i) => ({
     name: oldLoadouts[i]?.name || `Loadout ${i + 1}`,
     gear: oldLoadouts[i]?.gear || {},
-    stones: oldLoadouts[i]?.stones || {},
   }));
 
   const talentSets = [0, 1].map((i) => ({
@@ -277,10 +306,13 @@ function normaliseCharacter(c) {
   if (c?.id) base.id = c.id;
   base.class = CLASSES.includes(c?.class) ? c.class : null;
 
+  base.stoneInventory = normaliseStoneInventory(c?.stoneInventory);
+  const stoneIds = new Set(base.stoneInventory.map((s) => s.id));
+
   const loadouts = Array.isArray(c?.loadouts) ? c.loadouts : [];
   base.loadouts = [
-    normaliseLoadout(loadouts[0], 'Loadout 1'),
-    normaliseLoadout(loadouts[1], 'Loadout 2'),
+    normaliseLoadout(loadouts[0], 'Loadout 1', stoneIds),
+    normaliseLoadout(loadouts[1], 'Loadout 2', stoneIds),
   ];
 
   const talentSets = Array.isArray(c?.talentSets) ? c.talentSets : [];
@@ -309,13 +341,44 @@ function normaliseCharacter(c) {
   return base;
 }
 
-function normaliseLoadout(l, fallbackName) {
+/**
+ * `stoneIds` is this character's already-normalised stone inventory ids. A
+ * socketedStones entry is dropped (set to null) if it points at a stone that
+ * doesn't exist, or if that stone id was already claimed by an earlier slot
+ * in this same loadout (SLOTS order) - a stone can only occupy one slot per
+ * loadout (see model.js header comment / rosterStore.socketStone).
+ */
+function normaliseLoadout(l, fallbackName, stoneIds) {
   const base = newLoadout(l?.name || fallbackName);
+  const claimed = new Set();
   for (const slot of SLOTS) {
     base.gear[slot] = emptyStats(l?.gear?.[slot] || {});
-    base.stones[slot] = emptyStats(l?.stones?.[slot] || {});
+    const stoneId = l?.socketedStones?.[slot];
+    if (stoneId && stoneIds.has(stoneId) && !claimed.has(stoneId)) {
+      base.socketedStones[slot] = stoneId;
+      claimed.add(stoneId);
+    }
   }
   return base;
+}
+
+/** Drops entries missing an id/dupe id, or whose type isn't a real STONE_TYPES key; clamps quality, defends stats shape. */
+function normaliseStoneInventory(raw) {
+  const seen = new Set();
+  const entries = [];
+  for (const s of Array.isArray(raw) ? raw : []) {
+    if (!s?.id || seen.has(s.id) || !stoneTypeDef(s?.type)) continue;
+    seen.add(s.id);
+    const rolledKeys = Array.isArray(s.rolledKeys) ? s.rolledKeys.filter((k) => STAT_FIELDS.some((f) => f.key === k)) : [];
+    entries.push({
+      id: s.id,
+      type: s.type,
+      quality: Math.max(0, Number(s.quality) || 0),
+      rolledKeys,
+      stats: emptyStats(s.stats || {}),
+    });
+  }
+  return entries;
 }
 
 function normaliseTalentSet(raw, characterClass) {

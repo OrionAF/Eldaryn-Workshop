@@ -231,6 +231,53 @@ it('setGlyphEquipped enforces the 3 Minor / 2 Major / 1 Mythic cap and rejects p
   expect(rosterStore.current.glyphs.entries.some((g) => g.id === minors[3])).toBe(false);
 });
 
+// --- Socketed Stones (shared inventory; socketed per-loadout-per-slot) ---
+it('addStone/updateStone round-trip; updateStone only touches quality and rolledKeys values', () => {
+  const id = rosterStore.addStone({ type: 'verdant', quality: 34, rolledKeys: ['attack_pct', 'crit'], stats: { attack_pct: 5, crit: 2 } });
+  const stone = rosterStore.current.stoneInventory.find((s) => s.id === id);
+  expect(stone.type).toBe('verdant');
+  expect(stone.quality).toBe(34);
+
+  rosterStore.updateStone(id, { quality: 40, stats: { attack_pct: 8, crit: 3, health: 999 } });
+  const updated = rosterStore.current.stoneInventory.find((s) => s.id === id);
+  expect(updated.quality).toBe(40);
+  expect(updated.stats.attack_pct).toBe(8);
+  expect(updated.stats.crit).toBe(3);
+  expect(updated.stats.health).toBe(0); // not a rolledKey on this stone - ignored
+
+  rosterStore.removeStone(id); // cleanup
+});
+
+it('removeStone clears any loadout socket referencing it, in both loadouts', () => {
+  const id = rosterStore.addStone({ type: 'crimson', quality: 1, rolledKeys: ['crit'], stats: { crit: 5 } });
+  rosterStore.socketStone(0, 'Head', id);
+  rosterStore.socketStone(1, 'Leggings', id);
+  expect(rosterStore.current.loadouts[0].socketedStones.Head).toBe(id);
+  expect(rosterStore.current.loadouts[1].socketedStones.Leggings).toBe(id);
+
+  rosterStore.removeStone(id);
+  expect(rosterStore.current.stoneInventory.some((s) => s.id === id)).toBe(false);
+  expect(rosterStore.current.loadouts[0].socketedStones.Head).toBe(null);
+  expect(rosterStore.current.loadouts[1].socketedStones.Leggings).toBe(null);
+});
+
+it('socketStone auto-moves a stone already socketed elsewhere in the SAME loadout, but leaves the other loadout untouched', () => {
+  const id = rosterStore.addStone({ type: 'azure', quality: 1, rolledKeys: ['pvp_attack'], stats: { pvp_attack: 100 } });
+  rosterStore.socketStone(0, 'Head', id);
+  rosterStore.socketStone(1, 'Boots', id); // independent placement in the other loadout
+  expect(rosterStore.current.loadouts[0].socketedStones.Head).toBe(id);
+  expect(rosterStore.current.loadouts[1].socketedStones.Boots).toBe(id);
+
+  rosterStore.socketStone(0, 'Leggings', id); // move within Loadout 1
+  expect(rosterStore.current.loadouts[0].socketedStones.Head).toBe(null); // vacated
+  expect(rosterStore.current.loadouts[0].socketedStones.Leggings).toBe(id);
+  expect(rosterStore.current.loadouts[1].socketedStones.Boots).toBe(id); // Loadout 2 unaffected
+
+  rosterStore.unsocketStone(0, 'Leggings');
+  expect(rosterStore.current.loadouts[0].socketedStones.Leggings).toBe(null);
+  rosterStore.removeStone(id); // cleanup
+});
+
 // --- Talent Sets ---
 it('setCharacterClass resets both talent sets, relicLevels, every preset relicIds, and Transcendence', () => {
   const id = rosterStore.current.id;

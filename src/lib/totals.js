@@ -1,7 +1,7 @@
 /**
  * totals.js - the "Calculated" totals engine: sums base character stats +
- * a Preset's gear/stones + its talent set + its pet + its equipped relics +
- * every character-wide source (Mounts, Glyphs, Awakening, Transcendence)
+ * a Preset's gear/socketed stones + its talent set + its pet + its equipped
+ * relics + every character-wide source (Mounts, Glyphs, Awakening, Transcendence)
  * into one set of final display totals, for a Preset's Manual/Calculated
  * toggle.
  *
@@ -198,8 +198,20 @@ function applyStatCaps(stats) {
 }
 
 /**
- * Sum base + a preset's loadout gear/stones + its talent set + its pet +
- * its equipped relics + every character-wide source (Awakening,
+ * A loadout slot's socketed stone contribution, resolved by id through the
+ * character's shared stoneInventory (see model.js's Loadout.socketedStones -
+ * a slot only ever stores an id, never a stat block).
+ */
+function socketedStoneStats(character, loadout, slot) {
+  const stoneId = loadout.socketedStones[slot];
+  if (!stoneId) return null;
+  const stone = character.stoneInventory.find((s) => s.id === stoneId);
+  return stone ? stone.stats : null;
+}
+
+/**
+ * Sum base + a preset's loadout gear/socketed stones + its talent set + its
+ * pet + its equipped relics + every character-wide source (Awakening,
  * Transcendence, Mounts, Glyphs) into one set of final totals for `preset`.
  * `talentTrees` defaults to the static tree content (talentTreeData.js); the
  * param exists mainly so tests can substitute fixtures.
@@ -210,7 +222,7 @@ export function computePresetTotals(character, preset, talentTrees = TALENT_TREE
 
   for (const slot of SLOTS) {
     accumulate(acc, loadout.gear[slot]);
-    accumulate(acc, loadout.stones[slot]);
+    accumulate(acc, socketedStoneStats(character, loadout, slot));
   }
   accumulate(acc, talentContribution(character, preset, talentTrees));
   accumulate(acc, awakeningContribution(character));

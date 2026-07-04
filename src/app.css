@@ -77,6 +77,23 @@
   --nav-transcendence-light: #dcbafd;
   --nav-transcendence-tint: rgba(192, 132, 252, 0.1);
 
+  /* Socketed Stone type accents (docs/socketed-stones-design.md §5) - exact hex values given, not derived from the theme palette. */
+  --stone-verdant: #22c55e;
+  --stone-verdant-light: #86efac;
+  --stone-verdant-tint: rgba(34, 197, 94, 0.12);
+  --stone-crimson: #ef4444;
+  --stone-crimson-light: #fca5a5;
+  --stone-crimson-tint: rgba(239, 68, 68, 0.12);
+  --stone-azure: #3b82f6;
+  --stone-azure-light: #93c5fd;
+  --stone-azure-tint: rgba(59, 130, 246, 0.12);
+  --stone-eldaryn: #a855f7;
+  --stone-eldaryn-light: #d8b4fe;
+  --stone-eldaryn-tint: rgba(168, 85, 247, 0.12);
+  --stone-mythic: #ec4899;
+  --stone-mythic-light: #f9a8d4;
+  --stone-mythic-tint: rgba(236, 72, 153, 0.12);
+
   /* Relic tier accents. */
   --tier-gold: #e8c84f;
   --tier-silver: #c0cbe0;
