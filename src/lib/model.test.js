@@ -117,6 +117,12 @@ it('newRoster does not carry talent tree content - that is static code data, not
   expect(roster.talentTrees).toBeUndefined();
 });
 
+it('normaliseRoster returns an empty roster (landing page state) for null/missing/empty characters, instead of seeding a default character', () => {
+  expect(normaliseRoster(null)).toEqual({ characters: [], currentId: null });
+  expect(normaliseRoster({})).toEqual({ characters: [], currentId: null });
+  expect(normaliseRoster({ characters: [], currentId: null })).toEqual({ characters: [], currentId: null });
+});
+
 it('normaliseRoster handles a new-shape export that predates class/spec entirely', () => {
   const raw = { characters: [{ id: 'x', name: 'Old' }], currentId: 'x' };
   const roster = normaliseRoster(raw);

@@ -156,6 +156,11 @@ export function newRoster() {
   return { characters: [c], currentId: c.id };
 }
 
+/** No characters yet - the landing/welcome screen creates the first one. */
+export function emptyRoster() {
+  return { characters: [], currentId: null };
+}
+
 export function getCurrent(roster) {
   return roster.characters.find((c) => c.id === roster.currentId) || roster.characters[0] || null;
 }
@@ -166,7 +171,7 @@ export function getCurrent(roster) {
  */
 export function normaliseRoster(raw) {
   if (!raw || !Array.isArray(raw.characters) || raw.characters.length === 0) {
-    return newRoster();
+    return emptyRoster();
   }
   const characters = raw.characters.map((c) =>
     normaliseCharacter(isLegacyCharacter(c) ? migrateLegacyCharacter(c) : c)

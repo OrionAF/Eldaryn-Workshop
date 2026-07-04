@@ -1,6 +1,23 @@
-import { it, expect, vi } from 'vitest';
-import { defaultExportFilename, downloadRoster } from './storage.js';
+import { it, expect, vi, beforeEach } from 'vitest';
+import { defaultExportFilename, downloadRoster, loadRoster } from './storage.js';
 import { newRoster } from './model.js';
+
+const STORAGE_KEY = 'eldaryn_optimiser_state_v1';
+
+beforeEach(() => {
+  localStorage.clear();
+});
+
+it('loadRoster returns an empty roster (landing page state) when localStorage has nothing saved', () => {
+  const roster = loadRoster();
+  expect(roster).toEqual({ characters: [], currentId: null });
+});
+
+it('loadRoster returns an empty roster when the saved data is corrupt JSON', () => {
+  localStorage.setItem(STORAGE_KEY, '{not valid json');
+  const roster = loadRoster();
+  expect(roster).toEqual({ characters: [], currentId: null });
+});
 
 it('defaultExportFilename uses the current character name + a datetime stamp, ending in .json', () => {
   const roster = newRoster();
