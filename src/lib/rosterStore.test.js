@@ -104,11 +104,13 @@ it("applyDropToLoadout always updates gear, but never touches a preset's manualS
 
   expect(rosterStore.current.loadouts[0].gear.Ring.attack).toBe(42); // gear always updates
   expect(rosterStore.current.presets[0].manualStats.attack).toBe(staleManualAttack); // untouched
+
+  rosterStore.setPresetTotalsMode(preset.id, 'calculated'); // cleanup - back to the seeded default
 });
 
 // --- Presets ---
-it('addPreset defaults to Calculated mode (unlike the seeded first preset, which starts Manual)', () => {
-  expect(rosterStore.current.presets[0].manualTotals).toBe(true); // seeded default
+it('addPreset defaults to Calculated mode, same as the seeded first preset', () => {
+  expect(rosterStore.current.presets[0].manualTotals).toBe(false); // seeded default
   const id = rosterStore.addPreset('Arena');
   const preset = rosterStore.current.presets.find((p) => p.id === id);
   expect(preset.name).toBe('Arena');

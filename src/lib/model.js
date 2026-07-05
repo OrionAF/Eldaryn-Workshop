@@ -177,11 +177,9 @@ export function newCharacter(name = 'New Character') {
     stoneInventory: [],
     awakening: emptyAwakening(),
     transcendence: emptyTranscendence(),
-    // A fresh character has nothing to calculate totals from yet - the seeded
-    // preset starts in Manual mode (matches today's onboarding, which starts
-    // Profile Stats in Manual mode too). A preset created later via "+ New
-    // Preset" starts in Calculated mode instead - see rosterStore.addPreset.
-    presets: [newPreset('Preset 1', { manualTotals: true })],
+    // Every preset defaults to Calculated mode, including a fresh character's
+    // seeded first one - see rosterStore.addPreset for presets created later.
+    presets: [newPreset('Preset 1')],
     drop: null,
   };
 }
@@ -340,7 +338,7 @@ function normaliseCharacter(c) {
   const rawPresets = Array.isArray(c?.presets) ? c.presets : [];
   base.presets = rawPresets.length
     ? rawPresets.map((p) => normalisePreset(p, petIds, relicDefIds))
-    : [newPreset('Preset 1', { manualTotals: true })];
+    : [newPreset('Preset 1')];
 
   base.drop = normaliseDrop(c?.drop);
   return base;
@@ -482,7 +480,7 @@ function normalisePreset(raw, petIds, relicDefIds) {
   base.relicIds = [...new Set(relicIds)].slice(0, PRESET_RELIC_CAP);
   const sigilIds = Array.isArray(raw?.sigilIds) ? raw.sigilIds : [];
   base.sigilIds = [...new Set(sigilIds)].slice(0, PRESET_SIGIL_CAP);
-  base.manualTotals = raw?.manualTotals !== false;
+  base.manualTotals = raw?.manualTotals === true;
   base.manualStats = emptyStats(raw?.manualStats || {});
   const rawBuffs = raw?.fortressBuffs || {};
   const top = rawBuffs.top === true;

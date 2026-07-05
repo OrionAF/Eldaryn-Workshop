@@ -122,8 +122,9 @@ it('equipped Mount Glyphs sum additively; unequipped glyphs in inventory do not 
   expect(approx(totals.crit, 1.8)).toBe(true);
 });
 
-it('resolveEffectiveTotals returns manualStats when manualTotals is true (default for a seeded preset)', () => {
+it('resolveEffectiveTotals returns manualStats when manualTotals is true', () => {
   const c = newCharacter();
+  c.presets[0].manualTotals = true;
   c.presets[0].manualStats = emptyStats({ attack: 12345 });
   const eff = resolveEffectiveTotals(c, c.presets[0]);
   expect(eff.attack).toBe(12345);
@@ -305,6 +306,7 @@ it('Calculated totals clamp a capped stat when stacked sources exceed the cap', 
 
 it('Manual totals are also clamped by resolveEffectiveTotals', () => {
   const c = newCharacter();
+  c.presets[0].manualTotals = true;
   c.presets[0].manualStats = emptyStats({ paralyze_chance: 99 }); // way over the 15 cap
 
   const effective = resolveEffectiveTotals(c, c.presets[0]);

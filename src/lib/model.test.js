@@ -5,7 +5,7 @@ import { RELICS_BY_CLASS } from './relicsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
 import { PRESET_RELIC_CAP, PRESET_SIGIL_CAP, SLOTS } from './constants.js';
 
-it('newCharacter defaults class to null, talent sets empty, one seeded Manual preset', () => {
+it('newCharacter defaults class to null, talent sets empty, one seeded Calculated preset', () => {
   const c = newCharacter('Test');
   expect(c.class).toBe(null);
   expect(c.talentSets).toEqual([
@@ -16,7 +16,7 @@ it('newCharacter defaults class to null, talent sets empty, one seeded Manual pr
   expect(c.petLevel).toBe(1);
   expect(c.relicLevels).toEqual({});
   expect(c.presets.length).toBe(1);
-  expect(c.presets[0].manualTotals).toBe(true); // nothing to calculate from yet
+  expect(c.presets[0].manualTotals).toBe(false); // Calculated by default
   expect(c.presets[0].loadout).toBe(0);
   expect(c.presets[0].talentSet).toBe(0);
   expect(c.drop).toBe(null);
