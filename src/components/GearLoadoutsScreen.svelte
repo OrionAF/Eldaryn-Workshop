@@ -37,14 +37,30 @@
   <h2>Gear Loadouts</h2>
   <div class="chip-list">
     {#each character.loadouts as l, i (i)}
-      <Chip label={l.name} selected={loadoutIndex === i} onClick={() => (loadoutIndex = i)} />
+      <Chip
+        label={l.name}
+        selected={loadoutIndex === i}
+        onClick={() => {
+          loadoutIndex = i;
+          selectedStoneId = null;
+        }}
+      />
     {/each}
   </div>
 </div>
 
 <div class="layout">
   <div class="silhouette-col">
-    <SlotSilhouette gear={loadout.gear} {selectedSlot} onSelect={(slot) => (selectedSlot = slot)} loadoutLabel={loadout.name} {stoneColors} />
+    <SlotSilhouette
+      gear={loadout.gear}
+      {selectedSlot}
+      onSelect={(slot) => {
+        selectedSlot = slot;
+        selectedStoneId = null;
+      }}
+      loadoutLabel={loadout.name}
+      {stoneColors}
+    />
     {#if usedBy.length}
       <p class="used-by">This loadout is used by: {usedBy.join(', ')}</p>
     {:else}
