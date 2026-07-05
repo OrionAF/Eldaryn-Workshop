@@ -269,13 +269,16 @@
   .fortress-check {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
+    padding: 8px 4px;
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.04em;
     color: var(--color-muted);
   }
   .fortress-check input {
+    width: 16px;
+    height: 16px;
     accent-color: var(--color-gold);
   }
   .totals-divider {

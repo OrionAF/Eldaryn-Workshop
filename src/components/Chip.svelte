@@ -43,6 +43,14 @@
     border: 1px solid var(--color-border);
     color: var(--color-dim);
   }
+  /* Drop Check's slot-filter row (the only "small" usage) sits in a
+     horizontal-scroll strip on mobile - trading a little extra width for a
+     real touch target is free there. */
+  @media (max-width: 700px) {
+    .chip.small {
+      padding: 13px 11px;
+    }
+  }
   .chip.selected {
     font-weight: 600;
     border-color: var(--chip-color, var(--color-gold));

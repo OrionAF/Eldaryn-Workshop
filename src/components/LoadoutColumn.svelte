@@ -111,6 +111,9 @@
     color: var(--color-muted);
     white-space: nowrap;
     text-align: right;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .section-label {
     font-size: 9.5px;

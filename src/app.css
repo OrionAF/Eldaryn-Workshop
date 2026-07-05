@@ -301,3 +301,23 @@ input[type='number'],
     animation: none !important;
   }
 }
+
+/* Mobile (same 700px contract as App.svelte/Sidebar.svelte): fields must be
+   >=16px or iOS Safari zooms the whole page in on focus and never zooms back
+   out. Rank steppers get a real touch target instead of their compact
+   26x20px desktop size - they're the most-repeated tap in the app
+   (talents/relics/Awakening leveling). */
+@media (max-width: 700px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  .rank-controls button {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    font-size: 16px;
+  }
+}

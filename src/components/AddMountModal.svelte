@@ -54,14 +54,14 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 30;
+    z-index: 50;
   }
   .modal {
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 31;
+    z-index: 51;
     width: min(360px, calc(100vw - 32px));
     background: var(--color-panel);
     border: 1px solid var(--color-border);

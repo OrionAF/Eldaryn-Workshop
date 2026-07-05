@@ -47,14 +47,14 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 30;
+    z-index: 50;
   }
   .drawer {
     position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 31;
+    z-index: 51;
     background: var(--color-panel);
     border-top: 1px solid var(--color-border);
     border-radius: var(--radius-field) var(--radius-field) 0 0;

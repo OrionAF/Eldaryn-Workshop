@@ -18,8 +18,22 @@
 
   let { tree, unlockedPositions = [], onSelect = null, onHover = null } = $props();
 
-  const CELL_SIZE = 32;
-  const NODE_SIZE = 24;
+  // Same 700px breakpoint as the rest of the mobile nav contract - nodes are
+  // the only interaction on this screen, so they need a real touch target
+  // (44px is out of reach without nodes overlapping their neighbors, but
+  // this is a meaningful step up from the 24px desktop size).
+  let isMobile = $state(false);
+  $effect(() => {
+    if (typeof window.matchMedia !== 'function') return; // not available in the test environment
+    const mq = window.matchMedia('(max-width: 700px)');
+    isMobile = mq.matches;
+    const onChange = (e) => (isMobile = e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  });
+
+  const CELL_SIZE = $derived(isMobile ? 40 : 32);
+  const NODE_SIZE = $derived(isMobile ? 32 : 24);
   const MIN_ZOOM = 0.4;
   const MAX_ZOOM = 2.5;
 
