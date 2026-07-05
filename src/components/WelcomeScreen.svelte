@@ -55,6 +55,11 @@
     <button type="button" class="cta" disabled={!canCreate} onclick={createCharacter}>
       Get started
     </button>
+
+    <p class="privacy-note">
+      🔒 100% local — everything runs in your browser and saves to this device only. No data or
+      telemetry is ever sent to a server.
+    </p>
   </div>
 </div>
 
@@ -114,5 +119,12 @@
   }
   .cta:disabled {
     opacity: 0.5;
+  }
+  .privacy-note {
+    margin: 0;
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--color-dim);
+    text-align: center;
   }
 </style>

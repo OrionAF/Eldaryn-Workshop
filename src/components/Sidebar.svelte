@@ -215,6 +215,8 @@
 
   <button type="button" class="reset-toggle" onclick={() => (settingsOpen = !settingsOpen)}>Reset all data</button>
   <SettingsPanel open={settingsOpen} onClose={() => (settingsOpen = false)} />
+
+  <p class="privacy-note">🔒 100% local — no data or telemetry is ever sent to a server.</p>
 {/snippet}
 
 {#if isMobile}
@@ -442,6 +444,14 @@
     border-color: var(--color-border);
     background: transparent;
     min-height: 44px;
+  }
+  .privacy-note {
+    margin: 0;
+    padding: 0 var(--space-2);
+    font-size: 9.5px;
+    line-height: 1.4;
+    color: var(--color-dim);
+    text-align: center;
   }
 
   /* --- Mobile: bottom tab bar + "More" sheet --- */
