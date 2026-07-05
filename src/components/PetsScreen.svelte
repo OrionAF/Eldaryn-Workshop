@@ -10,20 +10,20 @@
   import { summarizeStats } from '../lib/format.js';
   import StatsFields from './StatsFields.svelte';
   import ConfirmButton from './ConfirmButton.svelte';
+  import AddPetModal from './AddPetModal.svelte';
 
   const fields = fieldsForTab('gear'); // full CORE + bonus field set, unscoped to a wearer
 
-  let newName = $state('');
-  let newRarity = $state(RARITIES[0]);
   let selectedPetId = $state(null);
+  let showAddModal = $state(false);
 
   const character = $derived(rosterStore.current);
   const selectedPet = $derived(character.pets.find((p) => p.id === selectedPetId) || null);
 
-  function addPet() {
-    const id = rosterStore.addPet(newName.trim() || 'New Pet', newRarity);
+  function addPet({ name, rarity, stats }) {
+    const id = rosterStore.addPet(name, rarity, stats);
     selectedPetId = id;
-    newName = '';
+    showAddModal = false;
   }
 
   function removePet(id) {
@@ -57,12 +57,12 @@
 </div>
 
 <div class="add-form">
-  <input type="text" placeholder="Pet name" aria-label="Pet name" bind:value={newName} />
-  <select aria-label="Rarity" bind:value={newRarity}>
-    {#each RARITIES as r (r)}<option value={r}>{r}</option>{/each}
-  </select>
-  <button type="button" class="btn-gold" onclick={addPet}>Add Pet</button>
+  <button type="button" class="btn-gold" onclick={() => (showAddModal = true)}>Add Pet</button>
 </div>
+
+{#if showAddModal}
+  <AddPetModal onSave={addPet} onClose={() => (showAddModal = false)} />
+{/if}
 
 {#if character.pets.length === 0}
   <p class="empty-hint">No pets added yet.</p>

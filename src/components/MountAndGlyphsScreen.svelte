@@ -8,17 +8,17 @@
   import { RARITIES, STAT_FIELDS, SOURCE_DEFS } from '../lib/constants.js';
   import { formatPct, parsePct } from '../lib/format.js';
   import ConfirmButton from './ConfirmButton.svelte';
+  import AddMountModal from './AddMountModal.svelte';
 
   const character = $derived(rosterStore.current);
   const mounts = $derived(character.mounts);
   const glyphs = $derived(character.glyphs);
 
-  let newMountName = $state('');
-  let newMountRarity = $state(RARITIES[0]);
+  let showAddMountModal = $state(false);
 
-  function addMount() {
-    rosterStore.addMount(newMountName.trim() || 'New Mount', newMountRarity);
-    newMountName = '';
+  function addMount({ name, rarity, baseHpPct, baseAtkPct }) {
+    rosterStore.addMount(name, rarity, baseHpPct, baseAtkPct);
+    showAddMountModal = false;
   }
 
   const PCT_FIELDS = STAT_FIELDS.filter((f) => f.kind === 'pct');
@@ -60,12 +60,12 @@
 
 <section class="mounts-section">
   <div class="add-form">
-    <input type="text" placeholder="Mount name" aria-label="Mount name" bind:value={newMountName} />
-    <select aria-label="Rarity" bind:value={newMountRarity}>
-      {#each RARITIES as r (r)}<option value={r}>{r}</option>{/each}
-    </select>
-    <button type="button" class="btn-gold" onclick={addMount}>Add Mount</button>
+    <button type="button" class="btn-gold" onclick={() => (showAddMountModal = true)}>Add Mount</button>
   </div>
+
+  {#if showAddMountModal}
+    <AddMountModal onSave={addMount} onClose={() => (showAddMountModal = false)} />
+  {/if}
 
   {#if mounts.entries.length === 0}
     <p class="empty-hint">No mounts added yet.</p>

@@ -26,14 +26,39 @@ it('renders both sections with no nested tabs', () => {
 });
 
 it('adding a mount auto-rides the first one; a second does not steal Riding', () => {
+  target.querySelectorAll('.add-form button')[0].click();
+  flushSync();
+
   const nameInput = target.querySelector('input[aria-label="Mount name"]');
   nameInput.value = 'Crystal Beast';
   nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-  target.querySelectorAll('.add-form button')[0].click();
+  [...target.querySelectorAll('.modal button')].find((b) => b.textContent.trim() === 'Add Mount').click();
   flushSync();
 
   expect(rosterStore.current.mounts.entries.length).toBe(1);
   expect(rosterStore.current.mounts.activeId).toBe(rosterStore.current.mounts.entries[0].id);
+});
+
+it('Add Mount modal sets base HP%/ATK% at creation time', () => {
+  target.querySelectorAll('.add-form button')[0].click();
+  flushSync();
+
+  const nameInput = target.querySelector('input[aria-label="Mount name"]');
+  nameInput.value = 'Crystal Beast';
+  nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+  const [hpInput, atkInput] = [...target.querySelectorAll('.modal .base-stat input')];
+  hpInput.value = '12';
+  hpInput.dispatchEvent(new Event('input', { bubbles: true }));
+  atkInput.value = '8';
+  atkInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+  [...target.querySelectorAll('.modal button')].find((b) => b.textContent.trim() === 'Add Mount').click();
+  flushSync();
+
+  const mount = rosterStore.current.mounts.entries.find((m) => m.name === 'Crystal Beast');
+  expect(mount.baseHpPct).toBe(12);
+  expect(mount.baseAtkPct).toBe(8);
 });
 
 it('editing Base HP%/ATK% writes through rosterStore.updateMount', () => {
