@@ -164,6 +164,21 @@ it('setPresetManualStat writes directly into manualStats', () => {
   rosterStore.setPresetManualStat(preset.id, 'crit', 0); // cleanup
 });
 
+it('setPresetFortressBuff keeps top/bottom mutually exclusive but core independent', () => {
+  const preset = rosterStore.current.presets[0];
+  rosterStore.setPresetFortressBuff(preset.id, 'top', true);
+  expect(rosterStore.current.presets[0].fortressBuffs).toEqual({ top: true, bottom: false, core: false });
+
+  rosterStore.setPresetFortressBuff(preset.id, 'bottom', true);
+  expect(rosterStore.current.presets[0].fortressBuffs).toEqual({ top: false, bottom: true, core: false });
+
+  rosterStore.setPresetFortressBuff(preset.id, 'core', true);
+  expect(rosterStore.current.presets[0].fortressBuffs).toEqual({ top: false, bottom: true, core: true });
+
+  rosterStore.setPresetFortressBuff(preset.id, 'bottom', false); // cleanup
+  rosterStore.setPresetFortressBuff(preset.id, 'core', false); // cleanup
+});
+
 // --- Pets (shared collection, character-wide level, a preset picks which one contributes) ---
 it('addPet/updatePetField/updatePetStat/removePet round-trip; removePet nulls petId on presets that used it', () => {
   const id = rosterStore.addPet('Ashfang', 'Epic');

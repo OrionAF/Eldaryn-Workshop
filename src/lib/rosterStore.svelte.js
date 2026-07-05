@@ -459,6 +459,16 @@ function createRosterStore() {
     }
   }
 
+  /** top/bottom are mutually exclusive - checking one clears the other; core is independent. */
+  function setPresetFortressBuff(presetId, key, checked) {
+    const preset = current.presets.find((p) => p.id === presetId);
+    if (!preset) return;
+    preset.fortressBuffs[key] = checked;
+    if (checked && key === 'top') preset.fortressBuffs.bottom = false;
+    if (checked && key === 'bottom') preset.fortressBuffs.top = false;
+    persist();
+  }
+
   // --- Drop comparison (character-scoped, survives screen switches, resets on character switch) ---
   function startDrop(slot) {
     current.drop = { slot: slot || SLOTS[0], piece: emptyStats() };
@@ -557,6 +567,7 @@ function createRosterStore() {
     setPresetPet,
     setPresetTotalsMode,
     setPresetManualStat,
+    setPresetFortressBuff,
     startDrop,
     setDropSlot,
     setDropField,

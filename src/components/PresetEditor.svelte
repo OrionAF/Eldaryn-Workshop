@@ -111,6 +111,33 @@
           onClick={() => rosterStore.setPresetTotalsMode(preset.id, 'calculated')}
         />
       </div>
+      <span class="field-group-label micro-label fortress-label">Fortress Buffs</span>
+      <div class="fortress-buffs">
+        <label class="fortress-check">
+          <input
+            type="checkbox"
+            checked={preset.fortressBuffs.top}
+            onchange={(e) => rosterStore.setPresetFortressBuff(preset.id, 'top', e.target.checked)}
+          />
+          TOP
+        </label>
+        <label class="fortress-check">
+          <input
+            type="checkbox"
+            checked={preset.fortressBuffs.bottom}
+            onchange={(e) => rosterStore.setPresetFortressBuff(preset.id, 'bottom', e.target.checked)}
+          />
+          BOTTOM
+        </label>
+        <label class="fortress-check">
+          <input
+            type="checkbox"
+            checked={preset.fortressBuffs.core}
+            onchange={(e) => rosterStore.setPresetFortressBuff(preset.id, 'core', e.target.checked)}
+          />
+          CORE
+        </label>
+      </div>
     </div>
 
     <div class="field-group">
@@ -230,6 +257,26 @@
     color: var(--color-downgrade);
     font-size: 11px;
     margin: 0;
+  }
+  .fortress-label {
+    margin-top: 10px;
+  }
+  .fortress-buffs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .fortress-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--color-muted);
+  }
+  .fortress-check input {
+    accent-color: var(--color-gold);
   }
   .totals-divider {
     border-top: 1px solid var(--color-border);
