@@ -51,6 +51,14 @@
       </div>
       <p class="subline">Enter the drop's stats — every preset renders its own judgment.</p>
 
+      <p class="disclaimer">
+        ⚠ These DPS/HPS % changes are <strong>estimates</strong>, not confirmed numbers. Whether
+        Penetration does anything in PVE is unconfirmed, and almost no PVE content shows stats or
+        health to check against — World Boss and Fortress Boss are the exception, and even there
+        only health is visible. Don't rely on this for Crusades or Celestial Trials (more than a
+        DPS check) or PVP (mechanics not modeled here). Any gear changes you make are your call.
+      </p>
+
       <div class="slot-chips">
         {#each SLOTS as slot (slot)}
           <Chip label={slot} selected={selectedSlot === slot} onClick={() => selectSlot(slot)} size="small" />
@@ -138,6 +146,16 @@
     color: var(--color-muted);
     font-size: 11.5px;
     margin: 6px 0 var(--space-4);
+  }
+  .disclaimer {
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--color-warning);
+    background: var(--color-warning-soft);
+    border: 1px solid var(--color-warning);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin: 0 0 var(--space-4);
   }
   @media (min-width: 900px) {
     .altar :global(.stats-fields) {
