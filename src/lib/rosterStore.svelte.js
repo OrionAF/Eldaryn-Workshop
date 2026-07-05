@@ -387,11 +387,7 @@ function createRosterStore() {
 
   // --- Presets (Character.presets - the unit a Drop Check verdict/preset editor operates on) ---
   function addPreset(name) {
-    const preset = newPreset(name || `Preset ${current.presets.length + 1}`);
-    // Unlike a freshly seeded character's first preset (Manual - nothing to
-    // calculate from yet), a preset added later starts Calculated: the
-    // character already has loadouts/talents/relics worth calculating from.
-    preset.manualTotals = false;
+    const preset = newPreset(name || `Preset ${current.presets.length + 1}`); // Calculated by default
     current.presets.push(preset);
     persist();
     return preset.id;

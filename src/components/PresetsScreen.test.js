@@ -72,12 +72,9 @@ it('switching Totals mode to Manual snapshots current calculated totals, and inp
   const totalsGroup = [...target.querySelectorAll('.field-group')].find((g) =>
     g.querySelector('.field-group-label').textContent.includes('Totals')
   );
-  const calculatedChip = [...totalsGroup.querySelectorAll('.chip')].find((c) => c.textContent.trim() === 'Calculated');
-  calculatedChip.click(); // seeded preset starts Manual - flip to Calculated first
-  flushSync();
 
   const manualChip = [...totalsGroup.querySelectorAll('.chip')].find((c) => c.textContent.trim() === 'Manual');
-  manualChip.click(); // now flipping back to Manual should snapshot the (nonzero, base-only) calculated totals
+  manualChip.click(); // seeded preset starts Calculated - flipping to Manual should snapshot the (nonzero, base-only) calculated totals
   flushSync();
 
   const preset = rosterStore.current.presets[0];
