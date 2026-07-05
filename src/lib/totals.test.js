@@ -387,3 +387,36 @@ it("equipping a relic on one preset doesn't equip it for another (equip is per-p
   const totalsB = computePresetTotals(c, presetB);
   expect(totalsB.dmg_reduction).toBe(0);
 });
+
+it('the TOP fortress buff contributes its fixed stat block', () => {
+  const c = newCharacter();
+  c.presets[0].fortressBuffs.top = true;
+  const totals = computePresetTotals(c, c.presets[0]);
+  expect(approx(totals.attack_pct, 5)).toBe(true);
+  expect(approx(totals.speed, BASE_SPEED + 3)).toBe(true);
+  expect(approx(totals.crit, 3)).toBe(true);
+  expect(approx(totals.penetration, 3)).toBe(true);
+  expect(approx(totals.pvp_attack, 15)).toBe(true);
+});
+
+it('the BOTTOM fortress buff contributes its fixed stat block', () => {
+  const c = newCharacter();
+  c.presets[0].fortressBuffs.bottom = true;
+  const totals = computePresetTotals(c, c.presets[0]);
+  expect(approx(totals.health_pct, 5)).toBe(true);
+  expect(approx(totals.hp_regen, 3)).toBe(true);
+  expect(approx(totals.dmg_reduction, 5)).toBe(true);
+  expect(approx(totals.miss_chance, 5)).toBe(true);
+  expect(approx(totals.block_chance, 3)).toBe(true);
+  expect(approx(totals.blind_chance, 3)).toBe(true);
+  expect(approx(totals.pvp_defense, 15)).toBe(true);
+});
+
+it('CORE stacks additively with TOP or BOTTOM on pvp_attack/pvp_defense', () => {
+  const c = newCharacter();
+  c.presets[0].fortressBuffs.top = true;
+  c.presets[0].fortressBuffs.core = true;
+  const totals = computePresetTotals(c, c.presets[0]);
+  expect(approx(totals.pvp_attack, 15 + 25)).toBe(true);
+  expect(approx(totals.pvp_defense, 25)).toBe(true);
+});

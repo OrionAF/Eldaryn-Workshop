@@ -37,7 +37,11 @@
  * Preset      = { id, name, loadout: 0|1, talentSet: 0|1, petId: string|null,
  *                 relicIds: string[] (max PRESET_RELIC_CAP),
  *                 sigilIds: string[] (max PRESET_SIGIL_CAP, scaffold - no Sigil content/UI yet),
- *                 manualTotals: boolean, manualStats: OffensiveStats }
+ *                 manualTotals: boolean, manualStats: OffensiveStats,
+ *                 fortressBuffs: { top: boolean, bottom: boolean, core: boolean } }
+ *   fortressBuffs: top/bottom are mutually exclusive (setPresetFortressBuff clears the other
+ *   when one is turned on); core is independent of both - see FORTRESS_BUFF_STATS in totals.js
+ *   for the fixed stat contribution each one adds.
  *   A preset is the unit that ties one gear loadout + one talent set + a pet + up to 4
  *   relics together, with its own totals (manual OR calculated - see totals.js's
  *   computePresetTotals/resolveEffectiveTotals). Mounts, Glyphs, Awakening, and
@@ -154,6 +158,7 @@ export function newPreset(name, { loadout = 0, talentSet = 0, manualTotals = fal
     sigilIds: [],
     manualTotals,
     manualStats: emptyStats(),
+    fortressBuffs: { top: false, bottom: false, core: false },
   };
 }
 
@@ -479,6 +484,14 @@ function normalisePreset(raw, petIds, relicDefIds) {
   base.sigilIds = [...new Set(sigilIds)].slice(0, PRESET_SIGIL_CAP);
   base.manualTotals = raw?.manualTotals !== false;
   base.manualStats = emptyStats(raw?.manualStats || {});
+  const rawBuffs = raw?.fortressBuffs || {};
+  const top = rawBuffs.top === true;
+  base.fortressBuffs = {
+    top,
+    // top/bottom stay mutually exclusive even against corrupt/hand-edited saved data.
+    bottom: !top && rawBuffs.bottom === true,
+    core: rawBuffs.core === true,
+  };
   return base;
 }
 

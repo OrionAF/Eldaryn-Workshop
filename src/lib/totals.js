@@ -29,6 +29,13 @@ import { effectiveUnlockedSet } from './transcendence.js';
 const FLAT_PAIR_KEYS = ['attack', 'health'];
 const PCT_PAIR_OF = { attack: 'attack_pct', health: 'health_pct' };
 
+/** Fixed per-buff stat contributions for the Fortress Buffs checkboxes (top/bottom mutually exclusive, core independent). */
+const FORTRESS_BUFF_STATS = {
+  top: { attack_pct: 5, speed: 3, crit: 3, penetration: 3, pvp_attack: 15 },
+  bottom: { health_pct: 5, hp_regen: 3, dmg_reduction: 5, miss_chance: 5, block_chance: 3, blind_chance: 3, pvp_defense: 15 },
+  core: { pvp_attack: 25, pvp_defense: 25 },
+};
+
 function newAccumulator() {
   const totals = {};
   const flatSums = {};
@@ -183,6 +190,26 @@ function transcendenceContribution(character) {
 }
 
 /**
+ * A preset's Fortress Buffs contribution: top/bottom/core each add their own
+ * fixed stat block (FORTRESS_BUFF_STATS) when checked - top/bottom are
+ * mutually exclusive by construction (see model.js's normalisePreset /
+ * rosterStore.setPresetFortressBuff) but summed independently here, so
+ * top+core or bottom+core both work.
+ */
+function fortressBuffsContribution(preset) {
+  const buffs = preset.fortressBuffs;
+  if (!buffs) return null;
+  const overrides = {};
+  for (const key of ['top', 'bottom', 'core']) {
+    if (!buffs[key]) continue;
+    for (const [statKey, value] of Object.entries(FORTRESS_BUFF_STATS[key])) {
+      overrides[statKey] = (overrides[statKey] || 0) + value;
+    }
+  }
+  return offensiveStats(overrides);
+}
+
+/**
  * Clamps every STAT_FIELDS entry with a `cap` (the game's own hard ceiling -
  * e.g. Crit 80%, Paralyze Chance 15%) down to that cap. Stacking many
  * sources (gear, talents, Awakening) can otherwise sum past what the game
@@ -230,6 +257,7 @@ export function computePresetTotals(character, preset, talentTrees = TALENT_TREE
   accumulate(acc, transcendenceContribution(character));
   accumulate(acc, relicsContribution(character, preset));
   accumulate(acc, petContribution(character, preset));
+  accumulate(acc, fortressBuffsContribution(preset));
 
   for (const def of SOURCE_DEFS) {
     const sourceState = character[def.key];
