@@ -120,8 +120,8 @@ function createRosterStore() {
   }
 
   // --- Pets (character-scoped shared collection; a Preset picks which one contributes) ---
-  function addPet(name, rarity) {
-    const pet = newPetEntry({ name, rarity });
+  function addPet(name, rarity, stats = {}) {
+    const pet = newPetEntry({ name, rarity, stats });
     current.pets.push(pet);
     persist();
     return pet.id;
@@ -159,8 +159,8 @@ function createRosterStore() {
   }
 
   // --- Mounts (character-scoped, one active/"riding" at a time) ---
-  function addMount(name, rarity) {
-    const mount = newMountEntry({ name, rarity });
+  function addMount(name, rarity, baseHpPct = 0, baseAtkPct = 0) {
+    const mount = newMountEntry({ name, rarity, baseHpPct, baseAtkPct });
     current.mounts.entries.push(mount);
     if (!current.mounts.activeId) current.mounts.activeId = mount.id;
     persist();
@@ -362,7 +362,7 @@ function createRosterStore() {
   function setRelicLevel(defId, level) {
     const def = findRelicDef(defId);
     if (!def) return false;
-    current.relicLevels[defId] = Math.max(1, Math.min(level, def.maxLevel));
+    current.relicLevels[defId] = Math.max(0, Math.min(level, def.maxLevel));
     persist();
     return true;
   }

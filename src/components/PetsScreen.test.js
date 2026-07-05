@@ -23,10 +23,13 @@ it('shows an empty hint with no pets', () => {
 });
 
 it('Add Pet creates a pet with no per-pet level field anywhere', () => {
+  target.querySelector('.add-form button').click();
+  flushSync();
+
   const nameInput = target.querySelector('input[aria-label="Pet name"]');
   nameInput.value = 'Ashfang';
   nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-  target.querySelector('.add-form button').click();
+  [...target.querySelectorAll('.modal button')].find((b) => b.textContent.trim() === 'Add Pet').click();
   flushSync();
 
   expect(rosterStore.current.pets.length).toBe(1);
@@ -35,6 +38,28 @@ it('Add Pet creates a pet with no per-pet level field anywhere', () => {
   expect(target.querySelector('input[aria-label="Level"]')).toBeNull();
 
   rosterStore.removePet(rosterStore.current.pets[0].id); // cleanup - rosterStore is a shared singleton across tests
+  cleanup();
+});
+
+it('Add Pet modal sets stats at creation time, no separate edit step needed', () => {
+  target.querySelector('.add-form button').click();
+  flushSync();
+
+  const nameInput = target.querySelector('input[aria-label="Pet name"]');
+  nameInput.value = 'Ashfang';
+  nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+  const attackInput = target.querySelector('.modal .stats-fields input');
+  attackInput.value = '500';
+  attackInput.dispatchEvent(new Event('blur', { bubbles: true }));
+
+  [...target.querySelectorAll('.modal button')].find((b) => b.textContent.trim() === 'Add Pet').click();
+  flushSync();
+
+  const pet = rosterStore.current.pets.find((p) => p.name === 'Ashfang');
+  expect(pet.stats.attack).toBe(500);
+
+  rosterStore.removePet(pet.id); // cleanup
   cleanup();
 });
 
