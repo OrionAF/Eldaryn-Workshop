@@ -14,6 +14,8 @@
 
   let name = $state('');
   let selectedClass = $state(CHOOSE_CLASS_VALUE);
+  let importError = $state('');
+  let fileInput = $state();
 
   const canCreate = $derived(name.trim().length > 0 && selectedClass !== CHOOSE_CLASS_VALUE);
 
@@ -25,6 +27,33 @@
 
   function onKeydown(e) {
     if (e.key === 'Enter') createCharacter();
+  }
+
+  function onImportClick() {
+    importError = '';
+    fileInput?.click();
+  }
+
+  function readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(file);
+    });
+  }
+
+  async function onImportFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const text = await readFileAsText(file);
+      rosterStore.importFromJson(text);
+      importError = '';
+    } catch {
+      importError = 'Import failed: not a valid roster file.';
+    }
   }
 </script>
 
@@ -55,6 +84,15 @@
     <button type="button" class="cta" disabled={!canCreate} onclick={createCharacter}>
       Get started
     </button>
+
+    <div class="divider"><span>or</span></div>
+
+    <button type="button" class="import-btn" onclick={onImportClick}>Import from file</button>
+    <input type="file" accept="application/json" bind:this={fileInput} onchange={onImportFile} hidden />
+    {#if importError}
+      <p class="import-error" role="alert">{importError}</p>
+    {/if}
+    <p class="import-hint">Coming from another device? Import the roster file you exported there.</p>
 
     <p class="privacy-note">
       🔒 100% local — everything runs in your browser and saves to this device only. No data or
@@ -119,6 +157,43 @@
   }
   .cta:disabled {
     opacity: 0.5;
+  }
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: calc(var(--space-2) * -1) 0;
+    font-size: 10.5px;
+    color: var(--color-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .divider::before,
+  .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--color-border);
+  }
+  .import-btn {
+    min-height: 44px;
+    font-weight: 600;
+    font-size: 12.5px;
+    color: var(--color-muted);
+    border: 1px solid var(--color-border-strong);
+    background: transparent;
+  }
+  .import-error {
+    margin: 0;
+    color: var(--color-danger);
+    font-size: 11px;
+    text-align: center;
+  }
+  .import-hint {
+    margin: 0;
+    font-size: 10.5px;
+    color: var(--color-muted);
+    text-align: center;
   }
   .privacy-note {
     margin: 0;
