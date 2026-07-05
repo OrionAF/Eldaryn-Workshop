@@ -13,7 +13,7 @@
   const relicDefs = $derived(RELICS_BY_CLASS[character.class] || []);
 
   function levelOf(defId) {
-    return character.relicLevels[defId] || 1;
+    return character.relicLevels[defId] || 0;
   }
 
   function statField(key) {
@@ -49,7 +49,7 @@
             <span class="relic-level-badge">LV {level}/{def.maxLevel}</span>
           </div>
           <div class="rank-controls">
-            <button type="button" disabled={level <= 1} onclick={() => changeLevel(def, -1)}>&minus;</button>
+            <button type="button" disabled={level <= 0} onclick={() => changeLevel(def, -1)}>&minus;</button>
             <button type="button" disabled={level >= def.maxLevel} onclick={() => changeLevel(def, 1)}>+</button>
           </div>
           <span class="relic-stats">

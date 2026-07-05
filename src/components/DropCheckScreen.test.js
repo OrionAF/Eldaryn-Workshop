@@ -85,15 +85,16 @@ it('equipping a clean upgrade writes to the loadout gear and restarts the drop f
 });
 
 it('a mixed verdict requires a two-step confirm before equipping', () => {
-  // Two presets share Loadout 0, both Manual (so each preset's baseline is
-  // fully controlled, independent of the shared loadout's other slots).
-  // The shared slot currently holds a big flat-Attack piece; the drop trades
-  // that flat chunk for an Attack% instead. Whether that trade is a net win
-  // depends on how much OTHER flat attack a preset already has: a small
-  // pre-existing baseline loses more than the %-of-small-base gain
-  // (downgrade); a huge pre-existing baseline gains far more from the %
-  // multiplying a huge base than it loses from the flat chunk (upgrade) -
-  // same literal gear swap, opposite verdicts.
+  // Two presets share Loadout 0 - Drop Check always compares against gear-
+  // derived totals (Manual/Calculated mode doesn't matter to it), so the two
+  // presets are differentiated via pets instead. The shared slot currently
+  // holds a big flat-Attack piece; the drop trades that flat chunk for an
+  // Attack% instead. Whether that trade is a net win depends on how much
+  // OTHER flat attack a preset already has: a small pre-existing baseline
+  // loses more than the %-of-small-base gain (downgrade); a huge
+  // pre-existing baseline gains far more from the % multiplying a huge base
+  // than it loses from the flat chunk (upgrade) - same literal gear swap,
+  // opposite verdicts.
   const presetAId = rosterStore.current.presets[0].id;
   const presetBId = rosterStore.addPreset('Preset B'); // shares Loadout 0 by default
   flushSync();
@@ -101,15 +102,11 @@ it('a mixed verdict requires a two-step confirm before equipping', () => {
   rosterStore.setGearField(DEFAULT_SLOT, 0, 'attack', 5000); // the old piece both presets currently have equipped
   setDropField('attack_pct', 50); // the drop: flat Attack traded for Attack%
 
-  rosterStore.setPresetTotalsMode(presetAId, 'manual');
-  rosterStore.setPresetManualStat(presetAId, 'attack', 5010); // small baseline (10 base + this slot's 5000)
-  rosterStore.setPresetManualStat(presetAId, 'speed', 100);
-  rosterStore.setPresetManualStat(presetAId, 'crit_mult', 150);
-
-  rosterStore.setPresetTotalsMode(presetBId, 'manual');
-  rosterStore.setPresetManualStat(presetBId, 'attack', 500010); // huge baseline (as if from other sources)
-  rosterStore.setPresetManualStat(presetBId, 'speed', 100);
-  rosterStore.setPresetManualStat(presetBId, 'crit_mult', 150);
+  // Preset A gets no pet - small baseline (10 base + this slot's 5000).
+  // Preset B gets a pet with a huge flat Attack stat - huge baseline.
+  const hugePetId = rosterStore.addPet('Huge Pet', 'gold');
+  rosterStore.updatePetStat(hugePetId, 'attack', 500000);
+  rosterStore.setPresetPet(presetBId, hugePetId);
   flushSync();
 
   const cards = [...target.querySelectorAll('.verdict-card')];
@@ -134,6 +131,7 @@ it('a mixed verdict requires a two-step confirm before equipping', () => {
   rosterStore.setGearField(DEFAULT_SLOT, 0, 'attack', 0); // cleanup
   rosterStore.setGearField(DEFAULT_SLOT, 0, 'attack_pct', 0);
   rosterStore.deletePreset(presetBId);
+  rosterStore.removePet(hugePetId);
   cleanup();
 });
 
