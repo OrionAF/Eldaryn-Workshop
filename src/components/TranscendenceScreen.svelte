@@ -27,7 +27,10 @@
   let isMobile = $state(false);
   $effect(() => {
     if (typeof window.matchMedia !== 'function') return; // not available in the test environment
-    const mq = window.matchMedia('(max-width: 640px)');
+    // Same 700px breakpoint as Sidebar.svelte/App.svelte's mobile nav
+    // contract - this decides drawer-vs-hover, so it must agree with the
+    // rest of the app on what "mobile" means.
+    const mq = window.matchMedia('(max-width: 700px)');
     isMobile = mq.matches;
     const onChange = (e) => (isMobile = e.matches);
     mq.addEventListener('change', onChange);
