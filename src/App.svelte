@@ -32,6 +32,7 @@
 
   const character = $derived(rosterStore.current);
   const profileReady = $derived(!!character.class);
+  const avatarIcon = $derived(character.class === 'Warrior' ? 'swords' : character.class === 'Sentinel' ? 'bow' : null);
   const contextSub = $derived.by(() => {
     const cls = character.class || 'No class';
     const suffix = SCREEN_CONTEXT[activeScreen]?.(character) ?? '';
@@ -56,7 +57,35 @@
 
     <main>
       <div class="banner">
-        <div class="avatar" aria-hidden="true"></div>
+        <div class="avatar" aria-hidden="true">
+          {#if avatarIcon === 'swords'}
+            <svg viewBox="0 0 24 24" class="avatar-icon" aria-hidden="true">
+              <!-- sword \ -->
+              <path d="M19.5 3 9.5 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+              <path d="M6.5 10 12 15.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              <path d="M9.5 13 5.5 17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              <circle cx="4.5" cy="18.5" r="1.1" fill="currentColor" />
+              <!-- sword / (mirrored) -->
+              <path d="M4.5 3 14.5 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+              <path d="M17.5 10 12 15.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              <path d="M14.5 13 18.5 17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              <circle cx="19.5" cy="18.5" r="1.1" fill="currentColor" />
+            </svg>
+          {:else if avatarIcon === 'bow'}
+            <svg viewBox="0 0 24 24" class="avatar-icon" aria-hidden="true">
+              <!-- bow stave -->
+              <path d="M8 3c-3 3-3 15 0 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+              <!-- drawn string -->
+              <path d="M8 3 13 12 8 21" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" />
+              <!-- arrow shaft -->
+              <path d="M13 12h8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+              <!-- arrowhead -->
+              <path d="M18.5 9 21 12 18.5 15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+              <!-- fletching -->
+              <path d="M13 12 10.5 10.5M13 12 10.5 13.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+            </svg>
+          {/if}
+        </div>
         <div class="banner-text">
           <div class="character-name">{character.name}</div>
           <div class="context-sub">{contextSub}</div>
@@ -104,6 +133,7 @@
   main {
     padding: 18px 26px 34px;
     min-width: 0;
+    max-width: var(--content-max-width);
   }
   /* Rail -> bottom tab bar (Sidebar.svelte) at the same breakpoint - the
      shell drops to one column and reserves space at the bottom so page
@@ -128,7 +158,18 @@
     border-radius: 50%;
     border: 2px solid var(--color-gold);
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-gold-light);
+    background: radial-gradient(circle at 35% 30%, #2a2550, #1a1733 70%);
+  }
+  .avatar:not(:has(.avatar-icon)) {
     background: repeating-linear-gradient(45deg, var(--color-border-hairline), var(--color-border-hairline) 4px, #1a1733 4px, #1a1733  8px);
+  }
+  .avatar-icon {
+    width: 62%;
+    height: 62%;
   }
   .banner-text {
     flex: 1;

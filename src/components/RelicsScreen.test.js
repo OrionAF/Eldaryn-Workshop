@@ -23,29 +23,29 @@ it('shows an onboarding hint with no class chosen', () => {
   expect(target.querySelector('.empty-hint')).not.toBeNull();
 });
 
-it('lists every relic for the class, tier-sectioned, starting at level 1 - no equip control', () => {
+it('lists every relic for the class, tier-sectioned, starting at level 0 - no equip control', () => {
   rosterStore.setCharacterClass(rosterStore.current.id, 'Sentinel');
   flushSync();
 
   expect(target.querySelectorAll('.relic-row').length).toBe(RELICS_BY_CLASS.Sentinel.length);
   expect(target.querySelector('input[type="checkbox"]')).toBeNull(); // no equip checkbox anymore
   const firstRow = target.querySelector('.relic-row');
-  expect(firstRow.querySelector('.relic-level-badge').textContent).toContain('LV 1/');
+  expect(firstRow.querySelector('.relic-level-badge').textContent).toContain('LV 0/');
 });
 
-it('+/- level buttons write through rosterStore.setRelicLevel, clamped to [1, maxLevel]', () => {
+it('+/- level buttons write through rosterStore.setRelicLevel, clamped to [0, maxLevel]', () => {
   rosterStore.setCharacterClass(rosterStore.current.id, 'Sentinel');
   flushSync();
   const def = RELICS_BY_CLASS.Sentinel[0];
 
   const row = target.querySelector('.relic-row');
   const [minusBtn, plusBtn] = row.querySelectorAll('.rank-controls button');
-  expect(minusBtn.disabled).toBe(true); // already at level 1
+  expect(minusBtn.disabled).toBe(true); // already at level 0
 
   plusBtn.click();
   flushSync();
-  expect(rosterStore.current.relicLevels[def.id]).toBe(2);
-  expect(row.querySelector('.relic-level-badge').textContent).toContain('LV 2/');
+  expect(rosterStore.current.relicLevels[def.id]).toBe(1);
+  expect(row.querySelector('.relic-level-badge').textContent).toContain('LV 1/');
 });
 
 it('a relic level is the SAME everywhere (character-wide), not per-preset', () => {

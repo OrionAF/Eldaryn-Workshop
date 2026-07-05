@@ -8,7 +8,7 @@
    * click; everything else about the verdict math/labels matches it.
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
-  import { resolveEffectiveTotals } from '../lib/totals.js';
+  import { computePresetTotals } from '../lib/totals.js';
   import { compareSwap } from '../lib/dps.js';
   import { formatFlat } from '../lib/format.js';
   import ConfirmButton from './ConfirmButton.svelte';
@@ -17,9 +17,12 @@
 
   const presetsUsingLoadout = $derived(character.presets.filter((p) => p.loadout === loadoutIndex));
 
+  // Drop Check always compares against gear-derived totals, regardless of a
+  // preset's Manual/Calculated toggle - a Manual preset's hand-entered totals
+  // have no relationship to the equipped gear a drop would actually replace.
   const rows = $derived(
     presetsUsingLoadout.map((preset) => {
-      const result = compareSwap(resolveEffectiveTotals(character, preset), loadout.gear[drop.slot], drop.piece);
+      const result = compareSwap(computePresetTotals(character, preset), loadout.gear[drop.slot], drop.piece);
       return { preset, result };
     })
   );
@@ -84,7 +87,11 @@
           <span class="deltas">
             DPS {formatFlat(result.current_dps)} → {formatFlat(result.new_dps)}
             <span class="pct" class:up={result.verdict === 'upgrade'} class:down={result.verdict === 'downgrade'}
-              >({pct(result.pct_change)}) · HPS ({pct(result.hps_pct_change)})</span
+              >({pct(result.pct_change)})</span
+            >
+            · HPS {formatFlat(result.current_hps)} → {formatFlat(result.new_hps)}
+            <span class="pct" class:up={result.verdict === 'upgrade'} class:down={result.verdict === 'downgrade'}
+              >({pct(result.hps_pct_change)})</span
             >
           </span>
         </li>

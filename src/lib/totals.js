@@ -150,7 +150,8 @@ function relicsContribution(character, preset) {
   for (const defId of preset.relicIds || []) {
     const def = defById.get(defId);
     if (!def) continue;
-    const level = character.relicLevels?.[defId] || 1;
+    const level = character.relicLevels?.[defId] || 0;
+    if (level <= 0) continue;
     for (const s of def.stats) {
       const value = relicLevelValue(s.min, s.max, level, def.maxLevel);
       overrides[s.statKey] = (overrides[s.statKey] || 0) + value;

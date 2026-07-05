@@ -404,7 +404,7 @@ function normalisePets(raw) {
   return pets;
 }
 
-/** Drops levels for defIds that no longer exist for this class's (static) relics, clamps to [1, maxLevel]. */
+/** Drops levels for defIds that no longer exist for this class's (static) relics, clamps to [0, maxLevel]. */
 function normaliseRelicLevels(raw, characterClass) {
   const defs = RELICS_BY_CLASS[characterClass] || [];
   const defById = new Map(defs.map((d) => [d.id, d]));
@@ -412,7 +412,7 @@ function normaliseRelicLevels(raw, characterClass) {
   for (const [defId, level] of Object.entries(raw && typeof raw === 'object' ? raw : {})) {
     const def = defById.get(defId);
     if (!def) continue;
-    levels[defId] = Math.max(1, Math.min(Number(level) || 1, def.maxLevel));
+    levels[defId] = Math.max(0, Math.min(Number(level) || 0, def.maxLevel));
   }
   return levels;
 }

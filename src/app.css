@@ -111,6 +111,8 @@
   --space-6: 26px;
   --space-8: 34px;
 
+  --content-max-width: 1200px;
+
   --radius-chip: 7px;
   --radius-mini-chip: 12px;
   --radius-pill: 999px;

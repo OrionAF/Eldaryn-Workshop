@@ -134,7 +134,7 @@
       <div class="chip-list">
         {#each relicDefs as def (def.id)}
           <Chip
-            label={`${def.name} LV${character.relicLevels[def.id] || 1}`}
+            label={`${def.name} LV${character.relicLevels[def.id] || 0}`}
             selected={preset.relicIds.includes(def.id)}
             color={preset.relicIds.includes(def.id) ? tierColorVar(def.tier) : null}
             onClick={() => toggleRelic(def.id)}
