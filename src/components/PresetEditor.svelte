@@ -2,6 +2,7 @@
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { SLOTS, TALENT_TOTAL_POINTS, STAT_FIELDS, fieldsForTab } from '../lib/constants.js';
   import { RELICS_BY_CLASS } from '../lib/relicsData.js';
+  import { SIGILS_BY_CLASS } from '../lib/sigilsData.js';
   import { summarizeStats } from '../lib/format.js';
   import { computeDps, computeHps } from '../lib/dps.js';
   import { resolveEffectiveTotals } from '../lib/totals.js';
@@ -14,12 +15,14 @@
   let { preset, character, setStatus, onDeleted } = $props();
 
   const relicDefs = $derived(RELICS_BY_CLASS[character.class] || []);
+  const sigilDefs = $derived(SIGILS_BY_CLASS[character.class] || []);
   const totals = $derived(resolveEffectiveTotals(character, preset));
   const dps = $derived(computeDps(totals));
   const hps = $derived(computeHps(totals).total_hps);
   const profileFields = $derived(fieldsForTab('profile', character.class));
 
   let relicError = $state('');
+  let sigilError = $state('');
 
   function filledSlotCount(loadoutIndex) {
     const gear = character.loadouts[loadoutIndex].gear;
@@ -46,6 +49,12 @@
     const equipped = preset.relicIds.includes(defId);
     const ok = rosterStore.toggleRelicOnPreset(preset.id, defId, !equipped);
     relicError = !ok && !equipped ? '4 slots full — remove one first.' : '';
+  }
+
+  function toggleSigil(sigilId) {
+    const equipped = preset.sigilIds.includes(sigilId);
+    const ok = rosterStore.toggleSigilOnPreset(preset.id, sigilId, !equipped);
+    sigilError = !ok && !equipped ? '3 slots full — remove one first.' : '';
   }
 
   function deletePreset() {
@@ -171,6 +180,25 @@
       </div>
       {#if relicError}
         <p class="inline-error" role="alert">{relicError}</p>
+      {/if}
+    </div>
+
+    <div class="field-group">
+      <span class="field-group-label micro-label"
+        ><span class="diamond" style="color: var(--nav-sigils)">◆</span> Sigils — {preset.sigilIds.length}/3 slots</span
+      >
+      <div class="chip-list">
+        {#each sigilDefs as def (def.id)}
+          <Chip
+            label={`${def.name} (${def.rarity})`}
+            selected={preset.sigilIds.includes(def.id)}
+            onClick={() => toggleSigil(def.id)}
+            size="compact"
+          />
+        {/each}
+      </div>
+      {#if sigilError}
+        <p class="inline-error" role="alert">{sigilError}</p>
       {/if}
     </div>
   </div>

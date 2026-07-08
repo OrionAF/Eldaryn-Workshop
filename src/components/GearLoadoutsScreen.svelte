@@ -81,6 +81,7 @@
       stoneInventory={character.stoneInventory}
       loadouts={character.loadouts}
       {selectedStoneId}
+      equippedStoneId={loadout.socketedStones[selectedSlot] ?? null}
       onSelect={(id) => (selectedStoneId = id)}
     />
   </div>

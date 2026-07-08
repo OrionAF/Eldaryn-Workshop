@@ -49,7 +49,7 @@ it('clicking a nav item swaps the visible screen and the banner subline', () => 
   flushSync();
 
   expect(target.querySelector('.context-sub').textContent).toBe('Warrior · character-wide');
-  expect(target.textContent).toContain('has not been added yet'); // Warrior has no tree yet
+  expect(target.textContent).toContain('Nodes placed:'); // Warrior tree data exists, so the grid renders
   cleanup();
 });
 

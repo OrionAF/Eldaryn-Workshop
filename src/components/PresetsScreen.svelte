@@ -5,7 +5,6 @@
    * plus a strip linking out to the character-wide screens (Mount & Glyphs,
    * Awakening, Transcendence) that every preset shares.
    */
-  import { untrack } from 'svelte';
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { TRANSCENDENCE_TREES } from '../lib/transcendenceData.js';
   import { effectiveUnlockedSet, totalIchorSpent } from '../lib/transcendence.js';
@@ -16,29 +15,23 @@
 
   const character = $derived(rosterStore.current);
 
-  let editingId = $state(rosterStore.current.presets[0]?.id ?? null);
-  const editingPreset = $derived(character.presets.find((p) => p.id === editingId) ?? null);
-
-  // Re-point the editor at the new character's first preset on a character
-  // switch. Tracks only character.id - the presets read is untracked so
-  // adding/renaming/reordering presets on the CURRENT character doesn't
-  // fight the user's own card selection.
-  $effect(() => {
-    character.id;
-    editingId = untrack(() => character.presets[0]?.id ?? null);
-  });
+  // Selection lives on the character (persisted) so it survives screen and
+  // character switches; the fallback covers a null/stale activePresetId.
+  const editingId = $derived(character.activePresetId ?? character.presets[0]?.id ?? null);
+  const editingPreset = $derived(
+    character.presets.find((p) => p.id === editingId) ?? character.presets[0] ?? null
+  );
 
   function selectForEdit(id) {
-    editingId = id;
+    rosterStore.setActivePreset(id);
   }
 
   function addPreset() {
-    const id = rosterStore.addPreset();
-    editingId = id;
+    rosterStore.addPreset(); // addPreset makes the new preset active
   }
 
   function onDeleted() {
-    editingId = character.presets[0]?.id ?? null;
+    // rosterStore.deletePreset already re-points activePresetId
   }
 
   const activeMount = $derived(character.mounts.entries.find((m) => m.id === character.mounts.activeId));

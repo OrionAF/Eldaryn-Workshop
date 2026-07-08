@@ -23,6 +23,7 @@ import { SLOTS, STAT_FIELDS, SOURCE_DEFS } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { resolveAwakeningPerPoint } from './awakeningData.js';
 import { RELICS_BY_CLASS, relicLevelValue } from './relicsData.js';
+import { SIGILS_BY_CLASS } from './sigilsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
 import { effectiveUnlockedSet } from './transcendence.js';
 
@@ -168,6 +169,33 @@ function relicsContribution(character, preset) {
 }
 
 /**
+ * A preset's Sigil contribution: each equipped sigil's PASSIVE stats
+ * (preset.sigilIds, up to PRESET_SIGIL_CAP) sum in directly - permanent
+ * while equipped. The catalogue (sigilsData.js) only declares WHICH stats a
+ * passive carries; the values come from the character's own entered numbers
+ * (character.sigilValues, they scale with in-game sigil level), so a sigil
+ * with no entered values contributes 0. Active effects deliberately do NOT
+ * contribute here: they're time-dependent (duration/cooldown windows,
+ * on-activation damage) and belong to the battle simulation
+ * (sigilEffects.js), not a steady-state stat sum.
+ */
+function sigilsContribution(character, preset) {
+  const defs = SIGILS_BY_CLASS[character.class];
+  if (!defs) return null;
+  const defById = new Map(defs.map((d) => [d.id, d]));
+  const overrides = {};
+  for (const sigilId of preset.sigilIds || []) {
+    const def = defById.get(sigilId);
+    if (!def?.passive) continue;
+    const entered = character.sigilValues?.[sigilId]?.passive || {};
+    for (const s of def.passive.stats) {
+      overrides[s.statKey] = (overrides[s.statKey] || 0) + (Number(entered[s.statKey]) || 0);
+    }
+  }
+  return offensiveStats(overrides);
+}
+
+/**
  * A character's Transcendence contribution: every unlocked node's stats sum
  * in directly, no per-rank/level scaling (each node's flat value applies
  * once). Glyph/Sigil tree nodes have empty `stats` and so contribute
@@ -239,7 +267,7 @@ function socketedStoneStats(character, loadout, slot) {
 
 /**
  * Sum base + a preset's loadout gear/socketed stones + its talent set + its
- * pet + its equipped relics + every character-wide source (Awakening,
+ * pet + its equipped relics + its equipped sigils' passives + every character-wide source (Awakening,
  * Transcendence, Mounts, Glyphs) into one set of final totals for `preset`.
  * `talentTrees` defaults to the static tree content (talentTreeData.js); the
  * param exists mainly so tests can substitute fixtures.
@@ -256,6 +284,7 @@ export function computePresetTotals(character, preset, talentTrees = TALENT_TREE
   accumulate(acc, awakeningContribution(character));
   accumulate(acc, transcendenceContribution(character));
   accumulate(acc, relicsContribution(character, preset));
+  accumulate(acc, sigilsContribution(character, preset));
   accumulate(acc, petContribution(character, preset));
   accumulate(acc, fortressBuffsContribution(preset));
 

@@ -44,11 +44,12 @@ it('shows an onboarding hint with no class chosen', () => {
   cleanup();
 });
 
-it('shows a "tree not available" hint for a class with no tree data yet (Warrior)', () => {
+it('renders the grid for Warrior now that its tree data exists', () => {
   rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
   flushSync();
-  expect(target.querySelector('.empty-hint')).not.toBeNull();
-  expect(target.textContent).toContain("has not been added yet");
+  expect(target.querySelector('.empty-hint')).toBeNull();
+  expect(target.querySelector('.viewport')).not.toBeNull();
+  expect(target.textContent).toContain('Nodes placed:');
   cleanup();
 });
 
@@ -190,5 +191,37 @@ it("the drawer's button is disabled for a non-adjacency-valid locked node", () =
   farNode.click();
   flushSync();
   expect(target.querySelector('.allocate-button').disabled).toBe(true);
+  cleanup();
+});
+
+it('Node Filter highlights nodes carrying a selected stat, including uncommon nodes matching on either stat', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Sentinel');
+  flushSync();
+
+  const chips = [...target.querySelectorAll('.filter-chip')];
+  expect(chips.length).toBeGreaterThan(0);
+  const critMultChip = chips.find((c) => c.textContent.trim() === 'Crit Mult %');
+  critMultChip.click();
+  flushSync();
+  expect(critMultChip.classList.contains('active')).toBe(true);
+
+  // 21:4 is an uncommon node with attack_pct + crit_mult - matches on its second stat.
+  const uncommon = target.querySelector('[aria-label="uncommon node at 21:4"]');
+  expect(uncommon.classList.contains('highlighted')).toBe(true);
+  // 7:4 is an uncommon node with neither stat selected - not highlighted.
+  const other = target.querySelector('[aria-label="uncommon node at 7:4"]');
+  expect(other.classList.contains('highlighted')).toBe(false);
+
+  // Multi-select: adding a second stat highlights its nodes too, keeping the first.
+  const blindChip = chips.find((c) => c.textContent.trim() === 'Blind Chance %');
+  blindChip.click();
+  flushSync();
+  expect(uncommon.classList.contains('highlighted')).toBe(true);
+  expect(other.classList.contains('highlighted')).toBe(true);
+
+  // Clear removes every highlight.
+  target.querySelector('.filter-clear').click();
+  flushSync();
+  expect(target.querySelector('.tnode.highlighted')).toBeNull();
   cleanup();
 });

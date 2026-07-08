@@ -21,6 +21,23 @@
   const unlockedSet = $derived(effectiveUnlockedSet(unlockedPositions));
   const ichorSpent = $derived(tree ? totalIchorSpent(unlockedPositions, tree) : 0);
 
+  // Node Filter - stat keys the user wants highlighted on the grid. Session-
+  // only UI state (not persisted). A node matches when ANY of its stats is
+  // selected, so uncommon (2-stat) nodes light up if either stat matches.
+  let filterStats = $state([]);
+  const filterSet = $derived(new Set(filterStats));
+  // Stat options offered = stats that actually appear in this class's tree,
+  // in STAT_FIELDS order so the chip row matches stat ordering elsewhere.
+  const filterOptions = $derived.by(() => {
+    if (!tree) return [];
+    const present = new Set(tree.nodes.flatMap((n) => n.stats.map((s) => s.statKey)));
+    return STAT_FIELDS.filter((f) => present.has(f.key));
+  });
+
+  function toggleFilterStat(key) {
+    filterStats = filterStats.includes(key) ? filterStats.filter((k) => k !== key) : [...filterStats, key];
+  }
+
   let hovered = $state(null); // { node, x, y } - desktop hover tooltip
   let drawerNode = $state(null); // mobile tap target - the drawer's own button does the actual toggle
 
@@ -99,7 +116,27 @@
     <span class="readout">Ichor spent: <strong>{ichorSpent}</strong></span>
   </div>
 
-  <TranscendenceGrid {tree} {unlockedPositions} {onSelect} {onHover} />
+  <div class="node-filter">
+    <span class="micro-label">Node Filter</span>
+    <div class="filter-chips">
+      {#each filterOptions as opt (opt.key)}
+        <button
+          type="button"
+          class="filter-chip"
+          class:active={filterSet.has(opt.key)}
+          aria-pressed={filterSet.has(opt.key)}
+          onclick={() => toggleFilterStat(opt.key)}
+        >
+          {opt.label}
+        </button>
+      {/each}
+      {#if filterStats.length > 0}
+        <button type="button" class="filter-clear" onclick={() => (filterStats = [])}>Clear</button>
+      {/if}
+    </div>
+  </div>
+
+  <TranscendenceGrid {tree} {unlockedPositions} highlightStats={filterSet} {onSelect} {onHover} />
 
   {#if hovered && !isMobile}
     <div class="tooltip" style="left: {hovered.x + 14}px; top: {hovered.y + 14}px;">
@@ -157,6 +194,49 @@
     font-family: var(--font-data);
     font-variant-numeric: tabular-nums;
   }
+  .node-filter {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+  .filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .filter-chip {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    background: var(--color-field);
+    border: 1px solid var(--color-border-strong);
+    color: var(--color-muted);
+    cursor: pointer;
+  }
+  .filter-chip:hover {
+    border-color: var(--nav-transcendence);
+    color: var(--color-ink);
+  }
+  .filter-chip.active {
+    background: var(--nav-transcendence-tint);
+    border-color: var(--nav-transcendence);
+    color: var(--nav-transcendence-light);
+  }
+  .filter-clear {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    background: none;
+    border: 1px dashed var(--color-border-strong);
+    color: var(--color-muted);
+    cursor: pointer;
+  }
+  .filter-clear:hover {
+    color: var(--color-ink);
+    border-color: var(--color-ink);
+  }
+
   .tooltip {
     position: fixed;
     z-index: 20;
