@@ -31,6 +31,7 @@
     <span class="mini-chip">{talentSetLabel(preset.talentSet)}</span>
     <span class="mini-chip">{pet ? pet.name : 'No pet'}</span>
     <span class="mini-chip">{preset.relicIds.length} relic{preset.relicIds.length === 1 ? '' : 's'}</span>
+    <span class="mini-chip">{preset.sigilIds.length} sigil{preset.sigilIds.length === 1 ? '' : 's'}</span>
     <span class="mini-chip mode" class:calculated={!preset.manualTotals}>{preset.manualTotals ? 'manual' : 'calculated'}</span>
   </div>
 </button>

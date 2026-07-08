@@ -8,12 +8,14 @@
  *                 pets: PetEntry[],                        // shared collection, no per-pet level
  *                 petLevel: number,                        // ONE level for every pet (character-wide)
  *                 relicLevels: Record<defId, level>,       // character-wide levels
+ *                 sigilValues: Record<sigilId, SigilValues>, // character-wide entered stat/damage numbers
  *                 mounts: { entries, activeId },           // character-wide, one ridden at a time
  *                 glyphs: { entries },                      // character-wide, tier-capped equip (see SOURCE_DEFS)
  *                 stoneInventory: StoneEntry[],             // character-wide shared inventory (like pets)
  *                 awakening: { path, points },              // character-wide
  *                 transcendence: { unlockedPositions },     // character-wide
  *                 presets: Preset[],
+ *                 activePresetId: string|null,              // which preset the Presets editor shows (survives screen switches)
  *                 drop: DropState | null }                  // per-character (Preset redesign moved this off Roster)
  * Loadout     = { name, gear: Record<Slot, OffensiveStats>, socketedStones: Record<Slot, stoneId|null> }
  *   socketedStones is just an ID reference into Character.stoneInventory per slot - never a
@@ -36,7 +38,8 @@
  *   contribution, accumulated directly into totals.js like gear/pet stats.
  * Preset      = { id, name, loadout: 0|1, talentSet: 0|1, petId: string|null,
  *                 relicIds: string[] (max PRESET_RELIC_CAP),
- *                 sigilIds: string[] (max PRESET_SIGIL_CAP, scaffold - no Sigil content/UI yet),
+ *                 sigilIds: string[] (max PRESET_SIGIL_CAP, references the static
+ *                 SIGILS_BY_CLASS catalogue for the character's class),
  *                 manualTotals: boolean, manualStats: OffensiveStats,
  *                 fortressBuffs: { top: boolean, bottom: boolean, core: boolean } }
  *   fortressBuffs: top/bottom are mutually exclusive (setPresetFortressBuff clears the other
@@ -54,8 +57,18 @@
  * Loadouts screen: a character-wide inventory (Character.stoneInventory) referenced
  * per-slot-per-loadout via Loadout.socketedStones, deliberately separate from gear
  * stats so Drop Check (which only ever reads Loadout.gear) can't be affected by them.
- * Sigils are per-preset (Preset.sigilIds) and remain scaffold-only (no real content/UI
- * yet), same as before the redesign.
+ * Sigils are per-preset (Preset.sigilIds, equipped in the Presets editor like relics).
+ * Their STRUCTURE is static game data (sigilsData.js: which stats each passive/active
+ * carries, durations, cooldowns) but their NUMBERS scale with each character's own
+ * sigil levels in-game, so the values are user-entered, character-wide state:
+ *
+ * SigilValues = { passive: Record<statKey, number>,  // one value per statKey the def's passive declares
+ *                 active: Record<statKey, number>,   // one value per statKey the def's active declares
+ *                 damage: number,                    // activation damage (damage-dealing actives only)
+ *                 tickDamage: number }               // per-tick damage (DoT/bleed mechanics only)
+ *
+ * Passive values feed totals.js; active values/damage feed the battle simulation
+ * (sigilEffects.js) - sigils never feed the closed-form dps.js swap math.
  */
 
 import { offensiveStats } from './dps.js';
@@ -66,6 +79,7 @@ import { RELICS_BY_CLASS } from './relicsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
 import { reachableFrom, effectiveUnlockedSet } from './transcendence.js';
 import { stoneTypeDef } from './stonesData.js';
+import { SIGILS_BY_CLASS } from './sigilsData.js';
 
 let _idCounter = 0;
 function newId() {
@@ -172,6 +186,7 @@ export function newCharacter(name = 'New Character') {
     pets: [],
     petLevel: 1,
     relicLevels: {},
+    sigilValues: {},
     mounts: emptySourceState(findSourceDef('mounts')),
     glyphs: emptySourceState(findSourceDef('glyphs')),
     stoneInventory: [],
@@ -180,6 +195,7 @@ export function newCharacter(name = 'New Character') {
     // Every preset defaults to Calculated mode, including a fresh character's
     // seeded first one - see rosterStore.addPreset for presets created later.
     presets: [newPreset('Preset 1')],
+    activePresetId: null, // normaliseCharacter falls back to the first preset
     drop: null,
   };
 }
@@ -327,6 +343,7 @@ function normaliseCharacter(c) {
   base.pets = normalisePets(c?.pets);
   base.petLevel = Math.max(1, Number(c?.petLevel) || 1);
   base.relicLevels = normaliseRelicLevels(c?.relicLevels, base.class);
+  base.sigilValues = normaliseSigilValues(c?.sigilValues, base.class);
 
   base.mounts = normaliseMounts(c?.mounts);
   base.glyphs = normaliseGlyphs(c?.glyphs);
@@ -335,10 +352,15 @@ function normaliseCharacter(c) {
 
   const petIds = new Set(base.pets.map((p) => p.id));
   const relicDefIds = new Set(Object.keys(base.relicLevels));
+  const sigilDefIds = new Set((SIGILS_BY_CLASS[base.class] || []).map((s) => s.id));
   const rawPresets = Array.isArray(c?.presets) ? c.presets : [];
   base.presets = rawPresets.length
-    ? rawPresets.map((p) => normalisePreset(p, petIds, relicDefIds))
+    ? rawPresets.map((p) => normalisePreset(p, petIds, relicDefIds, sigilDefIds))
     : [newPreset('Preset 1')];
+
+  base.activePresetId = base.presets.some((p) => p.id === c?.activePresetId)
+    ? c.activePresetId
+    : base.presets[0]?.id ?? null;
 
   base.drop = normaliseDrop(c?.drop);
   return base;
@@ -420,6 +442,43 @@ function normaliseRelicLevels(raw, characterClass) {
   return levels;
 }
 
+/** One fresh SigilValues block: a 0 for every statKey `def` declares, plus the damage fields. */
+export function emptySigilValues(def) {
+  const zeros = (stats) => Object.fromEntries((stats || []).map((s) => [s.statKey, 0]));
+  return {
+    passive: zeros(def?.passive?.stats),
+    active: zeros(def?.active?.stats),
+    damage: 0,
+    tickDamage: 0,
+  };
+}
+
+/**
+ * Drops entries for sigilIds that don't exist in this class's (static)
+ * catalogue, and drops stat values for statKeys the sigil's own passive/
+ * active doesn't declare - the entered numbers can only ever fill in the
+ * catalogue's structure, never extend it.
+ */
+function normaliseSigilValues(raw, characterClass) {
+  const defs = SIGILS_BY_CLASS[characterClass] || [];
+  const defById = new Map(defs.map((d) => [d.id, d]));
+  const values = {};
+  for (const [sigilId, entry] of Object.entries(raw && typeof raw === 'object' ? raw : {})) {
+    const def = defById.get(sigilId);
+    if (!def || !entry || typeof entry !== 'object') continue;
+    const base = emptySigilValues(def);
+    for (const effectType of ['passive', 'active']) {
+      for (const key of Object.keys(base[effectType])) {
+        base[effectType][key] = Number(entry[effectType]?.[key]) || 0;
+      }
+    }
+    base.damage = Math.max(0, Number(entry.damage) || 0);
+    base.tickDamage = Math.max(0, Number(entry.tickDamage) || 0);
+    values[sigilId] = base;
+  }
+  return values;
+}
+
 function normaliseMounts(raw) {
   const entries = Array.isArray(raw?.entries) ? raw.entries : [];
   const activeId = entries.some((e) => e?.id === raw?.activeId) ? raw.activeId : null;
@@ -470,7 +529,7 @@ function normaliseTranscendence(raw, characterClass) {
  * petId/relicId just gets dropped rather than crashing or being kept as a
  * ghost reference.
  */
-function normalisePreset(raw, petIds, relicDefIds) {
+function normalisePreset(raw, petIds, relicDefIds, sigilDefIds) {
   const base = newPreset(raw?.name || 'Preset');
   if (raw?.id) base.id = raw.id;
   base.loadout = raw?.loadout === 1 ? 1 : 0;
@@ -478,7 +537,7 @@ function normalisePreset(raw, petIds, relicDefIds) {
   base.petId = petIds.has(raw?.petId) ? raw.petId : null;
   const relicIds = Array.isArray(raw?.relicIds) ? raw.relicIds.filter((id) => relicDefIds.has(id)) : [];
   base.relicIds = [...new Set(relicIds)].slice(0, PRESET_RELIC_CAP);
-  const sigilIds = Array.isArray(raw?.sigilIds) ? raw.sigilIds : [];
+  const sigilIds = Array.isArray(raw?.sigilIds) ? raw.sigilIds.filter((id) => sigilDefIds.has(id)) : [];
   base.sigilIds = [...new Set(sigilIds)].slice(0, PRESET_SIGIL_CAP);
   base.manualTotals = raw?.manualTotals === true;
   base.manualStats = emptyStats(raw?.manualStats || {});

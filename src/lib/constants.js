@@ -116,7 +116,7 @@ export const SOURCE_DEFS = [
 /** Max relics a single Preset may equip (character-wide levels, per-preset equip - see relicsData.js's RELIC_EQUIP_CAP, same numeric cap). */
 export const PRESET_RELIC_CAP = 4;
 
-/** Max Sigils a single Preset may equip. Scaffold only - no Sigil content/UI exists yet, same as Enchant Stones. */
+/** Max Sigils a single Preset may equip (equipped in the Presets editor; content is static game data in sigilsData.js). */
 export const PRESET_SIGIL_CAP = 3;
 
 /**

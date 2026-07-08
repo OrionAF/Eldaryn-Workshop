@@ -24,16 +24,16 @@
   let { character, loadoutIndex, selectedSlot, selectedStoneId, onDeselect } = $props();
 
   const PVP_KEYS = ['pvp_attack', 'pvp_defense'];
-  const CORE_KEYS = ['attack', 'attack_pct', 'health', 'health_pct']; // never a stone's free bonus stat
+  const CORE_KEYS = ['attack', 'health']; // never a stone's free bonus stat (their % variants are allowed)
 
   function statLabel(key) {
     return STAT_FIELDS.find((f) => f.key === key)?.label ?? key;
   }
 
-  /** "Head | No" - positionally Loadout 1 | Loadout 2 (same format as StoneGrid). */
+  /** "L1: Head | L2: No" - positionally Loadout 1 | Loadout 2 (same format as StoneGrid). */
   function socketStatus(stoneId) {
     return character.loadouts
-      .map((l) => SLOTS.find((slot) => l.socketedStones[slot] === stoneId) || 'No')
+      .map((l, i) => `L${i + 1}: ${SLOTS.find((slot) => l.socketedStones[slot] === stoneId) || 'No'}`)
       .join(' | ');
   }
 
@@ -248,8 +248,9 @@
     width: 100%;
   }
   .socket-status {
+    font-weight: 700;
     font-size: 10.5px;
-    color: var(--color-dim);
+    color: var(--color-ink);
     margin: 0;
   }
   .hint {

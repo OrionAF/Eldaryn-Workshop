@@ -7,9 +7,11 @@
   import TalentSetsScreen from './components/TalentSetsScreen.svelte';
   import PetsScreen from './components/PetsScreen.svelte';
   import RelicsScreen from './components/RelicsScreen.svelte';
+  import SigilsScreen from './components/SigilsScreen.svelte';
   import MountAndGlyphsScreen from './components/MountAndGlyphsScreen.svelte';
   import AwakeningScreen from './components/AwakeningScreen.svelte';
   import TranscendenceScreen from './components/TranscendenceScreen.svelte';
+  import SimulationScreen from './components/SimulationScreen.svelte';
   import { rosterStore } from './lib/rosterStore.svelte.js';
 
   // Per-screen suffix for the banner subline - what's actually in scope on
@@ -21,6 +23,8 @@
     talents: () => '2 talent sets',
     pets: (c) => `${c.pets.length} pet${c.pets.length === 1 ? '' : 's'}`,
     relics: () => 'character-wide levels',
+    sigils: (c) => `${c.presets.length} preset${c.presets.length === 1 ? '' : 's'} · 3 slots each`,
+    simulation: () => '60s world boss · Monte Carlo',
     mounts: () => 'character-wide',
     awakening: () => 'character-wide',
     transcendence: () => 'character-wide',
@@ -112,6 +116,10 @@
         <PetsScreen />
       {:else if activeScreen === 'relics'}
         <RelicsScreen />
+      {:else if activeScreen === 'sigils'}
+        <SigilsScreen />
+      {:else if activeScreen === 'simulation'}
+        <SimulationScreen {setStatus} />
       {:else if activeScreen === 'mounts'}
         <MountAndGlyphsScreen />
       {:else if activeScreen === 'awakening'}

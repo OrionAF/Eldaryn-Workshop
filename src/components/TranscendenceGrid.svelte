@@ -16,7 +16,7 @@
   import { effectiveUnlockedSet, canUnlock } from '../lib/transcendence.js';
   import TranscendenceNode from './TranscendenceNode.svelte';
 
-  let { tree, unlockedPositions = [], onSelect = null, onHover = null } = $props();
+  let { tree, unlockedPositions = [], highlightStats = null, onSelect = null, onHover = null } = $props();
 
   // Same 700px breakpoint as the rest of the mobile nav contract - nodes are
   // the only interaction on this screen, so they need a real touch target
@@ -199,6 +199,7 @@
         {node}
         unlocked={unlockedSet.has(node.position)}
         unlockable={canUnlock(node.position, unlockedPositions, tree)}
+        highlighted={!!highlightStats?.size && node.stats.some((s) => highlightStats.has(s.statKey))}
         onSelect={handleSelect}
         {onHover}
       />

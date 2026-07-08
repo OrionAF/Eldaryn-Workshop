@@ -67,12 +67,12 @@ it('Add mode: switching to Azure shows a PVP-Attack-or-Defense picker and one fr
   expect(target.querySelectorAll('select[aria-label^="Bonus stat"]').length).toBe(1);
 });
 
-it('Add mode: free dropdowns never offer Attack/Health (core stats)', () => {
+it('Add mode: free dropdowns never offer flat Attack/Health but do offer their % variants', () => {
   renderForm();
-  const CORE_LABELS = ['Attack', 'Attack %', 'Health', 'Health %'];
   for (const select of target.querySelectorAll('select[aria-label^="Bonus stat"]')) {
     const labels = [...select.options].map((o) => o.textContent);
-    for (const core of CORE_LABELS) expect(labels).not.toContain(core);
+    for (const core of ['Attack', 'Health']) expect(labels).not.toContain(core);
+    for (const pct of ['Attack %', 'Health %']) expect(labels).toContain(pct);
   }
 });
 

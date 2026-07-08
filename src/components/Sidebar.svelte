@@ -20,6 +20,8 @@
     { id: 'talents', label: 'Talent Sets', color: 'talents' },
     { id: 'pets', label: 'Pets', color: 'pets' },
     { id: 'relics', label: 'Relics', color: 'relics' },
+    { id: 'sigils', label: 'Sigils', color: 'sigils' },
+    { id: 'simulation', label: 'Simulation', color: 'simulation' },
   ];
 
   const CHARACTER_NAV = [

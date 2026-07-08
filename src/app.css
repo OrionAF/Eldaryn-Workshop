@@ -67,6 +67,12 @@
   --nav-relics: #e8c84f;
   --nav-relics-light: #f4df9a;
   --nav-relics-tint: rgba(232, 200, 79, 0.1);
+  --nav-sigils: #7a8cff;
+  --nav-sigils-light: #b3bdff;
+  --nav-sigils-tint: rgba(122, 140, 255, 0.1);
+  --nav-simulation: #4fe3c1;
+  --nav-simulation-light: #a4f1de;
+  --nav-simulation-tint: rgba(79, 227, 193, 0.1);
   --nav-mounts: #67c26b;
   --nav-mounts-light: #a8e0ab;
   --nav-mounts-tint: rgba(103, 194, 107, 0.1);

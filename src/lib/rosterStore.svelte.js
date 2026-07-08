@@ -9,12 +9,13 @@
  */
 
 import { loadRoster, saveRoster, importRoster as parseRosterJson, downloadRoster } from './storage.js';
-import { newCharacter, getCurrent, emptyStats, newPetEntry, newMountEntry, newMountGlyphEntry, newPreset, newStoneEntry } from './model.js';
+import { newCharacter, getCurrent, emptyStats, newPetEntry, newMountEntry, newMountGlyphEntry, newPreset, newStoneEntry, emptySigilValues } from './model.js';
 import { computePresetTotals } from './totals.js';
-import { SLOTS, SOURCE_DEFS, TALENT_TOTAL_POINTS, PRESET_RELIC_CAP } from './constants.js';
+import { SLOTS, SOURCE_DEFS, TALENT_TOTAL_POINTS, PRESET_RELIC_CAP, PRESET_SIGIL_CAP } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { AWAKENING_PATHS, AWAKENING_TOTAL_POINTS } from './awakeningData.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
+import { SIGILS_BY_CLASS } from './sigilsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
 import { canUnlock, reachableFrom, effectiveUnlockedSet } from './transcendence.js';
 
@@ -106,8 +107,10 @@ function createRosterStore() {
       talentSet.allocation = {};
     }
     c.relicLevels = {};
+    c.sigilValues = {};
     for (const preset of c.presets) {
       preset.relicIds = [];
+      preset.sigilIds = [];
     }
     c.transcendence = { unlockedPositions: [] };
     persist();
@@ -385,12 +388,68 @@ function createRosterStore() {
     return true;
   }
 
+  // --- Sigils (static per-class catalogue; VALUES are character-wide, equip is per-preset up to PRESET_SIGIL_CAP) ---
+  function findSigilDef(sigilId) {
+    return (SIGILS_BY_CLASS[current.class] || []).find((d) => d.id === sigilId);
+  }
+
+  /** The character's SigilValues entry for sigilId, created (and persisted lazily by the caller) on first edit. */
+  function sigilValuesEntry(def) {
+    if (!current.sigilValues[def.id]) current.sigilValues[def.id] = emptySigilValues(def);
+    return current.sigilValues[def.id];
+  }
+
+  /** Set one entered stat value on a sigil's passive or active. Returns false (no-op) if the sigil or statKey doesn't exist for this class. */
+  function setSigilStatValue(sigilId, effectType, statKey, value) {
+    const def = findSigilDef(sigilId);
+    const declared = def?.[effectType]?.stats?.some((s) => s.statKey === statKey);
+    if (!declared) return false;
+    sigilValuesEntry(def)[effectType][statKey] = Number(value) || 0;
+    persist();
+    return true;
+  }
+
+  /** Set a sigil's entered activation damage ('damage') or per-tick damage ('tickDamage'). */
+  function setSigilDamageValue(sigilId, field, value) {
+    const def = findSigilDef(sigilId);
+    if (!def || (field !== 'damage' && field !== 'tickDamage')) return false;
+    sigilValuesEntry(def)[field] = Math.max(0, Number(value) || 0);
+    persist();
+    return true;
+  }
+
+  /** Returns false (no-op) if sigilId isn't a sigil for this character's class, or equipping would exceed the per-preset sigil cap. */
+  function toggleSigilOnPreset(presetId, sigilId, equipped) {
+    const def = findSigilDef(sigilId);
+    if (!def) return false;
+    const preset = current.presets.find((p) => p.id === presetId);
+    if (!preset) return false;
+    if (equipped) {
+      if (preset.sigilIds.includes(sigilId)) return true;
+      if (preset.sigilIds.length >= PRESET_SIGIL_CAP) return false;
+      preset.sigilIds.push(sigilId);
+    } else {
+      preset.sigilIds = preset.sigilIds.filter((id) => id !== sigilId);
+    }
+    persist();
+    return true;
+  }
+
   // --- Presets (Character.presets - the unit a Drop Check verdict/preset editor operates on) ---
   function addPreset(name) {
     const preset = newPreset(name || `Preset ${current.presets.length + 1}`); // Calculated by default
     current.presets.push(preset);
+    current.activePresetId = preset.id; // a just-created preset is what you want to edit
     persist();
     return preset.id;
+  }
+
+  /** Which preset the Presets editor shows - persisted so it survives screen switches. */
+  function setActivePreset(presetId) {
+    if (current.presets.some((p) => p.id === presetId)) {
+      current.activePresetId = presetId;
+      persist();
+    }
   }
 
   function renamePreset(presetId, name) {
@@ -407,6 +466,9 @@ function createRosterStore() {
     const idx = current.presets.findIndex((p) => p.id === presetId);
     if (idx === -1) return false;
     current.presets.splice(idx, 1);
+    if (current.activePresetId === presetId) {
+      current.activePresetId = current.presets[0]?.id ?? null;
+    }
     persist();
     return true;
   }
@@ -555,7 +617,11 @@ function createRosterStore() {
     setTranscendenceNode,
     setRelicLevel,
     toggleRelicOnPreset,
+    setSigilStatValue,
+    setSigilDamageValue,
+    toggleSigilOnPreset,
     addPreset,
+    setActivePreset,
     renamePreset,
     deletePreset,
     setPresetLoadout,

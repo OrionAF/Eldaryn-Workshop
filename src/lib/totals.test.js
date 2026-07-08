@@ -3,6 +3,7 @@ import { computePresetTotals, resolveEffectiveTotals } from './totals.js';
 import { newCharacter, newPetEntry, newMountEntry, newMountGlyphEntry, newPreset, newStoneEntry, emptyStats } from './model.js';
 import { BASE_ATTACK, BASE_SPEED, BASE_CRIT_MULT } from './dps.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
+import { SIGILS_BY_CLASS } from './sigilsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
 
 // Talent test fixtures: plain object literals matching talentTreeData.js's
@@ -284,14 +285,13 @@ it('Transcendence is shared by every preset, unlike per-talent-set/per-preset Ta
   expect(approx(p1.penetration, 1)).toBe(true);
 });
 
-it('a class with no Transcendence tree data yet (Warrior) contributes nothing beyond base', () => {
-  expect(TRANSCENDENCE_TREES.Warrior).toBe(null); // not transcribed yet - guards this test's premise
+it('Warrior Transcendence nodes contribute now that its tree is transcribed', () => {
+  expect(TRANSCENDENCE_TREES.Warrior).not.toBe(null); // guards this test's premise
   const c = newCharacter();
   c.class = 'Warrior';
-  c.transcendence.unlockedPositions = ['2:2']; // would-be Sentinel position, meaningless for Warrior
+  c.transcendence.unlockedPositions = ['14:25']; // Warrior start node: Health % +1
   const totals = computePresetTotals(c, c.presets[0]);
-  expect(totals.penetration).toBe(0);
-  expect(totals.health_pct).toBe(0);
+  expect(totals.health_pct).toBe(1);
 });
 
 // --- Stat caps ---
@@ -388,6 +388,45 @@ it("equipping a relic on one preset doesn't equip it for another (equip is per-p
 
   const totalsB = computePresetTotals(c, presetB);
   expect(totalsB.dmg_reduction).toBe(0);
+});
+
+// --- Sigils (static catalogue structure + character-entered values, equipped per-preset - PASSIVE stats only) ---
+it("an equipped sigil contributes its ENTERED passive values; entered active values never reach totals", () => {
+  const c = newCharacter();
+  c.class = 'Warrior';
+  // warborn-fury: passive declares attack+health; active declares attack_pct/penetration/dmg_reduction
+  c.sigilValues['warborn-fury'] = {
+    passive: { attack: 500, health: 300 },
+    active: { attack_pct: 20, penetration: 10, dmg_reduction: 5 },
+    damage: 0,
+    tickDamage: 0,
+  };
+  c.presets[0].sigilIds = ['warborn-fury'];
+
+  const bare = computePresetTotals(c, newPreset('bare'));
+  const totals = computePresetTotals(c, c.presets[0]);
+
+  expect(totals.attack - bare.attack).toBe(500); // no attack_pct anywhere, so flat delta is exact
+  expect(totals.health - bare.health).toBe(300);
+  // The active's stats stay simulation-only.
+  expect(totals.penetration).toBe(bare.penetration);
+  expect(totals.dmg_reduction).toBe(bare.dmg_reduction);
+});
+
+it('an equipped sigil with no entered values contributes nothing', () => {
+  const c = newCharacter();
+  c.class = 'Warrior';
+  c.presets[0].sigilIds = ['warborn-fury'];
+  expect(computePresetTotals(c, c.presets[0])).toEqual(computePresetTotals(c, newPreset('bare')));
+});
+
+it('a sigil not equipped on this preset contributes nothing', () => {
+  const c = newCharacter();
+  c.class = 'Warrior';
+  c.presets[0].sigilIds = [SIGILS_BY_CLASS.Warrior[0].id];
+  const presetB = newPreset('B', { loadout: 1, talentSet: 1 }); // sigilIds stays empty
+
+  expect(computePresetTotals(c, presetB)).toEqual(computePresetTotals(c, newPreset('bare', { loadout: 1, talentSet: 1 })));
 });
 
 it('the TOP fortress buff contributes its fixed stat block', () => {

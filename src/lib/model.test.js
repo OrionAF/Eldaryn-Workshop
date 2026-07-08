@@ -2,6 +2,7 @@ import { it, expect } from 'vitest';
 import { newRoster, newCharacter, newLoadout, newPreset, newStoneEntry, talentSetLabel, normaliseRoster } from './model.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
+import { SIGILS_BY_CLASS } from './sigilsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
 import { PRESET_RELIC_CAP, PRESET_SIGIL_CAP, SLOTS } from './constants.js';
 
@@ -197,14 +198,14 @@ it('normaliseRoster drops Transcendence positions orphaned from the start (no un
   expect(roster.characters[0].transcendence.unlockedPositions).toEqual([]);
 });
 
-it('normaliseRoster clears Transcendence for a class with no tree data yet (Warrior)', () => {
-  expect(TRANSCENDENCE_TREES.Warrior).toBe(null); // guards this test's premise
+it('normaliseRoster keeps valid Transcendence positions for Warrior now that its tree exists', () => {
+  expect(TRANSCENDENCE_TREES.Warrior).not.toBe(null); // guards this test's premise
   const raw = {
-    characters: [{ id: 'x', name: 'Test', class: 'Warrior', transcendence: { unlockedPositions: ['14:24'] } }],
+    characters: [{ id: 'x', name: 'Test', class: 'Warrior', transcendence: { unlockedPositions: ['14:25'] } }],
     currentId: 'x',
   };
   const roster = normaliseRoster(raw);
-  expect(roster.characters[0].transcendence.unlockedPositions).toEqual([]);
+  expect(roster.characters[0].transcendence.unlockedPositions).toEqual(['14:25']);
 });
 
 it('newRoster does not carry talent tree content - that is static code data, not persisted', () => {
@@ -340,8 +341,9 @@ it("normaliseRoster drops relicLevels that belonged to a different class", () =>
   expect(roster.characters[0].relicLevels).toEqual({});
 });
 
-it('normaliseRoster preset: drops a dangling petId/relicIds, dedupes and caps relicIds/sigilIds', () => {
+it('normaliseRoster preset: drops a dangling petId/relicIds/sigilIds, dedupes and caps relicIds/sigilIds', () => {
   const realRelic = RELICS_BY_CLASS.Sentinel[0];
+  const sigilIds = SIGILS_BY_CLASS.Sentinel.map((s) => s.id);
   const raw = {
     characters: [
       {
@@ -358,7 +360,8 @@ it('normaliseRoster preset: drops a dangling petId/relicIds, dedupes and caps re
             talentSet: 1,
             petId: 'ghost-pet', // dangling, dropped
             relicIds: [realRelic.id, realRelic.id, 'ghost-relic', 'a', 'b', 'c'], // deduped + capped at PRESET_RELIC_CAP
-            sigilIds: ['s1', 's1', 's2', 's3', 's4'], // deduped + capped at PRESET_SIGIL_CAP
+            // ghost dropped (not in the Sentinel catalogue), dupe collapsed, capped at PRESET_SIGIL_CAP
+            sigilIds: [sigilIds[0], sigilIds[0], 'ghost-sigil', sigilIds[1], sigilIds[2], sigilIds[3]],
             manualTotals: false,
           },
         ],
@@ -374,8 +377,36 @@ it('normaliseRoster preset: drops a dangling petId/relicIds, dedupes and caps re
   expect(preset.petId).toBe(null); // dangling reference dropped
   expect(preset.relicIds).toEqual([realRelic.id]); // ghost-relic dropped, dupe collapsed
   expect(preset.relicIds.length).toBeLessThanOrEqual(PRESET_RELIC_CAP);
-  expect(preset.sigilIds).toEqual(['s1', 's2', 's3']);
+  expect(preset.sigilIds).toEqual([sigilIds[0], sigilIds[1], sigilIds[2]]);
   expect(preset.sigilIds.length).toBeLessThanOrEqual(PRESET_SIGIL_CAP);
+});
+
+it('normaliseRoster sigilValues: drops unknown sigils/statKeys, keeps declared values, clamps damage to >= 0', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'Test',
+        class: 'Warrior',
+        sigilValues: {
+          'ghost-sigil': { passive: { attack: 99 } }, // not in the Warrior catalogue, dropped
+          'warborn-fury': {
+            passive: { attack: 500, crit: 9 }, // crit not declared by warborn-fury's passive, dropped
+            active: { attack_pct: 20 },
+            damage: -5, // clamped
+            tickDamage: 'junk', // coerced
+          },
+        },
+      },
+    ],
+    currentId: 'x',
+  };
+  const values = normaliseRoster(raw).characters[0].sigilValues;
+  expect(values['ghost-sigil']).toBeUndefined();
+  expect(values['warborn-fury'].passive).toEqual({ attack: 500, health: 0 });
+  expect(values['warborn-fury'].active).toEqual({ attack_pct: 20, penetration: 0, dmg_reduction: 0 });
+  expect(values['warborn-fury'].damage).toBe(0);
+  expect(values['warborn-fury'].tickDamage).toBe(0);
 });
 
 it('normaliseRoster falls back to one seeded preset when a character has none', () => {

@@ -11,7 +11,7 @@
    * an invalid unlock), this component just reflects `unlocked`/`unlockable`
    * state and forwards taps/hovers.
    */
-  let { node, unlocked = false, unlockable = false, onSelect = null, onHover = null } = $props();
+  let { node, unlocked = false, unlockable = false, highlighted = false, onSelect = null, onHover = null } = $props();
 
   const CATEGORY_ICON = { offense: 'sword', defense: 'shield', glyph: 'scroll' };
   const icon = $derived(CATEGORY_ICON[node.category] ?? null);
@@ -22,6 +22,7 @@
   class="tnode {node.type}"
   class:unlocked
   class:unlockable
+  class:highlighted
   class:inert={node.type === 'glyph'}
   disabled={node.type === 'glyph'}
   style="--col: {node.position.split(':')[0]}; --row: {node.position.split(':')[1]};"
@@ -143,6 +144,15 @@
   .tnode.unlocked:hover {
     background: var(--color-gold);
     color: var(--color-bg);
+  }
+
+  /* Node-filter match ring - an outline (not the border) so it layers on
+     top of the unlockable/unlocked border colors without replacing them.
+     Only common/uncommon nodes carry stats, so the clip-path shapes (glyph/
+     sigil), which would clip an outline, never receive this class. */
+  .tnode.highlighted {
+    outline: 2px solid var(--nav-transcendence-light);
+    outline-offset: 2px;
   }
 
   .icon {
