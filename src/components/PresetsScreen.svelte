@@ -34,7 +34,9 @@
     // rosterStore.deletePreset already re-points activePresetId
   }
 
-  const activeMount = $derived(character.mounts.entries.find((m) => m.id === character.mounts.activeId));
+  // Which mount is ridden is per-preset (preset.mountId); the tile summarises
+  // how many catalogue mounts have stats entered instead.
+  const mountsWithStats = $derived(character.mounts.entries.filter((m) => m.baseHpPct || m.baseAtkPct).length);
   const equippedGlyphCount = $derived(character.glyphs.entries.filter((g) => g.equipped).length);
   const tree = $derived(TRANSCENDENCE_TREES[character.class]);
   const nodesPlaced = $derived(tree ? effectiveUnlockedSet(character.transcendence.unlockedPositions).size : 0);
@@ -76,13 +78,8 @@
         <span class="dot mounts"></span>
         <span class="tile-title">Mount &amp; Glyphs</span>
       </div>
-      {#if activeMount}
-        <span class="tile-primary">{activeMount.name} ({activeMount.rarity})</span>
-        <span class="tile-detail">+{activeMount.baseHpPct}% HP · +{activeMount.baseAtkPct}% ATK · glyphs {equippedGlyphCount}/6</span>
-      {:else}
-        <span class="tile-primary">No mount</span>
-        <span class="tile-detail">add one under Mount &amp; Glyphs</span>
-      {/if}
+      <span class="tile-primary">{mountsWithStats}/{character.mounts.entries.length} mounts entered</span>
+      <span class="tile-detail">glyphs {equippedGlyphCount}/6 · ridden mount is chosen per preset</span>
     </button>
     <button type="button" class="tile" onclick={() => onNavigate?.('awakening')}>
       <div class="tile-head">

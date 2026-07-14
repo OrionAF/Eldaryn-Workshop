@@ -11,7 +11,7 @@ import { describe, it, expect } from 'vitest';
 import * as opt from './optimizer.js';
 import { computePresetTotals } from './totals.js';
 import { computeDps } from './dps.js';
-import { newCharacter, newPetEntry, newMountEntry, newMountGlyphEntry, newStoneEntry } from './model.js';
+import { newCharacter, newPetEntry, newMountGlyphEntry, newStoneEntry } from './model.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { PRESET_RELIC_CAP, PRESET_SIGIL_CAP, SOURCE_DEFS } from './constants.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
@@ -32,10 +32,11 @@ function makeWarrior() {
   const hpPet = newPetEntry({ name: 'HP Pet', stats: { health_pct: 10 } });
   character.pets = [atkPet, hpPet];
 
-  const atkMount = newMountEntry({ name: 'War Mount', baseAtkPct: 5 });
-  const hpMount = newMountEntry({ name: 'Tank Mount', baseHpPct: 5 });
-  character.mounts.entries = [atkMount, hpMount];
-  character.mounts.activeId = hpMount.id; // currently riding the wrong one
+  const atkMount = character.mounts.entries.find((m) => m.id === 'night_wolf');
+  atkMount.baseAtkPct = 5;
+  const hpMount = character.mounts.entries.find((m) => m.id === 'frostfang_wolf');
+  hpMount.baseHpPct = 5;
+  character.presets[0].mountId = hpMount.id; // currently riding the wrong one
 
   character.glyphs.entries = [
     newMountGlyphEntry({ tier: 'minor', statKey: 'attack_pct', value: 1 }),
@@ -68,7 +69,7 @@ function applyCandidate(character, preset, candidate) {
   p.fortressBuffs = { ...candidate.preset.fortressBuffs };
   c.loadouts[candidate.preset.loadout].socketedStones = { ...candidate.socketedStones };
   c.talentSets[candidate.preset.talentSet] = { spec: candidate.talentSpec, allocation: { ...candidate.talentAllocation } };
-  c.mounts.activeId = candidate.mountActiveId;
+  p.mountId = candidate.preset.mountId;
   for (const e of c.glyphs.entries) e.equipped = candidate.glyphEquippedIds.includes(e.id);
   c.awakening.path = candidate.awakeningPath;
   c.transcendence.unlockedPositions = [...candidate.transcendenceUnlocked];
@@ -85,12 +86,20 @@ it('never returns a build worse than the current one, and finds the known upgrad
   const c = result.best.candidate;
   expect(c.preset.loadout).toBe(0); // the strictly better loadout
   expect(c.preset.petId).toBe(atkPet.id); // attack% pet beats HP pet
-  expect(c.mountActiveId).toBe(atkMount.id); // attack mount beats tank mount
+  expect(c.preset.mountId).toBe(atkMount.id); // attack mount beats tank mount
   expect(c.preset.fortressBuffs).toEqual(preset.fortressBuffs); // taken as set, never searched
   expect(c.awakeningPath).toBe('shadow'); // pure-offense path beats Radiant
   expect(c.preset.relicIds).toContain('war-charm');
   expect(c.preset.relicIds).toContain('fatebreaker');
   expect(result.transcendencePlan).toEqual([]); // no Ichor budget given
+});
+
+it('searchAwakening: false pins the current awakening path', async () => {
+  const { character, preset } = makeWarrior();
+  const result = await opt.optimize({ character, preset, searchAwakening: false });
+  // Shadow would win (see above) - but the path is locked to what the player runs.
+  expect(result.best.candidate.awakeningPath).toBe('radiant');
+  expect(result.changes.find((c) => c.dimension === 'awakening')).toBeUndefined();
 });
 
 it('recommended configuration is legal on every dimension', async () => {
@@ -423,4 +432,126 @@ it('diffCandidate reports only genuinely changed dimensions', async () => {
   expect(dims).toContain('pet');
   expect(dims).toContain('mount');
   expect(new Set(dims).size).toBe(dims.length); // one item per dimension
+});
+
+it('searchDimensions locks a dimension while the others still improve', async () => {
+  const { character, preset, hpPet, atkMount } = makeWarrior();
+  const result = await opt.optimize({ character, preset, searchDimensions: { pets: false } });
+  // The attack pet would win (see the first test) - but pets are locked.
+  expect(result.best.candidate.preset.petId).toBe(hpPet.id);
+  expect(result.changes.find((c) => c.dimension === 'pet')).toBeUndefined();
+  // Unlocked dimensions still get searched.
+  expect(result.best.candidate.preset.mountId).toBe(atkMount.id);
+});
+
+it('an AbortSignal stops the search and returns best-so-far with aborted: true', async () => {
+  const { character, preset } = makeWarrior();
+  const controller = new AbortController();
+  let reports = 0;
+  const result = await opt.optimize({
+    character,
+    preset,
+    signal: controller.signal,
+    onProgress: () => {
+      reports += 1;
+      if (reports === 3) controller.abort();
+    },
+  });
+  expect(result.aborted).toBe(true);
+  expect(result.best.score).toBeGreaterThanOrEqual(result.baseline.score);
+});
+
+it('aborting before the baseline eval rejects instead of returning garbage', async () => {
+  const { character, preset } = makeWarrior();
+  const controller = new AbortController();
+  controller.abort();
+  await expect(opt.optimize({ character, preset, signal: controller.signal })).rejects.toThrow(/aborted/i);
+});
+
+it('two-stage scoring: the screen ranks, but the expensive objective gates adoption', async () => {
+  const { character, preset, atkPet, hpPet, atkMount } = makeWarrior();
+  // Screen = plain DPS (prefers the attack pet). Confirm = DPS minus a huge
+  // penalty for the attack pet - so every screen-approved pet challenger
+  // must be REJECTED at confirmation, while other dimensions sail through.
+  const confirm = (c, p) => opt.expectedDpsObjective(c, p) - (p.petId === atkPet.id ? 1e9 : 0);
+  const result = await opt.optimize({
+    character,
+    preset,
+    objective: confirm,
+    screenObjective: opt.expectedDpsObjective,
+  });
+  expect(result.best.candidate.preset.petId).toBe(hpPet.id); // challenger rejected
+  expect(result.best.candidate.preset.mountId).toBe(atkMount.id); // confirmed upgrade adopted
+  // Reported scores are in confirm units (no penalty applied to the winner).
+  expect(result.best.score).toBeGreaterThanOrEqual(result.baseline.score);
+  expect(result.best.score).toBeLessThan(1e8);
+});
+
+it('cheapestUnlockPaths prices corridors node-by-node and stays chain-legal', () => {
+  const tree = TRANSCENDENCE_TREES.Warrior;
+  const paths = opt.cheapestUnlockPaths(tree, [], 0);
+  expect(paths.size).toBeGreaterThan(1); // sees past the start node
+  for (const { nodes, cost } of paths.values()) {
+    // Chain-legal: each node is unlockable given the path prefix.
+    const prefix = [];
+    let expected = 0;
+    for (let i = 0; i < nodes.length; i++) {
+      expect(canUnlock(nodes[i].position, prefix, tree)).toBe(true);
+      expected += costForCount(i + 1, nodes[i].type === 'uncommon');
+      prefix.push(nodes[i].position);
+    }
+    expect(cost).toBe(expected);
+  }
+  // Depth beyond one stepping stone is reachable (the old lookahead's limit).
+  expect([...paths.values()].some(({ nodes }) => nodes.length > 2)).toBe(true);
+});
+
+it('verifyDpsOutcome re-simulates before/after on one shared fresh seed', async () => {
+  const { character, preset } = makeWarrior();
+  const result = await opt.optimize({ character, preset });
+  const verify = opt.verifyDpsOutcome({
+    character,
+    preset,
+    candidate: result.best.candidate,
+    iterations: 300,
+  });
+  expect(verify.before.seed).toBe(verify.after.seed);
+  expect(verify.before.iterations).toBe(300);
+  // The recommended build strictly dominates the baseline in this fixture.
+  expect(verify.after.meanDps).toBeGreaterThan(verify.before.meanDps);
+});
+
+it('returns runner-up builds: distinct from the winner, sorted, scored on the same objective', async () => {
+  const { character, preset } = makeWarrior();
+  const result = await opt.optimize({ character, preset });
+
+  expect(Array.isArray(result.topCandidates)).toBe(true);
+  expect(result.topCandidates.length).toBeGreaterThan(0);
+  expect(result.topCandidates.length).toBeLessThanOrEqual(4);
+  const winnerKey = JSON.stringify(result.best.candidate);
+  for (let i = 0; i < result.topCandidates.length; i++) {
+    const alt = result.topCandidates[i];
+    expect(alt.score).toBeLessThanOrEqual(result.best.score);
+    if (i > 0) expect(alt.score).toBeLessThanOrEqual(result.topCandidates[i - 1].score);
+    expect(JSON.stringify(alt.candidate)).not.toBe(winnerKey);
+    expect(Array.isArray(alt.changes)).toBe(true);
+    expect(typeof alt.improvementPct).toBe('number');
+  }
+});
+
+it('attributes each change: solo gain is positive-ish and reverting it alone re-scores lower', async () => {
+  const { character, preset } = makeWarrior();
+  const result = await opt.optimize({ character, preset });
+
+  expect(result.changes.length).toBeGreaterThan(0);
+  for (const ch of result.changes) {
+    // Every diffed dimension has a reverter, so solo is always attached.
+    expect(typeof ch.solo).toBe('number');
+    // Reverting a recommended change can never make the build better than
+    // the winner (the search already explored that neighborhood).
+    expect(ch.solo).toBeGreaterThanOrEqual(-1e-9);
+  }
+  // The pet swap was a known strict upgrade - its solo contribution is real.
+  const petChange = result.changes.find((ch) => ch.dimension === 'pet');
+  expect(petChange.solo).toBeGreaterThan(0);
 });

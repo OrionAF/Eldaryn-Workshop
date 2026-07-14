@@ -32,7 +32,7 @@ it('choosing Shadow Path reveals the points control and per-point bonus list', (
   expect(target.querySelector('.empty-hint')).toBeNull();
   expect(target.textContent).toContain('0 / 15 points');
   const labels = [...target.querySelectorAll('.bonus-label')].map((l) => l.textContent);
-  expect(labels).toEqual(['Attack %', 'Critical %', 'Crit Mult %', 'Penetration %']);
+  expect(labels).toEqual(['Attack %', 'Crit Chance', 'Crit Damage', 'Penetration']);
   cleanup();
 });
 
@@ -67,14 +67,14 @@ it("Radiant Path's bonus list differs by class, resolved live (no re-selection n
   [...target.querySelectorAll('.path-card')].find((b) => b.textContent.trim() === 'Radiant Path').click();
   flushSync();
   let labels = [...target.querySelectorAll('.bonus-label')].map((l) => l.textContent);
-  expect(labels).toEqual(['Health %', 'HP Regen %/s', 'DMG Reduction %', 'Block Chance %']);
+  expect(labels).toEqual(['Health %', 'HP Regen', 'DMG Reduction', 'Block Chance']);
 
   // Awakening's path isn't reset by a class switch - Radiant just resolves
   // to a different class's stats live, no need to re-pick the path.
   rosterStore.setCharacterClass(rosterStore.current.id, 'Sentinel');
   flushSync();
   labels = [...target.querySelectorAll('.bonus-label')].map((l) => l.textContent);
-  expect(labels).toEqual(['Health %', 'Blind Chance %', 'Paralyze Chance %', 'Miss Chance %']);
+  expect(labels).toEqual(['Health %', 'Blind Chance', 'Paralyze Chance', 'Miss Chance']);
   cleanup();
 });
 

@@ -9,7 +9,7 @@
  *                 petLevel: number,                        // ONE level for every pet (character-wide)
  *                 relicLevels: Record<defId, level>,       // character-wide levels
  *                 sigilValues: Record<sigilId, SigilValues>, // character-wide entered stat/damage numbers
- *                 mounts: { entries, activeId },           // character-wide, one ridden at a time
+ *                 mounts: { entries },                      // character-wide stat entry; entries fixed to MOUNT_DEFS (mountsData.js), which mount is ridden is per-preset (Preset.mountId)
  *                 glyphs: { entries },                      // character-wide, tier-capped equip (see SOURCE_DEFS)
  *                 stoneInventory: StoneEntry[],             // character-wide shared inventory (like pets)
  *                 awakening: { path, points },              // character-wide
@@ -37,6 +37,7 @@
  *   and each rolled stat's value can be edited afterward. `stats` is the stone's resolved
  *   contribution, accumulated directly into totals.js like gear/pet stats.
  * Preset      = { id, name, loadout: 0|1, talentSet: 0|1, petId: string|null,
+ *                 mountId: string|null (a MOUNT_DEFS id - the mount this preset rides),
  *                 relicIds: string[] (max PRESET_RELIC_CAP),
  *                 sigilIds: string[] (max PRESET_SIGIL_CAP, references the static
  *                 SIGILS_BY_CLASS catalogue for the character's class),
@@ -47,10 +48,11 @@
  *   for the fixed stat contribution each one adds.
  *   A preset is the unit that ties one gear loadout + one talent set + a pet + up to 4
  *   relics together, with its own totals (manual OR calculated - see totals.js's
- *   computePresetTotals/resolveEffectiveTotals). Mounts, Glyphs, Awakening, and
- *   Transcendence are NOT part of a preset - they're character-wide and shared by
- *   every preset (model.js Character fields above), matching how Awakening/
- *   Transcendence already worked pre-redesign.
+ *   computePresetTotals/resolveEffectiveTotals). A preset also picks which mount it
+ *   rides (mountId, against the character-wide entered mount stats). Glyphs,
+ *   Awakening, and Transcendence are NOT part of a preset - they're character-wide
+ *   and shared by every preset (model.js Character fields above), matching how
+ *   Awakening/Transcendence already worked pre-redesign.
  * DropState   = { slot, piece: OffensiveStats }
  *
  * Socketed Stones (docs/socketed-stones-design.md) got real content/UI on the Gear
@@ -72,13 +74,14 @@
  */
 
 import { offensiveStats } from './dps.js';
-import { SLOTS, STAT_FIELDS, SOURCE_DEFS, CLASSES, SPECS_BY_CLASS, RARITIES, PRESET_RELIC_CAP, PRESET_SIGIL_CAP } from './constants.js';
+import { SLOTS, STAT_FIELDS, SOURCE_DEFS, CLASSES, SPECS_BY_CLASS, RARITIES, GLYPH_RARITIES, SPECIAL_GLYPHS, PRESET_RELIC_CAP, PRESET_SIGIL_CAP } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { AWAKENING_PATHS, AWAKENING_TOTAL_POINTS } from './awakeningData.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
 import { reachableFrom, effectiveUnlockedSet } from './transcendence.js';
 import { stoneTypeDef } from './stonesData.js';
+import { MOUNT_DEFS } from './mountsData.js';
 import { SIGILS_BY_CLASS } from './sigilsData.js';
 
 let _idCounter = 0;
@@ -136,13 +139,30 @@ export function newPetEntry({ name = 'New Pet', rarity = 'Common', stats = {} } 
 }
 
 // --- Mounts ---
-export function newMountEntry({ name = 'New Mount', rarity = 'Common', baseHpPct = 0, baseAtkPct = 0 } = {}) {
-  return { id: newId(), name, rarity, baseHpPct, baseAtkPct };
+// The mount list is the fixed MOUNT_DEFS catalogue (mountsData.js): every
+// character always has one entry per catalogue mount, and only the entered
+// base HP%/ATK% (plus which mount is ridden) are player state.
+function mountEntryFromDef(def, saved) {
+  return {
+    id: def.id,
+    name: def.name,
+    rarity: def.rarity,
+    baseHpPct: Number(saved?.baseHpPct) || 0,
+    baseAtkPct: Number(saved?.baseAtkPct) || 0,
+  };
+}
+
+/** The full fixed mount catalogue with zeroed stats (which mount is ridden lives on each Preset.mountId). */
+export function emptyMounts() {
+  return { entries: MOUNT_DEFS.map((def) => mountEntryFromDef(def, null)) };
 }
 
 // --- Mount Glyphs ---
-export function newMountGlyphEntry({ tier = 'minor', statKey = 'attack_pct', value = 0, equipped = false } = {}) {
-  return { id: newId(), tier, statKey, value, equipped };
+// `special` is either null (ordinary stat glyph) or a SPECIAL_GLYPHS id
+// (constants.js) - a special glyph's statKey/value are inert; its effect is
+// applied to the referenced Sigil's simulated mechanic instead.
+export function newMountGlyphEntry({ tier = 'minor', rarity = 'Common', statKey = 'attack_pct', value = 0, equipped = false, special = null } = {}) {
+  return { id: newId(), tier, rarity, statKey, value, equipped, special };
 }
 
 // --- Socketed Stones (character-wide shared inventory; see stonesData.js for per-type shape) ---
@@ -168,11 +188,55 @@ export function newPreset(name, { loadout = 0, talentSet = 0, manualTotals = fal
     loadout,
     talentSet,
     petId: null,
+    mountId: null,
     relicIds: [],
     sigilIds: [],
     manualTotals,
     manualStats: emptyStats(),
     fortressBuffs: { top: false, bottom: false, core: false },
+  };
+}
+
+// --- PVP Opponents (character-wide; manually-entered enemy profiles for the PVP simulator) ---
+/**
+ * Opponent = { id, name, class, stats, sigilIds, sigilValues }
+ * `stats` is a full OffensiveStats record entered from the enemy's in-game
+ * profile (so sigil passives etc. are already baked in); `sigilIds` (max
+ * PRESET_SIGIL_CAP) + `sigilValues` mirror the character's own sigil shape
+ * and feed only the simulation's ACTIVE effects.
+ */
+export function newOpponent(name = 'New Opponent') {
+  return {
+    id: newId(),
+    name,
+    class: null, // 'Warrior' | 'Sentinel' | null
+    stats: emptyStats(),
+    sigilIds: [],
+    sigilValues: {},
+    specialGlyphIds: [], // SPECIAL_GLYPHS ids the enemy runs (modify their sigil actives)
+  };
+}
+
+/**
+ * A saved result snapshot (character-wide). `kind` says which run produced
+ * it: 'sim'/'opt' from the Simulation screen, 'pvp-sim'/'pvp-opt' from the
+ * PVP screen, 'sim-compare' from a preset-vs-preset comparison. `summary` is
+ * the kind-specific plain-data payload the Saved Results rail renders —
+ * numbers and strings only, never live references into the build (the build
+ * keeps changing after the snapshot). `notes` and `pinned` are user
+ * annotations edited from the rail.
+ */
+export const SAVED_RESULT_KINDS = ['sim', 'opt', 'pvp-sim', 'pvp-opt', 'sim-compare'];
+
+export function newSavedResult(kind, name, summary) {
+  return {
+    id: newId(),
+    kind,
+    name,
+    savedAt: new Date().toISOString(),
+    notes: '',
+    pinned: false,
+    summary: summary || {},
   };
 }
 
@@ -187,7 +251,7 @@ export function newCharacter(name = 'New Character') {
     petLevel: 1,
     relicLevels: {},
     sigilValues: {},
-    mounts: emptySourceState(findSourceDef('mounts')),
+    mounts: emptyMounts(),
     glyphs: emptySourceState(findSourceDef('glyphs')),
     stoneInventory: [],
     awakening: emptyAwakening(),
@@ -197,6 +261,8 @@ export function newCharacter(name = 'New Character') {
     presets: [newPreset('Preset 1')],
     activePresetId: null, // normaliseCharacter falls back to the first preset
     drop: null,
+    pvpOpponents: [],
+    savedResults: [],
   };
 }
 
@@ -353,9 +419,10 @@ function normaliseCharacter(c) {
   const petIds = new Set(base.pets.map((p) => p.id));
   const relicDefIds = new Set(Object.keys(base.relicLevels));
   const sigilDefIds = new Set((SIGILS_BY_CLASS[base.class] || []).map((s) => s.id));
+  const legacyMountId = legacyActiveMountId(c?.mounts);
   const rawPresets = Array.isArray(c?.presets) ? c.presets : [];
   base.presets = rawPresets.length
-    ? rawPresets.map((p) => normalisePreset(p, petIds, relicDefIds, sigilDefIds))
+    ? rawPresets.map((p) => normalisePreset(p, petIds, relicDefIds, sigilDefIds, legacyMountId))
     : [newPreset('Preset 1')];
 
   base.activePresetId = base.presets.some((p) => p.id === c?.activePresetId)
@@ -363,7 +430,68 @@ function normaliseCharacter(c) {
     : base.presets[0]?.id ?? null;
 
   base.drop = normaliseDrop(c?.drop);
+  base.pvpOpponents = normaliseOpponents(c?.pvpOpponents);
+  base.savedResults = normaliseSavedResults(c?.savedResults);
   return base;
+}
+
+/**
+ * Saved result snapshots. Entries missing an id / with a dupe id or an
+ * unknown kind are dropped; the summary payload is deliberately NOT
+ * deep-validated (it's display-only plain data, never resolved against
+ * static domain data), only coerced to an object.
+ */
+function normaliseSavedResults(raw) {
+  const seen = new Set();
+  const entries = [];
+  for (const r of Array.isArray(raw) ? raw : []) {
+    if (!r?.id || seen.has(r.id) || !SAVED_RESULT_KINDS.includes(r?.kind)) continue;
+    seen.add(r.id);
+    entries.push({
+      id: r.id,
+      kind: r.kind,
+      name: typeof r.name === 'string' && r.name ? r.name : 'Saved result',
+      savedAt: typeof r.savedAt === 'string' ? r.savedAt : '',
+      notes: typeof r.notes === 'string' ? r.notes : '',
+      pinned: r.pinned === true,
+      summary: r.summary && typeof r.summary === 'object' ? r.summary : {},
+    });
+  }
+  return entries;
+}
+
+/**
+ * Opponents carry their OWN class (independent of the character's), so their
+ * sigil references validate against that class's catalogue. Malformed
+ * entries (no id, dupe id) are dropped; sigilIds are deduped, resolved
+ * against the class catalogue and capped at PRESET_SIGIL_CAP.
+ */
+function normaliseOpponents(raw) {
+  const seen = new Set();
+  const opponents = [];
+  for (const o of Array.isArray(raw) ? raw : []) {
+    if (!o?.id || seen.has(o.id)) continue;
+    seen.add(o.id);
+    const opponentClass = CLASSES.includes(o?.class) ? o.class : null;
+    const sigilDefIds = new Set((SIGILS_BY_CLASS[opponentClass] || []).map((s) => s.id));
+    const sigilIds = [...new Set(Array.isArray(o.sigilIds) ? o.sigilIds : [])]
+      .filter((id) => sigilDefIds.has(id))
+      .slice(0, PRESET_SIGIL_CAP);
+    opponents.push({
+      id: o.id,
+      name: o.name || 'Opponent',
+      class: opponentClass,
+      stats: emptyStats(o.stats || {}),
+      sigilIds,
+      sigilValues: normaliseSigilValues(o.sigilValues, opponentClass),
+      // Special mount glyphs the enemy runs (validated against the global
+      // catalogue) - they modify the enemy's sigil actives in a duel.
+      specialGlyphIds: [...new Set(Array.isArray(o.specialGlyphIds) ? o.specialGlyphIds : [])].filter((id) =>
+        SPECIAL_GLYPHS.some((g) => g.id === id)
+      ),
+    });
+  }
+  return opponents;
 }
 
 /**
@@ -450,6 +578,7 @@ export function emptySigilValues(def) {
     active: zeros(def?.active?.stats),
     damage: 0,
     tickDamage: 0,
+    regenDebuffPct: 0, // enemy HP-Regen debuff % (level-scaled, e.g. Withering Touch)
   };
 }
 
@@ -474,19 +603,66 @@ function normaliseSigilValues(raw, characterClass) {
     }
     base.damage = Math.max(0, Number(entry.damage) || 0);
     base.tickDamage = Math.max(0, Number(entry.tickDamage) || 0);
+    base.regenDebuffPct = Math.min(100, Math.max(0, Number(entry.regenDebuffPct) || 0));
     values[sigilId] = base;
   }
   return values;
 }
 
 function normaliseMounts(raw) {
-  const entries = Array.isArray(raw?.entries) ? raw.entries : [];
-  const activeId = entries.some((e) => e?.id === raw?.activeId) ? raw.activeId : null;
-  return { entries, activeId };
+  const saved = Array.isArray(raw?.entries) ? raw.entries : [];
+  // Entries are always rebuilt from the fixed catalogue; saved stats are
+  // carried over by id, falling back to a name match so pre-catalogue
+  // user-created mounts (arbitrary ids) keep their entered stats.
+  const savedFor = (def) =>
+    saved.find((e) => e?.id === def.id) ??
+    saved.find((e) => typeof e?.name === 'string' && e.name.trim().toLowerCase() === def.name.toLowerCase());
+  return { entries: MOUNT_DEFS.map((def) => mountEntryFromDef(def, savedFor(def))) };
 }
 
+/**
+ * Pre-per-preset saves carried ONE character-wide ridden mount as
+ * mounts.activeId; map it onto a catalogue id (directly or via a legacy
+ * user-created entry's name) so normalisePreset can seed every preset's
+ * mountId from it.
+ */
+function legacyActiveMountId(raw) {
+  if (!raw?.activeId) return null;
+  const saved = Array.isArray(raw?.entries) ? raw.entries : [];
+  const savedActive = saved.find((e) => e?.id === raw.activeId);
+  const activeDef =
+    MOUNT_DEFS.find((def) => def.id === raw.activeId) ??
+    (typeof savedActive?.name === 'string'
+      ? MOUNT_DEFS.find((def) => def.name.toLowerCase() === savedActive.name.trim().toLowerCase())
+      : null);
+  return activeDef?.id ?? null;
+}
+
+/**
+ * Per-entry glyph repair: pre-rarity saves get 'Common'; an unknown rarity
+ * or tier falls back to defaults; a `special` id must resolve against the
+ * static SPECIAL_GLYPHS catalogue (and forces that special's tier) or it is
+ * dropped back to an ordinary stat glyph.
+ */
 function normaliseGlyphs(raw) {
-  return { entries: Array.isArray(raw?.entries) ? raw.entries : [] };
+  const entries = Array.isArray(raw?.entries) ? raw.entries : [];
+  const tierCaps = findSourceDef('glyphs').tierCaps;
+  return {
+    entries: entries
+      .filter((e) => e && typeof e === 'object')
+      .map((e) => {
+        const specialDef = SPECIAL_GLYPHS.find((s) => s.id === e.special) || null;
+        return {
+          id: typeof e.id === 'string' ? e.id : newId(),
+          tier: specialDef ? specialDef.tier : e.tier in tierCaps ? e.tier : 'minor',
+          rarity: GLYPH_RARITIES.includes(e.rarity) ? e.rarity : 'Common',
+          statKey: STAT_FIELDS.some((f) => f.key === e.statKey) ? e.statKey : 'attack_pct',
+          value: Number(e.value) || 0,
+          equipped: e.equipped === true,
+          special: specialDef ? specialDef.id : null,
+        };
+      }),
+  };
 }
 
 /** Validates path against the static AWAKENING_PATHS, clamps points to [0, cap], forces points to 0 with no path. */
@@ -529,12 +705,16 @@ function normaliseTranscendence(raw, characterClass) {
  * petId/relicId just gets dropped rather than crashing or being kept as a
  * ghost reference.
  */
-function normalisePreset(raw, petIds, relicDefIds, sigilDefIds) {
+function normalisePreset(raw, petIds, relicDefIds, sigilDefIds, legacyMountId = null) {
   const base = newPreset(raw?.name || 'Preset');
   if (raw?.id) base.id = raw.id;
   base.loadout = raw?.loadout === 1 ? 1 : 0;
   base.talentSet = raw?.talentSet === 1 ? 1 : 0;
   base.petId = petIds.has(raw?.petId) ? raw.petId : null;
+  // Presets saved before mountId existed inherit the old character-wide
+  // ridden mount (legacyMountId); an explicit null stays null.
+  const rawMountId = raw?.mountId === undefined ? legacyMountId : raw.mountId;
+  base.mountId = MOUNT_DEFS.some((def) => def.id === rawMountId) ? rawMountId : null;
   const relicIds = Array.isArray(raw?.relicIds) ? raw.relicIds.filter((id) => relicDefIds.has(id)) : [];
   base.relicIds = [...new Set(relicIds)].slice(0, PRESET_RELIC_CAP);
   const sigilIds = Array.isArray(raw?.sigilIds) ? raw.sigilIds.filter((id) => sigilDefIds.has(id)) : [];

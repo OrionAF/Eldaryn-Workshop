@@ -255,6 +255,7 @@ export function runSimulation({
   let sumSwings = 0;
   let sumCrits = 0;
   let sumDoubleHits = 0;
+  const tagSums = {};
 
   for (let i = 0; i < iterations; i++) {
     const rng = mulberry32(iterationSeed(baseSeed, i));
@@ -263,9 +264,20 @@ export function runSimulation({
     sumSwings += run.swings;
     sumCrits += run.crits;
     sumDoubleHits += run.doubleHits;
+    for (const [tag, amount] of Object.entries(run.damageByTag)) {
+      tagSums[tag] = (tagSums[tag] || 0) + amount;
+    }
     if (!bestRun || run.totalDamage > bestRun.totalDamage) bestRun = run;
     if (!worstRun || run.totalDamage < worstRun.totalDamage) worstRun = run;
   }
+
+  // Mean damage per source tag ('swing', 'double_hit', per-sigil tags…),
+  // largest first - the "where does my damage come from" breakdown.
+  const damageByTag = Object.fromEntries(
+    Object.entries(tagSums)
+      .map(([tag, total]) => [tag, iterations > 0 ? total / iterations : 0])
+      .sort((a, b) => b[1] - a[1])
+  );
 
   let sum = 0;
   for (let i = 0; i < iterations; i++) sum += totals[i];
@@ -275,6 +287,23 @@ export function runSimulation({
   const stdDev = iterations > 0 ? Math.sqrt(sqDiff / iterations) : 0;
 
   const sorted = Float64Array.from(totals).sort();
+
+  // Equal-width bins across [min, max] for the distribution chart. A single
+  // repeated value (or an empty batch) collapses to one bin so the shape is
+  // always renderable.
+  const histogram = (() => {
+    if (sorted.length === 0) return { min: 0, max: 0, bins: [] };
+    const min = sorted[0];
+    const max = sorted[sorted.length - 1];
+    if (max === min) return { min, max, bins: [sorted.length] };
+    const binCount = 24;
+    const bins = new Array(binCount).fill(0);
+    const width = (max - min) / binCount;
+    for (let i = 0; i < sorted.length; i++) {
+      bins[Math.min(binCount - 1, Math.floor((sorted[i] - min) / width))] += 1;
+    }
+    return { min, max, bins };
+  })();
 
   return {
     iterations,
@@ -291,6 +320,8 @@ export function runSimulation({
       p75: percentile(sorted, 0.75),
       p95: percentile(sorted, 0.95),
     },
+    histogram,
+    damageByTag,
     meanDps: durationSeconds > 0 ? mean / durationSeconds : 0,
     // Same speed clamp the runs use, so mean and expectation stay comparable.
     expectedDps: computeDps({ ...stats, speed: Math.max(100, stats.speed || 0) }),
@@ -301,5 +332,55 @@ export function runSimulation({
     },
     bestRun,
     worstRun,
+  };
+}
+
+/**
+ * Head-to-head comparison of two builds under PAIRED common random numbers:
+ * iteration i of both sides uses the same rng stream, so the difference is
+ * free of between-run luck and its confidence interval is the paired one
+ * (much tighter than comparing two independent batches). Returns each side's
+ * mean DPS plus the B-minus-A delta with a 95% CI half-width, all in DPS.
+ */
+export function compareSimulations({
+  statsA,
+  statsB,
+  effectsA = DEFAULT_EFFECTS,
+  effectsB = DEFAULT_EFFECTS,
+  durationSeconds = 60,
+  iterations = 1000,
+  seed,
+} = {}) {
+  const baseSeed = (seed ?? Math.floor(Math.random() * 4294967296)) >>> 0;
+  let sumA = 0;
+  let sumB = 0;
+  let sumDiff = 0;
+  let sumDiffSq = 0;
+  for (let i = 0; i < iterations; i++) {
+    const s = iterationSeed(baseSeed, i);
+    const a = runSingle(statsA, { durationSeconds, rng: mulberry32(s), effects: effectsA });
+    const b = runSingle(statsB, { durationSeconds, rng: mulberry32(s), effects: effectsB });
+    sumA += a.totalDamage;
+    sumB += b.totalDamage;
+    const diff = b.totalDamage - a.totalDamage;
+    sumDiff += diff;
+    sumDiffSq += diff * diff;
+  }
+  const n = Math.max(1, iterations);
+  const meanDiff = sumDiff / n;
+  const diffVar = Math.max(0, sumDiffSq / n - meanDiff * meanDiff);
+  const ciHalf = 1.96 * Math.sqrt(diffVar / n);
+  const toDps = (dmg) => (durationSeconds > 0 ? dmg / durationSeconds : 0);
+  return {
+    seed: baseSeed,
+    iterations,
+    durationSeconds,
+    a: { meanDps: toDps(sumA / n), meanTotalDamage: sumA / n },
+    b: { meanDps: toDps(sumB / n), meanTotalDamage: sumB / n },
+    delta: {
+      meanDps: toDps(meanDiff),
+      ciHalfWidthDps: toDps(ciHalf),
+      pct: sumA > 0 ? (meanDiff / (sumA / n)) * 100 : 0,
+    },
   };
 }

@@ -169,7 +169,7 @@ it('character-wide tiles show mount/awakening/transcendence summaries and naviga
   app = mount(PresetsScreen, { target, props: { onNavigate: (id) => (navigatedTo = id) } });
   flushSync();
 
-  expect(target.textContent).toContain('No mount');
+  expect(target.textContent).toContain('mounts entered'); // stat-entry summary; the ridden mount is per-preset now
   expect(target.textContent).toContain('No path');
   expect(target.textContent).toContain('nodes');
 

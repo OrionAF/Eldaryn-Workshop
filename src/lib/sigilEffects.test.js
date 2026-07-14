@@ -1,6 +1,6 @@
 import { it, expect, describe } from 'vitest';
 import { runSingle, mulberry32, DEFAULT_EFFECTS } from './simulation.js';
-import { buildSigilEffects, expectedSigilActiveDps, makeSigilEffect, sigilSimSupport, SIGIL_MECHANICS } from './sigilEffects.js';
+import { buildSigilEffects, expectedSigilActiveDps, makeSigilEffect, sigilSimSupport, SIGIL_MECHANICS, applySpecialGlyphsToMech, activeSpecialGlyphIds } from './sigilEffects.js';
 import { SIGILS_BY_CLASS } from './sigilsData.js';
 import { offensiveStats } from './dps.js';
 
@@ -14,12 +14,20 @@ function run(stats, effects, durationSeconds = 60) {
 const activeSigil = (id, active) => ({ id, name: id, rarity: 'Common', passive: null, active, notes: '' });
 
 describe('generic nuke', () => {
-  it('fires at t=0 and then once per cooldown (cooldown starts at activation)', () => {
+  it('fires at t=1 (enemy-targeting 1s trigger delay) and then once per cooldown', () => {
     const def = activeSigil('nuke', { stats: [], durationSec: 0, cooldownSec: 8, damage: 500 });
     const result = run(baseStats(), [makeSigilEffect(def)], 60);
-    // activations at 0, 8, ..., 56 -> 8 of them
+    // activations at 1, 9, ..., 57 -> 8 of them
     expect(result.damageByTag.sigil_nuke).toBe(8 * 500);
     expect(result.totalDamage).toBe(60 * 100 + 8 * 500);
+  });
+
+  it('deals nothing in the first second of combat (the in-game 59s-mark rule)', () => {
+    const def = activeSigil('nuke', { stats: [], durationSec: 0, cooldownSec: 8, damage: 500 });
+    // A 1s fight ends before the delayed first activation fires…
+    expect(run(baseStats(), [makeSigilEffect(def)], 1).damageByTag.sigil_nuke).toBeUndefined();
+    // …a 2s fight contains exactly the t=1 activation.
+    expect(run(baseStats(), [makeSigilEffect(def)], 2).damageByTag.sigil_nuke).toBe(500);
   });
 
   it('a cooldown of 0 never activates (nothing to schedule)', () => {
@@ -185,13 +193,13 @@ describe('expectedSigilActiveDps (closed-form expectation of the active effects)
       };
       const preset = { sigilIds: [id] };
       const result = run(baseStats(), buildSigilEffects(character, preset), 60);
-      const { flatDps, buffs } = expectedSigilActiveDps(character, preset, 60);
+      const { flatDps, segments } = expectedSigilActiveDps(character, preset, 60);
       expect(flatDps * 60).toBeCloseTo(result.damageByTag[`sigil_${id}`], 6);
-      expect(buffs).toEqual([]); // pure damage mechanics carry no buff term
+      expect(segments).toEqual([]); // pure damage mechanics carry no buff term
     }
   });
 
-  it('timed buff: reports the entered damage-side stats with duration/cooldown uptime', () => {
+  it('timed buff: reports the entered damage-side stats over the exact window fraction', () => {
     const character = {
       class: 'Warrior',
       sigilValues: {
@@ -200,16 +208,75 @@ describe('expectedSigilActiveDps (closed-form expectation of the active effects)
       },
     };
     const preset = { sigilIds: ['warborn-fury'] };
-    const { flatDps, buffs } = expectedSigilActiveDps(character, preset);
+    const { flatDps, segments } = expectedSigilActiveDps(character, preset);
     expect(flatDps).toBe(0);
-    // duration 5 / cd 15
-    expect(buffs).toEqual([{ statAdds: { attack_pct: 30 }, uptime: 5 / 15 }]);
+    // duration 5 / cd 15: windows [0,5) [15,20) [30,35) [45,50) = 20s of 60
+    expect(segments).toEqual([{ statAdds: { attack_pct: 30 }, fraction: 20 / 60 }]);
+  });
+
+  it('timed buff windows are truncated exactly at the fight horizon', () => {
+    const character = {
+      class: 'Warrior',
+      sigilValues: {
+        'warborn-fury': { passive: {}, active: { attack_pct: 30 }, damage: 0, tickDamage: 0 },
+      },
+    };
+    const preset = { sigilIds: ['warborn-fury'] };
+    // duration 5 / cd 15 over a 17s fight: [0,5) in full + [15,17) cut short.
+    const { segments } = expectedSigilActiveDps(character, preset, 17);
+    expect(segments).toEqual([{ statAdds: { attack_pct: 30 }, fraction: 7 / 17 }]);
   });
 
   it('contributes nothing for unsupported, passive-only, or all-zero sigils', () => {
     const character = { class: 'Warrior', sigilValues: { 'sunder-mark': { passive: {}, active: {}, damage: 999, tickDamage: 0 } } };
     // sunder-mark is 'unsupported'; defense-stance is passive-only; cataclysm has no entered numbers
     const preset = { sigilIds: ['sunder-mark', 'defense-stance', 'cataclysm'] };
-    expect(expectedSigilActiveDps(character, preset)).toEqual({ flatDps: 0, buffs: [] });
+    expect(expectedSigilActiveDps(character, preset)).toEqual({ flatDps: 0, segments: [] });
+  });
+});
+
+describe('special mount glyphs (Ember Curse: +1 max bleed stack, +10% damage per stack)', () => {
+  const emberValues = { 'ember-curse': { passive: {}, active: {}, damage: 100, tickDamage: 10 } };
+  const glyphEntry = (equipped) => ({ id: 'g1', tier: 'major', rarity: 'Epic', statKey: 'attack_pct', value: 0, equipped, special: 'ember-curse-glyph' });
+  const character = (equipped) => ({ class: 'Sentinel', sigilValues: emberValues, glyphs: { entries: [glyphEntry(equipped)] } });
+  const preset = { sigilIds: ['ember-curse'] };
+
+  it('applySpecialGlyphsToMech adjusts only its target sigil, and only when the glyph id is present', () => {
+    const mech = { kind: 'stacking-dot', tickIntervalSec: 2, maxStacks: 8, tickDamage: 10 };
+    const glyphed = applySpecialGlyphsToMech('ember-curse', mech, ['ember-curse-glyph']);
+    expect(glyphed.maxStacks).toBe(9);
+    expect(glyphed.tickDamage).toBeCloseTo(11, 9);
+    expect(applySpecialGlyphsToMech('hemorrhage', mech, ['ember-curse-glyph'])).toBe(mech);
+    expect(applySpecialGlyphsToMech('ember-curse', mech, [])).toBe(mech);
+  });
+
+  it('activeSpecialGlyphIds returns only EQUIPPED special glyph ids', () => {
+    expect(activeSpecialGlyphIds(character(true))).toEqual(['ember-curse-glyph']);
+    expect(activeSpecialGlyphIds(character(false))).toEqual([]);
+    expect(activeSpecialGlyphIds({ class: 'Sentinel' })).toEqual([]);
+  });
+
+  it('an unequipped glyph changes nothing; an equipped one boosts only the per-stack tick term', () => {
+    const base = expectedSigilActiveDps({ class: 'Sentinel', sigilValues: emberValues }, preset, 60).flatDps;
+    expect(expectedSigilActiveDps(character(false), preset, 60).flatDps).toBeCloseTo(base, 9);
+    // cd 10 -> 6 activations (t=1..51); stacks max out at 6 in 60s, below
+    // BOTH caps, so only the +10% per-stack damage moves the number.
+    const upfrontDps = (6 * 100) / 60;
+    const glyphed = expectedSigilActiveDps(character(true), preset, 60).flatDps;
+    expect(glyphed - upfrontDps).toBeCloseTo((base - upfrontDps) * 1.1, 9);
+  });
+
+  it('over a cap-binding fight the closed form pins maxStacks 9 / tick 11 and agrees with the simulation', () => {
+    const c = character(true);
+    // 120s, cd 10: activations t=1,11,...,111; shared ticker t=3,5,...,119.
+    let tickTotal = 0;
+    for (let t = 3; t < 120 - 1e-9; t += 2) {
+      tickTotal += Math.min(Math.floor((t - 1) / 10) + 1, 9) * 11; // 9th stack binds from t=91
+    }
+    const expected = 12 * 100 + tickTotal;
+    const { flatDps } = expectedSigilActiveDps(c, preset, 120);
+    expect(flatDps * 120).toBeCloseTo(expected, 6);
+    const result = run(baseStats(), buildSigilEffects(c, preset), 120);
+    expect(result.damageByTag['sigil_ember-curse']).toBeCloseTo(expected, 6);
   });
 });

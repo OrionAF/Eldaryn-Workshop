@@ -16,7 +16,43 @@
   import { SIGILS_BY_CLASS } from '../lib/sigilsData.js';
   import { AWAKENING_PATHS } from '../lib/awakeningData.js';
 
-  let { result, character } = $props();
+  // scoreUnit labels the score line: 'DPS' (PVE optimizer) or '% win' (PVP).
+  // onApply (optional): when given, an apply button renders at the bottom -
+  // two-click confirmed, since applying OVERWRITES the target preset's
+  // choices plus talents/mount/glyphs/awakening/transcendence.
+  //   onApply(candidate)            - plain mode (no target picker): the
+  //                                   caller applies to its own preset.
+  //   onApply(candidate, targetId)  - picker mode (applyPresets given):
+  //                                   targetId is a preset id, or null for
+  //                                   "create a new preset".
+  // applyPresets: [{ id, name }] target choices; applyDefaultId preselects
+  // the preset the recommendation was optimized from, so the user always
+  // sees WHICH preset they're about to override.
+  // onPromote (optional): with result.topCandidates present, runner-up builds
+  // list under the card; picking one hands it to the screen, which swaps it
+  // into `result` (Apply/Save then act on the promoted build).
+  let { result, character, scoreUnit = 'DPS', onApply, onPromote = null, applyPresets = null, applyDefaultId = null } = $props();
+
+  const NEW_PRESET = '__new__';
+  let applyTargetId = $state(applyDefaultId ?? NEW_PRESET);
+  let confirmingApply = $state(false);
+
+  const applyTargetName = $derived(
+    (applyPresets || []).find((p) => p.id === applyTargetId)?.name ?? null
+  );
+
+  function applyClick() {
+    if (!confirmingApply) {
+      confirmingApply = true;
+      return;
+    }
+    confirmingApply = false;
+    if (applyPresets) {
+      onApply?.(result.best.candidate, applyTargetId === NEW_PRESET ? null : applyTargetId);
+    } else {
+      onApply?.(result.best.candidate);
+    }
+  }
 
   const DIMENSION_LABELS = {
     loadout: 'Gear Loadout',
@@ -69,8 +105,8 @@
   });
 
   const mountName = $derived.by(() => {
-    if (!candidate.mountActiveId) return 'None';
-    return (character.mounts?.entries || []).find((m) => m.id === candidate.mountActiveId)?.name || 'Unknown';
+    if (!candidate.preset.mountId) return 'None';
+    return (character.mounts?.entries || []).find((m) => m.id === candidate.preset.mountId)?.name || 'Unknown';
   });
 
   const glyphLabels = $derived(
@@ -102,7 +138,7 @@
       <span class="gain mono" class:flat={improvement <= 0}>
         {improvement > 0 ? `+${improvement.toFixed(2)}%` : '±0.00%'}
       </span>
-      <span class="dps-tag">DPS</span>
+      <span class="dps-tag">{scoreUnit}</span>
     </div>
   </div>
 
@@ -119,6 +155,9 @@
               <s>{change.from}</s> <span class="arrow">→</span>
               <strong>{change.to}</strong>
             </span>
+            {#if change.solo != null && change.solo > 0}
+              <span class="solo mono" title="Re-scored with only this change reverted">+{fmtDps(change.solo)} {scoreUnit} alone</span>
+            {/if}
             {#if change.detail?.length}
               <ul class="detail">
                 {#each change.detail as line, i (i)}
@@ -139,6 +178,27 @@
            Transcendence page, with the recommended board pre-selected. -->
       <TranscendenceGrid tree={transcendenceTree} unlockedPositions={candidate.transcendenceUnlocked} />
     </div>
+  {/if}
+
+  {#if result.topCandidates?.length}
+    <details class="alternatives" data-testid="opt-alternatives">
+      <summary>Runner-up builds ({result.topCandidates.length})</summary>
+      <ul class="alt-list">
+        {#each result.topCandidates as alt, i (i)}
+          <li>
+            <span class="mono alt-score">{fmtDps(alt.score)} {scoreUnit}</span>
+            <span class="alt-changes">
+              {alt.changes.length
+                ? alt.changes.map((c) => DIMENSION_LABELS[c.dimension] || c.dimension).join(' · ')
+                : 'your current build'}
+            </span>
+            {#if onPromote && alt.changes.length}
+              <button type="button" class="btn-ghost alt-view" onclick={() => onPromote(alt)}>View</button>
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    </details>
   {/if}
 
   <details class="full-config">
@@ -189,7 +249,41 @@
     </dl>
   </details>
 
-  <p class="footnote">Apply these changes manually — nothing is saved to your presets.</p>
+  {#if onApply && result.changes.length > 0}
+    <div class="apply-row">
+      {#if applyPresets}
+        <label class="apply-target">
+          <span class="micro-label">Write to</span>
+          <select bind:value={applyTargetId} onchange={() => (confirmingApply = false)}>
+            {#each applyPresets as p (p.id)}
+              <option value={p.id}>{p.name}{p.id === applyDefaultId ? ' (optimized from)' : ''}</option>
+            {/each}
+            <option value={NEW_PRESET}>＋ Create new preset</option>
+          </select>
+        </label>
+      {/if}
+      <button
+        type="button"
+        class="btn-gold"
+        class:is-confirming={confirmingApply}
+        onclick={applyClick}
+        onblur={() => (confirmingApply = false)}
+      >
+        {#if !confirmingApply}
+          {applyPresets ? 'Override Preset' : 'Apply to preset'}
+        {:else if applyPresets && applyTargetName === null}
+          Create a new preset from this build?
+        {:else if applyPresets}
+          Overwrite “{applyTargetName}” with this build?
+        {:else}
+          Overwrite preset with this build?
+        {/if}
+      </button>
+      <p class="footnote">Overwrites the {applyPresets ? 'selected ' : ''}preset's choices and your talents, mount, glyphs, awakening and transcendence.</p>
+    </div>
+  {:else}
+    <p class="footnote">Apply these changes manually — nothing is saved to your presets.</p>
+  {/if}
 </div>
 
 <style>
@@ -291,6 +385,44 @@
     flex-direction: column;
     gap: 2px;
   }
+  .solo {
+    font-size: 11px;
+    color: var(--color-upgrade);
+  }
+  .alternatives summary {
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--color-muted);
+  }
+  .alt-list {
+    list-style: none;
+    margin: var(--space-2) 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .alt-list li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: 12px;
+  }
+  .alt-score {
+    flex: none;
+    color: var(--color-dps);
+  }
+  .alt-changes {
+    flex: 1;
+    min-width: 0;
+    color: var(--color-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .alt-view {
+    flex: none;
+  }
   .full-config summary {
     cursor: pointer;
     font-size: 12px;
@@ -323,6 +455,35 @@
     font-size: 11px;
     color: var(--color-muted);
     font-style: italic;
+  }
+  .apply-row {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+  .apply-target {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .apply-target select {
+    background: var(--color-field);
+    color: var(--color-ink);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-field);
+    padding: 7px 10px;
+    font-size: 13px;
+    min-width: 160px;
+    min-height: 34px;
+  }
+  .apply-row button {
+    min-height: 34px;
+  }
+  /* Applying overwrites real build state - the confirm step reads as a warning. */
+  .apply-row button.is-confirming {
+    border-color: var(--color-warning);
+    color: var(--color-warning);
   }
   @media (max-width: 700px) {
     .detail {

@@ -12,6 +12,7 @@
   import AwakeningScreen from './components/AwakeningScreen.svelte';
   import TranscendenceScreen from './components/TranscendenceScreen.svelte';
   import SimulationScreen from './components/SimulationScreen.svelte';
+  import PvpScreen from './components/PvpScreen.svelte';
   import { rosterStore } from './lib/rosterStore.svelte.js';
 
   // Per-screen suffix for the banner subline - what's actually in scope on
@@ -25,6 +26,7 @@
     relics: () => 'character-wide levels',
     sigils: (c) => `${c.presets.length} preset${c.presets.length === 1 ? '' : 's'} · 3 slots each`,
     simulation: () => '60s world boss · Monte Carlo',
+    pvp: (c) => `${(c.pvpOpponents || []).length} opponent${(c.pvpOpponents || []).length === 1 ? '' : 's'} · Monte Carlo duels`,
     mounts: () => 'character-wide',
     awakening: () => 'character-wide',
     transcendence: () => 'character-wide',
@@ -120,6 +122,8 @@
         <SigilsScreen />
       {:else if activeScreen === 'simulation'}
         <SimulationScreen {setStatus} />
+      {:else if activeScreen === 'pvp'}
+        <PvpScreen {setStatus} />
       {:else if activeScreen === 'mounts'}
         <MountAndGlyphsScreen />
       {:else if activeScreen === 'awakening'}

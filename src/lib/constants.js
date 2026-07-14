@@ -43,18 +43,18 @@ export const STAT_FIELDS = [
   { key: 'attack_pct', label: 'Attack %', kind: 'pct', base: 0, tabs: ['profile', 'gear'] },
   { key: 'health', label: 'Health', kind: 'flat', base: 10, tabs: ['profile', 'gear'] },
   { key: 'health_pct', label: 'Health %', kind: 'pct', base: 0, tabs: ['profile', 'gear'] },
-  { key: 'speed', label: 'Speed %', kind: 'pct', base: 100, tabs: ['profile', 'gear'] },
-  { key: 'crit', label: 'Critical %', kind: 'pct', base: 0, tabs: ['profile', 'gear'], cap: 80 },
-  { key: 'crit_mult', label: 'Crit Mult %', kind: 'pct', base: 150, tabs: ['profile', 'gear'] },
-  { key: 'double_hit', label: 'Double Hit %', kind: 'pct', base: 0, tabs: ['profile', 'gear'], cap: 40 },
-  { key: 'lifesteal', label: 'Lifesteal %', kind: 'pct', base: 0, tabs: ['profile', 'gear'] },
-  { key: 'hp_regen', label: 'HP Regen %/s', kind: 'pct', base: 0, tabs: ['profile', 'gear'], cap: 60 },
-  { key: 'miss_chance', label: 'Miss Chance %', kind: 'pct', base: 0, tabs: ['profile', 'gear'], classOnly: 'Sentinel', cap: 80 },
-  { key: 'blind_chance', label: 'Blind Chance %', kind: 'pct', base: 0, tabs: ['profile', 'gear'], classOnly: 'Sentinel', cap: 40 },
-  { key: 'paralyze_chance', label: 'Paralyze Chance %', kind: 'pct', base: 0, tabs: ['profile', 'gear'], classOnly: 'Sentinel', cap: 15 },
-  { key: 'dmg_reduction', label: 'DMG Reduction %', kind: 'pct', base: 0, tabs: ['profile', 'gear'], classOnly: 'Warrior', cap: 60 },
-  { key: 'block_chance', label: 'Block Chance %', kind: 'pct', base: 0, tabs: ['profile', 'gear'], classOnly: 'Warrior', cap: 80 },
-  { key: 'penetration', label: 'Penetration %', kind: 'pct', base: 0, tabs: ['profile', 'gear'], cap: 90 },
+  { key: 'speed', label: 'Attack Speed', kind: 'pct', base: 100, tabs: ['profile', 'gear'] },
+  { key: 'crit', label: 'Crit Chance', kind: 'pct', base: 0, tabs: ['profile', 'gear'], cap: 80 },
+  { key: 'crit_mult', label: 'Crit Damage', kind: 'pct', base: 150, tabs: ['profile', 'gear'] },
+  { key: 'double_hit', label: 'Double Hit', kind: 'pct', base: 0, tabs: ['profile', 'gear'], cap: 40 },
+  { key: 'lifesteal', label: 'Lifesteal', kind: 'pct', base: 0, tabs: ['profile', 'gear'] },
+  { key: 'hp_regen', label: 'HP Regen', kind: 'pct', base: 0, tabs: ['profile', 'gear'], cap: 60 },
+  { key: 'miss_chance', label: 'Miss Chance', kind: 'pct', base: 0, tabs: ['profile', 'gear'], classOnly: 'Sentinel', cap: 70 },
+  { key: 'blind_chance', label: 'Blind Chance', kind: 'pct', base: 0, tabs: ['profile', 'gear'], classOnly: 'Sentinel', cap: 40 },
+  { key: 'paralyze_chance', label: 'Paralyze Chance', kind: 'pct', base: 0, tabs: ['profile', 'gear'], classOnly: 'Sentinel', cap: 15 },
+  { key: 'dmg_reduction', label: 'DMG Reduction', kind: 'pct', base: 0, tabs: ['profile', 'gear'], classOnly: 'Warrior', cap: 60 },
+  { key: 'block_chance', label: 'Block Chance', kind: 'pct', base: 0, tabs: ['profile', 'gear'], classOnly: 'Warrior', cap: 80 },
+  { key: 'penetration', label: 'Penetration', kind: 'pct', base: 0, tabs: ['profile', 'gear'], cap: 90 },
   { key: 'pvp_attack', label: 'PVP Attack', kind: 'flat', base: 0, tabs: ['profile'] },
   { key: 'pvp_defense', label: 'PVP Defense', kind: 'flat', base: 0, tabs: ['profile'] },
 ];
@@ -94,22 +94,46 @@ export const SWAP_ADDITIVE_KEYS = STAT_FIELDS.map((f) => f.key).filter((k) => !S
  */
 export const RARITIES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Ancient', 'Divine', 'Eternal'];
 
+/** Mount Glyphs only span the first five rarities (unlike the full 9-tier RARITIES scale). */
+export const GLYPH_RARITIES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
+
+/**
+ * Special (non-stat) Mount Glyphs: instead of a freeform statKey/value, a
+ * special glyph modifies a specific Sigil's simulated mechanic. A glyph
+ * entry stores the special's id in `special` (statKey/value are inert);
+ * only EQUIPPED special glyphs act, and they respect the same tier caps as
+ * stat glyphs. Consumed by sigilEffects.js (PVE sim + optimizer objective)
+ * and pvpSimulation.js (resolvePvpSigils).
+ */
+export const SPECIAL_GLYPHS = [
+  {
+    id: 'ember-curse-glyph',
+    name: 'Ember Curse',
+    tier: 'major',
+    sigilId: 'ember-curse',
+    // "Its bleed stacks up to 1 more time and each stack deals 10% more damage."
+    extraStacks: 1,
+    tickDamageMult: 1.1,
+    description: 'Ember Curse: its bleed stacks up to 1 more time and each stack deals 10% more damage.',
+  },
+];
+
 /**
  * Character-wide sources that still use the generic entries[]/selection sum
- * (totals.js): 'single' -> only the entry matching sourceState.activeId
- * contributes (Mounts - one ridden at a time); 'tiered' -> only entries with
- * equipped:true contribute, capped per tierCaps (Glyphs - tier-capped
- * sockets). Every other source (Talents, Awakening, Transcendence, Relics,
- * Pets, Presets, Enchant Stones, Sigils) is explicitly modeled on
- * Character/Preset (model.js) and hand-summed in totals.js - see each
- * source's own comment there for why. Pets/Relics moved OFF this generic
- * list in the Preset redesign: Pets are a shared collection a Preset points
- * at (no single character-wide "active" pointer anymore), and Relics are
- * leveled character-wide but equipped per-preset (up to
- * PRESET_RELIC_CAP), not per-loadout.
+ * (totals.js): 'tiered' -> only entries with equipped:true contribute, capped
+ * per tierCaps (Glyphs - tier-capped sockets). Every other source (Talents,
+ * Awakening, Transcendence, Relics, Pets, Mounts, Presets, Enchant Stones,
+ * Sigils) is explicitly modeled on Character/Preset (model.js) and hand-summed
+ * in totals.js - see each source's own comment there for why. Pets/Relics
+ * moved OFF this generic list in the Preset redesign: Pets are a shared
+ * collection a Preset points at (no single character-wide "active" pointer
+ * anymore), and Relics are leveled character-wide but equipped per-preset (up
+ * to PRESET_RELIC_CAP), not per-loadout. Mounts followed the same pattern once
+ * the game made the ridden mount a per-preset choice: stats are entered
+ * character-wide against the fixed MOUNT_DEFS catalogue (mountsData.js), and
+ * each Preset picks its own preset.mountId.
  */
 export const SOURCE_DEFS = [
-  { key: 'mounts', label: 'Mounts', scope: 'character', selection: 'single' },
   { key: 'glyphs', label: 'Mount Glyphs', scope: 'character', selection: 'tiered', tierCaps: { minor: 3, major: 2, mythic: 1 } },
 ];
 

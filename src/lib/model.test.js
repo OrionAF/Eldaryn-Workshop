@@ -164,6 +164,30 @@ it('normaliseRoster keeps a valid Awakening path and clamps points to the 15-poi
   expect(roster.characters[0].awakening).toEqual({ path: 'shadow', points: 15 });
 });
 
+it('normaliseRoster repairs glyph entries: legacy saves get Common rarity, invalid specials drop to stat glyphs, valid specials force their tier', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'Test',
+        class: 'Sentinel',
+        glyphs: {
+          entries: [
+            { id: 'g1', tier: 'minor', statKey: 'attack_pct', value: 2, equipped: true }, // pre-rarity save
+            { id: 'g2', tier: 'mythic', rarity: 'Eternal', statKey: 'crit', value: 1, equipped: false, special: 'not-a-real-special' },
+            { id: 'g3', tier: 'minor', rarity: 'Epic', statKey: 'attack_pct', value: 0, equipped: true, special: 'ember-curse-glyph' },
+          ],
+        },
+      },
+    ],
+    currentId: 'x',
+  };
+  const entries = normaliseRoster(raw).characters[0].glyphs.entries;
+  expect(entries[0]).toMatchObject({ rarity: 'Common', special: null, statKey: 'attack_pct', value: 2, equipped: true });
+  expect(entries[1]).toMatchObject({ tier: 'mythic', rarity: 'Common', special: null }); // Eternal is not a glyph rarity
+  expect(entries[2]).toMatchObject({ special: 'ember-curse-glyph', tier: 'major' }); // a special glyph lives on ITS tier
+});
+
 it('normaliseRoster drops Transcendence positions that do not belong to the tree, and glyph sockets (always inert)', () => {
   const raw = {
     characters: [
@@ -396,6 +420,8 @@ it('normaliseRoster sigilValues: drops unknown sigils/statKeys, keeps declared v
             damage: -5, // clamped
             tickDamage: 'junk', // coerced
           },
+          'withering-touch': { regenDebuffPct: 45.5 }, // level-scaled debuff % survives
+          'blade-of-judgment': { regenDebuffPct: 250 }, // clamped to 100
         },
       },
     ],
@@ -407,6 +433,9 @@ it('normaliseRoster sigilValues: drops unknown sigils/statKeys, keeps declared v
   expect(values['warborn-fury'].active).toEqual({ attack_pct: 20, penetration: 0, dmg_reduction: 0 });
   expect(values['warborn-fury'].damage).toBe(0);
   expect(values['warborn-fury'].tickDamage).toBe(0);
+  expect(values['warborn-fury'].regenDebuffPct).toBe(0); // defaulted
+  expect(values['withering-touch'].regenDebuffPct).toBe(45.5);
+  expect(values['blade-of-judgment'].regenDebuffPct).toBe(100);
 });
 
 it('normaliseRoster falls back to one seeded preset when a character has none', () => {
@@ -447,7 +476,7 @@ it('normaliseRoster migrates a pre-redesign character (talentAllocation on the l
         ],
         sources: {
           pets: { entries: [{ id: 'pet-1', name: 'Ashfang', rarity: 'Epic', level: 12, stats: { attack: 50 } }], activeId: 'pet-1' },
-          mounts: { entries: [{ id: 'mount-1', name: 'Beast', rarity: 'Rare', baseHpPct: 5, baseAtkPct: 3 }], activeId: 'mount-1' },
+          mounts: { entries: [{ id: 'mount-1', name: 'Crystal Beast', rarity: 'Rare', baseHpPct: 5, baseAtkPct: 3 }], activeId: 'mount-1' },
           mountGlyphs: { entries: [{ id: 'g1', tier: 'minor', statKey: 'attack_pct', value: 2, equipped: true }] },
         },
         awakening: { path: 'shadow', points: 5 },
@@ -489,8 +518,15 @@ it('normaliseRoster migrates a pre-redesign character (talentAllocation on the l
   expect(c.presets[0].petId).toBe('pet-1');
   expect(c.presets[1].petId).toBe('pet-1');
 
-  // Mounts/Glyphs carry over unchanged (already character-wide shape); mountGlyphs renamed to glyphs.
-  expect(c.mounts.activeId).toBe('mount-1');
+  // Mounts remap onto the fixed catalogue: the legacy user-created "Crystal
+  // Beast" matches the catalogue mount by name, carrying its stats; the old
+  // character-wide ridden mount seeds every preset's per-preset mountId.
+  // mountGlyphs renamed to glyphs.
+  expect(c.mounts.entries.length).toBe(11);
+  const crystalBeast = c.mounts.entries.find((m) => m.id === 'crystal_beast');
+  expect(crystalBeast).toMatchObject({ rarity: 'Uncommon', baseHpPct: 5, baseAtkPct: 3 });
+  expect(c.presets[0].mountId).toBe('crystal_beast');
+  expect(c.presets[1].mountId).toBe('crystal_beast');
   expect(c.glyphs.entries.length).toBe(1);
 
   // Character-wide fields untouched by the migration.
@@ -499,4 +535,85 @@ it('normaliseRoster migrates a pre-redesign character (talentAllocation on the l
 
   // Gear itself carries straight over on the loadout.
   expect(c.loadouts[0].gear.Weapon.attack).toBe(500);
+});
+
+// --- PVP Opponents ---
+
+it('newCharacter starts with no PVP opponents; normalise defaults missing field', () => {
+  expect(newCharacter('Test').pvpOpponents).toEqual([]);
+  const roster = newRoster();
+  delete roster.characters[0].pvpOpponents;
+  expect(normaliseRoster(roster).characters[0].pvpOpponents).toEqual([]);
+});
+
+it('normaliseRoster repairs opponents: drops dupes/no-id, validates class, caps + filters sigilIds, defends stats shape', () => {
+  const roster = newRoster();
+  const warriorSigils = SIGILS_BY_CLASS.Warrior.map((s) => s.id);
+  roster.characters[0].pvpOpponents = [
+    { id: 'o1', name: 'Rival', class: 'Warrior', stats: { attack: 5000, junk: 1 }, sigilIds: [...warriorSigils, 'nope'], sigilValues: { [warriorSigils[0]]: { passive: {}, active: {}, damage: -5, tickDamage: 0 } } },
+    { id: 'o1', name: 'Dupe' },
+    { name: 'No id' },
+    { id: 'o2', class: 'NotAClass', sigilIds: warriorSigils.slice(0, 2) },
+  ];
+  const chars = normaliseRoster(roster).characters[0];
+  expect(chars.pvpOpponents.map((o) => o.id)).toEqual(['o1', 'o2']);
+  const o1 = chars.pvpOpponents[0];
+  expect(o1.stats.attack).toBe(5000);
+  expect(o1.sigilIds.length).toBe(PRESET_SIGIL_CAP); // capped, 'nope' dropped
+  expect(o1.sigilIds.every((id) => warriorSigils.includes(id))).toBe(true);
+  const o2 = chars.pvpOpponents[1];
+  expect(o2.class).toBe(null);
+  expect(o2.sigilIds).toEqual([]); // no class -> no catalogue -> no sigils
+});
+
+// --- Saved Simulation-screen results ---
+
+it('newCharacter starts with no saved results; normalise defaults missing field', () => {
+  expect(newCharacter('Test').savedResults).toEqual([]);
+  const roster = newRoster();
+  delete roster.characters[0].savedResults;
+  expect(normaliseRoster(roster).characters[0].savedResults).toEqual([]);
+});
+
+it('normaliseRoster savedResults: drops no-id/dupe/unknown-kind, coerces name/savedAt/summary, keeps payload as-is', () => {
+  const roster = newRoster();
+  roster.characters[0].savedResults = [
+    { id: 'r1', kind: 'sim', name: 'Run 1', savedAt: '2026-07-14T10:00:00.000Z', summary: { meanDps: 12.5, seed: 7 } },
+    { id: 'r1', kind: 'opt', name: 'Dupe id' },
+    { id: 'r2', kind: 'mystery', name: 'Unknown kind' },
+    { kind: 'sim', name: 'No id' },
+    { id: 'r3', kind: 'opt', name: 7, savedAt: 12, summary: 'not-an-object' },
+  ];
+  const saved = normaliseRoster(roster).characters[0].savedResults;
+  expect(saved.map((r) => r.id)).toEqual(['r1', 'r3']);
+  // Pre-notes/pinned saves get the new fields' defaults.
+  expect(saved[0]).toEqual({ id: 'r1', kind: 'sim', name: 'Run 1', savedAt: '2026-07-14T10:00:00.000Z', notes: '', pinned: false, summary: { meanDps: 12.5, seed: 7 } });
+  expect(saved[1]).toEqual({ id: 'r3', kind: 'opt', name: 'Saved result', savedAt: '', notes: '', pinned: false, summary: {} });
+});
+
+it('normaliseRoster opponents: keeps catalogue special glyphs, drops unknown ids, defaults missing', () => {
+  const roster = newRoster();
+  roster.characters[0].pvpOpponents = [
+    { id: 'o1', name: 'Glyphed', class: 'Sentinel', specialGlyphIds: ['ember-curse-glyph', 'made-up-glyph', 'ember-curse-glyph'] },
+    { id: 'o2', name: 'Legacy', class: 'Warrior' }, // pre-glyph save
+  ];
+  const opponents = normaliseRoster(roster).characters[0].pvpOpponents;
+  expect(opponents[0].specialGlyphIds).toEqual(['ember-curse-glyph']);
+  expect(opponents[1].specialGlyphIds).toEqual([]);
+});
+
+it('normaliseRoster savedResults: keeps PVP/compare kinds and user notes/pins, coerces bad notes/pinned', () => {
+  const roster = newRoster();
+  roster.characters[0].savedResults = [
+    { id: 'p1', kind: 'pvp-sim', name: 'Duel', notes: 'beat him with ×2 HP', pinned: true, summary: { winRate: 61.2 } },
+    { id: 'p2', kind: 'pvp-opt', name: 'Matchup opt', notes: 42, pinned: 'yes', summary: {} },
+    { id: 'p3', kind: 'sim-compare', name: 'A vs B', summary: {} },
+  ];
+  const saved = normaliseRoster(roster).characters[0].savedResults;
+  expect(saved.map((r) => r.kind)).toEqual(['pvp-sim', 'pvp-opt', 'sim-compare']);
+  expect(saved[0].notes).toBe('beat him with ×2 HP');
+  expect(saved[0].pinned).toBe(true);
+  // Non-string notes / non-boolean pinned collapse to safe defaults.
+  expect(saved[1].notes).toBe('');
+  expect(saved[1].pinned).toBe(false);
 });

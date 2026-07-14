@@ -200,7 +200,7 @@ it('Node Filter highlights nodes carrying a selected stat, including uncommon no
 
   const chips = [...target.querySelectorAll('.filter-chip')];
   expect(chips.length).toBeGreaterThan(0);
-  const critMultChip = chips.find((c) => c.textContent.trim() === 'Crit Mult %');
+  const critMultChip = chips.find((c) => c.textContent.trim() === 'Crit Damage');
   critMultChip.click();
   flushSync();
   expect(critMultChip.classList.contains('active')).toBe(true);
@@ -213,7 +213,7 @@ it('Node Filter highlights nodes carrying a selected stat, including uncommon no
   expect(other.classList.contains('highlighted')).toBe(false);
 
   // Multi-select: adding a second stat highlights its nodes too, keeping the first.
-  const blindChip = chips.find((c) => c.textContent.trim() === 'Blind Chance %');
+  const blindChip = chips.find((c) => c.textContent.trim() === 'Blind Chance');
   blindChip.click();
   flushSync();
   expect(uncommon.classList.contains('highlighted')).toBe(true);

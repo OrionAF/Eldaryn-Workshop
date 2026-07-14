@@ -28,7 +28,9 @@ it('lists every catalogue sigil for the class - value inputs, but no equip contr
   flushSync();
 
   expect(target.querySelectorAll('.sigil-card').length).toBe(SIGILS_BY_CLASS.Warrior.length);
-  expect(target.querySelectorAll('input[type="number"]').length).toBeGreaterThan(0);
+  // Text inputs (not type="number") so comma decimals parse like every other field.
+  expect(target.querySelectorAll('input[type="text"][inputmode]').length).toBeGreaterThan(0);
+  expect(target.querySelectorAll('input[type="number"]').length).toBe(0);
   expect(target.querySelector('button, select, input[type="checkbox"]')).toBeNull(); // equip lives in the Presets editor
   expect(target.textContent).toContain('Defense Stance');
 });
@@ -42,6 +44,23 @@ it('entering a passive value writes through to character.sigilValues', () => {
   input.dispatchEvent(new Event('change', { bubbles: true })); // Svelte 5 delegates 'change' at the root
   flushSync();
   expect(rosterStore.current.sigilValues['defense-stance'].passive.health_pct).toBe(12.5);
+});
+
+it('percent values accept a comma decimal, and flat damage treats "." / "," as thousands separators', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
+  flushSync();
+
+  const pctInput = target.querySelector('input[aria-label="Defense Stance passive Health %"]');
+  pctInput.value = '12,5';
+  pctInput.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+  expect(rosterStore.current.sigilValues['defense-stance'].passive.health_pct).toBe(12.5);
+
+  const dmgInput = target.querySelector('input[aria-label="Blade of Judgment damage"]');
+  dmgInput.value = '2.664';
+  dmgInput.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+  expect(rosterStore.current.sigilValues['blade-of-judgment'].damage).toBe(2664);
 });
 
 it('damage inputs only appear for damage-dealing mechanics (plus tick damage for DoTs)', () => {

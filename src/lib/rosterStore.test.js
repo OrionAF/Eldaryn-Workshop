@@ -205,20 +205,24 @@ it('setPetLevel is character-wide (one level for every pet)', () => {
   rosterStore.setPetLevel(1); // cleanup
 });
 
-// --- Mounts ---
-it('addMount/setActiveMount/updateMount/removeMount round-trip', () => {
-  const id = rosterStore.addMount('Crystal Beast', 'Uncommon');
-  expect(rosterStore.current.mounts.activeId).toBe(id);
+// --- Mounts (fixed catalogue - stats entered per character, ridden per preset) ---
+it('every character starts with the full mount catalogue; updateMount/setPresetMount round-trip', () => {
+  expect(rosterStore.current.mounts.entries.length).toBe(11);
 
-  rosterStore.updateMount(id, 'baseHpPct', 19);
-  rosterStore.updateMount(id, 'baseAtkPct', 10);
-  const mount = rosterStore.current.mounts.entries.find((m) => m.id === id);
-  expect(mount.baseHpPct).toBe(19);
-  expect(mount.baseAtkPct).toBe(10);
+  rosterStore.updateMount('crystal_beast', 'baseHpPct', 19);
+  rosterStore.updateMount('crystal_beast', 'baseAtkPct', 10);
+  const mount = rosterStore.current.mounts.entries.find((m) => m.id === 'crystal_beast');
+  expect(mount).toMatchObject({ name: 'Crystal Beast', rarity: 'Uncommon', baseHpPct: 19, baseAtkPct: 10 });
 
-  rosterStore.removeMount(id);
-  expect(rosterStore.current.mounts.entries.length).toBe(0);
-  expect(rosterStore.current.mounts.activeId).toBe(null);
+  const preset = rosterStore.current.presets[0];
+  expect(preset.mountId).toBe(null);
+  rosterStore.setPresetMount(preset.id, 'crystal_beast');
+  expect(preset.mountId).toBe('crystal_beast');
+
+  // cleanup
+  rosterStore.updateMount('crystal_beast', 'baseHpPct', 0);
+  rosterStore.updateMount('crystal_beast', 'baseAtkPct', 0);
+  rosterStore.setPresetMount(preset.id, null);
 });
 
 // --- Mount Glyphs (tier-capped equip) ---
@@ -246,6 +250,16 @@ it('setGlyphEquipped enforces the 3 Minor / 2 Major / 1 Mythic cap and rejects p
 
   rosterStore.removeMountGlyph(minors[3]);
   expect(rosterStore.current.glyphs.entries.some((g) => g.id === minors[3])).toBe(false);
+});
+
+it('addMountGlyph stores rarity and a special-glyph id when given', () => {
+  const specialId = rosterStore.addMountGlyph('major', 'attack_pct', 0, { rarity: 'Legendary', special: 'ember-curse-glyph' });
+  const special = rosterStore.current.glyphs.entries.find((g) => g.id === specialId);
+  expect(special.rarity).toBe('Legendary');
+  expect(special.special).toBe('ember-curse-glyph');
+
+  const plainId = rosterStore.addMountGlyph('minor', 'attack_pct', 3); // rarity defaults to Common
+  expect(rosterStore.current.glyphs.entries.find((g) => g.id === plainId).rarity).toBe('Common');
 });
 
 // --- Socketed Stones (shared inventory; socketed per-loadout-per-slot) ---
@@ -445,4 +459,206 @@ it('toggleRelicOnPreset rejects an invalid defId', () => {
   rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
   const presetId = rosterStore.current.presets[0].id;
   expect(rosterStore.toggleRelicOnPreset(presetId, 'not-a-real-relic', true)).toBe(false);
+});
+
+// --- PVP Opponents ---
+it('opponent CRUD + sigil equip/value actions persist and validate', () => {
+  const charId = rosterStore.addCharacter('PvP Tester');
+  rosterStore.setCharacterClass(charId, 'Sentinel');
+
+  const id = rosterStore.addOpponent('Enemy Warrior');
+  expect(rosterStore.current.pvpOpponents.length).toBe(1);
+  expect(rosterStore.renameOpponent(id, 'Nemesis')).toBe(true);
+  expect(rosterStore.setOpponentClass(id, 'Warrior')).toBe(true);
+  expect(rosterStore.setOpponentClass(id, 'NotAClass')).toBe(false);
+  expect(rosterStore.setOpponentStat(id, 'attack', 12345)).toBe(true);
+  expect(rosterStore.setOpponentStat(id, 'bogus', 1)).toBe(false);
+
+  // Warrior sigils resolve; a 4th equip is rejected by the cap.
+  expect(rosterStore.toggleOpponentSigil(id, 'blade-of-judgment', true)).toBe(true);
+  expect(rosterStore.toggleOpponentSigil(id, 'cataclysm', true)).toBe(true);
+  expect(rosterStore.toggleOpponentSigil(id, 'hemorrhage', true)).toBe(true);
+  expect(rosterStore.toggleOpponentSigil(id, 'arrowstorm', true)).toBe(false);
+  expect(rosterStore.setOpponentSigilValue(id, 'blade-of-judgment', 'damage', 999)).toBe(true);
+  expect(rosterStore.setOpponentSigilValue(id, 'blade-of-judgment', 'not-a-field', 1)).toBe(false);
+
+  // Changing class clears sigil state that no longer resolves.
+  expect(rosterStore.setOpponentClass(id, 'Sentinel')).toBe(true);
+  const opp = rosterStore.current.pvpOpponents[0];
+  expect(opp.sigilIds).toEqual([]);
+  expect(opp.sigilValues).toEqual({});
+  expect(opp.name).toBe('Nemesis');
+  expect(opp.stats.attack).toBe(12345);
+
+  // Round-trips through localStorage.
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+  const savedChar = saved.characters.find((c) => c.name === 'PvP Tester');
+  expect(savedChar.pvpOpponents[0].name).toBe('Nemesis');
+
+  rosterStore.deleteOpponent(id);
+  expect(rosterStore.current.pvpOpponents).toEqual([]);
+});
+
+it('applyOptimizerCandidate overwrites the preset and character-wide sources in one persisted step', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
+  rosterStore.addPet('Opt Pet', 'Common', { attack_pct: 10 });
+  rosterStore.updateMount('night_wolf', 'baseAtkPct', 5);
+  rosterStore.addMountGlyph('minor', 'attack_pct', 3);
+  rosterStore.setAwakeningPoints(10);
+  const c = rosterStore.current;
+  const preset = c.presets[0];
+  rosterStore.setPresetTotalsMode(preset.id, 'manual'); // apply must switch it back
+  expect(preset.manualTotals).toBe(true);
+
+  const candidate = {
+    preset: {
+      loadout: 1,
+      talentSet: preset.talentSet,
+      petId: c.pets[0].id,
+      mountId: c.mounts.entries[0].id,
+      relicIds: ['war-charm'],
+      sigilIds: [],
+      fortressBuffs: { ...preset.fortressBuffs },
+    },
+    socketedStones: {},
+    talentSpec: 'arms',
+    talentAllocation: { arms_t1_quick_strikes: 3 },
+    glyphEquippedIds: [c.glyphs.entries[0].id],
+    awakeningPath: 'shadow',
+    transcendenceUnlocked: [],
+  };
+
+  expect(rosterStore.applyOptimizerCandidate('no-such-preset', candidate)).toBe(false);
+  expect(rosterStore.applyOptimizerCandidate(preset.id, candidate)).toBe(true);
+
+  expect(preset.loadout).toBe(1);
+  expect(preset.petId).toBe(c.pets[0].id);
+  expect(preset.relicIds).toEqual(['war-charm']);
+  expect(preset.manualTotals).toBe(false);
+  expect(c.talentSets[preset.talentSet]).toEqual({ spec: 'arms', allocation: { arms_t1_quick_strikes: 3 } });
+  expect(preset.mountId).toBe(c.mounts.entries[0].id);
+  expect(c.glyphs.entries[0].equipped).toBe(true);
+  expect(c.awakening.path).toBe('shadow');
+
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+  const savedChar = saved.characters.find((ch) => ch.id === c.id);
+  expect(savedChar.presets[0].loadout).toBe(1);
+  expect(savedChar.awakening.path).toBe('shadow');
+});
+
+it('saveResult snapshots plain data (decoupled from the source object) and deleteSavedResult removes it, both persisted', () => {
+  const source = { meanDps: 12.5, totalDamage: { mean: 900 } };
+  const id = rosterStore.saveResult('sim', 'Test run', source);
+  source.meanDps = 999; // the snapshot must not share references with live view-state
+  source.totalDamage.mean = 0;
+
+  const entry = rosterStore.current.savedResults.find((r) => r.id === id);
+  expect(entry.kind).toBe('sim');
+  expect(entry.name).toBe('Test run');
+  expect(entry.summary).toEqual({ meanDps: 12.5, totalDamage: { mean: 900 } });
+  expect(typeof entry.savedAt).toBe('string');
+
+  let saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+  let savedChar = saved.characters.find((c) => c.id === rosterStore.current.id);
+  expect(savedChar.savedResults.some((r) => r.id === id)).toBe(true);
+
+  rosterStore.deleteSavedResult(id);
+  expect(rosterStore.current.savedResults.some((r) => r.id === id)).toBe(false);
+  saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+  savedChar = saved.characters.find((c) => c.id === rosterStore.current.id);
+  expect(savedChar.savedResults.some((r) => r.id === id)).toBe(false);
+});
+
+it('saveResult prepends: the newest saved result is first', () => {
+  const first = rosterStore.saveResult('sim', 'Older', {});
+  const second = rosterStore.saveResult('opt', 'Newer', {});
+  const ids = rosterStore.current.savedResults.map((r) => r.id);
+  expect(ids.indexOf(second)).toBeLessThan(ids.indexOf(first));
+  rosterStore.deleteSavedResult(first);
+  rosterStore.deleteSavedResult(second);
+});
+
+it('duplicateOpponent deep-copies stats/sigils under a fresh id and "(copy)" name', () => {
+  const sourceId = rosterStore.addOpponent('Original');
+  rosterStore.setOpponentClass(sourceId, 'Sentinel');
+  rosterStore.setOpponentStat(sourceId, 'attack', 12345);
+  rosterStore.toggleOpponentSigil(sourceId, 'ember-curse', true);
+
+  const copyId = rosterStore.duplicateOpponent(sourceId);
+  const copy = rosterStore.current.pvpOpponents.find((o) => o.id === copyId);
+  expect(copyId).not.toBe(sourceId);
+  expect(copy.name).toBe('Original (copy)');
+  expect(copy.class).toBe('Sentinel');
+  expect(copy.stats.attack).toBe(12345);
+  expect(copy.sigilIds).toEqual(['ember-curse']);
+
+  // Deep copy: editing the copy never touches the source.
+  rosterStore.setOpponentStat(copyId, 'attack', 1);
+  expect(rosterStore.current.pvpOpponents.find((o) => o.id === sourceId).stats.attack).toBe(12345);
+
+  expect(rosterStore.duplicateOpponent('nope')).toBeNull();
+  rosterStore.deleteOpponent(sourceId);
+  rosterStore.deleteOpponent(copyId);
+});
+
+it('addOpponentFromPreset snapshots effective totals + equipped sigils under the character class', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
+  const preset = rosterStore.current.presets[0];
+  rosterStore.setPresetTotalsMode(preset.id, 'manual');
+  rosterStore.setPresetManualStat(preset.id, 'attack', 55555);
+
+  const id = rosterStore.addOpponentFromPreset(preset.id);
+  const opponent = rosterStore.current.pvpOpponents.find((o) => o.id === id);
+  expect(opponent.class).toBe('Warrior');
+  expect(opponent.stats.attack).toBe(55555);
+  expect(opponent.name).toContain(preset.name);
+
+  expect(rosterStore.addOpponentFromPreset('nope')).toBeNull();
+  rosterStore.deleteOpponent(id);
+  rosterStore.setCharacterClass(rosterStore.current.id, null);
+});
+
+it('toggleOpponentSpecialGlyph adds/removes catalogue glyphs only, and persists', () => {
+  const id = rosterStore.addOpponent('Glyphed');
+  rosterStore.setOpponentClass(id, 'Sentinel');
+
+  expect(rosterStore.toggleOpponentSpecialGlyph(id, 'ember-curse-glyph', true)).toBe(true);
+  expect(rosterStore.current.pvpOpponents.find((o) => o.id === id).specialGlyphIds).toEqual(['ember-curse-glyph']);
+  expect(rosterStore.toggleOpponentSpecialGlyph(id, 'not-a-glyph', true)).toBe(false);
+
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+  const savedChar = saved.characters.find((c) => c.id === rosterStore.current.id);
+  expect(savedChar.pvpOpponents.find((o) => o.id === id).specialGlyphIds).toEqual(['ember-curse-glyph']);
+
+  expect(rosterStore.toggleOpponentSpecialGlyph(id, 'ember-curse-glyph', false)).toBe(true);
+  expect(rosterStore.current.pvpOpponents.find((o) => o.id === id).specialGlyphIds).toEqual([]);
+  rosterStore.deleteOpponent(id);
+});
+
+it('renameSavedResult / setSavedResultNotes / togglePinnedSavedResult edit the entry and persist', () => {
+  const id = rosterStore.saveResult('pvp-sim', 'Duel vs Rival', { winRate: 61.2 });
+
+  expect(rosterStore.renameSavedResult(id, '  Rival, ×2 HP  ')).toBe(true);
+  expect(rosterStore.renameSavedResult(id, '   ')).toBe(false); // blank keeps the old name
+  expect(rosterStore.setSavedResultNotes(id, 'their sigils half-entered')).toBe(true);
+  expect(rosterStore.togglePinnedSavedResult(id)).toBe(true);
+
+  const entry = rosterStore.current.savedResults.find((r) => r.id === id);
+  expect(entry.name).toBe('Rival, ×2 HP');
+  expect(entry.notes).toBe('their sigils half-entered');
+  expect(entry.pinned).toBe(true);
+
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+  const savedChar = saved.characters.find((c) => c.id === rosterStore.current.id);
+  const savedEntry = savedChar.savedResults.find((r) => r.id === id);
+  expect(savedEntry.name).toBe('Rival, ×2 HP');
+  expect(savedEntry.notes).toBe('their sigils half-entered');
+  expect(savedEntry.pinned).toBe(true);
+
+  expect(rosterStore.togglePinnedSavedResult(id)).toBe(true); // toggles back off
+  expect(rosterStore.current.savedResults.find((r) => r.id === id).pinned).toBe(false);
+  expect(rosterStore.renameSavedResult('nope', 'x')).toBe(false);
+  expect(rosterStore.setSavedResultNotes('nope', 'x')).toBe(false);
+  expect(rosterStore.togglePinnedSavedResult('nope')).toBe(false);
+  rosterStore.deleteSavedResult(id);
 });
