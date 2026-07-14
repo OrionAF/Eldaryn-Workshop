@@ -42,6 +42,71 @@ it('no crit/double-hit at base speed: every run is exactly attack * 60', () => {
   expect(result.observed.meanSwings).toBe(60);
 });
 
+// --- Paired preset comparison ---
+it('compareSimulations: identical builds tie exactly (paired RNG), zero CI', () => {
+  const stats = S({ attack: 80, speed: 130, crit: 40, crit_mult: 220, double_hit: 25 });
+  const result = sim.compareSimulations({ statsA: stats, statsB: stats, iterations: 100, seed: 11 });
+  expect(result.delta.meanDps).toBe(0);
+  expect(result.delta.ciHalfWidthDps).toBe(0);
+  expect(result.a.meanDps).toBe(result.b.meanDps);
+});
+
+it('compareSimulations: degenerate no-proc builds give the exact closed-form delta', () => {
+  const result = sim.compareSimulations({
+    statsA: S(FLAT), // 100 attack -> 6000 total, 100 DPS
+    statsB: S({ ...FLAT, attack: 110 }), // -> 6600 total, 110 DPS
+    iterations: 50,
+    seed: 12,
+  });
+  expect(result.a.meanDps).toBe(100);
+  expect(result.b.meanDps).toBe(110);
+  expect(result.delta.meanDps).toBe(10);
+  expect(result.delta.ciHalfWidthDps).toBe(0); // no variance in either build
+  expect(result.delta.pct).toBeCloseTo(10, 9);
+});
+
+it('compareSimulations: same seed reproduces the same comparison', () => {
+  const opts = {
+    statsA: S({ attack: 80, speed: 130, crit: 40, crit_mult: 220, double_hit: 25 }),
+    statsB: S({ attack: 90, speed: 120, crit: 30, crit_mult: 200, double_hit: 10 }),
+    iterations: 100,
+    seed: 13,
+  };
+  expect(sim.compareSimulations(opts)).toEqual(sim.compareSimulations(opts));
+});
+
+// --- Histogram + damage-by-source aggregation ---
+it('histogram: bin counts sum to iterations, span [min, max]; a zero-variance batch collapses to one bin', () => {
+  const noisy = sim.runSimulation({
+    stats: S({ attack: 80, speed: 130, crit: 40, crit_mult: 220, double_hit: 25 }),
+    iterations: 300,
+    seed: 5,
+  });
+  expect(noisy.histogram.bins.reduce((a, b) => a + b, 0)).toBe(300);
+  expect(noisy.histogram.min).toBe(noisy.totalDamage.min);
+  expect(noisy.histogram.max).toBe(noisy.totalDamage.max);
+  expect(noisy.histogram.bins.length).toBe(24);
+
+  const flat = sim.runSimulation({ stats: S(FLAT), iterations: 50, seed: 1 });
+  expect(flat.histogram.bins).toEqual([50]);
+});
+
+it('damageByTag: mean per source, sorted descending; degenerate profile is 100% swings', () => {
+  const flat = sim.runSimulation({ stats: S(FLAT), iterations: 20, seed: 3 });
+  expect(flat.damageByTag).toEqual({ swing: 6000 });
+
+  const mixed = sim.runSimulation({
+    stats: S({ attack: 100, speed: 100, crit: 0, crit_mult: 150, double_hit: 100 }),
+    iterations: 20,
+    seed: 4,
+  });
+  // 100% double hit: every swing adds an equal extra hit, so the two tags tie.
+  expect(mixed.damageByTag.swing).toBe(6000);
+  expect(mixed.damageByTag.double_hit).toBe(6000);
+  const values = Object.values(mixed.damageByTag);
+  expect([...values].sort((a, b) => b - a)).toEqual(values);
+});
+
 it('100% crit: every hit crits, total is exactly attack * critMult * 60', () => {
   const stats = S({ attack: 100, speed: 100, crit: 100, crit_mult: 200, double_hit: 0 });
   const result = sim.runSimulation({ stats, iterations: 20, seed: 2 });

@@ -140,7 +140,7 @@ it('Details mode: Save only updates quality/values, never rolledKeys/type', () =
   qualityInput.dispatchEvent(new Event('input', { bubbles: true }));
   flushSync();
 
-  const critInput = target.querySelector('input[aria-label="Critical %"]');
+  const critInput = target.querySelector('input[aria-label="Crit Chance"]');
   critInput.value = '9.5';
   critInput.dispatchEvent(new Event('input', { bubbles: true }));
   flushSync();

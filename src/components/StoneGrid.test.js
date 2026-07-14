@@ -56,7 +56,7 @@ it('lists each stat on its own line, PVP Attack then PVP Defense first, with sig
     ['PVP Attack', '+31'],
     ['PVP Defense', '+25'],
     ['Attack', '+2%'], // pct fields drop the label's trailing % - the value carries it
-    ['Critical', '+6%'],
+    ['Crit Chance', '+6%'],
   ]);
   unmount(app);
 });

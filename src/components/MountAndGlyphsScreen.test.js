@@ -15,7 +15,10 @@ beforeEach(() => {
 afterEach(() => {
   unmount(app);
   target.remove();
-  for (const m of [...rosterStore.current.mounts.entries]) rosterStore.removeMount(m.id);
+  for (const m of [...rosterStore.current.mounts.entries]) {
+    rosterStore.updateMount(m.id, 'baseHpPct', 0);
+    rosterStore.updateMount(m.id, 'baseAtkPct', 0);
+  }
   for (const g of [...rosterStore.current.glyphs.entries]) rosterStore.removeMountGlyph(g.id);
 });
 
@@ -25,54 +28,34 @@ it('renders both sections with no nested tabs', () => {
   expect(target.querySelector('[role="tablist"]')).toBeNull();
 });
 
-it('adding a mount auto-rides the first one; a second does not steal Riding', () => {
-  target.querySelectorAll('.add-form button')[0].click();
-  flushSync();
-
-  const nameInput = target.querySelector('input[aria-label="Mount name"]');
-  nameInput.value = 'Crystal Beast';
-  nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-  [...target.querySelectorAll('.modal button')].find((b) => b.textContent.trim() === 'Add Mount').click();
-  flushSync();
-
-  expect(rosterStore.current.mounts.entries.length).toBe(1);
-  expect(rosterStore.current.mounts.activeId).toBe(rosterStore.current.mounts.entries[0].id);
+it('lists the full fixed mount catalogue with name and rarity - stats entry only, no add/remove/riding controls', () => {
+  const rows = [...target.querySelectorAll('.mounts-section .entry-list li')];
+  expect(rows.length).toBe(11); // the full catalogue, nothing else
+  expect(target.textContent).toContain('Night Wolf');
+  expect(target.textContent).toContain('Crystal Drake');
+  expect(target.textContent).toContain('Scorpion Hound');
+  expect(target.querySelector('.mounts-section .btn-gold')).toBeNull(); // no Add Mount
+  expect([...target.querySelectorAll('.mounts-section button')].length).toBe(0); // no Remove either
+  expect(target.querySelector('.mounts-section input[type="radio"]')).toBeNull(); // Riding moved to the Presets editor
 });
 
-it('Add Mount modal sets base HP%/ATK% at creation time', () => {
-  target.querySelectorAll('.add-form button')[0].click();
-  flushSync();
-
-  const nameInput = target.querySelector('input[aria-label="Mount name"]');
-  nameInput.value = 'Crystal Beast';
-  nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-
-  const [hpInput, atkInput] = [...target.querySelectorAll('.modal .base-stat input')];
-  hpInput.value = '12';
-  hpInput.dispatchEvent(new Event('input', { bubbles: true }));
-  atkInput.value = '8';
-  atkInput.dispatchEvent(new Event('input', { bubbles: true }));
-
-  [...target.querySelectorAll('.modal button')].find((b) => b.textContent.trim() === 'Add Mount').click();
-  flushSync();
-
-  const mount = rosterStore.current.mounts.entries.find((m) => m.name === 'Crystal Beast');
-  expect(mount.baseHpPct).toBe(12);
-  expect(mount.baseAtkPct).toBe(8);
-});
-
-it('editing Base HP%/ATK% writes through rosterStore.updateMount', () => {
-  const id = rosterStore.addMount('Beast', 'Rare');
-  flushSync();
-  const hpInput = [...target.querySelectorAll('.base-stat input')][0];
+it('editing a catalogue mount\'s Base HP%/ATK% writes through rosterStore.updateMount', () => {
+  const crystalBeastRow = [...target.querySelectorAll('.mounts-section .entry-list li')].find((li) =>
+    li.textContent.includes('Crystal Beast')
+  );
+  const [hpInput, atkInput] = [...crystalBeastRow.querySelectorAll('.base-stat input')];
   hpInput.value = '19';
   hpInput.dispatchEvent(new Event('blur', { bubbles: true }));
+  atkInput.value = '10';
+  atkInput.dispatchEvent(new Event('blur', { bubbles: true }));
   flushSync();
-  expect(rosterStore.current.mounts.entries.find((m) => m.id === id).baseHpPct).toBe(19);
+  const mount = rosterStore.current.mounts.entries.find((m) => m.id === 'crystal_beast');
+  expect(mount.baseHpPct).toBe(19);
+  expect(mount.baseAtkPct).toBe(10);
 });
 
 it('saving a glyph to inventory and socketing it enforces the tier cap', () => {
-  const addGlyphBtn = target.querySelectorAll('.add-form button')[1];
+  const addGlyphBtn = target.querySelectorAll('.add-form button')[0];
   for (let i = 0; i < 4; i++) {
     addGlyphBtn.click();
     flushSync();
@@ -92,4 +75,35 @@ it('saving a glyph to inventory and socketing it enforces the tier cap', () => {
   flushSync();
   expect(rosterStore.current.glyphs.entries.filter((g) => g.equipped).length).toBe(3);
   expect(target.querySelector('.glyph-error')).not.toBeNull();
+});
+
+it('adds a glyph with the selected rarity, and a Major-tier special Ember Curse glyph without a value field', () => {
+  const selects = () => [...target.querySelectorAll('.glyphs-section .add-form select')];
+  const [tierSelect, raritySelect, statSelect] = selects();
+
+  raritySelect.value = 'Epic';
+  raritySelect.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+  target.querySelectorAll('.add-form button')[0].click();
+  flushSync();
+  expect(rosterStore.current.glyphs.entries[0]).toMatchObject({ rarity: 'Epic', special: null });
+
+  // The special option only exists on the Major tier.
+  expect([...statSelect.options].some((o) => o.value === 'special:ember-curse-glyph')).toBe(false);
+  tierSelect.value = 'major';
+  tierSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+  expect([...statSelect.options].some((o) => o.value === 'special:ember-curse-glyph')).toBe(true);
+
+  statSelect.value = 'special:ember-curse-glyph';
+  statSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+  expect(target.querySelector('.glyphs-section .add-form input[aria-label="Value"]')).toBeNull();
+  target.querySelectorAll('.add-form button')[0].click();
+  flushSync();
+
+  const special = rosterStore.current.glyphs.entries[1];
+  expect(special).toMatchObject({ tier: 'major', special: 'ember-curse-glyph' });
+  expect(target.textContent).toContain('Ember Curse');
+  expect(target.textContent).toContain('stacks up to 1 more time');
 });

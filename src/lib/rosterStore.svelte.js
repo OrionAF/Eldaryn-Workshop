@@ -9,9 +9,9 @@
  */
 
 import { loadRoster, saveRoster, importRoster as parseRosterJson, downloadRoster } from './storage.js';
-import { newCharacter, getCurrent, emptyStats, newPetEntry, newMountEntry, newMountGlyphEntry, newPreset, newStoneEntry, emptySigilValues } from './model.js';
-import { computePresetTotals } from './totals.js';
-import { SLOTS, SOURCE_DEFS, TALENT_TOTAL_POINTS, PRESET_RELIC_CAP, PRESET_SIGIL_CAP } from './constants.js';
+import { newCharacter, getCurrent, emptyStats, newPetEntry, newMountGlyphEntry, newPreset, newStoneEntry, emptySigilValues, newOpponent, newSavedResult } from './model.js';
+import { computePresetTotals, resolveEffectiveTotals } from './totals.js';
+import { SLOTS, SOURCE_DEFS, TALENT_TOTAL_POINTS, PRESET_RELIC_CAP, PRESET_SIGIL_CAP, STAT_FIELDS, CLASSES, SPECIAL_GLYPHS } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { AWAKENING_PATHS, AWAKENING_TOTAL_POINTS } from './awakeningData.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
@@ -161,15 +161,9 @@ function createRosterStore() {
     persist();
   }
 
-  // --- Mounts (character-scoped, one active/"riding" at a time) ---
-  function addMount(name, rarity, baseHpPct = 0, baseAtkPct = 0) {
-    const mount = newMountEntry({ name, rarity, baseHpPct, baseAtkPct });
-    current.mounts.entries.push(mount);
-    if (!current.mounts.activeId) current.mounts.activeId = mount.id;
-    persist();
-    return mount.id;
-  }
-
+  // --- Mounts (fixed catalogue - see mountsData.js; the entry list itself is
+  // static, only base HP%/ATK% are entered here - which mount is ridden is a
+  // per-preset choice, see setPresetMount) ---
   function updateMount(mountId, field, value) {
     const mount = current.mounts.entries.find((m) => m.id === mountId);
     if (mount) {
@@ -178,23 +172,9 @@ function createRosterStore() {
     }
   }
 
-  function setActiveMount(mountId) {
-    current.mounts.activeId = mountId;
-    persist();
-  }
-
-  function removeMount(mountId) {
-    const mounts = current.mounts;
-    mounts.entries = mounts.entries.filter((m) => m.id !== mountId);
-    if (mounts.activeId === mountId) {
-      mounts.activeId = mounts.entries[0]?.id ?? null;
-    }
-    persist();
-  }
-
   // --- Mount Glyphs (character-scoped inventory; up to 3 Minor/2 Major/1 Mythic equipped) ---
-  function addMountGlyph(tier, statKey, value) {
-    const glyph = newMountGlyphEntry({ tier, statKey, value });
+  function addMountGlyph(tier, statKey, value, { rarity = 'Common', special = null } = {}) {
+    const glyph = newMountGlyphEntry({ tier, rarity, statKey, value, special });
     current.glyphs.entries.push(glyph);
     persist();
     return glyph.id;
@@ -409,11 +389,17 @@ function createRosterStore() {
     return true;
   }
 
-  /** Set a sigil's entered activation damage ('damage') or per-tick damage ('tickDamage'). */
+  /** Set a sigil's entered activation damage ('damage'), per-tick damage ('tickDamage'), or enemy HP-Regen debuff % ('regenDebuffPct', clamped 0-100). */
   function setSigilDamageValue(sigilId, field, value) {
     const def = findSigilDef(sigilId);
-    if (!def || (field !== 'damage' && field !== 'tickDamage')) return false;
-    sigilValuesEntry(def)[field] = Math.max(0, Number(value) || 0);
+    if (!def) return false;
+    if (field === 'damage' || field === 'tickDamage') {
+      sigilValuesEntry(def)[field] = Math.max(0, Number(value) || 0);
+    } else if (field === 'regenDebuffPct') {
+      sigilValuesEntry(def)[field] = Math.min(100, Math.max(0, Number(value) || 0));
+    } else {
+      return false;
+    }
     persist();
     return true;
   }
@@ -430,6 +416,179 @@ function createRosterStore() {
       preset.sigilIds.push(sigilId);
     } else {
       preset.sigilIds = preset.sigilIds.filter((id) => id !== sigilId);
+    }
+    persist();
+    return true;
+  }
+
+  // --- PVP Opponents (character-wide manually-entered enemy profiles; see model.js's Opponent shape) ---
+  function findOpponent(opponentId) {
+    return (current.pvpOpponents || []).find((o) => o.id === opponentId);
+  }
+
+  function addOpponent(name) {
+    const opponent = newOpponent(name || `Opponent ${(current.pvpOpponents?.length || 0) + 1}`);
+    current.pvpOpponents.push(opponent);
+    persist();
+    return opponent.id;
+  }
+
+  function deleteOpponent(opponentId) {
+    current.pvpOpponents = (current.pvpOpponents || []).filter((o) => o.id !== opponentId);
+    persist();
+  }
+
+  function duplicateOpponent(opponentId) {
+    const source = findOpponent(opponentId);
+    if (!source) return null;
+    const copy = JSON.parse(JSON.stringify(source));
+    copy.id = newOpponent().id; // fresh id, everything else verbatim
+    copy.name = `${source.name} (copy)`;
+    current.pvpOpponents.push(copy);
+    persist();
+    return copy.id;
+  }
+
+  /**
+   * Snapshot one of THIS character's presets as an opponent profile - a
+   * mirror-match sparring partner, or a way to carry a build to another
+   * character's opponent list via export. Stats are the preset's effective
+   * totals (manual or calculated, same as the Run Duel button); equipped
+   * sigils and their entered values come along, glyphs stay empty (enter the
+   * enemy's separately).
+   */
+  function addOpponentFromPreset(presetId) {
+    const preset = current.presets.find((p) => p.id === presetId);
+    if (!preset || !current.class) return null;
+    const opponent = newOpponent(`${current.name} · ${preset.name}`);
+    opponent.class = current.class;
+    opponent.stats = emptyStats(resolveEffectiveTotals(current, preset));
+    opponent.sigilIds = [...(preset.sigilIds || [])];
+    opponent.sigilValues = JSON.parse(
+      JSON.stringify(
+        Object.fromEntries(
+          Object.entries(current.sigilValues || {}).filter(([defId]) => opponent.sigilIds.includes(defId))
+        )
+      )
+    );
+    current.pvpOpponents.push(opponent);
+    persist();
+    return opponent.id;
+  }
+
+  function toggleOpponentSpecialGlyph(opponentId, glyphId, equipped) {
+    const opponent = findOpponent(opponentId);
+    if (!opponent || !SPECIAL_GLYPHS.some((g) => g.id === glyphId)) return false;
+    const has = (opponent.specialGlyphIds || []).includes(glyphId);
+    if (equipped && !has) opponent.specialGlyphIds = [...(opponent.specialGlyphIds || []), glyphId];
+    else if (!equipped && has) opponent.specialGlyphIds = opponent.specialGlyphIds.filter((id) => id !== glyphId);
+    persist();
+    return true;
+  }
+
+  function renameOpponent(opponentId, name) {
+    const opponent = findOpponent(opponentId);
+    if (!opponent || !name?.trim()) return false;
+    opponent.name = name.trim();
+    persist();
+    return true;
+  }
+
+  // --- Saved Simulation-screen results (character-wide snapshots; see model.js's newSavedResult) ---
+  function saveResult(kind, name, summary) {
+    // Snapshot through JSON so the stored entry can never share references
+    // with live view-state (summaries are plain numbers/strings by contract).
+    const entry = newSavedResult(kind, name, JSON.parse(JSON.stringify(summary || {})));
+    current.savedResults = [entry, ...(current.savedResults || [])];
+    persist();
+    return entry.id;
+  }
+
+  function deleteSavedResult(resultId) {
+    current.savedResults = (current.savedResults || []).filter((r) => r.id !== resultId);
+    persist();
+  }
+
+  function findSavedResult(resultId) {
+    return (current.savedResults || []).find((r) => r.id === resultId);
+  }
+
+  function renameSavedResult(resultId, name) {
+    const entry = findSavedResult(resultId);
+    if (!entry || !name?.trim()) return false;
+    entry.name = name.trim();
+    persist();
+    return true;
+  }
+
+  function setSavedResultNotes(resultId, notes) {
+    const entry = findSavedResult(resultId);
+    if (!entry) return false;
+    entry.notes = typeof notes === 'string' ? notes : '';
+    persist();
+    return true;
+  }
+
+  function togglePinnedSavedResult(resultId) {
+    const entry = findSavedResult(resultId);
+    if (!entry) return false;
+    entry.pinned = !entry.pinned;
+    persist();
+    return true;
+  }
+
+  /** Changing class drops sigil selections/values that don't resolve against the new class's catalogue. */
+  function setOpponentClass(opponentId, characterClass) {
+    const opponent = findOpponent(opponentId);
+    if (!opponent || !CLASSES.includes(characterClass)) return false;
+    if (opponent.class !== characterClass) {
+      opponent.class = characterClass;
+      opponent.sigilIds = [];
+      opponent.sigilValues = {};
+    }
+    persist();
+    return true;
+  }
+
+  function setOpponentStat(opponentId, statKey, value) {
+    const opponent = findOpponent(opponentId);
+    if (!opponent || !STAT_FIELDS.some((f) => f.key === statKey)) return false;
+    opponent.stats[statKey] = Number(value) || 0;
+    persist();
+    return true;
+  }
+
+  /** Equip/unequip one of the opponent's class sigils, capped at PRESET_SIGIL_CAP like presets. */
+  function toggleOpponentSigil(opponentId, sigilId, equipped) {
+    const opponent = findOpponent(opponentId);
+    const def = (SIGILS_BY_CLASS[opponent?.class] || []).find((d) => d.id === sigilId);
+    if (!def) return false;
+    if (equipped) {
+      if (opponent.sigilIds.includes(sigilId)) return true;
+      if (opponent.sigilIds.length >= PRESET_SIGIL_CAP) return false;
+      opponent.sigilIds.push(sigilId);
+    } else {
+      opponent.sigilIds = opponent.sigilIds.filter((id) => id !== sigilId);
+    }
+    persist();
+    return true;
+  }
+
+  /** Set one entered value on an opponent sigil: a declared active statKey, or 'damage'/'tickDamage'. */
+  function setOpponentSigilValue(opponentId, sigilId, field, value) {
+    const opponent = findOpponent(opponentId);
+    const def = (SIGILS_BY_CLASS[opponent?.class] || []).find((d) => d.id === sigilId);
+    if (!def) return false;
+    if (!opponent.sigilValues[sigilId]) opponent.sigilValues[sigilId] = emptySigilValues(def);
+    const entry = opponent.sigilValues[sigilId];
+    if (field === 'damage' || field === 'tickDamage') {
+      entry[field] = Math.max(0, Number(value) || 0);
+    } else if (field === 'regenDebuffPct') {
+      entry[field] = Math.min(100, Math.max(0, Number(value) || 0));
+    } else if (def.active?.stats?.some((s) => s.statKey === field)) {
+      entry.active[field] = Number(value) || 0;
+    } else {
+      return false;
     }
     persist();
     return true;
@@ -497,6 +656,14 @@ function createRosterStore() {
     }
   }
 
+  function setPresetMount(presetId, mountId) {
+    const preset = current.presets.find((p) => p.id === presetId);
+    if (preset) {
+      preset.mountId = mountId;
+      persist();
+    }
+  }
+
   /** Switching TO manual snapshots the preset's current calculated totals first, so Manual mode starts from real numbers, not zeros. */
   function setPresetTotalsMode(presetId, mode) {
     const preset = current.presets.find((p) => p.id === presetId);
@@ -525,6 +692,37 @@ function createRosterStore() {
     if (checked && key === 'top') preset.fortressBuffs.bottom = false;
     if (checked && key === 'bottom') preset.fortressBuffs.top = false;
     persist();
+  }
+
+  /**
+   * Overwrite a preset - and the character-wide sources the optimizer
+   * searches - with a recommended Candidate (optimizer.js shape), in one
+   * persisted step. The preset is switched to Calculated totals: the
+   * recommendation was scored on calculated numbers, so leaving Manual
+   * totals on would make applying it a visible no-op. Returns false (no-op)
+   * if the preset doesn't exist.
+   */
+  function applyOptimizerCandidate(presetId, candidate) {
+    const preset = current.presets.find((p) => p.id === presetId);
+    if (!preset) return false;
+    preset.loadout = candidate.preset.loadout;
+    preset.petId = candidate.preset.petId;
+    preset.mountId = candidate.preset.mountId ?? null;
+    preset.relicIds = [...candidate.preset.relicIds];
+    preset.sigilIds = [...candidate.preset.sigilIds];
+    preset.manualTotals = false;
+    const loadout = current.loadouts[candidate.preset.loadout];
+    if (loadout) loadout.socketedStones = { ...candidate.socketedStones };
+    current.talentSets[preset.talentSet] = {
+      spec: candidate.talentSpec,
+      allocation: { ...candidate.talentAllocation },
+    };
+    const equippedGlyphs = new Set(candidate.glyphEquippedIds);
+    for (const g of current.glyphs.entries) g.equipped = equippedGlyphs.has(g.id);
+    current.awakening.path = candidate.awakeningPath;
+    current.transcendence.unlockedPositions = [...candidate.transcendenceUnlocked];
+    persist();
+    return true;
   }
 
   // --- Drop comparison (character-scoped, survives screen switches, resets on character switch) ---
@@ -596,10 +794,7 @@ function createRosterStore() {
     updatePetStat,
     setPetLevel,
     removePet,
-    addMount,
     updateMount,
-    setActiveMount,
-    removeMount,
     addMountGlyph,
     removeMountGlyph,
     setGlyphEquipped,
@@ -620,6 +815,21 @@ function createRosterStore() {
     setSigilStatValue,
     setSigilDamageValue,
     toggleSigilOnPreset,
+    addOpponent,
+    deleteOpponent,
+    duplicateOpponent,
+    addOpponentFromPreset,
+    toggleOpponentSpecialGlyph,
+    renameOpponent,
+    setOpponentClass,
+    setOpponentStat,
+    saveResult,
+    deleteSavedResult,
+    renameSavedResult,
+    setSavedResultNotes,
+    togglePinnedSavedResult,
+    toggleOpponentSigil,
+    setOpponentSigilValue,
     addPreset,
     setActivePreset,
     renamePreset,
@@ -627,9 +837,11 @@ function createRosterStore() {
     setPresetLoadout,
     setPresetTalentSet,
     setPresetPet,
+    setPresetMount,
     setPresetTotalsMode,
     setPresetManualStat,
     setPresetFortressBuff,
+    applyOptimizerCandidate,
     startDrop,
     setDropSlot,
     setDropField,

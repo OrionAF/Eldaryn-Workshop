@@ -15,6 +15,7 @@
   import { STAT_FIELDS } from '../lib/constants.js';
   import { SIGILS_BY_CLASS } from '../lib/sigilsData.js';
   import { sigilSimSupport, sigilDamageInputs } from '../lib/sigilEffects.js';
+  import { formatStat, parseStat, formatFlat } from '../lib/format.js';
 
   const character = $derived(rosterStore.current);
   const sigilDefs = $derived(SIGILS_BY_CLASS[character.class] || []);
@@ -80,11 +81,11 @@
                 <label class="stat-row">
                   <span class="stat-name">{statLabel(s.statKey)}</span>
                   <input
-                    type="number"
-                    step="0.1"
-                    value={enteredValue(def.id, 'passive', s.statKey)}
+                    type="text"
+                    inputmode="decimal"
+                    value={formatStat(s.statKey, enteredValue(def.id, 'passive', s.statKey))}
                     aria-label="{def.name} passive {statLabel(s.statKey)}"
-                    onchange={(e) => rosterStore.setSigilStatValue(def.id, 'passive', s.statKey, e.target.value)}
+                    onchange={(e) => rosterStore.setSigilStatValue(def.id, 'passive', s.statKey, parseStat(s.statKey, e.target.value))}
                   />
                 </label>
               {/each}
@@ -97,11 +98,11 @@
                 <label class="stat-row">
                   <span class="stat-name">{statLabel(s.statKey)}</span>
                   <input
-                    type="number"
-                    step="0.1"
-                    value={enteredValue(def.id, 'active', s.statKey)}
+                    type="text"
+                    inputmode="decimal"
+                    value={formatStat(s.statKey, enteredValue(def.id, 'active', s.statKey))}
                     aria-label="{def.name} active {statLabel(s.statKey)}"
-                    onchange={(e) => rosterStore.setSigilStatValue(def.id, 'active', s.statKey, e.target.value)}
+                    onchange={(e) => rosterStore.setSigilStatValue(def.id, 'active', s.statKey, parseStat(s.statKey, e.target.value))}
                   />
                 </label>
               {/each}
@@ -109,11 +110,11 @@
                 <label class="stat-row">
                   <span class="stat-name">Damage</span>
                   <input
-                    type="number"
-                    min="0"
-                    value={enteredDamage(def.id, 'damage')}
+                    type="text"
+                    inputmode="numeric"
+                    value={formatFlat(enteredDamage(def.id, 'damage'))}
                     aria-label="{def.name} damage"
-                    onchange={(e) => rosterStore.setSigilDamageValue(def.id, 'damage', e.target.value)}
+                    onchange={(e) => rosterStore.setSigilDamageValue(def.id, 'damage', parseStat('attack', e.target.value))}
                   />
                 </label>
               {/if}
@@ -121,11 +122,23 @@
                 <label class="stat-row">
                   <span class="stat-name">Tick damage</span>
                   <input
-                    type="number"
-                    min="0"
-                    value={enteredDamage(def.id, 'tickDamage')}
+                    type="text"
+                    inputmode="numeric"
+                    value={formatFlat(enteredDamage(def.id, 'tickDamage'))}
                     aria-label="{def.name} tick damage"
-                    onchange={(e) => rosterStore.setSigilDamageValue(def.id, 'tickDamage', e.target.value)}
+                    onchange={(e) => rosterStore.setSigilDamageValue(def.id, 'tickDamage', parseStat('attack', e.target.value))}
+                  />
+                </label>
+              {/if}
+              {#if damageInputs.regenDebuffPct}
+                <label class="stat-row">
+                  <span class="stat-name">Regen debuff %</span>
+                  <input
+                    type="text"
+                    inputmode="decimal"
+                    value={formatStat('hp_regen', enteredDamage(def.id, 'regenDebuffPct'))}
+                    aria-label="{def.name} regen debuff %"
+                    onchange={(e) => rosterStore.setSigilDamageValue(def.id, 'regenDebuffPct', parseStat('hp_regen', e.target.value))}
                   />
                 </label>
               {/if}

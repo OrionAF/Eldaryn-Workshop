@@ -103,7 +103,7 @@ export const SIGILS_BY_CLASS = {
       rarity: 'Epic',
       passive: { stats: [{ statKey: 'attack', value: 0 }, { statKey: 'health', value: 0 }] },
       active: { stats: [], durationSec: 8, cooldownSec: 15, damage: 0 },
-      notes: 'Deals XX damage.  Reduces enemy HP Regen by 60% for 8s.',
+      notes: 'Deals XX damage.  Reduces enemy HP Regen by XX% for 8s.',
     },
     {
       id: 'hemorrhage',
@@ -172,6 +172,14 @@ export const SIGILS_BY_CLASS = {
       notes: 'Deals XX damage to the enemy.',
     },
     {
+      id: 'phantom-veil',
+      name: 'Phantom Veil',
+      rarity: 'Uncommon',
+      passive: { stats: [{ statKey: 'attack', value: 0 }, { statKey: 'health', value: 0 }] },
+      active: { stats: [{ statKey: 'miss_chance', value: 0 }], durationSec: 8, cooldownSec: 16, damage: 0 },
+      notes: 'Increases Miss Chance by XX.X% for 8s.',
+    },
+    {
       id: 'venom-wound',
       name: 'Venom Wound',
       rarity: 'Rare',
@@ -202,14 +210,6 @@ export const SIGILS_BY_CLASS = {
       passive: { stats: [{ statKey: 'attack', value: 0 }, { statKey: 'health', value: 0 }] },
       active: { stats: [], durationSec: 0, cooldownSec: 12, damage: 0 },
       notes: 'Deals XX damage to the enemy.  Paralyzes the enemy for 2s.',
-    },
-    {
-      id: 'phantom-veil',
-      name: 'Phantom Veil',
-      rarity: 'Uncommon',
-      passive: { stats: [{ statKey: 'attack', value: 0 }, { statKey: 'health', value: 0 }] },
-      active: { stats: [{ statKey: 'miss_chance', value: 0 }], durationSec: 8, cooldownSec: 16, damage: 0 },
-      notes: 'Increases Miss Chance by XX.X% for 8s.',
     },
     {
       id: 'elusive-supremacy',

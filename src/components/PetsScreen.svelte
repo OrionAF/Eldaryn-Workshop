@@ -7,7 +7,7 @@
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { RARITIES, STAT_FIELDS, fieldsForTab } from '../lib/constants.js';
-  import { summarizeStats } from '../lib/format.js';
+  import { summarizeStats, parseFlat } from '../lib/format.js';
   import StatsFields from './StatsFields.svelte';
   import ConfirmButton from './ConfirmButton.svelte';
   import AddPetModal from './AddPetModal.svelte';
@@ -48,10 +48,10 @@
   <label class="pet-level">
     <span class="pet-level-label">PET LEVEL</span>
     <input
-      type="number"
-      min="1"
+      type="text"
+      inputmode="numeric"
       value={character.petLevel}
-      onblur={(e) => rosterStore.setPetLevel(Number(e.target.value) || 1)}
+      onblur={(e) => rosterStore.setPetLevel(parseFlat(e.target.value) || 1)}
     />
   </label>
 </div>

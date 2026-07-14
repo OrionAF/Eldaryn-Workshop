@@ -1,6 +1,6 @@
 import { it, expect } from 'vitest';
 import { computePresetTotals, resolveEffectiveTotals } from './totals.js';
-import { newCharacter, newPetEntry, newMountEntry, newMountGlyphEntry, newPreset, newStoneEntry, emptyStats } from './model.js';
+import { newCharacter, newPetEntry, newMountGlyphEntry, newPreset, newStoneEntry, emptyStats } from './model.js';
 import { BASE_ATTACK, BASE_SPEED, BASE_CRIT_MULT } from './dps.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
 import { SIGILS_BY_CLASS } from './sigilsData.js';
@@ -101,14 +101,22 @@ it('a preset with no pet chosen gets no pet contribution', () => {
   expect(totals.attack_pct).toBe(0);
 });
 
-it('a Mount contributes baseHpPct/baseAtkPct as health_pct/attack_pct, only when active - character-wide, not per-preset', () => {
+it('a Mount contributes baseHpPct/baseAtkPct as health_pct/attack_pct, only for the preset riding it', () => {
   const c = newCharacter();
-  const mount = newMountEntry({ name: 'Crystal Beast', baseHpPct: 19, baseAtkPct: 10 });
-  c.mounts = { entries: [mount], activeId: mount.id };
+  const mount = c.mounts.entries.find((m) => m.id === 'crystal_beast');
+  mount.baseHpPct = 19;
+  mount.baseAtkPct = 10;
+  c.presets[0].mountId = mount.id;
 
   const totals = computePresetTotals(c, c.presets[0]);
   expect(approx(totals.health_pct, 19)).toBe(true);
   expect(approx(totals.attack_pct, 10)).toBe(true);
+
+  // A preset riding nothing gets no mount contribution.
+  c.presets[0].mountId = null;
+  const without = computePresetTotals(c, c.presets[0]);
+  expect(approx(without.health_pct, 0)).toBe(true);
+  expect(approx(without.attack_pct, 0)).toBe(true);
 });
 
 it('equipped Mount Glyphs sum additively; unequipped glyphs in inventory do not contribute', () => {
@@ -121,6 +129,16 @@ it('equipped Mount Glyphs sum additively; unequipped glyphs in inventory do not 
   const totals = computePresetTotals(c, c.presets[0]);
   expect(approx(totals.attack_pct, 4.1)).toBe(true);
   expect(approx(totals.crit, 1.8)).toBe(true);
+});
+
+it('an equipped SPECIAL glyph contributes no additive stats (its effect lives in the sigil sim)', () => {
+  const c = newCharacter();
+  const special = newMountGlyphEntry({ tier: 'major', special: 'ember-curse-glyph', equipped: true });
+  const stat = newMountGlyphEntry({ tier: 'minor', statKey: 'attack_pct', value: 4, equipped: true });
+  c.glyphs = { entries: [special, stat] };
+
+  const totals = computePresetTotals(c, c.presets[0]);
+  expect(approx(totals.attack_pct, 4)).toBe(true); // only the stat glyph counts
 });
 
 it('resolveEffectiveTotals returns manualStats when manualTotals is true', () => {
@@ -391,7 +409,7 @@ it("equipping a relic on one preset doesn't equip it for another (equip is per-p
 });
 
 // --- Sigils (static catalogue structure + character-entered values, equipped per-preset - PASSIVE stats only) ---
-it("an equipped sigil contributes its ENTERED passive values; entered active values never reach totals", () => {
+it('an equipped sigil contributes its entered passive values; entered active values never reach totals', () => {
   const c = newCharacter();
   c.class = 'Warrior';
   // warborn-fury: passive declares attack+health; active declares attack_pct/penetration/dmg_reduction

@@ -22,6 +22,7 @@
     { id: 'relics', label: 'Relics', color: 'relics' },
     { id: 'sigils', label: 'Sigils', color: 'sigils' },
     { id: 'simulation', label: 'Simulation', color: 'simulation' },
+    { id: 'pvp', label: 'PVP', color: 'pvp' },
   ];
 
   const CHARACTER_NAV = [

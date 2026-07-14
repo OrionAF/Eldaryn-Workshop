@@ -24,9 +24,10 @@
  * The objective is pluggable: sigilAwareDpsObjective (default) scores a
  * build with the closed-form computeDps PLUS the closed-form expectation of
  * the equipped sigils' active effects (expectedSigilActiveDps) - exact for
- * crit/double-hit and all flat sigil damage, uptime-approximate for timed
- * sigil buffs, and ~10,000x cheaper than sampling. It reduces exactly to
- * expectedDpsObjective when no sigil numbers are entered.
+ * crit/double-hit, all flat sigil damage, and the buff-window timeline
+ * (segment-exact overlap between buff sigils), and ~10,000x cheaper than
+ * sampling. It reduces exactly to expectedDpsObjective when no sigil
+ * numbers are entered.
  * createMonteCarloObjective ("slower / sim-accurate" in the UI) instead runs
  * the battle sim per candidate, rebuilding each candidate's sigil effects,
  * so buff-window overlap is captured exactly at Monte Carlo cost.
@@ -36,28 +37,33 @@
  * runs). Small dimensions are enumerated exhaustively; relic and sigil
  * subsets are enumerated exactly (choose <= cap from the class pool,
  * restricted to entries with any entered value); glyphs are greedy
- * per tier; talents are greedy marginal-gain plus a 1-point swap pass;
- * transcendence is rebuilt from an EMPTY board every time (resetting is
- * free in-game), greedily re-spending the Ichor already invested in the
- * current nodes plus any extra the player entered, so it can re-route
- * defensive detours into DPS nodes even with no new Ichor.
- * Passes repeat until a full loop yields no strict improvement.
+ * per tier; talents are greedy marginal-gain with tier-unlock stepping
+ * stones (filler points parked to cross a locked tier's threshold, rolled
+ * back if they never pay off) plus a 1-point swap pass; transcendence is
+ * rebuilt from an EMPTY board every time (resetting is free in-game) via a
+ * width-TRANSCENDENCE_BEAM_WIDTH beam search over buy sequences - each step
+ * every surviving board expands its best gain-per-Ichor PATHs
+ * (cheapestUnlockPaths prices zero-gain corridors of any length at their
+ * true cost) and the best distinct boards continue - re-spending the Ichor
+ * already invested in the current nodes plus any extra the player entered,
+ * so it can re-route defensive detours into DPS nodes even with no new
+ * Ichor. Passes repeat until a full loop yields no strict improvement.
+ * Objective evals are memoized on a canonical candidate signature, so
+ * re-passes over unchanged alternatives are free; searchDimensions can lock
+ * any pass; an AbortSignal stops the search with best-so-far.
  *
- * KNOWN HEURISTIC GAPS (accepted for v1, see plan):
- *  - Greedy talents can miss builds that park points in zero-gain talents
- *    purely to unlock a deeper tier; the swap pass only partially mitigates.
- *  - Greedy transcendence looks ahead one stepping stone (a zero-gain node
- *    paired with each neighbor it exposes - necessary because the tree's
- *    start node is defensive), but won't see through longer zero-gain
- *    corridors.
+ * KNOWN HEURISTIC GAPS:
+ *  - Greedy passes are still local search - coordinated multi-dimension
+ *    moves (e.g. a talent build only good with a different pet) are found
+ *    only via repeated passes, not jointly.
  */
 
 import { computeDps } from './dps.js';
-import { computePresetTotals } from './totals.js';
+import { computePresetTotals, resolveEffectiveTotals } from './totals.js';
 import { runSimulation, DEFAULT_EFFECTS } from './simulation.js';
 import { buildSigilEffects, expectedSigilActiveDps } from './sigilEffects.js';
 import { SIGILS_BY_CLASS } from './sigilsData.js';
-import { SOURCE_DEFS, SPECS_BY_CLASS, PRESET_RELIC_CAP, PRESET_SIGIL_CAP, TALENT_TOTAL_POINTS, fieldsForTab, SLOTS } from './constants.js';
+import { SOURCE_DEFS, SPECIAL_GLYPHS, SPECS_BY_CLASS, PRESET_RELIC_CAP, PRESET_SIGIL_CAP, TALENT_TOTAL_POINTS, fieldsForTab, SLOTS } from './constants.js';
 import { summarizeStats } from './format.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { AWAKENING_PATHS } from './awakeningData.js';
@@ -80,19 +86,27 @@ export function expectedDpsObjective(candidateCharacter, candidatePreset) {
 /**
  * Default objective: expectedDpsObjective plus the closed-form expectation of
  * the equipped sigils' ACTIVE effects (their passives are already inside the
- * totals). Flat sigil damage (nukes, DoT ticks) is exact; each timed buff is
- * mixed in as uptime * (buffed swing DPS - base swing DPS), applying the
- * buff's stats the same way the sim's modifySwing/speedBonus hooks do. Buffs
- * are mixed independently per sigil, so overlap synergy between two buff
- * sigils is approximated additively - the Monte Carlo objective captures it
- * exactly when that precision is worth the cost.
+ * totals). Flat sigil damage (nukes, DoT ticks) is exact; timed buffs are
+ * mixed in per exact buff-window SEGMENT (expectedSigilActiveDps cuts the
+ * fight by which buffs are simultaneously active), applying each segment's
+ * combined stats the same way the sim's modifySwing/speedBonus hooks do -
+ * so overlap synergy between buff sigils is captured, not approximated
+ * additively. What remains approximate vs the Monte Carlo objective is only
+ * the correlation between buff windows and individual swing timing.
  */
 export function sigilAwareDpsObjective(candidateCharacter, candidatePreset) {
-  const totals = computePresetTotals(candidateCharacter, candidatePreset);
+  return sigilAwareDpsFromTotals(computePresetTotals(candidateCharacter, candidatePreset), candidateCharacter, candidatePreset);
+}
+
+/**
+ * Same score, but from caller-supplied totals - lets statWeights.js perturb a
+ * single stat without rebuilding the whole preset sum.
+ */
+export function sigilAwareDpsFromTotals(totals, candidateCharacter, candidatePreset) {
   const base = computeDps(totals);
-  const { flatDps, buffs } = expectedSigilActiveDps(candidateCharacter, candidatePreset);
+  const { flatDps, segments } = expectedSigilActiveDps(candidateCharacter, candidatePreset);
   let dps = base + flatDps;
-  for (const { statAdds, uptime } of buffs) {
+  for (const { statAdds, fraction } of segments) {
     const buffed = {
       ...totals,
       attack: (totals.attack + (statAdds.attack || 0)) * (1 + (statAdds.attack_pct || 0) / 100),
@@ -101,7 +115,7 @@ export function sigilAwareDpsObjective(candidateCharacter, candidatePreset) {
       double_hit: totals.double_hit + (statAdds.double_hit || 0),
       speed: totals.speed + (statAdds.speed || 0),
     };
-    dps += uptime * (computeDps(buffed) - base);
+    dps += fraction * (computeDps(buffed) - base);
   }
   return dps;
 }
@@ -138,6 +152,7 @@ export function candidateFromCurrent(character, preset) {
       loadout: preset.loadout,
       talentSet: preset.talentSet,
       petId: preset.petId,
+      mountId: preset.mountId ?? null,
       relicIds: [...(preset.relicIds || [])],
       sigilIds: [...(preset.sigilIds || [])],
       fortressBuffs: { ...preset.fortressBuffs },
@@ -145,7 +160,6 @@ export function candidateFromCurrent(character, preset) {
     socketedStones: { ...(character.loadouts[preset.loadout]?.socketedStones || {}) },
     talentSpec: talentSet?.spec ?? null,
     talentAllocation: { ...(talentSet?.allocation || {}) },
-    mountActiveId: character.mounts?.activeId ?? null,
     glyphEquippedIds: (character.glyphs?.entries || []).filter((e) => e.equipped).map((e) => e.id),
     awakeningPath: character.awakening?.path ?? null,
     transcendenceUnlocked: [...(character.transcendence?.unlockedPositions || [])],
@@ -167,7 +181,6 @@ export function materializeCandidate(character, candidate) {
     talentSets: character.talentSets.map((ts, i) =>
       i === candidate.preset.talentSet ? { spec: candidate.talentSpec, allocation: candidate.talentAllocation } : ts
     ),
-    mounts: { ...character.mounts, activeId: candidate.mountActiveId },
     glyphs: { entries: (character.glyphs?.entries || []).map((e) => ({ ...e, equipped: glyphSet.has(e.id) })) },
     awakening: { path: candidate.awakeningPath, points: character.awakening?.points || 0 },
     transcendence: { unlockedPositions: [...candidate.transcendenceUnlocked] },
@@ -178,6 +191,7 @@ export function materializeCandidate(character, candidate) {
     loadout: candidate.preset.loadout,
     talentSet: candidate.preset.talentSet,
     petId: candidate.preset.petId,
+    mountId: candidate.preset.mountId ?? null,
     relicIds: [...candidate.preset.relicIds],
     sigilIds: [...candidate.preset.sigilIds],
     fortressBuffs: { ...candidate.preset.fortressBuffs },
@@ -196,7 +210,6 @@ function cloneCandidate(candidate) {
     socketedStones: { ...candidate.socketedStones },
     talentSpec: candidate.talentSpec,
     talentAllocation: { ...candidate.talentAllocation },
-    mountActiveId: candidate.mountActiveId,
     glyphEquippedIds: [...candidate.glyphEquippedIds],
     awakeningPath: candidate.awakeningPath,
     transcendenceUnlocked: [...candidate.transcendenceUnlocked],
@@ -267,7 +280,106 @@ function sigilHasAnyValue(character, def) {
   return false;
 }
 
+// --- Transcendence path search ----------------------------------------------
+
+const isBuyableNode = (node) => node && (node.type === 'common' || node.type === 'uncommon');
+
+/**
+ * Beam width for the transcendence rebuild: the search carries this many
+ * distinct candidate boards forward each step (and expands each state's
+ * this-many best buys) instead of committing to the single greedy
+ * gain-per-Ichor pick, so a node that only pays off via the branch it opens
+ * can survive long enough to overtake the greedy line. Width 5 costs ~5x the
+ * objective evals of pure greedy (duplicates collapse via signature dedupe
+ * and the candidateKey memo).
+ */
+export const TRANSCENDENCE_BEAM_WIDTH = 5;
+
+/**
+ * Near-cheapest unlock sequence from the current board to EVERY reachable
+ * locked buyable node: Dijkstra over the locked nodes, where the i-th node
+ * of a sequence costs costForCount(count + i, uncommon). Corridor nodes are
+ * priced at their real Ichor cost, so a payoff node behind a zero-gain
+ * corridor of any length gets a full path (the old lookahead saw one
+ * stepping stone at most). "Near"-cheapest because costForCount depends on
+ * the position within the sequence - settling the cheapest path first is
+ * exact when the cost curve is flat and a tight heuristic otherwise.
+ * Returns Map(position -> { nodes: [node, ...], cost }).
+ */
+export function cheapestUnlockPaths(tree, unlocked, count) {
+  const settled = new Map();
+  const pending = [];
+  for (const node of tree.nodes) {
+    if (!isBuyableNode(node) || unlocked.includes(node.position)) continue;
+    if (canUnlock(node.position, unlocked, tree)) {
+      pending.push({ nodes: [node], cost: costForCount(count + 1, node.type === 'uncommon') });
+    }
+  }
+  while (pending.length > 0) {
+    let bi = 0;
+    for (let i = 1; i < pending.length; i++) if (pending[i].cost < pending[bi].cost) bi = i;
+    const path = pending.splice(bi, 1)[0];
+    const tail = path.nodes[path.nodes.length - 1];
+    if (settled.has(tail.position)) continue;
+    settled.set(tail.position, path);
+    const reached = [...unlocked, ...path.nodes.map((n) => n.position)];
+    for (const node of tree.nodes) {
+      if (!isBuyableNode(node) || settled.has(node.position) || reached.includes(node.position)) continue;
+      if (!canUnlock(node.position, reached, tree)) continue;
+      pending.push({
+        nodes: [...path.nodes, node],
+        cost: path.cost + costForCount(count + path.nodes.length + 1, node.type === 'uncommon'),
+      });
+    }
+  }
+  return settled;
+}
+
 // --- Optimizer ---------------------------------------------------------------
+
+/**
+ * Stable value signature of a candidate, used to memoize objective evals -
+ * coordinate ascent re-visits the same builds constantly (every re-pass
+ * re-scores the unchanged alternatives), and under a Monte Carlo objective
+ * each duplicate eval is hundreds of sims. Set-like dimensions are sorted so
+ * equivalent builds reached via different orders share one entry;
+ * fortressBuffs are excluded (carried as set, never searched).
+ */
+function candidateKey(c) {
+  return JSON.stringify([
+    c.preset.loadout,
+    c.preset.petId,
+    c.preset.mountId,
+    [...c.preset.relicIds].sort(),
+    [...c.preset.sigilIds].sort(),
+    SLOTS.map((slot) => c.socketedStones[slot] || null),
+    c.talentSpec,
+    Object.entries(c.talentAllocation).filter(([, r]) => r > 0).sort(),
+    [...c.glyphEquippedIds].sort(),
+    c.awakeningPath,
+    [...c.transcendenceUnlocked].sort(),
+  ]);
+}
+
+/** Thrown internally when `signal` aborts; optimize() catches it and returns best-so-far. */
+const ABORTED = Symbol('optimize-aborted');
+
+/**
+ * The searchable dimensions, in pass order, for UIs that render per-dimension
+ * lock toggles (keys match optimize()'s searchDimensions map).
+ */
+export const SEARCH_DIMENSIONS = [
+  { key: 'loadouts', label: 'Loadouts' },
+  { key: 'pets', label: 'Pets' },
+  { key: 'awakening', label: 'Awakening' },
+  { key: 'mounts', label: 'Mounts' },
+  { key: 'glyphs', label: 'Glyphs' },
+  { key: 'relics', label: 'Relics' },
+  { key: 'sigils', label: 'Sigils' },
+  { key: 'stones', label: 'Stones' },
+  { key: 'talents', label: 'Talents' },
+  { key: 'transcendence', label: 'Transcendence' },
+];
 
 /**
  * Search for the max-objective build reachable from `preset`.
@@ -275,75 +387,177 @@ function sigilHasAnyValue(character, def) {
  * progress via onProgress({ phase, evals, bestScore }).
  *
  * `ichorBudget` gates the transcendence pass: 0 (default) = no new unlocks.
+ * `searchDimensions` locks individual passes: every key defaults to true,
+ * pass e.g. { talents: false, stones: false } to keep those exactly as they
+ * are (keys: loadouts, pets, awakening, mounts, glyphs, relics, sigils,
+ * stones, talents, transcendence). `searchAwakening: false` is the legacy
+ * spelling of { awakening: false } (resetting the path has a real in-game
+ * cost, so callers let the player opt out).
+ *
+ * TWO-STAGE SCORING: with only `objective`, every candidate is scored and
+ * adopted on that one function. Passing `screenObjective` (cheap, e.g. the
+ * closed-form DPS) makes it the RANKING function for the whole search, while
+ * `objective` (expensive, e.g. Monte Carlo duels) is evaluated only when a
+ * candidate beats the incumbent's screen score, and gates the actual
+ * adoption. That keeps noisy expensive objectives away from fine-grained
+ * moves (single talent points) where their noise outweighs the signal, and
+ * cuts eval cost by orders of magnitude. Reported scores (baseline, best,
+ * progress) are always in `objective` units.
+ *
+ * `signal` (AbortSignal) stops the search early; the result is best-so-far
+ * with `aborted: true`.
  */
 export async function optimize({
   character,
   preset,
   ichorBudget = 0,
+  searchAwakening = true,
+  searchDimensions = {},
   objective = sigilAwareDpsObjective,
+  screenObjective = null,
+  signal,
   onProgress,
   maxPasses = 5,
 } = {}) {
   const startedAt = Date.now();
   let evals = 0;
 
-  const score = async (candidate) => {
+  const dims = {
+    loadouts: true,
+    pets: true,
+    awakening: searchAwakening,
+    mounts: true,
+    glyphs: true,
+    relics: true,
+    sigils: true,
+    stones: true,
+    talents: true,
+    transcendence: true,
+    ...searchDimensions,
+  };
+
+  const screenFn = screenObjective ?? objective;
+  const screenCache = new Map();
+  const confirmCache = screenObjective ? new Map() : screenCache;
+
+  const evalWith = async (fn, cache, candidate) => {
+    if (signal?.aborted) throw ABORTED;
+    const key = candidateKey(candidate);
+    const cached = cache.get(key);
+    if (cached !== undefined) return cached;
     evals += 1;
     if (evals % YIELD_EVERY === 0) await new Promise((r) => setTimeout(r, 0));
     const { candidateCharacter, candidatePreset } = materializeCandidate(character, candidate);
-    return objective(candidateCharacter, candidatePreset);
+    const s = fn(candidateCharacter, candidatePreset);
+    cache.set(key, s);
+    return s;
+  };
+
+  // Top-N leaderboard: the best DISTINCT candidates seen at adoption-authority
+  // fidelity - every scored candidate in single-stage mode, only confirmed
+  // ones in two-stage mode (screen scores are noisier / other units).
+  const LEADERBOARD_SIZE = 5;
+  const leaderboard = []; // [{ key, score, candidate }] best-first
+  const noteCandidate = (candidate, s) => {
+    const key = candidateKey(candidate);
+    if (leaderboard.some((e) => e.key === key)) return;
+    if (leaderboard.length >= LEADERBOARD_SIZE && s <= leaderboard[leaderboard.length - 1].score) return;
+    leaderboard.push({ key, score: s, candidate: cloneCandidate(candidate) });
+    leaderboard.sort((a, b) => b.score - a.score);
+    leaderboard.length = Math.min(leaderboard.length, LEADERBOARD_SIZE);
+  };
+
+  /** Screening score - ranks candidates inside every pass. */
+  const score = async (candidate) => {
+    const s = await evalWith(screenFn, screenCache, candidate);
+    if (!screenObjective) noteCandidate(candidate, s);
+    return s;
+  };
+  /** Adoption-authority score (== screening when no screenObjective). */
+  const confirmScore = async (candidate) => {
+    const s = await evalWith(objective, confirmCache, candidate);
+    if (screenObjective) noteCandidate(candidate, s);
+    return s;
   };
 
   let best = cloneCandidate(candidateFromCurrent(character, preset));
-  let bestScore = await score(best);
+  let bestScreen;
+  let bestScore;
+  try {
+    bestScreen = await score(best);
+    bestScore = await confirmScore(best);
+  } catch (err) {
+    // Aborted before the baseline existed - there is no best-so-far to return.
+    throw err === ABORTED ? new Error('Optimization aborted') : err;
+  }
   const baselineScore = bestScore;
   const { candidateCharacter: baseChar, candidatePreset: basePreset } = materializeCandidate(character, best);
   const baselineTotals = computePresetTotals(baseChar, basePreset);
 
   const report = (phase) => onProgress?.({ phase, evals, bestScore });
 
-  /** Score `next`; adopt it if strictly better. Returns true on adoption. */
-  const consider = async (next) => {
-    const s = await score(next);
-    if (s > bestScore + EPS) {
-      best = next;
-      bestScore = s;
-      return true;
+  /**
+   * Adopt `cand` (already screen-scored at `screenScore`) if it truly beats
+   * the incumbent: on the screen score alone in single-stage mode, and
+   * additionally on the expensive confirming objective in two-stage mode.
+   */
+  const adoptIfBetter = async (cand, screenScore) => {
+    if (screenScore <= bestScreen + EPS) return false;
+    if (screenObjective) {
+      const confirmed = await confirmScore(cand);
+      if (confirmed <= bestScore + EPS) return false;
+      bestScore = confirmed;
+    } else {
+      bestScore = screenScore;
     }
-    return false;
+    best = cloneCandidate(cand);
+    bestScreen = screenScore;
+    return true;
   };
+
+  /** Score `next`; adopt it if strictly better. Returns true on adoption. */
+  const consider = async (next) => adoptIfBetter(next, await score(next));
 
   let transcendencePlan = []; // replaced whenever the transcendence pass adopts a rebuild
 
   let passes = 0;
   let improvedInLoop = true;
+  let aborted = false;
+  // The try wraps the whole pass loop at its own indent level: an abort can
+  // surface from any await inside any pass, and best/bestScore are always
+  // consistent when it does (adoption is atomic), so best-so-far is returned.
+  try {
   while (improvedInLoop && passes < maxPasses) {
     passes += 1;
     improvedInLoop = false;
 
     // -- Loadout (the talent-set slot is never switched: talents are searched
     //    from scratch below, independent of what either saved set contains) --
-    report('loadouts');
-    for (let lo = 0; lo < character.loadouts.length; lo++) {
-      if (lo === best.preset.loadout) continue;
-      const next = cloneCandidate(best);
-      next.preset.loadout = lo;
-      next.socketedStones = { ...(character.loadouts[lo]?.socketedStones || {}) };
-      if (await consider(next)) improvedInLoop = true;
+    if (dims.loadouts) {
+      report('loadouts');
+      for (let lo = 0; lo < character.loadouts.length; lo++) {
+        if (lo === best.preset.loadout) continue;
+        const next = cloneCandidate(best);
+        next.preset.loadout = lo;
+        next.socketedStones = { ...(character.loadouts[lo]?.socketedStones || {}) };
+        if (await consider(next)) improvedInLoop = true;
+      }
     }
 
     // -- Pet --
-    report('pets');
-    for (const petId of [null, ...character.pets.map((p) => p.id)]) {
-      if (petId === best.preset.petId) continue;
-      const next = cloneCandidate(best);
-      next.preset.petId = petId;
-      if (await consider(next)) improvedInLoop = true;
+    if (dims.pets) {
+      report('pets');
+      for (const petId of [null, ...character.pets.map((p) => p.id)]) {
+        if (petId === best.preset.petId) continue;
+        const next = cloneCandidate(best);
+        next.preset.petId = petId;
+        if (await consider(next)) improvedInLoop = true;
+      }
     }
 
     // -- Awakening path (respec-able in-game; points are level-derived, never searched) --
-    report('awakening');
-    if (character.awakening?.points > 0) {
+    if (dims.awakening && character.awakening?.points > 0) {
+      report('awakening');
       for (const path of Object.keys(AWAKENING_PATHS)) {
         if (path === best.awakeningPath) continue;
         const next = cloneCandidate(best);
@@ -352,91 +566,95 @@ export async function optimize({
       }
     }
 
-    // -- Mount (single active) --
-    report('mounts');
-    for (const mountId of [null, ...(character.mounts?.entries || []).map((m) => m.id)]) {
-      if (mountId === best.mountActiveId) continue;
-      const next = cloneCandidate(best);
-      next.mountActiveId = mountId;
-      if (await consider(next)) improvedInLoop = true;
+    // -- Mount (per-preset ridden mount) --
+    if (dims.mounts) {
+      report('mounts');
+      for (const mountId of [null, ...(character.mounts?.entries || []).map((m) => m.id)]) {
+        if (mountId === best.preset.mountId) continue;
+        const next = cloneCandidate(best);
+        next.preset.mountId = mountId;
+        if (await consider(next)) improvedInLoop = true;
+      }
     }
 
     // -- Glyphs: greedy fill per tier within its cap --
-    report('glyphs');
-    const glyphEntries = character.glyphs?.entries || [];
-    for (const [tier, cap] of Object.entries(GLYPH_TIER_CAPS)) {
-      const tierIds = glyphEntries.filter((e) => e.tier === tier).map((e) => e.id);
-      if (tierIds.length === 0) continue;
-      const otherTierIds = best.glyphEquippedIds.filter((id) => !tierIds.includes(id));
-      let selected = [];
-      let candidateBase = cloneCandidate(best);
-      candidateBase.glyphEquippedIds = [...otherTierIds];
-      // Greedily re-fill this tier from empty; only adopt if the refill beats the incumbent.
-      for (let slot = 0; slot < cap; slot++) {
-        let bestAdd = null;
-        let bestAddScore = -Infinity;
-        for (const id of tierIds) {
-          if (selected.includes(id)) continue;
-          const next = cloneCandidate(candidateBase);
-          next.glyphEquippedIds = [...otherTierIds, ...selected, id];
-          const s = await score(next);
-          if (s > bestAddScore) {
-            bestAddScore = s;
-            bestAdd = next;
+    if (dims.glyphs) {
+      report('glyphs');
+      const glyphEntries = character.glyphs?.entries || [];
+      for (const [tier, cap] of Object.entries(GLYPH_TIER_CAPS)) {
+        const tierIds = glyphEntries.filter((e) => e.tier === tier).map((e) => e.id);
+        if (tierIds.length === 0) continue;
+        const otherTierIds = best.glyphEquippedIds.filter((id) => !tierIds.includes(id));
+        let selected = [];
+        let candidateBase = cloneCandidate(best);
+        candidateBase.glyphEquippedIds = [...otherTierIds];
+        // Greedily re-fill this tier from empty; only adopt if the refill beats the incumbent.
+        for (let slot = 0; slot < cap; slot++) {
+          let bestAdd = null;
+          let bestAddScore = -Infinity;
+          for (const id of tierIds) {
+            if (selected.includes(id)) continue;
+            const next = cloneCandidate(candidateBase);
+            next.glyphEquippedIds = [...otherTierIds, ...selected, id];
+            const s = await score(next);
+            if (s > bestAddScore) {
+              bestAddScore = s;
+              bestAdd = next;
+            }
           }
-        }
-        if (!bestAdd) break;
-        selected = bestAdd.glyphEquippedIds.filter((id) => tierIds.includes(id));
-        candidateBase = bestAdd;
-        if (bestAddScore > bestScore + EPS) {
-          best = cloneCandidate(bestAdd);
-          bestScore = bestAddScore;
-          improvedInLoop = true;
+          if (!bestAdd) break;
+          selected = bestAdd.glyphEquippedIds.filter((id) => tierIds.includes(id));
+          candidateBase = bestAdd;
+          if (await adoptIfBetter(bestAdd, bestAddScore)) improvedInLoop = true;
         }
       }
     }
 
     // -- Relics: exact enumeration of all subsets <= PRESET_RELIC_CAP --
-    report('relics');
-    const relicDefs = RELICS_BY_CLASS[character.class] || [];
-    // Level-0 relics contribute nothing (totals.js skips them) - excluding
-    // them shrinks the subset space without losing any real option.
-    const pool = relicDefs.filter((d) => (character.relicLevels?.[d.id] || 0) > 0).map((d) => d.id);
-    if (pool.length > 0) {
-      const subsets = [[]];
-      for (const id of pool) {
-        const grown = [];
-        for (const subset of subsets) {
-          if (subset.length < PRESET_RELIC_CAP) grown.push([...subset, id]);
+    if (dims.relics) {
+      report('relics');
+      const relicDefs = RELICS_BY_CLASS[character.class] || [];
+      // Level-0 relics contribute nothing (totals.js skips them) - excluding
+      // them shrinks the subset space without losing any real option.
+      const pool = relicDefs.filter((d) => (character.relicLevels?.[d.id] || 0) > 0).map((d) => d.id);
+      if (pool.length > 0) {
+        const subsets = [[]];
+        for (const id of pool) {
+          const grown = [];
+          for (const subset of subsets) {
+            if (subset.length < PRESET_RELIC_CAP) grown.push([...subset, id]);
+          }
+          subsets.push(...grown);
         }
-        subsets.push(...grown);
-      }
-      for (const subset of subsets) {
-        const next = cloneCandidate(best);
-        next.preset.relicIds = subset;
-        if (await consider(next)) improvedInLoop = true;
+        for (const subset of subsets) {
+          const next = cloneCandidate(best);
+          next.preset.relicIds = subset;
+          if (await consider(next)) improvedInLoop = true;
+        }
       }
     }
 
     // -- Sigils: exact enumeration of all subsets <= PRESET_SIGIL_CAP, from
     //    the pool of sigils with any entered value (passives score via
     //    totals, actives via the objective's sigil term) --
-    report('sigils');
-    const sigilDefs = SIGILS_BY_CLASS[character.class] || [];
-    const sigilPool = sigilDefs.filter((d) => sigilHasAnyValue(character, d)).map((d) => d.id);
-    if (sigilPool.length > 0) {
-      const subsets = [[]];
-      for (const id of sigilPool) {
-        const grown = [];
-        for (const subset of subsets) {
-          if (subset.length < PRESET_SIGIL_CAP) grown.push([...subset, id]);
+    if (dims.sigils) {
+      report('sigils');
+      const sigilDefs = SIGILS_BY_CLASS[character.class] || [];
+      const sigilPool = sigilDefs.filter((d) => sigilHasAnyValue(character, d)).map((d) => d.id);
+      if (sigilPool.length > 0) {
+        const subsets = [[]];
+        for (const id of sigilPool) {
+          const grown = [];
+          for (const subset of subsets) {
+            if (subset.length < PRESET_SIGIL_CAP) grown.push([...subset, id]);
+          }
+          subsets.push(...grown);
         }
-        subsets.push(...grown);
-      }
-      for (const subset of subsets) {
-        const next = cloneCandidate(best);
-        next.preset.sigilIds = subset;
-        if (await consider(next)) improvedInLoop = true;
+        for (const subset of subsets) {
+          const next = cloneCandidate(best);
+          next.preset.sigilIds = subset;
+          if (await consider(next)) improvedInLoop = true;
+        }
       }
     }
 
@@ -444,37 +662,35 @@ export async function optimize({
     //    on the glyph pass. Any stone fits any slot; each stone used at most once
     //    per loadout (mirrors normaliseLoadout/socketStone rules). Stones are
     //    slot-agnostic and purely additive, so greedy top-up is effectively exact.
-    report('stones');
-    const stoneIds = (character.stoneInventory || []).map((s) => s.id);
-    if (stoneIds.length > 0) {
-      let candidateBase = cloneCandidate(best);
-      candidateBase.socketedStones = {}; // start empty ("leave empty" is the default)
-      let baseScore = await score(candidateBase);
-      const used = new Set();
-      for (const slot of SLOTS) {
-        let bestAdd = null;
-        let bestAddScore = -Infinity;
-        for (const id of stoneIds) {
-          if (used.has(id)) continue;
-          const next = cloneCandidate(candidateBase);
-          next.socketedStones = { ...candidateBase.socketedStones, [slot]: id };
-          const s = await score(next);
-          if (s > bestAddScore) {
-            bestAddScore = s;
-            bestAdd = { next, id };
+    if (dims.stones) {
+      report('stones');
+      const stoneIds = (character.stoneInventory || []).map((s) => s.id);
+      if (stoneIds.length > 0) {
+        let candidateBase = cloneCandidate(best);
+        candidateBase.socketedStones = {}; // start empty ("leave empty" is the default)
+        let baseScore = await score(candidateBase);
+        const used = new Set();
+        for (const slot of SLOTS) {
+          let bestAdd = null;
+          let bestAddScore = -Infinity;
+          for (const id of stoneIds) {
+            if (used.has(id)) continue;
+            const next = cloneCandidate(candidateBase);
+            next.socketedStones = { ...candidateBase.socketedStones, [slot]: id };
+            const s = await score(next);
+            if (s > bestAddScore) {
+              bestAddScore = s;
+              bestAdd = { next, id };
+            }
           }
-        }
-        // Adopt the marginal winner into the working base only if it beats
-        // leaving the slot empty (score of candidateBase itself).
-        if (!bestAdd) break;
-        if (bestAddScore > baseScore + EPS) {
-          candidateBase = bestAdd.next;
-          used.add(bestAdd.id);
-          baseScore = bestAddScore;
-          if (bestAddScore > bestScore + EPS) {
-            best = cloneCandidate(candidateBase);
-            bestScore = bestAddScore;
-            improvedInLoop = true;
+          // Adopt the marginal winner into the working base only if it beats
+          // leaving the slot empty (score of candidateBase itself).
+          if (!bestAdd) break;
+          if (bestAddScore > baseScore + EPS) {
+            candidateBase = bestAdd.next;
+            used.add(bestAdd.id);
+            baseScore = bestAddScore;
+            if (await adoptIfBetter(candidateBase, bestAddScore)) improvedInLoop = true;
           }
         }
       }
@@ -483,69 +699,95 @@ export async function optimize({
     // -- Talents: per spec, greedy marginal-gain from empty, then a 1-point swap pass.
     //    Saved sets only inform the point budget (most points spent in either
     //    set = points the player owns), never the allocation itself. --
-    report('talents');
-    const specs = SPECS_BY_CLASS[character.class] || [];
-    const ownedPoints = Math.max(...character.talentSets.map((ts) => totalPointsSpent(ts?.allocation)), 0);
-    const budget = Math.min(TALENT_TOTAL_POINTS, ownedPoints > 0 ? ownedPoints : TALENT_TOTAL_POINTS);
-    for (const spec of specs) {
-      const tree = TALENT_TREES[spec.key];
-      if (!tree) continue;
+    if (dims.talents) {
+      report('talents');
+      const specs = SPECS_BY_CLASS[character.class] || [];
+      const ownedPoints = Math.max(...character.talentSets.map((ts) => totalPointsSpent(ts?.allocation)), 0);
+      const budget = Math.min(TALENT_TOTAL_POINTS, ownedPoints > 0 ? ownedPoints : TALENT_TOTAL_POINTS);
+      for (const spec of specs) {
+        const tree = TALENT_TREES[spec.key];
+        if (!tree) continue;
 
-      // Greedy build-up.
-      let allocation = {};
-      let working = cloneCandidate(best);
-      working.talentSpec = spec.key;
-      working.talentAllocation = allocation;
-      let workingScore = await score(working);
-      while (totalPointsSpent(allocation) < budget) {
-        let bestMove = null;
-        let bestMoveScore = workingScore;
-        for (const talentId of legalTalentIncrements(tree, allocation)) {
-          const next = cloneCandidate(working);
-          next.talentAllocation = { ...allocation, [talentId]: (allocation[talentId] || 0) + 1 };
-          const s = await score(next);
-          if (s > bestMoveScore + EPS) {
-            bestMoveScore = s;
-            bestMove = next;
-          }
-        }
-        if (!bestMove) break; // nothing strictly improves - stop (documented heuristic gap)
-        working = bestMove;
-        allocation = working.talentAllocation;
-        workingScore = bestMoveScore;
-      }
-
-      // Swap pass: move single points between talents while it strictly helps.
-      let swapped = true;
-      let guard = 0;
-      while (swapped && guard < 50) {
-        swapped = false;
-        guard += 1;
-        for (const fromId of Object.keys(allocation)) {
-          for (const toId of legalTalentIncrements(tree, allocation)) {
-            if (toId === fromId) continue;
-            const moved = { ...allocation, [fromId]: allocation[fromId] - 1, [toId]: (allocation[toId] || 0) + 1 };
-            if (moved[fromId] === 0) delete moved[fromId];
-            if (!isAllocationLegal(tree, moved, budget)) continue;
+        // Greedy build-up with tier-unlock stepping stones: when no single
+        // point strictly improves but budget remains and a deeper tier is
+        // still locked, PARK a point in the least-bad filler and keep going -
+        // that's how gains hiding behind zero-gain tier thresholds become
+        // reachable. bestSeen remembers the last strictly-improving state so
+        // filler points that never pay off are rolled back afterwards.
+        let allocation = {};
+        let working = cloneCandidate(best);
+        working.talentSpec = spec.key;
+        working.talentAllocation = allocation;
+        let workingScore = await score(working);
+        let bestSeen = { candidate: working, score: workingScore };
+        while (totalPointsSpent(allocation) < budget) {
+          let bestMove = null;
+          let bestMoveScore = workingScore;
+          let bestAny = null; // stepping-stone fallback: best move even if flat/worse
+          let bestAnyScore = -Infinity;
+          for (const talentId of legalTalentIncrements(tree, allocation)) {
             const next = cloneCandidate(working);
-            next.talentAllocation = moved;
+            next.talentAllocation = { ...allocation, [talentId]: (allocation[talentId] || 0) + 1 };
             const s = await score(next);
-            if (s > workingScore + EPS) {
-              working = next;
-              allocation = moved;
-              workingScore = s;
-              swapped = true;
-              break;
+            if (s > bestMoveScore + EPS) {
+              bestMoveScore = s;
+              bestMove = next;
+            }
+            if (s > bestAnyScore) {
+              bestAnyScore = s;
+              bestAny = next;
             }
           }
-          if (swapped) break;
+          if (bestMove) {
+            working = bestMove;
+            allocation = working.talentAllocation;
+            workingScore = bestMoveScore;
+            if (workingScore > bestSeen.score + EPS) bestSeen = { candidate: working, score: workingScore };
+            continue;
+          }
+          // Stuck. Park a filler point only while a locked tier still exists -
+          // otherwise there is nothing deeper to reach and we stop.
+          const anyLockedTier = tree.tiers.some((_, i) => !isTierUnlocked(tree, i, allocation));
+          if (!bestAny || !anyLockedTier) break;
+          working = bestAny;
+          allocation = working.talentAllocation;
+          workingScore = bestAnyScore;
         }
-      }
+        // Roll back trailing filler points that never unlocked a real gain.
+        if (bestSeen.score >= workingScore - EPS) {
+          working = bestSeen.candidate;
+          allocation = working.talentAllocation;
+          workingScore = bestSeen.score;
+        }
 
-      if (workingScore > bestScore + EPS) {
-        best = working;
-        bestScore = workingScore;
-        improvedInLoop = true;
+        // Swap pass: move single points between talents while it strictly helps.
+        let swapped = true;
+        let guard = 0;
+        while (swapped && guard < 50) {
+          swapped = false;
+          guard += 1;
+          for (const fromId of Object.keys(allocation)) {
+            for (const toId of legalTalentIncrements(tree, allocation)) {
+              if (toId === fromId) continue;
+              const moved = { ...allocation, [fromId]: allocation[fromId] - 1, [toId]: (allocation[toId] || 0) + 1 };
+              if (moved[fromId] === 0) delete moved[fromId];
+              if (!isAllocationLegal(tree, moved, budget)) continue;
+              const next = cloneCandidate(working);
+              next.talentAllocation = moved;
+              const s = await score(next);
+              if (s > workingScore + EPS) {
+                working = next;
+                allocation = moved;
+                workingScore = s;
+                swapped = true;
+                break;
+              }
+            }
+            if (swapped) break;
+          }
+        }
+
+        if (await adoptIfBetter(working, workingScore)) improvedInLoop = true;
       }
     }
 
@@ -553,104 +795,241 @@ export async function optimize({
     //    an EMPTY state every time. Budget = the Ichor refunded by resetting
     //    the current nodes + any extra the player entered - so even with 0
     //    extra, defensive detours get re-routed into the highest-DPS nodes. --
+    if (dims.transcendence) {
     report('transcendence');
     const tree = TRANSCENDENCE_TREES[character.class];
     const refundedIchor = tree ? totalIchorSpent(character.transcendence?.unlockedPositions || [], tree) : 0;
     const totalIchor = refundedIchor + ichorBudget;
     if (tree && totalIchor > 0) {
-      const unlocked = [];
-      let count = 0;
-      let remaining = totalIchor;
-      const plan = [];
-      let working = cloneCandidate(best);
-      working.transcendenceUnlocked = [];
-      let workingScore = await score(working);
+      const emptyBoard = cloneCandidate(best);
+      emptyBoard.transcendenceUnlocked = [];
+      const root = {
+        working: emptyBoard,
+        score: await score(emptyBoard),
+        unlocked: [],
+        count: 0,
+        remaining: totalIchor,
+        plan: [],
+      };
+      let beam = [root];
+      let bestState = root;
+      // Board signature -> highest remaining Ichor it was already kept with;
+      // the same board reached again with no more budget can't lead anywhere new.
+      const kept = new Map();
 
-      const isBuyable = (node) => node && (node.type === 'common' || node.type === 'uncommon');
-      const tryUnlockSequence = async (nodes) => {
-        // Total cost of unlocking `nodes` in order at the current tier count.
+      const tryUnlockSequence = async (state, nodes) => {
+        // Total cost of unlocking `nodes` in order at the state's tier count.
         let cost = 0;
         for (let i = 0; i < nodes.length; i++) {
-          cost += costForCount(count + 1 + i, nodes[i].type === 'uncommon');
+          cost += costForCount(state.count + 1 + i, nodes[i].type === 'uncommon');
         }
-        if (cost > remaining) return null;
-        const next = cloneCandidate(working);
-        next.transcendenceUnlocked = [...unlocked, ...nodes.map((n) => n.position)];
+        if (cost > state.remaining) return null;
+        const next = cloneCandidate(state.working);
+        next.transcendenceUnlocked = [...state.unlocked, ...nodes.map((n) => n.position)];
         const s = await score(next);
-        return { next, score: s, nodes, cost, gain: s - workingScore };
+        return { next, score: s, nodes, cost, gain: s - state.score };
       };
 
-      let bought = true;
-      while (bought) {
-        bought = false;
-        let bestBuy = null;
-        const track = (buy) => {
-          if (buy && buy.gain > EPS && (!bestBuy || buy.gain / buy.cost > bestBuy.gain / bestBuy.cost)) bestBuy = buy;
-        };
-        // Rank frontier nodes by DPS gain per Ichor (sigil/glyph nodes have
-        // no stats, so they never rank and are skipped outright).
-        for (const node of tree.nodes) {
-          if (!isBuyable(node) || !canUnlock(node.position, unlocked, tree)) continue;
-          const single = await tryUnlockSequence([node]);
-          if (single && single.gain > EPS) {
-            track(single);
-          } else if (single) {
-            // Zero-gain frontier node (e.g. the defensive start node): look
-            // one step ahead - buy it as a stepping stone if some node it
-            // exposes makes the PAIR worth its combined Ichor.
-            for (const neighbor of tree.nodes) {
-              if (!isBuyable(neighbor) || neighbor.position === node.position) continue;
-              if (unlocked.includes(neighbor.position)) continue;
-              if (!canUnlock(neighbor.position, [...unlocked, node.position], tree)) continue;
-              if (canUnlock(neighbor.position, unlocked, tree)) continue; // already reachable on its own
-              track(await tryUnlockSequence([node, neighbor]));
+      const childState = (state, buy) => {
+        const unlocked = [...state.unlocked];
+        const plan = [...state.plan];
+        let count = state.count;
+        let remaining = state.remaining;
+        for (const node of buy.nodes) {
+          const cost = costForCount(count + 1, node.type === 'uncommon');
+          unlocked.push(node.position);
+          count += 1;
+          remaining -= cost;
+          plan.push({
+            position: node.position,
+            statLine: node.stats.map((s) => `${s.statKey} +${s.value}`).join(', ') || 'no stats',
+            cost,
+            deltaScore: buy.gain / buy.nodes.length,
+          });
+        }
+        return { working: buy.next, score: buy.score, unlocked, count, remaining, plan };
+      };
+
+      while (beam.length > 0) {
+        const children = [];
+        for (const state of beam) {
+          const buys = [];
+          // Frontier singles first - cheap and almost always sufficient.
+          for (const node of tree.nodes) {
+            if (!isBuyableNode(node) || state.unlocked.includes(node.position)) continue;
+            if (!canUnlock(node.position, state.unlocked, tree)) continue;
+            const buy = await tryUnlockSequence(state, [node]);
+            if (buy && buy.gain > EPS) buys.push(buy);
+          }
+          // Only when NO frontier node gains on its own: corridor search. The
+          // cheapest path to every reachable locked node prices zero-gain
+          // corridors of ANY length at their true Ichor cost, so a payoff
+          // hiding behind them competes fairly (the old code looked exactly
+          // one stepping stone ahead). Kept as a fallback because it scores
+          // up to the whole locked board once - unaffordable paths bail on
+          // the cost check before scoring.
+          if (buys.length === 0) {
+            for (const { nodes } of cheapestUnlockPaths(tree, state.unlocked, state.count).values()) {
+              if (nodes.length < 2) continue; // frontier singles already scored
+              const buy = await tryUnlockSequence(state, nodes);
+              if (buy && buy.gain > EPS) buys.push(buy);
             }
           }
+          buys.sort((a, b) => b.gain / b.cost - a.gain / a.cost);
+          for (const buy of buys.slice(0, TRANSCENDENCE_BEAM_WIDTH)) children.push(childState(state, buy));
         }
-        if (bestBuy) {
-          working = bestBuy.next;
-          workingScore = bestBuy.score;
-          for (const node of bestBuy.nodes) {
-            const cost = costForCount(count + 1, node.type === 'uncommon');
-            unlocked.push(node.position);
-            count += 1;
-            remaining -= cost;
-            plan.push({
-              position: node.position,
-              statLine: node.stats.map((s) => `${s.statKey} +${s.value}`).join(', ') || 'no stats',
-              cost,
-              deltaScore: bestBuy.gain / bestBuy.nodes.length,
-            });
+        // Keep the top TRANSCENDENCE_BEAM_WIDTH distinct boards; the same
+        // board reached in a cheaper buy order wins on remaining Ichor.
+        const bySig = new Map();
+        for (const child of children) {
+          const sig = [...child.unlocked].sort().join('|');
+          if ((kept.get(sig) ?? -1) >= child.remaining) continue;
+          const prev = bySig.get(sig);
+          if (!prev || child.score > prev.score || (child.score === prev.score && child.remaining > prev.remaining)) {
+            bySig.set(sig, child);
           }
-          bought = true;
+        }
+        beam = [...bySig.values()]
+          .sort((a, b) => b.score - a.score || b.remaining - a.remaining)
+          .slice(0, TRANSCENDENCE_BEAM_WIDTH);
+        for (const state of beam) {
+          kept.set([...state.unlocked].sort().join('|'), state.remaining);
+          if (state.score > bestState.score) bestState = state;
         }
       }
 
       // Adopt the rebuild only if it strictly beats the incumbent (which
       // still carries the player's current unlocks) - an equal-score rebuild
       // means the current board is already optimal, so recommend nothing.
-      if (workingScore > bestScore + EPS) {
-        best = working;
-        bestScore = workingScore;
-        transcendencePlan = plan;
+      if (await adoptIfBetter(bestState.working, bestState.score)) {
+        transcendencePlan = bestState.plan;
         improvedInLoop = true;
       }
     }
+    }
+  }
+  } catch (err) {
+    if (err !== ABORTED) throw err;
+    aborted = true; // return best-so-far below
   }
 
   const { candidateCharacter, candidatePreset } = materializeCandidate(character, best);
   const bestTotals = computePresetTotals(candidateCharacter, candidatePreset);
 
+  // Per-change attribution: revert each changed dimension ALONE back to the
+  // current build and re-score (screen fidelity - cheap and cached). `solo`
+  // is what that one change contributes on top of the rest of the
+  // recommendation, in screen-score units.
+  const changes = diffCandidate(character, preset, best);
+  if (!aborted && changes.length > 0) {
+    const baselineCandidate = candidateFromCurrent(character, preset);
+    try {
+      for (const ch of changes) {
+        const revert = CHANGE_REVERTERS[ch.dimension];
+        if (!revert) continue;
+        const reverted = cloneCandidate(best);
+        revert(reverted, baselineCandidate);
+        ch.solo = bestScreen - (await score(reverted));
+      }
+    } catch (err) {
+      if (err !== ABORTED) throw err; // aborted mid-attribution: plain changes
+    }
+  }
+
   return {
     baseline: { score: baselineScore, totals: baselineTotals },
     best: { score: bestScore, totals: bestTotals, candidate: best },
     improvementPct: baselineScore > 0 ? (bestScore / baselineScore - 1) * 100 : 0,
-    changes: diffCandidate(character, preset, best),
+    changes,
+    // Runner-up builds (distinct from the winner), best-first, scored at the
+    // same fidelity as `best.score`.
+    topCandidates: leaderboard
+      .filter((e) => e.key !== candidateKey(best))
+      .slice(0, LEADERBOARD_SIZE - 1)
+      .map((e) => ({
+        score: e.score,
+        candidate: e.candidate,
+        improvementPct: baselineScore > 0 ? (e.score / baselineScore - 1) * 100 : 0,
+        changes: diffCandidate(character, preset, e.candidate),
+      })),
     transcendencePlan,
     ichorSpent: transcendencePlan.reduce((sum, u) => sum + u.cost, 0),
     evals,
     passes,
+    aborted,
     elapsedMs: Date.now() - startedAt,
+  };
+}
+
+/**
+ * How to undo ONE recommended change on a candidate, restoring that dimension
+ * to the player's current build - the attribution probe. Reverting `loadout`
+ * also restores that loadout's stones (they travel with the slot).
+ */
+const CHANGE_REVERTERS = {
+  loadout: (c, base) => {
+    c.preset.loadout = base.preset.loadout;
+    c.socketedStones = { ...base.socketedStones };
+  },
+  stones: (c, base) => {
+    c.socketedStones = { ...base.socketedStones };
+  },
+  talents: (c, base) => {
+    c.talentSpec = base.talentSpec;
+    c.talentAllocation = { ...base.talentAllocation };
+  },
+  pet: (c, base) => {
+    c.preset.petId = base.preset.petId;
+  },
+  relics: (c, base) => {
+    c.preset.relicIds = [...base.preset.relicIds];
+  },
+  sigils: (c, base) => {
+    c.preset.sigilIds = [...base.preset.sigilIds];
+  },
+  mount: (c, base) => {
+    c.preset.mountId = base.preset.mountId;
+  },
+  glyphs: (c, base) => {
+    c.glyphEquippedIds = [...base.glyphEquippedIds];
+  },
+  awakening: (c, base) => {
+    c.awakeningPath = base.awakeningPath;
+  },
+  transcendence: (c, base) => {
+    c.transcendenceUnlocked = [...base.transcendenceUnlocked];
+  },
+};
+
+// --- Verification -------------------------------------------------------------
+
+/**
+ * High-iteration verification pass for the UI (mirrors verifyPvpWinRates):
+ * re-simulates the CURRENT build (via resolveEffectiveTotals, the same
+ * numbers the Battle Simulation panel uses) and the RECOMMENDED candidate
+ * with a fresh shared seed at full fidelity. A search that picked its winner
+ * from low-iteration Monte Carlo scores is biased upward (winner's curse);
+ * this is the honest before/after the result card should display. Returns
+ * both runSimulation results.
+ */
+export function verifyDpsOutcome({
+  character,
+  preset,
+  candidate,
+  iterations = 5000,
+  durationSeconds = 60,
+  seed,
+  buildEffects,
+} = {}) {
+  const sharedSeed = (seed ?? Math.floor(Math.random() * 4294967296)) >>> 0;
+  const build =
+    buildEffects ?? ((char, pre) => [...DEFAULT_EFFECTS, ...buildSigilEffects(char, pre)]);
+  const simulate = (char, pre, stats) =>
+    runSimulation({ stats, iterations, durationSeconds, seed: sharedSeed, effects: build(char, pre) });
+  const { candidateCharacter, candidatePreset } = materializeCandidate(character, candidate);
+  return {
+    before: simulate(character, preset, resolveEffectiveTotals(character, preset)),
+    after: simulate(candidateCharacter, candidatePreset, computePresetTotals(candidateCharacter, candidatePreset)),
   };
 }
 
@@ -806,10 +1185,10 @@ export function diffCandidate(character, preset, candidate) {
     });
   }
 
-  if (candidate.mountActiveId !== current.mountActiveId) {
+  if (candidate.preset.mountId !== current.preset.mountId) {
     const mountName = (id) => (id ? (character.mounts?.entries || []).find((m) => m.id === id)?.name || 'Unknown mount' : 'No mount');
-    let from = mountName(current.mountActiveId);
-    let to = mountName(candidate.mountActiveId);
+    let from = mountName(current.preset.mountId);
+    let to = mountName(candidate.preset.mountId);
     if (from === to) {
       from += ' (current)';
       to += ' (recommended)';
@@ -819,7 +1198,12 @@ export function diffCandidate(character, preset, candidate) {
 
   const glyphLabel = (id) => {
     const g = (character.glyphs?.entries || []).find((e) => e.id === id);
-    return g ? `${g.tier} ${g.statKey} +${g.value}` : id;
+    if (!g) return id;
+    if (g.special) {
+      const special = SPECIAL_GLYPHS.find((s) => s.id === g.special);
+      return `${g.tier} ${special?.name ?? g.special} (special)`;
+    }
+    return `${g.tier} ${g.statKey} +${g.value}`;
   };
   const removedGlyphs = current.glyphEquippedIds.filter((id) => !candidate.glyphEquippedIds.includes(id));
   const addedGlyphs = candidate.glyphEquippedIds.filter((id) => !current.glyphEquippedIds.includes(id));

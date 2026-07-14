@@ -52,7 +52,7 @@ export const RELICS_BY_CLASS = {
       { statKey: 'hp_regen', min: 4.0, max: 12.0 },
       { statKey: 'block_chance', min: 6.0, max: 12.0 },
     ] },
-    { id: 'crimson-charm', name: 'Crimson Charm', tier: 'silver', maxLevel: 15, stats: [
+    { id: 'crimson-charm', name: 'Crimson Edge', tier: 'silver', maxLevel: 15, stats: [
       { statKey: 'attack_pct', min: 12.0, max: 28.0 },
       { statKey: 'penetration', min: 12.0, max: 24.0 },
     ] },

@@ -37,6 +37,10 @@
     return summarizeStats(pet.stats, STAT_FIELDS);
   }
 
+  function mountSummary(m) {
+    return `+${m.baseHpPct}% HP / +${m.baseAtkPct}% ATK`;
+  }
+
   function tierColorVar(tier) {
     return { gold: 'var(--tier-gold)', silver: 'var(--tier-silver)', bronze: 'var(--tier-bronze)' }[tier];
   }
@@ -158,6 +162,20 @@
             label={`${pet.name} (${pet.rarity}) — ${petSummary(pet)}`}
             selected={preset.petId === pet.id}
             onClick={() => rosterStore.setPresetPet(preset.id, pet.id)}
+          />
+        {/each}
+      </div>
+    </div>
+
+    <div class="field-group">
+      <span class="field-group-label micro-label"><span class="diamond" style="color: var(--nav-mounts)">◆</span> Mount</span>
+      <div class="chip-list">
+        <Chip label="None" selected={!preset.mountId} onClick={() => rosterStore.setPresetMount(preset.id, null)} />
+        {#each character.mounts.entries as mount (mount.id)}
+          <Chip
+            label={`${mount.name} (${mount.rarity}) — ${mountSummary(mount)}`}
+            selected={preset.mountId === mount.id}
+            onClick={() => rosterStore.setPresetMount(preset.id, mount.id)}
           />
         {/each}
       </div>

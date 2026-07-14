@@ -1,7 +1,7 @@
 /**
  * totals.js - the "Calculated" totals engine: sums base character stats +
  * a Preset's gear/socketed stones + its talent set + its pet + its equipped
- * relics + every character-wide source (Mounts, Glyphs, Awakening, Transcendence)
+ * relics + its ridden mount + every character-wide source (Glyphs, Awakening, Transcendence)
  * into one set of final display totals, for a Preset's Manual/Calculated
  * toggle.
  *
@@ -64,23 +64,19 @@ function accumulate(acc, contribution) {
   }
 }
 
-/** Pick which entries of a character-wide source's state contribute, per its `selection` mode. */
+/** Pick which entries of a character-wide source's state contribute, per its `selection` mode ('tiered' is the only mode left). */
 function selectedEntries(def, sourceState) {
   const entries = sourceState?.entries || [];
-  if (def.selection === 'single') {
-    const active = entries.find((e) => e.id === sourceState.activeId);
-    return active ? [active] : [];
-  }
   return entries.filter((e) => e.equipped); // 'tiered'
 }
 
-/** Mounts/Glyphs (the only sources still on the generic SOURCE_DEFS entries[]/selection sum): one entry -> an OffensiveStats-shaped contribution. */
+/** Glyphs (the only source still on the generic SOURCE_DEFS entries[]/selection sum): one entry -> an OffensiveStats-shaped contribution. */
 function entryToStats(sourceKey, entry) {
   switch (sourceKey) {
-    case 'mounts':
-      return offensiveStats({ health_pct: entry.baseHpPct, attack_pct: entry.baseAtkPct });
     case 'glyphs':
-      return offensiveStats({ [entry.statKey]: entry.value });
+      // Special glyphs (entry.special) modify a Sigil's simulated mechanic
+      // (sigilEffects.js), not the additive stat totals.
+      return entry.special ? offensiveStats() : offensiveStats({ [entry.statKey]: entry.value });
     default:
       return offensiveStats();
   }
@@ -143,6 +139,18 @@ function petContribution(character, preset) {
 }
 
 /**
+ * A preset's Mount contribution: the ridden mount (preset.mountId, a fixed
+ * MOUNT_DEFS catalogue id) contributes its character-wide entered base
+ * HP%/ATK%. Mirrors petContribution: stats entered once per character,
+ * selection made per preset.
+ */
+function mountContribution(character, preset) {
+  if (!preset.mountId) return null;
+  const mount = (character.mounts?.entries || []).find((m) => m.id === preset.mountId);
+  return mount ? offensiveStats({ health_pct: mount.baseHpPct, attack_pct: mount.baseAtkPct }) : null;
+}
+
+/**
  * A preset's Relic contribution: for each equipped relic (preset.relicIds,
  * up to PRESET_RELIC_CAP), each of its 1-2 fixed stats contributes the value
  * linearly interpolated between the relic's min (level 1) and max (its
@@ -174,9 +182,9 @@ function relicsContribution(character, preset) {
  * while equipped. The catalogue (sigilsData.js) only declares WHICH stats a
  * passive carries; the values come from the character's own entered numbers
  * (character.sigilValues, they scale with in-game sigil level), so a sigil
- * with no entered values contributes 0. Active effects deliberately do NOT
- * contribute here: they're time-dependent (duration/cooldown windows,
- * on-activation damage) and belong to the battle simulation
+ * with no entered values contributes 0. Active effects
+ * deliberately do NOT contribute here: they're time-dependent (duration/
+ * cooldown windows, on-activation damage) and belong to the battle simulation
  * (sigilEffects.js), not a steady-state stat sum.
  */
 function sigilsContribution(character, preset) {
@@ -268,7 +276,8 @@ function socketedStoneStats(character, loadout, slot) {
 /**
  * Sum base + a preset's loadout gear/socketed stones + its talent set + its
  * pet + its equipped relics + its equipped sigils' passives + every character-wide source (Awakening,
- * Transcendence, Mounts, Glyphs) into one set of final totals for `preset`.
+ * Transcendence, Glyphs) plus the preset's ridden mount into one set of final
+ * totals for `preset`.
  * `talentTrees` defaults to the static tree content (talentTreeData.js); the
  * param exists mainly so tests can substitute fixtures.
  */
@@ -286,6 +295,7 @@ export function computePresetTotals(character, preset, talentTrees = TALENT_TREE
   accumulate(acc, relicsContribution(character, preset));
   accumulate(acc, sigilsContribution(character, preset));
   accumulate(acc, petContribution(character, preset));
+  accumulate(acc, mountContribution(character, preset));
   accumulate(acc, fortressBuffsContribution(preset));
 
   for (const def of SOURCE_DEFS) {

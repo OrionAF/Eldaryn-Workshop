@@ -73,6 +73,9 @@
   --nav-simulation: #4fe3c1;
   --nav-simulation-light: #a4f1de;
   --nav-simulation-tint: rgba(79, 227, 193, 0.1);
+  --nav-pvp: #ff5c5c;
+  --nav-pvp-light: #ffa3a3;
+  --nav-pvp-tint: rgba(255, 92, 92, 0.1);
   --nav-mounts: #67c26b;
   --nav-mounts-light: #a8e0ab;
   --nav-mounts-tint: rgba(103, 194, 107, 0.1);
