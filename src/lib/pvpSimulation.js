@@ -1,4 +1,4 @@
-/**
+﻿/**
  * pvpSimulation.js - Monte Carlo two-sided PVP duel simulator.
  *
  * Where simulation.js plays a one-sided fight against a target dummy, this
@@ -6,89 +6,56 @@
  * HP pool, swing on their own Speed schedule, and the fight ends at death or
  * `durationSeconds` (60s). Repeated runs give a win/draw distribution.
  *
- * THE COMBAT MODEL (confirmed mechanics - see CONTEXT.md + plan)
- * --------------------------------------------------------------
- * Per hit from attacker X against defender Y, resolved in this order:
- *   1. X paralyzed        -> the swing is skipped entirely (no attacks at all)
- *   2. X blinded          -> consume one blind stack, the whole swing deals 0
- *   3. Y Miss Chance roll -> full dodge, NOTHING pierces it
- *   4. Y Block Chance roll-> only X's Penetration % of the PRE-CRIT base goes through
- *   5. crit roll (main hit only; the double-hit extra strike cannot crit)
- *   6. PVP damage chain:
- *        dmg x (1 - Y.dmg_reduction%)
- *            x (1 + pvpEffect(X.pvp_attack)%)
- *            x (1 - pvpEffect(Y.pvp_defense)%)
- *      where pvpEffect(r) = r / (r + 200) * 100 (diminishing returns, dps.js)
- *   7. on a LANDED hit (damage > 0): X rolls Blind Chance (zeroes Y's next
- *      swing; stacks as a counter) and Paralyze Chance (stuns Y for 2s;
- *      re-proc refreshes), X heals Lifesteal % of damage dealt, and on-hit
- *      sigil marks (sunder/siegebreaker) apply.
+ * ┌──────────────────────────────────────────────────────────────────────┐
+ * │ THE MODEL THIS IMPLEMENTS IS docs/Reference/combat-model.md §6.       │
+ * │ That document owns the per-hit resolution order, the PVP damage       │
+ * │ chain, the 8x HP pool and its healing rule, the percentage-based      │
+ * │ timeout, the over-cap rule, the PVP-only sigil mechanics, and every   │
+ * │ documented assumption - each with a provenance tag. Do not restate    │
+ * │ any of it here; if the two disagree, the document wins.               │
+ * └──────────────────────────────────────────────────────────────────────┘
  *
- * Healing: HP Regen ticks every second (maxHp x hp_regen%/s, matching
- * computeHps's health x regen%), Lifesteal heals on damage dealt; both clamp
- * at max HP. A 1x/2x/3x health multiplier models the PVP modes that double/
- * triple both fighters' HP.
+ * WHAT THIS FILE ADDS BEYOND THE MODEL - the engine mechanics:
  *
- * SIGILS AND THE OVER-CAP RULE: base `stats` are the final CAPPED totals
- * (opponent input is capped by buildPvpSide), but sigil active buffs are
- * timed additive layers ON TOP of the capped value and may exceed the cap
- * for their duration - e.g. Miss 70% + a 20% sigil buff = 90% while it lasts.
- * Stat reads therefore go through statNow(), never the raw stats object.
- * Enemy strips (negative layers) floor at 0.
+ * TICK ARITHMETIC. All times INSIDE the engine are integer ticks; everything
+ * REPORTED (endTime, trace timestamps) converts back to seconds (tick / 400).
+ * A fighter swings every round(40000 / Speed) ticks, re-reading Speed after
+ * every swing so timed buffs shift the next interval; both fighters' first
+ * swing is on tick 1. Rounding to whole ticks costs at most +-1.25ms per
+ * swing (~0.02% on attack rate), far below Monte Carlo noise at 1000 runs.
+ * TICKS_PER_SEC itself is documented in combat-model.md §5.
  *
- * Both sides' active sigils auto-fire on cooldown (same activation model as
- * sigilEffects.js; in-game activation conditions are not visible for an
- * opponent, so both sides are assumed to activate as early as possible).
- * PURE SELF-BUFF sigils fire at t=0; ENEMY-TARGETING sigils (anything with
- * activation damage, a tick mechanic, or an enemy debuff like withering-
- * touch/thunderbind) don't trigger until one second of combat has passed
- * (the in-game 59s mark), so they first fire at t=1. Sigil activation
- * damage is "pure": it skips miss/block/blind/crit but is still subject to
- * the PVP damage chain (step 6).
+ * STAT READS GO THROUGH statNow(), NEVER `stats` DIRECTLY. Sigil buffs are
+ * timed additive layers on top of the already-capped base and may exceed the
+ * cap while they last, so a raw read silently loses them (combat-model.md §6,
+ * "over-cap rule"). Enemy strips (negative layers) floor at 0.
  *
- * PVP-ONLY SIGIL MECHANICS: the PVE registry (SIGIL_MECHANICS) marks the
- * enemy-targeting legendaries 'unsupported' because a target dummy has no
- * defenses and never attacks. A real opponent fixes that, so
- * PVP_SIGIL_MECHANICS overrides them here with the numbers from their
- * in-game tooltips (sigilsData.js notes):
- *   sunder-mark / siegebreaker-mark  on-hit marks (max 8) stripping enemy
- *                                    defensive stats 4%/stack (3% HP Regen
- *                                    for siegebreaker), shedding 1.75/s
- *   bulwark-of-thorns                stacks from blocked hits (max 8):
- *                                    +4% Health%, +2% DMG Reduction, +4%
- *                                    Thorns reflect; unblocked hit burns 2
- *   elusive-supremacy                stacks from dodged/blind-fizzled hits
- *                                    (max 8): +3% Attack%, +3% Crit, +3%
- *                                    Lifesteal, +3% Speed; hit burns 2
- *   withering-touch                  nuke + enemy HP Regen -X% for 8s, X is
- *                                    the entered regenDebuffPct (level-
- *                                    scaled); multiplicative on their regen tick
- *   thunderbind                      nuke + paralyzes the enemy for 2s
+ * SIMULTANEITY. Events sharing a tick drain as ONE batch, so a fighter killed
+ * on tick t still lands their own already-due attack at t - that is how the
+ * mutual-kill outcome arises. Death is sticky: a regen or lifesteal heal in
+ * the same batch cannot revive a fighter.
  *
- * SIMULTANEITY AND MUTUAL KILLS: events sharing a timestamp resolve as one
- * batch - a fighter killed at time t still lands their own already-due
- * attack at t. If BOTH fighters are dead once the batch drains, the duel is
- * a MUTUAL KILL, which the game counts as a LOSS for the player (both drop
- * to 0 HP and the arena shows "Defeated" - see docs/IMG_7384.png), so
- * winner = 'opponent' with `mutualKill: true`. Death is sticky: a regen/
- * lifesteal heal in the same batch cannot revive a fighter.
- *
- * ASSUMPTIONS (flagged in the plan; each is one constant/branch to change):
- *  - Blind stacks as a counter; procs roll only on hits that landed
- *    (a blocked-to-zero or dodged hit procs nothing).
- *  - A blocked hit with Penetration > 0 still counts as "landed" for procs,
- *    and still counts as BLOCKED for bulwark stacks / not burning stacks.
- *  - Survive 60s -> higher remaining HP %; equal -> draw.
- *  - The multiplier scales both max HP and the regen tick base.
+ * ACTIVATION SCHEDULE. Pure self-buff sigils fire on tick 1, inserted before
+ * that tick's swings so the buff covers the very first hit; enemy-targeting
+ * sigils wait out the 1s trigger delay and first fire on tick 400.
  */
 
-import { pvpEffect } from './dps.js';
+import { pvpEffect, buffedAttack } from './dps.js';
 import { STAT_FIELDS } from './constants.js';
 import { SIGIL_MECHANICS, DAMAGE_KINDS, SIGIL_FIRST_HIT_DELAY_SEC, sigilDefById, applySpecialGlyphsToMech } from './sigilEffects.js';
-import { mulberry32 } from './simulation.js';
+import { mulberry32, TICKS_PER_SEC, secToTicks } from './simulation.js';
 
-const TIME_EPS = 1e-9;
+export { TICKS_PER_SEC };
+
+/**
+ * Every fighter's HP pool in Arena and Clan War, as a multiple of their
+ * Health stat (Jul 2026 patch; one multiplier for everyone, no level
+ * breakpoint). Healing is deliberately NOT multiplied - see the header.
+ */
+export const PVP_HEALTH_MULTIPLIER = 8;
+
 const PARALYZE_SECONDS = 2;
+const PARALYZE_TICKS = secToTicks(PARALYZE_SECONDS);
 
 /** Decorrelated per-iteration seed (same scheme as simulation.js). */
 function iterationSeed(baseSeed, iteration) {
@@ -170,7 +137,13 @@ export function resolvePvpSigils(characterClass, sigilIds, sigilValues, specialG
   return resolved;
 }
 
-/** Clamp a manually-entered stat record to the game's hard caps. */
+/**
+ * Clamp a stat record to the game's hard caps. Inputs here are always
+ * EFFECTIVE (post-soft-cap-curve) values - the player's from
+ * resolveEffectiveTotals, the opponent's typed off their stat sheet - so
+ * only impossible over-hard-cap entries are corrected; the curve itself is
+ * never (re-)applied (it isn't idempotent, see statCaps.js).
+ */
 export function capStats(stats) {
   const capped = { ...stats };
   for (const f of STAT_FIELDS) {
@@ -210,6 +183,9 @@ function makeFighter(side, healthMultiplier) {
     stats: side.stats,
     sigils: side.sigils,
     maxHp,
+    // Healing is sized off the ORIGINAL pool, so the regen tick divides the
+    // multiplier back out (header: the pool grows, the healing does not).
+    healthMultiplier: Math.max(1e-9, healthMultiplier),
     hp: maxHp,
     dead: false, // sticky - same-batch heals cannot revive
     bonusMaxHp: 0, // from timed health_pct layers (bulwark stacks)
@@ -217,6 +193,15 @@ function makeFighter(side, healthMultiplier) {
     paralyzedUntil: -1,
     regenFactor: 1, // withering-touch debuff multiplies this down
     regenDebuffUntil: -1,
+    // Per-tick regen heal cache: recomputed only when a layer/mark/stack
+    // mutates (invalidateStats) or a timed boundary (layer expiry, the
+    // withering-touch window edge) passes - the common quiet tick is a
+    // couple of float ops instead of a statNow rebuild.
+    regenPerTick: 0,
+    regenMaxHp: 0,
+    regenDirty: true,
+    regenValidUntil: -1,
+    traceRegenAccum: 0, // regen healed since the last whole-second trace event
     layers: [], // timed stat layers: { stats: {key: value}, until } (negative = strip)
     marks: new Map(), // sigilId -> { stacks, mech } for on-hit-marks ON THIS FIGHTER
     hitStacks: new Map(), // sigilId -> { stacks, mech } for hit-stacks owned by this fighter
@@ -231,20 +216,21 @@ function makeFighter(side, healthMultiplier) {
   };
 }
 
-/** Drop the statNow memo after any layer/mark/stack mutation. */
+/** Drop the statNow memo + regen cache after any layer/mark/stack mutation. */
 function invalidateStats(f) {
   f.statCacheTime = -1;
+  f.regenDirty = true;
 }
 
-/** Current effective value of a stat: capped base + timed layers + stacks (floor 0 for chances). */
+/** Current effective value of a stat at tick `time`: capped base + timed layers + stacks (floor 0 for chances). */
 function statNow(f, key, time) {
   if (f.statCacheTime !== time) {
     f.statCacheTime = time;
     f.statCache.clear();
     // Expired layers can never contribute again - prune so the scan below
     // stays short even when buff sigils re-activate all fight.
-    if (f.layers.length > 0 && f.layers.some((l) => time >= l.until - TIME_EPS)) {
-      f.layers = f.layers.filter((l) => time < l.until - TIME_EPS);
+    if (f.layers.length > 0 && f.layers.some((l) => time >= l.until)) {
+      f.layers = f.layers.filter((l) => time < l.until);
     }
   } else {
     const cached = f.statCache.get(key);
@@ -252,7 +238,7 @@ function statNow(f, key, time) {
   }
   let v = Number(f.stats[key]) || 0;
   for (const layer of f.layers) {
-    if (time < layer.until - TIME_EPS) v += layer.stats[key] || 0;
+    if (time < layer.until) v += layer.stats[key] || 0;
   }
   for (const { stacks, mech } of f.marks.values()) v -= stacks * (mech.perStack[key] || 0);
   for (const { stacks, mech } of f.hitStacks.values()) v += stacks * (mech.perStack[key] || 0);
@@ -274,10 +260,12 @@ function maxHpNow(f, time) {
 }
 
 /**
- * Play one duel. Returns winner ('player' | 'opponent' | 'draw'), end time,
- * per-side HP remaining + counters.
+ * Play one duel. Returns winner ('player' | 'opponent' | 'draw'), end time
+ * (in seconds), per-side HP remaining + counters. Internally the fight runs
+ * on the integer tick clock (400/s, see header).
  */
-export function runPvpSingle(playerSide, opponentSide, { durationSeconds = 60, healthMultiplier = 1, rng, trace = null } = {}) {
+export function runPvpSingle(playerSide, opponentSide, { durationSeconds = 60, healthMultiplier = PVP_HEALTH_MULTIPLIER, rng, trace = null } = {}) {
+  const durationTicks = secToTicks(durationSeconds);
   const heap = [];
   let seq = 0;
   const schedule = (time, fn) => {
@@ -317,15 +305,16 @@ export function runPvpSingle(playerSide, opponentSide, { durationSeconds = 60, h
   player.role = 'player';
   opponent.role = 'opponent';
 
-  // Optional combat log. Every call sits behind `trace &&` so an untraced run
-  // allocates nothing and, critically, never touches the rng - a traced fight
-  // is bit-identical to the same seed's untraced one.
-  const traceEv = trace ? (side, kind, extra) => trace.push({ t: time, side: side.role, kind, ...extra }) : null;
+  // Optional combat log (timestamps in seconds for the UI). Every call sits
+  // behind `trace &&` so an untraced run allocates nothing and, critically,
+  // never touches the rng - a traced fight is bit-identical to the same
+  // seed's untraced one.
+  const traceEv = trace ? (side, kind, extra) => trace.push({ t: time / TICKS_PER_SEC, side: side.role, kind, ...extra }) : null;
 
-  let time = 0;
+  let time = 0; // current tick
   let ended = false;
   let winner = null;
-  let endTime = durationSeconds;
+  let endTick = durationTicks;
   let mutualKill = false;
 
   const heal = (f, amount) => {
@@ -371,7 +360,7 @@ export function runPvpSingle(playerSide, opponentSide, { durationSeconds = 60, h
       traceEv && traceEv(attacker, 'blind', {});
     }
     if (rng() < statNow(attacker, 'paralyze_chance', time) / 100) {
-      defender.paralyzedUntil = Math.max(defender.paralyzedUntil, time + PARALYZE_SECONDS);
+      defender.paralyzedUntil = Math.max(defender.paralyzedUntil, time + PARALYZE_TICKS);
       attacker.counters.paralyzesInflicted += 1;
       traceEv && traceEv(attacker, 'paralyze', {});
     }
@@ -429,30 +418,36 @@ export function runPvpSingle(playerSide, opponentSide, { durationSeconds = 60, h
       traceEv && traceEv(defender, 'dodge', { tag });
       return;
     }
-    // Buffed base damage: (attack + flat layer) x (1 + attack_pct layer),
-    // mirroring sigilEffects.makeSigilEffect's swing math.
-    const flat = statNow(attacker, 'attack', time);
-    const pct = statNow(attacker, 'attack_pct', time) - (Number(attacker.stats.attack_pct) || 0);
-    const base = flat * (1 + Math.max(0, pct) / 100);
+    // Buffed base damage. Attack % from buffs/stacks is ADDITIVE into the
+    // build's own Attack % total, so this decomposes to the flat pool and
+    // recombines rather than scaling the displayed number - see dps.js
+    // buffedAttack (audit F3). `flatAdd` is any timed FLAT attack layer, which
+    // joins the flat pool before the percentage applies.
+    const basePct = Number(attacker.stats.attack_pct) || 0;
+    const flatAdd = statNow(attacker, 'attack', time) - (Number(attacker.stats.attack) || 0);
+    const pctAdd = statNow(attacker, 'attack_pct', time) - basePct;
+    const base = buffedAttack(attacker.stats.attack, basePct, flatAdd, Math.max(0, pctAdd));
 
     const blocked = rng() < statNow(defender, 'block_chance', time) / 100;
-    let dmg;
+    let dmg = base;
     let isCrit = false;
     if (blocked) {
       attacker.counters.blockedByEnemy += 1;
       gainHitStack(defender, 'block');
-      dmg = base * (statNow(attacker, 'penetration', time) / 100); // pre-crit base pierces
+      dmg = base * (statNow(attacker, 'penetration', time) / 100);
       if (dmg <= 0) {
         traceEv && traceEv(defender, 'block', { tag, amount: 0 });
         return; // blocked to zero: no procs
       }
-    } else {
-      dmg = base;
-      if (canCrit && rng() < statNow(attacker, 'crit', time) / 100) {
-        dmg *= statNow(attacker, 'crit_mult', time) / 100;
-        attacker.counters.crits += 1;
-        isCrit = true;
-      }
+    }
+    // Penetration Rework: what slips through a block CAN now crit, so the crit
+    // roll happens on whatever got through - blocked or not. Previously the
+    // pierced portion skipped this branch entirely, which is what made
+    // penetration near-useless against real block builds.
+    if (canCrit && rng() < statNow(attacker, 'crit', time) / 100) {
+      dmg *= statNow(attacker, 'crit_mult', time) / 100;
+      attacker.counters.crits += 1;
+      isCrit = true;
     }
     const final = pvpChain(attacker, defender, dmg);
     attacker.counters.hits += 1;
@@ -461,11 +456,14 @@ export function runPvpSingle(playerSide, opponentSide, { durationSeconds = 60, h
   };
 
   const speedNow = (f) => Math.max(100, statNow(f, 'speed', time));
+  // Swing interval in ticks: 40000 / speed (speed 100 -> 400 ticks = 1/s,
+  // speed 400 -> 100 ticks = 4/s), re-read after every swing.
+  const swingIntervalTicks = (f) => Math.max(1, Math.round(40000 / speedNow(f)));
 
-  const scheduleSwing = (f, atTime) => {
-    schedule(atTime, () => {
+  const scheduleSwing = (f, atTick) => {
+    schedule(atTick, () => {
       if (ended) return;
-      if (time < f.paralyzedUntil - TIME_EPS) {
+      if (time < f.paralyzedUntil) {
         f.counters.paralyzedSwings += 1;
         traceEv && traceEv(f, 'paralyzed-swing', {});
       } else if (f.blindStacks > 0) {
@@ -481,23 +479,30 @@ export function runPvpSingle(playerSide, opponentSide, { durationSeconds = 60, h
           resolveHit(f, f.enemy, { canCrit: false, tag: 'double_hit' });
         }
       }
-      scheduleSwing(f, time + 100 / speedNow(f));
+      scheduleSwing(f, time + swingIntervalTicks(f));
     });
   };
 
   // Sigil activations: firstAt, firstAt+cd, ... (cooldown starts at
-  // activation). Enemy-targeting sigils first fire at 1s, buffs at t=0.
+  // activation). Enemy-targeting sigils first fire on tick 400 (1s), buffs
+  // on tick 1 (before that tick's swings - insertion order breaks the tie).
   const scheduleSigils = (f) => {
     for (const { def, mech } of f.sigils) {
-      const cd = Number(def.active.cooldownSec) || 0;
-      const duration = Number(def.active.durationSec) || 0;
+      const cd = secToTicks(Number(def.active.cooldownSec) || 0);
+      const duration = secToTicks(Number(def.active.durationSec) || 0);
       const damage = Number(def.active.damage) || 0;
       const tag = `sigil_${def.id}`;
       if (mech.kind === 'on-hit-marks' || mech.kind === 'hit-stacks') continue; // passive-in-combat, no schedule
       if (cd <= 0) continue;
 
+      // Sigil damage is SPELL damage: the caster's Spell Damage boosts it,
+      // the target's Spell Resist softens it (both via statNow, so timed
+      // buff layers apply), then the step-6 chain runs as for any damage.
       const pureDamage = (amount) => {
-        if (amount > 0 && !ended) dealDamage(f, f.enemy, pvpChain(f, f.enemy, amount), tag);
+        if (amount <= 0 || ended) return;
+        const boosted = amount * (1 + statNow(f, 'spell_damage', time) / 100);
+        const resist = Math.min(100, statNow(f.enemy, 'spell_resist', time));
+        dealDamage(f, f.enemy, pvpChain(f, f.enemy, boosted * (1 - resist / 100)), tag);
       };
       const state = { tickerStarted: false, stacks: 0 };
 
@@ -507,16 +512,16 @@ export function runPvpSingle(playerSide, opponentSide, { durationSeconds = 60, h
         traceEv && traceEv(f, 'sigil', { name: def.name });
         switch (mech.kind) {
           case 'tick-train': {
-            const interval = mech.tickIntervalSec || 1;
-            for (let t = interval; t <= duration + TIME_EPS; t += interval) {
+            const interval = secToTicks(mech.tickIntervalSec || 1);
+            for (let t = interval; t <= duration; t += interval) {
               schedule(now + t, () => pureDamage(damage));
             }
             break;
           }
           case 'dot': {
             pureDamage(damage);
-            const interval = mech.tickIntervalSec || 1;
-            for (let t = interval; t <= duration + TIME_EPS; t += interval) {
+            const interval = secToTicks(mech.tickIntervalSec || 1);
+            for (let t = interval; t <= duration; t += interval) {
               schedule(now + t, () => pureDamage(mech.tickDamage || 0));
             }
             break;
@@ -526,7 +531,7 @@ export function runPvpSingle(playerSide, opponentSide, { durationSeconds = 60, h
             state.stacks = Math.min(state.stacks + 1, mech.maxStacks || 8);
             if (!state.tickerStarted) {
               state.tickerStarted = true;
-              const interval = mech.tickIntervalSec || 1;
+              const interval = secToTicks(mech.tickIntervalSec || 1);
               const tick = () => {
                 pureDamage(state.stacks * (mech.tickDamage || 0));
                 schedule(time + interval, tick);
@@ -539,10 +544,11 @@ export function runPvpSingle(playerSide, opponentSide, { durationSeconds = 60, h
             pureDamage(damage);
             if (mech.regenDebuffPct) {
               f.enemy.regenFactor = 1 - mech.regenDebuffPct / 100;
-              f.enemy.regenDebuffUntil = now + (mech.debuffDurationSec || duration);
+              f.enemy.regenDebuffUntil = now + (mech.debuffDurationSec ? secToTicks(mech.debuffDurationSec) : duration);
+              f.enemy.regenDirty = true;
             }
             if (mech.paralyzeSec) {
-              f.enemy.paralyzedUntil = Math.max(f.enemy.paralyzedUntil, now + mech.paralyzeSec);
+              f.enemy.paralyzedUntil = Math.max(f.enemy.paralyzedUntil, now + secToTicks(mech.paralyzeSec));
               f.counters.paralyzesInflicted += 1;
             }
             break;
@@ -558,77 +564,104 @@ export function runPvpSingle(playerSide, opponentSide, { durationSeconds = 60, h
       };
       // Enemy-targeting activations (damage, tick mechanics, or debuffs like
       // withering-touch/thunderbind) wait out the in-game 1s trigger delay;
-      // pure self-buffs fire at t=0.
+      // pure self-buffs fire on tick 1.
       const targetsEnemy =
         DAMAGE_KINDS.has(mech.kind) || damage > 0 || mech.regenDebuffPct || mech.paralyzeSec;
-      schedule(targetsEnemy ? SIGIL_FIRST_HIT_DELAY_SEC : 0, activate);
+      schedule(targetsEnemy ? secToTicks(SIGIL_FIRST_HIT_DELAY_SEC) : 1, activate);
     }
   };
 
-  // Per-second housekeeping: HP regen tick + mark shedding.
-  const scheduleTicks = (f) => {
-    const tick = (n) => {
-      schedule(n, () => {
-        if (ended) return;
-        const regenFactor = time < f.regenDebuffUntil - TIME_EPS ? f.regenFactor : 1;
-        // A shrunken max HP (expired health_pct layer / burned bulwark
-        // stacks) clamps current HP before the regen heal.
-        const cap = maxHpNow(f, time);
-        if (f.hp > cap) f.hp = cap;
-        heal(f, cap * (statNow(f, 'hp_regen', time) / 100) * regenFactor);
-        for (const mark of f.marks.values()) {
-          if (mark.stacks > 0) {
-            mark.stacks = Math.max(0, mark.stacks - (mark.mech.shedPerSec || 0));
-            invalidateStats(f);
-          }
-        }
-        tick(n + 1);
-      });
-    };
-    tick(1);
+  // Per-tick housekeeping: gradual HP regen + mark shedding. The per-tick
+  // regen amount is cached and recomputed only when invalidateStats fired
+  // (layer/mark/stack mutation, debuff application) or a timed boundary
+  // passes (earliest layer expiry, the withering-touch window edge) - a
+  // quiet tick costs a couple of float ops, no statNow rebuild.
+  const housekeep = (f) => {
+    if (f.regenDirty || time >= f.regenValidUntil) {
+      let until = Infinity;
+      for (const l of f.layers) if (l.until > time && l.until < until) until = l.until;
+      if (f.regenDebuffUntil > time && f.regenDebuffUntil < until) until = f.regenDebuffUntil;
+      const factor = time < f.regenDebuffUntil ? f.regenFactor : 1;
+      f.regenMaxHp = maxHpNow(f, time);
+      // The heal is a share of the ORIGINAL max HP (regenMaxHp is the
+      // multiplied pool, and stays the clamp cap below); health_pct buffs
+      // raise both pools, so dividing the multiplier back out is exact.
+      const healingMaxHp = f.regenMaxHp / f.healthMultiplier;
+      f.regenPerTick = healingMaxHp * (statNow(f, 'hp_regen', time) / 100 / TICKS_PER_SEC) * factor;
+      f.regenValidUntil = until;
+      f.regenDirty = false;
+    }
+    // A shrunken max HP (expired health_pct layer / burned bulwark stacks)
+    // clamps current HP before the regen heal.
+    if (f.hp > f.regenMaxHp) f.hp = f.regenMaxHp;
+    if (f.regenPerTick > 0 && !f.dead) {
+      const applied = Math.min(f.regenPerTick, f.regenMaxHp - f.hp);
+      if (applied > 0) {
+        f.hp += applied;
+        f.counters.healed += applied;
+        if (trace) f.traceRegenAccum += applied;
+      }
+    }
+    // The trace logs regen once per whole second (24k per-tick lines would
+    // drown the combat log), as one aggregated heal event.
+    if (trace && time % TICKS_PER_SEC === 0 && f.traceRegenAccum > 0) {
+      traceEv(f, 'heal', { amount: f.traceRegenAccum, hp: f.hp });
+      f.traceRegenAccum = 0;
+    }
+    for (const mark of f.marks.values()) {
+      if (mark.stacks > 0) {
+        mark.stacks = Math.max(0, mark.stacks - (mark.mech.shedPerSec || 0) / TICKS_PER_SEC);
+        invalidateStats(f);
+      }
+    }
   };
 
-  // Both sides' sigils activate at fight start BEFORE anyone swings (heap
-  // ties break by insertion order), so a t=0 buff covers the very first hit.
+  // Both sides' sigils are scheduled BEFORE anyone's swings (heap ties break
+  // by insertion order), so a tick-1 buff covers the very first hit.
   for (const f of [player, opponent]) scheduleSigils(f);
-  for (const f of [player, opponent]) {
-    scheduleSwing(f, 0);
-    scheduleTicks(f);
-  }
+  for (const f of [player, opponent]) scheduleSwing(f, 1);
 
-  // Drain events in same-timestamp batches: attacks that are due at the same
-  // moment all land, even if the first one is lethal - that's how the game
-  // produces the both-die "Defeated" outcome (see header).
-  while (!ended && heap.length > 0 && heap[0].time < durationSeconds - TIME_EPS) {
-    const batchTime = heap[0].time;
-    while (heap.length > 0 && heap[0].time <= batchTime + TIME_EPS) {
-      const event = pop();
-      time = event.time;
-      event.fn();
+  // The tick loop. Combat runs on ticks 1 .. durationTicks-1; the horizon
+  // tick itself only evaluates the survival winner (matching the old
+  // strictly-before-the-horizon rule). Within a tick, this tick's due events
+  // drain as ONE batch: attacks due on the same tick all land even if the
+  // first one is lethal - that's how the game produces the both-die
+  // "Defeated" outcome (header). Housekeeping (regen/shedding) runs after
+  // the batch, and never for a fighter who died this tick (death is sticky).
+  for (let tick = 1; tick < durationTicks && !ended; tick++) {
+    time = tick;
+    while (heap.length > 0 && heap[0].time <= tick) {
+      pop().fn();
     }
     if (player.dead || opponent.dead) {
       ended = true;
-      endTime = time;
+      endTick = tick;
       mutualKill = player.dead && opponent.dead;
       // A mutual kill counts as a LOSS for the player, per the game's rules.
       winner = player.dead ? 'opponent' : 'player';
+      break;
     }
+    housekeep(player);
+    housekeep(opponent);
   }
 
   if (!ended) {
-    const ratio = (f) => {
-      const cap = maxHpNow(f, durationSeconds);
-      return Math.min(f.hp, cap) / cap;
+    time = durationTicks;
+    // Survival winner: since the Jul 2026 patch the game compares remaining
+    // HP PERCENTAGE, not the raw number - 90% of a small pool now beats 10%
+    // of a huge one.
+    const hpPctNow = (f) => {
+      const cap = maxHpNow(f, time);
+      return cap > 0 ? Math.min(f.hp, cap) / cap : 0;
     };
-    const pRatio = ratio(player);
-    const oRatio = ratio(opponent);
-    winner = pRatio > oRatio ? 'player' : oRatio > pRatio ? 'opponent' : 'draw';
-    endTime = durationSeconds;
-    time = durationSeconds;
+    const pPct = hpPctNow(player);
+    const oPct = hpPctNow(opponent);
+    winner = pPct > oPct ? 'player' : oPct > pPct ? 'opponent' : 'draw';
+    endTick = durationTicks;
   }
 
   const sideResult = (f) => {
-    const cap = maxHpNow(f, endTime);
+    const cap = maxHpNow(f, endTick);
     const hp = Math.min(f.hp, cap); // buffed-then-expired max HP can't leave hp above cap
     return {
       hpRemaining: hp,
@@ -640,8 +673,8 @@ export function runPvpSingle(playerSide, opponentSide, { durationSeconds = 60, h
 
   return {
     winner,
-    endTime,
-    diedEarly: endTime < durationSeconds - TIME_EPS,
+    endTime: endTick / TICKS_PER_SEC,
+    diedEarly: endTick < durationTicks,
     mutualKill,
     player: sideResult(player),
     opponent: sideResult(opponent),
@@ -691,7 +724,7 @@ export function runPvpSimulation({
   player,
   opponent,
   durationSeconds = 60,
-  healthMultiplier = 1,
+  healthMultiplier = PVP_HEALTH_MULTIPLIER,
   iterations = 1000,
   seed,
 } = {}) {
@@ -768,7 +801,7 @@ export function runPvpSimulation({
  * same seed, so the traced fight is literally duel #1 of that batch. Tracing
  * never touches the rng, so the outcome is identical with or without it.
  */
-export function runTracedDuel({ player, opponent, durationSeconds = 60, healthMultiplier = 1, seed } = {}) {
+export function runTracedDuel({ player, opponent, durationSeconds = 60, healthMultiplier = PVP_HEALTH_MULTIPLIER, seed } = {}) {
   const baseSeed = (seed ?? Math.floor(Math.random() * 4294967296)) >>> 0;
   const rng = mulberry32(iterationSeed(baseSeed, 0));
   const trace = [];

@@ -1,12 +1,12 @@
 import { it, expect } from 'vitest';
-import { newRoster, newCharacter, newLoadout, newPreset, newStoneEntry, talentSetLabel, normaliseRoster } from './model.js';
+import { newRoster, newCharacter, newLoadout, newPreset, newStoneEntry, talentSetLabel, normaliseRoster, normalisePresetGoal, newRunEntry, RUN_DETAIL_LIMIT, enforceRunHistoryBudget, normaliseLinkingSim } from './model.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
 import { SIGILS_BY_CLASS } from './sigilsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
 import { PRESET_RELIC_CAP, PRESET_SIGIL_CAP, SLOTS } from './constants.js';
 
-it('newCharacter defaults class to null, talent sets empty, one seeded Calculated preset', () => {
+it('newCharacter defaults class to null, talent sets empty, two seeded linked Calculated presets', () => {
   const c = newCharacter('Test');
   expect(c.class).toBe(null);
   expect(c.talentSets).toEqual([
@@ -14,13 +14,53 @@ it('newCharacter defaults class to null, talent sets empty, one seeded Calculate
     { spec: null, allocation: {} },
   ]);
   expect(c.pets).toEqual([]);
-  expect(c.petLevel).toBe(1);
+  expect(c.petAltar).toEqual({ tier: 1, level: 1 });
   expect(c.relicLevels).toEqual({});
-  expect(c.presets.length).toBe(1);
+  // Two-preset minimum (goals/linking redesign): both seeded, both linked,
+  // goals unassigned - the UI prompts, nothing is silently chosen.
+  expect(c.presets.length).toBe(2);
   expect(c.presets[0].manualTotals).toBe(false); // Calculated by default
   expect(c.presets[0].loadout).toBe(0);
   expect(c.presets[0].talentSet).toBe(0);
+  expect(c.presets.map((p) => p.goal.kind)).toEqual([null, null]);
+  expect(c.presets.map((p) => p.goal.linked)).toEqual([true, true]);
   expect(c.drop).toBe(null);
+  expect(c.dropGoal).toEqual({ kind: 'dps-fast', ehpWeight: 0.5 });
+});
+
+it('normaliseRoster defaults a missing/unknown dropGoal and clamps ehpWeight', () => {
+  const missing = normaliseRoster({ characters: [{ name: 'A', class: 'Warrior' }] });
+  expect(missing.characters[0].dropGoal).toEqual({ kind: 'dps-fast', ehpWeight: 0.5 });
+
+  const bogus = normaliseRoster({
+    characters: [{ name: 'A', class: 'Warrior', dropGoal: { kind: 'nonsense', ehpWeight: 7 } }],
+  });
+  expect(bogus.characters[0].dropGoal).toEqual({ kind: 'dps-fast', ehpWeight: 1 });
+
+  // 'hps' was removed from DROP_GOAL_KINDS (goals redesign): stale persisted
+  // hps goals coerce to the DPS default, keeping the slider position.
+  const staleHps = normaliseRoster({
+    characters: [{ name: 'A', class: 'Warrior', dropGoal: { kind: 'hps', ehpWeight: 0.25 } }],
+  });
+  expect(staleHps.characters[0].dropGoal).toEqual({ kind: 'dps-fast', ehpWeight: 0.25 });
+
+  const valid = normaliseRoster({
+    characters: [{ name: 'A', class: 'Warrior', dropGoal: { kind: 'dps-accurate', ehpWeight: 0.25 } }],
+  });
+  expect(valid.characters[0].dropGoal).toEqual({ kind: 'dps-accurate', ehpWeight: 0.25 });
+});
+
+it('normaliseRoster resets a tank dropGoal on a non-Warrior (Warrior-only, like the Simulation Goal toggle)', () => {
+  const warrior = normaliseRoster({
+    characters: [{ name: 'A', class: 'Warrior', dropGoal: { kind: 'tank', ehpWeight: 0.75 } }],
+  });
+  expect(warrior.characters[0].dropGoal).toEqual({ kind: 'tank', ehpWeight: 0.75 });
+
+  const sentinel = normaliseRoster({
+    characters: [{ name: 'A', class: 'Sentinel', dropGoal: { kind: 'tank', ehpWeight: 0.75 } }],
+  });
+  expect(sentinel.characters[0].dropGoal.kind).toBe('dps-fast');
+  expect(sentinel.characters[0].dropGoal.ehpWeight).toBe(0.75); // slider position survives the reset
 });
 
 it('newLoadout has no talent/relic fields anymore - gear + a socketedStones reference map only', () => {
@@ -183,9 +223,105 @@ it('normaliseRoster repairs glyph entries: legacy saves get Common rarity, inval
     currentId: 'x',
   };
   const entries = normaliseRoster(raw).characters[0].glyphs.entries;
-  expect(entries[0]).toMatchObject({ rarity: 'Common', special: null, statKey: 'attack_pct', value: 2, equipped: true });
+  expect(entries[0]).toMatchObject({ rarity: 'Common', special: null, statKey: 'attack_pct', value: 2 });
   expect(entries[1]).toMatchObject({ tier: 'mythic', rarity: 'Common', special: null }); // Eternal is not a glyph rarity
-  expect(entries[2]).toMatchObject({ special: 'ember-curse-glyph', tier: 'major' }); // a special glyph lives on ITS tier
+  // A major glyph's variant id dictates BOTH its tier and rarity, overriding
+  // whatever the save claimed - and the pre-catalogue id is remapped.
+  expect(entries[2]).toMatchObject({ special: 'emberhoard-sigil:common', tier: 'major', rarity: 'Common' });
+  // Equip state left the inventory entirely - it lives on mount.glyphIds now.
+  expect(entries.every((e) => !('equipped' in e))).toBe(true);
+});
+
+it('normaliseRoster drops glyph equip state, keeping the inventory (glyphs became mount-bound)', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'Test',
+        class: 'Sentinel',
+        glyphs: { entries: [{ id: 'g1', tier: 'minor', rarity: 'Rare', statKey: 'crit', value: 3, equipped: true }] },
+      },
+    ],
+    currentId: 'x',
+  };
+  const c = normaliseRoster(raw).characters[0];
+  expect(c.glyphs.entries).toHaveLength(1); // inventory survives
+  expect(c.mounts.entries.every((m) => m.glyphIds.length === 0)).toBe(true); // equips do not
+});
+
+it('normaliseRoster drops mount glyphIds that no longer resolve, and enforces the per-mount tier caps', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'Test',
+        class: 'Sentinel',
+        glyphs: {
+          entries: [
+            { id: 'm1', tier: 'minor', rarity: 'Common', statKey: 'crit', value: 1 },
+            { id: 'm2', tier: 'minor', rarity: 'Common', statKey: 'crit', value: 1 },
+            { id: 'm3', tier: 'minor', rarity: 'Common', statKey: 'crit', value: 1 },
+            { id: 'm4', tier: 'minor', rarity: 'Common', statKey: 'crit', value: 1 },
+          ],
+        },
+        mounts: {
+          entries: [
+            // 4 minors (cap 3), a duplicate, and an id that isn't in the inventory.
+            { id: 'night_wolf', star: 1, glyphIds: ['m1', 'm2', 'm1', 'm3', 'm4', 'ghost'] },
+          ],
+        },
+      },
+    ],
+    currentId: 'x',
+  };
+  const nightWolf = normaliseRoster(raw).characters[0].mounts.entries.find((m) => m.id === 'night_wolf');
+  expect(nightWolf.glyphIds).toEqual(['m1', 'm2', 'm3']);
+});
+
+it('the same glyph may sit on any number of mounts at once', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'Test',
+        class: 'Sentinel',
+        glyphs: { entries: [{ id: 'g1', tier: 'minor', rarity: 'Common', statKey: 'crit', value: 1 }] },
+        mounts: {
+          entries: [
+            { id: 'night_wolf', star: 1, glyphIds: ['g1'] },
+            { id: 'crystal_beast', star: 1, glyphIds: ['g1'] },
+          ],
+        },
+      },
+    ],
+    currentId: 'x',
+  };
+  const entries = normaliseRoster(raw).characters[0].mounts.entries;
+  expect(entries.find((m) => m.id === 'night_wolf').glyphIds).toEqual(['g1']);
+  expect(entries.find((m) => m.id === 'crystal_beast').glyphIds).toEqual(['g1']);
+});
+
+it('a mount with no star is not owned; a legacy owned flag migrates to a star', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'Test',
+        class: 'Sentinel',
+        mounts: {
+          entries: [
+            { id: 'night_wolf' }, // never touched
+            { id: 'crystal_beast', owned: true }, // pre-star save
+          ],
+        },
+      },
+    ],
+    currentId: 'x',
+  };
+  const entries = normaliseRoster(raw).characters[0].mounts.entries;
+  expect(entries.find((m) => m.id === 'night_wolf').star).toBe(0);
+  expect(entries.find((m) => m.id === 'crystal_beast').star).toBe(1);
+  expect(entries.every((m) => !('owned' in m))).toBe(true);
 });
 
 it('normaliseRoster drops Transcendence positions that do not belong to the tree, and glyph sockets (always inert)', () => {
@@ -248,7 +384,7 @@ it('normaliseRoster handles a new-shape export that predates class/spec entirely
   const roster = normaliseRoster(raw);
   expect(roster.characters[0].class).toBe(null);
   expect(roster.characters[0].talentSets[0].spec).toBe(null);
-  expect(roster.characters[0].presets.length).toBe(1);
+  expect(roster.characters[0].presets.length).toBe(2); // topped up to the two-preset minimum
 });
 
 it('normaliseRoster rejects an invalid class and a spec that does not belong to the class', () => {
@@ -330,10 +466,57 @@ it('normaliseRoster drops pet entries missing an id or duplicated, defends stats
   expect(pets[0].stats.attack).toBe(100);
 });
 
-it('normaliseRoster clamps petLevel to a minimum of 1', () => {
-  const raw = { characters: [{ id: 'x', name: 'Test', petLevel: -5 }], currentId: 'x' };
+it('normaliseRoster clamps the Pet Altar level to a minimum of 1', () => {
+  const raw = { characters: [{ id: 'x', name: 'Test', petAltar: { tier: 1, level: -5 } }], currentId: 'x' };
   const roster = normaliseRoster(raw);
-  expect(roster.characters[0].petLevel).toBe(1);
+  expect(roster.characters[0].petAltar).toEqual({ tier: 1, level: 1 });
+});
+
+it('normaliseRoster migrates per-pet tier/level into the Pet Altar, taking the highest', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'Test',
+        petLevel: 7, // the older character-wide field
+        pets: [
+          { id: 'p1', companionId: 'dustmite', tier: 2, level: 14 },
+          { id: 'p2', companionId: 'mossbeetle', tier: 3, level: 9 },
+        ],
+      },
+    ],
+    currentId: 'x',
+  };
+  const c = normaliseRoster(raw).characters[0];
+  expect(c.petAltar).toEqual({ tier: 3, level: 14 });
+  // ...and the per-pet fields are gone.
+  expect(c.pets.every((p) => !('tier' in p) && !('level' in p))).toBe(true);
+});
+
+it('a catalogue pet takes its rarity from the catalogue, overriding any saved value', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'Test',
+        // Dust Mite is Common (1 secondary slot) - the save claims Mythic (3).
+        pets: [{
+          id: 'p1',
+          companionId: 'dustmite',
+          rarity: 'Mythic',
+          secondaries: [
+            { statKey: 'attack_pct', value: 5 },
+            { statKey: 'crit', value: 2 },
+            { statKey: 'speed', value: 3 },
+          ],
+        }],
+      },
+    ],
+    currentId: 'x',
+  };
+  const [pet] = normaliseRoster(raw).characters[0].pets;
+  expect(pet.rarity).toBe('Common');
+  expect(pet.secondaries).toHaveLength(1); // trimmed to Common's slot count
 });
 
 it('normaliseRoster drops relicLevels entries whose defId does not belong to the class, and clamps to maxLevel', () => {
@@ -438,10 +621,70 @@ it('normaliseRoster sigilValues: drops unknown sigils/statKeys, keeps declared v
   expect(values['blade-of-judgment'].regenDebuffPct).toBe(100);
 });
 
-it('normaliseRoster falls back to one seeded preset when a character has none', () => {
+it('normaliseRoster seeds up to the two-preset minimum when a character has none', () => {
   const raw = { characters: [{ id: 'x', name: 'Test', presets: [] }], currentId: 'x' };
   const roster = normaliseRoster(raw);
-  expect(roster.characters[0].presets.length).toBe(1);
+  expect(roster.characters[0].presets.length).toBe(2);
+  expect(roster.characters[0].presets.map((p) => p.goal.linked)).toEqual([true, true]);
+});
+
+// --- Preset goals (goals/linking redesign) ---
+it('normalisePresetGoal: defaults, kind validation, Warrior-only tank, weights sum to 100', () => {
+  // Missing goal entirely (pre-goal saves): unassigned, linked by position.
+  expect(normalisePresetGoal(undefined, 'Warrior', 0).kind).toBe(null);
+  expect(normalisePresetGoal(undefined, 'Warrior', 0).linked).toBe(true);
+  expect(normalisePresetGoal(undefined, 'Warrior', 1).linked).toBe(true);
+  expect(normalisePresetGoal(undefined, 'Warrior', 2).linked).toBe(false);
+
+  // Unknown kind -> unassigned; explicit linked survives.
+  expect(normalisePresetGoal({ kind: 'nonsense', linked: false }, 'Warrior', 0)).toEqual({
+    kind: null,
+    name: '',
+    ehpWeight: 0.5,
+    weights: { damage: 34, mitigation: 33, survivability: 33 },
+    linked: false,
+  });
+
+  // Tank is Warrior-only; ehpWeight clamps to [0, 1].
+  expect(normalisePresetGoal({ kind: 'tank', ehpWeight: 7 }, 'Warrior', 0).kind).toBe('tank');
+  expect(normalisePresetGoal({ kind: 'tank', ehpWeight: 7 }, 'Warrior', 0).ehpWeight).toBe(1);
+  expect(normalisePresetGoal({ kind: 'tank' }, 'Sentinel', 0).kind).toBe(null);
+
+  // Weights renormalise to sum 100; garbage falls back to the default split.
+  const w = normalisePresetGoal({ kind: 'pvp', weights: { damage: 2, mitigation: 1, survivability: 1 } }, 'Sentinel', 0).weights;
+  expect(w.damage).toBeCloseTo(50, 9);
+  expect(w.mitigation).toBeCloseTo(25, 9);
+  expect(w.survivability).toBeCloseTo(25, 9);
+  expect(normalisePresetGoal({ kind: 'pvp', weights: { damage: -5 } }, 'Sentinel', 0).weights).toEqual({
+    damage: 34,
+    mitigation: 33,
+    survivability: 33,
+  });
+
+  // Custom keeps its display name.
+  expect(normalisePresetGoal({ kind: 'custom', name: 'Farm speed' }, 'Sentinel', 0).name).toBe('Farm speed');
+});
+
+it('normaliseRoster round-trips an assigned preset goal', () => {
+  const raw = {
+    characters: [
+      {
+        id: 'x',
+        name: 'T',
+        class: 'Warrior',
+        presets: [
+          { id: 'p1', name: 'Boss', goal: { kind: 'tank', ehpWeight: 0.75, weights: {}, linked: true } },
+          { id: 'p2', name: 'Arena', goal: { kind: 'pvp', weights: { damage: 70, mitigation: 20, survivability: 10 }, linked: true } },
+        ],
+      },
+    ],
+    currentId: 'x',
+  };
+  const c = normaliseRoster(raw).characters[0];
+  expect(c.presets[0].goal.kind).toBe('tank');
+  expect(c.presets[0].goal.ehpWeight).toBe(0.75);
+  expect(c.presets[1].goal.kind).toBe('pvp');
+  expect(c.presets[1].goal.weights).toEqual({ damage: 70, mitigation: 20, survivability: 10 });
 });
 
 // --- Legacy-format migration (pre-redesign saves) ---
@@ -512,8 +755,8 @@ it('normaliseRoster migrates a pre-redesign character (talentAllocation on the l
   expect(c.presets[1].manualTotals).toBe(true);
   expect(c.presets[1].manualStats.attack).toBe(2000);
 
-  // The old character-wide "active pet" becomes petLevel + both presets' petId.
-  expect(c.petLevel).toBe(12);
+  // The old character-wide "active pet" seeds the Pet Altar level + both presets' petId.
+  expect(c.petAltar.level).toBe(12);
   expect(c.pets.length).toBe(1);
   expect(c.presets[0].petId).toBe('pet-1');
   expect(c.presets[1].petId).toBe('pet-1');
@@ -524,7 +767,11 @@ it('normaliseRoster migrates a pre-redesign character (talentAllocation on the l
   // mountGlyphs renamed to glyphs.
   expect(c.mounts.entries.length).toBe(11);
   const crystalBeast = c.mounts.entries.find((m) => m.id === 'crystal_beast');
-  expect(crystalBeast).toMatchObject({ rarity: 'Uncommon', baseHpPct: 5, baseAtkPct: 3 });
+  // New shape: legacy baseHpPct/baseAtkPct migrate into star + bounded hpPct/atkPct.
+  // crystal_beast star 1 ranges are hp [17,19] / atk [10,12], so the legacy 5/3
+  // (below the real game range) clamp up into range.
+  // star 1 IS "owned" now - the separate flag is gone.
+  expect(crystalBeast).toMatchObject({ rarity: 'Uncommon', star: 1, hpPct: 17, atkPct: 10 });
   expect(c.presets[0].mountId).toBe('crystal_beast');
   expect(c.presets[1].mountId).toBe('crystal_beast');
   expect(c.glyphs.entries.length).toBe(1);
@@ -566,31 +813,6 @@ it('normaliseRoster repairs opponents: drops dupes/no-id, validates class, caps 
   expect(o2.sigilIds).toEqual([]); // no class -> no catalogue -> no sigils
 });
 
-// --- Saved Simulation-screen results ---
-
-it('newCharacter starts with no saved results; normalise defaults missing field', () => {
-  expect(newCharacter('Test').savedResults).toEqual([]);
-  const roster = newRoster();
-  delete roster.characters[0].savedResults;
-  expect(normaliseRoster(roster).characters[0].savedResults).toEqual([]);
-});
-
-it('normaliseRoster savedResults: drops no-id/dupe/unknown-kind, coerces name/savedAt/summary, keeps payload as-is', () => {
-  const roster = newRoster();
-  roster.characters[0].savedResults = [
-    { id: 'r1', kind: 'sim', name: 'Run 1', savedAt: '2026-07-14T10:00:00.000Z', summary: { meanDps: 12.5, seed: 7 } },
-    { id: 'r1', kind: 'opt', name: 'Dupe id' },
-    { id: 'r2', kind: 'mystery', name: 'Unknown kind' },
-    { kind: 'sim', name: 'No id' },
-    { id: 'r3', kind: 'opt', name: 7, savedAt: 12, summary: 'not-an-object' },
-  ];
-  const saved = normaliseRoster(roster).characters[0].savedResults;
-  expect(saved.map((r) => r.id)).toEqual(['r1', 'r3']);
-  // Pre-notes/pinned saves get the new fields' defaults.
-  expect(saved[0]).toEqual({ id: 'r1', kind: 'sim', name: 'Run 1', savedAt: '2026-07-14T10:00:00.000Z', notes: '', pinned: false, summary: { meanDps: 12.5, seed: 7 } });
-  expect(saved[1]).toEqual({ id: 'r3', kind: 'opt', name: 'Saved result', savedAt: '', notes: '', pinned: false, summary: {} });
-});
-
 it('normaliseRoster opponents: keeps catalogue special glyphs, drops unknown ids, defaults missing', () => {
   const roster = newRoster();
   roster.characters[0].pvpOpponents = [
@@ -598,22 +820,145 @@ it('normaliseRoster opponents: keeps catalogue special glyphs, drops unknown ids
     { id: 'o2', name: 'Legacy', class: 'Warrior' }, // pre-glyph save
   ];
   const opponents = normaliseRoster(roster).characters[0].pvpOpponents;
-  expect(opponents[0].specialGlyphIds).toEqual(['ember-curse-glyph']);
+  // The pre-catalogue id is remapped to its real variant (and de-duplicated).
+  expect(opponents[0].specialGlyphIds).toEqual(['emberhoard-sigil:common']);
   expect(opponents[1].specialGlyphIds).toEqual([]);
 });
 
-it('normaliseRoster savedResults: keeps PVP/compare kinds and user notes/pins, coerces bad notes/pinned', () => {
+// --- Run history (auto-saved runs) + linkingSim ---
+
+/** A raw run entry at a controllable timestamp (t sortable, e.g. 1..N). */
+function rawRun(id, kind, t, extra = {}) {
+  return {
+    id,
+    kind,
+    at: `2026-07-19T00:00:${String(t).padStart(2, '0')}.000Z`,
+    name: `Run ${id}`,
+    headline: { score: t },
+    detail: { payload: t },
+    ...extra,
+  };
+}
+
+it('newCharacter starts with empty runHistory and a null linkingSim; normalise defaults both', () => {
+  const c = newCharacter('Test');
+  expect(c.runHistory).toEqual([]);
+  expect(c.linkingSim).toBe(null);
   const roster = newRoster();
-  roster.characters[0].savedResults = [
-    { id: 'p1', kind: 'pvp-sim', name: 'Duel', notes: 'beat him with ×2 HP', pinned: true, summary: { winRate: 61.2 } },
-    { id: 'p2', kind: 'pvp-opt', name: 'Matchup opt', notes: 42, pinned: 'yes', summary: {} },
-    { id: 'p3', kind: 'sim-compare', name: 'A vs B', summary: {} },
+  delete roster.characters[0].linkingSim;
+  roster.characters[0].runHistory = 'garbage';
+  const norm = normaliseRoster(roster).characters[0];
+  expect(norm.runHistory).toEqual([]);
+  expect(norm.linkingSim).toBe(null);
+});
+
+it('normaliseRoster runHistory: drops no-id/dupe/unknown-kind, coerces fields, sorts newest-first', () => {
+  const roster = newRoster();
+  roster.characters[0].runHistory = [
+    rawRun('a', 'sim', 1),
+    rawRun('a', 'opt', 2), // dupe id
+    rawRun('b', 'mystery', 3), // unknown kind
+    { kind: 'sim' }, // no id
+    rawRun('c', 'pvp-matrix', 5, { name: 7, goalKind: 'nope', headline: 'bad', detail: null }),
+    rawRun('d', 'opt', 4, { goalKind: 'tank', pinned: true }),
   ];
-  const saved = normaliseRoster(roster).characters[0].savedResults;
-  expect(saved.map((r) => r.kind)).toEqual(['pvp-sim', 'pvp-opt', 'sim-compare']);
-  expect(saved[0].notes).toBe('beat him with ×2 HP');
-  expect(saved[0].pinned).toBe(true);
-  // Non-string notes / non-boolean pinned collapse to safe defaults.
-  expect(saved[1].notes).toBe('');
-  expect(saved[1].pinned).toBe(false);
+  const history = normaliseRoster(roster).characters[0].runHistory;
+  expect(history.map((r) => r.id)).toEqual(['c', 'd', 'a']); // newest first
+  expect(history[0]).toMatchObject({ kind: 'pvp-matrix', name: 'Run', goalKind: null, headline: {}, detail: null });
+  expect(history[1]).toMatchObject({ goalKind: 'tank', pinned: true });
+  expect(history[2].detail).toEqual({ payload: 1 });
+});
+
+it('normalise compacts detail beyond the newest RUN_DETAIL_LIMIT per kind; pinned exempt and not counted', () => {
+  const roster = newRoster();
+  const entries = [];
+  for (let t = 1; t <= RUN_DETAIL_LIMIT + 3; t++) entries.push(rawRun(`s${t}`, 'sim', t));
+  entries.push(rawRun('pinned-oldest', 'sim', 0, { pinned: true }));
+  entries.push(rawRun('other-kind', 'opt', 0));
+  roster.characters[0].runHistory = entries;
+  const history = normaliseRoster(roster).characters[0].runHistory;
+
+  const sims = history.filter((r) => r.kind === 'sim' && !r.pinned);
+  expect(sims.filter((r) => r.detail !== null).length).toBe(RUN_DETAIL_LIMIT); // newest 50 keep detail
+  expect(sims.slice(-3).every((r) => r.detail === null)).toBe(true); // the 3 oldest unpinned compacted
+  expect(history.find((r) => r.id === 'pinned-oldest').detail).not.toBe(null); // pinned keeps detail
+  expect(history.find((r) => r.id === 'other-kind').detail).not.toBe(null); // per-kind limit
+});
+
+it('legacy savedResults migrate into runHistory exactly once (absence of the field is the trigger)', () => {
+  const roster = newRoster();
+  delete roster.characters[0].runHistory;
+  roster.characters[0].savedResults = [
+    {
+      id: 'r1',
+      kind: 'sim',
+      name: 'Old sim',
+      savedAt: '2026-07-14T10:00:00.000Z',
+      notes: 'note',
+      pinned: true,
+      summary: { presetId: 'p9', presetName: 'Boss', meanDps: 12.5, iterations: 500, durationSeconds: 60, totalDamage: { p5: 1, p95: 9 } },
+    },
+    { id: 'r2', kind: 'opt', name: 'Old opt', savedAt: '2026-07-15T10:00:00.000Z', summary: { goal: 'Tank Score', baselineScore: 10, bestScore: 12, improvementPct: 20 } },
+    { id: 'r3', kind: 'pvp-sim', name: 'Old duel', savedAt: '2026-07-16T10:00:00.000Z', summary: { opponentName: 'Rival', winRate: 61.2 } },
+  ];
+  const migrated = normaliseRoster(roster).characters[0];
+  expect(migrated.runHistory.map((r) => r.id)).toEqual(['r3', 'r2', 'r1']); // newest-first by savedAt
+  const sim = migrated.runHistory.find((r) => r.id === 'r1');
+  expect(sim).toMatchObject({
+    kind: 'sim',
+    at: '2026-07-14T10:00:00.000Z',
+    name: 'Old sim',
+    notes: 'note',
+    pinned: true,
+    presetId: 'p9',
+    presetName: 'Boss',
+    headline: { meanDps: 12.5, p5: 1, p95: 9, iterations: 500, durationSeconds: 60 },
+  });
+  expect(sim.detail).toEqual(roster.characters[0].savedResults[0].summary);
+  expect(migrated.runHistory.find((r) => r.id === 'r2').headline).toMatchObject({ unit: 'Tank Score', baseline: 10, best: 12, improvementPct: 20 });
+  expect(migrated.runHistory.find((r) => r.id === 'r3').headline).toMatchObject({ opponentName: 'Rival', winRate: 61.2 });
+
+  // Idempotent: once runHistory exists (even empty), savedResults are ignored.
+  const again = normaliseRoster({ characters: [{ ...migrated, runHistory: [] }], currentId: migrated.id }).characters[0];
+  expect(again.runHistory).toEqual([]);
+});
+
+it('enforceRunHistoryBudget drops detail oldest-first, then whole rows beyond the per-kind cap; pinned exempt', () => {
+  const entries = [];
+  for (let t = 9; t >= 1; t--) entries.push({ ...newRunEntry('sim', { detail: { blob: 'x'.repeat(100) } }), id: `e${t}`, at: `t${t}` });
+  entries[0].pinned = true; // newest ('e9') pinned
+  const trimmed = enforceRunHistoryBudget(entries, { byteBudget: 1400, maxRowsPerKind: 100 });
+  expect(trimmed.length).toBe(9); // stage 1 sufficed - no rows dropped
+  const compacted = trimmed.filter((e) => e.detail === null).map((e) => e.id);
+  expect(compacted).not.toContain('e9'); // pinned keeps detail
+  expect(compacted).toContain('e1'); // oldest lost detail first
+
+  const rows = [];
+  for (let t = 0; t < 10; t++) rows.push({ ...newRunEntry('sim', {}), id: `r${t}`, at: `t${9 - t}`, detail: null });
+  rows[9].pinned = true; // oldest row pinned
+  const capped = enforceRunHistoryBudget(rows, { byteBudget: 1, maxRowsPerKind: 4 });
+  expect(capped.filter((e) => !e.pinned).length).toBe(4); // newest 4 unpinned kept
+  expect(capped.some((e) => e.id === 'r9')).toBe(true); // pinned survives the row cap
+});
+
+it('normaliseLinkingSim: null without a completedAt string; passthrough of unknown keys otherwise; presets coerced', () => {
+  expect(normaliseLinkingSim(null)).toBe(null);
+  expect(normaliseLinkingSim('done')).toBe(null);
+  expect(normaliseLinkingSim({ done: true })).toBe(null);
+
+  // Unknown/forward keys pass through; a missing presets field becomes [].
+  const outcome = { completedAt: '2026-07-19T12:00:00.000Z', lockedPath: 'shadow', futureField: { a: 1 } };
+  expect(normaliseLinkingSim(outcome)).toEqual({ ...outcome, presets: [] });
+
+  // presets is coerced to an array of plain objects; malformed entries dropped.
+  const withPresets = {
+    completedAt: '2026-07-19T12:00:00.000Z',
+    presets: [{ presetId: 'p1', goalUnit: 'DPS' }, { goalUnit: 'no id' }, 'garbage', null],
+  };
+  expect(normaliseLinkingSim(withPresets).presets).toEqual([{ presetId: 'p1', goalUnit: 'DPS' }]);
+  expect(normaliseLinkingSim({ completedAt: 'x', presets: 'not-an-array' }).presets).toEqual([]);
+
+  const roster = newRoster();
+  roster.characters[0].linkingSim = outcome;
+  expect(normaliseRoster(roster).characters[0].linkingSim).toEqual({ ...outcome, presets: [] });
 });

@@ -19,8 +19,8 @@ function cleanup() {
   target.remove();
 }
 
-it('renders one preset card by default, editing it, with the editor panel open', () => {
-  expect(target.querySelectorAll('.preset-card').length).toBe(1);
+it('renders the two seeded preset cards by default, editing the first, with the editor panel open', () => {
+  expect(target.querySelectorAll('.preset-card').length).toBe(2); // two-preset minimum
   expect(target.querySelector('.preset-card.editing')).not.toBeNull();
   expect(target.querySelector('.editor')).not.toBeNull();
   cleanup();
@@ -29,9 +29,9 @@ it('renders one preset card by default, editing it, with the editor panel open',
 it('+ New Preset adds a card and switches the editor to it', () => {
   target.querySelector('.new-preset-btn').click();
   flushSync();
-  expect(rosterStore.current.presets.length).toBe(2);
-  expect(target.querySelectorAll('.preset-card').length).toBe(2);
-  const newPreset = rosterStore.current.presets[1];
+  expect(rosterStore.current.presets.length).toBe(3);
+  expect(target.querySelectorAll('.preset-card').length).toBe(3);
+  const newPreset = rosterStore.current.presets[2];
   expect(target.querySelector('.editor-header h2').textContent).toContain(newPreset.name.toUpperCase());
   cleanup();
 });
@@ -85,7 +85,7 @@ it('switching Totals mode to Manual snapshots current calculated totals, and inp
 });
 
 it('picking a pet chip sets petId; None clears it', () => {
-  rosterStore.addPet('Ashfang', 'Epic');
+  rosterStore.addPet({ name: 'Ashfang', rarity: 'Epic', companionId: 'ancientdrake' });
   flushSync();
   const petGroup = [...target.querySelectorAll('.field-group')].find((g) =>
     g.querySelector('.field-group-label').textContent.trim().endsWith('Pet')
@@ -146,8 +146,8 @@ it('delete preset (two-step confirm) removes the card', () => {
   cleanup();
 });
 
-it('the last remaining preset cannot be deleted', () => {
-  while (rosterStore.current.presets.length > 1) {
+it('deletion is blocked at the two-preset minimum', () => {
+  while (rosterStore.current.presets.length > 2) {
     rosterStore.deletePreset(rosterStore.current.presets[rosterStore.current.presets.length - 1].id);
   }
   cleanup();

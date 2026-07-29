@@ -45,8 +45,7 @@ it('desktop: renders the left rail with Preset/Character nav groups', () => {
     'Pets',
     'Relics',
     'Sigils',
-    'Simulation',
-    'PVP',
+    'Simulations',
     'Mount & Glyphs',
     'Awakening',
     'Transcendence',
@@ -71,7 +70,7 @@ it('mobile: renders a bottom bar with 4 main items + More, no left rail', () => 
   expect(labels).toEqual(['Presets', 'Drop Check', 'Gear Loadouts', 'Talent Sets', 'More']);
 });
 
-it('mobile: More opens a sheet with the remaining nav (Pets/Relics/Sigils/Simulation/PVP/Mount & Glyphs/Awakening/Transcendence) + account panel', () => {
+it('mobile: More opens a sheet with the remaining nav (Pets/Relics/Sigils/Simulations/Mount & Glyphs/Awakening/Transcendence) + account panel', () => {
   stubMobile();
   render();
   expect(target.querySelector('.more-sheet')).toBeNull();
@@ -82,7 +81,7 @@ it('mobile: More opens a sheet with the remaining nav (Pets/Relics/Sigils/Simula
   const sheet = target.querySelector('.more-sheet');
   expect(sheet).not.toBeNull();
   const labels = [...sheet.querySelectorAll('.nav-item')].map((b) => b.textContent.trim());
-  expect(labels).toEqual(['Pets', 'Relics', 'Sigils', 'Simulation', 'PVP', 'Mount & Glyphs', 'Awakening', 'Transcendence']);
+  expect(labels).toEqual(['Pets', 'Relics', 'Sigils', 'Simulations', 'Mount & Glyphs', 'Awakening', 'Transcendence']);
   expect(sheet.querySelector('.change-character')).not.toBeNull();
   expect(sheet.querySelector('.reset-toggle')).not.toBeNull();
 });

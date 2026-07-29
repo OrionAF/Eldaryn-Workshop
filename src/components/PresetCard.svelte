@@ -1,16 +1,16 @@
 <script>
   import { resolveEffectiveTotals } from '../lib/totals.js';
-  import { computeDps, computeHps } from '../lib/dps.js';
+  import { computeDps } from '../lib/dps.js';
   import { formatFlat } from '../lib/format.js';
-  import { talentSetLabel } from '../lib/model.js';
+  import { talentSetLabel, presetGoalLabel } from '../lib/model.js';
 
   let { preset, character, editing, onSelect } = $props();
 
   const totals = $derived(resolveEffectiveTotals(character, preset));
   const dps = $derived(computeDps(totals));
-  const hps = $derived(computeHps(totals).total_hps);
   const loadout = $derived(character.loadouts[preset.loadout]);
   const pet = $derived(character.pets.find((p) => p.id === preset.petId));
+  const goalLabel = $derived(presetGoalLabel(preset.goal));
 </script>
 
 <button type="button" class="preset-card" class:editing onclick={onSelect}>
@@ -24,9 +24,13 @@
   </div>
   <div class="numbers">
     <span class="dps"><span class="value">{formatFlat(dps)}</span><span class="unit">DPS</span></span>
-    <span class="hps"><span class="value">{formatFlat(hps)}</span><span class="unit">HPS</span></span>
   </div>
   <div class="chip-row">
+    {#if goalLabel}
+      <span class="mini-chip goal">{goalLabel}{preset.goal.linked ? ' · linked' : ''}</span>
+    {:else}
+      <span class="mini-chip goal unassigned">assign a goal</span>
+    {/if}
     <span class="mini-chip">{loadout.name}</span>
     <span class="mini-chip">{talentSetLabel(preset.talentSet)}</span>
     <span class="mini-chip">{pet ? pet.name : 'No pet'}</span>
@@ -88,8 +92,7 @@
     align-items: baseline;
     gap: var(--space-4);
   }
-  .dps,
-  .hps {
+  .dps {
     display: inline-flex;
     align-items: baseline;
     gap: 5px;
@@ -101,15 +104,7 @@
     font-weight: 600;
     color: var(--color-dps-dim);
   }
-  .hps .value {
-    font-family: var(--font-data);
-    font-variant-numeric: tabular-nums;
-    font-size: 17px;
-    font-weight: 600;
-    color: var(--color-hps-dim);
-  }
-  .dps .unit,
-  .hps .unit {
+  .dps .unit {
     font-size: 10px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -118,8 +113,13 @@
   .preset-card.editing .dps .value {
     color: var(--color-dps);
   }
-  .preset-card.editing .hps .value {
-    color: var(--color-hps);
+  .mini-chip.goal {
+    color: var(--color-gold-light);
+    border-color: var(--color-gold-dim, var(--color-border));
+  }
+  .mini-chip.goal.unassigned {
+    color: var(--color-muted);
+    border-style: dashed;
   }
   .chip-row {
     display: flex;

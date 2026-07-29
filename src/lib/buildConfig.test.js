@@ -19,7 +19,10 @@ function makeWarrior() {
   c.class = 'Warrior';
   c.loadouts[0].name = 'Raid Gear';
   c.pets = [{ id: 'pet1', name: 'Ember Fox', rarity: 'rare', stats: {} }];
-  c.glyphs.entries.push({ id: 'g1', tier: 'Gold', statKey: 'attack_pct', value: 5, equipped: true, special: null });
+  // Glyphs are mount-bound: the snapshot reads them off the mount being ridden.
+  c.glyphs.entries.push({ id: 'g1', tier: 'minor', rarity: 'Common', statKey: 'attack_pct', value: 5, special: null });
+  c.mounts.entries[0].star = 1;
+  c.mounts.entries[0].glyphIds = ['g1'];
   c.awakening = { path: 'shadow', points: 3 };
   c.transcendence.unlockedPositions = ['14:25', '14:24'];
   c.talentSets[0] = { spec: 'arms', allocation: { arms_t1_quick_strikes: 2 } };
@@ -41,7 +44,7 @@ it('describes every dimension of a fully-populated build with resolved display n
   expect(line(lines, 'Mount')).toBe(c.mounts.entries[0].name);
   expect(line(lines, 'Relics')).toContain(RELICS_BY_CLASS.Warrior[0].name);
   expect(line(lines, 'Sigils')).toContain(SIGILS_BY_CLASS.Warrior[0].name);
-  expect(line(lines, 'Mount Glyphs')).toContain('Gold attack_pct +5');
+  expect(line(lines, 'Mount Glyphs')).toContain('minor attack_pct +5');
   expect(line(lines, 'Talents')).toContain('2/');
   expect(line(lines, 'Awakening')).toContain('3 pts');
   expect(line(lines, 'Transcendence')).toContain('2 nodes');

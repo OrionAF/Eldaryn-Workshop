@@ -15,14 +15,17 @@
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { resolveEffectiveTotals } from '../lib/totals.js';
-  import { runPvpSimulation, runTracedDuel, buildPvpSide, rateCiHalfWidth } from '../lib/pvpSimulation.js';
+  import { runPvpSimulation, runTracedDuel, buildPvpSide, rateCiHalfWidth, PVP_HEALTH_MULTIPLIER } from '../lib/pvpSimulation.js';
   import { SEARCH_DIMENSIONS, candidateFromCurrent } from '../lib/optimizer.js';
   import { describeBuildConfig } from '../lib/buildConfig.js';
   import { runOptimizerTask } from '../lib/optimizerClient.js';
   import { verifyPvpWinRates, runPvpMatrix } from '../lib/pvpOptimizer.js';
+  import { runGauntlet, buildBudget } from '../lib/pvpGauntlet.js';
   import SimulatedPresetCard from './SimulatedPresetCard.svelte';
-  import SavedResultsRail from './SavedResultsRail.svelte';
-  import { fieldsForTab, CLASSES, PRESET_SIGIL_CAP, SPECIAL_GLYPHS } from '../lib/constants.js';
+  import GauntletResultPanel from './GauntletResultPanel.svelte';
+  import RelicSuggesterPanel from './RelicSuggesterPanel.svelte';
+  import { fieldsForTab, CLASSES, PRESET_SIGIL_CAP } from '../lib/constants.js';
+  import { MAJOR_GLYPHS } from '../lib/glyphsData.js';
   import { SIGILS_BY_CLASS } from '../lib/sigilsData.js';
   import { sigilDamageInputs, activeSpecialGlyphIds } from '../lib/sigilEffects.js';
   import { formatStat, parseStat, formatFlat, parseFlat } from '../lib/format.js';
@@ -47,16 +50,18 @@
   // Passive-only sigils are omitted: their stats are already inside the
   // opponent's entered profile totals - only ACTIVE effects join the fight.
   const opponentSigilDefs = $derived((SIGILS_BY_CLASS[opponent?.class] || []).filter((d) => d.active));
-  // Special glyphs only matter when the sigil they modify is equipped.
-  const opponentGlyphDefs = $derived(SPECIAL_GLYPHS.filter((g) => (opponent?.sigilIds || []).includes(g.sigilId)));
+  // Major glyphs only matter when the sigil they modify is equipped.
+  const opponentGlyphDefs = $derived(MAJOR_GLYPHS.filter((g) => (opponent?.sigilIds || []).includes(g.sigilId)));
   const opponentStatFields = $derived(fieldsForTab('profile', opponent?.class));
 
   let iterationsInput = $state('1000');
   const iterationsCount = () => Math.min(50000, Math.max(100, parseFlat(iterationsInput) || 1000));
   let durationInput = $state('60');
   const durationSeconds = () => Math.max(1, parseFlat(durationInput) || 60);
-  const HP_MULTIPLIERS = [1, 2, 3];
-  let healthMultiplier = $state(1);
+  // Not a choice any more: since the Jul 2026 patch every fighter in Arena and
+  // Clan War enters with the same ×8 pool (no level-45 breakpoint), so the old
+  // ×1/×2/×3 mode toggle would only let you model fights that cannot happen.
+  const healthMultiplier = PVP_HEALTH_MULTIPLIER;
   // Blank = a fresh random seed each run; entering the seed echoed in a
   // previous result replays that exact batch of duels.
   let seedInput = $state('');
@@ -118,6 +123,13 @@
   let optVerify = $state(null);
   let optTask = null; // in-flight { cancel } handle (not view state)
 
+  // Archetype-gauntlet validation of the optimizer finalists (on-demand).
+  let gauntletRunning = $state(false);
+  let gauntletProgress = $state(null); // { done, total }
+  let gauntletResult = $state(null);
+  let gauntletBudgetInput = $state('');
+  let gauntletAbort = null;
+
   // Any change to the matchup (opponent edits, sigil toggles…) invalidates
   // both the duel results and the optimizer's recommendation.
   function clearResults() {
@@ -127,6 +139,8 @@
     optResult = null;
     optVerify = null;
     optProgress = null;
+    gauntletResult = null;
+    gauntletProgress = null;
     matrixResult = null;
     matrixProgress = null;
   }
@@ -231,7 +245,7 @@
       characterClass: character.class,
       sigilIds: preset.sigilIds,
       sigilValues: character.sigilValues,
-      specialGlyphIds: activeSpecialGlyphIds(character),
+      specialGlyphIds: activeSpecialGlyphIds(character, preset),
     });
     const enemy = buildPvpSide({
       name: opponent.name,
@@ -255,6 +269,7 @@
           healthMultiplier,
           seed: enteredSeed(),
         });
+        recordDuelRun(); // auto-saved to the run history - no manual Save step
         setStatus?.(`Fought ${iterations.toLocaleString('en-US')} duels vs ${opponent.name}`);
       } finally {
         simRunning = false;
@@ -279,6 +294,7 @@
         onProgress: (p) => (matrixProgress = p),
         signal: matrixAbort.signal,
       });
+      recordMatrixRun(); // auto-saved (skips aborted matrices internally)
       setStatus?.(
         matrixResult.aborted
           ? 'Matrix cancelled — showing the finished cells'
@@ -308,6 +324,7 @@
       healthMultiplier: simResult.healthMultiplier,
       seed: simResult.seed,
     });
+    recordSampleFight(); // auto-saved with its capped combat timeline
   }
 
   /** Damage-source tags: base swings, double hits, thorns, `sigil_<defId>`. */
@@ -386,13 +403,26 @@
     }));
   }
 
+  /** The PVP objective spec under the panel's current opponent/accuracy settings (shared with the Relic Suggester). */
+  function buildPvpObjectiveSpec() {
+    const accuracy = PVP_ACCURACY_CHOICES[pvpAccuracyIdx];
+    return {
+      kind: 'pvp',
+      opponents: selectedOptOpponents,
+      aggregate: optAggregate,
+      healthMultiplier,
+      durationSeconds: durationSeconds(),
+      screenIterations: accuracy.screen,
+      confirmIterations: accuracy.confirm,
+    };
+  }
+
   async function runOptimizer() {
     if (!optPreset || selectedOptOpponents.length === 0 || optRunning || simRunning) return;
     optRunning = true;
     optResult = null;
     optVerify = null;
     optProgress = null;
-    const accuracy = PVP_ACCURACY_CHOICES[pvpAccuracyIdx];
     // Candidates are screened with cheap paired duels and confirmed on a
     // second seed before adoption; the search runs in a Web Worker.
     optTask = runOptimizerTask(
@@ -401,15 +431,7 @@
         preset: optPreset,
         ichorBudget: Math.max(0, parseFlat(ichorInput)),
         searchDimensions: { ...optDims },
-        objectiveSpec: {
-          kind: 'pvp',
-          opponents: selectedOptOpponents,
-          aggregate: optAggregate,
-          healthMultiplier,
-          durationSeconds: durationSeconds(),
-          screenIterations: accuracy.screen,
-          confirmIterations: accuracy.confirm,
-        },
+        objectiveSpec: buildPvpObjectiveSpec(),
       },
       { onProgress: (p) => (optProgress = p) }
     );
@@ -419,6 +441,7 @@
       // honest before/after, free of the search's winner's-curse bias.
       optVerify = verifySelected(result.best.candidate);
       optResult = result;
+      if (!result.aborted) recordPvpOptRun(); // auto-saved; a cancelled search isn't a finished run
       const vs = selectedOptOpponents.map((o) => o.name).join(' + ');
       setStatus?.(
         result.aborted
@@ -459,15 +482,22 @@
     clearResults(); // the recommendation is now the current build
   }
 
-  // --- Saved results rail (persisted; rendered by SavedResultsRail) ---
-  let savedRail = $state(null); // bind:this handle, for expand-after-save
+  // --- Auto-saved run history (persisted; rendered by the Simulations Dashboard) ---
 
-  function saveDuelResult() {
+  function recordDuelRun() {
     if (!simResult || !preset || !opponent) return;
-    const id = rosterStore.saveResult(
-      'pvp-sim',
-      `${preset.name} vs ${opponent.name} · ${simResult.winRate.toFixed(1)}% win`,
-      {
+    rosterStore.addRunHistoryEntry('pvp-sim', {
+      name: `${preset.name} vs ${opponent.name} · ${simResult.winRate.toFixed(1)}% win`,
+      goalKind: preset.goal?.kind ?? null,
+      presetId: preset.id,
+      presetName: preset.name,
+      headline: {
+        opponentName: opponent.name,
+        winRate: simResult.winRate,
+        killRate: simResult.killRate,
+        meanTimeToKill: simResult.killRate > 0 ? simResult.timeToKill.mean : null,
+      },
+      detail: {
         presetId: preset.id,
         presetName: preset.name,
         opponentId: opponent.id,
@@ -487,21 +517,48 @@
         // The build as fought, resolved to display text NOW - names keep
         // meaning even after loadouts/pets/etc. are renamed or deleted.
         config: describeBuildConfig(character, candidateFromCurrent(character, preset)),
-      }
-    );
-    savedRail?.expand(id);
-    setStatus?.('Saved duel result');
+      },
+    });
   }
 
-  function savePvpOptResult() {
+  // A stored combat timeline is capped so traced fights can't dominate the
+  // single-localStorage-key state blob (a 60s duel can log thousands of events).
+  const TIMELINE_EVENT_CAP = 400;
+
+  /** The traced sample fight is its own history entry - the one place a per-run combat timeline is persisted. */
+  function recordSampleFight() {
+    if (!traceResult || !preset || !opponent) return;
+    rosterStore.addRunHistoryEntry('pvp-sim', {
+      name: `${preset.name} vs ${opponent.name} · sample fight`,
+      goalKind: preset.goal?.kind ?? null,
+      presetId: preset.id,
+      presetName: preset.name,
+      headline: { opponentName: opponent.name, sample: true },
+      detail: {
+        traced: true,
+        presetName: preset.name,
+        opponentName: opponent.name,
+        durationSeconds: simResult?.durationSeconds,
+        healthMultiplier: simResult?.healthMultiplier,
+        seed: traceResult.seed,
+        winner: traceResult.run?.winner ?? null,
+        timeline: traceResult.events.slice(0, TIMELINE_EVENT_CAP),
+      },
+    });
+  }
+
+  function recordPvpOptRun() {
     if (!optResult || !optVerify?.length || !optPreset) return;
     const vsNames = optVerify.map((v) => v.name).join(' + ');
     const before = aggRate(optVerify, 'before');
     const after = aggRate(optVerify, 'after');
-    const id = rosterStore.saveResult(
-      'pvp-opt',
-      `${optPreset.name} vs ${vsNames} · ${before.toFixed(1)}% → ${after.toFixed(1)}%`,
-      {
+    rosterStore.addRunHistoryEntry('pvp-opt', {
+      name: `${optPreset.name} vs ${vsNames} · ${before.toFixed(1)}% → ${after.toFixed(1)}%`,
+      goalKind: optPreset.goal?.kind ?? null,
+      presetId: optPreset.id,
+      presetName: optPreset.name,
+      headline: { opponents: vsNames, baselineWinRate: before, bestWinRate: after, improvementPct: optResult.improvementPct },
+      detail: {
         presetName: optPreset.name,
         opponentName: vsNames,
         aggregate: optVerify.length > 1 ? optAggregate : undefined,
@@ -520,30 +577,108 @@
         })),
         // The RECOMMENDED build (not the current one).
         config: describeBuildConfig(character, optResult.best.candidate),
-      }
-    );
-    savedRail?.expand(id);
-    setStatus?.('Saved optimizer result');
+      },
+    });
   }
 
-  /** Re-run a saved 'pvp-sim' snapshot: restore its matchup + controls
-   * (ids first, names as fallback) and fight the same batch again. */
-  function rerunSaved(r) {
-    const s = r.summary;
-    const targetPreset = presets.find((p) => p.id === s.presetId) || presets.find((p) => p.name === s.presetName);
-    const targetOpponent =
-      opponents.find((o) => o.id === s.opponentId) || opponents.find((o) => o.name === s.opponentName);
-    if (!targetPreset || !targetOpponent) {
-      setStatus?.(`That ${targetPreset ? 'opponent' : 'preset'} no longer exists — can't re-run`);
-      return;
+  // --- Archetype gauntlet: validate the optimizer finalists ---
+  const gauntletFinalists = $derived(optResult ? [optResult.best, ...(optResult.topCandidates ?? [])] : []);
+  const gauntletDefaultBudget = $derived(optPreset ? buildBudget(character, optPreset) : 0);
+
+  function gauntletLabel(i) {
+    return i === 0 ? 'Recommended' : `Runner-up ${i}`;
+  }
+
+  async function runGauntletValidation() {
+    if (!optResult || !optPreset || gauntletRunning) return;
+    gauntletRunning = true;
+    gauntletResult = null;
+    gauntletProgress = null;
+    gauntletAbort = new AbortController();
+    const budget = Math.max(0, parseFlat(gauntletBudgetInput)) || gauntletDefaultBudget;
+    try {
+      const report = await runGauntlet({
+        character,
+        preset: optPreset,
+        finalists: gauntletFinalists,
+        budget,
+        onProgress: (p) => (gauntletProgress = p),
+        signal: gauntletAbort.signal,
+      });
+      if (report?.aborted) {
+        setStatus?.('Gauntlet cancelled');
+      } else {
+        gauntletResult = report;
+        recordGauntletRun(report);
+        setStatus?.(
+          report.contradiction?.flagged
+            ? 'Gauntlet done — a runner-up out-duels the closed-form pick (see the flag)'
+            : 'Gauntlet done — the closed-form pick holds up in duels'
+        );
+      }
+    } catch (err) {
+      setStatus?.(`Gauntlet failed: ${err?.message || err}`);
+    } finally {
+      gauntletRunning = false;
+      gauntletProgress = null;
+      gauntletAbort = null;
     }
-    selectedPresetId = targetPreset.id;
-    selectedOpponentId = targetOpponent.id;
-    if (s.iterations) iterationsInput = String(s.iterations);
-    if (s.durationSeconds) durationInput = String(s.durationSeconds);
-    if (HP_MULTIPLIERS.includes(s.healthMultiplier)) healthMultiplier = s.healthMultiplier;
-    seedInput = s.seed != null ? String(s.seed) : '';
-    runSim();
+  }
+
+  function cancelGauntlet() {
+    gauntletAbort?.abort();
+  }
+
+  function recordGauntletRun(report) {
+    const best = report.finalists.reduce((a, b) => (b.overallWinRate > (a?.overallWinRate ?? -1) ? b : a), null);
+    rosterStore.addRunHistoryEntry('pvp-gauntlet', {
+      name: `${optPreset.name} · archetype gauntlet`,
+      goalKind: optPreset.goal?.kind ?? null,
+      presetId: optPreset.id,
+      presetName: optPreset.name,
+      headline: {
+        bestWinRate: best?.overallWinRate ?? null,
+        archetypeCount: report.finalists[0]?.perArchetype.length ?? 0,
+        contradiction: !!report.contradiction?.flagged,
+      },
+      detail: {
+        budget: report.budget,
+        iterations: report.iterations,
+        contradiction: report.contradiction,
+        finalists: report.finalists.map((f) => ({
+          label: gauntletLabel(f.index),
+          score: f.score,
+          overallWinRate: f.overallWinRate,
+          perArchetype: f.perArchetype.map((a) => ({ archetypeId: a.archetypeId, name: a.name, class: a.class, winRate: a.winRate, ci: a.ci })),
+        })),
+      },
+    });
+  }
+
+  function recordMatrixRun() {
+    if (!matrixResult || matrixResult.aborted) return;
+    const cells = matrixResult.rows.flatMap((row) => row.cells.filter(Boolean).map((cell) => ({ row, cell })));
+    const best = cells.reduce((a, b) => (b.cell.winRate > (a?.cell.winRate ?? -1) ? b : a), null);
+    rosterStore.addRunHistoryEntry('pvp-matrix', {
+      name: `Matrix · ${presets.length} presets × ${opponents.length} opponents`,
+      headline: {
+        presetCount: presets.length,
+        opponentCount: opponents.length,
+        bestPresetName: best?.row.presetName ?? '',
+        bestWinRate: best?.cell.winRate ?? null,
+      },
+      detail: {
+        iterations: matrixResult.iterations,
+        durationSeconds: matrixResult.durationSeconds,
+        healthMultiplier: matrixResult.healthMultiplier,
+        seed: matrixResult.seed,
+        opponentNames: opponents.map((o) => o.name),
+        rows: matrixResult.rows.map((row) => ({
+          presetName: row.presetName,
+          cells: row.cells.map((cell) => (cell ? { winRate: cell.winRate, lossRate: cell.lossRate, drawRate: cell.drawRate } : null)),
+        })),
+      },
+    });
   }
 </script>
 
@@ -587,20 +722,14 @@
           <span class="micro-label">Duration (s)</span>
           <input class="num-input" type="text" inputmode="numeric" bind:value={durationInput} />
         </label>
-        <div class="control" role="group" aria-label="Health multiplier">
+        <div class="control">
           <span class="micro-label">Health</span>
-          <div class="mode-toggle">
-            {#each HP_MULTIPLIERS as m (m)}
-              <button
-                type="button"
-                class:selected={healthMultiplier === m}
-                onclick={() => (healthMultiplier = m)}
-                disabled={simRunning}
-              >
-                ×{m}
-              </button>
-            {/each}
-          </div>
+          <span
+            class="hp-mult"
+            title="Arena and Clan War give every fighter ×{healthMultiplier} their Health. Healing (HP Regen, shields) is still sized off your original max HP."
+          >
+            ×{healthMultiplier} <span class="hp-mult-note">PVP pool</span>
+          </span>
         </div>
         <label class="control">
           <span class="micro-label">Seed (blank = random)</span>
@@ -694,9 +823,6 @@
           </details>
 
           <div class="result-actions">
-            <button type="button" class="btn-ghost" onclick={saveDuelResult} data-testid="save-pvp-sim-result">
-              Save Result
-            </button>
             <button type="button" class="btn-ghost" onclick={showSampleFight} data-testid="show-sample-fight">
               Show sample fight
             </button>
@@ -931,13 +1057,46 @@
             </div>
           {/if}
           <SimulatedPresetCard result={optResult} {character} scoreUnit="% win" onApply={applyOptimized} onPromote={promoteAlternative} />
-          <div>
-            <button type="button" class="btn-ghost" onclick={savePvpOptResult} data-testid="save-pvp-opt-result">
-              Save Result
-            </button>
+
+          <div class="gauntlet-controls" data-testid="gauntlet-controls">
+            {#if gauntletRunning}
+              <div class="gauntlet-progress" role="status">
+                <span class="mono">
+                  Dueling the gauntlet — {gauntletProgress ? `${gauntletProgress.done} / ${gauntletProgress.total}` : 'starting…'} matchups
+                </span>
+                <button type="button" class="btn-ghost" onclick={cancelGauntlet} data-testid="cancel-gauntlet">Cancel</button>
+              </div>
+            {:else}
+              <button type="button" class="btn-ghost" onclick={runGauntletValidation} data-testid="validate-gauntlet">
+                Validate vs archetype gauntlet
+              </button>
+              <label class="gauntlet-budget">
+                <span class="micro-label">Opponent budget (Attack+Health)</span>
+                <input
+                  type="text"
+                  inputmode="numeric"
+                  placeholder={formatFlat(Math.round(gauntletDefaultBudget))}
+                  bind:value={gauntletBudgetInput}
+                  data-testid="gauntlet-budget"
+                />
+              </label>
+            {/if}
           </div>
+          {#if gauntletResult}
+            <GauntletResultPanel result={gauntletResult} />
+          {/if}
         </div>
       {/if}
+
+      <RelicSuggesterPanel
+        {character}
+        preset={optPreset}
+        buildObjectiveSpec={buildPvpObjectiveSpec}
+        scoreUnit="% win"
+        formatScore={(n) => n.toFixed(1)}
+        disabled={optRunning || simRunning || selectedOptOpponents.length === 0}
+        {setStatus}
+      />
     </section>
 
     <section class="panel">
@@ -1145,14 +1304,6 @@
       {/if}
     </section>
     </div>
-
-    <SavedResultsRail
-      bind:this={savedRail}
-      kinds={['pvp-sim', 'pvp-opt']}
-      {setStatus}
-      onRerun={rerunSaved}
-      canRerun={(r) => r.kind === 'pvp-sim'}
-    />
   </div>
 {/if}
 
@@ -1165,15 +1316,8 @@
   .empty-hint {
     padding-top: var(--space-6);
   }
-  /* Two columns like SimulationScreen: the panels keep their 860px measure,
-     the saved-results rail takes the space to the right. Below 1100px the
-     rail stacks underneath instead (the rail handles its own un-sticking). */
   .pvp-screen {
-    display: grid;
-    grid-template-columns: minmax(0, 860px) minmax(240px, 320px);
-    gap: var(--space-6);
-    align-items: start;
-    max-width: 1200px;
+    max-width: 860px;
   }
   .pvp-main {
     display: flex;
@@ -1181,11 +1325,26 @@
     gap: var(--space-6);
     min-width: 0;
   }
-  @media (max-width: 1100px) {
-    .pvp-screen {
-      grid-template-columns: minmax(0, 1fr);
-      max-width: 860px;
-    }
+  .gauntlet-controls {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    margin-top: var(--space-3);
+  }
+  .gauntlet-progress {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: 12px;
+  }
+  .gauntlet-budget {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .gauntlet-budget input {
+    width: 12ch;
   }
   .panel {
     border: 1px solid var(--color-border);
@@ -1224,6 +1383,20 @@
   }
   .run-btn {
     min-height: 36px;
+  }
+  .hp-mult {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 34px;
+    font-family: var(--font-data);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink);
+  }
+  .hp-mult-note {
+    font-family: var(--font-ui);
+    font-size: 10.5px;
+    color: var(--color-muted);
   }
   .mode-toggle {
     display: flex;

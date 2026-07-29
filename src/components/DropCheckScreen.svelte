@@ -7,10 +7,13 @@
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { SLOTS, fieldsForTab } from '../lib/constants.js';
+  import { DROP_GOALS } from '../lib/dropGoals.js';
+  import { TANK_PROFILES } from '../lib/tankObjective.js';
   import Chip from './Chip.svelte';
   import StatsFields from './StatsFields.svelte';
   import VerdictCard from './VerdictCard.svelte';
   import LoadoutColumn from './LoadoutColumn.svelte';
+  import Slider from './Slider.svelte';
 
   let { setStatus } = $props();
 
@@ -18,6 +21,21 @@
   const drop = $derived(character.drop);
   const selectedSlot = $derived(drop?.slot ?? SLOTS[0]);
   const dropFields = $derived(fieldsForTab('gear', character.class));
+
+  // Verdict goal (persisted per character - see model.js normaliseDropGoal).
+  const dropGoal = $derived(character.dropGoal ?? { kind: 'dps-fast', ehpWeight: 0.5 });
+  const availableGoals = $derived(DROP_GOALS.filter((g) => !g.warriorOnly || character.class === 'Warrior'));
+  const tankEhpPct = $derived(Math.round((dropGoal.ehpWeight ?? 0.5) * 100));
+  // Profile id derives from the persisted weight (no view-state to desync on
+  // character switch): a named profile when the weight matches, else Custom.
+  const tankProfileId = $derived(
+    TANK_PROFILES.find((p) => Math.round(p.ehpWeight * 100) === tankEhpPct)?.id ?? 'custom'
+  );
+
+  function pickTankProfile(id) {
+    const profile = TANK_PROFILES.find((p) => p.id === id);
+    if (profile) rosterStore.setDropGoal({ ehpWeight: profile.ehpWeight });
+  }
 
   // Ensure this character always has a drop to work with (per-character -
   // starts fresh on first visit, or after a character switch).
@@ -52,12 +70,51 @@
       <p class="subline">Enter the drop's stats — every preset renders its own judgment.</p>
 
       <p class="disclaimer">
-        ⚠ These DPS/HPS % changes are <strong>estimates</strong>, not confirmed numbers. Whether
+        ⚠ These DPS % changes are <strong>estimates</strong>, not confirmed numbers. Whether
         Penetration does anything in PVE is unconfirmed, and almost no PVE content shows stats or
         health to check against — World Boss and Fortress Boss are the exception, and even there
         only health is visible. Don't rely on this for Crusades or Celestial Trials (more than a
         DPS check) or PVP (mechanics not modeled here). Any gear changes you make are your call.
       </p>
+
+      <div class="goal-controls">
+        <div class="control" role="group" aria-label="Verdict goal">
+          <span class="micro-label">Verdict goal</span>
+          <div class="mode-toggle">
+            {#each availableGoals as g (g.kind)}
+              <button
+                type="button"
+                class:selected={dropGoal.kind === g.kind}
+                onclick={() => rosterStore.setDropGoal({ kind: g.kind })}
+              >
+                {g.label}
+              </button>
+            {/each}
+          </div>
+        </div>
+        {#if dropGoal.kind === 'tank'}
+          <label class="control">
+            <span class="micro-label">Tank profile</span>
+            <select value={tankProfileId} onchange={(e) => pickTankProfile(e.target.value)} data-testid="drop-tank-profile-select">
+              {#each TANK_PROFILES as p (p.id)}
+                <option value={p.id}>{p.label}</option>
+              {/each}
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          <label class="control balance-control">
+            <span class="micro-label">Balance — sustain {100 - tankEhpPct} / {tankEhpPct} HP pool</span>
+            <Slider
+              min={0}
+              max={100}
+              step={5}
+              value={tankEhpPct}
+              oninput={(v) => rosterStore.setDropGoal({ ehpWeight: v / 100 })}
+              ariaLabel="EHP versus sustain balance"
+            />
+          </label>
+        {/if}
+      </div>
 
       <div class="slot-chips">
         {#each SLOTS as slot (slot)}
@@ -164,6 +221,52 @@
       gap: 2px 26px;
     }
   }
+  /* Goal control row - same .control/.mode-toggle pattern as the Simulation
+     screen's optimizer controls (component-scoped there, so duplicated). */
+  .goal-controls {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-4);
+  }
+  .control {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .control select,
+  .control input {
+    background: var(--color-field);
+    color: var(--color-ink);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-field);
+    padding: 7px 10px;
+    font-size: 13px;
+  }
+  .mode-toggle {
+    display: flex;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-field);
+    overflow: hidden;
+  }
+  .mode-toggle button {
+    background: var(--color-field);
+    color: var(--color-muted);
+    border: none;
+    padding: 7px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    min-height: 34px;
+  }
+  .mode-toggle button + button {
+    border-left: 1px solid var(--color-border);
+  }
+  .mode-toggle button.selected {
+    background: var(--color-gold-tint);
+    color: var(--color-gold-light);
+  }
   .slot-chips {
     display: flex;
     flex-wrap: wrap;
@@ -183,6 +286,20 @@
       justify-content: flex-start;
       overflow-x: auto;
       padding-bottom: 4px;
+    }
+    .goal-controls {
+      align-items: stretch;
+      flex-direction: column;
+    }
+    .control select,
+    .control input {
+      min-width: 0;
+      width: 100%;
+      min-height: 44px;
+    }
+    .mode-toggle button {
+      flex: 1;
+      min-height: 44px;
     }
   }
   .discard-btn {

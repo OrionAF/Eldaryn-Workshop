@@ -1,9 +1,9 @@
 import { it, expect } from 'vitest';
-import { computePresetTotals, resolveEffectiveTotals } from './totals.js';
+import { computePresetTotals, computePresetRawTotals, resolveEffectiveTotals } from './totals.js';
 import { newCharacter, newPetEntry, newMountGlyphEntry, newPreset, newStoneEntry, emptyStats } from './model.js';
 import { BASE_ATTACK, BASE_SPEED, BASE_CRIT_MULT } from './dps.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
-import { SIGILS_BY_CLASS } from './sigilsData.js';
+import { SIGILS_BY_CLASS, sigilStat } from './sigilsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
 
 // Talent test fixtures: plain object literals matching talentTreeData.js's
@@ -101,11 +101,12 @@ it('a preset with no pet chosen gets no pet contribution', () => {
   expect(totals.attack_pct).toBe(0);
 });
 
-it('a Mount contributes baseHpPct/baseAtkPct as health_pct/attack_pct, only for the preset riding it', () => {
+it('a Mount contributes its rolled hpPct/atkPct as health_pct/attack_pct, only for the preset riding it', () => {
   const c = newCharacter();
   const mount = c.mounts.entries.find((m) => m.id === 'crystal_beast');
-  mount.baseHpPct = 19;
-  mount.baseAtkPct = 10;
+  mount.star = 1; // star > 0 IS ownership now - there's no separate flag
+  mount.hpPct = 19; // crystal_beast star 1 range: hp [17,19], atk [10,12]
+  mount.atkPct = 10;
   c.presets[0].mountId = mount.id;
 
   const totals = computePresetTotals(c, c.presets[0]);
@@ -119,26 +120,63 @@ it('a Mount contributes baseHpPct/baseAtkPct as health_pct/attack_pct, only for 
   expect(approx(without.attack_pct, 0)).toBe(true);
 });
 
-it('equipped Mount Glyphs sum additively; unequipped glyphs in inventory do not contribute', () => {
+it('glyphs on the RIDDEN mount sum additively; ones on other mounts do not contribute', () => {
   const c = newCharacter();
-  const equippedMinor = newMountGlyphEntry({ tier: 'minor', statKey: 'attack_pct', value: 4.1, equipped: true });
-  const equippedMajor = newMountGlyphEntry({ tier: 'major', statKey: 'crit', value: 1.8, equipped: true });
-  const unequipped = newMountGlyphEntry({ tier: 'minor', statKey: 'attack_pct', value: 999, equipped: false });
-  c.glyphs = { entries: [equippedMinor, equippedMajor, unequipped] };
+  const onMount = newMountGlyphEntry({ tier: 'minor', statKey: 'attack_pct', value: 4.1 });
+  const alsoOnMount = newMountGlyphEntry({ tier: 'minor', statKey: 'crit', value: 1.8 });
+  const elsewhere = newMountGlyphEntry({ tier: 'minor', statKey: 'attack_pct', value: 999 });
+  c.glyphs = { entries: [onMount, alsoOnMount, elsewhere] };
+
+  const ridden = c.mounts.entries.find((m) => m.id === 'crystal_beast');
+  ridden.star = 1;
+  ridden.hpPct = 17;
+  ridden.atkPct = 10;
+  ridden.glyphIds = [onMount.id, alsoOnMount.id];
+  const other = c.mounts.entries.find((m) => m.id === 'night_wolf');
+  other.star = 1;
+  other.glyphIds = [elsewhere.id];
+  c.presets[0].mountId = ridden.id;
 
   const totals = computePresetTotals(c, c.presets[0]);
-  expect(approx(totals.attack_pct, 4.1)).toBe(true);
+  expect(approx(totals.attack_pct, 10 + 4.1)).toBe(true); // mount's own atk% + its glyph
   expect(approx(totals.crit, 1.8)).toBe(true);
+
+  // Switching mounts switches glyph loadout with it - that's the whole point
+  // of mount-bound glyphs.
+  c.presets[0].mountId = other.id;
+  const swapped = computePresetTotals(c, c.presets[0]);
+  expect(approx(swapped.crit, 0)).toBe(true);
+  expect(approx(swapped.attack_pct, other.atkPct + 999)).toBe(true);
 });
 
-it('an equipped SPECIAL glyph contributes no additive stats (its effect lives in the sigil sim)', () => {
+it('a MAJOR glyph contributes no additive stats (its effect lives in the sigil sim)', () => {
   const c = newCharacter();
-  const special = newMountGlyphEntry({ tier: 'major', special: 'ember-curse-glyph', equipped: true });
-  const stat = newMountGlyphEntry({ tier: 'minor', statKey: 'attack_pct', value: 4, equipped: true });
-  c.glyphs = { entries: [special, stat] };
+  const major = newMountGlyphEntry({ tier: 'major', special: 'emberhoard-sigil:common' });
+  const minor = newMountGlyphEntry({ tier: 'minor', statKey: 'attack_pct', value: 4 });
+  c.glyphs = { entries: [major, minor] };
+
+  const ridden = c.mounts.entries.find((m) => m.id === 'crystal_beast');
+  ridden.star = 1;
+  ridden.hpPct = 17;
+  ridden.atkPct = 10;
+  ridden.glyphIds = [major.id, minor.id];
+  c.presets[0].mountId = ridden.id;
 
   const totals = computePresetTotals(c, c.presets[0]);
-  expect(approx(totals.attack_pct, 4)).toBe(true); // only the stat glyph counts
+  expect(approx(totals.attack_pct, 10 + 4)).toBe(true); // only the minor glyph counts
+});
+
+it('an unowned mount contributes nothing, even carrying glyphs', () => {
+  const c = newCharacter();
+  const glyph = newMountGlyphEntry({ tier: 'minor', statKey: 'attack_pct', value: 7 });
+  c.glyphs = { entries: [glyph] };
+  const mount = c.mounts.entries.find((m) => m.id === 'crystal_beast');
+  mount.star = 0; // not owned
+  mount.glyphIds = [glyph.id];
+  c.presets[0].mountId = mount.id;
+
+  const totals = computePresetTotals(c, c.presets[0]);
+  expect(approx(totals.attack_pct, 0)).toBe(true);
 });
 
 it('resolveEffectiveTotals returns manualStats when manualTotals is true', () => {
@@ -220,7 +258,7 @@ it('Shadow Path contributes linearly per point, the same for either class', () =
   const totals = computePresetTotals(c, c.presets[0]);
   expect(approx(totals.attack_pct, 6)).toBe(true); // 2%/point * 3
   expect(approx(totals.crit, 1.5)).toBe(true); // 0.5%/point * 3
-  expect(approx(totals.penetration, 4.5)).toBe(true); // 1.5%/point * 3
+  expect(approx(totals.penetration, 1.8)).toBe(true); // 0.6%/point * 3 (post-Penetration Rework)
 });
 
 it("Radiant Path's per-point stats depend on class", () => {
@@ -312,33 +350,41 @@ it('Warrior Transcendence nodes contribute now that its tree is transcribed', ()
   expect(totals.health_pct).toBe(1);
 });
 
-// --- Stat caps ---
-it('Calculated totals clamp a capped stat when stacked sources exceed the cap', () => {
+// --- Stat caps (soft-cap curve, statCaps.js) ---
+it('Calculated totals curve an overcapped stat instead of clamping it', () => {
   const c = newCharacter();
   c.loadouts[0].gear.Weapon = emptyStats({ crit: 60 });
-  c.loadouts[0].gear.Ring = emptyStats({ crit: 50 }); // 60 + 50 = 110, over the 80 cap
+  c.loadouts[0].gear.Ring = emptyStats({ crit: 50 }); // raw 110, soft cap 50 / hard cap 90
 
   const totals = computePresetTotals(c, c.presets[0]);
-  expect(totals.crit).toBe(80);
+  expect(approx(totals.crit, 50 + 40 * (1 - (80 / 140) ** 2))).toBe(true); // ~76.94
+
+  // The raw pre-curve sum stays available for the SOFT indicator.
+  const raw = computePresetRawTotals(c, c.presets[0]);
+  expect(approx(raw.crit, 110)).toBe(true);
 });
 
-it('Manual totals are also clamped by resolveEffectiveTotals', () => {
+it('Manual totals (already effective) are hard-clamped, never re-curved', () => {
   const c = newCharacter();
   c.presets[0].manualTotals = true;
-  c.presets[0].manualStats = emptyStats({ paralyze_chance: 99 }); // way over the 15 cap
+  // 62.8 is over the 50 soft cap but is a legit post-curve effective value.
+  c.presets[0].manualStats = emptyStats({ crit: 62.8, paralyze_chance: 99 }); // 99 over the 18 hard cap
 
   const effective = resolveEffectiveTotals(c, c.presets[0]);
-  expect(effective.paralyze_chance).toBe(15);
+  expect(effective.crit).toBe(62.8);
+  expect(effective.paralyze_chance).toBe(18);
   // The clamp only affects the read - stored manualStats stays as typed.
   expect(c.presets[0].manualStats.paralyze_chance).toBe(99);
 });
 
-it('an uncapped stat (e.g. Lifesteal) is never clamped', () => {
+it('an uncapped stat (e.g. Attack %) is never curved or clamped', () => {
   const c = newCharacter();
-  c.loadouts[0].gear.Weapon = emptyStats({ lifesteal: 500 });
+  c.loadouts[0].gear.Weapon = emptyStats({ attack_pct: 500, lifesteal: 500 });
 
   const totals = computePresetTotals(c, c.presets[0]);
-  expect(approx(totals.lifesteal, 500)).toBe(true);
+  expect(approx(totals.attack_pct, 500)).toBe(true);
+  // Lifesteal is now capped by the rebalance (soft 40 / hard 70).
+  expect(approx(totals.lifesteal, 40 + 30 * (1 - (60 / 520) ** 2))).toBe(true);
 });
 
 // --- Relics (character-wide levels, equipped per-preset via preset.relicIds) ---
@@ -409,12 +455,16 @@ it("equipping a relic on one preset doesn't equip it for another (equip is per-p
 });
 
 // --- Sigils (static catalogue structure + character-entered values, equipped per-preset - PASSIVE stats only) ---
-it('an equipped sigil contributes its entered passive values; entered active values never reach totals', () => {
+it('an equipped sigil contributes DERIVED passive Attack/Health from its level/tier; entered active values never reach totals', () => {
   const c = newCharacter();
   c.class = 'Warrior';
-  // warborn-fury: passive declares attack+health; active declares attack_pct/penetration/dmg_reduction
+  // warborn-fury (Uncommon): passive Attack/Health derived from level/tier;
+  // active declares attack_pct/penetration/dmg_reduction (simulation-only).
+  const def = SIGILS_BY_CLASS.Warrior.find((d) => d.id === 'warborn-fury');
   c.sigilValues['warborn-fury'] = {
-    passive: { attack: 500, health: 300 },
+    level: 5,
+    tier: 1,
+    passive: {}, // entered attack/health are ignored - they're derived
     active: { attack_pct: 20, penetration: 10, dmg_reduction: 5 },
     damage: 0,
     tickDamage: 0,
@@ -424,18 +474,35 @@ it('an equipped sigil contributes its entered passive values; entered active val
   const bare = computePresetTotals(c, newPreset('bare'));
   const totals = computePresetTotals(c, c.presets[0]);
 
-  expect(totals.attack - bare.attack).toBe(500); // no attack_pct anywhere, so flat delta is exact
-  expect(totals.health - bare.health).toBe(300);
+  expect(totals.attack - bare.attack).toBe(sigilStat(def, 'attack', 5, 1)); // no attack_pct anywhere, so flat delta is exact
+  expect(totals.health - bare.health).toBe(sigilStat(def, 'health', 5, 1));
   // The active's stats stay simulation-only.
   expect(totals.penetration).toBe(bare.penetration);
   expect(totals.dmg_reduction).toBe(bare.dmg_reduction);
 });
 
-it('an equipped sigil with no entered values contributes nothing', () => {
+it('the x3 sigil tier multiplies the derived Attack/Health (up to display rounding)', () => {
+  const def = SIGILS_BY_CLASS.Warrior.find((d) => d.id === 'warborn-fury');
+  const t1 = sigilStat(def, 'attack', 8, 1);
+  const t2 = sigilStat(def, 'attack', 8, 2);
+  expect(Math.abs(t2 - t1 * 3)).toBeLessThanOrEqual(1);
+});
+
+it('a baked sigil at level 0 (not owned) contributes nothing; setting a level makes it contribute', () => {
   const c = newCharacter();
   c.class = 'Warrior';
+  const def = SIGILS_BY_CLASS.Warrior.find((d) => d.id === 'warborn-fury');
   c.presets[0].sigilIds = ['warborn-fury'];
-  expect(computePresetTotals(c, c.presets[0])).toEqual(computePresetTotals(c, newPreset('bare')));
+
+  // No sigilValues entry -> level 0 -> no contribution.
+  const bare = computePresetTotals(c, newPreset('bare'));
+  expect(computePresetTotals(c, c.presets[0]).attack).toBe(bare.attack);
+
+  // Give it a level -> derived Attack/Health appear.
+  c.sigilValues['warborn-fury'] = { level: 4, tier: 1, passive: {}, active: {}, damage: 0, tickDamage: 0 };
+  const totals = computePresetTotals(c, c.presets[0]);
+  expect(totals.attack - bare.attack).toBe(sigilStat(def, 'attack', 4, 1));
+  expect(totals.health - bare.health).toBe(sigilStat(def, 'health', 4, 1));
 });
 
 it('a sigil not equipped on this preset contributes nothing', () => {
@@ -469,6 +536,50 @@ it('the BOTTOM fortress buff contributes its fixed stat block', () => {
   expect(approx(totals.block_chance, 3)).toBe(true);
   expect(approx(totals.blind_chance, 3)).toBe(true);
   expect(approx(totals.pvp_defense, 15)).toBe(true);
+});
+
+it('two presets on DIFFERENT mounts get independent glyph loadouts', () => {
+  const c = newCharacter();
+  const offensive = newMountGlyphEntry({ tier: 'minor', statKey: 'attack_pct', value: 10 });
+  const defensive = newMountGlyphEntry({ tier: 'minor', statKey: 'dmg_reduction', value: 6 });
+  c.glyphs = { entries: [offensive, defensive] };
+
+  const atkMount = c.mounts.entries.find((m) => m.id === 'crystal_beast');
+  atkMount.star = 1;
+  atkMount.hpPct = 17;
+  atkMount.atkPct = 12;
+  atkMount.glyphIds = [offensive.id];
+  const hpMount = c.mounts.entries.find((m) => m.id === 'night_wolf');
+  hpMount.star = 1;
+  hpMount.hpPct = 9;
+  hpMount.atkPct = 6;
+  hpMount.glyphIds = [defensive.id];
+
+  c.presets[0].mountId = atkMount.id;
+  c.presets[1].mountId = hpMount.id;
+
+  const dpsPreset = computePresetTotals(c, c.presets[0]);
+  const tankPreset = computePresetTotals(c, c.presets[1]);
+  expect(approx(dpsPreset.attack_pct, 12 + 10)).toBe(true);
+  expect(approx(dpsPreset.dmg_reduction, 0)).toBe(true);
+  expect(approx(tankPreset.dmg_reduction, 6)).toBe(true);
+  expect(approx(tankPreset.attack_pct, 6)).toBe(true);
+});
+
+it('two presets SHARING a mount also share its glyphs (the coupling that remains)', () => {
+  const c = newCharacter();
+  const glyph = newMountGlyphEntry({ tier: 'minor', statKey: 'crit', value: 3 });
+  c.glyphs = { entries: [glyph] };
+  const shared = c.mounts.entries.find((m) => m.id === 'crystal_beast');
+  shared.star = 1;
+  shared.hpPct = 17;
+  shared.atkPct = 10;
+  shared.glyphIds = [glyph.id];
+  c.presets[0].mountId = shared.id;
+  c.presets[1].mountId = shared.id;
+
+  expect(approx(computePresetTotals(c, c.presets[0]).crit, 3)).toBe(true);
+  expect(approx(computePresetTotals(c, c.presets[1]).crit, 3)).toBe(true);
 });
 
 it('CORE stacks additively with TOP or BOTTOM on pvp_attack/pvp_defense', () => {

@@ -25,7 +25,7 @@ export const AWAKENING_PATHS = {
   shadow: {
     label: 'Shadow Path',
     // Same for both classes.
-    perPoint: { attack_pct: 2, crit: 0.5, crit_mult: 2, penetration: 1.5 },
+    perPoint: { attack_pct: 2, crit: 0.5, crit_mult: 2, penetration: 0.6 },
   },
   radiant: {
     label: 'Radiant Path',

@@ -3,18 +3,14 @@
  * Transcendence tree (no Svelte, no store access - unit-testable in
  * isolation, same split as dps.js/totals.js from the UI layer).
  *
- * The tree is a sparse grid: nodes exist only at specific "col:row"
- * positions (transcendenceData.js), not every cell. Unlocking is gated
- * purely by orthogonal adjacency to an already-unlocked node (no diagonal,
- * no skipping gaps/blank cells/other unallocated nodes) - Glyph Sockets are
- * excluded from the walkable graph entirely (inert, matching their in-game
- * "SOON" badge), so a path can never route through one. The tree's start
- * position (transcendenceData.js's startPosition) is nothing unlocked by
- * default - it's just the one node with no adjacency prerequisite, so it's
- * always the first thing a player has to unlock themselves.
+ * The rules this implements - sparse grid, orthogonal-adjacency unlocking,
+ * glyph sockets excluded from the walkable graph, the start position having
+ * no prerequisite, and the slot-tiered Ichor cost - are documented in
+ * docs/Reference/game-systems.md §1. The cost VALUES live in constants.js
+ * (TRANSCENDENCE_COST_TIERS). Neither is restated here.
  */
 
-import { TRANSCENDENCE_COST_TIERS, TRANSCENDENCE_SIGIL_COST, TRANSCENDENCE_UNCOMMON_COST_MULTIPLIER } from './constants.js';
+import { TRANSCENDENCE_COST_TIERS, TRANSCENDENCE_SIGIL_COST, TRANSCENDENCE_UNCOMMON_SLOTS } from './constants.js';
 
 /** "14:25" -> { col: 14, row: 25 }. */
 export function parsePosition(position) {
@@ -92,11 +88,27 @@ export function reachableFrom(start, walkableSet, tree) {
   return visited;
 }
 
-/** Tiered Ichor cost of the Nth (1-indexed) common/uncommon node unlocked, x3 if uncommon. */
-export function costForCount(n, isUncommon) {
+/** Tiered Ichor price of the Nth (1-indexed) slot alone. */
+function tierPrice(n) {
   const tier = TRANSCENDENCE_COST_TIERS.find((t) => n <= t.upTo);
-  const base = tier ? tier.cost : TRANSCENDENCE_COST_TIERS[TRANSCENDENCE_COST_TIERS.length - 1].cost;
-  return isUncommon ? base * TRANSCENDENCE_UNCOMMON_COST_MULTIPLIER : base;
+  return tier ? tier.cost : TRANSCENDENCE_COST_TIERS[TRANSCENDENCE_COST_TIERS.length - 1].cost;
+}
+
+/** How many tiered slots a common/uncommon node fills: uncommon (big) nodes fill 3 at once. */
+export function slotsForNode(isUncommon) {
+  return isUncommon ? TRANSCENDENCE_UNCOMMON_SLOTS : 1;
+}
+
+/**
+ * Tiered Ichor cost of a node whose FIRST slot is the Nth (1-indexed).
+ * Commons pay slot n's price; uncommon (big) nodes fill the next 3 slots at
+ * once and pay those 3 slot prices combined (which can straddle a tier
+ * boundary, e.g. slots 4+5+6 = 1+2+2 = 5).
+ */
+export function costForCount(n, isUncommon) {
+  let cost = 0;
+  for (let i = 0; i < slotsForNode(isUncommon); i++) cost += tierPrice(n + i);
+  return cost;
 }
 
 /** Flat Ichor cost of an Ancient Sigil - not part of the tiered common/uncommon count. */
@@ -107,22 +119,23 @@ export function costForSigil() {
 /**
  * Replays `unlockedPositions` (in unlock order) through the tiered cost
  * table to produce the running Ichor-spent total shown in the UI (info
- * only - not gated against an owned balance). Common/uncommon nodes consume
- * the next tiered-count slot; sigils cost a flat 30 and don't advance the
- * tiered count.
+ * only - not gated against an owned balance). Commons consume the next
+ * tiered slot, uncommons the next 3; sigils cost a flat 30 and don't
+ * advance the tiered slot count.
  */
 export function totalIchorSpent(unlockedPositions, tree) {
   const byPosition = indexNodesByPosition(tree);
   let spent = 0;
-  let commonUncommonCount = 0;
+  let slotsFilled = 0;
   for (const position of unlockedPositions) {
     const node = byPosition.get(position);
     if (!node) continue;
     if (node.type === 'sigil') {
       spent += costForSigil();
     } else if (node.type === 'common' || node.type === 'uncommon') {
-      commonUncommonCount += 1;
-      spent += costForCount(commonUncommonCount, node.type === 'uncommon');
+      const isUncommon = node.type === 'uncommon';
+      spent += costForCount(slotsFilled + 1, isUncommon);
+      slotsFilled += slotsForNode(isUncommon);
     }
   }
   return spent;

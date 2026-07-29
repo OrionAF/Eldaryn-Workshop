@@ -98,3 +98,47 @@ it('shows the derived PVP effect percentage next to pvp_attack/pvp_defense', () 
   expect(target.textContent).toContain('58.6%');
   unmount(app);
 });
+
+// --- The capped-stat readout: EFFECTIVE / RAW / N% GAIN ---
+
+const CAPPED_FIELDS = [
+  { key: 'block_chance', label: 'Block Chance', kind: 'pct', base: 0, softCap: 40, cap: 80 },
+  { key: 'crit', label: 'Critical %', kind: 'pct', base: 0, softCap: 50, cap: 90 },
+];
+
+it('an overcapped stat shows all three of the game stat sheet figures', () => {
+  // The observation the curve was confirmed against: raw 56.4 -> 52.5 / 57% GAIN.
+  const app = mount(StatsFields, {
+    target,
+    props: {
+      values: offensiveStats({ block_chance: 52.452, crit: 20 }),
+      rawValues: offensiveStats({ block_chance: 56.4, crit: 20 }),
+      fields: CAPPED_FIELDS,
+      readOnly: true,
+    },
+  });
+  flushSync();
+
+  const text = target.textContent.replace(/\s+/g, ' ');
+  expect(text).toContain('52.452'); // EFFECTIVE - the only one combat uses
+  expect(text).toContain('RAW 56.4 · 57% GAIN');
+  unmount(app);
+});
+
+it('a stat below its soft cap shows the value alone - no RAW line, no GAIN', () => {
+  const app = mount(StatsFields, {
+    target,
+    props: {
+      values: offensiveStats({ block_chance: 20, crit: 20 }),
+      rawValues: offensiveStats({ block_chance: 20, crit: 20 }),
+      fields: CAPPED_FIELDS,
+      readOnly: true,
+    },
+  });
+  flushSync();
+
+  const text = target.textContent;
+  expect(text).not.toContain('RAW');
+  expect(text).not.toContain('GAIN');
+  unmount(app);
+});

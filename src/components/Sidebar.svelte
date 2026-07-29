@@ -3,8 +3,9 @@
    * Sidebar.svelte - the left rail (desktop) / bottom tab bar + "More"
    * sheet (mobile, <=700px). Owns navigation (Preset screens + Character
    * screens), character management (switch/add/rename/delete/class),
-   * Export/Import, and the hard-reset entry point (was TopBar's ⚙ ->
-   * SettingsPanel) - everything that isn't screen content lives here now.
+   * Export/Import, and the Settings card entry point (SettingsPanel: future
+   * settings + the Danger Zone) - everything that isn't screen content
+   * lives here now.
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { CLASSES } from '../lib/constants.js';
@@ -21,8 +22,7 @@
     { id: 'pets', label: 'Pets', color: 'pets' },
     { id: 'relics', label: 'Relics', color: 'relics' },
     { id: 'sigils', label: 'Sigils', color: 'sigils' },
-    { id: 'simulation', label: 'Simulation', color: 'simulation' },
-    { id: 'pvp', label: 'PVP', color: 'pvp' },
+    { id: 'simulations', label: 'Simulations', color: 'simulations' },
   ];
 
   const CHARACTER_NAV = [
@@ -216,8 +216,8 @@
     <p class="import-error" role="alert">{importError}</p>
   {/if}
 
-  <button type="button" class="reset-toggle" onclick={() => (settingsOpen = !settingsOpen)}>Reset all data</button>
-  <SettingsPanel open={settingsOpen} onClose={() => (settingsOpen = false)} />
+  <button type="button" class="reset-toggle" onclick={() => (settingsOpen = !settingsOpen)}>Settings</button>
+  <SettingsPanel open={settingsOpen} onClose={() => (settingsOpen = false)} {onStatus} />
 
   <p class="privacy-note">🔒 100% local — no data or telemetry is ever sent to a server.</p>
 {/snippet}
@@ -443,7 +443,7 @@
   }
   .reset-toggle {
     font-size: 11px;
-    color: var(--color-downgrade);
+    color: var(--color-muted);
     border-color: var(--color-border);
     background: transparent;
     min-height: 44px;

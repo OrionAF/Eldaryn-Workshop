@@ -1,12 +1,18 @@
 /**
  * buildConfig.js - display-ready description of the full build an optimizer
  * candidate resolves to, one { label, value } line per dimension, for the
- * Simulation screen's Saved Results rail.
+ * auto-saved run history (character.runHistory, rendered by the Simulations
+ * Dashboard's RunHistoryPanel).
  *
- * Snapshots must stay readable after the live build changes (a saved result
- * outlives renames, deletions, even class changes), so every name is
- * resolved HERE at save time and stored as plain text - nothing in a saved
- * entry is re-resolved against the character or static data at render time.
+ * (Previously "the Simulation screen's Saved Results rail" - that rail and
+ * its manual Save button were removed in slice 3 of the goals/linking
+ * redesign, when runs began auto-saving. Corrected 2026-07-28.)
+ *
+ * THE INVARIANT: a snapshot must stay readable after the live build changes -
+ * it outlives renames, deletions, even class changes. So every name is
+ * resolved HERE at save time and stored as plain text, and nothing in a saved
+ * entry is ever re-resolved against the character or static data at render
+ * time. Re-resolving would make old entries mutate or blank out.
  *
  * Works for both save paths: the current build (candidateFromCurrent) and
  * an optimizer recommendation (result.best.candidate) - same candidate
@@ -17,6 +23,7 @@ import { SPECS_BY_CLASS, SLOTS } from './constants.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
 import { SIGILS_BY_CLASS } from './sigilsData.js';
 import { AWAKENING_PATHS } from './awakeningData.js';
+import { majorGlyphById } from './glyphsData.js';
 import { petLabel, stoneLabel } from './optimizer.js';
 
 export function describeBuildConfig(character, candidate) {
@@ -65,7 +72,9 @@ export function describeBuildConfig(character, candidate) {
 
   const glyphs = (candidate.glyphEquippedIds || []).map((id) => {
     const g = (character.glyphs?.entries || []).find((e) => e.id === id);
-    return g ? `${g.tier} ${g.statKey} +${g.value}` : id;
+    if (!g) return id;
+    const major = majorGlyphById(g.special);
+    return major ? `${major.name} (${major.rarity})` : `${g.tier} ${g.statKey} +${g.value}`;
   });
   lines.push({ label: 'Mount Glyphs', value: glyphs.length ? glyphs.join(', ') : 'None' });
 

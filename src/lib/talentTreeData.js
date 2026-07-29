@@ -1,4 +1,4 @@
-/**
+﻿/**
  * talentTreeData.js - hardcoded talent tree content (arms, Protection,
  * Marksmanship, Disruption). Trees are the same for every player - not
  * user-authored data, so they live in code (like STAT_FIELDS/RARITIES in
@@ -16,19 +16,17 @@
  *
  * Shape (matches model.js's TalentTree/Tier/Talent):
  *   TalentTree = { description: string, tiers: Tier[] }
- *   Tier       = { id, threshold: number, talents: Talent[] }  // threshold =
- *                points required spent in ALL previous tiers combined to
- *                unlock this tier. A tier can hold multiple talents (see the
- *                screenshots in docs/Talent Screenshots/ - Tier 1 had three:
- *                Sharp Aim, Hunter's Drain, Quick Draw).
+ *   Tier       = { id, threshold: number, talents: Talent[] }
  *   Talent     = { id, name, statKey, ranks: number[] }  // ranks[i] = the
  *                assigned (not computed) value AT rank i+1
  *
- * Each spec below is one placeholder tier with one placeholder talent - a
- * starting point to build the real tree from, not a guessed structure. Add
- * more tiers to a spec's `tiers` array and more talents to a tier's
- * `talents` array as needed; every spec's tier count/thresholds/talents are
- * independent of the others.
+ * The tier-threshold rule, the 29-point cap and why IDs must stay stable are
+ * documented in docs/Reference/game-systems.md §2.
+ *
+ * THESE ARE REAL, TRANSCRIBED TREES - 6 tiers and 14-15 talents per spec,
+ * thresholds [0,5,10,15,20,25], read from the game (source screenshots in
+ * docs/Reference/Source/screenshots/talents/). Treat the numbers as game data,
+ * not as scaffolding to be replaced.
  */
 
 export const TALENT_TREES = {

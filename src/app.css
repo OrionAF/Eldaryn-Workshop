@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Design direction: "midnight violet + gold" - a deep violet-black workshop
  * lit by gold accents (the "focused/editing" signal throughout: selected
  * chips, active nav items, the Drop Check altar). Cyan marks DPS, green
@@ -70,9 +70,10 @@
   --nav-sigils: #7a8cff;
   --nav-sigils-light: #b3bdff;
   --nav-sigils-tint: rgba(122, 140, 255, 0.1);
-  --nav-simulation: #4fe3c1;
-  --nav-simulation-light: #a4f1de;
-  --nav-simulation-tint: rgba(79, 227, 193, 0.1);
+  --nav-simulations: #4fe3c1;
+  --nav-simulations-light: #a4f1de;
+  --nav-simulations-tint: rgba(79, 227, 193, 0.1);
+  /* No longer a nav item (PVP folded into the Simulations page) - kept as the PVP tab accent. */
   --nav-pvp: #ff5c5c;
   --nav-pvp-light: #ffa3a3;
   --nav-pvp-tint: rgba(255, 92, 92, 0.1);
@@ -86,7 +87,7 @@
   --nav-transcendence-light: #dcbafd;
   --nav-transcendence-tint: rgba(192, 132, 252, 0.1);
 
-  /* Socketed Stone type accents (docs/socketed-stones-design.md §5) - exact hex values given, not derived from the theme palette. */
+  /* Socketed Stone type accents (docs/Reference/Notes/socketed-stones-design.md §5) - exact hex values given, not derived from the theme palette. */
   --stone-verdant: #22c55e;
   --stone-verdant-light: #86efac;
   --stone-verdant-tint: rgba(34, 197, 94, 0.12);
@@ -107,6 +108,59 @@
   --tier-gold: #e8c84f;
   --tier-silver: #c0cbe0;
   --tier-bronze: #c98d5e;
+
+  /**
+   * Rarity scale (BigReworkV1 §"Colors for rarity labelling") - exact in-game
+   * hex values, like the stone accents above, NOT derived from the theme.
+   * One triad per RARITIES tier: `-fg` (name/large text), `-border`, `-bg` (fill).
+   *
+   * `-fg-strong` is the same hue lightened until it clears WCAG AA 4.5:1 against
+   * the tier's own `-bg` *and* --color-panel *and* --color-inset. Use `-fg` for
+   * large text only (card titles, stars: all 10 tiers clear the 3:1 large-text
+   * bar); use `-fg-strong` for anything at normal size. Six tiers are identical
+   * in both; only Rare/Epic/Eternal/Oblivion shift, and only slightly - at
+   * normal size those four measure 3.38/3.37/3.87/4.36 against their own fill.
+   */
+  --rarity-common-fg: #9d9d9d;
+  --rarity-common-fg-strong: #9d9d9d;
+  --rarity-common-border: #5a5e67;
+  --rarity-common-bg: #1e2536;
+  --rarity-uncommon-fg: #1eff00;
+  --rarity-uncommon-fg-strong: #1eff00;
+  --rarity-uncommon-border: #168216;
+  --rarity-uncommon-bg: #103025;
+  --rarity-rare-fg: #0070dd;
+  --rarity-rare-fg-strong: #0885ff;
+  --rarity-rare-border: #093d75;
+  --rarity-rare-bg: #0d203d;
+  --rarity-epic-fg: #a335ee;
+  --rarity-epic-fg-strong: #b55cf1;
+  --rarity-epic-border: #5a268d;
+  --rarity-epic-bg: #1f1a3f;
+  --rarity-legendary-fg: #ff8000;
+  --rarity-legendary-fg-strong: #ff8000;
+  --rarity-legendary-border: #8d4e14;
+  --rarity-legendary-bg: #292225;
+  --rarity-mythic-fg: #ff4081;
+  --rarity-mythic-fg-strong: #ff4081;
+  --rarity-mythic-border: #822a54;
+  --rarity-mythic-bg: #291b33;
+  --rarity-ancient-fg: #00e5ff;
+  --rarity-ancient-fg-strong: #00e5ff;
+  --rarity-ancient-border: #078198;
+  --rarity-ancient-bg: #0d2d41;
+  --rarity-divine-fg: #ffd76b;
+  --rarity-divine-fg-strong: #ffd76b;
+  --rarity-divine-border: #8b7a4b;
+  --rarity-divine-bg: #292c31;
+  --rarity-eternal-fg: #8b5cff;
+  --rarity-eternal-fg-strong: #976cff;
+  --rarity-eternal-border: #433383;
+  --rarity-eternal-bg: #1c1e41;
+  --rarity-oblivion-fg: #c04cff;
+  --rarity-oblivion-fg-strong: #c251ff;
+  --rarity-oblivion-border: #582d83;
+  --rarity-oblivion-bg: #221c41;
 
   --font-ui: 'IBM Plex Sans', -apple-system, 'Segoe UI', system-ui, sans-serif;
   --font-data: 'IBM Plex Mono', ui-monospace, 'Cascadia Code', 'SF Mono', Consolas, monospace;
@@ -237,6 +291,26 @@ button:disabled {
   color: var(--color-danger);
 }
 
+/**
+ * Card-footer confirm-remove (BigReworkV1: "auto-expand the entire row and be
+ * labelled Confirm remove"). Differs from ConfirmButton.svelte, which swaps in
+ * a separate prompt+Yes/Cancel row - here the same button grows across the
+ * whole footer, so a card in a dense grid doesn't reflow its neighbours.
+ *
+ * Call sites pair this with an onblur handler to cancel, so a click anywhere
+ * else backs out (the pattern PvpScreen.svelte already uses).
+ */
+.btn-danger.is-expanding {
+  transition: flex-grow 140ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+.btn-danger.is-expanding.is-confirming {
+  flex: 1 1 100%;
+  width: 100%;
+  background: var(--color-downgrade-soft);
+  font-weight: 600;
+}
+
 .rank-controls button {
   width: 26px;
   padding: 2px 0;
@@ -270,6 +344,59 @@ button:disabled {
   text-transform: uppercase;
 }
 
+/**
+ * Rarity theming. A `.rarity-<tier>` class only *rebinds* four local custom
+ * properties; it paints nothing itself. Any card/badge/label then styles
+ * itself generically off `var(--rarity-fg)` etc. and works for all 10 tiers
+ * without repeating a per-tier rule. Put the class on the outermost element
+ * that should carry the rarity (the card), not on each child.
+ *
+ * Use --rarity-fg for large text (card titles, stars) and --rarity-fg-strong
+ * for normal-size text - see the token block at the top for why.
+ */
+.rarity-common { --rarity-fg: var(--rarity-common-fg); --rarity-fg-strong: var(--rarity-common-fg-strong); --rarity-border: var(--rarity-common-border); --rarity-bg: var(--rarity-common-bg); }
+.rarity-uncommon { --rarity-fg: var(--rarity-uncommon-fg); --rarity-fg-strong: var(--rarity-uncommon-fg-strong); --rarity-border: var(--rarity-uncommon-border); --rarity-bg: var(--rarity-uncommon-bg); }
+.rarity-rare { --rarity-fg: var(--rarity-rare-fg); --rarity-fg-strong: var(--rarity-rare-fg-strong); --rarity-border: var(--rarity-rare-border); --rarity-bg: var(--rarity-rare-bg); }
+.rarity-epic { --rarity-fg: var(--rarity-epic-fg); --rarity-fg-strong: var(--rarity-epic-fg-strong); --rarity-border: var(--rarity-epic-border); --rarity-bg: var(--rarity-epic-bg); }
+.rarity-legendary { --rarity-fg: var(--rarity-legendary-fg); --rarity-fg-strong: var(--rarity-legendary-fg-strong); --rarity-border: var(--rarity-legendary-border); --rarity-bg: var(--rarity-legendary-bg); }
+.rarity-mythic { --rarity-fg: var(--rarity-mythic-fg); --rarity-fg-strong: var(--rarity-mythic-fg-strong); --rarity-border: var(--rarity-mythic-border); --rarity-bg: var(--rarity-mythic-bg); }
+.rarity-ancient { --rarity-fg: var(--rarity-ancient-fg); --rarity-fg-strong: var(--rarity-ancient-fg-strong); --rarity-border: var(--rarity-ancient-border); --rarity-bg: var(--rarity-ancient-bg); }
+.rarity-divine { --rarity-fg: var(--rarity-divine-fg); --rarity-fg-strong: var(--rarity-divine-fg-strong); --rarity-border: var(--rarity-divine-border); --rarity-bg: var(--rarity-divine-bg); }
+.rarity-eternal { --rarity-fg: var(--rarity-eternal-fg); --rarity-fg-strong: var(--rarity-eternal-fg-strong); --rarity-border: var(--rarity-eternal-border); --rarity-bg: var(--rarity-eternal-bg); }
+.rarity-oblivion { --rarity-fg: var(--rarity-oblivion-fg); --rarity-fg-strong: var(--rarity-oblivion-fg-strong); --rarity-border: var(--rarity-oblivion-border); --rarity-bg: var(--rarity-oblivion-bg); }
+
+/* Unknown/absent rarity: fall back to the neutral panel treatment. */
+.rarity-unknown { --rarity-fg: var(--color-muted); --rarity-fg-strong: var(--color-soft); --rarity-border: var(--color-border); --rarity-bg: var(--color-inset); }
+
+/* Small rarity pill. Normal-size text, so it uses the AA-safe -fg-strong. */
+.rarity-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  color: var(--rarity-fg-strong, var(--color-muted));
+  border: 1px solid var(--rarity-border, var(--color-border));
+  background: var(--rarity-bg, transparent);
+}
+
+/* Card shell carrying a rarity. Concentric radius: inner elements go smaller. */
+.rarity-card {
+  border: 1px solid var(--rarity-border, var(--color-border));
+  background: var(--rarity-bg, var(--color-panel));
+  border-radius: var(--radius-panel);
+}
+
+/* Card title at the rarity hue - large text, so plain -fg is AA-safe at 3:1. */
+.rarity-title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 15px;
+  text-align: center;
+  color: var(--rarity-fg, var(--color-ink));
+}
+
 input,
 select {
   font-family: inherit;
@@ -279,6 +406,114 @@ select {
   color: var(--color-ink);
   border: 1px solid var(--color-border-strong);
   padding: 6px 10px;
+}
+
+/**
+ * Range sliders.
+ *
+ * Why this is more than a repaint: a native range thumb is *edge*-aligned
+ * inside its track, so the thumb's CENTRE only ever travels from
+ * `track.left + thumb/2` to `track.right - thumb/2`. Reading the knob's centre
+ * as "the value", the knob visibly stops short of both ends - it feels stuck.
+ * No amount of styling the native track fixes that, because the thumb is
+ * constrained by the same box that draws the track.
+ *
+ * So the visible track is a SEPARATE element (`.slider-track` in
+ * Slider.svelte) and the real input is overlaid `thumb`-wider than it,
+ * offset by `-thumb/2`. That makes the thumb's centre travel exactly the
+ * visible track's full 0-100%. The thumb overhangs the wrapper by thumb/2 at
+ * each extreme - that overhang is the point, so never clip `.slider`.
+ *
+ * `--fill` (0-100%) is set inline from format.js's fillPct().
+ */
+.slider {
+  --slider-thumb: 18px;
+  --slider-track-h: 6px;
+  --fill: 0%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: var(--slider-thumb);
+  min-width: 60px;
+  /* Reserve the thumb's overhang so the knob never laps onto a neighbouring
+     label or value at 0%/100%. */
+  margin-inline: calc(var(--slider-thumb) / 2);
+}
+
+.slider-track {
+  position: absolute;
+  inset-inline: 0;
+  height: var(--slider-track-h);
+  border-radius: var(--radius-pill);
+  background: linear-gradient(
+    to right,
+    var(--color-gold) 0 var(--fill),
+    var(--color-field) var(--fill) 100%
+  );
+  border: 1px solid var(--color-border);
+  pointer-events: none;
+}
+
+.slider input[type='range'] {
+  position: relative;
+  appearance: none;
+  -webkit-appearance: none;
+  width: calc(100% + var(--slider-thumb));
+  margin-inline: calc(var(--slider-thumb) / -2);
+  height: var(--slider-thumb);
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Both native tracks stay invisible - .slider-track is what you actually see. */
+.slider input[type='range']::-webkit-slider-runnable-track {
+  height: var(--slider-thumb);
+  background: transparent;
+  border: none;
+}
+
+.slider input[type='range']::-moz-range-track {
+  height: var(--slider-thumb);
+  background: transparent;
+  border: none;
+}
+
+.slider input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: var(--slider-thumb);
+  height: var(--slider-thumb);
+  border-radius: 50%;
+  background: var(--color-gold-light);
+  border: 2px solid var(--color-rail);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  transition: background-color 120ms ease-out, transform 120ms ease-out;
+}
+
+.slider input[type='range']::-moz-range-thumb {
+  width: var(--slider-thumb);
+  height: var(--slider-thumb);
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--color-gold-light);
+  border: 2px solid var(--color-rail);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  transition: background-color 120ms ease-out, transform 120ms ease-out;
+}
+
+.slider input[type='range']:active::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+
+.slider input[type='range']:active::-moz-range-thumb {
+  transform: scale(1.12);
+}
+
+.slider input[type='range']:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 /* Signature: numeric data reads as a ledger - tabular, monospaced, aligned. */
@@ -328,5 +563,13 @@ input[type='number'],
     height: 44px;
     padding: 0;
     font-size: 16px;
+  }
+
+  /* Dragging a 18px knob with a fingertip is the same problem as the rank
+     steppers above - grow the thumb (and the row it sits in) to a real target. */
+  .slider {
+    --slider-thumb: 28px;
+    --slider-track-h: 8px;
+    height: 44px;
   }
 }

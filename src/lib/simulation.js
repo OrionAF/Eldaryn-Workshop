@@ -8,13 +8,26 @@
  * mean converges to computeDps(stats) * duration - simulation.test.js
  * asserts this, which keeps the two models honest against each other.
  *
+ * The model this implements - the tick clock, the target-dummy scope, and the
+ * closed-form/simulation convergence contract - is
+ * docs/Reference/combat-model.md §5.
+ *
  * THE ENGINE
  * ----------
- * A run is a min-heap of timed events. Swings are recurring events: swing k
- * lands at (k * 100) / speed seconds (speed 100% = exactly 1 swing/second,
- * so a 60s fight is exactly 60 swings; the k*100/speed form avoids float
- * drift from repeated interval addition). Events strictly before
- * `durationSeconds` fire; anything at or past the horizon is dropped.
+ * A run is a min-heap of timed events on the shared 400-ticks-per-second
+ * clock. Swings are recurring events every 40000 / speed ticks (speed 100% =
+ * 400 ticks = exactly 1 swing/second, so a 60s fight is exactly 60 swings),
+ * first swing on tick 1. Each swing fires on an integer tick, but the NEXT
+ * swing time accrues on an exact float accumulator so rounding can neither
+ * drift nor bias the attack rate (speed 120 is exactly 72 swings/60s, not
+ * 73) - this is stricter than pvpSimulation's per-swing rounding, and the
+ * reason this engine can be pinned to computeDps exactly. Speed is re-read as
+ * each swing lands, so timed speed buffs shift the next interval. Events
+ * strictly before the horizon tick fire; anything at or past it is dropped.
+ *
+ * The EFFECTS API below stays entirely in SECOND-space: ctx.time is
+ * seconds, ctx.schedule takes seconds (converted to the nearest tick
+ * internally) - sigilEffects.js knows nothing about ticks.
  *
  * SPEED CLAMP: the game's attack rate can never drop below the 100% base,
  * so speed is clamped to >= 100 before deriving the swing interval.
@@ -46,19 +59,24 @@
  * sigil; the engine core never changes. DEFAULT_EFFECTS registers only
  * critEffect + doubleHitEffect - callers append sigil effects.
  *
- * DOMAIN ASSUMPTIONS (handoff doc §10 open questions, decided here):
- *  - Double-hit rides every swing, so its frequency scales with Speed.
- *  - The double-hit second strike deals normal damage and CANNOT crit
- *    (matches dps.js/dps.test.js).
- *  - The boss is a pure target dummy: no defense, no mechanics; lifesteal/
- *    HP regen are irrelevant to damage output and ignored here.
- *  - `stats` are the final capped totals from totals.js (attack is the
- *    displayed final Attack with Attack % already baked in).
+ * ENGINE-LOCAL CONTRACT:
+ *  - Double-hit rides every swing, so its frequency scales with Speed. The
+ *    second strike cannot crit - a settled game rule, see combat-model.md §3.
+ *  - The boss is a pure target dummy (model doc §5), so lifesteal and HP
+ *    regen are irrelevant to damage output and ignored entirely here.
+ *  - `stats` must be the final EFFECTIVE totals (post-curve), with attack as
+ *    the displayed final Attack with Attack % already baked in. Passing raw
+ *    totals silently overstates every overcapped stat - see model doc §1.
  */
 
 import { computeDps } from './dps.js';
 
-const TIME_EPS = 1e-9;
+/**
+ * The fixed-timestep combat clock: 400 ticks per second (the Speed hard
+ * cap). Shared by this engine and pvpSimulation.js.
+ */
+export const TICKS_PER_SEC = 400;
+export const secToTicks = (s) => Math.round(s * TICKS_PER_SEC);
 
 // --- Seedable RNG ------------------------------------------------------
 
@@ -151,7 +169,7 @@ export const DEFAULT_EFFECTS = [critEffect, doubleHitEffect];
  * damageByTag }.
  */
 export function runSingle(stats, { durationSeconds = 60, rng, effects = DEFAULT_EFFECTS } = {}) {
-  const speed = Math.max(100, stats.speed || 0); // attack rate never drops below base
+  const durationTicks = secToTicks(durationSeconds);
   const heap = [];
   let seq = 0;
 
@@ -162,11 +180,11 @@ export function runSingle(stats, { durationSeconds = 60, rng, effects = DEFAULT_
   const ctx = {
     rng,
     stats,
-    time: 0,
+    time: 0, // seconds (tick / TICKS_PER_SEC) - the effects API is second-space
     state: new Map(),
     counters,
     schedule(atTime, fn) {
-      heapPush(heap, { time: atTime, seq: seq++, fn });
+      heapPush(heap, { time: secToTicks(atTime), seq: seq++, fn });
     },
     addDamage(amount, tag = 'other') {
       totalDamage += amount;
@@ -183,42 +201,46 @@ export function runSingle(stats, { durationSeconds = 60, rng, effects = DEFAULT_
     },
   };
 
-  // With no timed speed buffs registered, swing k lands at the exact
-  // (k*100)/speed - integer swing counts, no float drift. With a speedBonus
-  // effect present, the interval to the NEXT swing is derived from the speed
-  // in force when the current swing lands (a buff expiring mid-interval
-  // doesn't retroactively stretch an already-scheduled swing).
-  const dynamicSpeed = effects.some((e) => e.speedBonus);
+  // Speed in force right now: base + any timed speed buffs, floored at 100.
   const speedNow = () => {
     let s = stats.speed || 0;
     for (const e of effects) s += e.speedBonus?.(ctx) || 0;
     return Math.max(100, s);
   };
 
-  const scheduleSwing = (k, atTime) => {
-    ctx.schedule(atTime, () => {
-      counters.swings += 1;
-      currentSwing = {
-        time: ctx.time,
-        baseDamage: stats.attack,
-        critChance: stats.crit,
-        critMult: stats.crit_mult,
-        doubleHitChance: stats.double_hit,
-      };
-      for (const e of effects) e.modifySwing?.(currentSwing, ctx);
-      ctx.emitHit({ damage: currentSwing.baseDamage, canCrit: true, tag: 'swing' });
-      for (const e of effects) e.afterSwing?.(currentSwing, ctx);
-      currentSwing = null;
-      scheduleSwing(k + 1, dynamicSpeed ? ctx.time + 100 / speedNow() : ((k + 1) * 100) / speed);
+  // Swings fire on integer ticks, but the NEXT swing time accrues on the
+  // exact float tick accumulator `exactTick` (+ 40000/speed per swing), so
+  // per-swing rounding never drifts or biases the attack rate. The interval
+  // is derived from the speed in force when the current swing lands (a buff
+  // expiring mid-interval doesn't retroactively stretch a scheduled swing).
+  const scheduleSwing = (exactTick) => {
+    heapPush(heap, {
+      time: Math.round(exactTick),
+      seq: seq++,
+      fn: () => {
+        counters.swings += 1;
+        currentSwing = {
+          time: ctx.time,
+          baseDamage: stats.attack,
+          critChance: stats.crit,
+          critMult: stats.crit_mult,
+          doubleHitChance: stats.double_hit,
+        };
+        for (const e of effects) e.modifySwing?.(currentSwing, ctx);
+        ctx.emitHit({ damage: currentSwing.baseDamage, canCrit: true, tag: 'swing' });
+        for (const e of effects) e.afterSwing?.(currentSwing, ctx);
+        currentSwing = null;
+        scheduleSwing(exactTick + 40000 / speedNow());
+      },
     });
   };
 
   for (const e of effects) e.onRunStart?.(ctx);
-  scheduleSwing(0, 0);
+  scheduleSwing(1);
 
-  while (heap.length > 0 && heap[0].time < durationSeconds - TIME_EPS) {
+  while (heap.length > 0 && heap[0].time < durationTicks) {
     const event = heapPop(heap);
-    ctx.time = event.time;
+    ctx.time = event.time / TICKS_PER_SEC;
     event.fn();
   }
 

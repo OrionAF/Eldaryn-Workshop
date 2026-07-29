@@ -11,7 +11,7 @@
   import { STAT_FIELDS } from '../lib/constants.js';
   import { formatPct } from '../lib/format.js';
   import { TRANSCENDENCE_TREES } from '../lib/transcendenceData.js';
-  import { effectiveUnlockedSet, totalIchorSpent, costForCount, costForSigil, canUnlock } from '../lib/transcendence.js';
+  import { effectiveUnlockedSet, totalIchorSpent, costForCount, costForSigil, slotsForNode, canUnlock } from '../lib/transcendence.js';
   import TranscendenceGrid from './TranscendenceGrid.svelte';
   import TranscendenceDrawer from './TranscendenceDrawer.svelte';
 
@@ -66,11 +66,12 @@
   function nodeCost(node) {
     if (node.type === 'sigil') return costForSigil();
     if (node.type === 'glyph') return null;
-    const commonUncommonCount = unlockedPositions.filter((p) => {
+    const slotsFilled = unlockedPositions.reduce((sum, p) => {
       const n = tree.nodes.find((tn) => tn.position === p);
-      return n && (n.type === 'common' || n.type === 'uncommon');
-    }).length;
-    return costForCount(commonUncommonCount + 1, node.type === 'uncommon');
+      if (!n || (n.type !== 'common' && n.type !== 'uncommon')) return sum;
+      return sum + slotsForNode(n.type === 'uncommon');
+    }, 0);
+    return costForCount(slotsFilled + 1, node.type === 'uncommon');
   }
 
   function toggleNode(node) {

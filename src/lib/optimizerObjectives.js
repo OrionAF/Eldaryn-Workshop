@@ -26,14 +26,37 @@
  *   { kind: 'tank', ehpWeight? }
  *     The Warrior tank goal (tankObjective.js): closed-form geometric blend
  *     of effective HP and sustainable incoming DPS, single-stage.
+ *   { kind: 'pvp-goal', weights? }
+ *     The PVP/Custom preset goal (pvpGoalObjective.js): closed-form
+ *     geometric blend of Maximum Damage / Damage Mitigation / Survivability
+ *     under the goal's slider weights (sum 100), single-stage. Distinct
+ *     from 'pvp' above: no concrete opponent - an averaged reference
+ *     opponent drives the search, which is what makes it cheap enough to
+ *     run single-stage. Duel validation against the archetype gauntlet is a
+ *     separate, on-demand step (pvpGauntlet.js), not part of this search.
  */
 
 import { sigilAwareDpsObjective, createMonteCarloObjective } from './optimizer.js';
 import { createMultiPvpWinObjective } from './pvpOptimizer.js';
+import { PVP_HEALTH_MULTIPLIER } from './pvpSimulation.js';
 import { createTankObjective } from './tankObjective.js';
+import { createPvpGoalObjective } from './pvpGoalObjective.js';
 
 export const PVP_SCREEN_ITERATIONS = 150;
 export const PVP_CONFIRM_ITERATIONS = 500;
+
+/**
+ * Spec kinds whose objective is a Monte Carlo estimator rather than a closed
+ * form. Consumers that report per-candidate differences need to know, because
+ * a small difference between two sampled scores may be sampling residue -
+ * see combat-model.md §8 "Why search maxima are not comparable".
+ */
+const SAMPLED_KINDS = new Set(['pve-accurate', 'pvp']);
+
+/** True when this spec's objective returns a sampled estimate. */
+export function specIsSampled(spec) {
+  return SAMPLED_KINDS.has(spec?.kind);
+}
 
 /** Build the { objective, screenObjective } pair optimize() expects from a plain-JSON spec. */
 export function objectivesFromSpec(spec = { kind: 'pve-fast' }) {
@@ -57,7 +80,7 @@ export function objectivesFromSpec(spec = { kind: 'pve-fast' }) {
       const shared = {
         opponents,
         aggregate: spec.aggregate ?? 'mean',
-        healthMultiplier: spec.healthMultiplier ?? 1,
+        healthMultiplier: spec.healthMultiplier ?? PVP_HEALTH_MULTIPLIER,
         durationSeconds: spec.durationSeconds ?? 60,
       };
       return {
@@ -75,6 +98,8 @@ export function objectivesFromSpec(spec = { kind: 'pve-fast' }) {
     }
     case 'tank':
       return { objective: createTankObjective({ ehpWeight: spec.ehpWeight ?? 0.5 }), screenObjective: null };
+    case 'pvp-goal':
+      return { objective: createPvpGoalObjective({ weights: spec.weights }), screenObjective: null };
     default:
       throw new Error(`Unknown objective spec kind: ${spec?.kind}`);
   }

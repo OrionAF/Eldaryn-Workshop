@@ -1,6 +1,6 @@
-/**
+﻿/**
  * stonesData.js - static definitions for the 5 Socketed Stone types
- * (docs/socketed-stones-design.md §2). Each type fixes how many of its
+ * (docs/Reference/Notes/socketed-stones-design.md §2). Each type fixes how many of its
  * bonus-stat rows are forced PVP Attack/Defense vs. freely rolled:
  *   fixedKeys   - stat keys auto-included on every stone of this type, value
  *                 left blank to fill in (Eldaryn/Mythic: both PVP Attack AND

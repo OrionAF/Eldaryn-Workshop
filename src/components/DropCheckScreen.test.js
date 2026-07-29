@@ -1,4 +1,4 @@
-import { it, expect, beforeEach } from 'vitest';
+import { it, expect, beforeEach, vi } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import DropCheckScreen from './DropCheckScreen.svelte';
 import { rosterStore } from '../lib/rosterStore.svelte.js';
@@ -95,8 +95,9 @@ it('a mixed verdict requires a two-step confirm before equipping', () => {
   // pre-existing baseline gains far more from the % multiplying a huge base
   // than it loses from the flat chunk (upgrade) - same literal gear swap,
   // opposite verdicts.
+  // Both seeded presets share Loadout 0 by default (two-preset minimum).
   const presetAId = rosterStore.current.presets[0].id;
-  const presetBId = rosterStore.addPreset('Preset B'); // shares Loadout 0 by default
+  const presetBId = rosterStore.current.presets[1].id;
   flushSync();
 
   rosterStore.setGearField(DEFAULT_SLOT, 0, 'attack', 5000); // the old piece both presets currently have equipped
@@ -130,8 +131,89 @@ it('a mixed verdict requires a two-step confirm before equipping', () => {
 
   rosterStore.setGearField(DEFAULT_SLOT, 0, 'attack', 0); // cleanup
   rosterStore.setGearField(DEFAULT_SLOT, 0, 'attack_pct', 0);
-  rosterStore.deletePreset(presetBId);
+  rosterStore.setPresetPet(presetBId, null);
   rosterStore.removePet(hugePetId);
+  cleanup();
+});
+
+// --- Verdict goal ---
+
+function goalButtons() {
+  return [...target.querySelectorAll('.goal-controls .mode-toggle button')];
+}
+
+function clickGoal(label) {
+  goalButtons()
+    .find((b) => b.textContent.trim() === label)
+    .click();
+  flushSync();
+}
+
+it('the goal toggle renders with DPS selected by default, Tank hidden for a non-Warrior', () => {
+  const labels = goalButtons().map((b) => b.textContent.trim());
+  expect(labels).toEqual(['DPS', 'DPS (sim)']); // Sentinel - no Tank; HPS removed (goals redesign)
+  expect(goalButtons()[0].classList.contains('selected')).toBe(true);
+  expect(rosterStore.current.dropGoal.kind).toBe('dps-fast');
+  cleanup();
+});
+
+it('the Tank goal appears for a Warrior, persists via setDropGoal, and shows the profile/balance controls', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
+  flushSync();
+  expect(goalButtons().map((b) => b.textContent.trim())).toContain('Tank');
+
+  clickGoal('Tank');
+  expect(rosterStore.current.dropGoal.kind).toBe('tank');
+  expect(target.querySelector('[data-testid="drop-tank-profile-select"]')).not.toBeNull();
+
+  const slider = target.querySelector('.goal-controls input[type="range"]');
+  slider.value = '75';
+  slider.dispatchEvent(new Event('input', { bubbles: true }));
+  flushSync();
+  expect(rosterStore.current.dropGoal.ehpWeight).toBeCloseTo(0.75);
+  expect(target.querySelector('[data-testid="drop-tank-profile-select"]').value).toBe('max-tank'); // 0.75 matches a named profile
+
+  rosterStore.setDropGoal({ kind: 'dps-fast', ehpWeight: 0.5 }); // cleanup
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Sentinel');
+  cleanup();
+});
+
+it('HPS is gone from the verdict entirely: no goal chip, no HPS context line (goals redesign)', () => {
+  // A swap that trades Attack for Lifesteal used to flip under the HPS goal;
+  // now it is simply a DPS downgrade and no HPS readout exists anywhere.
+  rosterStore.setGearField(DEFAULT_SLOT, 0, 'attack', 5000);
+  setDropField('lifesteal', 5);
+
+  const card = () => target.querySelectorAll('.verdict-card')[0];
+  expect(card().querySelector('.rows li').classList.contains('down')).toBe(true); // DPS goal
+  expect(card().textContent).not.toContain('HPS');
+  expect(goalButtons().some((b) => b.textContent.trim() === 'HPS')).toBe(false);
+
+  rosterStore.setGearField(DEFAULT_SLOT, 0, 'attack', 0); // cleanup
+  cleanup();
+});
+
+it('the DPS (sim) goal shows a pending row, then the debounced Monte Carlo pass resolves it', async () => {
+  vi.useFakeTimers();
+  try {
+    setDropField('attack', 100000); // unambiguous upgrade
+    clickGoal('DPS (sim)');
+
+    const row = () => target.querySelectorAll('.verdict-card')[0].querySelector('.rows li');
+    expect(row().querySelector('.glyph').textContent).toBe('~'); // interim estimate, sim pending
+    expect(row().textContent).toContain('sim…');
+    expect(row().classList.contains('up')).toBe(true); // fast interim already calls it an upgrade
+
+    await vi.advanceTimersByTimeAsync(500); // past the 400ms debounce
+    flushSync();
+    expect(row().querySelector('.glyph').textContent).toBe('▲');
+    expect(row().textContent).not.toContain('sim…');
+    expect(row().classList.contains('up')).toBe(true);
+
+    clickGoal('DPS'); // cleanup
+  } finally {
+    vi.useRealTimers();
+  }
   cleanup();
 });
 

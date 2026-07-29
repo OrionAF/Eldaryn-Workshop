@@ -34,6 +34,16 @@ it('tank: single-stage closed-form tank objective', () => {
   expect(screenObjective).toBeNull();
 });
 
+it('pvp-goal: single-stage closed-form three-factor objective', () => {
+  const { objective, screenObjective } = objectivesFromSpec({
+    kind: 'pvp-goal',
+    weights: { damage: 50, mitigation: 25, survivability: 25 },
+  });
+  expect(typeof objective).toBe('function');
+  expect(objective).not.toBe(sigilAwareDpsObjective);
+  expect(screenObjective).toBeNull();
+});
+
 it('defaults to pve-fast and rejects unknown kinds', () => {
   expect(objectivesFromSpec().objective).toBe(sigilAwareDpsObjective);
   expect(() => objectivesFromSpec({ kind: 'nope' })).toThrow(/unknown objective spec/i);

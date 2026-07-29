@@ -1,4 +1,4 @@
-/**
+﻿/**
  * pvpOptimizer.js - PVP objective for the build optimizer.
  *
  * The coordinate-ascent search in optimizer.js is objective-agnostic:
@@ -36,7 +36,7 @@
  */
 
 import { resolveEffectiveTotals } from './totals.js';
-import { buildPvpSide, runPvpSimulation } from './pvpSimulation.js';
+import { buildPvpSide, runPvpSimulation, PVP_HEALTH_MULTIPLIER } from './pvpSimulation.js';
 import { activeSpecialGlyphIds } from './sigilEffects.js';
 import { materializeCandidate } from './optimizer.js';
 
@@ -59,7 +59,7 @@ function playerToSide(character, preset) {
     characterClass: character.class,
     sigilIds: preset.sigilIds,
     sigilValues: character.sigilValues,
-    specialGlyphIds: activeSpecialGlyphIds(character),
+    specialGlyphIds: activeSpecialGlyphIds(character, preset),
   });
 }
 
@@ -75,7 +75,7 @@ export function pvpScore(result) {
 export function createPvpWinObjective({
   opponent,
   durationSeconds = 60,
-  healthMultiplier = 1,
+  healthMultiplier = PVP_HEALTH_MULTIPLIER,
   iterations = 150,
   seed = 1,
 } = {}) {
@@ -104,7 +104,7 @@ export function createMultiPvpWinObjective({
   opponents,
   aggregate = 'mean',
   durationSeconds = 60,
-  healthMultiplier = 1,
+  healthMultiplier = PVP_HEALTH_MULTIPLIER,
   iterations = 150,
   seed = 1,
 } = {}) {
@@ -132,7 +132,7 @@ export function verifyPvpWinRates({
   candidate,
   opponent,
   durationSeconds = 60,
-  healthMultiplier = 1,
+  healthMultiplier = PVP_HEALTH_MULTIPLIER,
   iterations = 1000,
   seed,
 } = {}) {
@@ -164,7 +164,7 @@ export async function runPvpMatrix({
   presets,
   opponents,
   durationSeconds = 60,
-  healthMultiplier = 1,
+  healthMultiplier = PVP_HEALTH_MULTIPLIER,
   iterations = 1000,
   seed,
   onProgress,

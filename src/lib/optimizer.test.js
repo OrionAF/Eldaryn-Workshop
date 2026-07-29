@@ -10,13 +10,14 @@
 import { describe, it, expect } from 'vitest';
 import * as opt from './optimizer.js';
 import { computePresetTotals } from './totals.js';
-import { computeDps } from './dps.js';
+import { computeDps, buffedAttack } from './dps.js';
 import { newCharacter, newPetEntry, newMountGlyphEntry, newStoneEntry } from './model.js';
 import { TALENT_TREES } from './talentTreeData.js';
-import { PRESET_RELIC_CAP, PRESET_SIGIL_CAP, SOURCE_DEFS } from './constants.js';
+import { PRESET_RELIC_CAP, PRESET_SIGIL_CAP, SOURCE_DEFS, SLOTS, TALENT_TOTAL_POINTS } from './constants.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
-import { canUnlock, costForCount, totalIchorSpent } from './transcendence.js';
+import { canUnlock, costForCount, slotsForNode, totalIchorSpent } from './transcendence.js';
+import { expectedSigilActiveDps } from './sigilEffects.js';
 
 const GLYPH_TIER_CAPS = SOURCE_DEFS.find((d) => d.key === 'glyphs').tierCaps;
 
@@ -32,10 +33,17 @@ function makeWarrior() {
   const hpPet = newPetEntry({ name: 'HP Pet', stats: { health_pct: 10 } });
   character.pets = [atkPet, hpPet];
 
+  // night_wolf star 2: hp [7,10], atk [7,9]; frostfang star 2: hp [10,12], atk [4,7].
   const atkMount = character.mounts.entries.find((m) => m.id === 'night_wolf');
-  atkMount.baseAtkPct = 5;
+  atkMount.owned = true;
+  atkMount.star = 2;
+  atkMount.atkPct = 9; // the attack mount
+  atkMount.hpPct = 7;
   const hpMount = character.mounts.entries.find((m) => m.id === 'frostfang_wolf');
-  hpMount.baseHpPct = 5;
+  hpMount.owned = true;
+  hpMount.star = 2;
+  hpMount.hpPct = 12; // the tank mount
+  hpMount.atkPct = 4;
   character.presets[0].mountId = hpMount.id; // currently riding the wrong one
 
   character.glyphs.entries = [
@@ -70,7 +78,10 @@ function applyCandidate(character, preset, candidate) {
   c.loadouts[candidate.preset.loadout].socketedStones = { ...candidate.socketedStones };
   c.talentSets[candidate.preset.talentSet] = { spec: candidate.talentSpec, allocation: { ...candidate.talentAllocation } };
   p.mountId = candidate.preset.mountId;
-  for (const e of c.glyphs.entries) e.equipped = candidate.glyphEquippedIds.includes(e.id);
+  // Mirrors rosterStore.applyOptimizerCandidate: the candidate's glyphs belong
+  // to the mount it rides, not to the character.
+  const ridden = c.mounts.entries.find((m) => m.id === p.mountId);
+  if (ridden) ridden.glyphIds = [...candidate.glyphEquippedIds];
   c.awakening.path = candidate.awakeningPath;
   c.transcendence.unlockedPositions = [...candidate.transcendenceUnlocked];
   return { character: c, preset: p };
@@ -107,9 +118,11 @@ it('recommended configuration is legal on every dimension', async () => {
   const result = await opt.optimize({ character, preset });
   const c = result.best.candidate;
 
-  // Talents: legal tiers, within the 5 points the player actually has.
+  // Talents: legal tiers, within the full endgame budget. The saved set's 5
+  // spent points do not cap the search - talent points are projected to
+  // endgame exactly like awakening points.
   const tree = TALENT_TREES[c.talentSpec];
-  expect(opt.isAllocationLegal(tree, c.talentAllocation, 5)).toBe(true);
+  expect(opt.isAllocationLegal(tree, c.talentAllocation, TALENT_TOTAL_POINTS)).toBe(true);
 
   // Relics: within cap, all from the class pool.
   expect(c.preset.relicIds.length).toBeLessThanOrEqual(PRESET_RELIC_CAP);
@@ -126,6 +139,24 @@ it('recommended configuration is legal on every dimension', async () => {
 
   // Fortress: never touched by the search - exactly what the preset has.
   expect(c.preset.fortressBuffs).toEqual(preset.fortressBuffs);
+});
+
+// A tier must be allowed to stay part-filled.
+it('the glyph pass leaves a slot empty rather than equipping a glyph that does not help', async () => {
+  const { character, preset } = makeWarrior();
+  const result = await opt.optimize({ character, preset });
+  const equipped = result.best.candidate.glyphEquippedIds;
+  const byId = Object.fromEntries(character.glyphs.entries.map((e) => [e.id, e]));
+
+  // The only major in the pool is health_pct - worth nothing to a DPS goal, and
+  // the major cap is 2. Filling the tier would put a no-op in the change list.
+  const majors = equipped.filter((id) => byId[id].tier === 'major');
+  expect(majors).toEqual([]);
+
+  // Minors are all attack_pct and every one pays, so that tier still fills to
+  // its cap - with the three strongest, not the first three found.
+  const minorValues = equipped.filter((id) => byId[id].tier === 'minor').map((id) => byId[id].value);
+  expect(minorValues.sort((a, b) => b - a)).toEqual([4, 3, 2]);
 });
 
 it('is idempotent: applying the recommendation and re-optimizing changes nothing', async () => {
@@ -165,12 +196,26 @@ it('rebuilds the board from empty, budgeted by refunded + extra Ichor, all unloc
   for (const step of result.transcendencePlan) {
     expect(canUnlock(step.position, unlocked, tree)).toBe(true);
     const node = tree.nodes.find((n) => n.position === step.position);
-    count += 1;
-    expect(step.cost).toBe(costForCount(count, node.type === 'uncommon'));
+    expect(step.cost).toBe(costForCount(count + 1, node.type === 'uncommon'));
+    count += slotsForNode(node.type === 'uncommon');
     unlocked.push(step.position);
   }
   // The plan IS the rebuilt board.
   expect(unlocked).toEqual(result.best.candidate.transcendenceUnlocked);
+
+  // Gain is credited to the node a buy was made FOR, never spread across the
+  // corridor bought to reach it. A corridor row scores exactly 0, so no row
+  // can claim DPS its node does not provide.
+  for (const step of result.transcendencePlan) {
+    expect(typeof step.corridor).toBe('boolean');
+    if (step.corridor) expect(step.deltaScore).toBe(0);
+    expect(step.deltaScore).toBeGreaterThanOrEqual(0);
+  }
+  expect(result.transcendencePlan.some((s) => s.deltaScore > 0)).toBe(true);
+  // A stats-free node can only ever be a corridor step.
+  for (const step of result.transcendencePlan) {
+    if (step.statLine === 'no stats') expect(step.deltaScore).toBe(0);
+  }
 });
 
 it('with zero extra Ichor, re-routes a defensive detour via the free reset', async () => {
@@ -222,10 +267,8 @@ it('from an empty tree, the plan starts at 14:25 and every unlock is chain-adjac
 
 it('searches talents from scratch: never switches the set slot, ignores saved allocations', async () => {
   const { character, preset } = makeWarrior();
-  // Stuff Set B with a bigger, deliberately bad allocation (all defense-ish
-  // speed talents would be fine; use protection spec entirely). If the
-  // optimizer consulted saved sets it could switch to it; if it derives the
-  // budget from owned points, Set B's 8 points raise the budget to 8.
+  // Stuff Set B with a deliberately bad allocation in the other spec. If the
+  // optimizer consulted saved sets it could switch to it.
   character.talentSets[1].spec = 'protection';
   character.talentSets[1].allocation = { protection_t1_fortitude: 3, protection_t1_thick_skin: 5 };
 
@@ -236,11 +279,16 @@ it('searches talents from scratch: never switches the set slot, ignores saved al
   expect(c.preset.talentSet).toBe(preset.talentSet);
   expect(result.changes.map((ch) => ch.dimension)).not.toContain('talentSet');
 
-  // Budget = most points owned across sets (8 via Set B), spent on the BEST
-  // spec/allocation - not Set B's saved protection build.
+  // The budget is the full endgame allocation, NOT inferred from what the
+  // saved sets happen to hold (5 in Set A, 8 in Set B). Talent points are
+  // level-derived like awakening points, so the plan is the build to grow into.
   const spent = Object.values(c.talentAllocation).reduce((s, r) => s + r, 0);
-  expect(spent).toBeLessThanOrEqual(8);
-  expect(opt.isAllocationLegal(TALENT_TREES[c.talentSpec], c.talentAllocation, 8)).toBe(true);
+  expect(spent).toBeGreaterThan(8);
+  expect(spent).toBeLessThanOrEqual(TALENT_TOTAL_POINTS);
+  expect(opt.isAllocationLegal(TALENT_TREES[c.talentSpec], c.talentAllocation, TALENT_TOTAL_POINTS)).toBe(true);
+
+  // And it is still the BEST allocation, not Set B's saved protection build.
+  expect(c.talentAllocation).not.toEqual(character.talentSets[1].allocation);
 });
 
 it('beats or matches a brute-force sweep of loadout x pet', async () => {
@@ -309,7 +357,36 @@ it('sockets a strictly better inventory stone', async () => {
   expect(result.best.score).toBeGreaterThan(result.baseline.score);
   const stoneChange = result.changes.find((ch) => ch.dimension === 'stones');
   expect(stoneChange).toBeTruthy();
-  expect(stoneChange.detail.some((line) => line.includes('Weapon'))).toBe(true);
+  // The weak stone still has positive value, so it stays exactly where the
+  // player socketed it; the strong stone goes into a free slot instead.
+  expect(result.best.candidate.socketedStones.Weapon).toBe(weak.id);
+  expect(stoneChange.detail.some((line) => line.includes('Weapon'))).toBe(false);
+});
+
+it('keeps kept stones in their current slots instead of shuffling them around', async () => {
+  const { character, preset } = makeWarrior();
+  const a = newStoneEntry({ type: 'crimson', stats: { attack_pct: 5 } });
+  const b = newStoneEntry({ type: 'crimson', stats: { attack_pct: 3 } });
+  const extra = newStoneEntry({ type: 'crimson', stats: { attack_pct: 8 } });
+  character.stoneInventory = [a, b, extra];
+  // Deliberately socketed in NON-first slots: the old greedy pass refilled
+  // slots in SLOTS order from empty, which reassigned kept stones to new
+  // slots and produced pointless "move stone from A to B" instructions.
+  character.loadouts[0].socketedStones.Chest = a.id;
+  character.loadouts[0].socketedStones.Boots = b.id;
+
+  const result = await opt.optimize({ character, preset });
+
+  const stones = result.best.candidate.socketedStones;
+  expect(stones.Chest).toBe(a.id);
+  expect(stones.Boots).toBe(b.id);
+  expect(Object.values(stones)).toContain(extra.id);
+  // No recommended change may touch a slot whose stone is being kept - the
+  // only instruction should be socketing the new stone into a free slot.
+  const stoneChange = result.changes.find((ch) => ch.dimension === 'stones');
+  expect(stoneChange).toBeTruthy();
+  expect(stoneChange.detail).toHaveLength(1);
+  expect(stoneChange.detail[0]).toContain('socket');
 });
 
 it('already-optimal sockets produce no stones change', async () => {
@@ -320,6 +397,18 @@ it('already-optimal sockets produce no stones change', async () => {
 
   const result = await opt.optimize({ character, preset });
   expect(result.changes.map((ch) => ch.dimension)).not.toContain('stones');
+});
+
+it('alignStonesToCurrentSlots keeps current placements and fills new stones into free slots', () => {
+  const current = { Chest: 's1', Boots: 's2', Weapon: 's3' };
+  // s3 dropped from the selection, s4 added: s1/s2 must not move, s4 takes
+  // the first free slot in SLOTS order.
+  const aligned = opt.alignStonesToCurrentSlots(['s1', 's2', 's4'], current);
+  expect(aligned.Chest).toBe('s1');
+  expect(aligned.Boots).toBe('s2');
+  const firstFreeSlot = SLOTS.find((slot) => slot !== 'Chest' && slot !== 'Boots');
+  expect(aligned[firstFreeSlot]).toBe('s4');
+  expect(Object.values(aligned).sort()).toEqual(['s1', 's2', 's4']);
 });
 
 it('never recommends the same stone in two slots', async () => {
@@ -381,7 +470,10 @@ it('never exceeds the sigil cap and never recommends an all-zero sigil', async (
 
 it('picks up a passive-only sigil through Calculated totals', async () => {
   const { character, preset } = makeWarrior();
-  character.sigilValues = { 'berserkt-stance': { passive: { attack_pct: 12 }, active: {}, damage: 0, tickDamage: 0 } };
+  // Needs a level: attack_pct is baked per level now, so the entered number is
+  // ignored and level 0 ("not owned") contributes nothing - the same rule the
+  // derived Attack/Health already followed.
+  character.sigilValues = { 'berserkt-stance': { level: 5, passive: { attack_pct: 12 }, active: {}, damage: 0, tickDamage: 0 } };
 
   const result = await opt.optimize({ character, preset });
   expect(result.best.candidate.preset.sigilIds).toContain('berserkt-stance');
@@ -398,11 +490,33 @@ it('sigilAwareDpsObjective reduces exactly to expectedDpsObjective without sigil
 
 it('sigilAwareDpsObjective mixes a timed attack buff by uptime (exact closed form)', () => {
   const { character, preset } = makeWarrior();
-  // +100% attack for 5s of every 15s doubles swing DPS at 1/3 uptime -> 4/3 base.
-  character.sigilValues = { 'warborn-fury': { passive: {}, active: { attack_pct: 100 }, damage: 0, tickDamage: 0 } };
+  // Warborn Fury buffs Attack% for 5s of every 15s = 1/3 uptime. The buff's
+  // size is baked per level now (level 1 = +12%), so the objective should be
+  // the unbuffed DPS 2/3 of the time and the buffed DPS 1/3 of the time.
+  character.sigilValues = { 'warborn-fury': { level: 1, passive: {}, active: {}, damage: 0, tickDamage: 0 } };
   preset.sigilIds = ['warborn-fury'];
-  const base = computeDps(computePresetTotals(character, preset));
-  expect(opt.sigilAwareDpsObjective(character, preset)).toBeCloseTo(base * (1 + (5 / 15)), 9);
+  const totals = computePresetTotals(character, preset);
+  const base = computeDps(totals);
+  // SETTLED 2026-07-28: the buff's Attack % is ADDITIVE into the build's own
+  // Attack % total, so the buffed Attack is a decompose -> add -> recombine,
+  // NOT totals.attack * 1.12. (This test previously asserted the multiplicative
+  // model, which is how audit F3 stayed hidden.) See dps.js buffedAttack.
+  const buffed = computeDps({ ...totals, attack: buffedAttack(totals.attack, totals.attack_pct, 0, 12) });
+  expect(opt.sigilAwareDpsObjective(character, preset)).toBeCloseTo(base + (5 / 15) * (buffed - base), 9);
+});
+
+it('sigilAwareDpsFromTotals boosts only the flat sigil-spell side by Spell Damage', () => {
+  const { character, preset } = makeWarrior();
+  character.sigilValues = { 'blade-of-judgment': { passive: {}, active: {}, damage: 600, tickDamage: 0 } };
+  preset.sigilIds = ['blade-of-judgment'];
+  const totals = computePresetTotals(character, preset);
+  const base = opt.sigilAwareDpsFromTotals(totals, character, preset);
+  // +100% Spell Damage adds exactly one extra copy of the sigil flat DPS -
+  // the swing side (computeDps) doesn't read spell_damage at all.
+  const boosted = opt.sigilAwareDpsFromTotals({ ...totals, spell_damage: 100 }, character, preset);
+  const { flatDps } = expectedSigilActiveDps(character, preset);
+  expect(flatDps).toBeGreaterThan(0);
+  expect(boosted - base).toBeCloseTo(flatDps, 9);
 });
 
 it('the Monte Carlo objective rebuilds sigil effects per candidate', () => {
@@ -495,9 +609,11 @@ it('cheapestUnlockPaths prices corridors node-by-node and stays chain-legal', ()
     // Chain-legal: each node is unlockable given the path prefix.
     const prefix = [];
     let expected = 0;
+    let slots = 0;
     for (let i = 0; i < nodes.length; i++) {
       expect(canUnlock(nodes[i].position, prefix, tree)).toBe(true);
-      expected += costForCount(i + 1, nodes[i].type === 'uncommon');
+      expected += costForCount(slots + 1, nodes[i].type === 'uncommon');
+      slots += slotsForNode(nodes[i].type === 'uncommon');
       prefix.push(nodes[i].position);
     }
     expect(cost).toBe(expected);
@@ -554,4 +670,45 @@ it('attributes each change: solo gain is positive-ish and reverting it alone re-
   // The pet swap was a known strict upgrade - its solo contribution is real.
   const petChange = result.changes.find((ch) => ch.dimension === 'pet');
   expect(petChange.solo).toBeGreaterThan(0);
+});
+
+// --- Enumeration size and cost estimation ---
+
+it('subsetsUpTo returns every subset up to the cap, empty set first, with no duplicates', () => {
+  const s = opt.subsetsUpTo(['a', 'b', 'c'], 2);
+  expect(s[0]).toEqual([]);
+  expect(s.length).toBe(1 + 3 + 3); // C(3,0)+C(3,1)+C(3,2)
+  expect(s.every((x) => x.length <= 2)).toBe(true);
+  expect(new Set(s.map((x) => x.slice().sort().join(','))).size).toBe(s.length);
+  // An empty pool still yields the empty subset ("equip nothing" is an option).
+  expect(opt.subsetsUpTo([], 4)).toEqual([[]]);
+});
+
+it('subsetsUpTo survives a pool large enough to break an argument-spread accumulator', () => {
+  const pool = Array.from({ length: 40 }, (_, i) => `r${i}`);
+  const s = opt.subsetsUpTo(pool, 4);
+  expect(s.length).toBe(1 + 40 + 780 + 9880 + 91390);
+});
+
+it('estimateSearchCost counts the enumerated dimensions without running the search', () => {
+  const { character, preset } = makeWarrior();
+  const est = opt.estimateSearchCost({ character, preset, maxPasses: 5 });
+  // The fixture levels three relics; only level > 0 relics enter the pool.
+  expect(est.relicPoolSize).toBe(3);
+  expect(est.relicSubsets).toBe(opt.subsetsUpTo(['a', 'b', 'c'], PRESET_RELIC_CAP).length);
+  expect(est.worstCaseEvals).toBe(est.perPass * 5);
+  // Locking a dimension removes its contribution entirely.
+  const locked = opt.estimateSearchCost({ character, preset, searchDimensions: { relics: false, sigils: false } });
+  expect(locked.relicSubsets).toBe(0);
+  expect(locked.sigilSubsets).toBe(0);
+  expect(locked.perPass).toBeLessThan(est.perPass);
+});
+
+it('estimateSearchCost grows combinatorially in the relic pool - the cliff it exists to warn about', () => {
+  const { character, preset } = makeWarrior();
+  const big = { ...character, relicLevels: Object.fromEntries(RELICS_BY_CLASS.Warrior.map((d) => [d.id, 10])) };
+  const est = opt.estimateSearchCost({ character: big, preset });
+  const small = opt.estimateSearchCost({ character, preset });
+  expect(est.relicPoolSize).toBe(RELICS_BY_CLASS.Warrior.length);
+  expect(est.relicSubsets).toBeGreaterThan(small.relicSubsets * 10);
 });

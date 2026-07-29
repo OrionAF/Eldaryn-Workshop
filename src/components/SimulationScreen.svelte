@@ -15,10 +15,10 @@
    * switch. The sim itself is fast (tens of ms) - the single setTimeout
    * before running just lets the "Running…" label paint first.
    *
-   * The Saved Results rail on the right is the exception: "Save Result"
-   * snapshots the shown numbers (display-ready plain data only, never the
-   * live candidate/build) into character.savedResults, which persists and
-   * exports like any other character state.
+   * The exception: every completed run auto-saves a snapshot of the shown
+   * numbers (display-ready plain data only, never the live candidate/build)
+   * into character.runHistory via rosterStore.addRunHistoryEntry - the
+   * Simulations Dashboard renders that history. No manual Save step.
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { resolveEffectiveTotals, computePresetTotals } from '../lib/totals.js';
@@ -28,16 +28,28 @@
   import { describeBuildConfig } from '../lib/buildConfig.js';
   import { runOptimizerTask } from '../lib/optimizerClient.js';
   import { tankMetrics, TANK_PROFILES } from '../lib/tankObjective.js';
+  import { pvpFactorMetrics } from '../lib/pvpGoalObjective.js';
+  import { presetGoalLabel } from '../lib/model.js';
   import { computeStatWeights } from '../lib/statWeights.js';
   import { formatFlat, parseFlat } from '../lib/format.js';
   import { SIGILS_BY_CLASS } from '../lib/sigilsData.js';
   import SimulatedPresetCard from './SimulatedPresetCard.svelte';
-  import SavedResultsRail from './SavedResultsRail.svelte';
+  import RelicSuggesterPanel from './RelicSuggesterPanel.svelte';
+  import Slider from './Slider.svelte';
 
-  let { setStatus } = $props();
+  // Embedding props (Simulations page goal tabs): `presetFilterGoal`
+  // narrows every preset picker to presets carrying that goal kind;
+  // `lockedPresetId` pins the screen to one preset (Custom tabs);
+  // `panels` gates which sections render. Defaults preserve the full
+  // standalone behavior.
+  let { setStatus, presetFilterGoal = null, lockedPresetId = null, panels = ['sim', 'compare', 'optimizer'] } = $props();
 
   const character = $derived(rosterStore.current);
-  const presets = $derived(character.presets);
+  const presets = $derived.by(() => {
+    if (lockedPresetId) return character.presets.filter((p) => p.id === lockedPresetId);
+    if (presetFilterGoal) return character.presets.filter((p) => p.goal?.kind === presetFilterGoal);
+    return character.presets;
+  });
 
   let selectedPresetId = $state(null);
   const preset = $derived(presets.find((p) => p.id === selectedPresetId) || presets[0] || null);
@@ -45,7 +57,9 @@
   // The optimizer never assumes a preset - the user must pick the one to
   // optimize explicitly (no first-preset fallback like the sim above).
   let optPresetId = $state(null);
-  const optPreset = $derived(presets.find((p) => p.id === optPresetId) || null);
+  // A locked embed (Custom goal tab) pins the optimizer to its one preset -
+  // no explicit selection step.
+  const optPreset = $derived(presets.find((p) => p.id === optPresetId) || (lockedPresetId ? presets[0] || null : null));
 
   const ITERATION_CHOICES = [1000, 5000, 10000];
   let iterations = $state(5000);
@@ -74,20 +88,34 @@
   // per adoption (captures buff/swing correlation, much slower).
   // View-state only, like the results themselves.
   let optMode = $state('fast');
-  // Optimization goal ("direction"): 'dps' (default) or 'tank' - the tank
-  // goal is Warrior-only (DMG Reduction / Block Chance are the Warrior kit).
-  // Tank scoring is closed-form only (tankObjective.js), so the fast/accurate
-  // toggle applies to the DPS goal alone.
-  let optGoal = $state('dps');
-  const canTank = $derived(character.class === 'Warrior');
+  // Optimization goal comes from the selected preset's persisted assignment
+  // (preset.goal, model.js) - there is no local dps/tank toggle anymore.
+  // 'tank' is Warrior-only (normalisePresetGoal enforces it on the data).
+  // 'pvp' and 'custom' both run the closed-form three-factor blend
+  // (pvpGoalObjective.js) under the goal's slider weights; unassigned
+  // (null) runs under the neutral DPS objective with a prompt to assign
+  // one. Tank/PVP scoring is closed-form only, so the fast/accurate
+  // toggle applies to DPS alone.
+  const optGoalKind = $derived(optPreset?.goal?.kind ?? null);
+  const optGoal = $derived(
+    optGoalKind === 'tank' ? 'tank' : optGoalKind === 'pvp' || optGoalKind === 'custom' ? 'pvp' : 'dps'
+  );
+  const scoreUnitFor = (goal) => (goal === 'tank' ? 'Tank Score' : goal === 'pvp' ? 'PVP Score' : 'DPS');
+  // The three slider weights, for the goal readout ("PVP · 40/30/30").
+  const optPvpWeights = $derived(optGoal === 'pvp' ? optPreset?.goal?.weights : null);
   // EHP-vs-sustain balance as a percent (0 = pure sustain, 100 = pure
-  // effective HP). Named profiles preset it; touching the slider = Custom.
-  let tankProfileId = $state('balanced');
-  let tankEhpPct = $state(50);
+  // effective HP), persisted on the preset's goal. Named profiles preset it;
+  // any other slider position reads back as Custom.
+  const tankEhpPct = $derived(Math.round((optPreset?.goal?.ehpWeight ?? 0.5) * 100));
+  const tankProfileId = $derived(
+    TANK_PROFILES.find((p) => Math.round(p.ehpWeight * 100) === tankEhpPct)?.id ?? 'custom'
+  );
   function pickTankProfile(id) {
-    tankProfileId = id;
     const profile = TANK_PROFILES.find((p) => p.id === id);
-    if (profile) tankEhpPct = Math.round(profile.ehpWeight * 100);
+    if (profile && optPreset) rosterStore.setPresetGoal(optPreset.id, { ehpWeight: profile.ehpWeight });
+  }
+  function setTankEhpPct(pct) {
+    if (optPreset) rosterStore.setPresetGoal(optPreset.id, { ehpWeight: pct / 100 });
   }
   // Monte Carlo iterations per confirmation eval in 'accurate' mode.
   const OPT_ACCURACY_CHOICES = [
@@ -115,6 +143,16 @@
     return { before, after };
   });
 
+  // PVP-goal result breakdown: the three factor metrics behind the score,
+  // before vs after (visible reasoning - decision 1 of the goals redesign).
+  const pvpBreakdown = $derived.by(() => {
+    if (optResultGoal !== 'pvp' || !optResult || !optPreset) return null;
+    const before = pvpFactorMetrics(computePresetTotals(character, optPreset));
+    const { candidateCharacter, candidatePreset } = materializeCandidate(character, optResult.best.candidate);
+    const after = pvpFactorMetrics(computePresetTotals(candidateCharacter, candidatePreset));
+    return { before, after };
+  });
+
   // Character switches invalidate everything shown - the results describe a
   // different character's build.
   let lastCharacterId = $state(null);
@@ -130,73 +168,80 @@
       optResult = null;
       optProgress = null;
       optVerify = null;
-      optGoal = 'dps'; // the tank goal is class-gated; never carry it across characters
     }
   });
 
-  // --- Saved results rail (persisted; rendered by SavedResultsRail) ---
-  let savedRail = $state(null); // bind:this handle, for expand-after-save
+  // --- Auto-saved run history (persisted; rendered by the Simulations Dashboard) ---
 
-  function saveSimResult() {
+  function recordSimRun() {
     if (!simResult || !preset) return;
-    const id = rosterStore.saveResult('sim', `${preset.name} · ${iterations.toLocaleString('en-US')} × ${durationSeconds()}s`, {
+    rosterStore.addRunHistoryEntry('sim', {
+      name: `${preset.name} · ${iterations.toLocaleString('en-US')} × ${durationSeconds()}s`,
+      goalKind: preset.goal?.kind ?? null,
       presetId: preset.id,
       presetName: preset.name,
-      iterations,
-      durationSeconds: durationSeconds(),
-      seed: simResult.seed,
-      meanDps: simResult.meanDps,
-      expectedDps: simResult.expectedDps,
-      totalDamage: simResult.totalDamage,
-      observed: simResult.observed,
-      // The build as simulated, resolved to display text NOW - names keep
-      // meaning even after loadouts/pets/etc. are renamed or deleted.
-      config: describeBuildConfig(character, candidateFromCurrent(character, preset)),
+      headline: {
+        meanDps: simResult.meanDps,
+        p5: simResult.totalDamage.p5,
+        p95: simResult.totalDamage.p95,
+        iterations,
+        durationSeconds: durationSeconds(),
+      },
+      detail: {
+        presetId: preset.id,
+        presetName: preset.name,
+        iterations,
+        durationSeconds: durationSeconds(),
+        seed: simResult.seed,
+        meanDps: simResult.meanDps,
+        expectedDps: simResult.expectedDps,
+        totalDamage: simResult.totalDamage,
+        observed: simResult.observed,
+        histogram: simResult.histogram,
+        damageByTag: simResult.damageByTag,
+        // The build as simulated, resolved to display text NOW - names keep
+        // meaning even after loadouts/pets/etc. are renamed or deleted.
+        config: describeBuildConfig(character, candidateFromCurrent(character, preset)),
+      },
     });
-    savedRail?.expand(id);
-    setStatus?.('Saved simulation result');
   }
 
-  /** Re-run a saved 'sim' snapshot: restore its controls (preset by id, then
-   * by name as fallback — ids die with deleted presets) and run. */
-  function rerunSaved(r) {
-    const s = r.summary;
-    const target = presets.find((p) => p.id === s.presetId) || presets.find((p) => p.name === s.presetName);
-    if (!target) {
-      setStatus?.(`Preset "${s.presetName || '?'}" no longer exists — can't re-run`);
-      return;
-    }
-    selectedPresetId = target.id;
-    if (ITERATION_CHOICES.includes(s.iterations)) iterations = s.iterations;
-    durationInput = String(s.durationSeconds ?? 60);
-    seedInput = s.seed != null ? String(s.seed) : '';
-    runSim();
-  }
-
-  function saveOptResult() {
+  function recordOptRun() {
     if (!optResult || !optPreset) return;
-    const unit = optResultGoal === 'tank' ? 'Tank' : 'DPS';
-    const id = rosterStore.saveResult('opt', `${optPreset.name} · ${unit} +${optResult.improvementPct.toFixed(2)}%`, {
+    const unit = scoreUnitFor(optResultGoal);
+    rosterStore.addRunHistoryEntry('opt', {
+      name: `${optPreset.name} · ${unit} +${optResult.improvementPct.toFixed(2)}%`,
+      goalKind: optPreset.goal?.kind ?? null,
+      presetId: optPreset.id,
       presetName: optPreset.name,
-      goal: optResultGoal,
-      baselineScore: optResult.baseline.score,
-      bestScore: optResult.best.score,
-      improvementPct: optResult.improvementPct,
-      ichorSpent: optResult.ichorSpent,
-      evals: optResult.evals,
-      elapsedMs: optResult.elapsedMs,
-      changes: optResult.changes.map((ch) => ({
-        dimension: ch.dimension,
-        from: ch.from,
-        to: ch.to,
-        detail: Array.isArray(ch.detail) ? ch.detail : [],
-      })),
-      // The RECOMMENDED build (not the current one) - comparing two saved
-      // optimizations means comparing what each one proposed.
-      config: describeBuildConfig(character, optResult.best.candidate),
+      headline: {
+        unit,
+        baseline: optResult.baseline.score,
+        best: optResult.best.score,
+        improvementPct: optResult.improvementPct,
+        ichorSpent: optResult.ichorSpent,
+      },
+      detail: {
+        presetName: optPreset.name,
+        goal: optResultGoal,
+        unit,
+        baselineScore: optResult.baseline.score,
+        bestScore: optResult.best.score,
+        improvementPct: optResult.improvementPct,
+        ichorSpent: optResult.ichorSpent,
+        evals: optResult.evals,
+        elapsedMs: optResult.elapsedMs,
+        changes: optResult.changes.map((ch) => ({
+          dimension: ch.dimension,
+          from: ch.from,
+          to: ch.to,
+          detail: Array.isArray(ch.detail) ? ch.detail : [],
+        })),
+        // The RECOMMENDED build (not the current one) - comparing two saved
+        // optimizations means comparing what each one proposed.
+        config: describeBuildConfig(character, optResult.best.candidate),
+      },
     });
-    savedRail?.expand(id);
-    setStatus?.('Saved optimizer result');
   }
 
   const fmt = (n) => n.toFixed(2);
@@ -241,7 +286,7 @@
     const stats = resolveEffectiveTotals(character, preset);
     // Equipped sigils' actives (nukes, DoTs, timed buffs) join the base
     // crit/double-hit effects; their passives are already inside `stats`.
-    const effects = [...DEFAULT_EFFECTS, ...buildSigilEffects(character, preset)];
+    const effects = [...DEFAULT_EFFECTS, ...buildSigilEffects(character, preset, stats.spell_damage)];
     // One macrotask so the disabled/"Running…" state paints before the work.
     setTimeout(() => {
       try {
@@ -252,6 +297,7 @@
           durationSeconds: durationSeconds(),
           seed: enteredSeed(),
         });
+        recordSimRun(); // auto-saved to the run history - no manual Save step
         setStatus?.(`Simulated ${iterations.toLocaleString('en-US')} fights`);
       } finally {
         simRunning = false;
@@ -281,8 +327,8 @@
     cmpRunning = true;
     const statsA = resolveEffectiveTotals(character, cmpPresetA);
     const statsB = resolveEffectiveTotals(character, cmpPresetB);
-    const effectsA = [...DEFAULT_EFFECTS, ...buildSigilEffects(character, cmpPresetA)];
-    const effectsB = [...DEFAULT_EFFECTS, ...buildSigilEffects(character, cmpPresetB)];
+    const effectsA = [...DEFAULT_EFFECTS, ...buildSigilEffects(character, cmpPresetA, statsA.spell_damage)];
+    const effectsB = [...DEFAULT_EFFECTS, ...buildSigilEffects(character, cmpPresetB, statsB.spell_damage)];
     setTimeout(() => {
       try {
         cmpResult = compareSimulations({
@@ -294,6 +340,7 @@
           durationSeconds: durationSeconds(),
           seed: enteredSeed(),
         });
+        recordCompareRun(); // auto-saved to the run history
         setStatus?.(`Compared ${cmpPresetA.name} vs ${cmpPresetB.name} over ${iterations.toLocaleString('en-US')} paired fights`);
       } finally {
         cmpRunning = false;
@@ -301,22 +348,33 @@
     }, 0);
   }
 
-  function saveCompareResult() {
+  function recordCompareRun() {
     if (!cmpResult || !cmpPresetA || !cmpPresetB) return;
-    const id = rosterStore.saveResult('sim-compare', `${cmpPresetA.name} vs ${cmpPresetB.name}`, {
-      presetAName: cmpPresetA.name,
-      presetBName: cmpPresetB.name,
-      meanDpsA: cmpResult.a.meanDps,
-      meanDpsB: cmpResult.b.meanDps,
-      deltaDps: cmpResult.delta.meanDps,
-      ciHalfWidthDps: cmpResult.delta.ciHalfWidthDps,
-      deltaPct: cmpResult.delta.pct,
-      iterations: cmpResult.iterations,
-      durationSeconds: cmpResult.durationSeconds,
-      seed: cmpResult.seed,
+    rosterStore.addRunHistoryEntry('sim-compare', {
+      name: `${cmpPresetA.name} vs ${cmpPresetB.name}`,
+      goalKind: cmpPresetA.goal?.kind ?? null,
+      presetId: cmpPresetA.id,
+      presetName: cmpPresetA.name,
+      headline: {
+        aName: cmpPresetA.name,
+        bName: cmpPresetB.name,
+        aDps: cmpResult.a.meanDps,
+        bDps: cmpResult.b.meanDps,
+        deltaPct: cmpResult.delta.pct,
+      },
+      detail: {
+        presetAName: cmpPresetA.name,
+        presetBName: cmpPresetB.name,
+        meanDpsA: cmpResult.a.meanDps,
+        meanDpsB: cmpResult.b.meanDps,
+        deltaDps: cmpResult.delta.meanDps,
+        ciHalfWidthDps: cmpResult.delta.ciHalfWidthDps,
+        deltaPct: cmpResult.delta.pct,
+        iterations: cmpResult.iterations,
+        durationSeconds: cmpResult.durationSeconds,
+        seed: cmpResult.seed,
+      },
     });
-    savedRail?.expand(id);
-    setStatus?.('Saved comparison result');
   }
 
   // A recommendation describes one specific preset - picking a different
@@ -325,6 +383,17 @@
     optResult = null;
     optProgress = null;
     optVerify = null;
+  }
+
+  /** The optimizer's objective spec under the preset's Goal + the panel's Scoring settings (shared with the Relic Suggester). */
+  function buildOptObjectiveSpec() {
+    return optGoal === 'tank'
+      ? { kind: 'tank', ehpWeight: optPreset?.goal?.ehpWeight ?? 0.5 }
+      : optGoal === 'pvp'
+        ? { kind: 'pvp-goal', weights: { ...(optPreset?.goal?.weights ?? {}) } }
+        : optMode === 'accurate'
+          ? { kind: 'pve-accurate', iterations: optAccuracy, durationSeconds: durationSeconds() }
+          : { kind: 'pve-fast' };
   }
 
   async function runOptimizer() {
@@ -339,12 +408,7 @@
         preset: optPreset,
         ichorBudget: Math.max(0, parseFlat(ichorInput)),
         searchDimensions: { ...optDims },
-        objectiveSpec:
-          optGoal === 'tank'
-            ? { kind: 'tank', ehpWeight: tankEhpPct / 100 }
-            : optMode === 'accurate'
-              ? { kind: 'pve-accurate', iterations: optAccuracy, durationSeconds: durationSeconds() }
-              : { kind: 'pve-fast' },
+        objectiveSpec: buildOptObjectiveSpec(),
       },
       { onProgress: (p) => (optProgress = p) }
     );
@@ -363,12 +427,13 @@
       }
       optResult = result;
       optResultGoal = optGoal;
+      if (!result.aborted) recordOptRun(); // auto-saved; a cancelled search isn't a finished run
       setStatus?.(
         result.aborted
           ? 'Search cancelled — showing the best build found so far'
           : result.changes.length === 0
             ? 'Already optimal — no changes found'
-            : `Found +${result.improvementPct.toFixed(2)}% ${optGoal === 'tank' ? 'Tank Score' : 'DPS'} in ${result.elapsedMs}ms`
+            : `Found +${result.improvementPct.toFixed(2)}% ${scoreUnitFor(optGoal)} in ${result.elapsedMs}ms`
       );
     } catch (err) {
       setStatus?.(`Optimizer failed: ${err?.message || err}`);
@@ -409,6 +474,7 @@
 {:else}
   <div class="sim-screen">
     <div class="sim-main">
+    {#if panels.includes('sim')}
     <section class="panel">
       <h2 class="subheading">Battle Simulation</h2>
       <p class="subline">
@@ -508,11 +574,6 @@
             best run {fmtDamage(simResult.bestRun.totalDamage)} · worst run {fmtDamage(simResult.worstRun.totalDamage)} ·
             seed {simResult.seed} (enter it above to replay)
           </p>
-          <div>
-            <button type="button" class="btn-ghost" onclick={saveSimResult} data-testid="save-sim-result">
-              Save Result
-            </button>
-          </div>
         </div>
       {/if}
     </section>
@@ -543,6 +604,9 @@
       {/if}
     </section>
 
+    {/if}
+
+    {#if panels.includes('compare')}
     <section class="panel">
       <h2 class="subheading">Compare Presets</h2>
       <p class="subline">
@@ -604,14 +668,12 @@
             <span class="mono value">{cmpResult.delta.pct > 0 ? '+' : ''}{cmpResult.delta.pct.toFixed(2)}%</span>
           </div>
         </div>
-        <div>
-          <button type="button" class="btn-ghost" onclick={saveCompareResult} data-testid="save-cmp-result">
-            Save Result
-          </button>
-        </div>
       {/if}
     </section>
 
+    {/if}
+
+    {#if panels.includes('optimizer')}
     <section class="panel">
       <h2 class="subheading">Build Optimizer</h2>
       {#if optGoal === 'tank'}
@@ -621,6 +683,15 @@
           your own stats: <strong>Effective HP</strong> (Health ÷ what DMG Reduction lets through — the
           buffer against ability spikes) and <strong>Sustainable Incoming DPS</strong> (the hardest raw
           hit-stream your regen + lifesteal can out-heal after DMG Reduction and Block).
+        </p>
+      {:else if optGoal === 'pvp'}
+        <p class="subline">
+          Searches every build dimension for the best PVP build under this preset's slider weights —
+          shown as a recommendation, never auto-applied. No specific opponent is assumed: the score
+          blends <strong>Maximum Damage</strong> (expected damage/s, Penetration valued against a
+          reference Block), <strong>Damage Mitigation</strong> (how much of an incoming hit-stream your
+          Miss, Blind, Paralyze, Block, DMG Reduction, Spell Resist and PVP Defense prevent) and
+          <strong>Survivability</strong> (Health plus what regen + lifesteal recover over a fight).
         </p>
       {:else}
         <p class="subline">
@@ -634,6 +705,12 @@
         <p class="manual-warning">
           ⚠ This preset uses Manual totals. The optimizer compares Calculated totals — your manual
           entries are ignored while searching.
+        </p>
+      {/if}
+      {#if optPreset && optGoalKind === null}
+        <p class="manual-warning" data-testid="goal-unassigned-notice">
+          ⚠ This preset has no goal assigned yet — set one in the Presets screen. Running under the
+          neutral DPS objective meanwhile.
         </p>
       {/if}
 
@@ -651,30 +728,17 @@
           <span class="micro-label">Extra Ichor</span>
           <input type="text" inputmode="numeric" bind:value={ichorInput} />
         </label>
-        {#if canTank}
+        {#if optPreset}
           <div class="control" role="group" aria-label="Goal">
-            <span class="micro-label">Goal</span>
-            <div class="mode-toggle">
-              <button
-                type="button"
-                class:selected={optGoal === 'dps'}
-                onclick={() => (optGoal = 'dps')}
-                disabled={optRunning}
-              >
-                DPS
-              </button>
-              <button
-                type="button"
-                class:selected={optGoal === 'tank'}
-                onclick={() => (optGoal = 'tank')}
-                disabled={optRunning}
-              >
-                Tank
-              </button>
-            </div>
+            <span class="micro-label">Goal — from preset</span>
+            <span class="goal-readout" data-testid="opt-goal-readout"
+              >{presetGoalLabel(optPreset.goal) ?? 'Unassigned'}{optPvpWeights
+                ? ` · ${Math.round(optPvpWeights.damage)}/${Math.round(optPvpWeights.mitigation)}/${Math.round(optPvpWeights.survivability)}`
+                : ''}</span
+            >
           </div>
         {/if}
-        {#if optGoal === 'tank'}
+        {#if optPreset && optGoalKind === 'tank'}
           <label class="control">
             <span class="micro-label">Tank profile</span>
             <select
@@ -691,18 +755,17 @@
           </label>
           <label class="control balance-control">
             <span class="micro-label">Balance — sustain {100 - tankEhpPct} / {tankEhpPct} HP pool</span>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="5"
-              bind:value={tankEhpPct}
-              oninput={() => (tankProfileId = 'custom')}
+            <Slider
+              min={0}
+              max={100}
+              step={5}
+              value={tankEhpPct}
+              oninput={(v) => setTankEhpPct(v)}
               disabled={optRunning}
-              aria-label="EHP versus sustain balance"
+              ariaLabel="EHP versus sustain balance"
             />
           </label>
-        {:else}
+        {:else if optGoal === 'dps'}
           <div class="control" role="group" aria-label="Scoring mode">
             <span class="micro-label">Scoring</span>
             <div class="mode-toggle">
@@ -763,7 +826,7 @@
       {#if optRunning && optProgress}
         <p class="progress mono" role="status">
           {optProgress.phase} — {optProgress.evals.toLocaleString('en-US')} builds evaluated — best {fmt(optProgress.bestScore)}
-          {optGoal === 'tank' ? 'Tank Score' : 'DPS'}
+          {scoreUnitFor(optGoal)}
         </p>
       {/if}
 
@@ -794,37 +857,55 @@
               <span class="micro-label">Sustainable Incoming DPS</span>
               <span class="mono value">{fmtDamage(tankBreakdown.before.sustainDps)} → <span class="hps">{fmtDamage(tankBreakdown.after.sustainDps)}</span></span>
             </div>
+            <!-- A "Self-Healing / s" tile lived here until 2026-07-28. Removed
+                 by owner decision: the number behind it is computeHps, which
+                 the combat audit rates as unreliable (F4 - ignores overheal,
+                 derives lifesteal from undefended DPS, sums two terms that
+                 fail under different conditions). Displaying it lent it more
+                 credibility than it has earned. It still feeds sustainDps
+                 above as a ranking proxy, which is defensible; showing it as
+                 a headline figure was not. To be redesigned properly. -->
+          </div>
+        {/if}
+        {#if pvpBreakdown}
+          <div class="tiles" data-testid="pvp-breakdown">
             <div class="tile">
-              <span class="micro-label">Self-Healing / s</span>
-              <span class="mono value">{fmtDamage(tankBreakdown.before.selfHps)} → <span class="hps">{fmtDamage(tankBreakdown.after.selfHps)}</span></span>
+              <span class="micro-label">Maximum Damage / s</span>
+              <span class="mono value">{fmtDamage(pvpBreakdown.before.maxDamage)} → <span class="dps">{fmtDamage(pvpBreakdown.after.maxDamage)}</span></span>
+            </div>
+            <div class="tile">
+              <span class="micro-label">Damage Mitigation ×</span>
+              <span class="mono value">{pvpBreakdown.before.mitigation.toFixed(2)} → <span class="dps">{pvpBreakdown.after.mitigation.toFixed(2)}</span></span>
+            </div>
+            <div class="tile">
+              <span class="micro-label">Survivability (HP)</span>
+              <span class="mono value">{fmtDamage(pvpBreakdown.before.survivability)} → <span class="hps">{fmtDamage(pvpBreakdown.after.survivability)}</span></span>
             </div>
           </div>
         {/if}
         <SimulatedPresetCard
           result={optResult}
           {character}
-          scoreUnit={optResultGoal === 'tank' ? 'Tank Score' : 'DPS'}
+          scoreUnit={scoreUnitFor(optResultGoal)}
           onApply={applyOptimized}
           onPromote={promoteAlternative}
           applyPresets={presets.map((p) => ({ id: p.id, name: p.name }))}
           applyDefaultId={optPreset?.id}
         />
-        <div>
-          <button type="button" class="btn-ghost" onclick={saveOptResult} data-testid="save-opt-result">
-            Save Result
-          </button>
-        </div>
       {/if}
-    </section>
-    </div>
 
-    <SavedResultsRail
-      bind:this={savedRail}
-      kinds={['sim', 'opt', 'sim-compare']}
-      {setStatus}
-      onRerun={rerunSaved}
-      canRerun={(r) => r.kind === 'sim'}
-    />
+      <RelicSuggesterPanel
+        {character}
+        preset={optPreset}
+        buildObjectiveSpec={buildOptObjectiveSpec}
+        scoreUnit={scoreUnitFor(optGoal)}
+        formatScore={fmt}
+        disabled={optRunning}
+        {setStatus}
+      />
+    </section>
+    {/if}
+    </div>
   </div>
 {/if}
 
@@ -833,27 +914,14 @@
     color: var(--color-muted);
     padding-top: var(--space-6);
   }
-  /* Two columns: the existing panels keep their 860px measure, the saved-
-     results rail takes the formerly-empty space to the right. Below 1100px
-     the rail stacks underneath instead. */
   .sim-screen {
-    display: grid;
-    grid-template-columns: minmax(0, 860px) minmax(240px, 320px);
-    gap: var(--space-6);
-    align-items: start;
-    max-width: 1200px;
+    max-width: 860px;
   }
   .sim-main {
     display: flex;
     flex-direction: column;
     gap: var(--space-6);
     min-width: 0;
-  }
-  @media (max-width: 1100px) {
-    .sim-screen {
-      grid-template-columns: minmax(0, 1fr);
-      max-width: 860px;
-    }
   }
   .panel {
     border: 1px solid var(--color-border);
@@ -921,6 +989,13 @@
     opacity: 0.6;
     cursor: default;
   }
+  .goal-readout {
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--color-gold-light);
+    padding: 7px 2px;
+  }
   .mode-toggle {
     display: flex;
     border: 1px solid var(--color-border);
@@ -983,10 +1058,7 @@
   .balance-control {
     min-width: 200px;
   }
-  .balance-control input[type='range'] {
-    width: 100%;
-    accent-color: var(--color-gold);
-  }
+  /* .balance-control is a flex column, so .slider stretches on its own. */
   .distribution {
     display: flex;
     flex-direction: column;

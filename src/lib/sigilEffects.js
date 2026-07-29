@@ -6,87 +6,106 @@
  * models what happens on a timeline - activation damage, DoTs, and timed
  * stat buffs.
  *
- * ACTIVATION MODEL: every active sigil is auto-activated the moment it
- * comes off cooldown (the game fires them automatically in combat). PURE
- * SELF-BUFF sigils fire at t=0; ENEMY-TARGETING sigils (anything that deals
- * damage - the DAMAGE_KINDS) don't trigger until one second of combat has
- * passed (the in-game 59s mark), so their first activation is at
- * t=SIGIL_FIRST_HIT_DELAY_SEC. Cooldown starts AT activation, so activations
- * land at firstAt, firstAt+cd, firstAt+2cd, ... and a buff's steady-state
- * uptime is duration/cooldown.
+ * The activation model, the structure-vs-numbers split, and the list of
+ * sigils that are inert against a target dummy (with why, and why a real
+ * opponent fixes them) are documented in docs/Reference/combat-model.md §7.
+ * Do not restate them here.
  *
- * NUMBERS COME FROM THE CHARACTER: the catalogue (sigilsData.js) only
- * declares each sigil's structure - which stats, durations, cooldowns. The
- * actual stat/damage numbers scale with in-game sigil level and are entered
- * per character on the Sigils screen (character.sigilValues, see model.js's
- * SigilValues shape). buildSigilEffects resolves them; a sigil with no
- * entered numbers simulates as all-zeros.
+ * MECHANICS REGISTRY (SIGIL_MECHANICS) - the local part: most sigils are
+ * covered by two generic shapes, a NUKE (entered `damage` per activation) and
+ * a BUFF (entered `active` stat values for durationSec). The rest have bespoke
+ * shapes the SigilDef schema can't express (stacking bleeds, tick trains);
+ * their timing and stack params live HERE, their damage numbers stay in
+ * character.sigilValues like everything else. Entries carry a `note` the UI
+ * surfaces when a mechanic is unsupported in PVE.
  *
- * MECHANICS REGISTRY (SIGIL_MECHANICS): most sigils are covered by two
- * generic shapes - a NUKE (entered `damage` on every activation) and a
- * BUFF (entered `active` stat values applied for durationSec). The rest
- * have bespoke shapes the SigilDef schema can't express (stacking bleeds,
- * tick trains); their timing/stack params live HERE, their damage numbers
- * in character.sigilValues like everything else.
- *
- * NOT SIMULATED: sigils whose effect only exists against a boss that
- * fights back or has defenses. The sim's boss is a pure target dummy
- * (no defense stats, no incoming hits - see simulation.js's domain
- * assumptions), so:
- *  - sunder-mark / siegebreaker-mark strip enemy DMG Reduction / Block /
- *    Miss / Blind / HP Regen - a dummy has none to strip, zero DPS effect.
- *  - bulwark-of-thorns / elusive-supremacy build stacks from being hit /
- *    dodging - the dummy never attacks, so stacks never accumulate.
- *  - withering-touch's HP-Regen debuff and thunderbind's paralyze do
- *    nothing to a dummy; their activation DAMAGE still counts (nuke).
- * Each entry carries a `note` so the UI can say why. Modeling these needs
- * a boss model (defense stats + an incoming-attack timeline) - a scope
- * decision, not a code gap.
- *
- * BUFF STATS vs a target dummy: only damage-side stats change the outcome.
- * attack (flat) / attack_pct scale the swing's base damage; crit, crit_mult
- * and double_hit adjust the per-swing roll chances; speed adds swings
- * (via the engine's speedBonus hook). Defensive/sustain stats in a buff
- * (dmg_reduction, block_chance, hp_regen, lifesteal, miss_chance,
- * blind_chance, penetration...) are accepted but change nothing here.
+ * BUFF STATS vs a target dummy: only damage-side stats change the outcome
+ * here. attack/attack_pct scale the swing's base damage; crit, crit_mult and
+ * double_hit adjust per-swing rolls; speed adds swings via the speedBonus
+ * hook. Defensive and sustain stats in a buff are accepted and change nothing
+ * - they are not dropped, because the same buff definitions drive the duel
+ * engine, where they very much matter.
  */
 
-import { SIGILS_BY_CLASS } from './sigilsData.js';
-import { SPECIAL_GLYPHS } from './constants.js';
+import { SIGILS_BY_CLASS, sigilEffectValue, sigilUnlockedAt } from './sigilsData.js';
+import { resolveMajorGlyph, glyphTickDamageMult } from './glyphsData.js';
+import { buffedAttack } from './dps.js';
 
 /**
- * SPECIAL MOUNT GLYPHS (constants.js's SPECIAL_GLYPHS): a character-wide
- * equipped special glyph modifies one Sigil's simulated mechanic - e.g. the
- * Ember Curse glyph gives the ember-curse bleed +1 max stack and +10% damage
- * per stack. Resolved here (from character.glyphs) so both the sampled sim
- * (buildSigilEffects) and the optimizer's closed-form objective
- * (expectedSigilActiveDps) see the same numbers; pvpSimulation.js applies
- * the same bonuses via applySpecialGlyphsToMech.
+ * MAJOR MOUNT GLYPHS (glyphsData.js's MAJOR_GLYPHS): a major glyph retunes one
+ * Sigil's simulated mechanic - e.g. Emberhoard Sigil raises the ember-curse
+ * bleed to 9 max stacks and 44% per tick. Resolved here so both the sampled
+ * sim (buildSigilEffects) and the optimizer's closed-form objective
+ * (expectedSigilActiveDps) see the same numbers; pvpSimulation.js applies the
+ * same bonuses via applySpecialGlyphsToMech.
+ *
+ * TWO CONDITIONS, both required (BigReworkV1): glyphs are bound to a MOUNT, so
+ * only the glyphs on the mount this preset actually rides count; and a major
+ * glyph is inert unless the sigil it targets is equipped on the preset. The
+ * second gate lives in the callers (they iterate preset.sigilIds), so
+ * everything here only has to answer "which glyphs are on the ridden mount".
  */
 
-/** SPECIAL_GLYPHS ids currently EQUIPPED on this character (glyphs are character-wide). */
-export function activeSpecialGlyphIds(character) {
-  return (character?.glyphs?.entries || []).filter((g) => g.equipped && g.special).map((g) => g.special);
+/** Major glyph ids on the mount this preset rides (empty when it rides none). */
+export function activeSpecialGlyphIds(character, preset) {
+  const mountId = preset?.mountId;
+  if (!mountId) return [];
+  const mount = (character?.mounts?.entries || []).find((m) => m.id === mountId);
+  if (!mount || !(mount.star > 0)) return []; // star 0 = not owned
+  const byId = new Map((character?.glyphs?.entries || []).map((g) => [g.id, g]));
+  return (mount.glyphIds || []).map((id) => byId.get(id)?.special).filter(Boolean);
 }
 
 /**
- * Apply every listed special glyph that targets `sigilId` to a resolved
- * mechanic (one carrying its own tickDamage). Returns the mech untouched
- * when nothing applies.
+ * Apply every listed major glyph that targets `sigilId` to a resolved mechanic
+ * (one carrying its own tickDamage). Returns the mech untouched when nothing
+ * applies.
+ *
+ * Glyph values are ABSOLUTE (maxStacks 9, not +1), except tick damage: the sim
+ * scales the flat number the user entered, so that one applies as a ratio
+ * against the un-glyphed 40% baseline.
  */
 export function applySpecialGlyphsToMech(sigilId, mech, specialGlyphIds) {
   if (!mech || !specialGlyphIds?.length) return mech;
   let out = mech;
   for (const glyphId of specialGlyphIds) {
-    const glyph = SPECIAL_GLYPHS.find((s) => s.id === glyphId);
+    const glyph = resolveMajorGlyph(glyphId);
     if (!glyph || glyph.sigilId !== sigilId) continue;
-    out = {
-      ...out,
-      maxStacks: (out.maxStacks || 8) + (glyph.extraStacks || 0),
-      tickDamage: (out.tickDamage || 0) * (glyph.tickDamageMult || 1),
-    };
+    const next = { ...out };
+    if (glyph.effects.maxStacks != null) next.maxStacks = glyph.effects.maxStacks;
+    if (glyph.effects.tickDamagePct != null) next.tickDamage = (out.tickDamage || 0) * glyphTickDamageMult(glyph);
+    out = next;
   }
   return out;
+}
+
+/**
+ * The cooldown a sigil actually runs at for this set of major glyphs - a
+ * cooldown glyph replaces the catalogue value outright (lowest wins if two
+ * somehow target the same sigil).
+ */
+export function glyphedCooldownSec(def, specialGlyphIds) {
+  let cooldown = def?.active?.cooldownSec ?? 0;
+  for (const glyphId of specialGlyphIds || []) {
+    const glyph = resolveMajorGlyph(glyphId);
+    if (!glyph || glyph.sigilId !== def?.id) continue;
+    const cd = glyph.effects.cooldownSec;
+    if (cd != null && cd > 0) cooldown = Math.min(cooldown || cd, cd);
+  }
+  return cooldown;
+}
+
+/** Extra active-buff stats a major glyph grants (e.g. Duskrunner Haste's attack speed). */
+export function glyphBuffStats(def, specialGlyphIds) {
+  const stats = [];
+  for (const glyphId of specialGlyphIds || []) {
+    const glyph = resolveMajorGlyph(glyphId);
+    if (!glyph || glyph.sigilId !== def?.id) continue;
+    if (glyph.effects.attackSpeedWhileActivePct != null) {
+      stats.push({ statKey: 'speed', value: glyph.effects.attackSpeedWhileActivePct });
+    }
+  }
+  return stats;
 }
 
 // The catalogue is static, so the id lookup per class is built once - the
@@ -134,6 +153,14 @@ export const SIGIL_MECHANICS = {
   'thunderbind': { kind: 'nuke', note: 'paralyze not simulated (target dummy does not act)' },
   'elusive-supremacy': { kind: 'unsupported', note: 'stacks build from dodged hits - the dummy never attacks' },
   'siegebreaker-mark': { kind: 'unsupported', note: 'strips enemy defenses - no effect vs a defenseless target dummy' },
+  // --- Ancient conduit sigils (both classes) ---
+  // "Once per fight, no cooldown" has no duration/cooldown shape the uptime
+  // model can express (cooldownSec 0 would read as infinite uptime), and the
+  // Chrono Flux charge time is unknown. Their passive Attack/Health still
+  // counts through totals.js; only the transform is left out of the sim.
+  earthwarden: { kind: 'unsupported', note: 'once-per-fight transform, charged by Chrono Flux - not modelled' },
+  flameborn: { kind: 'unsupported', note: 'once-per-fight transform, charged by Chrono Flux - not modelled' },
+  stormcaller: { kind: 'unsupported', note: 'once-per-fight transform, charged by Chrono Flux - not modelled' },
 };
 
 export const DAMAGE_KINDS = new Set(['nuke', 'tick-train', 'dot', 'stacking-dot']);
@@ -161,8 +188,23 @@ export function sigilDamageInputs(def) {
   return {
     damage: DAMAGE_KINDS.has(kind),
     tickDamage: TICK_KINDS.has(kind),
-    regenDebuffPct: REGEN_DEBUFF_SIGIL_IDS.has(def.id),
+    // The regen debuff IS baked per level now (Withering Touch), so it only
+    // needs a manual field if the catalogue has no value for it.
+    regenDebuffPct: REGEN_DEBUFF_SIGIL_IDS.has(def.id) && sigilEffectValue(def, 'regenDebuffPct', 1) === null,
   };
+}
+
+/**
+ * Which of a sigil's declared stat magnitudes the user still has to type in.
+ * A statKey drops off this list once sigilsData bakes it per level - the
+ * Sigils screen shows a derived read-only value for those instead of a field.
+ */
+export function sigilManualStatKeys(def, effectType) {
+  const stats = def?.[effectType]?.stats || [];
+  return stats
+    .filter((s) => !(effectType === 'passive' && (s.statKey === 'attack' || s.statKey === 'health')))
+    .filter((s) => sigilEffectValue(def, s.statKey, 1) === null)
+    .map((s) => s.statKey);
 }
 
 /** Swing-roll keys a buff can move directly (everything else is either handled specially or inert vs a dummy). */
@@ -273,7 +315,8 @@ export function makeSigilEffect(def, mechanicOverride = null) {
     effect.modifySwing = (swing, ctx) => {
       const state = ctx.state.get(tag);
       if (!state || ctx.time >= state.buffUntil) return;
-      swing.baseDamage = (swing.baseDamage + attackFlat) * (1 + attackPct / 100);
+      // Attack % is additive into the build's % total - see dps.js buffedAttack.
+      swing.baseDamage = buffedAttack(swing.baseDamage, ctx.stats?.attack_pct, attackFlat, attackPct);
       for (const [statKey, swingKey] of Object.entries(BUFF_SWING_KEYS)) {
         swing[swingKey] += buffValue(active, statKey);
       }
@@ -320,7 +363,7 @@ export function expectedSigilActiveDps(character, preset, durationSeconds = 60) 
   const buffWindows = []; // per buff sigil: { windows: [[start, end)...] (disjoint), statAdds }
   const defById = sigilDefById(character.class);
   if (!defById) return result;
-  const specialGlyphIds = activeSpecialGlyphIds(character);
+  const specialGlyphIds = activeSpecialGlyphIds(character, preset);
   const fires = (t) => t < durationSeconds - 1e-9; // runSingle's horizon rule
 
   let totalFlat = 0;
@@ -329,7 +372,9 @@ export function expectedSigilActiveDps(character, preset, durationSeconds = 60) 
     if (!def?.active) continue;
     const mech = SIGIL_MECHANICS[def.id];
     if (mech?.kind === 'unsupported') continue;
-    const cd = Number(def.active.cooldownSec) || 0;
+    // Must match buildSigilEffects: a cooldown glyph shortens the cadence, so
+    // the closed-form objective and the sampled sim stay in agreement.
+    const cd = Number(glyphedCooldownSec(def, specialGlyphIds)) || 0;
     if (cd <= 0) continue; // never comes off cooldown -> never activates
     const duration = Number(def.active.durationSec) || 0;
     const entered = character.sigilValues?.[sigilId] || {};
@@ -381,14 +426,19 @@ export function expectedSigilActiveDps(character, preset, durationSeconds = 60) 
         totalFlat += activations.length * damage; // generic nuke (and/or buff)
     }
 
-    // Timed buff: collect the entered damage-side stat values and the exact
-    // activation windows (same-sigil overlap merges - buffUntil extends).
-    if (def.active.stats.length > 0 && duration > 0) {
+    // Timed buff: collect the damage-side stat values and the exact activation
+    // windows (same-sigil overlap merges - buffUntil extends). Resolution must
+    // mirror buildSigilEffects: baked-per-level first, entered value otherwise,
+    // plus any stat a major glyph adds on top.
+    const glyphStats = glyphBuffStats(def, specialGlyphIds);
+    if ((def.active.stats.length > 0 || glyphStats.length > 0) && duration > 0) {
       const statAdds = {};
       let any = false;
       for (const key of BUFF_DPS_KEYS) {
         const declared = def.active.stats.some((s) => s.statKey === key);
-        const value = declared ? Number(entered.active?.[key]) || 0 : 0;
+        const baked = declared ? sigilEffectValue(def, key, entered.level) : null;
+        let value = declared ? (baked === null ? Number(entered.active?.[key]) || 0 : baked) : 0;
+        for (const g of glyphStats) if (g.statKey === key) value += g.value;
         if (value !== 0) {
           statAdds[key] = value;
           any = true;
@@ -446,30 +496,57 @@ export function expectedSigilActiveDps(character, preset, durationSeconds = 60) 
  * simulation, with the catalogue structure resolved against the character's
  * entered numbers (character.sigilValues) - append these to DEFAULT_EFFECTS
  * when calling runSimulation.
+ *
+ * `spellDamagePct` is the character's Spell Damage total (from the same
+ * effective stat set the sim receives): sigil SPELL damage - activation
+ * nukes and DoT/bleed ticks - is boosted by +spellDamagePct%. It's baked
+ * into the resolved numbers here (rather than at addDamage time) because
+ * Spell Damage is constant over the fight - no sigil buffs it. The closed
+ * form applies the same factor at the flatDps level
+ * (sigilAwareDpsFromTotals), keeping both objectives in agreement.
  */
-export function buildSigilEffects(character, preset) {
+export function buildSigilEffects(character, preset, spellDamagePct = 0) {
   const defById = sigilDefById(character.class);
   if (!defById) return [];
-  const specialGlyphIds = activeSpecialGlyphIds(character);
+  const specialGlyphIds = activeSpecialGlyphIds(character, preset);
+  const spellFactor = 1 + (Number(spellDamagePct) || 0) / 100;
+  const forgeTier = character.sigilForgeTier || 1;
   const effects = [];
   for (const sigilId of preset.sigilIds || []) {
     const def = defById.get(sigilId);
     if (!def?.active) continue;
+    // Below its minimum Forge Tier the sigil isn't equippable, so it can't fire.
+    if (!sigilUnlockedAt(def, forgeTier)) continue;
     const mech = SIGIL_MECHANICS[def.id];
     if (mech?.kind === 'unsupported') continue;
 
-    // Resolve the catalogue's structure into a def carrying the character's
-    // entered numbers (a sigil with none entered simulates as all-zeros).
+    // Resolve the catalogue's structure into a def carrying real numbers:
+    // baked per-level magnitudes where we have them (sigilEffectValue), the
+    // character's entered value otherwise (unbaked stats simulate as 0).
     const entered = character.sigilValues?.[sigilId] || {};
     const resolved = {
       ...def,
       active: {
         ...def.active,
-        stats: def.active.stats.map((s) => ({ statKey: s.statKey, value: Number(entered.active?.[s.statKey]) || 0 })),
-        damage: Math.max(0, Number(entered.damage) || 0),
+        stats: [
+          ...def.active.stats.map((s) => {
+            const baked = sigilEffectValue(def, s.statKey, entered.level);
+            return {
+              statKey: s.statKey,
+              value: baked === null ? Number(entered.active?.[s.statKey]) || 0 : baked,
+            };
+          }),
+          // A glyph can add a stat the sigil doesn't have natively (Duskrunner
+          // Haste grants Blinding Mark attack speed while it's up).
+          ...glyphBuffStats(def, specialGlyphIds),
+        ],
+        // A cooldown glyph replaces the catalogue cooldown, which changes both
+        // activation cadence and steady-state buff uptime.
+        cooldownSec: glyphedCooldownSec(def, specialGlyphIds),
+        damage: Math.max(0, Number(entered.damage) || 0) * spellFactor,
       },
     };
-    const mechWithTick = mech ? { ...mech, tickDamage: Math.max(0, Number(entered.tickDamage) || 0) } : null;
+    const mechWithTick = mech ? { ...mech, tickDamage: Math.max(0, Number(entered.tickDamage) || 0) * spellFactor } : null;
     effects.push(makeSigilEffect(resolved, applySpecialGlyphsToMech(def.id, mechWithTick, specialGlyphIds)));
   }
   return effects;

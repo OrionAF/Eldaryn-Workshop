@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { isAdjacent, canUnlock, reachableFrom, costForCount, costForSigil, totalIchorSpent } from './transcendence.js';
+import { isAdjacent, canUnlock, reachableFrom, costForCount, costForSigil, slotsForNode, totalIchorSpent } from './transcendence.js';
 
 const TREE = {
   startPosition: '2:2',
@@ -63,23 +63,31 @@ it('reachableFrom treats glyph sockets as impassable even if included in the wal
   expect(reached.has('1:2')).toBe(false); // glyph never counted as a walkable neighbor to traverse
 });
 
-it('costForCount follows the tiered table and applies the uncommon x3 multiplier', () => {
+it('costForCount follows the tiered table; uncommons pay the next 3 slot prices combined', () => {
   expect(costForCount(1, false)).toBe(1);
   expect(costForCount(4, false)).toBe(1);
   expect(costForCount(5, false)).toBe(2);
   expect(costForCount(9, false)).toBe(2);
   expect(costForCount(10, false)).toBe(3);
   expect(costForCount(207, false)).toBe(80);
-  expect(costForCount(5, true)).toBe(6); // uncommon at position 5 (tier cost 2) -> x3
+  expect(costForCount(5, true)).toBe(6); // slots 5+6+7, all in the 2-Ichor tier
+  expect(costForCount(4, true)).toBe(5); // slots 4+5+6 = 1+2+2 straddle the tier boundary
+  expect(costForCount(1, true)).toBe(3); // slots 1+2+3, all in the 1-Ichor tier
+});
+
+it('slotsForNode reports 1 slot for commons and 3 for uncommon (big) nodes', () => {
+  expect(slotsForNode(false)).toBe(1);
+  expect(slotsForNode(true)).toBe(3);
 });
 
 it('costForSigil is the flat 30 Ichor cost', () => {
   expect(costForSigil()).toBe(30);
 });
 
-it('totalIchorSpent matches the in-game "5 nodes, 8 Ichor spent" example', () => {
-  // 3 commons + 1 uncommon, all within the 1-4 tier, then a 5th common landing in the 5-9 tier:
-  // 1 + 1 + 1 + (1*3) + 2 = 8
+it('totalIchorSpent advances the slot count by 3 per uncommon (fills 3 slots at once)', () => {
+  // 3 commons fill slots 1-3 (1+1+1), the uncommon fills slots 4-6
+  // (1+2+2 = 5, straddling the tier boundary), then the 5th node is a
+  // common at slot 7 (2): 3 + 5 + 2 = 10.
   const tree = {
     startPosition: '0:0',
     nodes: [
@@ -91,7 +99,7 @@ it('totalIchorSpent matches the in-game "5 nodes, 8 Ichor spent" example', () =>
     ],
   };
   const unlockOrder = ['0:0', '0:1', '0:2', '0:3', '0:4'];
-  expect(totalIchorSpent(unlockOrder, tree)).toBe(8);
+  expect(totalIchorSpent(unlockOrder, tree)).toBe(10);
 });
 
 it('totalIchorSpent adds the flat sigil cost without advancing the tiered common/uncommon count', () => {

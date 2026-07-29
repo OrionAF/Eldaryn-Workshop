@@ -1,4 +1,4 @@
-/**
+﻿/**
  * optimizer.js - automatic build search: finds the max-DPS configuration of
  * every searchable source and returns it as a virtual "Simulated Preset"
  * recommendation (never applied to the store - the user makes the changes
@@ -14,9 +14,10 @@
  * path, transcendence unlocks). Saved Talent Sets are NOT part of the
  * search: the optimizer keeps the preset's set slot as-is and searches spec
  * + point allocation from scratch - the recommendation is "make your
- * talents look like this", not "switch to Set B". Only the point BUDGET
- * comes from the player's sets (the most points spent in either one, since
- * that's how many points they demonstrably own; 29 if both are empty).
+ * talents look like this", not "switch to Set B". The point budget is always
+ * the full TALENT_TOTAL_POINTS: talent points are level-derived, like
+ * awakening points, so both are projected to endgame and neither is searched.
+ * The recommendation is the build to grow into.
  * materializeCandidate() turns it into a shallow candidate character +
  * candidate preset that computePresetTotals() accepts unmodified - no store
  * mutation, no totals.js changes.
@@ -48,28 +49,49 @@
  * already invested in the current nodes plus any extra the player entered,
  * so it can re-route defensive detours into DPS nodes even with no new
  * Ichor. Passes repeat until a full loop yields no strict improvement.
- * Objective evals are memoized on a canonical candidate signature, so
- * re-passes over unchanged alternatives are free; searchDimensions can lock
- * any pass; an AbortSignal stops the search with best-so-far.
+ * Objective evals are memoized on a canonical candidate signature;
+ * searchDimensions can lock any pass; an AbortSignal stops the search with
+ * best-so-far.
  *
- * KNOWN HEURISTIC GAPS:
+ * KNOWN HEURISTIC GAPS - what this search does NOT guarantee:
  *  - Greedy passes are still local search - coordinated multi-dimension
  *    moves (e.g. a talent build only good with a different pet) are found
  *    only via repeated passes, not jointly.
+ *  - The memo does NOT make re-passes free. candidateKey covers every
+ *    dimension, so as soon as one pass adopts, every other pass's cached
+ *    scores are unreachable - only the final, adopts-nothing pass is cheap.
+ *    Budget for maxPasses x the full eval count, not 1x.
+ *  - Relic/sigil subset enumeration is exhaustive: C(pool, <=cap) candidates
+ *    per pass, multiplied by the above. Fine for the closed-form objectives;
+ *    under a Monte Carlo duel objective it is a real cost cliff, which is
+ *    what estimateSearchCost() exists to warn about before a run starts.
+ *  - Glyph and stone passes both stop when the marginal pick stops paying,
+ *    so a tier can be left part-filled. Greedy-with-stopping is exact for
+ *    the purely additive stones; for glyphs it is a heuristic, since a major
+ *    glyph retunes a sigil's mechanic and can interact with the next pick.
+ *  - Two-stage mode: `screenObjective` ranks, `objective` only vetoes. A
+ *    build the expensive objective would prefer is never confirmed unless
+ *    the cheap one also ranks it above the incumbent - so `topCandidates` is
+ *    a screen-ranked shortlist wearing confirm-score labels.
+ *  - `best.score` under a Monte Carlo objective is a biased maximum. It is
+ *    valid against its own search's incumbent and against nothing else; see
+ *    combat-model.md §8 "Why search maxima are not comparable".
  */
 
-import { computeDps } from './dps.js';
+import { computeDps, buffedAttack } from './dps.js';
 import { computePresetTotals, resolveEffectiveTotals } from './totals.js';
 import { runSimulation, DEFAULT_EFFECTS } from './simulation.js';
 import { buildSigilEffects, expectedSigilActiveDps } from './sigilEffects.js';
-import { SIGILS_BY_CLASS } from './sigilsData.js';
-import { SOURCE_DEFS, SPECIAL_GLYPHS, SPECS_BY_CLASS, PRESET_RELIC_CAP, PRESET_SIGIL_CAP, TALENT_TOTAL_POINTS, fieldsForTab, SLOTS } from './constants.js';
+import { SIGILS_BY_CLASS, hasSigilCurve, sigilEffectValue } from './sigilsData.js';
+import { petStats } from './petsData.js';
+import { SOURCE_DEFS, SPECS_BY_CLASS, PRESET_RELIC_CAP, PRESET_SIGIL_CAP, TALENT_TOTAL_POINTS, fieldsForTab, SLOTS } from './constants.js';
+import { majorGlyphById } from './glyphsData.js';
 import { summarizeStats } from './format.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { AWAKENING_PATHS } from './awakeningData.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
-import { canUnlock, costForCount, totalIchorSpent } from './transcendence.js';
+import { canUnlock, costForCount, slotsForNode, totalIchorSpent } from './transcendence.js';
 import { stoneTypeDef } from './stonesData.js';
 
 const EPS = 1e-9;
@@ -105,11 +127,14 @@ export function sigilAwareDpsObjective(candidateCharacter, candidatePreset) {
 export function sigilAwareDpsFromTotals(totals, candidateCharacter, candidatePreset) {
   const base = computeDps(totals);
   const { flatDps, segments } = expectedSigilActiveDps(candidateCharacter, candidatePreset);
-  let dps = base + flatDps;
+  // Spell Damage boosts sigil spell damage only - the flat (nuke/tick) side,
+  // never swings. Same factor buildSigilEffects bakes into the sampled sim.
+  let dps = base + flatDps * (1 + (totals.spell_damage || 0) / 100);
   for (const { statAdds, fraction } of segments) {
     const buffed = {
       ...totals,
-      attack: (totals.attack + (statAdds.attack || 0)) * (1 + (statAdds.attack_pct || 0) / 100),
+      // Attack % adds into the build's % total - see dps.js buffedAttack (F3).
+      attack: buffedAttack(totals.attack, totals.attack_pct, statAdds.attack, statAdds.attack_pct),
       crit: totals.crit + (statAdds.crit || 0),
       crit_mult: totals.crit_mult + (statAdds.crit_mult || 0),
       double_hit: totals.double_hit + (statAdds.double_hit || 0),
@@ -131,15 +156,17 @@ export function sigilAwareDpsFromTotals(totals, candidateCharacter, candidatePre
  */
 export function createMonteCarloObjective({ iterations = 100, durationSeconds = 60, seed = 1, buildEffects } = {}) {
   const build =
-    buildEffects ?? ((character, preset) => [...DEFAULT_EFFECTS, ...buildSigilEffects(character, preset)]);
-  return (candidateCharacter, candidatePreset) =>
-    runSimulation({
-      stats: computePresetTotals(candidateCharacter, candidatePreset),
+    buildEffects ?? ((character, preset, spellDamagePct) => [...DEFAULT_EFFECTS, ...buildSigilEffects(character, preset, spellDamagePct)]);
+  return (candidateCharacter, candidatePreset) => {
+    const stats = computePresetTotals(candidateCharacter, candidatePreset);
+    return runSimulation({
+      stats,
       iterations,
       durationSeconds,
       seed,
-      effects: build(candidateCharacter, candidatePreset),
+      effects: build(candidateCharacter, candidatePreset, stats.spell_damage),
     }).meanDps;
+  };
 }
 
 // --- Candidate representation ----------------------------------------------
@@ -160,10 +187,21 @@ export function candidateFromCurrent(character, preset) {
     socketedStones: { ...(character.loadouts[preset.loadout]?.socketedStones || {}) },
     talentSpec: talentSet?.spec ?? null,
     talentAllocation: { ...(talentSet?.allocation || {}) },
-    glyphEquippedIds: (character.glyphs?.entries || []).filter((e) => e.equipped).map((e) => e.id),
+    // Glyphs are mount-bound now, so this dimension means "the glyphs sitting
+    // on the mount this candidate rides". Switching mounts therefore also
+    // switches glyph loadout, which is the point: a preset on the high-HP
+    // mount can carry different glyphs than one on the high-ATK mount.
+    glyphEquippedIds: glyphIdsOnMount(character, preset.mountId),
     awakeningPath: character.awakening?.path ?? null,
     transcendenceUnlocked: [...(character.transcendence?.unlockedPositions || [])],
   };
+}
+
+/** The glyph ids currently sitting on a given mount ([] for none/unknown). */
+function glyphIdsOnMount(character, mountId) {
+  if (!mountId) return [];
+  const mount = (character.mounts?.entries || []).find((m) => m.id === mountId);
+  return [...(mount?.glyphIds || [])];
 }
 
 /**
@@ -172,7 +210,7 @@ export function candidateFromCurrent(character, preset) {
  * overridden branches, never mutating the real character/preset.
  */
 export function materializeCandidate(character, candidate) {
-  const glyphSet = new Set(candidate.glyphEquippedIds);
+  const ridden = candidate.preset.mountId ?? null;
   const candidateCharacter = {
     ...character,
     loadouts: character.loadouts.map((lo, i) =>
@@ -181,7 +219,13 @@ export function materializeCandidate(character, candidate) {
     talentSets: character.talentSets.map((ts, i) =>
       i === candidate.preset.talentSet ? { spec: candidate.talentSpec, allocation: candidate.talentAllocation } : ts
     ),
-    glyphs: { entries: (character.glyphs?.entries || []).map((e) => ({ ...e, equipped: glyphSet.has(e.id) })) },
+    // Only the ridden mount's glyph list is substituted; every other mount
+    // keeps whatever it already carries (other presets may be riding them).
+    mounts: {
+      entries: (character.mounts?.entries || []).map((m) =>
+        m.id === ridden ? { ...m, glyphIds: [...candidate.glyphEquippedIds] } : m
+      ),
+    },
     awakening: { path: candidate.awakeningPath, points: character.awakening?.points || 0 },
     transcendence: { unlockedPositions: [...candidate.transcendenceUnlocked] },
   };
@@ -270,14 +314,49 @@ function legalTalentIncrements(tree, allocation) {
 function sigilHasAnyValue(character, def) {
   const entered = character.sigilValues?.[def.id];
   if (!entered) return false;
+  // A baked sigil given a level (>=1) carries derived passive Attack/Health.
+  if (hasSigilCurve(def) && Number(entered.level) >= 1) return true;
   if (Number(entered.damage) > 0 || Number(entered.tickDamage) > 0) return true;
-  for (const s of def.passive?.stats || []) {
-    if (Number(entered.passive?.[s.statKey])) return true;
-  }
-  for (const s of def.active?.stats || []) {
-    if (Number(entered.active?.[s.statKey])) return true;
+  // Must mirror totals.js/sigilEffects.js: a stat that sigilsData bakes per
+  // level ignores the entered number entirely, so an entered value on a
+  // level-0 sigil is NOT a reason to put it in the pool.
+  for (const effectType of ['passive', 'active']) {
+    for (const s of def[effectType]?.stats || []) {
+      const baked = sigilEffectValue(def, s.statKey, entered.level);
+      if (baked === null) {
+        if (Number(entered[effectType]?.[s.statKey])) return true;
+      } else if (baked > 0) {
+        return true;
+      }
+    }
   }
   return false;
+}
+
+// --- Stone slot alignment -----------------------------------------------------
+
+/**
+ * Assign a selected SET of stones to slots with minimum churn against the
+ * player's current socket map: any selected stone already socketed keeps its
+ * exact slot, and only genuinely new stones go into the remaining slots (in
+ * SLOTS order). Stones are slot-agnostic, so this changes nothing about the
+ * score - it only keeps the recommendation free of no-op "move stone X from
+ * slot A to slot B" instructions.
+ */
+export function alignStonesToCurrentSlots(selectedIds, currentStones) {
+  const map = {};
+  const remaining = new Set(selectedIds);
+  for (const slot of SLOTS) {
+    const id = currentStones?.[slot];
+    if (id && remaining.has(id)) {
+      map[slot] = id;
+      remaining.delete(id);
+    }
+  }
+  const freeSlots = SLOTS.filter((slot) => !map[slot]);
+  let i = 0;
+  for (const id of remaining) map[freeSlots[i++]] = id;
+  return map;
 }
 
 // --- Transcendence path search ----------------------------------------------
@@ -297,8 +376,9 @@ export const TRANSCENDENCE_BEAM_WIDTH = 5;
 
 /**
  * Near-cheapest unlock sequence from the current board to EVERY reachable
- * locked buyable node: Dijkstra over the locked nodes, where the i-th node
- * of a sequence costs costForCount(count + i, uncommon). Corridor nodes are
+ * locked buyable node: Dijkstra over the locked nodes, where each node of a
+ * sequence is priced at the slots it fills (commons 1, uncommons 3) past
+ * the slots filled so far. Corridor nodes are
  * priced at their real Ichor cost, so a payoff node behind a zero-gain
  * corridor of any length gets a full path (the old lookahead saw one
  * stepping stone at most). "Near"-cheapest because costForCount depends on
@@ -312,7 +392,8 @@ export function cheapestUnlockPaths(tree, unlocked, count) {
   for (const node of tree.nodes) {
     if (!isBuyableNode(node) || unlocked.includes(node.position)) continue;
     if (canUnlock(node.position, unlocked, tree)) {
-      pending.push({ nodes: [node], cost: costForCount(count + 1, node.type === 'uncommon') });
+      const isUncommon = node.type === 'uncommon';
+      pending.push({ nodes: [node], slots: slotsForNode(isUncommon), cost: costForCount(count + 1, isUncommon) });
     }
   }
   while (pending.length > 0) {
@@ -326,9 +407,11 @@ export function cheapestUnlockPaths(tree, unlocked, count) {
     for (const node of tree.nodes) {
       if (!isBuyableNode(node) || settled.has(node.position) || reached.includes(node.position)) continue;
       if (!canUnlock(node.position, reached, tree)) continue;
+      const isUncommon = node.type === 'uncommon';
       pending.push({
         nodes: [...path.nodes, node],
-        cost: path.cost + costForCount(count + path.nodes.length + 1, node.type === 'uncommon'),
+        slots: path.slots + slotsForNode(isUncommon),
+        cost: path.cost + costForCount(count + path.slots + 1, isUncommon),
       });
     }
   }
@@ -344,12 +427,19 @@ export function cheapestUnlockPaths(tree, unlocked, count) {
  * each duplicate eval is hundreds of sims. Set-like dimensions are sorted so
  * equivalent builds reached via different orders share one entry;
  * fortressBuffs are excluded (carried as set, never searched).
+ *
+ * Every dimension that CAN differ between two candidates has to be in here -
+ * two builds that collide silently inherit each other's score. `preset.talentSet`
+ * is included even though no pass currently varies it: it is written by
+ * materializeCandidate, so the day a pass does vary it the memo must already
+ * be correct rather than quietly wrong.
  */
 function candidateKey(c) {
   return JSON.stringify([
     c.preset.loadout,
     c.preset.petId,
     c.preset.mountId,
+    c.preset.talentSet,
     [...c.preset.relicIds].sort(),
     [...c.preset.sigilIds].sort(),
     SLOTS.map((slot) => c.socketedStones[slot] || null),
@@ -359,6 +449,79 @@ function candidateKey(c) {
     c.awakeningPath,
     [...c.transcendenceUnlocked].sort(),
   ]);
+}
+
+/**
+ * Every subset of `pool` of size <= `cap`, including the empty one.
+ *
+ * The accumulation is a plain loop rather than `subsets.push(...grown)`:
+ * spreading an array as call arguments blows the stack once it is long enough,
+ * and this array's length is C(pool, <=cap), which grows fast in the pool size.
+ * Safe at today's caps, and the caps are exactly the kind of number that gets
+ * walked up in a patch.
+ */
+export function subsetsUpTo(pool, cap) {
+  const subsets = [[]];
+  for (const id of pool) {
+    const grown = [];
+    for (const subset of subsets) {
+      if (subset.length < cap) grown.push([...subset, id]);
+    }
+    for (const subset of grown) subsets.push(subset);
+  }
+  return subsets;
+}
+
+/** C(n, 0) + C(n, 1) + ... + C(n, k) - the size subsetsUpTo returns, without building it. */
+function subsetCount(n, k) {
+  let total = 0;
+  let term = 1; // C(n, 0)
+  for (let i = 0; i <= Math.min(k, n); i++) {
+    total += term;
+    term = (term * (n - i)) / (i + 1);
+  }
+  return Math.round(total);
+}
+
+/**
+ * Worst-case objective-eval count for a search, WITHOUT running it.
+ *
+ * Exists because the two enumerated dimensions are exponential in their pool
+ * size and the memo does not survive an adopting pass, so cost is roughly
+ * (candidates per pass) x maxPasses. Under a closed-form objective that is
+ * irrelevant; under a Monte Carlo duel objective one eval is a batch of duels,
+ * and the product is the difference between "a moment" and "tens of minutes".
+ * Callers that can run an expensive objective should check this and warn
+ * before starting, not after.
+ *
+ * Deliberately an UPPER bound: it assumes every pass runs and nothing is
+ * memo-hit. `perPass` is dominated by the enumerated dimensions; the greedy
+ * passes contribute a small constant each and are folded in approximately.
+ */
+export function estimateSearchCost({ character, preset, searchDimensions = {}, maxPasses = 5 } = {}) {
+  const dims = { relics: true, sigils: true, ...searchDimensions };
+  const relicPool = dims.relics
+    ? (RELICS_BY_CLASS[character.class] || []).filter((d) => (character.relicLevels?.[d.id] || 0) > 0).length
+    : 0;
+  const sigilPool = dims.sigils
+    ? (SIGILS_BY_CLASS[character.class] || []).filter((d) => sigilHasAnyValue(character, d)).length
+    : 0;
+  const relicSubsets = relicPool > 0 ? subsetCount(relicPool, PRESET_RELIC_CAP) : 0;
+  const sigilSubsets = sigilPool > 0 ? subsetCount(sigilPool, PRESET_SIGIL_CAP) : 0;
+  const enumerated = relicSubsets + sigilSubsets;
+  // Greedy passes: loadouts + pets + mounts + glyph/stone top-ups + the talent
+  // and transcendence searches. Order tens-to-low-hundreds, not exponential.
+  const greedy = 200;
+  const perPass = enumerated + greedy;
+  return {
+    relicPoolSize: relicPool,
+    sigilPoolSize: sigilPool,
+    relicSubsets,
+    sigilSubsets,
+    perPass,
+    maxPasses,
+    worstCaseEvals: perPass * maxPasses,
+  };
 }
 
 /** Thrown internally when `signal` aborts; optimize() catches it and returns best-so-far. */
@@ -569,7 +732,8 @@ export async function optimize({
     // -- Mount (per-preset ridden mount) --
     if (dims.mounts) {
       report('mounts');
-      for (const mountId of [null, ...(character.mounts?.entries || []).map((m) => m.id)]) {
+      const ownedMountIds = (character.mounts?.entries || []).filter((m) => m.star > 0).map((m) => m.id);
+      for (const mountId of [null, ...ownedMountIds]) {
         if (mountId === best.preset.mountId) continue;
         const next = cloneCandidate(best);
         next.preset.mountId = mountId;
@@ -578,7 +742,9 @@ export async function optimize({
     }
 
     // -- Glyphs: greedy fill per tier within its cap --
-    if (dims.glyphs) {
+    // Glyphs sit on the ridden mount, so with no mount there is nowhere to put
+    // them - skip rather than search a dimension that can't take effect.
+    if (dims.glyphs && best.preset.mountId) {
       report('glyphs');
       const glyphEntries = character.glyphs?.entries || [];
       for (const [tier, cap] of Object.entries(GLYPH_TIER_CAPS)) {
@@ -589,6 +755,7 @@ export async function optimize({
         let candidateBase = cloneCandidate(best);
         candidateBase.glyphEquippedIds = [...otherTierIds];
         // Greedily re-fill this tier from empty; only adopt if the refill beats the incumbent.
+        let baseScore = await score(candidateBase);
         for (let slot = 0; slot < cap; slot++) {
           let bestAdd = null;
           let bestAddScore = -Infinity;
@@ -603,8 +770,16 @@ export async function optimize({
             }
           }
           if (!bestAdd) break;
+          // Leaving the slot EMPTY is a real option, so the marginal winner has
+          // to beat `candidateBase` itself before it advances the chain. Without
+          // this the tier fills to its cap with the least-bad remaining glyph,
+          // putting no-op (or harmful) equips in the change list and anchoring
+          // later slots to a degraded base. A major glyph really can be
+          // negative: it retunes a sigil's mechanic (glyphsData.js).
+          if (bestAddScore <= baseScore + EPS) break;
           selected = bestAdd.glyphEquippedIds.filter((id) => tierIds.includes(id));
           candidateBase = bestAdd;
+          baseScore = bestAddScore;
           if (await adoptIfBetter(bestAdd, bestAddScore)) improvedInLoop = true;
         }
       }
@@ -618,15 +793,7 @@ export async function optimize({
       // them shrinks the subset space without losing any real option.
       const pool = relicDefs.filter((d) => (character.relicLevels?.[d.id] || 0) > 0).map((d) => d.id);
       if (pool.length > 0) {
-        const subsets = [[]];
-        for (const id of pool) {
-          const grown = [];
-          for (const subset of subsets) {
-            if (subset.length < PRESET_RELIC_CAP) grown.push([...subset, id]);
-          }
-          subsets.push(...grown);
-        }
-        for (const subset of subsets) {
+        for (const subset of subsetsUpTo(pool, PRESET_RELIC_CAP)) {
           const next = cloneCandidate(best);
           next.preset.relicIds = subset;
           if (await consider(next)) improvedInLoop = true;
@@ -642,15 +809,7 @@ export async function optimize({
       const sigilDefs = SIGILS_BY_CLASS[character.class] || [];
       const sigilPool = sigilDefs.filter((d) => sigilHasAnyValue(character, d)).map((d) => d.id);
       if (sigilPool.length > 0) {
-        const subsets = [[]];
-        for (const id of sigilPool) {
-          const grown = [];
-          for (const subset of subsets) {
-            if (subset.length < PRESET_SIGIL_CAP) grown.push([...subset, id]);
-          }
-          subsets.push(...grown);
-        }
-        for (const subset of subsets) {
+        for (const subset of subsetsUpTo(sigilPool, PRESET_SIGIL_CAP)) {
           const next = cloneCandidate(best);
           next.preset.sigilIds = subset;
           if (await consider(next)) improvedInLoop = true;
@@ -658,25 +817,30 @@ export async function optimize({
       }
     }
 
-    // -- Socketed stones: greedy per-slot fill from an empty socket map, modeled
-    //    on the glyph pass. Any stone fits any slot; each stone used at most once
+    // -- Socketed stones: greedy SET selection from empty, modeled on the
+    //    glyph pass. Any stone fits any slot; each stone used at most once
     //    per loadout (mirrors normaliseLoadout/socketStone rules). Stones are
-    //    slot-agnostic and purely additive, so greedy top-up is effectively exact.
+    //    slot-agnostic and purely additive, so greedy top-up is effectively
+    //    exact - and because slots don't matter to the score, the search
+    //    picks WHICH stones to run and alignStonesToCurrentSlots() decides
+    //    WHERE: every kept stone stays in the slot the player already has it
+    //    in, so the recommendation never says "move stone X from A to B".
     if (dims.stones) {
       report('stones');
       const stoneIds = (character.stoneInventory || []).map((s) => s.id);
       if (stoneIds.length > 0) {
+        const currentStones = character.loadouts[best.preset.loadout]?.socketedStones || {};
+        let selected = [];
         let candidateBase = cloneCandidate(best);
         candidateBase.socketedStones = {}; // start empty ("leave empty" is the default)
         let baseScore = await score(candidateBase);
-        const used = new Set();
-        for (const slot of SLOTS) {
+        for (let pick = 0; pick < SLOTS.length; pick++) {
           let bestAdd = null;
           let bestAddScore = -Infinity;
           for (const id of stoneIds) {
-            if (used.has(id)) continue;
+            if (selected.includes(id)) continue;
             const next = cloneCandidate(candidateBase);
-            next.socketedStones = { ...candidateBase.socketedStones, [slot]: id };
+            next.socketedStones = alignStonesToCurrentSlots([...selected, id], currentStones);
             const s = await score(next);
             if (s > bestAddScore) {
               bestAddScore = s;
@@ -684,26 +848,33 @@ export async function optimize({
             }
           }
           // Adopt the marginal winner into the working base only if it beats
-          // leaving the slot empty (score of candidateBase itself).
+          // stopping here (score of candidateBase itself).
           if (!bestAdd) break;
           if (bestAddScore > baseScore + EPS) {
             candidateBase = bestAdd.next;
-            used.add(bestAdd.id);
+            selected = [...selected, bestAdd.id];
             baseScore = bestAddScore;
             if (await adoptIfBetter(candidateBase, bestAddScore)) improvedInLoop = true;
+          } else {
+            break; // adding any further stone can't help (purely additive)
           }
         }
       }
     }
 
     // -- Talents: per spec, greedy marginal-gain from empty, then a 1-point swap pass.
-    //    Saved sets only inform the point budget (most points spent in either
-    //    set = points the player owns), never the allocation itself. --
+    //    Saved sets inform NOTHING here - not the allocation, and since
+    //    2026-07-29 not the budget either. --
     if (dims.talents) {
       report('talents');
       const specs = SPECS_BY_CLASS[character.class] || [];
-      const ownedPoints = Math.max(...character.talentSets.map((ts) => totalPointsSpent(ts?.allocation)), 0);
-      const budget = Math.min(TALENT_TOTAL_POINTS, ownedPoints > 0 ? ownedPoints : TALENT_TOTAL_POINTS);
+      // Always the full endgame allocation. Talent points are level-derived,
+      // exactly like awakening points, and are now treated the same way: the
+      // recommendation is the build to grow into. Inferring the budget from
+      // whatever happened to be saved made the two point systems follow
+      // opposite conventions, and gave a player with one recorded talent a
+      // one-point "optimal build". Owner decision, 2026-07-29.
+      const budget = TALENT_TOTAL_POINTS;
       for (const spec of specs) {
         const tree = TALENT_TREES[spec.key];
         if (!tree) continue;
@@ -818,10 +989,13 @@ export async function optimize({
       const kept = new Map();
 
       const tryUnlockSequence = async (state, nodes) => {
-        // Total cost of unlocking `nodes` in order at the state's tier count.
+        // Total cost of unlocking `nodes` in order at the state's slot count.
         let cost = 0;
+        let slots = 0;
         for (let i = 0; i < nodes.length; i++) {
-          cost += costForCount(state.count + 1 + i, nodes[i].type === 'uncommon');
+          const isUncommon = nodes[i].type === 'uncommon';
+          cost += costForCount(state.count + slots + 1, isUncommon);
+          slots += slotsForNode(isUncommon);
         }
         if (cost > state.remaining) return null;
         const next = cloneCandidate(state.working);
@@ -835,18 +1009,28 @@ export async function optimize({
         const plan = [...state.plan];
         let count = state.count;
         let remaining = state.remaining;
-        for (const node of buy.nodes) {
-          const cost = costForCount(count + 1, node.type === 'uncommon');
+        // `buy.gain` is measured for the WHOLE path, and the path was chosen
+        // for the node it ends at - the ones before it are the corridor that
+        // had to be bought to reach it. So the gain goes to the target and the
+        // corridor rows carry 0, flagged as such. Splitting it evenly (what
+        // this did until 2026-07-28) credited pure-corridor nodes with DPS they
+        // do not provide; the plan total was right, every row was wrong.
+        // A per-node figure would need one objective eval per node.
+        const targetIndex = buy.nodes.length - 1;
+        buy.nodes.forEach((node, i) => {
+          const isUncommon = node.type === 'uncommon';
+          const cost = costForCount(count + 1, isUncommon);
           unlocked.push(node.position);
-          count += 1;
+          count += slotsForNode(isUncommon);
           remaining -= cost;
           plan.push({
             position: node.position,
             statLine: node.stats.map((s) => `${s.statKey} +${s.value}`).join(', ') || 'no stats',
             cost,
-            deltaScore: buy.gain / buy.nodes.length,
+            deltaScore: i === targetIndex ? buy.gain : 0,
+            corridor: i < targetIndex,
           });
-        }
+        });
         return { working: buy.next, score: buy.score, unlocked, count, remaining, plan };
       };
 
@@ -1003,6 +1187,40 @@ const CHANGE_REVERTERS = {
 
 // --- Verification -------------------------------------------------------------
 
+const defaultBuildEffects = (char, pre, spellDamagePct) => [
+  ...DEFAULT_EFFECTS,
+  ...buildSigilEffects(char, pre, spellDamagePct),
+];
+
+/**
+ * One candidate re-simulated at a CALLER-FIXED iteration count and seed.
+ *
+ * The point of the fixed pair is comparability: a score produced this way does
+ * not depend on how long the search that found the candidate happened to run,
+ * so two such scores can be subtracted. `optimize()`'s own `best.score` cannot
+ * (see verifyDpsOutcome and combat-model.md §8 "Why search maxima are not
+ * comparable"). Returns the full runSimulation result.
+ */
+export function simulateCandidate({
+  character,
+  candidate,
+  iterations = 5000,
+  durationSeconds = 60,
+  seed = 1,
+  buildEffects,
+} = {}) {
+  const build = buildEffects ?? defaultBuildEffects;
+  const { candidateCharacter, candidatePreset } = materializeCandidate(character, candidate);
+  const stats = computePresetTotals(candidateCharacter, candidatePreset);
+  return runSimulation({
+    stats,
+    iterations,
+    durationSeconds,
+    seed: seed >>> 0,
+    effects: build(candidateCharacter, candidatePreset, stats.spell_damage),
+  });
+}
+
 /**
  * High-iteration verification pass for the UI (mirrors verifyPvpWinRates):
  * re-simulates the CURRENT build (via resolveEffectiveTotals, the same
@@ -1022,14 +1240,24 @@ export function verifyDpsOutcome({
   buildEffects,
 } = {}) {
   const sharedSeed = (seed ?? Math.floor(Math.random() * 4294967296)) >>> 0;
-  const build =
-    buildEffects ?? ((char, pre) => [...DEFAULT_EFFECTS, ...buildSigilEffects(char, pre)]);
-  const simulate = (char, pre, stats) =>
-    runSimulation({ stats, iterations, durationSeconds, seed: sharedSeed, effects: build(char, pre) });
-  const { candidateCharacter, candidatePreset } = materializeCandidate(character, candidate);
+  const build = buildEffects ?? defaultBuildEffects;
+  const beforeStats = resolveEffectiveTotals(character, preset);
   return {
-    before: simulate(character, preset, resolveEffectiveTotals(character, preset)),
-    after: simulate(candidateCharacter, candidatePreset, computePresetTotals(candidateCharacter, candidatePreset)),
+    before: runSimulation({
+      stats: beforeStats,
+      iterations,
+      durationSeconds,
+      seed: sharedSeed,
+      effects: build(character, preset, beforeStats.spell_damage),
+    }),
+    after: simulateCandidate({
+      character,
+      candidate,
+      iterations,
+      durationSeconds,
+      seed: sharedSeed,
+      buildEffects: build,
+    }),
   };
 }
 
@@ -1045,7 +1273,7 @@ export function petLabel(character, petId) {
   if (!petId) return 'No pet';
   const pet = character.pets.find((p) => p.id === petId);
   if (!pet) return 'Unknown pet';
-  const bonuses = summarizeStats(pet.stats, PET_BONUS_FIELDS);
+  const bonuses = summarizeStats(petStats(pet, character.petAltar), PET_BONUS_FIELDS);
   return bonuses === 'no stats yet' ? pet.name : `${pet.name} (${bonuses})`;
 }
 
@@ -1200,8 +1428,8 @@ export function diffCandidate(character, preset, candidate) {
     const g = (character.glyphs?.entries || []).find((e) => e.id === id);
     if (!g) return id;
     if (g.special) {
-      const special = SPECIAL_GLYPHS.find((s) => s.id === g.special);
-      return `${g.tier} ${special?.name ?? g.special} (special)`;
+      const special = majorGlyphById(g.special);
+      return special ? `${special.name} (${special.rarity})` : `${g.tier} ${g.special}`;
     }
     return `${g.tier} ${g.statKey} +${g.value}`;
   };

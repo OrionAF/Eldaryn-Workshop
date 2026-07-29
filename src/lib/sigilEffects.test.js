@@ -137,6 +137,29 @@ describe('buildSigilEffects / sigilSimSupport', () => {
     expect(buildSigilEffects(warrior, { sigilIds: [] })).toEqual([]);
   });
 
+  it('spellDamagePct scales sigil nuke damage but never swings', () => {
+    const character = {
+      class: 'Warrior',
+      sigilValues: { 'blade-of-judgment': { passive: {}, active: {}, damage: 500, tickDamage: 0 } },
+    };
+    const preset = { sigilIds: ['blade-of-judgment'] };
+    const result = run(baseStats(), buildSigilEffects(character, preset, 50), 60);
+    // Same 8 activations as the unscaled test above, each boosted by +50%.
+    expect(result.damageByTag['sigil_blade-of-judgment']).toBe(8 * 500 * 1.5);
+    expect(result.totalDamage).toBe(60 * 100 + 8 * 500 * 1.5); // swing side untouched
+  });
+
+  it('spellDamagePct also scales DoT/bleed tick damage', () => {
+    const character = {
+      class: 'Warrior',
+      sigilValues: { hemorrhage: { passive: {}, active: {}, damage: 100, tickDamage: 10 } },
+    };
+    const preset = { sigilIds: ['hemorrhage'] };
+    const result = run(baseStats(), buildSigilEffects(character, preset, 100), 20);
+    // The unscaled schedule (see the tickDamage test above), everything doubled.
+    expect(result.damageByTag.sigil_hemorrhage).toBe(2 * (2 * 100 + 4 * 10 + 5 * 2 * 10));
+  });
+
   it('sigilSimSupport labels every catalogue sigil, and unsupported ones carry a reason', () => {
     for (const defs of Object.values(SIGILS_BY_CLASS)) {
       for (const def of defs) {
@@ -199,32 +222,34 @@ describe('expectedSigilActiveDps (closed-form expectation of the active effects)
     }
   });
 
-  it('timed buff: reports the entered damage-side stats over the exact window fraction', () => {
+  it('timed buff: reports the damage-side stats over the exact window fraction', () => {
     const character = {
       class: 'Warrior',
       sigilValues: {
-        // warborn-fury declares attack_pct (damage-side) + penetration/dmg_reduction (inert vs a dummy)
-        'warborn-fury': { passive: {}, active: { attack_pct: 30, penetration: 10, dmg_reduction: 5 }, damage: 0, tickDamage: 0 },
+        // warborn-fury declares attack_pct (damage-side) + penetration/dmg_reduction (inert vs a dummy).
+        // attack_pct is baked per level now, so the LEVEL drives it - the entered
+        // number is ignored, and level 0 would mean "not owned" and contribute nothing.
+        'warborn-fury': { level: 1, passive: {}, active: { penetration: 10, dmg_reduction: 5 }, damage: 0, tickDamage: 0 },
       },
     };
     const preset = { sigilIds: ['warborn-fury'] };
     const { flatDps, segments } = expectedSigilActiveDps(character, preset);
     expect(flatDps).toBe(0);
     // duration 5 / cd 15: windows [0,5) [15,20) [30,35) [45,50) = 20s of 60
-    expect(segments).toEqual([{ statAdds: { attack_pct: 30 }, fraction: 20 / 60 }]);
+    expect(segments).toEqual([{ statAdds: { attack_pct: 12 }, fraction: 20 / 60 }]);
   });
 
   it('timed buff windows are truncated exactly at the fight horizon', () => {
     const character = {
       class: 'Warrior',
       sigilValues: {
-        'warborn-fury': { passive: {}, active: { attack_pct: 30 }, damage: 0, tickDamage: 0 },
+        'warborn-fury': { level: 1, passive: {}, active: {}, damage: 0, tickDamage: 0 },
       },
     };
     const preset = { sigilIds: ['warborn-fury'] };
     // duration 5 / cd 15 over a 17s fight: [0,5) in full + [15,17) cut short.
     const { segments } = expectedSigilActiveDps(character, preset, 17);
-    expect(segments).toEqual([{ statAdds: { attack_pct: 30 }, fraction: 7 / 17 }]);
+    expect(segments).toEqual([{ statAdds: { attack_pct: 12 }, fraction: 7 / 17 }]);
   });
 
   it('contributes nothing for unsupported, passive-only, or all-zero sigils', () => {
@@ -235,11 +260,21 @@ describe('expectedSigilActiveDps (closed-form expectation of the active effects)
   });
 });
 
-describe('special mount glyphs (Ember Curse: +1 max bleed stack, +10% damage per stack)', () => {
+describe('major mount glyphs (Emberhoard Sigil: 9 max bleed stacks, 44% per tick vs a 40% base)', () => {
   const emberValues = { 'ember-curse': { passive: {}, active: {}, damage: 100, tickDamage: 10 } };
-  const glyphEntry = (equipped) => ({ id: 'g1', tier: 'major', rarity: 'Epic', statKey: 'attack_pct', value: 0, equipped, special: 'ember-curse-glyph' });
-  const character = (equipped) => ({ class: 'Sentinel', sigilValues: emberValues, glyphs: { entries: [glyphEntry(equipped)] } });
-  const preset = { sigilIds: ['ember-curse'] };
+  // Glyphs are MOUNT-bound now: "equipped" means the ridden mount lists the id.
+  const glyphEntry = { id: 'g1', tier: 'major', rarity: 'Common', statKey: 'attack_pct', value: 0, special: 'emberhoard-sigil:common' };
+  const character = (equipped) => ({
+    class: 'Sentinel',
+    sigilValues: emberValues,
+    glyphs: { entries: [glyphEntry] },
+    mounts: {
+      entries: [
+        { id: 'night_wolf', name: 'Night Wolf', rarity: 'Common', star: 1, hpPct: 6, atkPct: 6, glyphIds: equipped ? ['g1'] : [] },
+      ],
+    },
+  });
+  const preset = { sigilIds: ['ember-curse'], mountId: 'night_wolf' };
 
   it('applySpecialGlyphsToMech adjusts only its target sigil, and only when the glyph id is present', () => {
     const mech = { kind: 'stacking-dot', tickIntervalSec: 2, maxStacks: 8, tickDamage: 10 };
@@ -250,13 +285,19 @@ describe('special mount glyphs (Ember Curse: +1 max bleed stack, +10% damage per
     expect(applySpecialGlyphsToMech('ember-curse', mech, [])).toBe(mech);
   });
 
-  it('activeSpecialGlyphIds returns only EQUIPPED special glyph ids', () => {
-    expect(activeSpecialGlyphIds(character(true))).toEqual(['ember-curse-glyph']);
-    expect(activeSpecialGlyphIds(character(false))).toEqual([]);
-    expect(activeSpecialGlyphIds({ class: 'Sentinel' })).toEqual([]);
+  it('activeSpecialGlyphIds returns only the glyphs on the mount this preset rides', () => {
+    expect(activeSpecialGlyphIds(character(true), preset)).toEqual(['emberhoard-sigil:common']);
+    expect(activeSpecialGlyphIds(character(false), preset)).toEqual([]);
+    expect(activeSpecialGlyphIds({ class: 'Sentinel' }, preset)).toEqual([]);
+    // Riding nothing means no glyphs, even with a fully-kitted mount sitting there.
+    expect(activeSpecialGlyphIds(character(true), { sigilIds: ['ember-curse'], mountId: null })).toEqual([]);
+    // An unowned mount (star 0) has no glyph slots.
+    const unowned = character(true);
+    unowned.mounts.entries[0].star = 0;
+    expect(activeSpecialGlyphIds(unowned, preset)).toEqual([]);
   });
 
-  it('an unequipped glyph changes nothing; an equipped one boosts only the per-stack tick term', () => {
+  it('a glyph off the mount changes nothing; one on it boosts only the per-stack tick term', () => {
     const base = expectedSigilActiveDps({ class: 'Sentinel', sigilValues: emberValues }, preset, 60).flatDps;
     expect(expectedSigilActiveDps(character(false), preset, 60).flatDps).toBeCloseTo(base, 9);
     // cd 10 -> 6 activations (t=1..51); stacks max out at 6 in 60s, below

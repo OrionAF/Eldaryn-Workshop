@@ -1,7 +1,8 @@
-import { it, expect, beforeEach } from 'vitest';
+import { it, expect, beforeEach, afterEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import PetsScreen from './PetsScreen.svelte';
 import { rosterStore } from '../lib/rosterStore.svelte.js';
+import { companionStat, companionById, companionsForAltarTier } from '../lib/petsData.js';
 
 let target, app;
 beforeEach(() => {
@@ -12,121 +13,225 @@ beforeEach(() => {
   flushSync();
 });
 
-function cleanup() {
+afterEach(() => {
   unmount(app);
   target.remove();
+  // rosterStore is a module singleton - reset the character-wide pet state.
+  for (const p of [...rosterStore.current.pets]) rosterStore.removePet(p.id);
+  rosterStore.current.petAltar.tier = 1;
+  rosterStore.setPetAltarLevel(1);
+});
+
+const addPetButton = () => [...target.querySelectorAll('.altar-row button')].find((b) => b.textContent.trim() === 'Add Pet');
+const cards = () => [...target.querySelectorAll('.pet-card')];
+const btn = (root, label) => [...root.querySelectorAll('button')].find((b) => b.textContent.trim() === label);
+const stepper = (label) => target.querySelector(`button[aria-label="${label}"]`);
+
+function addPet() {
+  addPetButton().click();
+  flushSync();
 }
 
 it('shows an empty hint with no pets', () => {
   expect(target.querySelector('.empty-hint')).not.toBeNull();
-  cleanup();
+  expect(cards()).toHaveLength(0);
 });
 
-it('Add Pet creates a pet with no per-pet level field anywhere', () => {
-  target.querySelector('.add-form button').click();
+it('the altar tier and level are one character-wide pair', () => {
+  expect(target.querySelector('[data-testid="altar-tier"]').textContent).toBe('1');
+
+  stepper('Raise altar level').click();
   flushSync();
+  expect(rosterStore.current.petAltar.level).toBe(2);
 
-  const nameInput = target.querySelector('input[aria-label="Pet name"]');
-  nameInput.value = 'Ashfang';
-  nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-  [...target.querySelectorAll('.modal button')].find((b) => b.textContent.trim() === 'Add Pet').click();
+  const input = target.querySelector('input[aria-label="Pet altar level"]');
+  input.value = '30';
+  input.dispatchEvent(new Event('change', { bubbles: true }));
   flushSync();
-
-  expect(rosterStore.current.pets.length).toBe(1);
-  expect(rosterStore.current.pets[0].name).toBe('Ashfang');
-  expect(rosterStore.current.pets[0].level).toBeUndefined();
-  expect(target.querySelector('input[aria-label="Level"]')).toBeNull();
-
-  rosterStore.removePet(rosterStore.current.pets[0].id); // cleanup - rosterStore is a shared singleton across tests
-  cleanup();
+  expect(rosterStore.current.petAltar.level).toBe(30);
 });
 
-it('Add Pet modal sets stats at creation time, no separate edit step needed', () => {
-  target.querySelector('.add-form button').click();
+it('Add Pet creates a card in edit mode with derived Attack/Health from the altar', () => {
+  rosterStore.setPetAltarLevel(50);
   flushSync();
+  addPet();
 
-  const nameInput = target.querySelector('input[aria-label="Pet name"]');
-  nameInput.value = 'Ashfang';
-  nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+  expect(cards()).toHaveLength(1);
+  const card = cards()[0];
+  expect(card.classList.contains('editing')).toBe(true);
+  // Edit mode leads with the companion dropdown rather than the name.
+  expect(card.querySelector('select[aria-label="Companion"]')).not.toBeNull();
 
-  const attackInput = target.querySelector('.modal .stats-fields input');
-  attackInput.value = '500';
-  attackInput.dispatchEvent(new Event('blur', { bubbles: true }));
-
-  [...target.querySelectorAll('.modal button')].find((b) => b.textContent.trim() === 'Add Pet').click();
-  flushSync();
-
-  const pet = rosterStore.current.pets.find((p) => p.name === 'Ashfang');
-  expect(pet.stats.attack).toBe(500);
-
-  rosterStore.removePet(pet.id); // cleanup
-  cleanup();
+  const pet = rosterStore.current.pets[0];
+  const def = companionById(pet.companionId);
+  const attack = companionStat(def, 'attack', 1, 50);
+  expect(card.querySelector('.base-stats').textContent).toContain(String(attack).replace(/\B(?=(\d{3})+(?!\d))/g, '.'));
 });
 
-it('PET LEVEL is one shared character-wide field, not per-pet', () => {
-  const levelInput = target.querySelector('.pet-level input');
-  levelInput.value = '15';
-  levelInput.dispatchEvent(new Event('blur', { bubbles: true }));
-  flushSync();
-  expect(rosterStore.current.petLevel).toBe(15);
-
-  rosterStore.setPetLevel(1); // cleanup
-  cleanup();
+it('only tier-1 companions are offered at altar tier 1', () => {
+  addPet();
+  const options = [...cards()[0].querySelectorAll('select[aria-label="Companion"] option')]
+    .map((o) => o.value)
+    .filter(Boolean);
+  expect(options).toHaveLength(18);
+  expect(options).toEqual(companionsForAltarTier(1).map((d) => d.id));
+  expect(options).toContain('dustmite'); // tier 1
+  expect(options).not.toContain('duststalker'); // tier 2
 });
 
-it('Edit stats toggles a stat editor for that pet; stat changes write through', () => {
-  const id = rosterStore.addPet('Ashfang', 'Epic');
+it('changing the companion select repoints the pet and updates its rarity', () => {
+  addPet();
+  const select = cards()[0].querySelector('select[aria-label="Companion"]');
+  select.value = 'astralseraph'; // Mythic, tier 1
+  select.dispatchEvent(new Event('change', { bubbles: true }));
   flushSync();
 
-  const rowIndex = rosterStore.current.pets.findIndex((p) => p.id === id);
-  const row = [...target.querySelectorAll('.entry-list li')][rowIndex];
-  const editBtn = () => [...row.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Edit stats' || b.textContent.trim() === 'Hide stats');
-  editBtn().click(); // "Edit stats"
-  flushSync();
-  expect(target.querySelector('.pet-editor')).not.toBeNull();
+  const pet = rosterStore.current.pets[0];
+  expect(pet.companionId).toBe('astralseraph');
+  expect(pet.rarity).toBe('Mythic'); // catalogue rarity, not a user choice
+  // Mythic pets get 3 secondary slots.
+  expect(cards()[0].textContent).toContain('SECONDARY 0/3');
+});
 
-  const attackInput = target.querySelector('.pet-editor .stats-fields input');
-  attackInput.value = '2664';
-  attackInput.dispatchEvent(new Event('blur', { bubbles: true }));
-  flushSync();
-  expect(rosterStore.current.pets.find((p) => p.id === id).stats.attack).toBe(2664);
+it('there is no rarity picker - rarity is catalogue data', () => {
+  addPet();
+  const labels = [...cards()[0].querySelectorAll('select')].map((s) => s.getAttribute('aria-label'));
+  expect(labels).not.toContain('Rarity');
+});
 
-  editBtn().click(); // "Hide stats"
+it('adding a secondary stat writes it through with a bounded value', () => {
+  addPet();
+  const add = cards()[0].querySelector('select[aria-label="Add secondary stat"]');
+  add.value = 'attack_pct';
+  add.dispatchEvent(new Event('change', { bubbles: true }));
   flushSync();
-  expect(target.querySelector('.pet-editor')).toBeNull();
 
-  rosterStore.removePet(id); // cleanup
-  cleanup();
+  expect(rosterStore.current.pets[0].secondaries).toEqual([{ statKey: 'attack_pct', value: 0.1 }]);
+
+  const slider = cards()[0].querySelector('input[type="range"]');
+  expect([slider.min, slider.max]).toEqual(['0.1', '21']);
+  slider.value = '999'; // out of range - the store clamps
+  slider.dispatchEvent(new Event('input', { bubbles: true }));
+  flushSync();
+  expect(rosterStore.current.pets[0].secondaries[0].value).toBe(21);
+});
+
+it('a manual secondary (Penetration) is typed, not slid, and is not capped', () => {
+  addPet();
+  const add = cards()[0].querySelector('select[aria-label="Add secondary stat"]');
+  add.value = 'penetration';
+  add.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+
+  expect(cards()[0].querySelector('input[type="range"]')).toBeNull();
+  const field = cards()[0].querySelector('input[aria-label="Penetration value"]');
+  field.value = '31.5'; // above the old scraped 14.6 envelope
+  field.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+  expect(rosterStore.current.pets[0].secondaries).toEqual([{ statKey: 'penetration', value: 31.5 }]);
+});
+
+it('Save flips the card to display mode, and Edit brings the controls back', () => {
+  addPet();
+  const add = cards()[0].querySelector('select[aria-label="Add secondary stat"]');
+  add.value = 'attack_pct';
+  add.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+
+  btn(cards()[0], 'Save').click();
+  flushSync();
+
+  const saved = cards()[0];
+  expect(saved.classList.contains('editing')).toBe(false);
+  expect(saved.querySelector('select[aria-label="Companion"]')).toBeNull();
+  expect(saved.querySelector('input[type="range"]')).toBeNull();
+  // The rolled value collapses to one line.
+  expect(saved.querySelector('.sec-line').textContent.replace(/\s+/g, ' ')).toContain('Attack %: +0.1%');
+  // Save is a view toggle, not a commit - the value was already persisted.
+  expect(rosterStore.current.pets[0].secondaries).toHaveLength(1);
+
+  btn(cards()[0], 'Edit').click();
+  flushSync();
+  expect(cards()[0].querySelector('input[type="range"]')).not.toBeNull();
 });
 
 it('shows used-by presets, or "unused"', () => {
-  const id = rosterStore.addPet('Ashfang', 'Epic');
-  flushSync();
-  expect(target.querySelector('.used-by').textContent).toBe('unused');
+  addPet();
+  expect(cards()[0].querySelector('.used-by').textContent).toBe('unused');
 
-  rosterStore.setPresetPet(rosterStore.current.presets[0].id, id);
+  rosterStore.setPresetPet(rosterStore.current.presets[0].id, rosterStore.current.pets[0].id);
   flushSync();
-  expect(target.querySelector('.used-by').textContent).toContain('used by');
-
-  rosterStore.removePet(id); // cleanup
-  cleanup();
+  expect(cards()[0].querySelector('.used-by').textContent).toContain('used by');
 });
 
-it('removing a pet (two-step confirm) nulls petId on any preset that used it', () => {
-  const startCount = rosterStore.current.pets.length;
-  const id = rosterStore.addPet('Ashfang', 'Epic');
-  rosterStore.setPresetPet(rosterStore.current.presets[0].id, id);
+it('removing a pet takes two clicks and nulls petId on any preset that used it', () => {
+  addPet();
+  const petId = rosterStore.current.pets[0].id;
+  rosterStore.setPresetPet(rosterStore.current.presets[0].id, petId);
   flushSync();
 
-  const rowIndex = rosterStore.current.pets.findIndex((p) => p.id === id);
-  const row = [...target.querySelectorAll('.entry-list li')][rowIndex];
-  const removeBtn = [...row.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Remove');
-  removeBtn.click();
+  btn(cards()[0], 'Remove').click();
   flushSync();
-  row.querySelector('.confirm-yes').click();
-  flushSync();
+  expect(rosterStore.current.pets).toHaveLength(1); // first click only arms it
 
-  expect(rosterStore.current.pets.length).toBe(startCount);
+  btn(cards()[0], 'Confirm remove').click();
+  flushSync();
+  expect(rosterStore.current.pets).toHaveLength(0);
   expect(rosterStore.current.presets[0].petId).toBe(null);
-  cleanup();
+});
+
+it('raising the altar tier warns before wiping, and Cancel leaves the collection alone', () => {
+  addPet();
+  stepper('Raise altar tier').click();
+  flushSync();
+
+  const warning = target.querySelector('.tier-warning');
+  expect(warning).not.toBeNull();
+  expect(warning.textContent).toContain('removes all 1 pets');
+  expect(rosterStore.current.petAltar.tier).toBe(1); // nothing happened yet
+  expect(rosterStore.current.pets).toHaveLength(1);
+
+  btn(warning, 'Cancel').click();
+  flushSync();
+  expect(target.querySelector('.tier-warning')).toBeNull();
+  expect(rosterStore.current.pets).toHaveLength(1);
+});
+
+it('confirming the altar tier change wipes the collection and re-offers tier-2 pets', () => {
+  addPet();
+  stepper('Raise altar tier').click();
+  flushSync();
+  btn(target.querySelector('.tier-warning'), 'Confirm — wipe collection').click();
+  flushSync();
+
+  expect(rosterStore.current.petAltar.tier).toBe(2);
+  expect(rosterStore.current.pets).toHaveLength(0);
+  expect(cards()).toHaveLength(0);
+
+  addPet();
+  const options = [...cards()[0].querySelectorAll('select[aria-label="Companion"] option')]
+    .map((o) => o.value)
+    .filter(Boolean);
+  expect(options).toContain('duststalker'); // tier 2 now
+  expect(options).not.toContain('dustmite');
+});
+
+it('with no pets, changing the altar tier needs no confirmation', () => {
+  stepper('Raise altar tier').click();
+  flushSync();
+  expect(target.querySelector('.tier-warning')).toBeNull();
+  expect(rosterStore.current.petAltar.tier).toBe(2);
+});
+
+it('a Custom pet keeps its manual stat editor and is not scaled by the altar', () => {
+  const id = rosterStore.addPet({ name: 'Legacy', companionId: null });
+  rosterStore.updatePetStat(id, 'attack', 500);
+  flushSync();
+
+  expect(target.textContent).toContain('Custom pets');
+  const custom = target.querySelector('.custom-pet');
+  expect(custom.textContent).toContain('Legacy');
+  expect(custom.querySelector('input')).not.toBeNull();
+  // Catalogue cards and custom pets are rendered separately.
+  expect(cards()).toHaveLength(0);
 });
