@@ -42,6 +42,29 @@ it('Double-hit second strike deals normal damage and cannot crit', () => {
   expect(approx(dps.computeDps(p), 400.0)).toBe(false);
 });
 
+// --- Timed Attack % buffs (SETTLED: additive into the total, owner 2026-07-28) ---
+it('buffedAttack: an Attack % buff adds into the % total, it does not scale the displayed value', () => {
+  // Owner's own example: 175% Attack %, +20% sigil -> 195%, not 175 x 1.2.
+  const flat = 1000;
+  const displayed = dps.finalAttack(flat, 175); // 2750
+  expect(approx(displayed, 2750)).toBe(true);
+  expect(approx(dps.buffedAttack(displayed, 175, 0, 20), dps.finalAttack(flat, 195))).toBe(true);
+  // The wrong (old) model would have been displayed * 1.2 = 3300.
+  expect(approx(dps.buffedAttack(displayed, 175, 0, 20), 3300)).toBe(false);
+});
+
+it('buffedAttack: a flat buff joins the flat pool BEFORE the percentage applies', () => {
+  const displayed = dps.finalAttack(1000, 50); // 1500
+  expect(approx(dps.buffedAttack(displayed, 50, 200, 0), dps.finalAttack(1200, 50))).toBe(true);
+  // Combined flat + pct: both land in their own pool first.
+  expect(approx(dps.buffedAttack(displayed, 50, 200, 25), dps.finalAttack(1200, 75))).toBe(true);
+});
+
+it('buffedAttack: with no existing Attack %, the two models coincide', () => {
+  // This is why the bug hid for so long - it is invisible on a 0% build.
+  expect(approx(dps.buffedAttack(1000, 0, 0, 20), 1200)).toBe(true);
+});
+
 // --- Swap math ---
 it('Swapping a piece for an identical one produces no DPS change', () => {
   const profile = S({ attack: 48.124, attack_pct: 34.3, speed: 232, crit: 6, crit_mult: 162, double_hit: 2.8 });
@@ -143,17 +166,22 @@ it('Health swaps decompose/recombine like Attack', () => {
   expect(approx(after.health_pct, 20)).toBe(true);
 });
 
-it('compare_swap reports HPS change alongside DPS', () => {
+// Pins the removal so the HPS fields cannot drift back in.
+it('compare_swap reports no HPS fields, and a lifesteal-only swap is DPS-neutral', () => {
   const profile = S({ attack: 48.124, attack_pct: 34.3, speed: 232, crit: 6, crit_mult: 162, double_hit: 2.8, health: 94.943, health_pct: 27.6, hp_regen: 3.4, lifesteal: 22.9 });
   const old = S({ lifesteal: 2 });
   const nw = S({ lifesteal: 12 });
   const r = dps.compareSwap(profile, old, nw);
   expect(approx(r.pct_change, 0.0)).toBe(true);
-  expect(r.new_hps).toBeGreaterThan(r.current_hps);
-  expect(r.hps_delta).toBeGreaterThan(0);
+  expect(r.verdict).toBe('no change');
+  for (const k of ['current_hps', 'new_hps', 'hps_delta', 'hps_pct_change']) {
+    expect(r).not.toHaveProperty(k);
+  }
+  expect(approx(r.after.lifesteal, 32.9)).toBe(true);
 });
 
-// --- Defensive/PVP fields: display + swap-tracking only (ADR 0001) ---
+// --- Defensive/PVP fields: carried, but inert in THIS module (see dps.js's
+// scope statement; they are read elsewhere) ---
 it('offensiveStats defaults every defensive/PVP field to 0', () => {
   const p = S();
   for (const k of ['block_chance', 'miss_chance', 'blind_chance', 'penetration', 'dmg_reduction', 'paralyze_chance', 'pvp_attack', 'pvp_defense']) {

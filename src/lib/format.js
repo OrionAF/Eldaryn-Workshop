@@ -89,6 +89,20 @@ const SHORT_STAT_LABELS = {
  * object's non-zero fields (in `fields` order), for one-line display in a
  * chip/summary row (Pets). `max` caps how many bits are shown.
  */
+/**
+ * Where a slider's value sits on its own range, as a 0-100 percentage.
+ * Drives the gold fill on `.slider` (see Slider.svelte / app.css). A zero-width
+ * range (min === max) reads as full, since the only legal value IS the max.
+ */
+export function fillPct(value, min, max) {
+  const lo = Number(min) || 0;
+  const hi = Number(max) || 0;
+  if (hi <= lo) return 100;
+  const v = Number(value);
+  if (!Number.isFinite(v)) return 0;
+  return Math.max(0, Math.min(100, ((v - lo) / (hi - lo)) * 100));
+}
+
 export function summarizeStats(stats, fields, max = 3) {
   const bits = fields
     .filter((f) => (stats[f.key] || 0) !== 0)

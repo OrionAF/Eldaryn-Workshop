@@ -1,17 +1,33 @@
-/**
+﻿/**
  * dps.js - PVE DPS/HPS model and gear-swap comparison.
  *
  * 1:1 port of EldarynTracker/dps.py (the Python reference implementation).
  * Pure functions, no UI deps. EldarynTracker/test_dps.py is the test spec
  * (see dps.test.js).
  *
- * Scope: PVE only. We deliberately ignore enemy defense, block, miss, blind,
- * and penetration (PVP / defensive interactions). PVE damage output depends
- * only on the offensive stats: Attack, Attack %, Speed, Critical %, Crit Mult,
- * Double Hit. Sustain (Health, Health %, HP Regen, Lifesteal) drives HPS.
- * The defensive/PVP fields (block_chance..paralyze_chance, pvp_attack,
- * pvp_defense) are carried on OffensiveStats and through swap math for
- * display/tracking only - see docs/adr/0001-defer-pvp-combat-modeling.md.
+ * Scope: THIS MODULE is PVE closed-form only - it ignores enemy defense,
+ * block, miss, blind and penetration. PVE damage output here depends only on
+ * Attack, Attack %, Speed, Critical %, Crit Mult, Double Hit.
+ *
+ * That is a scope statement about this file, NOT about the app. The
+ * defensive/PVP fields are carried on OffensiveStats and are very much
+ * computed with elsewhere: pvpSimulation.js (duel engine), tankObjective.js,
+ * pvpGoalObjective.js and the gauntlet all read them. ADR 0001, which said
+ * they were display-only, is superseded. The whole picture, including where
+ * this closed form sits in the pipeline, is docs/Reference/combat-model.md.
+ *
+ * SETTLED RULE - the double-hit strike CANNOT crit. Owner ruling 2026-07-28;
+ * this is a game fact, not a modelling choice, and the additive form below is
+ * correct. It was briefly contested by a reverse-engineered Combat Power
+ * formula that implied otherwise; that whole line of work is abandoned (see
+ * docs/Archive/) because the game's CP rating is under active rebalancing and
+ * a snapshot of it is not evidence about combat resolution. Do not reopen
+ * this from a CP argument.
+ *
+ * ⚠ ONE CAVEAT ON THE FORMULAS BELOW: computeHps is a Phase-0 artifact, not a
+ * reliable survivability rate. Its biases, and the one caller that still
+ * accepts them, are in combat-model.md §3 "Healing" - read that before using
+ * it anywhere new.
  *
  * THE MODEL
  * ---------
@@ -44,10 +60,11 @@ export const BASE_CRIT_MULT = 150.0; // %
 export const BASE_DOUBLE_HIT = 0.0; // %
 
 /**
- * Factory for an OffensiveStats record. Carries every field in STAT_FIELDS
- * (constants.js) - both the DPS/HPS-relevant stats and the defensive/PVP
- * fields that are tracked but not yet computed with - so one object fully
- * describes a loadout's totals OR a single piece's contribution.
+ * Factory for an OffensiveStats record. Carries EVERY field in STAT_FIELDS
+ * (constants.js), not just the ones this module reads, so one object fully
+ * describes a loadout's totals OR a single piece's contribution. The
+ * defensive/PVP fields are inert *here* and load-bearing elsewhere (duel
+ * engine, both goal objectives, the gauntlet) - see the header.
  */
 export function offensiveStats(overrides = {}) {
   const defaults = {};
@@ -77,11 +94,43 @@ export function flatAttackFromDisplay(displayedAttack, attackPctTotal) {
 }
 
 /**
+ * Displayed Attack after a TIMED BUFF adds flat Attack and/or Attack %.
+ *
+ * **[RULED] 2026-07-28: Attack % buffs are ADDITIVE into the Attack % total**,
+ * not multiplicative on the displayed number. A build at 175% Attack % that
+ * activates a +20% sigil is at 195%, not 175% x 1.2.
+ *
+ * So the buff cannot just scale `displayedAttack` - it has to decompose back
+ * to the flat pool, add there, and recombine with the summed percentage:
+ *
+ *   flatTotal = displayed / (1 + basePct/100)
+ *   result    = (flatTotal + flatAdd) * (1 + (basePct + pctAdd)/100)
+ *
+ * This lives here, and ONLY here, because all three engines
+ * (sigilEffects.modifySwing, pvpSimulation.resolveHit,
+ * optimizer.sigilAwareDpsFromTotals) previously each multiplied the displayed
+ * value instead - three copies of one wrong convention, which is exactly why
+ * no test caught it (audit F3). Do not re-inline this.
+ *
+ * Note the two models AGREE when basePct is 0, and diverge more the higher the
+ * build's existing Attack % - so it lands hardest on end-game builds.
+ */
+export function buffedAttack(displayedAttack, basePct, flatAdd = 0, pctAdd = 0) {
+  const displayed = Number(displayedAttack) || 0;
+  const base = Number(basePct) || 0;
+  // A -100% total would make the flat pool undefined; nothing can reach it
+  // (Attack % has base 0 and no negative sources), but guard rather than NaN.
+  const flatTotal = base <= -100 ? displayed : displayed / (1 + base / 100);
+  const pct = base + (Number(pctAdd) || 0);
+  return (flatTotal + (Number(flatAdd) || 0)) * (1 + Math.max(-100, pct) / 100);
+}
+
+/**
  * Relative PVE DPS from a set of FINAL totals.
  *  - The MAIN hit can crit: attack * (1 + crit * (critMult - 1)).
  *  - DOUBLE HIT fires a second strike a `double_hit` fraction of the time, but
- *    it deals NORMAL damage and CANNOT crit, contributing attack * double_hit
- *    OUTSIDE the crit multiplier.
+ *    it deals NORMAL damage and CANNOT crit (settled - see the header),
+ *    contributing attack * double_hit OUTSIDE the crit multiplier.
  *  - SPEED scales attack rate (232% = 2.32x).
  */
 export function computeDps(profile) {
@@ -164,26 +213,22 @@ export function applySwap(profileTotals, oldPiece, newPiece) {
 }
 
 /**
- * Full comparison. Returns current/new DPS & HPS, deltas, % changes, a verdict,
+ * Full comparison. Returns current/new DPS, the delta, the % change, a verdict,
  * and the before/after profile totals so the UI can show which stats moved.
+ *
+ * DPS only - the four HPS fields this used to return are gone (see
+ * combat-model.md §3 `compareSwap`). Do not add a healing verdict back here.
  */
 export function compareSwap(profileTotals, oldPiece, newPiece) {
   const after = applySwap(profileTotals, oldPiece, newPiece);
   const curDps = computeDps(profileTotals);
   const newDps = computeDps(after);
-  const curHps = computeHps(profileTotals).total_hps;
-  const newHps = computeHps(after).total_hps;
   const pct = curDps ? (newDps / curDps - 1) * 100 : NaN;
-  const hpsPct = curHps ? (newHps / curHps - 1) * 100 : NaN;
   return {
     current_dps: curDps,
     new_dps: newDps,
     delta: newDps - curDps,
     pct_change: pct,
-    current_hps: curHps,
-    new_hps: newHps,
-    hps_delta: newHps - curHps,
-    hps_pct_change: hpsPct,
     verdict: newDps > curDps ? 'upgrade' : newDps < curDps ? 'downgrade' : 'no change',
     before: profileTotals,
     after,

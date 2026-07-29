@@ -1,22 +1,23 @@
-/**
+﻿/**
  * transcendenceData.js - hardcoded Transcendence tree content, per class.
  * Same reasoning as talentTreeData.js/awakeningData.js/relicsData.js: fixed
- * game data (transcribed from docs/Transcendence Screenshots/Transcendence
+ * game data (transcribed from docs/Reference/Source/screenshots/transcendence/Transcendence
  * tree - Sentinel.txt, verified for position collisions and uncommon-node
  * stat-count correctness), not user-authored, so it lives in code.
  *
- * Node `position` is "col:row" (1-indexed, matches the source doc's own
- * notation - 1:1 is top-left). `type` is 'common' | 'uncommon' | 'glyph' |
- * 'sigil'. `category` is 'offense' | 'defense' | 'glyph' | 'sigil' - stored
- * explicitly per node rather than derived from statKey, since Penetration
- * sits on the offense side of this tree's own Offense/Defense split even
- * though it reads as a "defensive" stat name.
+ * Node types, categories, the adjacency rules and the Ichor cost model are
+ * documented in docs/Reference/game-systems.md §1.
  *
- * `stats` is empty for glyph/sigil nodes (no bonus stat - glyphs are inert
- * placeholders matching their in-game "SOON" badge; sigils grant an
- * undefined "special effect", not a stat). Common nodes always have exactly
- * 1 stat entry, uncommon always exactly 2 - both invariants are enforced by
- * the generator script this file was produced from, not re-checked at runtime.
+ * SCHEMA NOTES FOR EDITING THIS TABLE:
+ *  - `position` is "col:row", 1-indexed, 1:1 top-left - the source
+ *    transcription's own notation, so the two can be diffed by eye.
+ *  - `category` is stored per node, NOT derived from statKey. Penetration
+ *    sits on this tree's OFFENSE side despite the defensive-sounding name;
+ *    deriving it would get that wrong. (game-systems.md §1)
+ *  - `stats` is empty for glyph/sigil nodes. Common nodes always carry
+ *    exactly 1 stat entry, uncommon exactly 2 - invariants enforced by the
+ *    generator this file came from, NOT re-checked at runtime, so a hand-edit
+ *    that breaks them will not be caught.
  */
 
 export const TRANSCENDENCE_START_POSITION = '14:25';

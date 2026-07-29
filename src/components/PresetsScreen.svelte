@@ -35,9 +35,14 @@
   }
 
   // Which mount is ridden is per-preset (preset.mountId); the tile summarises
-  // how many catalogue mounts have stats entered instead.
-  const mountsWithStats = $derived(character.mounts.entries.filter((m) => m.baseHpPct || m.baseAtkPct).length);
-  const equippedGlyphCount = $derived(character.glyphs.entries.filter((g) => g.equipped).length);
+  // how many catalogue mounts are owned instead. (This used to read the legacy
+  // baseHpPct/baseAtkPct fields, which normalisation never writes - so it
+  // always read 0. Ownership is now simply star > 0.)
+  const mountsWithStats = $derived(character.mounts.entries.filter((m) => m.star > 0).length);
+  // Glyphs equip per mount, so "equipped" means "on at least one mount".
+  const equippedGlyphCount = $derived(
+    new Set(character.mounts.entries.flatMap((m) => m.glyphIds)).size,
+  );
   const tree = $derived(TRANSCENDENCE_TREES[character.class]);
   const nodesPlaced = $derived(tree ? effectiveUnlockedSet(character.transcendence.unlockedPositions).size : 0);
   const ichorSpent = $derived(tree ? totalIchorSpent(character.transcendence.unlockedPositions, tree) : 0);

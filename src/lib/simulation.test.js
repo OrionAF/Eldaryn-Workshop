@@ -42,6 +42,22 @@ it('no crit/double-hit at base speed: every run is exactly attack * 60', () => {
   expect(result.observed.meanSwings).toBe(60);
 });
 
+/**
+ * SETTLED GAME RULE (owner ruling 2026-07-28), pinned in all three engines:
+ * dps.test.js covers the closed form, pvpSimulation.test.js the duel engine,
+ * this covers the PVE sim. Certain crit + certain double hit makes every rng
+ * path identical, so the total is exact, not sampled.
+ */
+it('the double-hit second strike cannot crit', () => {
+  const stats = S({ attack: 100, speed: 100, crit: 100, crit_mult: 200, double_hit: 100 });
+  const result = sim.runSimulation({ stats, iterations: 20, seed: 3 });
+  // Per swing: main hit crits (200) + double hit at normal damage (100) = 300.
+  expect(result.totalDamage.min).toBe(300 * 60);
+  expect(result.totalDamage.max).toBe(300 * 60);
+  // 400 * 60 is what a critting double hit would give.
+  expect(result.totalDamage.max).not.toBe(400 * 60);
+});
+
 // --- Paired preset comparison ---
 it('compareSimulations: identical builds tie exactly (paired RNG), zero CI', () => {
   const stats = S({ attack: 80, speed: 130, crit: 40, crit_mult: 220, double_hit: 25 });
@@ -123,7 +139,9 @@ it('speed below 100 is clamped: speed 80 behaves exactly like speed 100', () => 
 });
 
 it('swing counts quantize exactly: speed 150 -> 90 swings, 120 -> 72, 100 -> 60', () => {
-  for (const [speed, expected] of [[150, 90], [120, 72], [100, 60]]) {
+  // The float tick accumulator keeps non-tick-divisible speeds exact:
+  // 120% would drift to 73 swings if intervals rounded to whole ticks.
+  for (const [speed, expected] of [[150, 90], [120, 72], [100, 60], [315, 189], [400, 240]]) {
     const run = sim.runSingle(S({ ...FLAT, speed }), { rng: sim.mulberry32(7) });
     expect(run.swings).toBe(expected);
   }
@@ -181,8 +199,9 @@ it('a custom DoT effect schedules ticks on the timeline and drops ticks past the
     rng: sim.mulberry32(11),
     effects: [...sim.DEFAULT_EFFECTS, poison],
   });
-  // Swings at t=0..59. Ticks land at t+1..t+3 but only strictly before 60s:
-  // swings 0..56 get 3 ticks (171), swing 57 gets 2, swing 58 gets 1, swing 59 gets 0.
+  // Swings on ticks 1, 401, ... (t ~= 0..59). Poison lands at t+1..t+3 but
+  // only strictly before the 60s horizon: swings 0..56 get 3 ticks (171),
+  // swing 57 gets 2, swing 58 gets 1, swing 59 gets 0.
   const expectedTicks = 171 + 2 + 1;
   expect(run.damageByTag.poison).toBe(expectedTicks * 10);
   expect(run.totalDamage).toBe(6000 + expectedTicks * 10);

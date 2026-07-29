@@ -68,31 +68,68 @@ it('running the simulation renders the results panel with the distribution', asy
   cleanup();
 });
 
-it('Sentinel has no Goal picker (the Tank goal is Warrior-only)', () => {
+it('the local Goal toggle is gone; a PVP-goal preset runs the closed-form blend and scores in PVP Score', async () => {
   rosterStore.setCharacterClass(rosterStore.current.id, 'Sentinel');
+  // Something for the PVP objective to find: an unused pure-survivability pet.
+  rosterStore.addPet('Bulky Pet', 'Common', { health_pct: 50 });
+  const presetId = rosterStore.current.presets[0].id;
+  rosterStore.setPresetGoal(presetId, { kind: 'pvp', weights: { damage: 20, mitigation: 20, survivability: 60 } });
   mountScreen();
+
+  // No dps/tank toggle buttons anywhere - the goal comes from the preset.
   expect([...target.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Tank')).toBe(false);
+
+  const optSelect = target.querySelector('[data-testid="opt-preset-select"]');
+  optSelect.value = presetId;
+  optSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+  // Readout shows the goal plus its slider split; the fast/accurate scoring
+  // toggle is DPS-only and hidden here (closed-form single-stage).
+  expect(target.querySelector('[data-testid="opt-goal-readout"]').textContent.trim()).toBe('PVP · 20/20/60');
+  expect(target.textContent).not.toContain('sim-verified');
+  expect(target.querySelector('[data-testid="goal-unsupported-notice"]')).toBeNull();
+
+  const runBtn = [...target.querySelectorAll('button')].find((b) => b.textContent.includes('Find Best Build'));
+  expect(runBtn.disabled).toBe(false);
+  runBtn.click();
+  await waitFor(() => target.querySelector('[data-testid="simulated-preset-card"]'));
+
+  const breakdown = target.querySelector('[data-testid="pvp-breakdown"]');
+  expect(breakdown).not.toBeNull();
+  expect(breakdown.textContent).toContain('Maximum Damage');
+  expect(breakdown.textContent).toContain('Damage Mitigation');
+  expect(breakdown.textContent).toContain('Survivability');
+  expect(target.querySelector('[data-testid="simulated-preset-card"]').textContent).toContain('PVP Score');
+
+  rosterStore.setPresetGoal(presetId, { kind: null }); // cleanup
   cleanup();
 });
 
-it('Warrior gets a Goal picker; a Tank-goal run shows the tank breakdown and scores in Tank Score', async () => {
+it('a Warrior preset assigned the Tank goal drives the tank controls from the preset and scores in Tank Score', async () => {
   rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
   // Something tanky for the optimizer to find: an unused pure-survivability pet.
   rosterStore.addPet('Bulwark Pet', 'Common', { health_pct: 50 });
+  const presetId = rosterStore.current.presets[0].id;
+  rosterStore.setPresetGoal(presetId, { kind: 'tank' });
   mountScreen();
 
-  const tankBtn = [...target.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Tank');
-  expect(tankBtn).toBeTruthy();
-  tankBtn.click();
+  // Tank controls appear once the tank-goal preset is selected to optimize.
+  const optSelect = target.querySelector('[data-testid="opt-preset-select"]');
+  optSelect.value = presetId;
+  optSelect.dispatchEvent(new Event('change', { bubbles: true }));
   flushSync();
-  // The Tank goal swaps the DPS scoring toggle for profile + balance controls.
+  expect(target.querySelector('[data-testid="opt-goal-readout"]').textContent.trim()).toBe('Tank');
   expect(target.querySelector('[data-testid="tank-profile-select"]')).not.toBeNull();
   expect(target.textContent).not.toContain('sim-verified');
 
-  const optSelect = target.querySelector('[data-testid="opt-preset-select"]');
-  optSelect.value = rosterStore.current.presets[0].id;
-  optSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  // The balance slider writes through to the preset's persisted goal.
+  const slider = target.querySelector('input[aria-label="EHP versus sustain balance"]');
+  slider.value = '75';
+  slider.dispatchEvent(new Event('input', { bubbles: true }));
   flushSync();
+  expect(rosterStore.current.presets[0].goal.ehpWeight).toBeCloseTo(0.75);
+  expect(target.querySelector('[data-testid="tank-profile-select"]').value).toBe('max-tank'); // matches a named profile
+
   [...target.querySelectorAll('button')].find((b) => b.textContent.includes('Find Best Build')).click();
   await waitFor(() => target.querySelector('[data-testid="simulated-preset-card"]'));
 
@@ -101,6 +138,8 @@ it('Warrior gets a Goal picker; a Tank-goal run shows the tank breakdown and sco
   expect(breakdown.textContent).toContain('Effective HP');
   expect(breakdown.textContent).toContain('Sustainable Incoming DPS');
   expect(target.querySelector('[data-testid="simulated-preset-card"]').textContent).toContain('Tank Score');
+
+  rosterStore.setPresetGoal(presetId, { kind: null, ehpWeight: 0.5 }); // cleanup
   cleanup();
 });
 
@@ -141,45 +180,39 @@ it('running the optimizer renders a Simulated Preset card with a changes list an
   cleanup();
 });
 
-it('Save Result snapshots a sim run into the Saved Results rail; deleting needs a confirm click', async () => {
+function clearRunHistory() {
+  for (const r of [...rosterStore.current.runHistory]) rosterStore.deleteRunEntry(r.id);
+}
+
+it('a completed sim run auto-saves a run-history entry with headline, detail, and no Save button', async () => {
   rosterStore.setCharacterClass(rosterStore.current.id, 'Sentinel');
+  clearRunHistory();
   mountScreen();
 
-  const rail = target.querySelector('[data-testid="saved-results"]');
-  expect(rail.textContent).toContain('Nothing saved yet');
+  expect([...target.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Save Result')).toBe(false);
 
   [...target.querySelectorAll('button')].find((b) => b.textContent.includes('Run Simulation')).click();
   await waitFor(() => target.querySelector('[data-testid="sim-results"]'));
-  target.querySelector('[data-testid="save-sim-result"]').click();
-  flushSync();
 
-  expect(rosterStore.current.savedResults).toHaveLength(1);
-  expect(rosterStore.current.savedResults[0].kind).toBe('sim');
-  // The new entry auto-expands, showing the snapshot numbers and the seed.
-  expect(rail.textContent).toContain('Mean DPS');
-  expect(rail.textContent).toContain('Seed (replayable)');
-  // ...plus the build configuration as simulated, one line per dimension.
-  const config = rail.querySelector('[data-testid="saved-config"]');
-  expect(config).not.toBeNull();
-  expect(config.textContent).toContain('Gear Loadout');
-  expect(config.textContent).toContain('Transcendence');
-  expect(rosterStore.current.savedResults[0].summary.config.every((l) => typeof l.value === 'string')).toBe(true);
-
-  // Two-click delete: the first click only arms the confirm state.
-  [...rail.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Delete').click();
-  flushSync();
-  expect(rosterStore.current.savedResults).toHaveLength(1);
-  [...rail.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Confirm delete').click();
-  flushSync();
-  expect(rosterStore.current.savedResults).toHaveLength(0);
-  expect(rail.textContent).toContain('Nothing saved yet');
+  expect(rosterStore.current.runHistory).toHaveLength(1);
+  const entry = rosterStore.current.runHistory[0];
+  expect(entry.kind).toBe('sim');
+  expect(entry.presetName).toBe(rosterStore.current.presets[0].name);
+  expect(entry.headline.meanDps).toBeGreaterThanOrEqual(0);
+  expect(entry.headline.iterations).toBeGreaterThan(0);
+  // The full payload keeps the distribution + the build configuration as
+  // display strings, one line per dimension.
+  expect(entry.detail.histogram.bins.length).toBeGreaterThan(0);
+  expect(entry.detail.config.every((l) => typeof l.value === 'string')).toBe(true);
+  clearRunHistory();
   cleanup();
 });
 
-it('Save Result on an optimizer run stores the change list and survives a character switch away and back', async () => {
+it('a finished optimizer run auto-saves an opt entry that survives a character switch away and back', async () => {
   rosterStore.setCharacterClass(rosterStore.current.id, 'Sentinel');
   const originalId = rosterStore.current.id;
   rosterStore.setGearField('Weapon', 0, 'attack', 100);
+  clearRunHistory();
   mountScreen();
 
   const optSelect = target.querySelector('[data-testid="opt-preset-select"]');
@@ -187,27 +220,25 @@ it('Save Result on an optimizer run stores the change list and survives a charac
   optSelect.dispatchEvent(new Event('change', { bubbles: true }));
   flushSync();
   [...target.querySelectorAll('button')].find((b) => b.textContent.includes('Find Best Build')).click();
-  await waitFor(() => target.querySelector('[data-testid="save-opt-result"]'));
-  target.querySelector('[data-testid="save-opt-result"]').click();
-  flushSync();
+  await waitFor(() => target.querySelector('[data-testid="simulated-preset-card"]'));
 
-  expect(rosterStore.current.savedResults).toHaveLength(1);
-  const entry = rosterStore.current.savedResults[0];
+  expect(rosterStore.current.runHistory).toHaveLength(1);
+  const entry = rosterStore.current.runHistory[0];
   expect(entry.kind).toBe('opt');
-  expect(entry.summary.goal).toBe('dps');
-  expect(entry.summary.bestScore).toBeGreaterThan(0);
-  // Opt saves snapshot the RECOMMENDED build's configuration.
-  expect(entry.summary.config.length).toBeGreaterThan(0);
-  expect(target.querySelector('[data-testid="saved-config"]').textContent).toContain('Recommended configuration');
+  expect(entry.goalKind).toBe(null); // seeded preset - goal unassigned
+  expect(entry.headline.unit).toBe('DPS');
+  expect(entry.headline.best).toBeGreaterThan(0);
+  // Opt entries snapshot the RECOMMENDED build's configuration.
+  expect(entry.detail.config.length).toBeGreaterThan(0);
 
-  // Saved results are per-character state: switching away and back keeps them
+  // Run history is per-character state: switching away and back keeps it
   // (unlike the view-state result panels, which reset).
   rosterStore.addCharacter('Someone Else');
   flushSync();
-  expect(target.querySelector('[data-testid="saved-results"]')?.textContent || '').not.toContain(entry.name);
+  expect(rosterStore.current.runHistory).toHaveLength(0);
   rosterStore.selectCharacter(originalId);
   flushSync();
-  expect(target.querySelector('[data-testid="saved-results"]').textContent).toContain('Opt');
-  expect(rosterStore.current.savedResults).toHaveLength(1);
+  expect(rosterStore.current.runHistory).toHaveLength(1);
+  clearRunHistory();
   cleanup();
 });

@@ -14,34 +14,52 @@
  * proxies.
  */
 
-import { optimize } from './optimizer.js';
-import { objectivesFromSpec } from './optimizerObjectives.js';
+import { optimize, simulateCandidate } from './optimizer.js';
+import { suggestRelics } from './relicSuggester.js';
+import { objectivesFromSpec, specIsSampled } from './optimizerObjectives.js';
 
 /**
- * @param {{ character, preset, ichorBudget?, searchDimensions?, objectiveSpec? }} request
+ * @param {{ character, preset, ichorBudget?, searchDimensions?, objectiveSpec?,
+ *           mode?: 'optimize' | 'suggest-relics' | 'verify-candidate',
+ *           relicLevelBoost?, candidate?, iterations?, durationSeconds?, seed? }} request
  * @param {{ onProgress?: (p) => void }} hooks
  * @returns {{ promise: Promise<result>, cancel: () => void }}
  */
 export function runOptimizerTask(request, { onProgress } = {}) {
   const plain = JSON.parse(JSON.stringify({
+    mode: request.mode ?? 'optimize',
     character: request.character,
     preset: request.preset,
     ichorBudget: request.ichorBudget ?? 0,
     searchDimensions: request.searchDimensions ?? {},
+    relicLevelBoost: request.relicLevelBoost ?? 0,
     objectiveSpec: request.objectiveSpec ?? { kind: 'pve-fast' },
+    maxPasses: request.maxPasses ?? 5, // optimize()'s own default; the linking sim goes deeper
+    // 'verify-candidate' only.
+    candidate: request.candidate ?? null,
+    iterations: request.iterations ?? 5000,
+    durationSeconds: request.durationSeconds ?? 60,
+    seed: request.seed ?? 1,
   }));
 
   if (typeof Worker === 'undefined') {
     const controller = new AbortController();
-    const promise = optimize({
+    // 'verify-candidate' is a single bounded simulation: no objective to build,
+    // and nothing to abort part-way that would leave a usable partial result.
+    if (plain.mode === 'verify-candidate') {
+      return { promise: Promise.resolve(simulateCandidate(plain)), cancel: () => {} };
+    }
+    const shared = {
       character: plain.character,
       preset: plain.preset,
-      ichorBudget: plain.ichorBudget,
-      searchDimensions: plain.searchDimensions,
       ...objectivesFromSpec(plain.objectiveSpec),
       signal: controller.signal,
       onProgress,
-    });
+    };
+    const promise =
+      plain.mode === 'suggest-relics'
+        ? suggestRelics({ ...shared, relicLevelBoost: plain.relicLevelBoost, sampled: specIsSampled(plain.objectiveSpec) })
+        : optimize({ ...shared, ichorBudget: plain.ichorBudget, searchDimensions: plain.searchDimensions, maxPasses: plain.maxPasses });
     return { promise, cancel: () => controller.abort() };
   }
 

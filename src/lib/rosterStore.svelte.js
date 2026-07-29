@@ -1,21 +1,33 @@
 /**
- * rosterStore.svelte.js - the single reactive source of truth for the app.
+ * rosterStore.svelte.js - the single reactive store (Svelte 5 runes) wrapping
+ * model / storage / totals.
  *
- * Wraps model.js/storage.js/dps.js/totals.js exactly as built (no signature
- * changes). Every mutator ends with persist() (explicit save-to-localStorage
- * on every mutating action) rather than a background $effect, so save timing
- * is deterministic - important right before downloadRoster/character
- * switches.
+ * THE ONE RULE HERE: every mutator ends with an explicit persist(), never a
+ * background $effect. Save timing is therefore deterministic, which matters
+ * immediately before downloadRoster() and around character switches - an
+ * effect-based save can lag the action that triggered it and drop the last
+ * edit. Adding a mutator without a persist() call is the bug this comment
+ * exists to prevent.
+ *
+ * The SHAPE this mutates, the three scopes (character-wide / per-preset /
+ * per-mount), and the constraints enforced below - two-preset minimum, altar
+ * tier wiping the collection, star 0 meaning not-owned - are documented in
+ * docs/Reference/data-model.md §2-§3. The per-function comments below give
+ * the caller contract (what returns false, what cascades); they do not
+ * restate the game rules.
  */
 
 import { loadRoster, saveRoster, importRoster as parseRosterJson, downloadRoster } from './storage.js';
-import { newCharacter, getCurrent, emptyStats, newPetEntry, newMountGlyphEntry, newPreset, newStoneEntry, emptySigilValues, newOpponent, newSavedResult } from './model.js';
+import { newCharacter, getCurrent, emptyStats, newPetEntry, newMountGlyphEntry, newPreset, newStoneEntry, emptySigilValues, newOpponent, newRunEntry, compactRunHistory, enforceRunHistoryBudget, normaliseDropGoal, normalisePresetGoal } from './model.js';
 import { computePresetTotals, resolveEffectiveTotals } from './totals.js';
-import { SLOTS, SOURCE_DEFS, TALENT_TOTAL_POINTS, PRESET_RELIC_CAP, PRESET_SIGIL_CAP, STAT_FIELDS, CLASSES, SPECIAL_GLYPHS } from './constants.js';
+import { SLOTS, SOURCE_DEFS, TALENT_TOTAL_POINTS, PRESET_RELIC_CAP, PRESET_SIGIL_CAP, STAT_FIELDS, CLASSES, RARITIES } from './constants.js';
+import { resolveGlyphId } from './glyphsData.js';
+import { companionById, COMPANION_MAX_TIER, COMPANION_MAX_LEVEL, petSecondarySlots, secondaryRange, clampSecondaryValue } from './petsData.js';
+import { mountById, mountStarLevels, mountStarRange } from './mountsData.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { AWAKENING_PATHS, AWAKENING_TOTAL_POINTS } from './awakeningData.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
-import { SIGILS_BY_CLASS } from './sigilsData.js';
+import { SIGILS_BY_CLASS, SIGIL_MAX_LEVEL, SIGIL_MAX_TIER } from './sigilsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
 import { canUnlock, reachableFrom, effectiveUnlockedSet } from './transcendence.js';
 
@@ -113,6 +125,11 @@ function createRosterStore() {
       preset.sigilIds = [];
     }
     c.transcendence = { unlockedPositions: [] };
+    c.dropGoal = normaliseDropGoal(c.dropGoal, className); // clears a Warrior-only tank goal
+    // Same Warrior-only gating for preset goals: a stale tank goal unassigns.
+    c.presets.forEach((preset, i) => {
+      preset.goal = normalisePresetGoal(preset.goal, className, i);
+    });
     persist();
   }
 
@@ -122,9 +139,11 @@ function createRosterStore() {
     persist();
   }
 
-  // --- Pets (character-scoped shared collection; a Preset picks which one contributes) ---
-  function addPet(name, rarity, stats = {}) {
-    const pet = newPetEntry({ name, rarity, stats });
+  // --- Pets: character-wide shared collection, a Preset picks which one
+  // contributes. The catalogue-vs-custom split (companionId) is
+  // data-model.md §1; the altar levels the whole collection at once. ---
+  function addPet(opts = {}) {
+    const pet = newPetEntry(opts);
     current.pets.push(pet);
     persist();
     return pet.id;
@@ -138,19 +157,101 @@ function createRosterStore() {
     }
   }
 
+  /**
+   * Point a pet at a catalogue companion (or null for a custom pet). The
+   * companion decides the pet's rarity, so switching may shrink the number of
+   * secondary slots - excess rolls are trimmed rather than silently kept.
+   */
+  function setPetCompanion(petId, companionId) {
+    const pet = current.pets.find((p) => p.id === petId);
+    if (!pet) return;
+    const def = companionById(companionId);
+    pet.companionId = def ? def.id : null;
+    if (def) {
+      if (!pet.name || pet.name === 'New Pet' || pet.name === 'Pet') pet.name = def.name;
+      pet.rarity = def.rarity;
+      const slots = petSecondarySlots(def.rarity);
+      if (pet.secondaries.length > slots) pet.secondaries = pet.secondaries.slice(0, slots);
+    }
+    persist();
+  }
+
+  /**
+   * Raise/lower the Pet Altar LEVEL. Every pet levels with the altar, so this
+   * is one character-wide number - no per-pet level exists.
+   */
+  function setPetAltarLevel(level) {
+    const n = Math.round(Number(level)) || 1;
+    current.petAltar.level = Math.max(1, Math.min(n, COMPANION_MAX_LEVEL));
+    persist();
+  }
+
+  /**
+   * Change the Pet Altar TIER. **DESTRUCTIVE - wipes the pet collection**
+   * (data-model.md §3: that is the game's behaviour, not our choice).
+   * Callers MUST confirm with the user first; the Pets screen uses a two-step
+   * button. Returns the number of pets removed so the UI can report it.
+   */
+  function setPetAltarTier(tier) {
+    const n = Math.round(Number(tier)) || 1;
+    const next = Math.max(1, Math.min(n, COMPANION_MAX_TIER));
+    if (next === current.petAltar.tier) return 0;
+    const removed = current.pets.length;
+    current.petAltar.tier = next;
+    current.pets = [];
+    // Same dangling-reference rule as removePet: no preset may point at a pet
+    // that no longer exists.
+    for (const preset of current.presets) preset.petId = null;
+    persist();
+    return removed;
+  }
+
+  /**
+   * Choose (or clear) the secondary stat in a slot. `index` may equal the
+   * current length to append a new slot (up to the rarity's slot count).
+   * Passing a falsy statKey removes that slot. Duplicate stats are rejected.
+   */
+  function setPetSecondaryKey(petId, index, statKey) {
+    const pet = current.pets.find((p) => p.id === petId);
+    if (!pet || !pet.companionId) return;
+    const arr = pet.secondaries.slice();
+    if (!statKey) {
+      if (index >= 0 && index < arr.length) arr.splice(index, 1);
+    } else {
+      const range = secondaryRange(statKey);
+      if (!range) return;
+      if (arr.some((e, i) => i !== index && e.statKey === statKey)) return;
+      if (index < arr.length) {
+        arr[index] = { statKey, value: clampSecondaryValue(statKey, arr[index].value) };
+      } else if (arr.length < petSecondarySlots(pet.rarity)) {
+        arr.push({ statKey, value: range.min });
+      } else {
+        return;
+      }
+    }
+    pet.secondaries = arr;
+    persist();
+  }
+
+  /** Set the rolled value of a pet's secondary slot (clamped to its stat's range/step). */
+  function setPetSecondaryValue(petId, index, value) {
+    const pet = current.pets.find((p) => p.id === petId);
+    if (!pet || !pet.companionId) return;
+    const entry = pet.secondaries[index];
+    if (!entry) return;
+    entry.value = clampSecondaryValue(entry.statKey, value);
+    persist();
+  }
+
+  /** Set a custom (non-catalogue) pet's manually-entered stat value. */
   function updatePetStat(petId, key, value) {
     const pet = current.pets.find((p) => p.id === petId);
-    if (pet) {
+    if (pet && !pet.companionId) {
       pet.stats[key] = value;
       persist();
     }
   }
 
-  /** Character-wide - every pet levels together, unlike pre-redesign's per-pet level. */
-  function setPetLevel(level) {
-    current.petLevel = Math.max(1, level);
-    persist();
-  }
 
   /** Nulls petId on every preset that used this pet, rather than leaving a dangling reference. */
   function removePet(petId) {
@@ -162,17 +263,47 @@ function createRosterStore() {
   }
 
   // --- Mounts (fixed catalogue - see mountsData.js; the entry list itself is
-  // static, only base HP%/ATK% are entered here - which mount is ridden is a
+  // static; the star level and the two rolled HP%/ATK% values are entered here,
+  // bounded to the star's observed range - which mount is ridden is a
   // per-preset choice, see setPresetMount) ---
-  function updateMount(mountId, field, value) {
+
+  /**
+   * Set a mount's star level, re-clamping its HP%/ATK% into the new star's
+   * range. **Star 0 = not owned** (data-model.md §3), so this is also how a
+   * mount is un-owned. Rolls clamp into the new star's range rather than
+   * resetting, so raising a star keeps a good roll.
+   */
+  function setMountStar(mountId, star) {
     const mount = current.mounts.entries.find((m) => m.id === mountId);
-    if (mount) {
-      mount[field] = value;
-      persist();
+    if (!mount) return;
+    const def = mountById(mountId);
+    const s = Number(star);
+    if (s !== 0 && !mountStarLevels(def).includes(s)) return;
+    mount.star = s;
+    const range = mountStarRange(def, s || mountStarLevels(def)[0]);
+    if (range) {
+      mount.hpPct = Math.max(range.hp[0], Math.min(mount.hpPct, range.hp[1]));
+      mount.atkPct = Math.max(range.atk[0], Math.min(mount.atkPct, range.atk[1]));
     }
+    persist();
   }
 
-  // --- Mount Glyphs (character-scoped inventory; up to 3 Minor/2 Major/1 Mythic equipped) ---
+  /** Set a mount's rolled 'hpPct' or 'atkPct' value, clamped to its star's range. */
+  function setMountValue(mountId, field, value) {
+    const mount = current.mounts.entries.find((m) => m.id === mountId);
+    if (!mount) return;
+    const rangeKey = field === 'hpPct' ? 'hp' : field === 'atkPct' ? 'atk' : null;
+    if (!rangeKey) return;
+    const def = mountById(mountId);
+    const range = mountStarRange(def, mount.star || mountStarLevels(def)[0]);
+    const n = Math.round(Number(value));
+    const safe = Number.isFinite(n) ? n : (range ? range[rangeKey][0] : 0);
+    mount[field] = range ? Math.max(range[rangeKey][0], Math.min(safe, range[rangeKey][1])) : Math.max(0, safe);
+    persist();
+  }
+
+  // --- Mount Glyphs: character-wide INVENTORY, equipped PER MOUNT. The third
+  // scope, neither character-wide nor per-preset - see data-model.md §2. ---
   function addMountGlyph(tier, statKey, value, { rarity = 'Common', special = null } = {}) {
     const glyph = newMountGlyphEntry({ tier, rarity, statKey, value, special });
     current.glyphs.entries.push(glyph);
@@ -180,25 +311,46 @@ function createRosterStore() {
     return glyph.id;
   }
 
+  /** Removes a glyph from the inventory AND from every mount carrying it. */
   function removeMountGlyph(glyphId) {
     const glyphs = current.glyphs;
     glyphs.entries = glyphs.entries.filter((g) => g.id !== glyphId);
+    for (const mount of current.mounts.entries) {
+      if (mount.glyphIds.includes(glyphId)) {
+        mount.glyphIds = mount.glyphIds.filter((id) => id !== glyphId);
+      }
+    }
     persist();
   }
 
-  /** Returns false (no-op) if equipping would exceed that tier's cap. */
-  function setGlyphEquipped(glyphId, equipped) {
-    const glyphs = current.glyphs.entries;
-    const glyph = glyphs.find((g) => g.id === glyphId);
-    if (!glyph) return false;
-    if (equipped && !glyph.equipped) {
-      const cap = MOUNT_GLYPH_TIER_CAPS[glyph.tier];
-      const equippedInTier = glyphs.filter((g) => g.tier === glyph.tier && g.equipped).length;
-      if (equippedInTier >= cap) return false;
+  /**
+   * Equip/unequip one glyph on ONE mount. Returns false (no-op) when the
+   * mount's slots for that tier are already full - the cap is per mount, so a
+   * glyph already on three other mounts doesn't count against this one.
+   */
+  function setMountGlyph(mountId, glyphId, equipped) {
+    const mount = current.mounts.entries.find((m) => m.id === mountId);
+    const glyph = current.glyphs.entries.find((g) => g.id === glyphId);
+    if (!mount || !glyph) return false;
+    const has = mount.glyphIds.includes(glyphId);
+    if (equipped) {
+      if (has) return true;
+      const cap = MOUNT_GLYPH_TIER_CAPS[glyph.tier] ?? 0;
+      const byId = new Map(current.glyphs.entries.map((g) => [g.id, g]));
+      const inTier = mount.glyphIds.filter((id) => byId.get(id)?.tier === glyph.tier).length;
+      if (inTier >= cap) return false;
+      mount.glyphIds = [...mount.glyphIds, glyphId];
+    } else {
+      if (!has) return true;
+      mount.glyphIds = mount.glyphIds.filter((id) => id !== glyphId);
     }
-    glyph.equipped = equipped;
     persist();
     return true;
+  }
+
+  /** Every mount currently carrying this glyph (drives the "Equipped in..." popover). */
+  function mountsWithGlyph(glyphId) {
+    return current.mounts.entries.filter((m) => m.glyphIds.includes(glyphId));
   }
 
   // --- Socketed Stones (character-scoped shared inventory; socketed per-loadout-per-slot via Loadout.socketedStones) ---
@@ -379,6 +531,29 @@ function createRosterStore() {
     return current.sigilValues[def.id];
   }
 
+  /** Set a sigil's in-game level (drives its derived Attack/Health and effect magnitudes). Returns false if the sigil doesn't exist for this class. */
+  function setSigilLevel(sigilId, value) {
+    const def = findSigilDef(sigilId);
+    if (!def) return false;
+    const entry = sigilValuesEntry(def);
+    const n = Math.round(Number(value)) || 0;
+    entry.level = Math.max(0, Math.min(n, SIGIL_MAX_LEVEL)); // 0 = not owned
+    persist();
+    return true;
+  }
+
+  /**
+   * Set the character-wide Sigil Forge tier. The Forge tiers every sigil at
+   * once, so this is one number rather than a per-sigil field - raising it
+   * also unlocks Legendary/Ancient sigils, which don't exist below tier 2.
+   */
+  function setSigilForgeTier(value) {
+    const n = Math.round(Number(value)) || 0;
+    current.sigilForgeTier = Math.max(1, Math.min(n || 1, SIGIL_MAX_TIER));
+    persist();
+    return true;
+  }
+
   /** Set one entered stat value on a sigil's passive or active. Returns false (no-op) if the sigil or statKey doesn't exist for this class. */
   function setSigilStatValue(sigilId, effectType, statKey, value) {
     const def = findSigilDef(sigilId);
@@ -478,10 +653,13 @@ function createRosterStore() {
 
   function toggleOpponentSpecialGlyph(opponentId, glyphId, equipped) {
     const opponent = findOpponent(opponentId);
-    if (!opponent || !SPECIAL_GLYPHS.some((g) => g.id === glyphId)) return false;
-    const has = (opponent.specialGlyphIds || []).includes(glyphId);
-    if (equipped && !has) opponent.specialGlyphIds = [...(opponent.specialGlyphIds || []), glyphId];
-    else if (!equipped && has) opponent.specialGlyphIds = opponent.specialGlyphIds.filter((id) => id !== glyphId);
+    // Accept a legacy id but persist the canonical one, so saved state never
+    // carries an id the catalogue no longer knows.
+    const id = resolveGlyphId(glyphId);
+    if (!opponent || !id) return false;
+    const has = (opponent.specialGlyphIds || []).includes(id);
+    if (equipped && !has) opponent.specialGlyphIds = [...(opponent.specialGlyphIds || []), id];
+    else if (!equipped && has) opponent.specialGlyphIds = opponent.specialGlyphIds.filter((g) => g !== id);
     persist();
     return true;
   }
@@ -494,47 +672,57 @@ function createRosterStore() {
     return true;
   }
 
-  // --- Saved Simulation-screen results (character-wide snapshots; see model.js's newSavedResult) ---
-  function saveResult(kind, name, summary) {
+  // --- Run history (auto-saved runs, Simulations Dashboard; see model.js's newRunEntry) ---
+  function addRunHistoryEntry(kind, fields = {}) {
     // Snapshot through JSON so the stored entry can never share references
-    // with live view-state (summaries are plain numbers/strings by contract).
-    const entry = newSavedResult(kind, name, JSON.parse(JSON.stringify(summary || {})));
-    current.savedResults = [entry, ...(current.savedResults || [])];
+    // with live view-state (payloads are plain numbers/strings by contract).
+    const entry = newRunEntry(kind, JSON.parse(JSON.stringify(fields)));
+    let history = [entry, ...(current.runHistory || [])];
+    compactRunHistory(history);
+    // Preventive: storage.js swallows quota errors, so trim BEFORE persist.
+    history = enforceRunHistoryBudget(history);
+    current.runHistory = history;
     persist();
     return entry.id;
   }
 
-  function deleteSavedResult(resultId) {
-    current.savedResults = (current.savedResults || []).filter((r) => r.id !== resultId);
+  function findRunEntry(entryId) {
+    return (current.runHistory || []).find((r) => r.id === entryId);
+  }
+
+  function deleteRunEntry(entryId) {
+    current.runHistory = (current.runHistory || []).filter((r) => r.id !== entryId);
     persist();
   }
 
-  function findSavedResult(resultId) {
-    return (current.savedResults || []).find((r) => r.id === resultId);
-  }
-
-  function renameSavedResult(resultId, name) {
-    const entry = findSavedResult(resultId);
-    if (!entry || !name?.trim()) return false;
-    entry.name = name.trim();
-    persist();
-    return true;
-  }
-
-  function setSavedResultNotes(resultId, notes) {
-    const entry = findSavedResult(resultId);
+  function setRunEntryNotes(entryId, notes) {
+    const entry = findRunEntry(entryId);
     if (!entry) return false;
     entry.notes = typeof notes === 'string' ? notes : '';
     persist();
     return true;
   }
 
-  function togglePinnedSavedResult(resultId) {
-    const entry = findSavedResult(resultId);
+  function toggleRunEntryPinned(entryId) {
+    const entry = findRunEntry(entryId);
     if (!entry) return false;
     entry.pinned = !entry.pinned;
     persist();
     return true;
+  }
+
+  /** Persist a finished linking-simulation report (hides the Dashboard setup section). */
+  function completeLinkingSim(outcome) {
+    // Snapshot through JSON - the outcome must be inert plain data, never
+    // share references with the live candidate/build it was derived from.
+    current.linkingSim = JSON.parse(JSON.stringify(outcome));
+    persist();
+  }
+
+  /** Clears the linking simulation's outcome so the Dashboard's setup section returns. */
+  function resetLinkingSim() {
+    current.linkingSim = null;
+    persist();
   }
 
   /** Changing class drops sigil selections/values that don't resolve against the new class's catalogue. */
@@ -619,9 +807,9 @@ function createRosterStore() {
     }
   }
 
-  /** Returns false (no-op) if this is the last remaining preset. */
+  /** Returns false (no-op) at the two-preset minimum (data-model.md §3) - never loop "delete down to one". */
   function deletePreset(presetId) {
-    if (current.presets.length <= 1) return false;
+    if (current.presets.length <= 2) return false;
     const idx = current.presets.findIndex((p) => p.id === presetId);
     if (idx === -1) return false;
     current.presets.splice(idx, 1);
@@ -684,6 +872,28 @@ function createRosterStore() {
     }
   }
 
+  /**
+   * Patch a preset's assigned goal (kind / custom name / ehpWeight / weights)
+   * and re-normalise, so class gating and the weights sum-to-100 invariant
+   * hold no matter what the caller passes.
+   */
+  function setPresetGoal(presetId, patch) {
+    const idx = current.presets.findIndex((p) => p.id === presetId);
+    if (idx === -1) return;
+    const preset = current.presets[idx];
+    preset.goal = normalisePresetGoal({ ...preset.goal, ...patch }, current.class, idx);
+    persist();
+  }
+
+  /** Whether this preset is one of the two the linking simulation evaluates (linkingSimulation.js). */
+  function setPresetLinked(presetId, linked) {
+    const preset = current.presets.find((p) => p.id === presetId);
+    if (preset) {
+      preset.goal.linked = linked === true;
+      persist();
+    }
+  }
+
   /** top/bottom are mutually exclusive - checking one clears the other; core is independent. */
   function setPresetFortressBuff(presetId, key, checked) {
     const preset = current.presets.find((p) => p.id === presetId);
@@ -717,8 +927,10 @@ function createRosterStore() {
       spec: candidate.talentSpec,
       allocation: { ...candidate.talentAllocation },
     };
-    const equippedGlyphs = new Set(candidate.glyphEquippedIds);
-    for (const g of current.glyphs.entries) g.equipped = equippedGlyphs.has(g.id);
+    // The candidate's glyphs belong to the mount it rides, so only that
+    // mount's list changes - other mounts keep what other presets put on them.
+    const riddenMount = current.mounts.entries.find((m) => m.id === preset.mountId);
+    if (riddenMount) riddenMount.glyphIds = [...candidate.glyphEquippedIds];
     current.awakening.path = candidate.awakeningPath;
     current.transcendence.unlockedPositions = [...candidate.transcendenceUnlocked];
     persist();
@@ -747,6 +959,12 @@ function createRosterStore() {
 
   function clearDrop() {
     current.drop = null;
+    persist();
+  }
+
+  /** Patch the Drop Check verdict goal ({ kind?, ehpWeight? }); re-normalised so a bad patch can't persist an invalid goal. */
+  function setDropGoal(patch) {
+    current.dropGoal = normaliseDropGoal({ ...current.dropGoal, ...patch }, current.class);
     persist();
   }
 
@@ -791,13 +1009,19 @@ function createRosterStore() {
     setGearField,
     addPet,
     updatePetField,
+    setPetCompanion,
+    setPetAltarLevel,
+    setPetAltarTier,
+    setPetSecondaryKey,
+    setPetSecondaryValue,
     updatePetStat,
-    setPetLevel,
     removePet,
-    updateMount,
+    setMountStar,
+    setMountValue,
     addMountGlyph,
     removeMountGlyph,
-    setGlyphEquipped,
+    setMountGlyph,
+    mountsWithGlyph,
     addStone,
     updateStone,
     removeStone,
@@ -812,6 +1036,8 @@ function createRosterStore() {
     setTranscendenceNode,
     setRelicLevel,
     toggleRelicOnPreset,
+    setSigilLevel,
+    setSigilForgeTier,
     setSigilStatValue,
     setSigilDamageValue,
     toggleSigilOnPreset,
@@ -823,11 +1049,12 @@ function createRosterStore() {
     renameOpponent,
     setOpponentClass,
     setOpponentStat,
-    saveResult,
-    deleteSavedResult,
-    renameSavedResult,
-    setSavedResultNotes,
-    togglePinnedSavedResult,
+    addRunHistoryEntry,
+    deleteRunEntry,
+    setRunEntryNotes,
+    toggleRunEntryPinned,
+    completeLinkingSim,
+    resetLinkingSim,
     toggleOpponentSigil,
     setOpponentSigilValue,
     addPreset,
@@ -840,12 +1067,15 @@ function createRosterStore() {
     setPresetMount,
     setPresetTotalsMode,
     setPresetManualStat,
+    setPresetGoal,
+    setPresetLinked,
     setPresetFortressBuff,
     applyOptimizerCandidate,
     startDrop,
     setDropSlot,
     setDropField,
     clearDrop,
+    setDropGoal,
     applyDropToLoadout,
     importFromJson,
     exportDownload,

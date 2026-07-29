@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { tankMetrics, createTankObjective, TANK_PROFILES } from './tankObjective.js';
+import { tankMetrics, tankScoreFromTotals, createTankObjective, TANK_PROFILES } from './tankObjective.js';
 import { offensiveStats, computeHps } from './dps.js';
 import { newCharacter } from './model.js';
 import { optimize, SEARCH_DIMENSIONS } from './optimizer.js';
@@ -28,6 +28,14 @@ it('tankMetrics: lifesteal sustain flows in through computeHps (scales with own 
   expect(m.selfHps).toBeCloseTo(computeHps(totals).total_hps);
   expect(m.selfHps).toBeGreaterThan(0);
   expect(m.sustainDps).toBeCloseTo(m.selfHps / 0.8);
+});
+
+it('tankScoreFromTotals is the geometric blend of the tankMetrics pair', () => {
+  const totals = offensiveStats({ health: 10000, dmg_reduction: 50, hp_regen: 10 });
+  const m = tankMetrics(totals);
+  expect(tankScoreFromTotals(totals, 0.5)).toBeCloseTo(Math.sqrt((1 + m.ehp) * (1 + m.sustainDps)));
+  expect(tankScoreFromTotals(totals, 1)).toBeCloseTo(1 + m.ehp);
+  expect(tankScoreFromTotals(totals, 0)).toBeCloseTo(1 + m.sustainDps);
 });
 
 // --- createTankObjective ------------------------------------------------------

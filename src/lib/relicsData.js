@@ -1,5 +1,5 @@
-/**
- * relicsData.js - hardcoded Relic content (docs/Relics Screenshots/*.txt),
+﻿/**
+ * relicsData.js - hardcoded Relic content (docs/Reference/Source/screenshots/relics/*.txt),
  * per class. Same reasoning as talentTreeData.js/awakeningData.js: fixed
  * game data, not user-authored, so it lives in code.
  *
@@ -12,17 +12,19 @@
  * depending on the specific relic (e.g. Titan's Oath/Shadowbind are
  * 1-stat gold relics).
  *
- * Equipping is per-loadout (Set A/Set B = Loadout 1/2), independent and
- * capped at RELIC_EQUIP_CAP each - mirrors gear/Talents, not the
- * shared-across-both-loadouts model Awakening uses. A relic's LEVEL is
- * also per-loadout in this model (Loadout.relics.entries), same as every
- * other per-loadout field - there's no separate account-wide "ownership"
- * concept tracked here.
+ * SCOPE (data-model.md §2) - this changed in the Preset redesign and the
+ * description here was stale until 2026-07-28:
+ *   LEVELS are CHARACTER-WIDE   -> character.relicLevels (Record<defId, level>)
+ *   EQUIPPING is PER-PRESET     -> preset.relicIds, capped at PRESET_RELIC_CAP
+ * There is no `Loadout.relics` and no per-loadout relic level. RELIC_EQUIP_CAP
+ * below is retained only because it is numerically the same cap and older
+ * saves are migrated against it (model.js's legacy path).
  *
- * The in-game "Relic Medals" currency (used to unlock additional equip
- * slots and presumably to level relics up) is not modeled - same
- * precedent as Dual Spec: this app assumes the max/unlocked state (4
- * equip slots) rather than tracking account-progression currencies.
+ * The in-game "Relic Medals" currency (unlocking equip slots, levelling
+ * relics) is deliberately NOT modelled: the app assumes the max/unlocked
+ * state rather than tracking account-progression currencies. The Relic
+ * Suggester answers "if I spent N levels somewhere, where should it go" -
+ * see relicSuggester.js - without ever knowing the player's balance.
  */
 
 export const RELIC_EQUIP_CAP = 4;
@@ -54,11 +56,11 @@ export const RELICS_BY_CLASS = {
     ] },
     { id: 'crimson-charm', name: 'Crimson Edge', tier: 'silver', maxLevel: 15, stats: [
       { statKey: 'attack_pct', min: 12.0, max: 28.0 },
-      { statKey: 'penetration', min: 12.0, max: 24.0 },
+      { statKey: 'penetration', min: 6.0, max: 10.0 },
     ] },
 
     { id: 'dragon-core', name: 'Dragon Core', tier: 'gold', maxLevel: 20, stats: [
-      { statKey: 'penetration', min: 12.0, max: 50.0 },
+      { statKey: 'penetration', min: 6.0, max: 22.0 },
       { statKey: 'pvp_attack', min: 40, max: 120 },
     ] },
     { id: 'fatebreaker', name: 'Fatebreaker', tier: 'gold', maxLevel: 20, stats: [
@@ -96,7 +98,7 @@ export const RELICS_BY_CLASS = {
     ] },
     { id: 'viper-glyph', name: 'Viper Glyph', tier: 'silver', maxLevel: 15, stats: [
       { statKey: 'attack_pct', min: 14.0, max: 32.0 },
-      { statKey: 'penetration', min: 12.0, max: 24.0 },
+      { statKey: 'penetration', min: 6.0, max: 10.0 },
     ] },
 
     { id: 'eclipse-shard', name: 'Eclipse Shard', tier: 'gold', maxLevel: 20, stats: [
@@ -111,7 +113,7 @@ export const RELICS_BY_CLASS = {
       { statKey: 'pvp_defense', min: 50, max: 180 },
     ] },
     { id: 'void-arrow', name: 'Void Arrow', tier: 'gold', maxLevel: 20, stats: [
-      { statKey: 'penetration', min: 12.0, max: 50.0 },
+      { statKey: 'penetration', min: 6.0, max: 22.0 },
       { statKey: 'pvp_attack', min: 40, max: 120 },
     ] },
   ],

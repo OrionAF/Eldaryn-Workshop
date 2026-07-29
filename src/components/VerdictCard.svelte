@@ -6,10 +6,17 @@
    * presets, hurts others) requires a two-step confirm before equipping -
    * a deviation from the design reference, which always equips on one
    * click; everything else about the verdict math/labels matches it.
+   *
+   * The verdict is scored under the character's persisted dropGoal (see
+   * dropGoals.js): compareSwap still supplies the before/after totals and
+   * the DPS context line, but up/down comes from the goal scorer. The
+   * 'dps-accurate' goal renders instantly with the fast estimate (flagged
+   * pending) and a debounced Monte Carlo pass confirms per row.
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
-  import { computePresetTotals } from '../lib/totals.js';
-  import { compareSwap } from '../lib/dps.js';
+  import { computePresetRawTotals, applyStatCaps } from '../lib/totals.js';
+  import { compareSwap, computeDps } from '../lib/dps.js';
+  import { createDropScorer, scoreSwapMonteCarlo, DROP_GOALS } from '../lib/dropGoals.js';
   import { formatFlat } from '../lib/format.js';
   import ConfirmButton from './ConfirmButton.svelte';
 
@@ -17,18 +24,84 @@
 
   const presetsUsingLoadout = $derived(character.presets.filter((p) => p.loadout === loadoutIndex));
 
+  const goal = $derived(character.dropGoal ?? { kind: 'dps-fast', ehpWeight: 0.5 });
+  const scoreLabel = $derived(DROP_GOALS.find((g) => g.kind === goal.kind)?.scoreLabel ?? 'Score');
+
+  // Debounced Monte Carlo confirmation for the 'dps-accurate' goal, keyed by
+  // preset id. A monotonic request id discards results from superseded runs
+  // (the $effect below resets the map and re-arms on any input change).
+  let mcScores = $state({});
+  let mcRequestId = 0;
+
   // Drop Check always compares against gear-derived totals, regardless of a
   // preset's Manual/Calculated toggle - a Manual preset's hand-entered totals
   // have no relationship to the equipped gear a drop would actually replace.
+  //
+  // The swap is applied to RAW (pre-curve) totals and the soft-cap curve is
+  // applied once afterwards - swapping on curved totals would let an item's
+  // printed stats bypass diminishing returns. `before`/`after` stay raw for
+  // the goal scorers (they curve their own input, dropGoals.js); the DPS
+  // context line is computed from the curved versions here.
+  function capAwareSwap(preset) {
+    const raw = compareSwap(computePresetRawTotals(character, preset), loadout.gear[drop.slot], drop.piece);
+    const curDps = computeDps(applyStatCaps(raw.before));
+    const newDps = computeDps(applyStatCaps(raw.after));
+    return {
+      before: raw.before,
+      after: raw.after,
+      current_dps: curDps,
+      new_dps: newDps,
+      pct_change: curDps ? (newDps / curDps - 1) * 100 : NaN,
+    };
+  }
+
   const rows = $derived(
     presetsUsingLoadout.map((preset) => {
-      const result = compareSwap(computePresetTotals(character, preset), loadout.gear[drop.slot], drop.piece);
-      return { preset, result };
+      const result = capAwareSwap(preset);
+      const scorer = createDropScorer(goal, character, preset);
+      const mc = goal.kind === 'dps-accurate' ? mcScores[preset.id] : null;
+      const curScore = mc ? mc.curScore : scorer(result.before);
+      const newScore = mc ? mc.newScore : scorer(result.after);
+      const scorePct = curScore ? (newScore / curScore - 1) * 100 : NaN;
+      return {
+        preset,
+        result,
+        curScore,
+        newScore,
+        scorePct,
+        verdict: newScore > curScore ? 'upgrade' : newScore < curScore ? 'downgrade' : 'no change',
+        pending: goal.kind === 'dps-accurate' && !mc,
+      };
     })
   );
 
-  const anyUp = $derived(rows.some((r) => r.result.verdict === 'upgrade'));
-  const anyDown = $derived(rows.some((r) => r.result.verdict === 'downgrade'));
+  $effect(() => {
+    // Read every input the simulation depends on so ANY change (stat field
+    // keystrokes included - snapshot walks the piece's fields) re-arms the
+    // debounce and invalidates in-flight results.
+    const kind = goal.kind;
+    const slot = drop.slot;
+    $state.snapshot(drop.piece);
+    const presets = presetsUsingLoadout;
+    mcRequestId += 1;
+    mcScores = {};
+    if (kind !== 'dps-accurate' || presets.length === 0) return;
+    const id = mcRequestId;
+    const timer = setTimeout(async () => {
+      for (const preset of presets) {
+        const { before, after } = compareSwap(computePresetRawTotals(character, preset), loadout.gear[slot], drop.piece);
+        const scores = scoreSwapMonteCarlo({ character, preset, beforeTotals: before, afterTotals: after });
+        if (id !== mcRequestId) return;
+        mcScores = { ...mcScores, [preset.id]: scores };
+        // Yield between rows so a many-preset loadout can't freeze the frame.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  });
+
+  const anyUp = $derived(rows.some((r) => r.verdict === 'upgrade'));
+  const anyDown = $derived(rows.some((r) => r.verdict === 'downgrade'));
   const mixed = $derived(anyUp && anyDown);
   const aggregate = $derived(
     presetsUsingLoadout.length === 0 ? 'empty' : mixed ? 'mixed' : anyUp ? 'upgrade' : anyDown ? 'downgrade' : 'neutral'
@@ -80,18 +153,23 @@
     <p class="empty-note">No presets use this loadout — equipping changes nothing yet.</p>
   {:else}
     <ul class="rows">
-      {#each rows as { preset, result } (preset.id)}
-        <li class:up={result.verdict === 'upgrade'} class:down={result.verdict === 'downgrade'}>
-          <span class="glyph">{verdictGlyph(result.verdict)}</span>
+      {#each rows as { preset, result, curScore, newScore, scorePct, verdict, pending } (preset.id)}
+        <li class:up={verdict === 'upgrade'} class:down={verdict === 'downgrade'}>
+          <span class="glyph">{pending ? '~' : verdictGlyph(verdict)}</span>
           <span class="preset-name">{preset.name}</span>
           <span class="deltas">
+            {#if goal.kind !== 'dps-fast'}
+              <span class="goal-score" class:pending>
+                {scoreLabel} {formatFlat(curScore)} → {formatFlat(newScore)}
+                <span class="pct" class:up={verdict === 'upgrade'} class:down={verdict === 'downgrade'}
+                  >({pct(scorePct)})</span
+                >{#if pending}<span class="pending-note">sim…</span>{/if}
+              </span>
+              ·
+            {/if}
             DPS {formatFlat(result.current_dps)} → {formatFlat(result.new_dps)}
-            <span class="pct" class:up={result.verdict === 'upgrade'} class:down={result.verdict === 'downgrade'}
+            <span class="pct" class:up={verdict === 'upgrade'} class:down={verdict === 'downgrade'}
               >({pct(result.pct_change)})</span
-            >
-            · HPS {formatFlat(result.current_hps)} → {formatFlat(result.new_hps)}
-            <span class="pct" class:up={result.verdict === 'upgrade'} class:down={result.verdict === 'downgrade'}
-              >({pct(result.hps_pct_change)})</span
             >
           </span>
         </li>
@@ -201,6 +279,18 @@
   }
   .pct.down {
     color: var(--color-downgrade);
+  }
+  .goal-score {
+    color: var(--color-ink);
+  }
+  .goal-score.pending {
+    color: var(--color-muted);
+  }
+  .pending-note {
+    margin-left: 4px;
+    font-size: 10px;
+    color: var(--color-muted);
+    font-style: italic;
   }
   @media (max-width: 1500px) {
     .deltas {

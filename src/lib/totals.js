@@ -1,29 +1,25 @@
 /**
- * totals.js - the "Calculated" totals engine: sums base character stats +
- * a Preset's gear/socketed stones + its talent set + its pet + its equipped
- * relics + its ridden mount + every character-wide source (Glyphs, Awakening, Transcendence)
- * into one set of final display totals, for a Preset's Manual/Calculated
- * toggle.
+ * totals.js - the "Calculated" totals engine: sums every stat source a preset
+ * draws on into one set of final display totals.
  *
- * Additive-only, deliberately: summing many sources at once is a different
- * operation from dps.js's two-item swap delta (which has its own additive-
- * vs-multiplicative Speed/CritMult switch) - this sum treats every field,
- * including Speed and Crit Mult, as a straight additive stack onto its base
- * (STAT_FIELDS' own `base` value, e.g. Speed 100, Crit Mult 150, Attack/
- * Health 10, everything else 0). Attack/Health are the one exception: their
- * flat contributions are summed separately from their % contributions, then
- * recombined once via the same finalAttack() used everywhere in dps.js.
+ * The aggregation rules this implements (additive-only, the Attack/Health
+ * flat-vs-% exception, which sources are character-wide vs per-preset) are
+ * documented in docs/Reference/data-model.md §5. The raw -> curve -> effective
+ * pipeline, and which callers must pass raw rather than effective totals, is
+ * docs/Reference/combat-model.md §1. Do not restate either here.
  *
- * Talent tree content is static code data (talentTreeData.js), not part of
- * the persisted Roster/Character - computePresetTotals/resolveEffectiveTotals
- * default to it, with an optional override param kept for test fixtures.
+ * Local note: talent tree content is static code data (talentTreeData.js), so
+ * computePresetTotals/resolveEffectiveTotals take it as a defaulted param -
+ * the override exists for test fixtures, not for production callers.
  */
 import { offensiveStats, finalAttack } from './dps.js';
+import { applySoftCaps, clampToHardCaps } from './statCaps.js';
 import { SLOTS, STAT_FIELDS, SOURCE_DEFS } from './constants.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { resolveAwakeningPerPoint } from './awakeningData.js';
 import { RELICS_BY_CLASS, relicLevelValue } from './relicsData.js';
-import { SIGILS_BY_CLASS } from './sigilsData.js';
+import { SIGILS_BY_CLASS, sigilStat, hasSigilCurve, sigilEffectValue, sigilUnlockedAt } from './sigilsData.js';
+import { petStats } from './petsData.js';
 import { TRANSCENDENCE_TREES } from './transcendenceData.js';
 import { effectiveUnlockedSet } from './transcendence.js';
 
@@ -61,24 +57,6 @@ function accumulate(acc, contribution) {
     } else {
       acc.totals[key] += value;
     }
-  }
-}
-
-/** Pick which entries of a character-wide source's state contribute, per its `selection` mode ('tiered' is the only mode left). */
-function selectedEntries(def, sourceState) {
-  const entries = sourceState?.entries || [];
-  return entries.filter((e) => e.equipped); // 'tiered'
-}
-
-/** Glyphs (the only source still on the generic SOURCE_DEFS entries[]/selection sum): one entry -> an OffensiveStats-shaped contribution. */
-function entryToStats(sourceKey, entry) {
-  switch (sourceKey) {
-    case 'glyphs':
-      // Special glyphs (entry.special) modify a Sigil's simulated mechanic
-      // (sigilEffects.js), not the additive stat totals.
-      return entry.special ? offensiveStats() : offensiveStats({ [entry.statKey]: entry.value });
-    default:
-      return offensiveStats();
   }
 }
 
@@ -127,27 +105,39 @@ function awakeningContribution(character) {
 }
 
 /**
- * A preset's pet contribution: the chosen pet's stats contribute directly,
- * no level-based scaling (Character.petLevel is informational/display only,
- * matching pre-redesign behavior where a pet's own `level` field never fed
- * into this math either).
+ * A preset's pet contribution: the chosen pet resolved to its OffensiveStats
+ * via petStats() (petsData.js) - a catalogue pet's Attack/Health derived from
+ * its companion curve at the pet's tier/level plus its secondary rolls, or a
+ * custom pet's hand-entered stats.
  */
 function petContribution(character, preset) {
   if (!preset.petId) return null;
   const pet = character.pets.find((p) => p.id === preset.petId);
-  return pet ? pet.stats : null;
+  // Tier/level come from the character-wide Pet Altar, not the pet itself.
+  return pet ? petStats(pet, character.petAltar) : null;
 }
 
 /**
  * A preset's Mount contribution: the ridden mount (preset.mountId, a fixed
- * MOUNT_DEFS catalogue id) contributes its character-wide entered base
- * HP%/ATK%. Mirrors petContribution: stats entered once per character,
- * selection made per preset.
+ * MOUNT_DEFS catalogue id) contributes its rolled HP%/ATK% (bounded to the
+ * mount's star range). Mirrors petContribution: stats entered once per
+ * character, selection made per preset.
  */
 function mountContribution(character, preset) {
   if (!preset.mountId) return null;
   const mount = (character.mounts?.entries || []).find((m) => m.id === preset.mountId);
-  return mount ? offensiveStats({ health_pct: mount.baseHpPct, attack_pct: mount.baseAtkPct }) : null;
+  if (!mount || !(mount.star > 0)) return null; // star 0 = not owned
+  const overrides = { health_pct: mount.hpPct, attack_pct: mount.atkPct };
+  // Glyphs ride with the MOUNT, so only the mount this preset actually rides
+  // contributes - and only its MINOR glyphs, since major glyphs retune a
+  // sigil's mechanic (sigilEffects.js) instead of adding stats.
+  const byId = new Map((character.glyphs?.entries || []).map((g) => [g.id, g]));
+  for (const glyphId of mount.glyphIds || []) {
+    const glyph = byId.get(glyphId);
+    if (!glyph || glyph.special) continue;
+    overrides[glyph.statKey] = (overrides[glyph.statKey] || 0) + (Number(glyph.value) || 0);
+  }
+  return offensiveStats(overrides);
 }
 
 /**
@@ -182,22 +172,39 @@ function relicsContribution(character, preset) {
  * while equipped. The catalogue (sigilsData.js) only declares WHICH stats a
  * passive carries; the values come from the character's own entered numbers
  * (character.sigilValues, they scale with in-game sigil level), so a sigil
- * with no entered values contributes 0. Active effects
- * deliberately do NOT contribute here: they're time-dependent (duration/
- * cooldown windows, on-activation damage) and belong to the battle simulation
- * (sigilEffects.js), not a steady-state stat sum.
+ * with no entered values contributes 0. The flat Attack/Health passives are
+ * instead DERIVED from the sigil's level/tier via its rarity curve (sigilStat,
+ * sigilsData.js) - the user picks level/tier, not the raw numbers. Active
+ * effects deliberately do NOT contribute here: they're time-dependent
+ * (duration/cooldown windows, on-activation damage) and belong to the battle
+ * simulation (sigilEffects.js), not a steady-state stat sum.
  */
 function sigilsContribution(character, preset) {
   const defs = SIGILS_BY_CLASS[character.class];
   if (!defs) return null;
   const defById = new Map(defs.map((d) => [d.id, d]));
+  const forgeTier = character.sigilForgeTier || 1;
   const overrides = {};
   for (const sigilId of preset.sigilIds || []) {
     const def = defById.get(sigilId);
     if (!def?.passive) continue;
-    const entered = character.sigilValues?.[sigilId]?.passive || {};
+    // Legendary/Ancient sigils don't exist below Forge Tier 2 - an equipped
+    // one contributes nothing until the forge catches up.
+    if (!sigilUnlockedAt(def, forgeTier)) continue;
+    const values = character.sigilValues?.[sigilId] || {};
+    const entered = values.passive || {};
+    const derived = hasSigilCurve(def);
     for (const s of def.passive.stats) {
-      overrides[s.statKey] = (overrides[s.statKey] || 0) + (Number(entered[s.statKey]) || 0);
+      let value;
+      if (derived && (s.statKey === 'attack' || s.statKey === 'health')) {
+        value = sigilStat(def, s.statKey, values.level, forgeTier);
+      } else {
+        // Percentage passives are baked per level where we scraped them;
+        // anything unbaked falls back to the user's own entry.
+        const baked = sigilEffectValue(def, s.statKey, values.level);
+        value = baked === null ? Number(entered[s.statKey]) || 0 : baked;
+      }
+      overrides[s.statKey] = (overrides[s.statKey] || 0) + value;
     }
   }
   return offensiveStats(overrides);
@@ -246,19 +253,16 @@ function fortressBuffsContribution(preset) {
 }
 
 /**
- * Clamps every STAT_FIELDS entry with a `cap` (the game's own hard ceiling -
- * e.g. Crit 80%, Paralyze Chance 15%) down to that cap. Stacking many
- * sources (gear, talents, Awakening) can otherwise sum past what the game
- * allows; applied to both Calculated totals and Manual entry (see
- * resolveEffectiveTotals) so neither can display or feed DPS/HPS math with
- * an impossible value. Never mutates its input - returns a new object.
+ * Converts a RAW (pre-curve) stat record into effective totals via the
+ * game's soft-cap diminishing-returns curve (statCaps.js): below a stat's
+ * soft cap raw = effective; above it the overflow curves toward the hard
+ * cap without reaching it. Input MUST be a raw additive sum (Calculated
+ * totals, applySwap output) - the curve is not idempotent, so never pass
+ * already-curved/effective values (those only need clampToHardCaps, see
+ * resolveEffectiveTotals's Manual branch). Never mutates its input.
  */
-function applyStatCaps(stats) {
-  const capped = { ...stats };
-  for (const f of STAT_FIELDS) {
-    if (f.cap != null && capped[f.key] > f.cap) capped[f.key] = f.cap;
-  }
-  return capped;
+export function applyStatCaps(stats) {
+  return applySoftCaps(stats);
 }
 
 /**
@@ -276,12 +280,16 @@ function socketedStoneStats(character, loadout, slot) {
 /**
  * Sum base + a preset's loadout gear/socketed stones + its talent set + its
  * pet + its equipped relics + its equipped sigils' passives + every character-wide source (Awakening,
- * Transcendence, Glyphs) plus the preset's ridden mount into one set of final
- * totals for `preset`.
+ * Transcendence, Glyphs) plus the preset's ridden mount into the preset's
+ * RAW totals - the pre-curve sum the game shows on the "SOFT ·" line once a
+ * stat passes its soft cap. Callers that feed combat math or display the
+ * headline value want computePresetTotals (curved) instead; this raw form
+ * exists for the SOFT indicator and for swap pipelines that must add item
+ * stats BEFORE the curve is applied (Drop Check).
  * `talentTrees` defaults to the static tree content (talentTreeData.js); the
  * param exists mainly so tests can substitute fixtures.
  */
-export function computePresetTotals(character, preset, talentTrees = TALENT_TREES) {
+export function computePresetRawTotals(character, preset, talentTrees = TALENT_TREES) {
   const loadout = character.loadouts[preset.loadout];
   const acc = newAccumulator();
 
@@ -297,23 +305,30 @@ export function computePresetTotals(character, preset, talentTrees = TALENT_TREE
   accumulate(acc, petContribution(character, preset));
   accumulate(acc, mountContribution(character, preset));
   accumulate(acc, fortressBuffsContribution(preset));
-
-  for (const def of SOURCE_DEFS) {
-    const sourceState = character[def.key];
-    for (const entry of selectedEntries(def, sourceState)) {
-      accumulate(acc, entryToStats(def.key, entry));
-    }
-  }
+  // Glyphs used to be summed here through the generic SOURCE_DEFS loop, back
+  // when they were character-wide and carried their own `equipped` flag. They
+  // now ride with the mount, so mountContribution owns them and SOURCE_DEFS
+  // has no member left that contributes additively.
 
   const result = { ...acc.totals };
   for (const key of FLAT_PAIR_KEYS) {
     result[key] = finalAttack(acc.flatSums[key], acc.totals[PCT_PAIR_OF[key]]);
   }
-  return applyStatCaps(offensiveStats(result));
+  return offensiveStats(result);
 }
 
-/** The totals a preset should actually use right now: manual entry, or Calculated. */
+/** A preset's EFFECTIVE Calculated totals: the raw sum with the soft-cap curve applied. */
+export function computePresetTotals(character, preset, talentTrees = TALENT_TREES) {
+  return applyStatCaps(computePresetRawTotals(character, preset, talentTrees));
+}
+
+/**
+ * The totals a preset should actually use right now: manual entry, or
+ * Calculated. Manual values are what the user copied off the in-game stat
+ * sheet's headline numbers - ALREADY post-curve effective - so they are only
+ * clamped to the hard caps, never re-curved.
+ */
 export function resolveEffectiveTotals(character, preset, talentTrees = TALENT_TREES) {
-  if (preset.manualTotals) return applyStatCaps(preset.manualStats);
-  return computePresetTotals(character, preset, talentTrees); // already capped
+  if (preset.manualTotals) return clampToHardCaps(preset.manualStats);
+  return computePresetTotals(character, preset, talentTrees); // already curved
 }

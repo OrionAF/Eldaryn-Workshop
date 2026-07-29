@@ -11,6 +11,7 @@ import { rosterStore } from './rosterStore.svelte.js';
 import { TALENT_TREES } from './talentTreeData.js';
 import { RELICS_BY_CLASS } from './relicsData.js';
 import { PRESET_RELIC_CAP } from './constants.js';
+import { RUN_DETAIL_LIMIT } from './model.js';
 
 const STORAGE_KEY = 'eldaryn_optimiser_state_v1';
 
@@ -86,6 +87,26 @@ it('drop lifecycle: starts, edits, is per-character (does NOT survive a characte
   expect(rosterStore.current.loadouts[0].gear.Weapon.attack).toBe(500);
 });
 
+it('setDropGoal patches the goal, persists it, and re-normalises bad patches', () => {
+  rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
+  rosterStore.setDropGoal({ kind: 'tank' });
+  rosterStore.setDropGoal({ ehpWeight: 0.75 });
+  expect(rosterStore.current.dropGoal).toEqual({ kind: 'tank', ehpWeight: 0.75 });
+
+  rosterStore.setDropGoal({ kind: 'not-a-goal', ehpWeight: -3 });
+  expect(rosterStore.current.dropGoal).toEqual({ kind: 'dps-fast', ehpWeight: 0 });
+
+  rosterStore.setDropGoal({ kind: 'dps-fast', ehpWeight: 0.5 }); // cleanup
+});
+
+it('setCharacterClass away from Warrior clears a tank dropGoal', () => {
+  const id = rosterStore.current.id;
+  rosterStore.setCharacterClass(id, 'Warrior');
+  rosterStore.setDropGoal({ kind: 'tank' });
+  rosterStore.setCharacterClass(id, 'Sentinel');
+  expect(rosterStore.current.dropGoal.kind).toBe('dps-fast');
+});
+
 it('startDrop then clearDrop discards without applying', () => {
   rosterStore.startDrop('Ring');
   rosterStore.setDropField('crit', 10);
@@ -117,7 +138,7 @@ it('addPreset defaults to Calculated mode, same as the seeded first preset', () 
   expect(preset.manualTotals).toBe(false);
 });
 
-it('renamePreset/deletePreset round-trip, with last-preset guard', () => {
+it('renamePreset/deletePreset round-trip, with two-preset-minimum guard', () => {
   const id = rosterStore.addPreset('Temp');
   rosterStore.renamePreset(id, 'Renamed Preset');
   expect(rosterStore.current.presets.find((p) => p.id === id).name).toBe('Renamed Preset');
@@ -125,13 +146,39 @@ it('renamePreset/deletePreset round-trip, with last-preset guard', () => {
   expect(rosterStore.deletePreset(id)).toBe(true);
   expect(rosterStore.current.presets.some((p) => p.id === id)).toBe(false);
 
-  // Delete down to the last preset, then confirm the guard blocks it.
-  while (rosterStore.current.presets.length > 1) {
+  // Delete down to the two-preset minimum, then confirm the guard blocks it.
+  while (rosterStore.current.presets.length > 2) {
     rosterStore.deletePreset(rosterStore.current.presets[rosterStore.current.presets.length - 1].id);
   }
   const lastId = rosterStore.current.presets[0].id;
   expect(rosterStore.deletePreset(lastId)).toBe(false);
-  expect(rosterStore.current.presets.length).toBe(1);
+  expect(rosterStore.current.presets.length).toBe(2);
+});
+
+it('setPresetGoal patches + re-normalises; setPresetLinked toggles; addPreset starts unassigned/unlinked', () => {
+  const id = rosterStore.addPreset('Goal Test');
+  const preset = () => rosterStore.current.presets.find((p) => p.id === id);
+  expect(preset().goal.kind).toBe(null); // unassigned by default
+  expect(preset().goal.linked).toBe(false); // only the seeded first two are linked
+
+  rosterStore.setPresetGoal(id, { kind: 'pvp', weights: { damage: 70, mitigation: 20, survivability: 10 } });
+  expect(preset().goal.kind).toBe('pvp');
+  expect(preset().goal.weights).toEqual({ damage: 70, mitigation: 20, survivability: 10 });
+
+  // Patching one field keeps the rest; bad weights renormalise to sum 100.
+  rosterStore.setPresetGoal(id, { weights: { damage: 3, mitigation: 1, survivability: 0 } });
+  expect(preset().goal.kind).toBe('pvp');
+  expect(preset().goal.weights.damage).toBeCloseTo(75, 9);
+  expect(preset().goal.weights.mitigation).toBeCloseTo(25, 9);
+
+  rosterStore.setPresetLinked(id, true);
+  expect(preset().goal.linked).toBe(true);
+
+  // Tank is Warrior-only: on a class-less character the kind normalises away.
+  rosterStore.setPresetGoal(id, { kind: 'tank' });
+  expect(preset().goal.kind).toBe(null);
+
+  rosterStore.deletePreset(id); // cleanup
 });
 
 it('setPresetLoadout/setPresetTalentSet/setPresetPet round-trip', () => {
@@ -199,20 +246,72 @@ it('addPet/updatePetField/updatePetStat/removePet round-trip; removePet nulls pe
   expect(rosterStore.current.presets[0].petId).toBe(null); // nulled, not left dangling
 });
 
-it('setPetLevel is character-wide (one level for every pet)', () => {
-  rosterStore.setPetLevel(15);
-  expect(rosterStore.current.petLevel).toBe(15);
-  rosterStore.setPetLevel(1); // cleanup
+it('setPetAltarLevel is character-wide (one level for every pet), clamped to the catalogue max', () => {
+  rosterStore.setPetAltarLevel(15);
+  expect(rosterStore.current.petAltar.level).toBe(15);
+  rosterStore.setPetAltarLevel(999);
+  expect(rosterStore.current.petAltar.level).toBe(50);
+  rosterStore.setPetAltarLevel(1); // cleanup
+});
+
+it('setPetAltarTier WIPES the collection and nulls every preset petId', () => {
+  const id = rosterStore.addPet({ companionId: 'dustmite' });
+  rosterStore.setPresetPet(rosterStore.current.presets[0].id, id);
+  expect(rosterStore.current.pets).toHaveLength(1);
+
+  const removed = rosterStore.setPetAltarTier(2);
+  expect(removed).toBe(1);
+  expect(rosterStore.current.petAltar.tier).toBe(2);
+  expect(rosterStore.current.pets).toEqual([]);
+  expect(rosterStore.current.presets.every((p) => p.petId === null)).toBe(true);
+
+  // Setting the same tier again is a no-op, so it can't wipe a rebuilt collection.
+  const rebuilt = rosterStore.addPet({ companionId: 'duststalker' });
+  expect(rosterStore.setPetAltarTier(2)).toBe(0);
+  expect(rosterStore.current.pets.some((p) => p.id === rebuilt)).toBe(true);
+
+  rosterStore.removePet(rebuilt);
+  rosterStore.setPetAltarTier(1); // cleanup
+});
+
+it('a catalogue pet takes its rarity - and slot count - from the companion', () => {
+  // Dust Mite is Common (1 slot); Astral Seraph is Mythic (3).
+  const common = rosterStore.addPet({ companionId: 'dustmite' });
+  expect(rosterStore.current.pets.find((p) => p.id === common).rarity).toBe('Common');
+
+  rosterStore.setPetSecondaryKey(common, 0, 'attack_pct');
+  rosterStore.setPetSecondaryKey(common, 1, 'crit'); // past Common's single slot
+  expect(rosterStore.current.pets.find((p) => p.id === common).secondaries).toHaveLength(1);
+
+  // Repointing at a Mythic companion widens the slots and updates the rarity.
+  rosterStore.setPetCompanion(common, 'astralseraph');
+  expect(rosterStore.current.pets.find((p) => p.id === common).rarity).toBe('Mythic');
+  rosterStore.setPetSecondaryKey(common, 1, 'crit');
+  expect(rosterStore.current.pets.find((p) => p.id === common).secondaries).toHaveLength(2);
+
+  // ...and going back to Common trims the excess rather than keeping it.
+  rosterStore.setPetCompanion(common, 'dustmite');
+  const back = rosterStore.current.pets.find((p) => p.id === common);
+  expect(back.rarity).toBe('Common');
+  expect(back.secondaries).toHaveLength(1);
+
+  rosterStore.removePet(common);
 });
 
 // --- Mounts (fixed catalogue - stats entered per character, ridden per preset) ---
-it('every character starts with the full mount catalogue; updateMount/setPresetMount round-trip', () => {
+it('every character starts with the full mount catalogue; setMountStar/setMountValue/setPresetMount round-trip', () => {
   expect(rosterStore.current.mounts.entries.length).toBe(11);
 
-  rosterStore.updateMount('crystal_beast', 'baseHpPct', 19);
-  rosterStore.updateMount('crystal_beast', 'baseAtkPct', 10);
+  // crystal_beast star 2 ranges: hp [19,21], atk [11,13].
+  rosterStore.setMountStar('crystal_beast', 2);
+  rosterStore.setMountValue('crystal_beast', 'hpPct', 20);
+  rosterStore.setMountValue('crystal_beast', 'atkPct', 12);
   const mount = rosterStore.current.mounts.entries.find((m) => m.id === 'crystal_beast');
-  expect(mount).toMatchObject({ name: 'Crystal Beast', rarity: 'Uncommon', baseHpPct: 19, baseAtkPct: 10 });
+  expect(mount).toMatchObject({ name: 'Crystal Beast', rarity: 'Uncommon', star: 2, hpPct: 20, atkPct: 12 });
+
+  // Values are clamped to the star's observed range.
+  rosterStore.setMountValue('crystal_beast', 'hpPct', 999);
+  expect(rosterStore.current.mounts.entries.find((m) => m.id === 'crystal_beast').hpPct).toBe(21);
 
   const preset = rosterStore.current.presets[0];
   expect(preset.mountId).toBe(null);
@@ -220,8 +319,7 @@ it('every character starts with the full mount catalogue; updateMount/setPresetM
   expect(preset.mountId).toBe('crystal_beast');
 
   // cleanup
-  rosterStore.updateMount('crystal_beast', 'baseHpPct', 0);
-  rosterStore.updateMount('crystal_beast', 'baseAtkPct', 0);
+  rosterStore.setMountStar('crystal_beast', 1);
   rosterStore.setPresetMount(preset.id, null);
 });
 
@@ -233,30 +331,48 @@ it('setGlyphEquipped enforces the 3 Minor / 2 Major / 1 Mythic cap and rejects p
     rosterStore.addMountGlyph('minor', 'attack_pct', 3),
     rosterStore.addMountGlyph('minor', 'attack_pct', 4),
   ];
-  expect(rosterStore.setGlyphEquipped(minors[0], true)).toBe(true);
-  expect(rosterStore.setGlyphEquipped(minors[1], true)).toBe(true);
-  expect(rosterStore.setGlyphEquipped(minors[2], true)).toBe(true);
-  expect(rosterStore.setGlyphEquipped(minors[3], true)).toBe(false); // cap is 3
+  const mountA = rosterStore.current.mounts.entries[0].id;
+  const mountB = rosterStore.current.mounts.entries[1].id;
+  expect(rosterStore.setMountGlyph(mountA, minors[0], true)).toBe(true);
+  expect(rosterStore.setMountGlyph(mountA, minors[1], true)).toBe(true);
+  expect(rosterStore.setMountGlyph(mountA, minors[2], true)).toBe(true);
+  expect(rosterStore.setMountGlyph(mountA, minors[3], true)).toBe(false); // cap is 3 PER MOUNT
 
-  const equippedMinors = rosterStore.current.glyphs.entries.filter((g) => g.tier === 'minor' && g.equipped);
-  expect(equippedMinors.length).toBe(3);
+  const onMountA = rosterStore.current.mounts.entries.find((m) => m.id === mountA);
+  expect(onMountA.glyphIds.length).toBe(3);
+
+  // The cap is per mount, so a different mount has its own three slots - and
+  // the same glyph may sit on both at once.
+  expect(rosterStore.setMountGlyph(mountB, minors[3], true)).toBe(true);
+  expect(rosterStore.setMountGlyph(mountB, minors[0], true)).toBe(true);
+  expect(rosterStore.current.mounts.entries.find((m) => m.id === mountB).glyphIds).toEqual([minors[3], minors[0]]);
 
   const mythics = [rosterStore.addMountGlyph('mythic', 'crit', 5), rosterStore.addMountGlyph('mythic', 'crit', 6)];
-  expect(rosterStore.setGlyphEquipped(mythics[0], true)).toBe(true);
-  expect(rosterStore.setGlyphEquipped(mythics[1], true)).toBe(false); // cap is 1
+  expect(rosterStore.setMountGlyph(mountA, mythics[0], true)).toBe(true);
+  expect(rosterStore.setMountGlyph(mountA, mythics[1], true)).toBe(false); // cap is 1
 
-  rosterStore.setGlyphEquipped(minors[0], false);
-  expect(rosterStore.setGlyphEquipped(minors[3], true)).toBe(true);
+  rosterStore.setMountGlyph(mountA, minors[0], false);
+  expect(rosterStore.setMountGlyph(mountA, minors[3], true)).toBe(true);
 
+  // Removing from the inventory also strips it off every mount carrying it.
   rosterStore.removeMountGlyph(minors[3]);
   expect(rosterStore.current.glyphs.entries.some((g) => g.id === minors[3])).toBe(false);
+  expect(rosterStore.current.mounts.entries.every((m) => !m.glyphIds.includes(minors[3]))).toBe(true);
 });
 
-it('addMountGlyph stores rarity and a special-glyph id when given', () => {
-  const specialId = rosterStore.addMountGlyph('major', 'attack_pct', 0, { rarity: 'Legendary', special: 'ember-curse-glyph' });
+it('mountsWithGlyph reports every mount carrying a glyph', () => {
+  const glyph = rosterStore.addMountGlyph('minor', 'crit', 2);
+  const [a, b] = rosterStore.current.mounts.entries;
+  rosterStore.setMountGlyph(a.id, glyph, true);
+  rosterStore.setMountGlyph(b.id, glyph, true);
+  expect(rosterStore.mountsWithGlyph(glyph).map((m) => m.id)).toEqual([a.id, b.id]);
+});
+
+it('addMountGlyph stores rarity and a major-glyph id when given', () => {
+  const specialId = rosterStore.addMountGlyph('major', 'attack_pct', 0, { rarity: 'Common', special: 'emberhoard-sigil:common' });
   const special = rosterStore.current.glyphs.entries.find((g) => g.id === specialId);
-  expect(special.rarity).toBe('Legendary');
-  expect(special.special).toBe('ember-curse-glyph');
+  expect(special.rarity).toBe('Common');
+  expect(special.special).toBe('emberhoard-sigil:common');
 
   const plainId = rosterStore.addMountGlyph('minor', 'attack_pct', 3); // rarity defaults to Common
   expect(rosterStore.current.glyphs.entries.find((g) => g.id === plainId).rarity).toBe('Common');
@@ -501,8 +617,8 @@ it('opponent CRUD + sigil equip/value actions persist and validate', () => {
 
 it('applyOptimizerCandidate overwrites the preset and character-wide sources in one persisted step', () => {
   rosterStore.setCharacterClass(rosterStore.current.id, 'Warrior');
-  rosterStore.addPet('Opt Pet', 'Common', { attack_pct: 10 });
-  rosterStore.updateMount('night_wolf', 'baseAtkPct', 5);
+  rosterStore.addPet({ name: 'Opt Pet', rarity: 'Common', stats: { attack_pct: 10 } });
+  rosterStore.setMountValue('night_wolf', 'atkPct', 7);
   rosterStore.addMountGlyph('minor', 'attack_pct', 3);
   rosterStore.setAwakeningPoints(10);
   const c = rosterStore.current;
@@ -537,7 +653,8 @@ it('applyOptimizerCandidate overwrites the preset and character-wide sources in 
   expect(preset.manualTotals).toBe(false);
   expect(c.talentSets[preset.talentSet]).toEqual({ spec: 'arms', allocation: { arms_t1_quick_strikes: 3 } });
   expect(preset.mountId).toBe(c.mounts.entries[0].id);
-  expect(c.glyphs.entries[0].equipped).toBe(true);
+  // The candidate's glyphs land on the mount it rides, not on the character.
+  expect(c.mounts.entries[0].glyphIds).toEqual([c.glyphs.entries[0].id]);
   expect(c.awakening.path).toBe('shadow');
 
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -546,36 +663,80 @@ it('applyOptimizerCandidate overwrites the preset and character-wide sources in 
   expect(savedChar.awakening.path).toBe('shadow');
 });
 
-it('saveResult snapshots plain data (decoupled from the source object) and deleteSavedResult removes it, both persisted', () => {
-  const source = { meanDps: 12.5, totalDamage: { mean: 900 } };
-  const id = rosterStore.saveResult('sim', 'Test run', source);
-  source.meanDps = 999; // the snapshot must not share references with live view-state
-  source.totalDamage.mean = 0;
+it('addRunHistoryEntry snapshots plain data (decoupled from the source), prepends, and persists', () => {
+  const detail = { meanDps: 12.5, totalDamage: { mean: 900 } };
+  const first = rosterStore.addRunHistoryEntry('sim', { name: 'Older run', headline: { meanDps: 12.5 }, detail });
+  detail.totalDamage.mean = 0; // the snapshot must not share references with live view-state
+  const second = rosterStore.addRunHistoryEntry('opt', { name: 'Newer run', headline: { best: 1 } });
 
-  const entry = rosterStore.current.savedResults.find((r) => r.id === id);
-  expect(entry.kind).toBe('sim');
-  expect(entry.name).toBe('Test run');
-  expect(entry.summary).toEqual({ meanDps: 12.5, totalDamage: { mean: 900 } });
-  expect(typeof entry.savedAt).toBe('string');
+  const ids = rosterStore.current.runHistory.map((r) => r.id);
+  expect(ids.indexOf(second)).toBeLessThan(ids.indexOf(first));
+  const entry = rosterStore.current.runHistory.find((r) => r.id === first);
+  expect(entry.detail).toEqual({ meanDps: 12.5, totalDamage: { mean: 900 } });
+  expect(entry.pinned).toBe(false);
 
-  let saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-  let savedChar = saved.characters.find((c) => c.id === rosterStore.current.id);
-  expect(savedChar.savedResults.some((r) => r.id === id)).toBe(true);
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+  const savedChar = saved.characters.find((c) => c.id === rosterStore.current.id);
+  expect(savedChar.runHistory.some((r) => r.id === first)).toBe(true);
 
-  rosterStore.deleteSavedResult(id);
-  expect(rosterStore.current.savedResults.some((r) => r.id === id)).toBe(false);
-  saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-  savedChar = saved.characters.find((c) => c.id === rosterStore.current.id);
-  expect(savedChar.savedResults.some((r) => r.id === id)).toBe(false);
+  rosterStore.deleteRunEntry(first);
+  rosterStore.deleteRunEntry(second);
+  expect(rosterStore.current.runHistory.some((r) => r.id === first)).toBe(false);
 });
 
-it('saveResult prepends: the newest saved result is first', () => {
-  const first = rosterStore.saveResult('sim', 'Older', {});
-  const second = rosterStore.saveResult('opt', 'Newer', {});
-  const ids = rosterStore.current.savedResults.map((r) => r.id);
-  expect(ids.indexOf(second)).toBeLessThan(ids.indexOf(first));
-  rosterStore.deleteSavedResult(first);
-  rosterStore.deleteSavedResult(second);
+it('setRunEntryNotes / toggleRunEntryPinned edit the entry and persist; unknown ids return false', () => {
+  const id = rosterStore.addRunHistoryEntry('pvp-sim', { name: 'Duel vs Rival', headline: { winRate: 61.2 } });
+
+  expect(rosterStore.setRunEntryNotes(id, 'their sigils half-entered')).toBe(true);
+  expect(rosterStore.toggleRunEntryPinned(id)).toBe(true);
+  const entry = rosterStore.current.runHistory.find((r) => r.id === id);
+  expect(entry.notes).toBe('their sigils half-entered');
+  expect(entry.pinned).toBe(true);
+
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+  const savedEntry = saved.characters.find((c) => c.id === rosterStore.current.id).runHistory.find((r) => r.id === id);
+  expect(savedEntry.notes).toBe('their sigils half-entered');
+  expect(savedEntry.pinned).toBe(true);
+
+  expect(rosterStore.setRunEntryNotes('nope', 'x')).toBe(false);
+  expect(rosterStore.toggleRunEntryPinned('nope')).toBe(false);
+  rosterStore.deleteRunEntry(id);
+});
+
+it('addRunHistoryEntry compacts older unpinned entries of the same kind past the detail limit', () => {
+  const ids = [];
+  for (let i = 0; i < RUN_DETAIL_LIMIT + 2; i++) {
+    ids.push(rosterStore.addRunHistoryEntry('sim-compare', { name: `Run ${i}`, detail: { i } }));
+  }
+  const history = rosterStore.current.runHistory.filter((r) => r.kind === 'sim-compare');
+  expect(history.filter((r) => r.detail !== null).length).toBe(RUN_DETAIL_LIMIT);
+  // The two OLDEST entries (added first) lost their detail.
+  expect(history.find((r) => r.id === ids[0]).detail).toBe(null);
+  expect(history.find((r) => r.id === ids[1]).detail).toBe(null);
+  expect(history.find((r) => r.id === ids[ids.length - 1]).detail).toEqual({ i: RUN_DETAIL_LIMIT + 1 });
+  for (const id of ids) rosterStore.deleteRunEntry(id);
+});
+
+it('completeLinkingSim snapshots the outcome (decoupled from the source) and persists', () => {
+  const outcome = { completedAt: '2026-07-20T10:00:00.000Z', lockedPath: 'shadow', presets: [{ presetId: 'p1' }] };
+  rosterStore.completeLinkingSim(outcome);
+  outcome.lockedPath = 'radiant'; // mutating the source must not touch the stored copy
+  outcome.presets[0].presetId = 'changed';
+
+  expect(rosterStore.current.linkingSim.lockedPath).toBe('shadow');
+  expect(rosterStore.current.linkingSim.presets[0].presetId).toBe('p1');
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+  expect(saved.characters.find((c) => c.id === rosterStore.current.id).linkingSim.lockedPath).toBe('shadow');
+
+  rosterStore.resetLinkingSim(); // cleanup
+});
+
+it('resetLinkingSim nulls the outcome and persists', () => {
+  rosterStore.current.linkingSim = { completedAt: '2026-07-19T12:00:00.000Z' };
+  rosterStore.resetLinkingSim();
+  expect(rosterStore.current.linkingSim).toBe(null);
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+  expect(saved.characters.find((c) => c.id === rosterStore.current.id).linkingSim).toBe(null);
 });
 
 it('duplicateOpponent deep-copies stats/sigils under a fresh id and "(copy)" name', () => {
@@ -622,43 +783,21 @@ it('toggleOpponentSpecialGlyph adds/removes catalogue glyphs only, and persists'
   const id = rosterStore.addOpponent('Glyphed');
   rosterStore.setOpponentClass(id, 'Sentinel');
 
-  expect(rosterStore.toggleOpponentSpecialGlyph(id, 'ember-curse-glyph', true)).toBe(true);
-  expect(rosterStore.current.pvpOpponents.find((o) => o.id === id).specialGlyphIds).toEqual(['ember-curse-glyph']);
+  expect(rosterStore.toggleOpponentSpecialGlyph(id, 'warhaste-emblem:rare', true)).toBe(true);
+  expect(rosterStore.current.pvpOpponents.find((o) => o.id === id).specialGlyphIds).toEqual(['warhaste-emblem:rare']);
   expect(rosterStore.toggleOpponentSpecialGlyph(id, 'not-a-glyph', true)).toBe(false);
+
+  // A legacy id is accepted but stored in its canonical form.
+  expect(rosterStore.toggleOpponentSpecialGlyph(id, 'ember-curse-glyph', true)).toBe(true);
+  expect(rosterStore.current.pvpOpponents.find((o) => o.id === id).specialGlyphIds).toContain('emberhoard-sigil:common');
+  rosterStore.toggleOpponentSpecialGlyph(id, 'emberhoard-sigil:common', false);
 
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
   const savedChar = saved.characters.find((c) => c.id === rosterStore.current.id);
-  expect(savedChar.pvpOpponents.find((o) => o.id === id).specialGlyphIds).toEqual(['ember-curse-glyph']);
+  expect(savedChar.pvpOpponents.find((o) => o.id === id).specialGlyphIds).toEqual(['warhaste-emblem:rare']);
 
-  expect(rosterStore.toggleOpponentSpecialGlyph(id, 'ember-curse-glyph', false)).toBe(true);
+  expect(rosterStore.toggleOpponentSpecialGlyph(id, 'warhaste-emblem:rare', false)).toBe(true);
   expect(rosterStore.current.pvpOpponents.find((o) => o.id === id).specialGlyphIds).toEqual([]);
   rosterStore.deleteOpponent(id);
 });
 
-it('renameSavedResult / setSavedResultNotes / togglePinnedSavedResult edit the entry and persist', () => {
-  const id = rosterStore.saveResult('pvp-sim', 'Duel vs Rival', { winRate: 61.2 });
-
-  expect(rosterStore.renameSavedResult(id, '  Rival, ×2 HP  ')).toBe(true);
-  expect(rosterStore.renameSavedResult(id, '   ')).toBe(false); // blank keeps the old name
-  expect(rosterStore.setSavedResultNotes(id, 'their sigils half-entered')).toBe(true);
-  expect(rosterStore.togglePinnedSavedResult(id)).toBe(true);
-
-  const entry = rosterStore.current.savedResults.find((r) => r.id === id);
-  expect(entry.name).toBe('Rival, ×2 HP');
-  expect(entry.notes).toBe('their sigils half-entered');
-  expect(entry.pinned).toBe(true);
-
-  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-  const savedChar = saved.characters.find((c) => c.id === rosterStore.current.id);
-  const savedEntry = savedChar.savedResults.find((r) => r.id === id);
-  expect(savedEntry.name).toBe('Rival, ×2 HP');
-  expect(savedEntry.notes).toBe('their sigils half-entered');
-  expect(savedEntry.pinned).toBe(true);
-
-  expect(rosterStore.togglePinnedSavedResult(id)).toBe(true); // toggles back off
-  expect(rosterStore.current.savedResults.find((r) => r.id === id).pinned).toBe(false);
-  expect(rosterStore.renameSavedResult('nope', 'x')).toBe(false);
-  expect(rosterStore.setSavedResultNotes('nope', 'x')).toBe(false);
-  expect(rosterStore.togglePinnedSavedResult('nope')).toBe(false);
-  rosterStore.deleteSavedResult(id);
-});

@@ -11,8 +11,7 @@
   import MountAndGlyphsScreen from './components/MountAndGlyphsScreen.svelte';
   import AwakeningScreen from './components/AwakeningScreen.svelte';
   import TranscendenceScreen from './components/TranscendenceScreen.svelte';
-  import SimulationScreen from './components/SimulationScreen.svelte';
-  import PvpScreen from './components/PvpScreen.svelte';
+  import SimulationsScreen from './components/SimulationsScreen.svelte';
   import { rosterStore } from './lib/rosterStore.svelte.js';
 
   // Per-screen suffix for the banner subline - what's actually in scope on
@@ -25,8 +24,10 @@
     pets: (c) => `${c.pets.length} pet${c.pets.length === 1 ? '' : 's'}`,
     relics: () => 'character-wide levels',
     sigils: (c) => `${c.presets.length} preset${c.presets.length === 1 ? '' : 's'} · 3 slots each`,
-    simulation: () => '60s world boss · Monte Carlo',
-    pvp: (c) => `${(c.pvpOpponents || []).length} opponent${(c.pvpOpponents || []).length === 1 ? '' : 's'} · Monte Carlo duels`,
+    simulations: (c) => {
+      const goals = new Set(c.presets.map((p) => p.goal?.kind).filter(Boolean));
+      return `${goals.size} goal tab${goals.size === 1 ? '' : 's'} · ${(c.runHistory || []).length} saved run${(c.runHistory || []).length === 1 ? '' : 's'}`;
+    },
     mounts: () => 'character-wide',
     awakening: () => 'character-wide',
     transcendence: () => 'character-wide',
@@ -120,10 +121,8 @@
         <RelicsScreen />
       {:else if activeScreen === 'sigils'}
         <SigilsScreen />
-      {:else if activeScreen === 'simulation'}
-        <SimulationScreen {setStatus} />
-      {:else if activeScreen === 'pvp'}
-        <PvpScreen {setStatus} />
+      {:else if activeScreen === 'simulations'}
+        <SimulationsScreen {setStatus} />
       {:else if activeScreen === 'mounts'}
         <MountAndGlyphsScreen />
       {:else if activeScreen === 'awakening'}

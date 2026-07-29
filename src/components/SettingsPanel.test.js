@@ -1,6 +1,7 @@
 import { it, expect, beforeEach, vi } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import SettingsPanel from './SettingsPanel.svelte';
+import { rosterStore } from '../lib/rosterStore.svelte.js';
 
 let target, app;
 beforeEach(() => {
@@ -101,6 +102,24 @@ it('pressing Enter with the wrong text does not clear anything', () => {
   expect(reloadMock).not.toHaveBeenCalled();
 
   vi.unstubAllGlobals();
+  unmount(app);
+});
+
+it('Danger Zone: "Reset initial linking simulations" needs a confirm click, then clears linkingSim', () => {
+  rosterStore.current.linkingSim = { completedAt: '2026-07-19T12:00:00.000Z' };
+  let status = null;
+  app = mount(SettingsPanel, { target, props: { open: true, onClose: () => {}, onStatus: (m) => (status = m) } });
+  flushSync();
+
+  expect(target.querySelector('[aria-label="Danger Zone"]')).not.toBeNull();
+  [...target.querySelectorAll('button')].find((b) => b.textContent.includes('Reset initial linking simulations')).click();
+  flushSync();
+  expect(rosterStore.current.linkingSim).not.toBeNull(); // armed only
+
+  target.querySelector('.confirm-yes').click();
+  flushSync();
+  expect(rosterStore.current.linkingSim).toBe(null);
+  expect(status).toContain('Linking simulations reset');
   unmount(app);
 });
 

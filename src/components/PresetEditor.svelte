@@ -4,22 +4,41 @@
   import { RELICS_BY_CLASS } from '../lib/relicsData.js';
   import { SIGILS_BY_CLASS } from '../lib/sigilsData.js';
   import { summarizeStats } from '../lib/format.js';
-  import { computeDps, computeHps } from '../lib/dps.js';
-  import { resolveEffectiveTotals } from '../lib/totals.js';
+  import { petStats } from '../lib/petsData.js';
+  import { computeDps } from '../lib/dps.js';
+  import { resolveEffectiveTotals, computePresetRawTotals } from '../lib/totals.js';
   import { talentSetLabel } from '../lib/model.js';
   import { formatFlat } from '../lib/format.js';
   import Chip from './Chip.svelte';
   import ConfirmButton from './ConfirmButton.svelte';
   import StatsFields from './StatsFields.svelte';
+  import GoalSliders from './GoalSliders.svelte';
+  import Slider from './Slider.svelte';
 
   let { preset, character, setStatus, onDeleted } = $props();
 
   const relicDefs = $derived(RELICS_BY_CLASS[character.class] || []);
   const sigilDefs = $derived(SIGILS_BY_CLASS[character.class] || []);
   const totals = $derived(resolveEffectiveTotals(character, preset));
+  // Raw pre-curve totals drive the "SOFT · raw" line on overcapped stats -
+  // Calculated only; Manual entries are already the game's effective values.
+  const rawTotals = $derived(preset.manualTotals ? null : computePresetRawTotals(character, preset));
   const dps = $derived(computeDps(totals));
-  const hps = $derived(computeHps(totals).total_hps);
   const profileFields = $derived(fieldsForTab('profile', character.class));
+
+  // Goal kinds selectable for this class ('tank' is Warrior-only). Clicking
+  // the selected kind unassigns (kind null = the prompted "assign a goal"
+  // state - nothing is silently chosen).
+  const goalKinds = $derived([
+    { kind: 'dps', label: 'DPS' },
+    ...(character.class === 'Warrior' ? [{ kind: 'tank', label: 'Tank' }] : []),
+    { kind: 'pvp', label: 'PVP' },
+    { kind: 'custom', label: 'Custom' },
+  ]);
+
+  function setGoalKind(kind) {
+    rosterStore.setPresetGoal(preset.id, { kind: preset.goal.kind === kind ? null : kind });
+  }
 
   let relicError = $state('');
   let sigilError = $state('');
@@ -34,11 +53,11 @@
   }
 
   function petSummary(pet) {
-    return summarizeStats(pet.stats, STAT_FIELDS);
+    return summarizeStats(petStats(pet, character.petAltar), STAT_FIELDS);
   }
 
   function mountSummary(m) {
-    return `+${m.baseHpPct}% HP / +${m.baseAtkPct}% ATK`;
+    return `+${m.hpPct}% HP / +${m.atkPct}% ATK`;
   }
 
   function tierColorVar(tier) {
@@ -77,7 +96,7 @@
       label="Delete preset"
       confirmLabel="Confirm delete"
       prompt="Delete this preset?"
-      disabled={character.presets.length <= 1}
+      disabled={character.presets.length <= 2}
       onConfirm={deletePreset}
     />
   </div>
@@ -86,6 +105,50 @@
     <div class="field-group">
       <span class="field-group-label micro-label">Name</span>
       <input type="text" value={preset.name} onblur={rename} onkeydown={(e) => e.key === 'Enter' && e.target.blur()} />
+
+      <span class="field-group-label micro-label goal-label">Goal{preset.goal.kind === null ? ' — unassigned' : ''}</span>
+      <div class="chip-list">
+        {#each goalKinds as g (g.kind)}
+          <Chip label={g.label} selected={preset.goal.kind === g.kind} onClick={() => setGoalKind(g.kind)} size="compact" />
+        {/each}
+      </div>
+      {#if preset.goal.kind === null}
+        <p class="goal-hint">Assign a goal so the optimizer knows what this preset is for.</p>
+      {/if}
+      {#if preset.goal.kind === 'custom'}
+        <input
+          type="text"
+          placeholder="Custom goal name"
+          value={preset.goal.name}
+          onblur={(e) => rosterStore.setPresetGoal(preset.id, { name: e.target.value })}
+          onkeydown={(e) => e.key === 'Enter' && e.target.blur()}
+        />
+      {/if}
+      {#if preset.goal.kind === 'tank'}
+        <label class="goal-slider-row">
+          <span class="micro-label">Sustain ↔ EHP</span>
+          <Slider
+            min={0}
+            max={100}
+            step={5}
+            value={Math.round(preset.goal.ehpWeight * 100)}
+            oninput={(v) => rosterStore.setPresetGoal(preset.id, { ehpWeight: v / 100 })}
+            ariaLabel="EHP weight"
+          />
+          <span class="goal-slider-value">{Math.round(preset.goal.ehpWeight * 100)}%</span>
+        </label>
+      {/if}
+      {#if preset.goal.kind === 'pvp' || preset.goal.kind === 'custom'}
+        <GoalSliders weights={preset.goal.weights} onChange={(w) => rosterStore.setPresetGoal(preset.id, { weights: w })} />
+      {/if}
+      <label class="fortress-check goal-linked">
+        <input
+          type="checkbox"
+          checked={preset.goal.linked}
+          onchange={(e) => rosterStore.setPresetLinked(preset.id, e.target.checked)}
+        />
+        LINKED
+      </label>
     </div>
 
     <div class="field-group">
@@ -171,7 +234,7 @@
       <span class="field-group-label micro-label"><span class="diamond" style="color: var(--nav-mounts)">◆</span> Mount</span>
       <div class="chip-list">
         <Chip label="None" selected={!preset.mountId} onClick={() => rosterStore.setPresetMount(preset.id, null)} />
-        {#each character.mounts.entries as mount (mount.id)}
+        {#each character.mounts.entries.filter((m) => m.star > 0 || m.id === preset.mountId) as mount (mount.id)}
           <Chip
             label={`${mount.name} (${mount.rarity}) — ${mountSummary(mount)}`}
             selected={preset.mountId === mount.id}
@@ -226,10 +289,10 @@
     <div class="totals-header">
       <span class="totals-mode micro-label">EFFECTIVE TOTALS — {preset.manualTotals ? 'MANUAL (editable)' : 'CALCULATED (read-only)'}</span>
       <span class="dps-readout"><span class="value">{formatFlat(Math.round(dps))}</span><span class="unit">DPS</span></span>
-      <span class="hps-readout"><span class="value">{formatFlat(Math.round(hps))}</span><span class="unit">HPS</span></span>
     </div>
     <StatsFields
       values={totals}
+      rawValues={rawTotals}
       fields={profileFields}
       readOnly={!preset.manualTotals}
       onChange={(key, value) => rosterStore.setPresetManualStat(preset.id, key, value)}
@@ -307,6 +370,31 @@
   .fortress-label {
     margin-top: 10px;
   }
+  .goal-label {
+    margin-top: 10px;
+  }
+  .goal-hint {
+    font-size: 11px;
+    color: var(--color-muted);
+    margin: 0;
+  }
+  .goal-slider-row {
+    display: grid;
+    grid-template-columns: auto 1fr 40px;
+    align-items: center;
+    gap: 8px;
+  }
+  /* Slider styling lives in app.css's .slider block. */
+  .goal-slider-value {
+    font-family: var(--font-data);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    color: var(--color-soft);
+    text-align: right;
+  }
+  .goal-linked {
+    padding: 4px 0 0;
+  }
   .fortress-buffs {
     display: flex;
     flex-wrap: wrap;
@@ -342,31 +430,23 @@
   .totals-mode {
     flex: 1;
   }
-  .dps-readout,
-  .hps-readout {
+  .dps-readout {
     display: inline-flex;
     align-items: baseline;
     gap: 5px;
   }
-  .dps-readout .value,
-  .hps-readout .value {
+  .dps-readout .value {
     font-family: var(--font-data);
     font-variant-numeric: tabular-nums;
     font-size: 15px;
     font-weight: 600;
+    color: var(--color-dps);
   }
-  .dps-readout .unit,
-  .hps-readout .unit {
+  .dps-readout .unit {
     font-size: 10px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--color-muted);
-  }
-  .dps-readout .value {
-    color: var(--color-dps);
-  }
-  .hps-readout .value {
-    color: var(--color-hps);
   }
   @media (min-width: 900px) {
     .totals-section :global(.stats-fields) {

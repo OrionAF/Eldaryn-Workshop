@@ -1,7 +1,7 @@
-<script>
+﻿<script>
   /**
    * StoneForm.svelte - the dual-mode left-column panel for Socketed Stones
-   * (docs/socketed-stones-design.md §4/§6). Two modes, switched purely by
+   * (docs/Reference/Notes/socketed-stones-design.md §4/§6). Two modes, switched purely by
    * whether `selectedStoneId` resolves to a real stone in the inventory:
    *
    *   Add mode (default, nothing selected in StoneGrid): pick a type, fill in

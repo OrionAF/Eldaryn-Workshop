@@ -1,9 +1,17 @@
-import { it, expect, beforeEach, afterEach } from 'vitest';
+import { it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import PvpScreen from './PvpScreen.svelte';
 import { rosterStore } from '../lib/rosterStore.svelte.js';
 import { SIGILS_BY_CLASS } from '../lib/sigilsData.js';
 import { PRESET_SIGIL_CAP } from '../lib/constants.js';
+import { runGauntlet } from '../lib/pvpGauntlet.js';
+
+// The gauntlet engine is unit-tested in pvpGauntlet.test.js; here it's mocked
+// so the PvpScreen test asserts wiring (button/progress/cancel/auto-save) only.
+vi.mock('../lib/pvpGauntlet.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, runGauntlet: vi.fn() };
+});
 
 let target, app;
 beforeEach(() => {
@@ -18,7 +26,7 @@ afterEach(() => {
   unmount(app);
   target.remove();
   for (const o of [...(rosterStore.current.pvpOpponents || [])]) rosterStore.deleteOpponent(o.id);
-  for (const r of [...(rosterStore.current.savedResults || [])]) rosterStore.deleteSavedResult(r.id);
+  for (const r of [...(rosterStore.current.runHistory || [])]) rosterStore.deleteRunEntry(r.id);
   rosterStore.setCharacterClass(rosterStore.current.id, null);
 });
 
@@ -163,20 +171,73 @@ it('running the optimizer shows verified win chances and a Simulated Preset card
   expect(results.querySelector('[data-testid="simulated-preset-card"]')).not.toBeNull();
   expect(results.textContent).toContain('% win');
 
-  // Save Result snapshots the verified before/after and the recommended config.
-  target.querySelector('[data-testid="save-pvp-opt-result"]').click();
-  flushSync();
-  expect(rosterStore.current.savedResults).toHaveLength(1);
-  const entry = rosterStore.current.savedResults[0];
-  expect(entry.kind).toBe('pvp-opt');
-  expect(typeof entry.summary.beforeWinRate).toBe('number');
-  expect(typeof entry.summary.afterWinRate).toBe('number');
-  expect(entry.summary.config.length).toBeGreaterThan(0);
-  const rail = target.querySelector('[data-testid="saved-results"]');
-  expect(rail.textContent).toContain('PVP Opt');
+  // The finished search auto-saved a pvp-opt entry with the verified
+  // before/after and the recommended config - no Save button exists.
+  expect([...target.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Save Result')).toBe(false);
+  const entry = rosterStore.current.runHistory.find((r) => r.kind === 'pvp-opt');
+  expect(entry).toBeDefined();
+  expect(typeof entry.headline.baselineWinRate).toBe('number');
+  expect(typeof entry.headline.bestWinRate).toBe('number');
+  expect(typeof entry.detail.beforeWinRate).toBe('number');
+  expect(entry.detail.config.length).toBeGreaterThan(0);
 });
 
-it('a duel can be saved to the rail and re-run from the snapshot with the same seed and numbers', async () => {
+it('validates the optimizer finalists against the archetype gauntlet: cancel discards, completion renders + auto-saves', async () => {
+  runGauntlet.mockReset();
+  setClass();
+  target.querySelector('.opp-header button').click();
+  flushSync();
+  const classSelect = target.querySelector('.class-control select');
+  classSelect.value = 'Warrior';
+  classSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+  const inputs = [...target.querySelectorAll('.stat-grid input')];
+  const labels = [...target.querySelectorAll('.stat-grid .micro-label')].map((l) => l.textContent);
+  const attackInput = inputs[labels.indexOf('Attack')];
+  attackInput.value = '500';
+  attackInput.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+
+  selectOptimizerPreset();
+  optimizeButton().click();
+  await waitFor(() => target.querySelector('[data-testid="pvp-opt-results"]'));
+
+  // The gauntlet controls appear with the optimizer result.
+  expect(target.querySelector('[data-testid="validate-gauntlet"]')).not.toBeNull();
+  expect(target.querySelector('[data-testid="gauntlet-budget"]')).not.toBeNull();
+
+  // Cancel flow: the run aborts via the injected signal and discards.
+  runGauntlet.mockImplementation(({ signal }) => new Promise((resolve) => signal.addEventListener('abort', () => resolve({ aborted: true }))));
+  target.querySelector('[data-testid="validate-gauntlet"]').click();
+  await waitFor(() => target.querySelector('[data-testid="cancel-gauntlet"]'));
+  target.querySelector('[data-testid="cancel-gauntlet"]').click();
+  await waitFor(() => target.querySelector('[data-testid="validate-gauntlet"]')); // back to the launch state
+  expect(target.querySelector('[data-testid="gauntlet-result"]')).toBeNull();
+  expect(rosterStore.current.runHistory.some((r) => r.kind === 'pvp-gauntlet')).toBe(false);
+
+  // Completion flow: a finalist that receives finalists renders the panel + auto-saves.
+  let capturedFinalists = null;
+  runGauntlet.mockImplementation(({ finalists }) => {
+    capturedFinalists = finalists;
+    return Promise.resolve({
+      budget: 60000,
+      iterations: 200,
+      finalists: [{ index: 0, score: 100, overallWinRate: 55, ci: 2, perArchetype: [{ archetypeId: 'w-berserker', name: 'Berserker', class: 'Warrior', winRate: 55, ci: 4 }] }],
+      contradiction: { flagged: false, message: 'agree' },
+    });
+  });
+  target.querySelector('[data-testid="validate-gauntlet"]').click();
+  await waitFor(() => target.querySelector('[data-testid="gauntlet-result"]'));
+
+  expect(capturedFinalists.length).toBeGreaterThan(0); // best + runner-ups passed in
+  expect(capturedFinalists[0].candidate).toBeTruthy();
+  const gEntry = rosterStore.current.runHistory.find((r) => r.kind === 'pvp-gauntlet');
+  expect(gEntry).toBeDefined();
+  expect(gEntry.headline.bestWinRate).toBeCloseTo(55);
+  expect(gEntry.detail.finalists[0].label).toBe('Recommended');
+});
+
+it('a finished duel batch auto-saves a pvp-sim entry; the sample fight adds a traced entry with a capped timeline', async () => {
   setClass();
   target.querySelector('.opp-header button').click();
   flushSync();
@@ -196,26 +257,25 @@ it('a duel can be saved to the rail and re-run from the snapshot with the same s
   target.querySelector('.run-btn').click();
   await waitFor(() => target.querySelector('[data-testid="pvp-results"]'));
 
-  target.querySelector('[data-testid="save-pvp-sim-result"]').click();
-  flushSync();
-  expect(rosterStore.current.savedResults).toHaveLength(1);
-  const entry = rosterStore.current.savedResults[0];
+  // The batch auto-saved itself - no Save button.
+  expect(rosterStore.current.runHistory).toHaveLength(1);
+  const entry = rosterStore.current.runHistory[0];
   expect(entry.kind).toBe('pvp-sim');
-  expect(typeof entry.summary.seed).toBe('number');
-  expect(typeof entry.summary.winRate).toBe('number');
-  expect(entry.summary.config.length).toBeGreaterThan(0);
-  const savedWinRate = entry.summary.winRate;
+  expect(typeof entry.detail.seed).toBe('number');
+  expect(typeof entry.headline.winRate).toBe('number');
+  expect(entry.detail.config.length).toBeGreaterThan(0);
 
-  // Saving auto-expands the entry in the rail, showing the seed.
-  const rail = target.querySelector('[data-testid="saved-results"]');
-  expect(rail.textContent).toContain('Seed (replayable)');
-
-  // Re-run restores the matchup + seed and reproduces the exact numbers.
-  rail.querySelector('[data-testid="saved-rerun"]').click();
-  await waitFor(() => target.querySelector('[data-testid="pvp-results"]'));
-  const text = target.querySelector('[data-testid="pvp-results"]').textContent;
-  expect(text).toContain(`seed ${entry.summary.seed}`);
-  expect(text).toContain(savedWinRate.toFixed(1));
+  // The traced sample fight records its own entry carrying the timeline.
+  target.querySelector('[data-testid="show-sample-fight"]').click();
+  flushSync();
+  expect(rosterStore.current.runHistory).toHaveLength(2);
+  const sample = rosterStore.current.runHistory[0];
+  expect(sample.kind).toBe('pvp-sim');
+  expect(sample.headline.sample).toBe(true);
+  expect(sample.detail.traced).toBe(true);
+  expect(Array.isArray(sample.detail.timeline)).toBe(true);
+  expect(sample.detail.timeline.length).toBeGreaterThan(0);
+  expect(sample.detail.timeline.length).toBeLessThanOrEqual(400);
 });
 
 it('Run Matrix fights every preset against every classed opponent and renders the grid', async () => {
