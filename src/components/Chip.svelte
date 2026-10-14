@@ -62,6 +62,15 @@
     background: rgba(217, 169, 75, 0.08);
     color: var(--chip-color, var(--color-gold));
   }
+  /* A disabled chip is one the character does not own (a relic at level 0). It stays
+     readable - muted text at 5.3:1 on the panel, where the global 50% fade left ~1.7:1 - and the dashed
+     border is what marks it "unowned". */
+  .chip:disabled {
+    opacity: 1;
+    color: var(--color-muted);
+    border-style: dashed;
+    border-color: var(--color-border-strong);
+  }
   .chip:hover:not(:disabled) {
     border-color: var(--chip-color, var(--color-gold));
   }

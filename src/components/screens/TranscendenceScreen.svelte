@@ -214,8 +214,10 @@
 {/if}
 
 <style>
+  /* Body text matches the other screens (12-12.5px); the browser default is 16px. */
   .empty-hint {
     color: var(--color-muted);
+    font-size: 12px;
     padding-top: var(--space-6);
   }
   .header-row {
@@ -255,6 +257,7 @@
   }
   .readout {
     color: var(--color-muted);
+    font-size: 12.5px;
   }
   .readout strong {
     color: var(--color-ink);
@@ -307,6 +310,7 @@
     display: flex;
     justify-content: space-between;
     color: var(--color-muted);
+    font-size: 12.5px;
   }
   .bonus-list strong {
     color: var(--color-ink);
@@ -323,19 +327,21 @@
     pointer-events: none;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
     max-width: 15rem;
+    font-size: 12px;
   }
   .tooltip-title {
     font-family: var(--font-heading);
     font-weight: 700;
+    font-size: 13px;
     color: var(--color-gold-light);
     margin-bottom: 0.2rem;
   }
   .tooltip-stat {
-    font-size: 0.85rem;
+    font-size: 12px;
     color: var(--color-ink);
   }
   .tooltip-cost {
-    font-size: 0.8rem;
+    font-size: 11.5px;
     color: var(--color-muted);
     margin-top: 0.2rem;
   }

@@ -3,6 +3,8 @@
    * FloorTable.svelte - Oblivion Dungeon floors: raw instability, net strain after Oblivion Power and,
    * once a scan has run, win % (Wilson interval) and median clear time. `results` maps floor -> row.
    */
+  import { formatFlat } from '../../lib/format.js';
+
   let { rows, results = {}, threshold = 0.9 } = $props();
 
   const pct = (p) => `${(p * 100).toFixed(0)}%`;
@@ -25,8 +27,8 @@
       {@const r = results[row.floor]}
       <tr data-floor={row.floor} class:ok={r && r.p >= threshold} class:free={row.strain === 0}>
         <td class="num">{row.floor}</td>
-        <td class="num">{row.instability}</td>
-        <td class="num">{row.strain}</td>
+        <td class="num">{formatFlat(row.instability)}</td>
+        <td class="num">{formatFlat(row.strain)}</td>
         <td class="num" data-cell="win">{r ? pct(r.p) : '-'}</td>
         <td class="num muted">{r ? `${pct(r.pLo)} - ${pct(r.pHi)}` : '-'}</td>
         <td class="num muted">{r ? secs(r.medianMs) : '-'}</td>
@@ -39,11 +41,13 @@
   .floor-table {
     width: 100%;
     border-collapse: collapse;
+    font-size: 12.5px;
   }
   th {
     text-align: right;
+    font-size: 11px;
     font-weight: normal;
-    color: var(--text-muted, inherit);
+    color: var(--color-muted);
     padding: 0.25rem 0.5rem;
   }
   th:first-child,
@@ -53,7 +57,10 @@
   td {
     text-align: right;
     padding: 0.2rem 0.5rem;
-    border-top: 1px solid var(--border, transparent);
+    border-top: 1px solid var(--color-border-hairline);
+  }
+  .muted {
+    color: var(--color-muted);
   }
   tr.ok td:nth-child(4) {
     font-weight: bold;

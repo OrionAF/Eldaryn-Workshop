@@ -283,15 +283,6 @@
     flex-direction: column;
     gap: 2px;
   }
-  .group-label {
-    font-size: 9.5px;
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--color-dim);
-    padding: 0 var(--space-2);
-    margin-bottom: 4px;
-  }
   .nav-item {
     display: flex;
     align-items: center;
@@ -472,9 +463,11 @@
     color: var(--item-color-light, var(--color-gold-light));
     background: var(--item-color-tint, var(--color-gold-tint));
   }
+  /* Backdrop and sheet stop above the tab bar (--bottom-bar-h, app.css), so the bar stays visible and
+     tappable - its "More" tab is the close control. */
   .more-backdrop {
     position: fixed;
-    inset: 0;
+    inset: 0 0 calc(var(--bottom-bar-h) + env(safe-area-inset-bottom, 0px)) 0;
     background: rgba(0, 0, 0, 0.5);
     z-index: 41;
   }
@@ -482,14 +475,14 @@
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: calc(var(--bottom-bar-h) + env(safe-area-inset-bottom, 0px));
     z-index: 42;
-    max-height: 75vh;
+    max-height: calc(75vh - var(--bottom-bar-h));
     overflow-y: auto;
     background: var(--color-rail);
     border-top: 1px solid var(--color-border-hairline);
     border-radius: var(--radius-panel) var(--radius-panel) 0 0;
-    padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    padding: var(--space-4);
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
