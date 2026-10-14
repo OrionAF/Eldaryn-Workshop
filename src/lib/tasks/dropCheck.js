@@ -2,7 +2,8 @@
 // after, closed-form DPS) is features/swap.js prepareSwap(), which the screen runs on the main thread.
 //
 // request: {
-//   items: [{presetId, before: Fighter, after: Fighter}],       Fighters from prepareSwap, plain JSON
+//   items: [{presetId, before: Fighter, after: Fighter, baseKey?}],  Fighters from prepareSwap, plain JSON;
+//                                                                 items sharing a baseKey share one "before" run
 //   sim?: true, seconds?: 60, nSim?: 32,                          sim DPS vs a training dummy
 //   enemy?: {mobs: MobSpec[], oblivion?: boolean},                survival target (buildEnemy)
 //   survivalSeconds?: 60, nSurvival?: 200,

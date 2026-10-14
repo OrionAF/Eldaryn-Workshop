@@ -256,7 +256,8 @@ function compare(a, b) {
  * Run the requested metrics for every item. Before and after use the same seed, so fight i sees the
  * same random draws on both sides (common random numbers) and the paired delta cancels most noise.
  *
- * @param {Array<{presetId: string, before: Object, after: Object}>} items  Fighters, plain data
+ * @param {Array<{presetId: string, before: Object, after: Object, baseKey?: string}>} items  Fighters, plain data;
+ *   `baseKey` marks items whose `before` is identical so it is simulated once
  * @param {{
  *   sim?: boolean, seconds?: number, nSim?: number,
  *   enemy?: {mobs: Object[], oblivion?: boolean}|null, survivalSeconds?: number, nSurvival?: number,
@@ -277,12 +278,21 @@ export async function runSwapMetrics(items, o = {}, { signal, onProgress } = {})
   const common = { seed, signal, keepSamples: true };
   const results = [];
   let aborted = false;
+  // Items that share a `baseKey` have the same "before" Fighter (a batch of drops against one preset):
+  // its runs are done once and reused. Same seed, so the reuse changes no number.
+  const baselines = new Map();
+  const baseline = async (item, metric, run) => {
+    if (item.baseKey == null) return run();
+    const k = `${item.baseKey}|${metric}`;
+    if (!baselines.has(k)) baselines.set(k, await run());
+    return baselines.get(k);
+  };
 
   outer: for (const item of items) {
     const r = { presetId: item.presetId };
     results.push(r);
     if (sim) {
-      const a = await dpsVsDummyAsync(item.before, { ...common, seconds, n: nSim });
+      const a = await baseline(item, 'sim', () => dpsVsDummyAsync(item.before, { ...common, seconds, n: nSim }));
       const b = await dpsVsDummyAsync(item.after, { ...common, seconds, n: nSim });
       if (a.aborted || b.aborted || signal?.aborted) { aborted = true; break outer; }
       r.sim = compare(a, b);
@@ -291,7 +301,7 @@ export async function runSwapMetrics(items, o = {}, { signal, onProgress } = {})
     if (enemy) {
       const optsFor = (f) => (enemy.oblivion ? { oblivion: { power: f.stats?.totalOblivionPower ?? 0 } } : {});
       const run = (f) => survivalAsync(f, enemy.mobs, { ...common, seconds: survivalSeconds, n: nSurvival, opts: optsFor(f) });
-      const a = await run(item.before);
+      const a = await baseline(item, 'survival', () => run(item.before));
       const b = await run(item.after);
       if (a.aborted || b.aborted || signal?.aborted) { aborted = true; break outer; }
       r.survival = compare(a, b);
@@ -300,7 +310,7 @@ export async function runSwapMetrics(items, o = {}, { signal, onProgress } = {})
     if (opponents.length) {
       r.pvp = [];
       for (const opp of opponents) {
-        const a = await pvpWinRateAsync(item.before, opp.fighter, { ...common, n: nPvp });
+        const a = await baseline(item, `pvp:${opp.id}`, () => pvpWinRateAsync(item.before, opp.fighter, { ...common, n: nPvp }));
         const b = await pvpWinRateAsync(item.after, opp.fighter, { ...common, n: nPvp });
         if (a.aborted || b.aborted || signal?.aborted) { aborted = true; break outer; }
         r.pvp.push({ opponentId: opp.id, name: opp.name ?? opp.id, ...compare(a, b) });

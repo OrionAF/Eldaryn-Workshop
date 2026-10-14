@@ -2,6 +2,7 @@ import { it, expect, beforeEach, vi } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import DropCheckScreen from './DropCheckScreen.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
+import lootBag from '../../lib/__fixtures__/real/drop-batch.json';
 
 const gear = (attack, extra = {}) => ({
   rarity: 'ETERNAL', itemLevel: 200, quality: 80, primaryStats: { attack, hp: 0 },
@@ -167,3 +168,110 @@ it('mentions the sheet when no preset has one, and links to Presets', () => {
   expect(onNavigate).toHaveBeenCalledWith('presets');
   done();
 });
+
+// --- Import drops -------------------------------------------------------------------------------
+
+const paste = (json) => {
+  const box = q('Loot-bag JSON');
+  box.value = typeof json === 'string' ? json : JSON.stringify(json);
+  box.dispatchEvent(new Event('input', { bubbles: true }));
+  flushSync();
+  btn('Check these drops').click();
+  flushSync();
+};
+const rows = () => [...target.querySelectorAll('.batch .item')];
+const waitBatchDone = () =>
+  vi.waitFor(() => expect(target.querySelector('.batch .status').textContent).toContain('Best verdict'), { timeout: 60000, interval: 100 });
+const bagItem = (o = {}) => ({
+  name: 'Test Helm', slot: 'HEAD', rarity: 'MYTHIC', itemLevel: 100, class: 'WARRIOR',
+  primaryStats: { attack: 3000, hp: 20000 }, secondaryStats: [{ type: 'ATTACK_PERCENT', value: 5 }], ...o,
+});
+
+it('import -> ranked list -> clicking an item loads it as the drop', async () => {
+  open();
+  paste(lootBag);
+  expect(rows()).toHaveLength(4);
+  await waitBatchDone();
+  const names = rows().map((r) => r.querySelector('.name').textContent);
+  expect(names.sort()).toEqual(['Abyssal Leggings', 'Celestial Helmet', 'Cosmic Chestplate', 'Dragonforged Shoulderplates']);
+  // best first: ranks 1..4, each with a verdict, a key delta and (simulated) its interval
+  const first = rows()[0];
+  expect(first.querySelector('.rank').textContent).toBe('1');
+  expect(first.dataset.verdict).toMatch(/upgrade|sidegrade|downgrade|mixed/);
+  expect(first.querySelector('[data-metric="sim"]').textContent).toContain('95% CI');
+  expect(first.textContent).toMatch(/ilvl/);
+
+  const helm = rows().find((r) => r.textContent.includes('Celestial Helmet'));
+  helm.click();
+  flushSync();
+  expect(rosterStore.current.drop).toMatchObject({ realm: 'base', slot: 'HEAD' });
+  expect(rosterStore.current.drop.item).toMatchObject({ rarity: 'MYTHIC', itemLevel: 100, primaryStats: { attack: 3696, hp: 17268 } });
+  expect(rosterStore.current.drop.item.secondaryStats.map((x) => x.type)).toEqual(['HEALTH_PERCENT', 'ATTACK_PERCENT']);
+  // the normal single-drop view now shows its breakdown and Apply
+  expect(target.querySelector('[data-set="set1"]')).not.toBeNull();
+  btn('Apply to Set 1').click();
+  flushSync();
+  expect(rosterStore.current.equipment.set1.items.HEAD.primaryStats.attack).toBe(3696);
+  done();
+}, 90000);
+
+it("lists another class's item and a locked Oblivion item as skipped", async () => {
+  open();
+  paste({
+    pendingItems: [bagItem(), bagItem({ name: 'Mage Hat', class: 'MYSTIC' })],
+    oblivionPendingItems: [bagItem({ name: 'Void Belt', slot: 'BELT' })],
+  });
+  expect(rows()).toHaveLength(1);
+  const skipped = target.querySelector('.skipped').textContent;
+  expect(skipped).toContain('Mage Hat');
+  expect(skipped).toContain('another class');
+  expect(skipped).toContain('Void Belt');
+  expect(skipped).toContain('not unlocked');
+  await waitBatchDone();
+  done();
+}, 60000);
+
+it('an unlocked Oblivion batch is judged in the Oblivion realm and loads there', async () => {
+  rosterStore.setOblivionUnlocked(true);
+  open();
+  paste({ pendingItems: [], oblivionPendingItems: [bagItem({ name: 'Void Belt', slot: 'BELT', rarity: 'ETERNAL', itemLevel: 200 })] });
+  expect(rows()).toHaveLength(1);
+  expect(rows()[0].textContent).toContain('Oblivion');
+  await waitBatchDone();
+  rows()[0].click();
+  flushSync();
+  expect(rosterStore.current.drop).toMatchObject({ realm: 'oblivion', slot: 'BELT' });
+  expect(rosterStore.current.drop.item.primaryStats.attack).toBe(3000);
+  expect(target.querySelector('[data-set="oblivion"]')).not.toBeNull();
+  done();
+}, 60000);
+
+it('malformed input shows an error and starts nothing', () => {
+  open();
+  paste('{ not json');
+  expect(target.querySelector('.drop-import [role="alert"]').textContent).toContain('not valid JSON');
+  expect(target.querySelector('.batch')).toBeNull();
+  paste({ hello: 'world' });
+  expect(target.querySelector('.drop-import [role="alert"]').textContent).toContain('pendingItems');
+  done();
+});
+
+it('a bag with nothing usable says so', () => {
+  open();
+  paste({ pendingItems: [bagItem({ class: 'MYSTIC' })] });
+  expect(rows()).toHaveLength(0);
+  expect(target.textContent).toContain('No usable items');
+  expect(target.textContent).toContain('another class');
+  done();
+});
+
+it('Cancel stops the batch and leaves the closed-form ranking', async () => {
+  open();
+  paste(lootBag);
+  expect(target.querySelector('.batch .status').textContent).toContain('Checking');
+  btn('Cancel').click();
+  await vi.waitFor(() => expect(target.querySelector('.batch .status').textContent).toContain('Cancelled'), { timeout: 30000, interval: 50 });
+  expect(rows()).toHaveLength(4);
+  expect(target.querySelector('.batch [data-metric="closed"]')).not.toBeNull();
+  done();
+}, 40000);
