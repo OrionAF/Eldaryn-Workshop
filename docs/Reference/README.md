@@ -11,8 +11,9 @@ citation on every number. This is the source of truth for game facts. Where an
 app document, a code comment or a test disagrees with `Game/`, `Game/` wins
 and the other one is the bug. Start at `Game/README.md`.
 
-**`data-model.md` and `Notes/` — what the app does.** The app's persisted (v2) shape, its scopes
-and normalisation, and the records of its design decisions. Since the 2026-10-14 rebuild the app's
+**`data-model.md`, `simulation.md` and `Notes/` — what the app does.** The app's persisted (v2)
+shape, its scopes and normalisation, how it measures builds (statistics, search, result shape),
+and the records of its design decisions. Since the 2026-10-14 rebuild the app's
 engine is a port of the client, so app code cites `Game/` for every game fact; a Notes file is
 accurate about the app and is never evidence about the game.
 
