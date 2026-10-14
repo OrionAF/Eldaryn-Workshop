@@ -41,6 +41,7 @@ export function overlaySheet(computed, values) {
  *   source: 'sheet'|'computed',
  *   ctx: {playerClass: string, formConfig: Object|null, activeSpec: string|null},
  *   preset: Object, spec: string|null, realm: string, formKind: 'BEAR'|'WOLF'|null,
+ *   ancientDropped: boolean, warnings: string[],
  * }}
  */
 export function computePresetStats(character, presetId, { realm = 'base' } = {}) {
@@ -60,5 +61,7 @@ export function computePresetStats(character, presetId, { realm = 'base' } = {})
     spec: inputs.spec,
     realm,
     formKind: inputs.formKind,
+    ancientDropped: inputs.ancientDropped,
+    warnings: inputs.warnings,
   };
 }

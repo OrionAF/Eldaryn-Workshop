@@ -2,12 +2,13 @@
 import { talentSpec, talentById } from '../game/talents.js';
 import { normaliseCharacter } from '../model/index.js';
 import { sanitiseAllocation, emptyTalentSet } from '../model/talents.js';
+import { talentPointsForLevel } from '../model/legality.js';
 
 const validIndex = (i) => i === 0 || i === 1;
 
-/** Would this allocation survive normalisation unchanged (tier gating, ranks, cap)? */
-function isValid(allocation, specKey) {
-  const clean = sanitiseAllocation(allocation, specKey);
+/** Would this allocation survive normalisation unchanged (tier gating, ranks, the level's point cap)? */
+function isValid(allocation, specKey, cap) {
+  const clean = sanitiseAllocation(allocation, specKey, cap);
   const keys = Object.keys(allocation);
   return keys.length === Object.keys(clean).length && keys.every((k) => clean[k] === allocation[k]);
 }
@@ -46,7 +47,7 @@ export function createTalentsStore(ctx) {
     const allocation = { ...set.allocation };
     if (next > 0) allocation[talentId] = next;
     else delete allocation[talentId];
-    if (!isValid(allocation, set.spec)) return false;
+    if (!isValid(allocation, set.spec, talentPointsForLevel(ctx.current().level))) return false;
     ctx.edit((c) => {
       c.talentSets[index].allocation = allocation;
     });

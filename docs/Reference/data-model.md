@@ -51,9 +51,9 @@ Character = {
   mounts: [{ id, species, rarity, baseHp, baseAtk, level: 1..5,
              glyphs: {minor: [id|null ×3], major: [id|null ×2], mythic: [id|null ×1]} }],
   glyphs: [{ id, glyphType, rarity, sealed, secondary: {stat, quality} | null }],
-  sigils: { altarTier: 1..8, owned: Record<species, {level: 1..30}> },
-  relics: Record<relicId, level>,
-  awakening: { path: 'SHADOW'|'RADIANT'|null, level: 0..15 },
+  sigils: { altarTier: 1..8, owned: Record<species, {level: 1..30, condition?: conditionId}> },
+  relics: Record<relicId, level>,  extraRelicSlots: 0..2,          // slots bought beyond the base 2
+  awakening: { path: 'SHADOW'|'RADIANT'|null, level: 0..15 },       // capped by the player level
   transcendence: { presets: [{id, name, allocatedNodeIds: string[]}],   // max 4; 'default' always exists
                    activePresetId },
   oblivion: { unlocked, level: 0..100, activeRealm: 'base'|'oblivion', sheet: Sheet | null },
@@ -65,9 +65,8 @@ Character = {
 }
 
 Preset = { id, name, equipmentSet: 1|2, talentSet: 0|1, petId | null, mountId | null,
-           relicIds: string[] (≤4), sigilSpecies: string[] (≤3),
+           relicIds: string[] (≤ relic slot cap), sigilSpecies: string[] (≤3),
            utilitySigilSpecies | null, ancientSigilSpecies | null,
-           sigilConditions: Record<species, conditionId>,
            transcendencePresetId | null, sheet: Sheet | null }
 
 Sheet  = { values: Partial<ComputedStats>, enteredAt }          // tier-2 input, §5
@@ -88,6 +87,28 @@ search time. Dominion is derived (`totalDominion` from talents + transcendence +
   `Game/mounts-glyphs.md` §8; only the v1 migration still makes clones `<id>~<n>`). A major
   glyph is inert unless its sigil is equipped and the mount is the preset's
   `mountId`. A sealed glyph cannot be socketed.
+- **Progression gates (M1, `model/legality.js`).** Normalisation enforces what the level allows:
+  talent points `talentPointsForLevel` (1 per level from 15, 29 at 43; over-cap allocations lose their
+  highest tiers first), Awakening points `max(0, min(level, 59) - 44)`, relic slots `0` below level 22 else
+  `2 + extraRelicSlots`, generic sigil slots `maxSigilSlots`. Lowering the level re-normalises (the UI shows
+  `previewLevelChange` first). Equipped relics must be owned (level > 0). Set 2 (level 28), Dual Talents (38),
+  Mounts (40) and Transcendence (55) are *reported* by `checkPreset`, not repaired. A level that is `''`,
+  `null`, a boolean or an array is the max level (like `undefined`), never 1.
+- **`extraRelicSlots`** (0..2) is `extraSlotsPurchased` of the game's relic state; an absent value is 2, so
+  saves from before the field keep their four slots. It sits beside `relics` because `relics` is a plain
+  id-to-level record.
+- **Form sigils stay at level 1** (`clampSigilLevel`; L1328698, L1066539). Ancients too.
+- **Sigil conditions are character-wide**: `sigils.owned[species].condition`, absent for `ON_COOLDOWN`, one
+  value for every preset that equips the sigil. Saves that kept them per preset
+  (`preset.sigilConditions`) are lifted on load: the active preset's value wins, else the first non-default;
+  a disagreement is reported through `normaliseCharacter(raw, { report })` as
+  `{kind: 'conditionConflict', species, kept, dropped}`. The condition applies only from level 54.
+  `setPresetSigilCondition` is a deprecated alias of `setSigilCondition` (removed with the old screens).
+- **An Ancient sigil follows the board** (Q3, strict): the stored choice is kept, but `buildFighter` and the
+  stat pipeline ignore it, with a warning in `computePresetStats().warnings`, unless the transcendence
+  preset the build resolves to allocates the species' `transcendenceNode` (`ancientActive`). The altar can
+  only be evolved to tier 3 (`EVOLVE_TIER_CAP`); a recorded tier above that is allowed (data entry) and
+  `checkPreset` warns.
 - **`sigils.altarTier`** (1..8) replaces v1's `sigilForgeTier`; it tiers every
   sigil. Effect magnitudes come from the sigil level and altar tier through
   `engine/sources/sigilScale.js`; no damage numbers are stored.
@@ -111,8 +132,8 @@ This split is deliberate and load-bearing; don't move a field across it casually
 
 | Scope | Meaning | Members |
 |---|---|---|
-| **Character-wide** | One value shared by every preset | level, base residual, skills, fortress, both equipment sets and the Oblivion set, both stone pools, talent sets, the pet collection and altar, mounts, glyph inventory, sigil ownership and altar tier, relic levels, awakening, transcendence presets, Oblivion state, opponents, runs |
-| **Per-preset** | The preset chooses | equipment set (1/2), talent set (0/1), pet, mount, relics, generic/utility/Ancient sigils and their conditions, transcendence preset, and the user sheet |
+| **Character-wide** | One value shared by every preset | level, base residual, skills, fortress, both equipment sets and the Oblivion set, both stone pools, talent sets, the pet collection and altar, mounts, glyph inventory, sigil ownership, activation conditions and altar tier, relic levels and purchased relic slots, awakening, transcendence presets, Oblivion state, opponents, runs |
+| **Per-preset** | The preset chooses | equipment set (1/2), talent set (0/1), pet, mount, relics, generic/utility/Ancient sigils, transcendence preset, and the user sheet |
 | **Per-mount** | Neither of the above | glyph sockets (`mount.glyphs`), reached per preset via `preset.mountId` |
 
 The Oblivion realm has one loadout (`equipment.oblivion` + `oblivionEnchantStones`);
@@ -120,8 +141,8 @@ the rest of the active preset carries over (`Game/pve-content.md` §9).
 
 **Constraints the code enforces:** two-preset minimum (`MIN_PRESETS`; the store's
 `deletePreset` refuses at the minimum, so never write a loop that deletes "down to one
-preset"), maximum 8; relic cap 4 and generic sigil cap 3 (`PRESET_RELIC_CAP`,
-`PRESET_SIGIL_CAP` in `model/presets.js`); at most 4 transcendence presets with
+preset"), maximum 8; relic cap 4 at most (`PRESET_RELIC_CAP`; the real cap is `relicSlotCap(level, extraRelicSlots)`) and generic
+sigil cap 3 (`PRESET_SIGIL_CAP` in `model/presets.js`); at most 4 transcendence presets with
 `default` always present.
 
 ---
@@ -233,10 +254,10 @@ stored or committed; only the mapped fields below survive, and `normaliseCharact
 | `enchantStones` | `enchantStones` | `OBLIVION_POWER` rows dropped (derived) |
 | `talentState` / `talentState2`, preset `talentSet` 1\|2 | `talentSets[0\|1]`, `talentSet` 0\|1 | |
 | `presets[]` | `presets` (max 8) | none: one preset from the live loadout (active sets, equipped pet/mount/relics/sigils) |
-| `sigilState.ownedSigils`, `altarTier` | `sigils` | per-sigil `activationCondition` becomes `sigilConditions` of each preset using it; an Ancient in `sigilSpecies` moves to `ancientSigilSpecies` |
+| `sigilState.ownedSigils`, `altarTier` | `sigils` | per-sigil `activationCondition` becomes `owned[species].condition`; an Ancient in `sigilSpecies` moves to `ancientSigilSpecies` |
 | `petState` | `pets` | Attack Speed / Crit Damage / Minion Attack Speed secondaries x100 (pets keep percent points); altar level from `totalXp` + `tier` (Game/pets.md §6) |
 | `mountState`, `player.glyphs` | `mounts`, `glyphs` | species upper-cased; glyph rarity Title case; glyph secondary stat enum becomes the pool key |
-| `relicState.ownedRelics`, `awakeningState`, `transcendencePresets` | `relics`, `awakening`, `transcendence` | `activeTranscendencePresetId` kept |
+| `relicState.ownedRelics`, `extraSlotsPurchased`, `awakeningState`, `transcendencePresets` | `relics`, `extraRelicSlots`, `awakening`, `transcendence` | `activeTranscendencePresetId` kept |
 | `skills.<id>Level` | `skills.<id>` | `excludedDropStats` becomes `attunementBans` |
 | `fortressBuffs.ownedFortressIds` | `fortress.owned` | null means none |
 | `computedStats` | the active preset's `sheet` | the Oblivion sheet when the rift is the active realm; only finite `total*`/`raw*` numbers |

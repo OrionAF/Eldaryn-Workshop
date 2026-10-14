@@ -145,6 +145,7 @@ describe('presets', () => {
 
   it('duplicatePreset copies with a fresh id right after the source', () => {
     const [a] = store.current.presets.map((p) => p.id);
+    for (const id of WR) store.setRelicLevel(id, 1); // a preset can only equip owned relics
     store.setPresetRelics(a, WR.slice(0, 2));
     const copy = store.duplicatePreset(a);
     expect(copy).not.toBe(a);
@@ -155,13 +156,14 @@ describe('presets', () => {
     const a = store.current.presets[0].id;
     store.setPresetEquipmentSet(a, 2);
     store.setPresetTalentSet(a, 1);
+    for (const id of WR) store.setRelicLevel(id, 1);
     store.setPresetRelics(a, [WR[0], WR[1], WR[1], WR[2], WR[3], WR[4]]);
     // Sigil picks are legality-checked by model/sigils.js (B5): owned, class-legal, slot-unlocked.
     for (const sp of ['DEFENSE_STANCE', 'BERSERK_STANCE', 'CATACLYSM', 'IRON_BASTION']) store.setSigilLevel(sp, 3);
     store.setSigilOwned('FLAMEBORN', true);
     store.setPresetSigils(a, { species: ['DEFENSE_STANCE', 'BERSERK_STANCE', 'CATACLYSM', 'IRON_BASTION'], utility: 'u', ancient: 'FLAMEBORN' });
     store.setPresetSigilCondition(a, 'CATACLYSM', 'ENEMY_HP_BELOW_40');
-    store.setPresetSigilCondition(a, 'IRON_BASTION', 'MY_HP_BELOW_40'); // 4th pick is capped away, so its condition goes too
+    store.setPresetSigilCondition(a, 'IRON_BASTION', 'MY_HP_BELOW_40');
     store.setPresetSigilCondition(a, 'DEFENSE_STANCE', 'MY_HP_BELOW_40'); // auras take no condition
     const p = store.current.presets[0];
     expect(p).toMatchObject({
@@ -172,7 +174,11 @@ describe('presets', () => {
       utilitySigilSpecies: null, // a Warrior has no utility slot
       ancientSigilSpecies: 'FLAMEBORN',
     });
-    expect(p.sigilConditions).toEqual({ CATACLYSM: 'ENEMY_HP_BELOW_40' });
+    // conditions are character-wide (M1): one value on each owned sigil, whichever preset set it
+    const owned = store.current.sigils.owned;
+    expect(owned.CATACLYSM.condition).toBe('ENEMY_HP_BELOW_40');
+    expect(owned.IRON_BASTION.condition).toBe('MY_HP_BELOW_40');
+    expect(owned.DEFENSE_STANCE.condition).toBeUndefined(); // auras take no condition
     store.setPresetEquipmentSet(a, 9);
     expect(store.current.presets[0].equipmentSet).toBe(1);
   });
@@ -200,6 +206,7 @@ describe('presets', () => {
     const a = store.current.presets[0].id;
     store.renamePreset(a, 'Persisted');
     expect(saved().characters[0].presets[0].name).toBe('Persisted');
+    store.setRelicLevel(WR[0], 1);
     store.setPresetRelics(a, [WR[0]]);
     expect(saved().characters[0].presets[0].relicIds).toEqual([WR[0]]);
   });

@@ -118,10 +118,14 @@ export function newCharacter(name = 'New Character', cls = null) {
   return c;
 }
 
-/** Any object -> a valid v2 Character (fresh object; never trusts `raw`'s shape). */
-export function normaliseCharacter(raw) {
+/**
+ * Any object -> a valid v2 Character (fresh object; never trusts `raw`'s shape).
+ * `opts.report` (array) collects what normalisation merged or dropped on purpose, e.g.
+ * `{kind: 'conditionConflict', species, kept, dropped}` (M1); the import dialog shows it.
+ */
+export function normaliseCharacter(raw, { report } = {}) {
   const c = normaliseCore(raw);
-  const ctx = { class: c.class, spec: null };
+  const ctx = { class: c.class, level: c.level, spec: null, report };
   const talentsFirst = DOMAINS[0];
   Object.assign(c, talentsFirst.normalise(raw, ctx));
   ctx.spec = c.talentSets?.[activeTalentSetIndex(raw)]?.spec ?? null;

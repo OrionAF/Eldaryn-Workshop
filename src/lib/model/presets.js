@@ -6,7 +6,7 @@ import { newId, normaliseSheet } from './character.js';
 
 export const MIN_PRESETS = 2;
 export const MAX_PRESETS = 8;
-export const PRESET_RELIC_CAP = 4; // 2 base + 2 extra (B6a)
+export const PRESET_RELIC_CAP = 4; // 2 base + 2 extra; the character's real cap is legality.relicSlotCap
 export const PRESET_SIGIL_CAP = 3; // generic sigils; utility + Ancient are separate fields
 
 export function newPreset(name = 'Preset', { equipmentSet = 1, talentSet = 0 } = {}) {
@@ -21,7 +21,6 @@ export function newPreset(name = 'Preset', { equipmentSet = 1, talentSet = 0 } =
     sigilSpecies: [],
     utilitySigilSpecies: null,
     ancientSigilSpecies: null,
-    sigilConditions: {},
     transcendencePresetId: null,
     sheet: null,
   };
@@ -48,11 +47,6 @@ function normalisePreset(raw, index) {
   base.sigilSpecies = strList(r.sigilSpecies, PRESET_SIGIL_CAP);
   base.utilitySigilSpecies = str(r.utilitySigilSpecies);
   base.ancientSigilSpecies = str(r.ancientSigilSpecies);
-  const conds = {};
-  if (r.sigilConditions && typeof r.sigilConditions === 'object') {
-    for (const [sp, cond] of Object.entries(r.sigilConditions)) if (typeof cond === 'string' && cond) conds[sp] = cond;
-  }
-  base.sigilConditions = conds;
   base.transcendencePresetId = str(r.transcendencePresetId);
   base.sheet = normaliseSheet(r.sheet);
   return base;
@@ -96,8 +90,7 @@ export function reconcilePresets(character) {
     if (p.petId && !petIds.has(p.petId)) p.petId = null;
     if (p.mountId && !mountIds.has(p.mountId)) p.mountId = null;
     if (p.transcendencePresetId && !trIds.has(p.transcendencePresetId)) p.transcendencePresetId = null;
-    const used = new Set([...p.sigilSpecies, p.utilitySigilSpecies, p.ancientSigilSpecies].filter(Boolean));
-    for (const sp of Object.keys(p.sigilConditions)) if (!used.has(sp)) delete p.sigilConditions[sp];
+    delete p.sigilConditions; // lifted to sigils.owned[sp].condition by normaliseSigils (M1)
   }
   return character;
 }

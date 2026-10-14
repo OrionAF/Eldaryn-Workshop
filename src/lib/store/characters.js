@@ -1,6 +1,7 @@
 // store/characters.js (M1): roster-level and character-core mutators. Every mutator ends with persist().
 import { newCharacter, normaliseCharacter } from '../model/index.js';
 import { normaliseClass, normaliseLevel, normaliseBaseResidual } from '../model/character.js';
+import { previewLevelChange as previewLevel } from '../model/legality.js';
 import { importJson, downloadRoster } from '../storage.js';
 
 export function createCharactersStore(ctx) {
@@ -58,10 +59,25 @@ export function createCharactersStore(ctx) {
     ctx.persist();
   }
 
+  /** What setCharacterLevel(level) would drop (talent points, sigils, relics, awakening points), without changing anything. */
+  function previewLevelChange(level) {
+    const c = ctx.current();
+    return c ? previewLevel(c, normaliseLevel(level), normaliseCharacter) : null;
+  }
+
+  /**
+   * Set the level and re-normalise the character under it: over-cap talent points, awakening points,
+   * sigil slots and relic slots are dropped (the UI confirms with previewLevelChange first).
+   */
   function setCharacterLevel(level) {
-    ctx.edit((c) => {
-      c.level = normaliseLevel(level);
-    });
+    const c = ctx.current();
+    if (!c) return;
+    const roster = ctx.roster();
+    const idx = roster.characters.findIndex((ch) => ch.id === c.id);
+    const snapshot = JSON.parse(JSON.stringify(c));
+    snapshot.level = normaliseLevel(level);
+    roster.characters[idx] = normaliseCharacter(snapshot);
+    ctx.persist();
   }
 
   /** Merge a partial {attack,hp,attackSpeed,critChance,critDamage} into the tier-1 base (plan §4). */
@@ -101,6 +117,7 @@ export function createCharactersStore(ctx) {
     deleteCharacter,
     selectCharacter,
     setCharacterClass,
+    previewLevelChange,
     setCharacterLevel,
     setBaseResidual,
     setOblivionUnlocked,

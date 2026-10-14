@@ -25,9 +25,8 @@ function applyAllocation(store, setIndex, allocation) {
  * @param {object} store rosterStore
  * @param {string} presetId
  * @param {object} candidate search candidate (plain JSON)
- * @param {object} preset the preset as it is now (to clear stale sigil conditions)
  */
-export function applyCandidate(store, presetId, candidate, preset) {
+export function applyCandidate(store, presetId, candidate) {
   const c = candidate;
   store.setPresetEquipmentSet(presetId, c.equipmentSet);
   store.setPresetTalentSet(presetId, c.talentSet);
@@ -46,9 +45,8 @@ export function applyCandidate(store, presetId, candidate, preset) {
   }
   store.setPresetRelics(presetId, c.relicIds);
   store.setPresetSigils(presetId, { species: c.sigilSpecies, utility: c.utilitySigilSpecies, ancient: c.ancientSigilSpecies });
-  for (const sp of Object.keys(preset?.sigilConditions ?? {})) {
-    if (!(sp in c.sigilConditions)) store.setPresetSigilCondition(presetId, sp, null);
-  }
-  for (const [sp, cond] of Object.entries(c.sigilConditions ?? {})) store.setPresetSigilCondition(presetId, sp, cond);
+  // Conditions are character-wide (M1): write the candidate's value for each equipped sigil, null clears.
+  const equipped = [...c.sigilSpecies, c.utilitySigilSpecies, c.ancientSigilSpecies].filter(Boolean);
+  for (const sp of equipped) store.setSigilCondition(sp, c.sigilConditions?.[sp] ?? null);
   store.setPresetTranscendence(presetId, c.transcendencePresetId);
 }
