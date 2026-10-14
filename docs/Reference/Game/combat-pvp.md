@@ -153,12 +153,16 @@ floor(maxHp * (1 + pct/100))` `L1085767-1085789`; `rawMaxHp` is unchanged.
 ```
 t = 0 ; horizon = FIGHT_DURATION_MS (60000) + openingSummonWindowMs   // window = 0 unless a Necromancer minion exists
 swingTimerA = swingTimerD = 0                                         // L1455933-1455936 (no minions)
+// with a minion on either side: summon rows at t 0, then t = window and the swing timers start at
+// openingSwingTimerStart(round(1000/speed), window, 0) = min(0, interval - 400)   // L1455938-1456044
 while a.hp > 0 and d.hp > 0 and t < horizon:
     t += 10                                                           // TICK_INTERVAL_MS
     (minion respawn timers)                                           // L1456105-1456165
     swingTimerA += 10 ; swingTimerD += 10
     paralyzedMs, silencedMs, fearedMs  -= 10 (floor 0) on both        // L1456166-1456265
     cast attacker spells, then defender spells   (processArenaSpells) // L1456306-1456420
+        (caster heal cap = buffed max HP incl. the caster's Bulwark hpPercent, L1456266-1456320)
+    clamp each hp to its buffed max (maxHp + buff + Bulwark hpPercent)  // L1456416-1456486
     tick attacker-held debuffs on defender and vice versa (DoTs)      // L1456488-1456788
     if a.hp <= 0 or d.hp <= 0: end fight                              // L1456790-1456796 (no swings this tick)
     apply timed buffs; compute regen with debuff reductions           // L1456797-1456888
@@ -167,6 +171,8 @@ while a.hp > 0 and d.hp > 0 and t < horizon:
         -> processAttack(A, D); then A's minion strikes
     D swings likewise (AFTER A, same tick)                            // L1457111-1457121
         -> processAttack(D, A); then D's minion strikes
+    end of tick: stack.tick(dt) on both stack bundles (Sunder decay), then stamp the Bulwark /
+        Sunder stack counts onto the tick's rows                      // L1457231-1457309
     if a.hp <= 0 or d.hp <= 0: end fight                              // L1457269-1457275
 ```
 Consequences (**[DERIVED]** from the above):
@@ -182,7 +188,16 @@ Consequences (**[DERIVED]** from the above):
   The timer carries its remainder (`timer -= interval`), so the average rate
   is exact; at most **one swing per fighter per tick**.
 - **First swing happens when the timer first reaches one interval** (no minions:
-  timers start at 0, e.g. 2.0 swings/s -> t = 500 ms), not on tick 1.
+  timers start at 0, e.g. 2.0 swings/s -> t = 500 ms), not on tick 1. With a minion on
+  either side the clock (`elapsed`) starts at the opening window instead of 0, so row
+  timestamps run from `window + 10`; the swing timers start at `min(0, interval - 400)`
+  (`OPENING_FIRST_SWING_MIN_MS` 400, `openingSwingTimerStart` `L1094755-1094786`; the
+  summoner's minion timer uses its own value as fallback) `L1455933-1456044`. **[CODE]**.
+- **DoT ticks:** the victim's PVP Defense is applied once to the tick's total
+  (`max(1, round(total*(1-f)))`), then the shield absorbs it and the rest hits HP; each logged
+  `debuff_tick` row is reduced separately by the same formula. Every non-tick debuff event
+  (expiry) is logged as `<caster>_spell_debuff_expired` (`L1456487-1456788`; type strings
+  `spell_debuff_tick` / `spell_debuff_expired`). **[CODE]**.
 - The last processed tick is `t = 60000` (loop continues while the new `t <
   horizon` before processing; `L1457307`).
 
@@ -242,7 +257,9 @@ Event labels **[CODE]**: `X_paralyze`, `X_fear`, `X_blind`, `X_hit`, `X_crit` ar
 swinger's side (`attacker_*` when the arena attacker swings). Avoided swings (`defender_block` /
 `defender_miss` for an attacker swing), minion events (`*_minion_damaged`, `*_minion_dead`) and
 proc events (`*_blinded`, `*_paralyzed`, `*_silenced`, `*_feared`, `*_staggered`) are labelled by
-the TARGET's side. Payload extras: `isCrit` / `doubleHit` on minion hits, `fearMs`,
+the TARGET's side. The exception is the minion's own strike: `attacker_minion_hit` /
+`attacker_minion_crit` (and `defender_*`) name the minion's OWNER, i.e. the striker, from the
+`side` argument of `minionStrike` (`L1455644-1455654`). **[CODE]**. Payload extras: `isCrit` / `doubleHit` on minion hits, `fearMs`,
 `staggerStacks`, `paralyzeMs` 2000 on the stagger-stun event, `minionRespawnMs` on minion death.
 Step 4 detail: the whole swing goes to the minion with no avoid roll, DR, PVP or on-hit procs;
 only the crit and double-hit draws are spent, the double-hit strike is skipped if the first
@@ -384,8 +401,9 @@ facts:
   logged hits need not sum to the HP lost. Minion intercept: for each `spell_damage` event > 0
   while the target minion lives, `targetHpDelta += ` the full value even when the minion dies with
   HP to spare (overkill absorbed); DoT ticks are never intercepted (`L1454054-1454112`). The caster
-  HP clamp adds a resolver-supplied `hpPercent` bonus (Chrono Flux, `L1456262-1456289`) to the
-  tick's buff `hpPercent`; when the sum is <= 0, hp is clamped to maxHp even without a heal
+  HP clamp adds a resolver-supplied `hpPercent` bonus to the tick's buff `hpPercent`. That bonus is
+  the caster's stack bundle `selfModifiers().hpPercent` (Bulwark), counted only when stacks are
+  active and the bundle is `active` (`L1456262-1456320`), not a Chrono Flux value; when the sum is <= 0, hp is clamped to maxHp even without a heal
   (`L1454006-1454052`).
 - Withering Touch (Warrior epic): cooldown 15000 ms, WOUND 8000 ms, regen
   reduction 60 % (max 85 %) `L1069150-1069167`; Hemorrhage BLEED `L1069168-1069185`.
@@ -483,11 +501,31 @@ replay) are `{attacker|defender}_{hit,crit,miss,block,blind,blinded,paralyze,
 paralyzed,fear,feared,silenced,staggered,regen,thorns_reflect,
 minion_summoned,minion_hit,minion_crit,minion_damaged,minion_dead,minion_heal,
 spell_*,debuff_*}`, plus `attacker_dead`, `defender_dead`, `time_up`. Every event
-has `timestamp` (ms), `damage`, `attackerHpAfter`, `defenderHpAfter` (clamped
->= 0; these are the swinger's and the target's HP, so when the defender swings `attackerHpAfter` holds the defender's HP, `L1453059`), optional `isCrit`, `doubleHit`, `spell`, `debuffStacks`,
+has `timestamp` (ms), `damage`, `attackerHpAfter`, `defenderHpAfter`, optional `isCrit`, `doubleHit`, `spell`, `debuffStacks`,
 `attackerShieldHpAfter`, `defenderShieldHpAfter`, minion HP snapshots
 (`L1455280-1455346`, `L1452937-1453095`). A blind-wasted swing logs `damage 0`
 (strtab L92975 "logs blinded hits as a \"0\"").
+
+**HP fields (what the client does).** **[CODE]**
+- `processAttack` itself stamps `attackerHpAfter = max(0, swinger.hp)` and
+  `defenderHpAfter = max(0, target.hp)` (`L1453030-1453070`, the row built at `L1453059`), so from
+  inside the function they are the swinger's and target's HP. The tick resolver then re-stamps
+  every row a swing returned (after both fighters' state is copied back): `attackerHpAfter =
+  max(0, arenaAttacker.hp)`, `defenderHpAfter = max(0, arenaDefender.hp)`, read AFTER the whole
+  swing (`L1457053-1457075` for the attacker's swing, `L1457174-1457204` for the defender's).
+  In the log the fields therefore always mean the ARENA attacker's and defender's HP, never the
+  swinger's/target's, and a swing's rows all carry the post-swing values.
+- Clamp to >= 0 holds on swing rows, spell and DoT rows (`L1456578-1456620`), minion-strike rows
+  (`L1455658-1455680`) and the normal death row (`L1457326-1457355`). It does NOT hold on: regen
+  rows (`L1456947-1456962`), opening `*_minion_summoned` rows
+  (`L1455946-1455990`, taken at t 0 so never negative in practice), the `time_up` row and the
+  timeout dead row (`L1457464-1457520`, both HP values are first clamped to max, not to 0).
+- When both fighters are <= 0 after the swings, the dead row is a literal
+  `{attackerHpAfter: 0, defenderHpAfter: 0, damage: 0}` (`L1457357-1457374`);
+  type `defender_dead` if attacker HP > defender HP, else `attacker_dead`.
+- `isCrit` is NOT set on `X_hit` / `X_crit` swing rows (the type distinguishes them; the
+  `doubleHit` flag is, on the second strike, `L1453140`). It is set (only when true) on
+  `*_minion_damaged` rows, via a conditional spread (`L1453593-1453596`, `L1453684-1453710`).
 
 **[DERIVED]** The server model therefore is: a full RNG-driven two-sided
 simulation at 10 ms resolution, producing the log and the final
@@ -495,6 +533,10 @@ simulation at 10 ms resolution, producing the log and the final
 looked up server-side from the stored profile (`opponentClass`,
 `opponentSpec`, `opponentForm`, `opponentSkin`, `opponentPetSpecies` arrive with
 the response `L1610170-1610230`).
+That the server's tick log equals the bundled simulator's output is an **[INFERENCE]**, not
+checked against a real export. `src/lib/engine/pvp/replayCheck.js` makes it testable once one
+exists; if the server differs, the first mismatches to expect are the swing-time and hit-size
+rules.
 
 ---
 
