@@ -114,8 +114,8 @@ What still bites in the code:
 
 - **Mounts have a `level` 1-5** (replaces the v1 `star`); a mount in `character.mounts` is owned.
   There is no `owned` flag and no level 0.
-- **Glyphs are socketed per mount** (`mount.glyphs`: minor 3 / major 2 / mythic 1); an inventory
-  glyph instance fits one socket and sealed glyphs cannot be socketed. A major glyph is inert
+- **Glyphs are socketed per mount** (`mount.glyphs`: minor 3 / major 2 / mythic 1); the same inventory
+  glyph instance may sit on several mounts (once per mount; server evidence in `Game/mounts-glyphs.md` §8) and sealed glyphs cannot be socketed. A major glyph is inert
   unless its sigil is equipped AND the mount is the preset's `mountId` (the game agrees).
 - **Sigils**: one character-wide `sigils.altarTier` (1-8, the game's Sigil Altar tier) tiers all of
   them; `sigils.owned` stores only `{level}` per species. Effect numbers come from the engine

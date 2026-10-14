@@ -4,7 +4,8 @@
    *
    * Lists the inventory glyphs of the socket's tier. Sealed glyphs are shown but disabled (they must be unlocked in
    * the inventory first; Game/mounts-glyphs.md §8). Majors the class/specs cannot use are not offered at all. A glyph
-   * already socketed elsewhere can be picked; it moves here (a glyph instance fits one socket).
+   * already socketed on another mount can still be picked (the same instance may sit on several mounts); the
+   * list notes where else it is.
    */
   import { glyphTypeInfo, majorGlyphAllowed } from '../../lib/model/glyphs.js';
   import { glyphImage } from '../../lib/assets/glyphs.js';
@@ -48,7 +49,7 @@
               <span class="option-text">
                 <span class="option-rarity">{glyph.rarity}</span>
                 <span class="option-label">{glyphText(glyph)}</span>
-                {#if glyph.sealed}<span class="note">Unlock it in the inventory first</span>{:else if where && glyph.id !== current}<span class="note">Moves from {where}</span>{/if}
+                {#if glyph.sealed}<span class="note">Unlock it in the inventory first</span>{:else if where && glyph.id !== current}<span class="note">Also on {where}</span>{/if}
               </span>
             </button>
           </li>

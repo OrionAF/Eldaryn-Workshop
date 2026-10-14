@@ -36,7 +36,7 @@ describe('mounts store', () => {
     expect(cur().presets.find((p) => p.id === pid).mountId).toBeNull();
   });
 
-  it('sockets: right tier, unsealed, class-gated majors; a glyph moves instead of duplicating', () => {
+  it('sockets: right tier, unsealed, class-gated majors; a glyph may sit on several mounts', () => {
     const m1 = rosterStore.addMount({ species: 'NIGHT_WOLF' });
     const m2 = rosterStore.addMount({ species: 'FROSTFANG_WOLF' });
     const minor = rosterStore.addGlyph({ glyphType: 'g-swift', rarity: 'Common' });
@@ -50,10 +50,14 @@ describe('mounts store', () => {
     expect(rosterStore.setMountSocket(m1, 'minor', 3, minor).ok).toBe(false); // no 4th minor socket
     expect(rosterStore.setMountSocket(m1, 'major', 1, major).ok).toBe(true);
 
-    // moving: the minor leaves m1 when socketed on m2
+    // shared: the minor stays on m1 when socketed on m2 as well
     expect(rosterStore.setMountSocket(m2, 'minor', 2, minor).ok).toBe(true);
-    expect(cur().mounts[0].glyphs.minor).toEqual([null, null, null]);
+    expect(cur().mounts[0].glyphs.minor).toEqual([minor, null, null]);
     expect(cur().mounts[1].glyphs.minor).toEqual([null, null, minor]);
+    // within one mount it moves to the new socket
+    expect(rosterStore.setMountSocket(m2, 'minor', 0, minor).ok).toBe(true);
+    expect(cur().mounts[1].glyphs.minor).toEqual([minor, null, null]);
+    expect(rosterStore.setMountSocket(m2, 'minor', 2, minor).ok).toBe(true);
 
     expect(rosterStore.setMountSocket(m2, 'minor', 2, null)).toEqual({ ok: true });
     expect(cur().mounts[1].glyphs.minor).toEqual([null, null, null]);

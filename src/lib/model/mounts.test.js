@@ -99,13 +99,15 @@ describe('sockets reconcile (through normaliseCharacter)', () => {
     expect(sentinel.mounts[0].glyphs.major).toEqual([null, null]);
   });
 
-  it('a glyph instance sits in one socket across mounts (first wins)', () => {
+  it('a glyph instance may sit on several mounts, but only once per mount', () => {
     const base = newCharacter('T', 'WARRIOR');
     const glyph = { id: 'g0', glyphType: 'g-swift', rarity: 'Common', sealed: false, secondary: null };
     const mk = (id) => ({ id, species: 'NIGHT_WOLF', baseHp: 6, baseAtk: 6, level: 1, glyphs: { minor: ['g0'], major: [], mythic: [] } });
     const c = normaliseCharacter({ ...base, glyphs: [glyph], mounts: [mk('a'), mk('b')] });
     expect(c.mounts[0].glyphs.minor[0]).toBe('g0');
-    expect(c.mounts[1].glyphs.minor[0]).toBe(null);
+    expect(c.mounts[1].glyphs.minor[0]).toBe('g0');
+    const twice = normaliseCharacter({ ...base, glyphs: [glyph], mounts: [{ ...mk('a'), glyphs: { minor: ['g0', 'g0', null], major: [], mythic: [] } }] });
+    expect(twice.mounts[0].glyphs.minor).toEqual(['g0', null, null]);
   });
 
   it('majors with a requiredSpec need a talent set using that spec (inventory keeps them)', () => {

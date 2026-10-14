@@ -46,9 +46,9 @@ For a gear optimiser the class contributes four things:
 
 ## §2 Base stats and per-level growth
 
-- Client-side initial `baseStats` of the player slice: `attack 10, hp 100, attackSpeed 1 (BASE_ATTACK_SPEED), critChance 0, critDamage 1.5 (BASE_CRIT_DAMAGE)`. Same for every class. [CODE] L664445-664458, L670527
+- Client-side initial `baseStats` of the player slice: `attack 10, hp 100, attackSpeed 1 (BASE_ATTACK_SPEED), critChance 0, critDamage 1.5 (BASE_CRIT_DAMAGE)`. Same for every class. [CODE] L664445-664458, L670527. Using them unchanged reproduced a real server sheet exactly (Warrior L72, `profile-warrior-l72.json`, 35 keys): confirmed on one sample; other classes unchecked.
 - The same defaults seed `computedStats` (`totalAttack 10, totalHp 100, totalAttackSpeed 1, totalCritChance 0, totalCritDamage 1.5`). [CODE] L1137820-1137835
-- These are placeholders before the server responds. Real values come from server responses (`stats` field copied into `computedStats`, e.g. L670751, L1066392). [CODE]
+- These are placeholders before the server responds, but the same constants are what the server's sheet is built on (confirmed on one real Warrior L72 sample, see stats.md §1). Real values come from server responses (`stats` field copied into `computedStats`, e.g. L670751, L1066392). [CODE]
 - Per-class base stats, per-level growth, and the level-up stat formula: **[SERVER]**. The client contains no class-keyed base-stat table and no `perLevel` growth table (searched for `baseHp`, `baseAttack`, `perLevel`, `growth`, `statsForLevel`, `BASE_*` usage). The `LEVEL_UP` event (L665887) is only an event name.
 - Consequence for the optimiser: class/level base stats must be measured from the in-game Character screen; they cannot be reconstructed from the client.
 

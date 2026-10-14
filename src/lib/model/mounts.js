@@ -2,6 +2,7 @@
 // Shape (rebuild-plan §3): mounts: [{ id, species, rarity, baseHp, baseAtk, level: 1..5,
 //                                     glyphs: {minor: [id|null x3], major: [id|null x2], mythic: [id|null x1]} }].
 // Game facts: Game/mounts-glyphs.md §2 (state), §3 (catalogue/roll), §4 (level), §5 (stat contribution), §8 (sockets).
+// A glyph id may sit in sockets of several mounts, but only once per mount (Game/mounts-glyphs.md §8).
 // "Which mount is ridden" is per-preset (preset.mountId), reconciled in model/presets.js.
 //
 // Domain contract (§3 "Normalisation layout"); every function deals in a PARTIAL CHARACTER:
@@ -131,8 +132,8 @@ export function glyphSocketable(character, glyph, tier) {
 
 export function reconcileMounts(character) {
   const byId = new Map((character.glyphs ?? []).map((g) => [g.id, g]));
-  const used = new Set(); // one glyph instance fits one socket
   for (const mount of character.mounts ?? []) {
+    const used = new Set(); // unique within one mount; the same instance may sit on several mounts (Game/mounts-glyphs.md §8)
     for (const tier of GLYPH_TIERS) {
       mount.glyphs[tier] = mount.glyphs[tier].map((id) => {
         if (!id || used.has(id) || !glyphSocketable(character, byId.get(id), tier)) return null;

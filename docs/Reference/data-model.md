@@ -84,7 +84,8 @@ search time. Dominion is derived (`totalDominion` from talents + transcendence +
   level-1 roll; the engine applies `1 + 0.1·(level − 1)`.
 - **Glyphs are mount-bound sockets.** The inventory (`glyphs`) is character-wide;
   which glyph sits in which socket lives on `mount.glyphs`, and a glyph instance
-  fits **one** socket (v1 reuse across mounts becomes clones `<id>~<n>`). A major
+  may sit in the sockets of **several** mounts (once per mount; evidence in
+  `Game/mounts-glyphs.md` §8; only the v1 migration still makes clones `<id>~<n>`). A major
   glyph is inert unless its sigil is equipped and the mount is the preset's
   `mountId`. A sealed glyph cannot be socketed.
 - **`sigils.altarTier`** (1..8) replaces v1's `sigilForgeTier`; it tiers every
@@ -241,6 +242,5 @@ stored or committed; only the mapped fields below survive, and `normaliseCharact
 | `computedStats` | the active preset's `sheet` | the Oblivion sheet when the rift is the active realm; only finite `total*`/`raw*` numbers |
 
 **One glyph, several mounts.** The game lets one glyph id sit in the sockets of more than one mount and
-the server counts it for the ridden mount (a real profile's Block Chance only matches with it). A v2
-glyph instance fits one socket, so each further use is imported as a clone `<id>~<n>`, as in the v1
-migration. Without the clones the ridden mount loses the glyph in `reconcileMounts`.
+the server counts it for the ridden mount (`Game/mounts-glyphs.md` §8). The v2 model allows the same
+glyph id on several mounts (once per mount), so the import keeps the real ids.

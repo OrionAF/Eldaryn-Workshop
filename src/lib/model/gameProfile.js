@@ -140,26 +140,12 @@ function mapGlyph(g) {
 }
 
 /**
- * Mounts and the glyph inventory together. The game lets one glyph id sit in the sockets of several
- * mounts (the server counts it for whichever mount is ridden), but a v2 glyph instance fits one socket
- * (model/mounts.js reconcile). Each further use therefore becomes a clone `<id>~<n>` in the inventory,
- * the same device the v1 migration uses (model/glyphs.js convertV1Glyphs).
+ * Mounts and the glyph inventory together. The game lets one glyph id sit in the sockets of several mounts
+ * (Game/mounts-glyphs.md §8), as the v2 model does, so the ids are kept as the server sent them.
  * @returns {{mounts: object[], glyphs: object[]}}
  */
 function mapMountsAndGlyphs(mountState, rawGlyphs) {
   const glyphs = arr(rawGlyphs).filter(isObj).map(mapGlyph);
-  const byId = new Map(glyphs.map((g) => [g.id, g]));
-  const uses = new Map();
-  const socket = (id) => {
-    const g = id && byId.get(id);
-    if (!g) return id;
-    const n = (uses.get(id) ?? 0) + 1;
-    uses.set(id, n);
-    if (n === 1) return id;
-    const clone = { ...g, id: `${id}~${n}` };
-    glyphs.push(clone);
-    return clone.id;
-  };
   const mounts = [];
   for (const m of arr(mountState?.ownedMounts)) {
     if (!isObj(m) || typeof m.species !== 'string') continue;
@@ -172,9 +158,9 @@ function mapMountsAndGlyphs(mountState, rawGlyphs) {
       baseAtk: m.baseAtk,
       level: m.level,
       glyphs: {
-        minor: arr(m.glyphs?.minor).map((id) => socket(str(id))),
-        major: arr(m.glyphs?.major).map((id) => socket(str(id))),
-        mythic: arr(m.glyphs?.mythic).map((id) => socket(str(id))),
+        minor: arr(m.glyphs?.minor).map((id) => str(id)),
+        major: arr(m.glyphs?.major).map((id) => str(id)),
+        mythic: arr(m.glyphs?.mythic).map((id) => str(id)),
       },
     });
   }

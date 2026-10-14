@@ -44,9 +44,11 @@ Systems that own the inputs: `see gear.md`, `see talents.md`, `see pets.md`,
   default `computedStats` placeholder (`totalAttack 10, totalHp 100`) —
   **[CODE]** `L1137824`.
 - The client never scales base stats with level (no level term in
-  `calculateTotalStats`). Whether the server overrides `player.baseStats` —
-  **[UNRESOLVED]** (the loader at `L1138564` hard-codes the constants, which
-  suggests it does not). `MAX_PLAYER_LEVEL 100` — **[CODE]** `L670527`.
+  `calculateTotalStats`). The server does not override `player.baseStats`:
+  **confirmed on one real sample** (Warrior L72, `profile-warrior-l72.json`),
+  where the client formula with these default constants reproduces all 35 server
+  `computedStats` keys exactly (golden test `real.test.js`). Other classes are
+  unchecked (the loader at `L1138564` hard-codes the constants). `MAX_PLAYER_LEVEL 100` — **[CODE]** `L670527`.
 
 ### §1.2 Secondary stats (`SecondaryStatType`, 29 members)
 
@@ -126,8 +128,10 @@ Internal values use two conventions **[CODE]**:
   place: the stat sheet's "(Set N preview)" for the *other* equipment set
   (`L1209833-1209948`, label `L911268`). It gives the best available
   description of the formula, but it **omits relic bonuses** (no relic
-  argument exists) and any other server-only source. Relic contribution to
-  the total — **[SERVER]**.
+  argument exists) and any other server-only source. Relics are added as plain
+  points of their stat (HP_PERCENT into `healthPercent`, etc.): **confirmed on
+  one real sample** (Warrior L72, `profile-warrior-l72.json`; all 35 server keys
+  match exactly, `real.test.js`), not read from client code.
 - Before the first server response the store holds
   `totalAttack 10, totalHp 100` and `null` for attack speed / crit chance /
   crit damage. `L1137824`.
@@ -565,7 +569,7 @@ adds a non-crit strike) and takes `attackSpeed` as the multiplier unit.
 ## §10 Server-side items
 
 - **[SERVER]** The live `computedStats` (§2), including everything the client
-  preview omits (relics at least).
+  preview omits (relics at least; their plain-points contribution matched one real sheet, see §3).
 - **[SERVER]** Item drop rolls, upgrade, reroll and skills (`/skills`
   endpoints, `L931910-932140`) — outside this system.
 - **[SERVER]** Whether Combat Power (§8) is recomputed server-side for

@@ -29,10 +29,10 @@
   let picker = $state({ open: false, mountId: null, tier: 'minor', index: 0 });
   const pickerMount = $derived(mounts.find((m) => m.id === picker.mountId) ?? null);
 
-  /** Which mount a glyph is socketed on, or null. */
-  function mountOfGlyph(glyphId) {
-    return mounts.find((m) => Object.values(m.glyphs).some((row) => row.includes(glyphId))) ?? null;
-  }
+  /** Every mount a glyph is socketed on. */
+  const mountsOfGlyph = (glyphId) => mounts.filter((m) => Object.values(m.glyphs).some((row) => row.includes(glyphId)));
+  /** 'Night Wolf, Scorpion Hound' or null when empty. */
+  const mountList = (list) => (list.length ? list.map((m) => mountName(m.id)).join(', ') : null);
   const sigilsEquipped = $derived(
     new Set(character?.presets.flatMap((p) => [...p.sigilSpecies, p.utilitySigilSpecies, p.ancientSigilSpecies]).filter(Boolean) ?? []),
   );
@@ -105,7 +105,7 @@
           {@const info = glyphTypeInfo(glyph.glyphType)}
           <GlyphCard
             {glyph}
-            mountName={mountName(mountOfGlyph(glyph.id)?.id)}
+            mountName={mountList(mountsOfGlyph(glyph.id))}
             sigilEquipped={info?.tier !== 'major' || sigilsEquipped.has(info.def.sigilSpecies)}
             onUpdate={(patch) => rosterStore.updateGlyph(glyph.id, patch)}
             onRemove={() => rosterStore.removeGlyph(glyph.id)}
@@ -124,7 +124,7 @@
     {glyphs}
     playerClass={character.class}
     {specs}
-    whereIs={(id) => mountName(mountOfGlyph(id)?.id)}
+    whereIs={(id) => mountList(mountsOfGlyph(id).filter((m) => m.id !== picker.mountId))}
     {onPick}
   />
 {/if}

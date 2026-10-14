@@ -67,7 +67,7 @@ Medal sources seen elsewhere (owned by other systems; only noted): siege/clan-ra
 
 ## §7 Contribution to character stats
 
-Relic bonuses are "permanent stat bonuses" while equipped (§1). How they add into the stat pipeline (additive vs multiplicative, raw vs percent) is owned by stats.md; the client's relic module only supplies the numbers. No client function that sums relic bonuses into a stat sheet was found in the decompile (searched for relic bonus/stat calculators), so mapping `HP_PERCENT` to the HP-percent accumulator (`healthPercent`, the same pool as mount `hpPercent` and pet/glyph `HEALTH_PERCENT`) is an assumption **[UNRESOLVED]**. Stat units as shown by `formatStatValue` **[CODE]** L1345034-1345110:
+Relic bonuses are "permanent stat bonuses" while equipped (§1). How they add into the stat pipeline (additive vs multiplicative, raw vs percent) is owned by stats.md; the client's relic module only supplies the numbers. No client function that sums relic bonuses into a stat sheet was found in the decompile (searched for relic bonus/stat calculators), so the mapping of `HP_PERCENT` to the HP-percent accumulator (`healthPercent`, the same pool as mount `hpPercent` and pet/glyph `HEALTH_PERCENT`) is not client code. It is **confirmed on one real sample** (Warrior L72, `profile-warrior-l72.json`): adding relic bonuses as plain points of their stat, HP% into `healthPercent`, matched all 35 server `computedStats` keys exactly (`real.test.js`). Stat units as shown by `formatStatValue` **[CODE]** L1345034-1345110:
 
 | Stat type | Display | Meaning of stored number |
 |---|---|---|
