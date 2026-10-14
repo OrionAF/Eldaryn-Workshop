@@ -2,13 +2,17 @@
   /**
    * TargetPicker.svelte - what the optimiser fights and what it scores (F2b). `target` and `objective` are
    * bindable plain specs in the shapes search/objectives.js resolveTarget / makeObjective accept; the
-   * objective list follows objectiveKindsFor(target.kind).
+   * objective list follows objectiveKindsFor(target.kind). The PVP target (F5) names saved opponents and a
+   * seat; it is disabled, with a link to the Duel screen, while the character has none.
    */
   import contentData from '../../data/game/pve-content.json';
   import { TARGET_KINDS, objectiveKindsFor } from '../../lib/search/objectives.js';
   import { chapterLabel } from '../../lib/game/combatPve.js';
+  import { PVP_MAX_OPPONENTS, PVP_SEATS } from '../../lib/search/pvpObjective.js';
+  import { classLabel } from '../../lib/game/classes.js';
+  import Chip from '../Chip.svelte';
 
-  let { target = $bindable(), objective = $bindable(), oblivionUnlocked = false } = $props();
+  let { target = $bindable(), objective = $bindable(), oblivionUnlocked = false, opponents = [], onNavigate = () => {} } = $props();
 
   const KIND_LABEL = {
     dummy: 'Training dummy',
@@ -17,12 +21,15 @@
     oblivion: 'Oblivion floor',
     worldBoss: 'World boss',
     custom: 'Custom mob',
+    pvp: 'PVP vs my saved opponents',
   };
+  const SEAT_LABEL = { attacker: 'Attacker', defender: 'Defender', both: 'Both seats' };
   const OBJ_LABEL = {
     dps: 'Damage per second',
     'ttk-median': 'Time to kill, median',
     'ttk-p90': 'Time to kill, slow end (P90)',
     survival: 'Survival chance',
+    'pvp-winrate': 'PVP win rate',
   };
   const DEFAULTS = {
     dummy: { kind: 'dummy', seconds: 60 },
@@ -32,14 +39,23 @@
     worldBoss: { kind: 'worldBoss', affinity: 'NONE' },
     custom: { kind: 'custom', mob: { hp: 1000000, attack: 10000, attackSpeed: 1 }, seconds: 60 },
   };
+  const pvpDefault = () => ({ kind: 'pvp', opponentIds: opponents.slice(0, 1).map((o) => o.id), seats: 'attacker' });
 
   const dungeons = contentData.classicDungeons ?? [];
-  const kinds = $derived(TARGET_KINDS.filter((k) => k !== 'oblivion' || oblivionUnlocked || target.kind === 'oblivion'));
+  const kinds = $derived([...TARGET_KINDS.filter((k) => k !== 'oblivion' || oblivionUnlocked || target.kind === 'oblivion'), 'pvp']);
+  const noOpponents = $derived(opponents.length === 0);
+  const chosenIds = $derived(target.kind === 'pvp' ? target.opponentIds : []);
   const objectives = $derived(objectiveKindsFor(target.kind));
 
   function pickKind(kind) {
-    target = { ...DEFAULTS[kind] };
+    target = kind === 'pvp' ? pvpDefault() : { ...DEFAULTS[kind] };
     if (!objectiveKindsFor(kind).includes(objective.kind)) objective = { kind: objectiveKindsFor(kind)[0] };
+  }
+
+  function toggleOpponent(id) {
+    const has = chosenIds.includes(id);
+    if (!has && chosenIds.length >= PVP_MAX_OPPONENTS) return;
+    target = { ...target, opponentIds: has ? chosenIds.filter((x) => x !== id) : [...chosenIds, id] };
   }
 
   const intOf = (e, min, max) => Math.max(min, Math.min(max, Math.floor(Number(e.currentTarget.value)) || min));
@@ -50,11 +66,28 @@
   <label class="field">
     <span class="micro-label">Target</span>
     <select value={target.kind} onchange={(e) => pickKind(e.currentTarget.value)} data-testid="target-kind">
-      {#each kinds as k (k)}<option value={k}>{KIND_LABEL[k]}</option>{/each}
+      {#each kinds as k (k)}<option value={k} disabled={k === 'pvp' && noOpponents && target.kind !== 'pvp'}>{KIND_LABEL[k]}</option>{/each}
     </select>
   </label>
 
-  {#if target.kind === 'dummy'}
+  {#if target.kind === 'pvp'}
+    <div class="field wide" data-testid="pvp-opponents">
+      <span class="micro-label">Opponents (up to {PVP_MAX_OPPONENTS})</span>
+      <div class="chip-list">
+        {#each opponents as o (o.id)}
+          <Chip label={`${o.name || 'Opponent'} (${classLabel(o.class)})`} selected={chosenIds.includes(o.id)} onClick={() => toggleOpponent(o.id)} />
+        {/each}
+      </div>
+    </div>
+    <div class="field wide" data-testid="pvp-seats">
+      <span class="micro-label">My seat</span>
+      <div class="chip-list">
+        {#each PVP_SEATS as seat (seat)}
+          <Chip label={SEAT_LABEL[seat]} selected={target.seats === seat} onClick={() => (target = { ...target, seats: seat })} />
+        {/each}
+      </div>
+    </div>
+  {:else if target.kind === 'dummy'}
     <label class="field">
       <span class="micro-label">Seconds</span>
       <input class="mono" type="number" min="5" max="600" value={target.seconds} onchange={(e) => (target = { ...target, seconds: intOf(e, 5, 600) })} />
@@ -123,10 +156,24 @@
     </label>
   {/if}
 </div>
+{#if noOpponents}
+  <p class="hint" data-testid="pvp-hint">
+    PVP win rate needs a saved opponent.
+    <button type="button" class="btn-ghost link" onclick={() => onNavigate('duel')}>Add one on the Duel screen</button>
+  </p>
+{:else if target.kind === 'pvp'}
+  <p class="hint">
+    Score is my win rate over every selected opponent and seat, each with its own N and 95% interval. Arena fights are resolved by the server; the rules here are the client's bundled simulator (derived, not confirmed).
+  </p>
+{/if}
 
 <style>
   .picker { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-end; }
   .field { display: flex; flex-direction: column; gap: 4px; }
   .field input { width: 96px; }
+  .field.wide { flex-basis: 100%; }
+  .chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .hint { color: var(--color-muted); font-size: 12px; margin: 0; }
+  .link { font-size: 12px; padding: 0 6px; }
   .chapter-name { color: var(--color-muted); font-size: 11px; }
 </style>
