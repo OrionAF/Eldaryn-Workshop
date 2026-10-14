@@ -25,6 +25,10 @@ on the merged tip, and pushes only when both are green.
 | 3 | E3 Stat pipeline · E2a/E2b Sources · B1 Gear + stones · B6a Relics + Awakening | merged | | one test conflict in `model/index.test.js` resolved (both sides kept); 93 / 930 after |
 | 3 | E4 Combat primitives · E2c Sigil sources + fortress · E5a Debuffs/stacks/glyph mods · E5c Minions · E6a PVE enemies | merged | | 106 / 1162 after |
 | 3 | B5 Sigils | merged | | test conflict in `rosterStore.test.js` resolved (relic + sigil assertions both kept); 110 / 1204 after |
+| 4 | C1a Build layer · C1b Presets hub + sheet entry + validation | merged | | `build/*`; golden totals per class; Presets screen with sheet entry, per-stat diff and "absorb into base"; 116 / 1268 after |
+| 4 | E5b Spells (Opus) · E6b PVE tick · E7a/E7b/E7c PVP hit, spells, reactions | merged | | 122 / 1499 after |
+| 4 | R1a/R1b Doc reconciliation | merged | | 91 slice findings checked against the decompile; confirmed ones folded into `Reference/Game` |
+| 4 | E6c PVE fight driver · E7d PVP resolver (Opus) · E8 Metrics + worker · E9 Server-log replay check | merged | | engine complete; 127 / 1630 after |
 
 Test counts on the merged tip: 50 files / 612 tests after wave 1; 62 / 662 after wave 2.
 
@@ -52,6 +56,12 @@ corrections:
 - **Spell damage's `k`** is the spell-resist factor (`combat-pve.md` §10.2).
 - **Silence has no effect in PVE** (`combat-pve.md` §8.3).
 - Unit fixes: pet and stone Attack Speed / Crit Damage values are multiplier deltas.
+
+Still to reconcile (reported by E6c, E7d and E9 after R1 ran; folded in at the end): the PVE tick
+order of heal-budget refill vs Oblivion pulse, the shared engine's offensive-condition flag, the
+shield mitigation source, the unclamped Chrono Flux transform heal, the PVP opening clock with
+minions, unclamped `*HpAfter` on regen/summon/time-up rows, and which HP the `*HpAfter` fields
+carry after a swing.
 
 Still open (marked [UNRESOLVED] in the docs): whether an Ancient sigil takes a generic slot (the app
 gives it its own), which accumulator a relic's HP_PERCENT feeds, and how form-conditional Druid
