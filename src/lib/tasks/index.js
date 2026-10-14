@@ -17,5 +17,8 @@ export const hasTask = (mode) => Object.prototype.hasOwnProperty.call(TASKS, mod
 
 export function runTask(mode, request, ctx = {}) {
   if (!hasTask(mode)) return Promise.reject(new Error(`unknown task mode '${mode}'`));
-  return TASKS[mode](request, { onCheckpoint: () => {}, ...ctx });
+  // Default after the spread: callers may pass an explicit `onCheckpoint: undefined`.
+  const c = { ...ctx };
+  c.onCheckpoint ??= () => {};
+  return TASKS[mode](request, c);
 }
