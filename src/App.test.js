@@ -38,7 +38,7 @@ it('shows an onboarding hint and no screen content until the character has a cla
 it('renders the sidebar nav and defaults to the Presets screen, banner subline showing class + scope', () => {
   expect(target.querySelector('nav.sidebar')).not.toBeNull();
   const sub = target.querySelector('.context-sub').textContent;
-  expect(sub).toContain('WARRIOR'); // v2 class enum (rebuild-plan §3)
+  expect(sub).toContain('Warrior'); // display label for the WARRIOR enum (game/classes.js classLabel)
   expect(sub).toContain('preset');
   cleanup();
 });

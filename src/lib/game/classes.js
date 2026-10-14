@@ -4,6 +4,11 @@ import classesData from '../../data/game/classes.json';
 import statsData from '../../data/game/stats.json';
 
 export const CLASSES = ['WARRIOR', 'SENTINEL', 'MYSTIC', 'NECROMANCER'];
+const CLASS_LABELS = { WARRIOR: 'Warrior', SENTINEL: 'Sentinel', MYSTIC: 'Mystic', NECROMANCER: 'Necromancer' };
+/** Display name for a PlayerClass enum value; falls back to the raw value. */
+export function classLabel(cls) {
+  return CLASS_LABELS[cls] ?? cls;
+}
 export const MAX_PLAYER_LEVEL = 100; // classes.md §3, L670527
 
 // classes.md §1 (spec -> class mapping, L2039513-2040151)

@@ -8,9 +8,8 @@
    * to the sidebar's edit panel required.
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
-  import { CLASSES } from '../lib/game/classes.js';
+  import { CLASSES, classLabel } from '../lib/game/classes.js';
 
-  const classLabel = (cls) => cls.charAt(0) + cls.slice(1).toLowerCase();
 
   const CHOOSE_CLASS_VALUE = '__none__';
 

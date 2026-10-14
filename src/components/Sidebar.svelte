@@ -8,7 +8,7 @@
    * lives here now.
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
-  import { CLASSES } from '../lib/constants.js';
+  import { CLASSES, classLabel } from '../lib/game/classes.js';
   import ConfirmButton from './ConfirmButton.svelte';
   import SettingsPanel from './SettingsPanel.svelte';
   import { visibleNav } from './navVisibility.js';
@@ -152,7 +152,7 @@
             onclick={() => selectCharacter(c.id)}
           >
             <span class="character-name">{c.name}</span>
-            <span class="character-sub">{c.class || 'No class'} · {c.presets.length} preset{c.presets.length === 1 ? '' : 's'}</span>
+            <span class="character-sub">{c.class ? classLabel(c.class) : 'No class'} · {c.presets.length} preset{c.presets.length === 1 ? '' : 's'}</span>
           </button>
           <button type="button" class="edit-btn" aria-label={`Edit ${c.name}`} onclick={() => openCharacterEdit(c)}>✎</button>
         </div>
@@ -164,7 +164,7 @@
               Class
               <select value={c.class ?? CHOOSE_CLASS_VALUE} onchange={(e) => onClassChange(c.id, e)}>
                 <option value={CHOOSE_CLASS_VALUE}>Choose class...</option>
-                {#each CLASSES as cls (cls)}<option value={cls}>{cls}</option>{/each}
+                {#each CLASSES as cls (cls)}<option value={cls}>{classLabel(cls)}</option>{/each}
               </select>
             </label>
             <ConfirmButton
