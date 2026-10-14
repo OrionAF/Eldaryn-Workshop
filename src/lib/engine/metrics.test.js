@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  dpsVsDummy, ttkVs, survival, pvpWinRate, pvpWinRateAsync, wilson, meanCI, quantile, pairedDelta,
+  dpsVsDummy, ttkVs, survival, pvpWinRate, pvpWinRateAsync, wilson, meanCI, quantile, pairedDelta, tCrit95,
   metricKey, clearMetricCache, metricCacheSize,
 } from './metrics.js';
 import { trainingDummy } from './pve/fight.js';
@@ -35,10 +35,26 @@ describe('statistics', () => {
     }
     expect(wilson(0, 0).p).toBeNull();
   });
-  it('meanCI uses the t interval: [1,2,3] -> 2 +/- 4.303 * 1 / sqrt(3)', () => {
+  it('meanCI uses the t interval: [1,2,3] -> 2 +/- t(0.975, 2) * 1 / sqrt(3)', () => {
     const r = meanCI([1, 2, 3]);
     expect(r.mean).toBe(2);
-    expect(r.hi - r.mean).toBeCloseTo((4.303 * 1) / Math.sqrt(3), 6);
+    expect(r.hi - r.mean).toBeCloseTo((4.302652729911275 * 1) / Math.sqrt(3), 9);
+  });
+  it('tCrit95 is the exact Student-t quantile for every df (#69)', () => {
+    expect(tCrit95(31)).toBeCloseTo(2.039513, 5); // the band table gave 2.0
+    expect(tCrit95(63)).toBeCloseTo(1.998341, 5); // the band table gave 1.98
+    expect(tCrit95(1)).toBeCloseTo(12.706205, 5);
+    expect(tCrit95(121)).toBeCloseTo(1.979764, 5);
+  });
+  it('pairedDelta on 0/1 data with no discordant pair is not a zero-width interval (#101)', () => {
+    for (const ones of [0, 32, 64]) {
+      const a = Array.from({ length: 64 }, (_, i) => (i < ones ? 1 : 0));
+      const r = pairedDelta(a, [...a]);
+      expect(r.delta).toBe(0);
+      expect(r.lo).toBeLessThan(-0.03);
+      expect(r.hi).toBeGreaterThan(0.03);
+      expect(r.significant).toBe(false);
+    }
   });
   it('quantile interpolates', () => {
     expect(quantile([4, 1, 3, 2], 0.5)).toBe(2.5);
