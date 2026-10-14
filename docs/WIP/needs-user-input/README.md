@@ -34,7 +34,10 @@ client cannot show: [SERVER] values, and their own goals and preferences.
 
 ## Contents
 
-Nothing is currently blocked on the user. The 2026-07-28 questions were all
+- `rebuild-questions.md` — three non-blocking questions from the rebuild plan (publishing the
+  catalogues, a PVP objective in the optimiser, Pages on a private repo).
+
+The 2026-07-28 questions were all
 answered and are archived as `Archive/outdated-notes/open-questions-2026-07-28.md`.
 The 2.7.0 client refutes one of those answers (Q2, how Attack % buffs stack);
 see `Reference/Game/combat-pve.md`.
