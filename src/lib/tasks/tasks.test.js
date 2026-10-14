@@ -20,8 +20,7 @@ describe('task registry', () => {
     expect(isTaskRequest({ mode: 'suggest-relics' })).toBe(false);
   });
 
-  it('stubs reject with their owner slice; unknown modes reject', async () => {
-    await expect(runTask('dropCheck', {})).rejects.toThrow(/F1/);
+  it('remaining stubs reject with their owner slice; unknown modes reject', async () => {
     await expect(runTask('oblivionFloors', {})).rejects.toThrow(/F4/);
     await expect(runTask('optimize', {})).rejects.toThrow(/F2a/);
     await expect(runTask('nope', {})).rejects.toThrow(/unknown task/);
