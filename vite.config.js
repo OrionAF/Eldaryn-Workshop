@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { configDefaults } from 'vitest/config';
 
 // For GitHub Pages project sites the app is served from /<repo-name>/.
 // Override at build time with BASE_PATH (the deploy workflow sets it from the repo name).
@@ -16,5 +17,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test-setup.js'],
+    // Agent worktrees live under .claude/worktrees inside the checkout; never collect their copies.
+    exclude: [...configDefaults.exclude, '.claude/**'],
   },
 });
