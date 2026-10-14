@@ -1,7 +1,7 @@
 import { it, expect, vi, beforeEach } from 'vitest';
 import { defaultExportFilename, downloadRoster, loadRoster } from './storage.js';
 import { newRoster } from './model/index.js';
-import { saveRoster, importRoster, exportRoster, clearAllData, KEY, KEY_V1 } from './storage.js';
+import { saveRoster, importRoster, importJson, exportRoster, clearAllData, KEY, KEY_V1 } from './storage.js';
 
 const STORAGE_KEY = KEY;
 
@@ -128,6 +128,41 @@ it('importRoster accepts both v1 and v2 JSON', () => {
 it('importRoster throws on unparseable JSON and yields the empty roster for junk', () => {
   expect(() => importRoster('{nope')).toThrow();
   expect(importRoster('{"characters":[]}').characters).toEqual([]);
+});
+
+// A tiny game-profile shape (invented values): see model/gameProfile.test.js for the full mapping.
+const profileJson = (name = 'Hero') =>
+  JSON.stringify({ player: { name, class: 'WARRIOR', level: 50 }, equipment: {}, computedStats: { totalAttack: 1000 } });
+
+it('importJson adds a game profile as a new selected character and leaves the input roster alone', () => {
+  const roster = newRoster();
+  const before = JSON.stringify(roster);
+  const out = importJson(profileJson('Hero'), roster, { now: 'T' });
+  expect(JSON.stringify(roster)).toBe(before);
+  expect(out.kind).toBe('profile');
+  expect(out.roster.characters).toHaveLength(2);
+  expect(out.roster.currentId).toBe(out.character.id);
+  expect(out.character).toMatchObject({ name: 'Hero', class: 'WARRIOR', level: 50 });
+  expect(out.character.presets.find((p) => p.id === out.character.activePresetId).sheet.values.totalAttack).toBe(1000);
+  expect(importRoster(exportRoster(out.roster))).toEqual(out.roster);
+});
+
+it('importJson suffixes " (imported)" when the name exists, and still replaces the roster for app exports', () => {
+  const roster = newRoster();
+  roster.characters[0].name = 'Hero';
+  expect(importJson(profileJson('Hero'), roster).character.name).toBe('Hero (imported)');
+  const other = newRoster();
+  other.characters[0].name = 'Elsewhere';
+  const out = importJson(exportRoster(other), roster);
+  expect(out).toMatchObject({ kind: 'roster', character: null });
+  expect(out.roster).toEqual(other);
+  expect(() => importJson('{nope', roster)).toThrow();
+});
+
+it('importJson into an empty roster (Welcome screen) yields a single selected character', () => {
+  const out = importJson(profileJson('First'));
+  expect(out.roster.characters).toHaveLength(1);
+  expect(out.roster.currentId).toBe(out.roster.characters[0].id);
 });
 
 it('clearAllData removes the v2 blob, the v1 blob and the legacy settings key', () => {

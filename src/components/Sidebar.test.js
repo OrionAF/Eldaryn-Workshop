@@ -1,4 +1,4 @@
-import { it, expect, beforeEach, afterEach } from 'vitest';
+import { it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import Sidebar from './Sidebar.svelte';
 import { rosterStore } from '../lib/rosterStore.svelte.js';
@@ -131,4 +131,31 @@ it('mobile: character switching still works from inside the sheet', () => {
 
   expect(rosterStore.current.id).toBe(altId);
   rosterStore.deleteCharacter(altId); // cleanup
+});
+
+it('Import accepts a game profile JSON: a new character is selected and the status message is set', async () => {
+  const messages = [];
+  render({ onStatus: (m) => messages.push(m) });
+  const before = rosterStore.roster.characters.length;
+  const json = JSON.stringify({ player: { name: 'Profile Hero', class: 'MYSTIC', level: 44 }, equipment: {} });
+  const input = target.querySelector('input[type="file"]');
+  Object.defineProperty(input, 'files', { value: [new File([json], 'profile.json', { type: 'application/json' })], configurable: true });
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+  await vi.waitFor(() => expect(messages).toEqual(['Imported Profile Hero from a game profile']));
+  flushSync();
+  expect(rosterStore.roster.characters).toHaveLength(before + 1);
+  expect(rosterStore.current).toMatchObject({ name: 'Profile Hero', class: 'MYSTIC', level: 44 });
+  expect(target.querySelector('.import-error')).toBeNull();
+  rosterStore.deleteCharacter(rosterStore.current.id); // cleanup
+});
+
+it('Import shows the error for a file that is not parseable JSON', async () => {
+  render();
+  const input = target.querySelector('input[type="file"]');
+  Object.defineProperty(input, 'files', { value: [new File(['{nope'], 'bad.json')], configurable: true });
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+  await vi.waitFor(() => {
+    flushSync();
+    expect(target.querySelector('.import-error')?.textContent).toContain('not a valid roster file or game profile');
+  });
 });

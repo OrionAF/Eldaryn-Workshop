@@ -1,0 +1,107 @@
+{
+ "_note": "Stripped capture of a real loot-bag batch (pendingItems), committed with the user's permission 2026-10-14.",
+ "pendingItems": [
+  {
+   "primaryStats": {
+    "attack": 3696,
+    "hp": 17268
+   },
+   "id": "32e3835d-f9aa-43bc-8d2b-83dc2c4ccc79",
+   "name": "Celestial Helmet",
+   "itemType": "CELESTIAL",
+   "slot": "HEAD",
+   "rarity": "MYTHIC",
+   "itemLevel": 100,
+   "secondaryStats": [
+    {
+     "type": "HEALTH_PERCENT",
+     "value": 11.5
+    },
+    {
+     "type": "ATTACK_PERCENT",
+     "value": 3.2
+    }
+   ],
+   "qualityBonus": 0,
+   "class": "WARRIOR"
+  },
+  {
+   "primaryStats": {
+    "attack": 10344,
+    "hp": 43509
+   },
+   "id": "09a71920-fc61-404c-9880-457e3dd31729",
+   "name": "Abyssal Leggings",
+   "itemType": "ABYSSAL",
+   "slot": "LEGGINGS",
+   "rarity": "ANCIENT",
+   "itemLevel": 100,
+   "secondaryStats": [
+    {
+     "type": "DAMAGE_REDUCTION",
+     "value": 4.1
+    },
+    {
+     "type": "LIFESTEAL",
+     "value": 2.9
+    }
+   ],
+   "qualityBonus": 0,
+   "class": "WARRIOR"
+  },
+  {
+   "primaryStats": {
+    "attack": 17166,
+    "hp": 69694
+   },
+   "id": "258831fe-3138-493a-81be-38c701581bec",
+   "name": "Cosmic Chestplate",
+   "itemType": "COSMIC",
+   "slot": "CHEST",
+   "rarity": "DIVINE",
+   "itemLevel": 51,
+   "secondaryStats": [
+    {
+     "type": "ATTACK_PERCENT",
+     "value": 8.6
+    },
+    {
+     "type": "LIFESTEAL",
+     "value": 1
+    },
+    {
+     "type": "CRIT_CHANCE",
+     "value": 0.7
+    }
+   ],
+   "qualityBonus": 0,
+   "class": "WARRIOR"
+  },
+  {
+   "primaryStats": {
+    "attack": 2997,
+    "hp": 15319
+   },
+   "id": "471728a7-feed-4798-a734-752d8926a7ed",
+   "name": "Dragonforged Shoulderplates",
+   "itemType": "DRAGONFORGED",
+   "slot": "SHOULDERS",
+   "rarity": "MYTHIC",
+   "itemLevel": 99,
+   "secondaryStats": [
+    {
+     "type": "ATTACK_PERCENT",
+     "value": 7.1
+    },
+    {
+     "type": "DOUBLE_HIT",
+     "value": 3.2
+    }
+   ],
+   "qualityBonus": 0,
+   "class": "WARRIOR"
+  }
+ ],
+ "realm": "BASE",
+ "oblivionPendingItems": null
+}
