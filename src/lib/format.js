@@ -6,11 +6,22 @@
  *   flat: "2.664" -> 2664, "48.124" -> 48124
  *   pct:  "6.2"   -> 6.2
  *
- * Parsing per field is chosen by the stat's `kind` in constants.js. Flats are
- * integers; percentages are decimals.
+ * Parsing per field is chosen by the key's kind: a stat-sheet key is flat when its row kind is
+ * 'integer' (engine/pipeline/sheet.js); the pre-rebuild secondary-stat names below stay flat too,
+ * for the components that still use them. Flats are integers; percentages are decimals.
+ * Sheet text entry (with the Attack Speed / Crit Damage multiplier handling) is parseSheetInput.
  */
 
-import { FLAT_KEYS } from './constants.js';
+import { sheetKeyMeta } from './engine/pipeline/sheet.js';
+
+// Non-sheet keys that hold flat values (SecondaryStatType-style names used by older components).
+const EXTRA_FLAT_KEYS = new Set(['attack', 'health', 'pvp_attack', 'pvp_defense']);
+
+/** Does this key hold a flat (thousands-separated) value rather than a percentage? */
+export function isFlatKey(key) {
+  const meta = sheetKeyMeta(key);
+  return meta ? meta.kind === 'integer' : EXTRA_FLAT_KEYS.has(key);
+}
 
 /**
  * Parse a flat stat value where "." (and ",") are thousands separators.
@@ -48,7 +59,7 @@ export function parsePct(input) {
 
 /** Parse a value according to its stat key's kind. */
 export function parseStat(key, input) {
-  return FLAT_KEYS.includes(key) ? parseFlat(input) : parsePct(input);
+  return isFlatKey(key) ? parseFlat(input) : parsePct(input);
 }
 
 /** Format a flat value for display, grouping thousands with "." (game style). */
@@ -67,7 +78,7 @@ export function formatPct(value) {
 
 /** Format a value according to its stat key's kind. */
 export function formatStat(key, value) {
-  return FLAT_KEYS.includes(key) ? formatFlat(value) : formatPct(value);
+  return isFlatKey(key) ? formatFlat(value) : formatPct(value);
 }
 
 /** Short labels for summarizeStats() - keeps a stat-roll summary chip to one line. Falls back to the field's full label if a key isn't listed here. */
