@@ -20,6 +20,7 @@ import { dpsVsDummy, ttkVs, survival, meanCI, stableStringify, wilson } from '..
 import { preparePveFighter, simulatePve, trainingDummy, FIGHT_CAP_MS } from '../engine/pve/fight.js';
 import { chapterMobs, dungeonMobs, oblivionFloorMob, worldBossMob } from '../engine/pve/enemies.js';
 import { WORLD_BOSS_AFFINITIES } from '../game/worldBoss.js';
+import { formatFlat } from '../format.js';
 
 export const OBJECTIVE_KINDS = ['dps', 'ttk-median', 'ttk-p90', 'survival'];
 export const TARGET_KINDS = ['dummy', 'chapter', 'dungeon', 'oblivion', 'worldBoss', 'custom'];
@@ -92,7 +93,7 @@ export function resolveTarget(raw = { kind: 'dummy' }) {
     t.spec = { kind, mob: { ...m }, seconds: t.seconds };
     t.enemy = { id: 'custom', ...m };
     t.maxMs = t.seconds * 1000;
-    t.label = `Custom mob (${Math.round(m.hp)} HP)`;
+    t.label = `Custom mob (${formatFlat(m.hp)} HP)`;
   }
   t.key = stableStringify(t.spec);
   return t;
@@ -155,15 +156,23 @@ function optsFor(target, fighter) {
     : target.opts;
 }
 
-/** Damage per second over a fixed window against a mob (no metric for this in engine/metrics.js). */
+/** The mob with effectively unlimited HP (a dummy's 1e15), defences and attack untouched. */
+const unkillable = (mob) => (Array.isArray(mob) ? mob.map(unkillable) : { ...mob, hp: Math.max(mob.hp, trainingDummy().hp) });
+
+/**
+ * Damage per second over a fixed window against a mob (no metric for this in engine/metrics.js).
+ * The mob never dies inside the window: a finite-HP target ends the fight early, so every build that
+ * out-damages the HP pool would tie at hp / seconds and DPS could not rank them.
+ */
 function damageWindow(fighter, target, { n, seed, keepSamples, signal }) {
   const prepared = preparePveFighter(fighter);
   const opts = optsFor(target, fighter);
+  const enemy = unkillable(target.enemy);
   const out = [];
   let aborted = false;
   for (let i = 0; i < n; i++) {
     if (signal?.aborted) { aborted = true; break; }
-    const r = simulatePve({ fighter: prepared, enemy: target.enemy, maxMs: target.maxMs, rng: mulberry32(hashSeed(seed, i)), ...opts });
+    const r = simulatePve({ fighter: prepared, enemy, maxMs: target.maxMs, rng: mulberry32(hashSeed(seed, i)), ...opts });
     out.push(r.damageDealt / target.seconds);
   }
   const r = meanCI(out);
