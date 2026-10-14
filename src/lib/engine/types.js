@@ -295,17 +295,26 @@
  * @property {number} [critChance]
  * @property {number} [critDamage]
  * @property {number} [damageReduction]
- * @property {Object<string, number>} [stats]  any further ComputedStats-style fields
+ * @property {number} [blockChance]
+ * @property {number} [missChance]
+ * @property {number} [penetration]
+ * @property {Object<string, number>} [stats]  numeric entity fields to set on the enemy (spellResist, ...)
+ * @property {Object} [affinity]  World Boss affinity record: engine/pve/fight.js adds its hit-back
+ * @property {number} [fightDurationMs]  default maxMs of simulatePve (World Boss: 60000 / 300000)
+ * @property {number} [instability]  Oblivion floor strain, read when simulatePve gets `oblivion: {power}`
  */
 
 /**
+ * Produced by engine/pve/fight.js simulatePve. With several mobs: `won` = all defeated, the damage and
+ * time are summed, `enemyHpLeft` includes the mobs not reached, `hpLeft` is the player's final HP.
  * @typedef {Object} PveResult
  * @property {boolean} won  player killed the enemy
  * @property {number} timeMs  fight length
- * @property {number} damageDealt
- * @property {number} damageTaken
+ * @property {number} damageDealt  enemy HP lost (swings, spells, DoTs, minion, thorns; no overkill)
+ * @property {number} damageTaken  incoming swing damage after DR and shield, plus Oblivion strain damage
  * @property {number} hpLeft  player HP at the end
  * @property {number} enemyHpLeft
+ * @property {number} mobsDefeated
  * @property {Array<Object>} [log]  event log, only when options.log is true
  */
 
