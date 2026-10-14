@@ -1,4 +1,25 @@
-// Worker task 'dropCheck': stub owned by slice F1 (E8 only wires the dispatch).
-export async function dropCheck() {
-  throw new Error("task 'dropCheck' is not implemented yet (F1)");
+// Worker task 'dropCheck' (F1): the simulated half of Drop Check. The synchronous half (stats before and
+// after, closed-form DPS) is features/swap.js prepareSwap(), which the screen runs on the main thread.
+//
+// request: {
+//   items: [{presetId, before: Fighter, after: Fighter}],       Fighters from prepareSwap, plain JSON
+//   sim?: true, seconds?: 60, nSim?: 32,                          sim DPS vs a training dummy
+//   enemy?: {mobs: MobSpec[], oblivion?: boolean},                survival target (buildEnemy)
+//   survivalSeconds?: 60, nSurvival?: 200,
+//   opponents?: [{id, name, fighter: Fighter}], nPvp?: 64,        PVP win rate as the attacker
+//   seed?: 1,
+// }
+// result: { results: [{presetId, sim?, survival?, pvp?: [...]}], aborted }
+//   each metric is {before: {mean, lo, hi, n}, after: {...}, delta: {delta, lo, hi, n, significant}},
+//   the delta being the common-random-number paired difference (after - before).
+// Cancelling resolves with the finished presets and aborted: true.
+import { runSwapMetrics } from '../features/swap.js';
+
+export async function dropCheck(request, { signal, onProgress } = {}) {
+  const { items } = request ?? {};
+  if (!Array.isArray(items)) throw new Error('dropCheck: items is required');
+  for (const it of items) {
+    if (!it?.before || !it?.after) throw new Error('dropCheck: every item needs before and after Fighters');
+  }
+  return runSwapMetrics(items, request, { signal, onProgress });
 }
