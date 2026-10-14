@@ -1,28 +1,36 @@
-// model/fortress.js - STUB from M1, owned by B6b from here on (rebuild-plan §7.3 ownership transfer).
-// Persisted character fields: fortress. Shape: rebuild-plan §3 fortress (+ migration contract step 5).
+// model/fortress.js - owned by B6b (rebuild-plan §7.3). Persisted character field: fortress.
+// Shape: rebuild-plan §3 fortress (+ migration contract step 5); rules: Game/clan-fortress.md.
 //
-// Domain contract (§3 "Normalisation layout"); every function deals in a PARTIAL CHARACTER, i.e. an
-// object keyed by the character field names above, so multi-field domains need no special case:
-//   defaultFortress()                       -> fresh partial
-//   normaliseFortress(rawCharacter, ctx)    -> partial; rawCharacter is the whole raw (untrusted) character,
-//                                          ctx = { class, spec } for gating; must be idempotent
-//   migrateFortressFromV1(v1Character)      -> { value: partial, idMap }  (idMap: v1 id -> v2 ref, {} unless
-//                                          presets reference this domain; see §3 contract steps 1-4)
-//   reconcileFortress(character)            -> void; mutate cross-references in place after ALL domains normalised
-// The stub ignores its input and returns defaults, so preset references to this domain migrate to null.
+// Domain contract (§3 "Normalisation layout"); every function deals in a PARTIAL CHARACTER:
+//   defaultFortress(), normaliseFortress(rawCharacter, ctx) (idempotent),
+//   migrateFortressFromV1(v1Character) -> { value, idMap }, reconcileFortress(character).
+// owned is unique and in canonical order (TOP, BOTTOM, CORE); TOP and BOTTOM are mutually exclusive
+// (TOP wins on corrupt data). No preset references this domain.
+
+export const FORTRESS_GROUPS = ['TOP', 'BOTTOM', 'CORE'];
 
 export function defaultFortress() {
   return { fortress: { owned: [] } };
 }
 
-// eslint-disable-next-line no-unused-vars
-export function normaliseFortress(rawCharacter, ctx) {
-  return defaultFortress();
+function canonical(list) {
+  const set = new Set(Array.isArray(list) ? list : []);
+  const out = FORTRESS_GROUPS.filter((g) => set.has(g));
+  return out.includes('TOP') ? out.filter((g) => g !== 'BOTTOM') : out;
 }
 
 // eslint-disable-next-line no-unused-vars
+export function normaliseFortress(rawCharacter, ctx) {
+  return { fortress: { owned: canonical(rawCharacter?.fortress?.owned) } };
+}
+
+/** Plan §3 step 5: only the active preset's (else first preset's) fortressBuffs survive. */
 export function migrateFortressFromV1(v1Character) {
-  return { value: defaultFortress(), idMap: {} };
+  const presets = Array.isArray(v1Character?.presets) ? v1Character.presets : [];
+  const p = presets.find((x) => x?.id === v1Character?.activePresetId) ?? presets[0];
+  const b = p?.fortressBuffs ?? {};
+  const owned = canonical([b.top === true && 'TOP', b.bottom === true && 'BOTTOM', b.core === true && 'CORE']);
+  return { value: { fortress: { owned } }, idMap: {} };
 }
 
 // eslint-disable-next-line no-unused-vars
