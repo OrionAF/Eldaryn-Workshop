@@ -68,8 +68,8 @@ describe('mounts store', () => {
     const g = rosterStore.addGlyph({ glyphType: 'g-spark', rarity: 'Uncommon', sealed: true });
     rosterStore.updateGlyph(g, { sealed: false });
     expect(rosterStore.setMountSocket(m, 'minor', 0, g).ok).toBe(true);
-    rosterStore.updateGlyph(g, { secondary: { stat: 'lifesteal', quality: 0.5 } });
-    expect(cur().glyphs[0].secondary).toEqual({ stat: 'lifesteal', quality: 0.5 });
+    rosterStore.updateGlyph(g, { secondary: { stat: 'lifesteal', quality: 0.3 } });
+    expect(cur().glyphs[0].secondary).toEqual({ stat: 'lifesteal', quality: 0.3 });
     expect(cur().mounts[0].glyphs.minor[0]).toBe(g);
     rosterStore.updateGlyph(g, { sealed: true });
     expect(cur().glyphs[0]).toMatchObject({ sealed: true, secondary: null });

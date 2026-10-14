@@ -7,6 +7,9 @@ import {
   reconcileEquipment,
   maxItemLevel,
   conduitAllowed,
+  conduitTypesFor,
+  secondaryStatMaxValue,
+  itemWarnings,
   emptyItem,
 } from './equipment.js';
 import { newCharacter, normaliseCharacter, normaliseRoster, migrateCharacterFromV1 } from './index.js';
@@ -91,6 +94,50 @@ describe('normaliseItem', () => {
     expect(normaliseItem({ ...legendary, rarity: 'DIVINE', conduit: { type: 'DARK', value: 50 } }, { realm: 'oblivion' }).conduit).toEqual({ type: 'DARK', value: 50 });
     expect(conduitAllowed('MYTHIC', 'oblivion')).toBe(false);
     expect(normaliseItem({ ...legendary, rarity: 'ETERNAL', conduit: { type: 'WIND', value: 5 } }).conduit).toBeNull();
+  });
+
+  it('conduit type must match rarity and realm (M2 #99 #123, rollConduitForRarity L677825)', () => {
+    const at = (rarity, type, realm) => normaliseItem({ ...legendary, rarity, conduit: { type, value: 45 } }, { realm }).conduit?.type ?? null;
+    expect(at('ETERNAL', 'DARK', 'base')).toBeNull();
+    expect(at('ETERNAL', 'EARTHEN', 'base')).toBe('EARTHEN');
+    expect(at('DIVINE', 'FLAME', 'oblivion')).toBeNull();
+    expect(at('DIVINE', 'DARK', 'oblivion')).toBe('DARK');
+    expect(at('OBLIVION', 'DARK', 'base')).toBe('DARK');
+    expect(at('OBLIVION', 'FLAME', 'base')).toBeNull();
+    expect(conduitTypesFor('ETERNAL', 'base')).toEqual(['FLAME', 'EARTHEN']);
+    expect(conduitTypesFor(null, 'base')).toHaveLength(3); // unknown rarity stays permissive
+  });
+
+  it('reports dropped conduits and clamped secondaries', () => {
+    const report = [];
+    const item = normaliseItem({ ...legendary, rarity: 'ETERNAL', itemLevel: 100, secondaryStats: [{ type: 'CRIT_CHANCE', value: 9 }], conduit: { type: 'DARK', value: 45 } }, { realm: 'base', report, slot: 'HEAD' });
+    expect(item.conduit).toBeNull();
+    expect(item.secondaryStats[0].value).toBe(5); // CRIT_CHANCE table max at level 100
+    expect(report.map((r) => r.kind).sort()).toEqual(['conduitDropped', 'secondaryClamped']);
+  });
+
+  it('secondary ceiling follows the item stat level (gear.md §4)', () => {
+    expect(secondaryStatMaxValue('CRIT_CHANCE', 1)).toBe(2.8); // min + 50.5% of the range
+    expect(secondaryStatMaxValue('CRIT_CHANCE', 100)).toBe(5);
+    expect(secondaryStatMaxValue('CRIT_CHANCE', 200)).toBe(7); // 5 x 1.4
+    expect(secondaryStatMaxValue('NOPE', 100)).toBeNull();
+    const low = normaliseItem({ ...legendary, itemLevel: 1, secondaryStats: [{ type: 'CRIT_CHANCE', value: 5 }] }).secondaryStats[0].value;
+    expect(low).toBe(2.8);
+    // Oblivion halves the item level: level 400 -> stat level 200
+    const ob = normaliseItem({ ...legendary, itemLevel: 400, secondaryStats: [{ type: 'CRIT_CHANCE', value: 99 }] }, { realm: 'oblivion' });
+    expect(ob.secondaryStats[0].value).toBe(7);
+  });
+
+  it('the item-level cap follows the Ascension step; owned items above it only warn', () => {
+    expect(maxItemLevel('base', 1)).toBe(100);
+    expect(maxItemLevel('base', 3)).toBe(160);
+    expect(maxItemLevel('oblivion', 2)).toBe(260);
+    expect(maxItemLevel('base', 99)).toBe(240);
+    expect(maxItemLevel('base')).toBe(240);
+    const item = normaliseItem({ ...legendary, itemLevel: 200 });
+    expect(item.itemLevel).toBe(200);
+    expect(itemWarnings(item, { realm: 'base', ascension: 1 })).toEqual([{ kind: 'itemLevelAboveAscension', itemLevel: 200, cap: 100 }]);
+    expect(itemWarnings(item, { realm: 'base', ascension: 5 })).toEqual([]);
   });
 
   it('rejects non-objects and cleans a bad rarity to null', () => {

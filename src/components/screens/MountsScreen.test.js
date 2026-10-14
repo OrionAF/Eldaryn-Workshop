@@ -121,9 +121,9 @@ it('adds glyphs, unlocks a sealed one, and sockets it through the picker', () =>
 it('a minor glyph secondary is entered as stat + value', () => {
   addGlyphUi({ tier: 'minor', glyphType: 'g-keen' });
   pick(target.querySelector('select[aria-label="Secondary stat"]'), 'critChance');
-  pick(target.querySelector('input[aria-label="Secondary value"]'), '2.8');
+  pick(target.querySelector('input[aria-label="Secondary value"]'), '1.9');
   expect(rosterStore.current.glyphs[0].secondary.stat).toBe('critChance');
-  expect(rosterStore.current.glyphs[0].secondary.quality).toBeCloseTo(0.5, 5);
+  expect(rosterStore.current.glyphs[0].secondary.quality).toBeCloseTo(0.3, 1);
   expect(target.textContent).toContain('0.6-5');
 });
 

@@ -15,7 +15,7 @@ function fixture() {
       gems: 777001,
       glyphs: [
         { id: 'gl-minor-a', tier: 'MINOR', rarity: 'RARE', glyphType: 'g-tough', sealed: false, secondary: { stat: 'BLOCK_CHANCE', quality: 0.5 } },
-        { id: 'gl-minor-b', tier: 'MINOR', rarity: 'COMMON', glyphType: 'g-swift', sealed: false, secondary: { stat: 'PENETRATION', quality: 0.25 } },
+        { id: 'gl-minor-b', tier: 'MINOR', rarity: 'COMMON', glyphType: 'g-swift', sealed: false, secondary: { stat: 'PENETRATION', quality: 0.15 } },
         { id: 'gl-major', tier: 'MAJOR', rarity: 'EPIC', glyphType: 'sg-bastion-cd', sealed: false, secondary: null },
         { id: 'gl-sealed', tier: 'MINOR', rarity: 'RARE', glyphType: 'g-tough', sealed: true, secondary: null },
       ],
@@ -201,7 +201,7 @@ describe('gameProfileToCharacter', () => {
   it('stones and both socket maps; a socket naming a missing stone is cleared', () => {
     expect(c.enchantStones).toHaveLength(2);
     expect(c.enchantStones[0]).toEqual({
-      id: 'stone-a', type: 'PVE_ATTACK', quality: 55, amplifyLevel: 3, oblivionLevel: null,
+      id: 'stone-a', type: 'PVE_ATTACK', activated: true, quality: 55, amplifyLevel: 3, oblivionLevel: null,
       stats: [{ type: 'ATTACK_SPEED', value: 0.04 }, { type: 'LIFESTEAL', value: 2.5 }],
     });
     expect(c.enchantStones[1]).toMatchObject({ id: 'stone-b', type: 'MYTHIC', amplifyLevel: 0 });
@@ -259,7 +259,7 @@ describe('gameProfileToCharacter', () => {
   it('glyph inventory: Title-case rarity, secondary stat enum becomes the pool key', () => {
     const byId = Object.fromEntries(c.glyphs.map((g) => [g.id, g]));
     expect(byId['gl-minor-a']).toEqual({ id: 'gl-minor-a', glyphType: 'g-tough', rarity: 'Rare', sealed: false, secondary: { stat: 'blockChance', quality: 0.5 } });
-    expect(byId['gl-minor-b'].secondary).toEqual({ stat: 'penetration', quality: 0.25 });
+    expect(byId['gl-minor-b'].secondary).toEqual({ stat: 'penetration', quality: 0.15 });
     expect(byId['gl-major']).toMatchObject({ glyphType: 'sg-bastion-cd', rarity: 'Epic', secondary: null });
     expect(byId['gl-sealed']).toMatchObject({ sealed: true, secondary: null });
   });
@@ -341,7 +341,7 @@ describe('Oblivion hero', () => {
     expect(items.RIFT_CORE.conduit).toEqual({ type: 'DARK', value: 25 });
     expect(items.HEAD.itemLevel).toBe(300); // above the base cap of 240: the Oblivion cap applies
     expect(c.oblivionEnchantStones).toEqual([
-      { id: 'ob-stone', type: 'OBLIVION', quality: 70, amplifyLevel: 0, oblivionLevel: 2, stats: [{ type: 'PVP_ATTACK', value: 10 }] }, // Oblivion Power is derived, not stored
+      { id: 'ob-stone', type: 'OBLIVION', activated: true, quality: 70, amplifyLevel: 0, oblivionLevel: 2, stats: [{ type: 'PVP_ATTACK', value: 10 }] }, // Oblivion Power is derived, not stored
     ]);
     expect(c.equipment.oblivion.enchantSlots.HEAD).toBe('ob-stone');
     expect(c.enchantStones.some((s) => s.id === 'ob-stone')).toBe(false);
