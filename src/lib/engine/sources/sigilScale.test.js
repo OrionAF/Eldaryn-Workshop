@@ -180,14 +180,28 @@ describe('spell resolution for specs', () => {
 
   it('getSigilDefinitionForSpec: Druid uses the variant, form spell by kind, default BEAR', () => {
     expect(getSigilDefinitionForSpec('ARCANE_EMPOWERMENT', 'MYSTIC_DRUID', 'WOLF').spell)
-      .toEqual({ bonusStat: 'ATTACK_PERCENT', bonusValue: 4 });
+      .toEqual({ spellType: 'AURA', bonusStat: 'ATTACK_PERCENT', bonusValue: 4 });
     expect(getSigilDefinitionForSpec('ARCANE_EMPOWERMENT', 'MYSTIC_DRUID', null).spell)
-      .toEqual({ bonusStat: 'HP_PERCENT', bonusValue: 8 });
+      .toEqual({ spellType: 'AURA', bonusStat: 'HP_PERCENT', bonusValue: 8 });
     // a variant without formSpell uses druidVariant.spell
     expect(getSigilDefinitionForSpec('ARCANE_SHARD', 'MYSTIC_DRUID', 'BEAR').name).toBe(sigilBySpecies('ARCANE_SHARD').druidVariant.name);
     expect(getFormConditionalSpells('ARCANE_EMPOWERMENT')).toHaveProperty('BEAR');
     expect(getFormConditionalSpells('ARCANE_SHARD')).toBeNull();
     expect(getFormConditionalSpells('BERSERK_STANCE')).toBeNull();
+  });
+
+  it('PRIMAL_AWAKENING resolves through its druidVariant: WOLF is the attack buff, Mage sees the base', () => {
+    const wolf = getSigilDefinitionForSpec('PRIMAL_AWAKENING', 'MYSTIC_DRUID', 'WOLF');
+    expect(wolf.spellType).toBe('BUFF');
+    expect(wolf.spell.effects.map((e) => e.stat)).toEqual(['ATTACK_PERCENT', 'ATTACK_SPEED']);
+    expect(getSigilDefinitionForSpec('PRIMAL_AWAKENING', 'MYSTIC_DRUID', 'BEAR').spell.effects.map((e) => e.stat)).toEqual(['HP_PERCENT']);
+    expect(Object.keys(getFormConditionalSpells('PRIMAL_AWAKENING'))).toEqual(['BEAR', 'WOLF']);
+    expect(Object.keys(getFormConditionalSpells('PRIMAL_INSTINCT'))).toEqual(['BEAR', 'WOLF']);
+  });
+
+  it('spellTypeOf returns a stored type before any shape inference', () => {
+    expect(spellTypeOf({ spellType: 'BUFF', initialAttackPercent: 5, debuff: {} })).toBe('BUFF');
+    expect(spellTypeOf({ spellType: 'DEBUFF', effects: [] }, 'BUFF')).toBe('DEBUFF');
   });
 
   it('scaledSigilSpell scales the spec-resolved spell', () => {

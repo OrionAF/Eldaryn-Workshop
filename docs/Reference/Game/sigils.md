@@ -261,7 +261,13 @@ Mystic (21 entries incl. druid variants/forms, Mage and Druid share the 3 generi
 ## §12 Data file schema (`data/sigils.json`)
 
 Top level: `source`, `extracted`, `schema`, `rarityBase` (baseAttack/baseHp per rarity), `constants` (all numeric constants cited here), `forgeOdds.bands`, `forgeOddsByAltarLevel[30]`, `altarForgesToNextLevel[29]`, `altarCumulativeForgesToLevel30`, `catalogue[58]`.
-Catalogue entry: `id, species, name, class, rarity, baseAttack, baseHp, spellType, spell{...}` plus optional `druidVariant`, `formSpell` (BEAR/WOLF variants; bear is listed first, wolf second in decompiled order and in each description), `requiredSpec`, `transcendenceNode`, `classes`, `unique`. Spell fields are level-1 values; scaling and caps per §5. For BEAR/WOLF assignment of two-variant spells I used decompile order plus the sigil description text [DERIVED].
+Catalogue entry: `id, species, name, class, rarity, baseAttack, baseHp, spellType, spell{...}` plus optional `druidVariant`, `requiredSpec`, `transcendenceNode`, `classes`, `unique`. Spell fields are level-1 values; scaling and caps per §5. A base `spell` carries no type; its type is the entry's `spellType`.
+
+`druidVariant` is the Mystic Druid's version of the sigil, in the client's shape: `{name, spell?, formSpell?: {BEAR, WOLF}}`. Eleven species have one: Arcane Shard, Arcane Empowerment, Primal Awakening, Runic Affliction, Arcane Burst, Arcane Surge, Blinding Affliction, Withering Brand, Arcane Barrage, Aether Renewal, Primal Instinct. [CODE] L1069570-1070178
+- Every `druidVariant.spell` and `formSpell[BEAR|WOLF]` stores the client's own `spellType`, which can differ from the entry's (for example Withering Brand: BEAR is a BUFF, WOLF a DEBUFF; Aether Renewal is a HEAL for the Mage and a BUFF in both forms). [CODE] each variant's `SigilSpellType` assignment, L1069587-1070168
+- `getSigilDefinitionForSpec` gives a Druid `formSpell[form]` when `formSpell` exists (form null reads BEAR), else `druidVariant.spell`; `druidVariant.spell` is dropped from the file where `formSpell` exists, except for Arcane Empowerment, Primal Awakening and Primal Instinct, because the client never reads it there. A Druid with no form skips any sigil with a `formSpell` (`getFormConditionalSpells`). [CODE] L1066606-1066708
+- The client keys each form spell by `SigilFormKind.BEAR` / `.WOLF` directly. [CODE]
+- Primal Awakening: BEAR casts +15% HP (max 25), WOLF +8% Attack (max 14) and +0.05 Attack Speed (max 0.1), both lasting 8000 ms with a 12000 ms cooldown (module constants r12 = 8000 at L1068805, r22 = 12000 at L1069104). [CODE] L1069679-1069715
 
 ## §13 Pointers to other systems
 

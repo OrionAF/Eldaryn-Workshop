@@ -6,6 +6,7 @@ import {
   resolveTransformEffects, processSpellsTick, triggerTransformSpell, hasPendingTransform, isTransformActive,
   transformFireCount, hasActiveEffects, isSpellBuffActive, activeBuffThornsPercent, EMPTY_BUFF_MODIFIERS,
 } from './spells.js';
+import { getActiveCombatSpells } from './spellConfig.js';
 
 const cfg = (species, spell, activationCondition) => ({ species, name: species, icon: null, spell, activationCondition });
 const ref = (species) => ({ name: species, icon: null, species });
@@ -167,6 +168,45 @@ describe('processSpellsTick: DAMAGE hit, modSpellDmg and k (L1090892-1090927, L1
     expect(rng.draws).toBe(1);
     expect(r.targetHpDelta).toBe(-563); // floor(550*1.024)
     expect(r.ownerMomentumStacks).toBe(4);
+  });
+});
+
+describe('processSpellsTick: BUFF-granted SPELL_VAMP / SPELL_CRIT (activeSpellStatBuff L1090767-1090834)', () => {
+  // ARCANE_SURGE at L1 as getActiveCombatSpells builds it for a Mage
+  const surge = () => {
+    const [s] = getActiveCombatSpells({ ownedSigils: [{ species: 'ARCANE_SURGE', level: 1 }], equippedSpecies: ['ARCANE_SURGE'] }, 'MYSTIC', 'MYSTIC_MAGE');
+    return s;
+  };
+  const critBuff = (value) => cfg('CRIT', { spellType: 'BUFF', durationMs: 5000, cooldownMs: 15000, effects: [{ stat: 'SPELL_CRIT', value }] });
+  // a buff runtime that is neither active nor ready contributes nothing
+  const idle = (rts, species) => { rts.find((x) => x.config.species === species).cooldownRemaining = 99999; return rts; };
+
+  it('Arcane Surge {SPELL_DAMAGE 20, SPELL_VAMP 8}: vamp = floor(dmg*healingMult*(base+8)/100), capped at 80', () => {
+    expect(surge().spell.effects).toEqual([{ stat: 'SPELL_DAMAGE', value: 20, maxValue: 32 }, { stat: 'SPELL_VAMP', value: 8, maxValue: 14 }]);
+    let r = processSpellsTick(ready([surge(), cfg('B', blade())]), { ...base, spellVamp: 5 }, none());
+    expect(r.targetHpDelta).toBe(-660); // floor(550*1.2)
+    expect(r.ownerVampHeal).toBe(85); // floor(660*13/100)
+    r = processSpellsTick(ready([surge(), cfg('B', blade())]), { ...base, spellVamp: 5, healingMult: 0.5 }, none());
+    expect(r.ownerVampHeal).toBe(42); // floor(660*0.5*13/100)
+    r = processSpellsTick(ready([surge(), cfg('B', blade())]), { ...base, spellVamp: 75 }, none());
+    expect(r.ownerVampHeal).toBe(528); // 75+8 -> ceiling 80
+    r = processSpellsTick(idle(ready([surge(), cfg('B', blade())]), 'ARCANE_SURGE'), { ...base, spellVamp: 5 }, none());
+    expect(r.ownerVampHeal).toBe(27); // floor(550*5/100), no buff
+  });
+
+  it('{SPELL_CRIT}: adds to the chance, capped at 95; a draw happens only once the chance is above 0', () => {
+    let rng = scripted([0.29]);
+    let r = processSpellsTick(ready([critBuff(30), cfg('B', blade())]), base, rng);
+    expect(rng.draws).toBe(1);
+    expect(r.targetHpDelta).toBe(-825); // 0 + 30 > 29: crit, floor(550*1.5)
+    r = processSpellsTick(ready([critBuff(30), cfg('B', blade())]), base, scripted([0.3]));
+    expect(r.targetHpDelta).toBe(-550);
+    r = processSpellsTick(ready([critBuff(30), cfg('B', blade())]), { ...base, spellCritChance: 90 }, scripted([0.9499]));
+    expect(r.targetHpDelta).toBe(-825);
+    r = processSpellsTick(ready([critBuff(30), cfg('B', blade())]), { ...base, spellCritChance: 90 }, scripted([0.95]));
+    expect(r.targetHpDelta).toBe(-550); // 120 -> ceiling 95
+    r = processSpellsTick(idle(ready([critBuff(30), cfg('B', blade())]), 'CRIT'), base, none()); // chance 0: no draw
+    expect(r.targetHpDelta).toBe(-550);
   });
 });
 
