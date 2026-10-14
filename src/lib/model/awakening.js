@@ -1,29 +1,58 @@
-// model/awakening.js - STUB from M1, owned by B6a from here on (rebuild-plan §7.3 ownership transfer).
-// Persisted character fields: awakening. Shape: rebuild-plan §3 awakening.
+// model/awakening.js - persisted field `awakening: { path, level }` (rebuild-plan §3).
+// path 'SHADOW' | 'RADIANT' | null; level 0..maxPoints (15), forced to 0 without a path
+// (awakening.md §3-§4, data/awakening.json).
 //
-// Domain contract (§3 "Normalisation layout"); every function deals in a PARTIAL CHARACTER, i.e. an
-// object keyed by the character field names above, so multi-field domains need no special case:
-//   defaultAwakening()                       -> fresh partial
-//   normaliseAwakening(rawCharacter, ctx)    -> partial; rawCharacter is the whole raw (untrusted) character,
-//                                          ctx = { class, spec } for gating; must be idempotent
-//   migrateAwakeningFromV1(v1Character)      -> { value: partial, idMap }  (idMap: v1 id -> v2 ref, {} unless
-//                                          presets reference this domain; see §3 contract steps 1-4)
-//   reconcileAwakening(character)            -> void; mutate cross-references in place after ALL domains normalised
-// The stub ignores its input and returns defaults, so preset references to this domain migrate to null.
+// Domain contract (§3 "Normalisation layout"): partial-character functions, see model/index.js.
+import { AWAKENING_PATHS, AWAKENING_CONSTANTS } from '../game/awakening.js';
 
 export function defaultAwakening() {
   return { awakening: { path: null, level: 0 } };
 }
 
-// eslint-disable-next-line no-unused-vars
-export function normaliseAwakening(rawCharacter, ctx) {
-  return defaultAwakening();
+function build(pathRaw, levelRaw) {
+  const key = typeof pathRaw === 'string' ? pathRaw.toUpperCase() : null;
+  const path = key && AWAKENING_PATHS[key] ? key : null;
+  const n = Math.floor(Number(levelRaw));
+  const level = path && Number.isFinite(n) ? Math.max(0, Math.min(AWAKENING_CONSTANTS.maxPoints, n)) : 0;
+  return { awakening: { path, level } };
 }
 
 // eslint-disable-next-line no-unused-vars
+export function normaliseAwakening(rawCharacter, ctx) {
+  return build(rawCharacter?.awakening?.path, rawCharacter?.awakening?.level);
+}
+
+/** v1 `awakening{path, points}` -> `awakening{path, level}`. Nothing references it by id. */
 export function migrateAwakeningFromV1(v1Character) {
-  return { value: defaultAwakening(), idMap: {} };
+  return { value: build(v1Character?.awakening?.path, v1Character?.awakening?.points), idMap: {} };
 }
 
 // eslint-disable-next-line no-unused-vars
 export function reconcileAwakening(character) {}
+
+/**
+ * Which per-level bundle applies, and why (awakening.json calc.precedence: spec override, then class
+ * override, then the path default; an override REPLACES the whole bundle).
+ * @returns {{bundle: object, source: 'spec'|'class'|'path', highlights: string[]} | null}
+ */
+export function awakeningBundle(path, cls, spec) {
+  const p = AWAKENING_PATHS[path];
+  if (!p) return null;
+  const s = spec && p.specOverrides?.[spec];
+  if (s) return { bundle: s.bonusPerLevel, source: 'spec', highlights: s.highlights ?? p.highlights };
+  const c = cls && p.classOverrides?.[cls];
+  if (c) return { bundle: c.bonusPerLevel, source: 'class', highlights: c.highlights ?? p.highlights };
+  return { bundle: p.bonusPerLevel, source: 'path', highlights: p.highlights };
+}
+
+/** Bonuses at `level` for the non-zero keys of the bundle: parseFloat((perLevel*level).toFixed(d)) (calc.perKey). */
+export function awakeningBonuses(path, level, cls, spec) {
+  const b = awakeningBundle(path, cls, spec);
+  if (!b || !(level > 0)) return {};
+  const out = {};
+  for (const [k, per] of Object.entries(b.bundle)) {
+    if (!per) continue;
+    out[k] = parseFloat((per * level).toFixed(k === 'attackSpeedFlat' ? 2 : 1));
+  }
+  return out;
+}

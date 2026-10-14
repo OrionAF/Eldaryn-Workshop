@@ -207,7 +207,7 @@ describe('v1 migration contract (plan §3)', () => {
     for (const d of DOMAINS) {
       const out = d.migrate(V1_CHARACTER);
       expect(out, d.name).toHaveProperty('value');
-      expect(out.idMap, d.name).toEqual({});
+      if (d.name !== 'relics') expect(out.idMap, d.name).toEqual({}); // relics owns a real idMap (B6a)
     }
   });
 });

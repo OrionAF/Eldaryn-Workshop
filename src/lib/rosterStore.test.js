@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { rosterStore as store } from './rosterStore.svelte.js';
 import { mergeStores } from './store/context.js';
 import { KEY, KEY_V1 } from './storage.js';
+import { relicsForClass } from './game/relics.js';
+const WR = relicsForClass('WARRIOR').map((r) => r.id);
 
 /** Fresh single character (the store is a singleton): add one, delete the rest. */
 function reset() {
@@ -128,23 +130,23 @@ describe('presets', () => {
 
   it('duplicatePreset copies with a fresh id right after the source', () => {
     const [a] = store.current.presets.map((p) => p.id);
-    store.setPresetRelics(a, ['x', 'y']);
+    store.setPresetRelics(a, WR.slice(0, 2));
     const copy = store.duplicatePreset(a);
     expect(copy).not.toBe(a);
-    expect(store.current.presets[1]).toMatchObject({ id: copy, name: 'Preset 1 copy', relicIds: ['x', 'y'] });
+    expect(store.current.presets[1]).toMatchObject({ id: copy, name: 'Preset 1 copy', relicIds: WR.slice(0, 2) });
   });
 
   it('setters write valid values: sets are enums, relics/sigils are capped and de-duplicated', () => {
     const a = store.current.presets[0].id;
     store.setPresetEquipmentSet(a, 2);
     store.setPresetTalentSet(a, 1);
-    store.setPresetRelics(a, ['1', '2', '2', '3', '4', '5']);
+    store.setPresetRelics(a, [WR[0], WR[1], WR[1], WR[2], WR[3], WR[4]]);
     store.setPresetSigils(a, { species: ['a', 'b', 'c', 'd'], utility: 'u', ancient: 'x' });
     store.setPresetSigilCondition(a, 'a', 'low-hp');
     store.setPresetSigilCondition(a, 'b', 'low-hp');
     store.setPresetSigilCondition(a, 'b', null);
     const p = store.current.presets[0];
-    expect(p).toMatchObject({ equipmentSet: 2, talentSet: 1, relicIds: ['1', '2', '3', '4'], sigilSpecies: ['a', 'b', 'c'], utilitySigilSpecies: 'u', ancientSigilSpecies: 'x' });
+    expect(p).toMatchObject({ equipmentSet: 2, talentSet: 1, relicIds: WR.slice(0, 4), sigilSpecies: ['a', 'b', 'c'], utilitySigilSpecies: 'u', ancientSigilSpecies: 'x' });
     expect(p.sigilConditions).toEqual({ a: 'low-hp' });
     store.setPresetEquipmentSet(a, 9);
     expect(store.current.presets[0].equipmentSet).toBe(1);
@@ -173,8 +175,8 @@ describe('presets', () => {
     const a = store.current.presets[0].id;
     store.renamePreset(a, 'Persisted');
     expect(saved().characters[0].presets[0].name).toBe('Persisted');
-    store.setPresetRelics(a, ['q']);
-    expect(saved().characters[0].presets[0].relicIds).toEqual(['q']);
+    store.setPresetRelics(a, [WR[0]]);
+    expect(saved().characters[0].presets[0].relicIds).toEqual([WR[0]]);
   });
 });
 
