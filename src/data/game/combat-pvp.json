@@ -1,0 +1,662 @@
+{
+ "source": "Eldaryn 2.7.0 client, decompiled.js. Arena ladder tables: module 3144 L666669-668382 (line numbers per section below). Engine constants: module 3959 L1078983-1080716 / 3963 L1085538-1089590 / 5399 L1452736-1457672. Extracted 2026-10-14.",
+ "schema": "Each key is {line|lines, values}. Arena ladder tables are keyed by enum NAME (ARENA ranks INITIATE..TRANSCENDENT, divisions as Roman numerals).",
+ "arenaConstants": {
+  "line": 667970,
+  "values": {
+   "TOKENS_PER_DAY": 5,
+   "TOKEN_RESET_HOUR": 0,
+   "SECOND_CHANCES_PER_DAY": 1,
+   "SESSION_DURATION_DAYS": 3,
+   "SESSION_DURATION_MS": 259200000,
+   "SESSION_ANCHOR_MS": "Date.UTC(2026, 0, 21, 0, 0, 0) = 2026-01-21T00:00:00Z (decompiled.js L667971-667979; session = 3-day windows from this anchor)",
+   "FIGHT_RANGE": 3,
+   "FIGHT_DURATION_MS": 60000,
+   "TICK_INTERVAL_MS": 10,
+   "REQUIRED_PLAYER_LEVEL": 18,
+   "DOWNRANK_MIN_POOL_SIZE": 5,
+   "PVP_HP_MULTIPLIER": 8,
+   "PVP_SHIELD_BASE_MULTIPLIER": 2
+  },
+  "note": "REQUIRED_PLAYER_LEVEL = UNLOCK_LEVELS.CLASH (decompiled.js L668649, CLASH: 18). SESSION_ANCHOR_MS assigned at L667971-667979."
+ },
+ "ranks": {
+  "lines": [
+   667986,
+   668023
+  ],
+  "values": [
+   {
+    "rank": "INITIATE",
+    "displayName": "Initiate",
+    "iconPlaceholder": "🔰",
+    "hasDivisions": false,
+    "order": 0
+   },
+   {
+    "rank": "VANGUARD",
+    "displayName": "Vanguard",
+    "iconPlaceholder": "🛡️",
+    "hasDivisions": false,
+    "order": 1
+   },
+   {
+    "rank": "ELITE",
+    "displayName": "Elite",
+    "iconPlaceholder": "⚔️",
+    "hasDivisions": false,
+    "order": 2
+   },
+   {
+    "rank": "CHAMPION",
+    "displayName": "Champion",
+    "iconPlaceholder": "🏅",
+    "hasDivisions": false,
+    "order": 3
+   },
+   {
+    "rank": "CONQUEROR",
+    "displayName": "Conqueror",
+    "iconPlaceholder": "🗡️",
+    "hasDivisions": true,
+    "order": 4
+   },
+   {
+    "rank": "OVERLORD",
+    "displayName": "Overlord",
+    "iconPlaceholder": "👑",
+    "hasDivisions": true,
+    "order": 5
+   },
+   {
+    "rank": "WARMASTER",
+    "displayName": "Warmaster",
+    "iconPlaceholder": "🔥",
+    "hasDivisions": true,
+    "order": 6
+   },
+   {
+    "rank": "WARLORD",
+    "displayName": "Warlord",
+    "iconPlaceholder": "💀",
+    "hasDivisions": true,
+    "order": 7
+   },
+   {
+    "rank": "IMMORTAL",
+    "displayName": "Immortal",
+    "iconPlaceholder": "⭐",
+    "hasDivisions": true,
+    "order": 8
+   },
+   {
+    "rank": "TRANSCENDENT",
+    "displayName": "Transcendent",
+    "iconPlaceholder": "✦",
+    "hasDivisions": false,
+    "order": 9
+   }
+  ]
+ },
+ "fightRewardByPositionOffset": {
+  "lines": [
+   668243,
+   668257
+  ],
+  "values": [
+   {
+    "positionOffset": 3,
+    "influence": 30,
+    "honors": 6
+   },
+   {
+    "positionOffset": 2,
+    "influence": 25,
+    "honors": 5
+   },
+   {
+    "positionOffset": 1,
+    "influence": 20,
+    "honors": 4
+   },
+   {
+    "positionOffset": -1,
+    "influence": 15,
+    "honors": 3
+   },
+   {
+    "positionOffset": -2,
+    "influence": 10,
+    "honors": 2
+   },
+   {
+    "positionOffset": -3,
+    "influence": 5,
+    "honors": 1
+   }
+  ],
+  "note": "positionOffset > 0 means the opponent is ranked that many ladder places ABOVE the player (getVirtualOffset, decompiled.js L667700-667760); values 4294967295/94/93 in the bytecode are -1/-2/-3 as signed ints (opponent below). Whether the reward applies to wins only is a server matter [UNRESOLVED]."
+ },
+ "sessionRewardsByRank": {
+  "lines": [
+   668257,
+   668319
+  ],
+  "values": [
+   {
+    "rank": "INITIATE",
+    "rewards": {
+     "dungeonKeys": 1,
+     "raidKeys": 0,
+     "gems": 5,
+     "energy": 100,
+     "bonusHonors": 1
+    }
+   },
+   {
+    "rank": "VANGUARD",
+    "rewards": {
+     "dungeonKeys": 1,
+     "raidKeys": 0,
+     "gems": 10,
+     "energy": 200,
+     "bonusHonors": 2,
+     "bronzeMedals": 1
+    }
+   },
+   {
+    "rank": "ELITE",
+    "rewards": {
+     "dungeonKeys": 2,
+     "raidKeys": 0,
+     "gems": 20,
+     "energy": 350,
+     "bonusHonors": 10,
+     "bronzeMedals": 2
+    }
+   },
+   {
+    "rank": "CHAMPION",
+    "rewards": {
+     "dungeonKeys": 2,
+     "raidKeys": 1,
+     "gems": 35,
+     "energy": 500,
+     "bonusHonors": 14,
+     "bronzeMedals": 3
+    }
+   },
+   {
+    "rank": "CONQUEROR",
+    "rewards": {
+     "dungeonKeys": 3,
+     "raidKeys": 1,
+     "gems": 50,
+     "energy": 700,
+     "bonusHonors": 20,
+     "silverMedals": 1
+    }
+   },
+   {
+    "rank": "OVERLORD",
+    "rewards": {
+     "dungeonKeys": 3,
+     "raidKeys": 1,
+     "gems": 75,
+     "energy": 900,
+     "bonusHonors": 25,
+     "silverMedals": 2
+    }
+   },
+   {
+    "rank": "WARMASTER",
+    "rewards": {
+     "dungeonKeys": 4,
+     "raidKeys": 2,
+     "gems": 100,
+     "energy": 1100,
+     "bonusHonors": 35,
+     "silverMedals": 3
+    }
+   },
+   {
+    "rank": "WARLORD",
+    "rewards": {
+     "dungeonKeys": 4,
+     "raidKeys": 2,
+     "gems": 150,
+     "energy": 1300,
+     "bonusHonors": 45,
+     "goldMedals": 1
+    }
+   },
+   {
+    "rank": "IMMORTAL",
+    "rewards": {
+     "dungeonKeys": 5,
+     "raidKeys": 3,
+     "gems": 180,
+     "energy": 1500,
+     "bonusHonors": 60,
+     "goldMedals": 2
+    }
+   },
+   {
+    "rank": "TRANSCENDENT",
+    "rewards": {
+     "dungeonKeys": 6,
+     "raidKeys": 3,
+     "gems": 220,
+     "energy": 1800,
+     "bonusHonors": 80,
+     "goldMedals": 3
+    }
+   }
+  ],
+  "note": "End-of-session reward, multiplied by positionTiers[].multiplier for the final ladder position (getPositionBasedRewards, L667775+); dungeonKeys floors at min 1."
+ },
+ "rankFightMultipliers": {
+  "lines": [
+   668319,
+   668361
+  ],
+  "values": [
+   {
+    "rank": "INITIATE",
+    "influenceMultiplier": 1,
+    "honorsMultiplier": 1
+   },
+   {
+    "rank": "VANGUARD",
+    "influenceMultiplier": 1.2,
+    "honorsMultiplier": 1.2
+   },
+   {
+    "rank": "ELITE",
+    "influenceMultiplier": 1.5,
+    "honorsMultiplier": 1.5
+   },
+   {
+    "rank": "CHAMPION",
+    "influenceMultiplier": 2,
+    "honorsMultiplier": 1.8
+   },
+   {
+    "rank": "CONQUEROR",
+    "influenceMultiplier": 2.5,
+    "honorsMultiplier": 2.2
+   },
+   {
+    "rank": "OVERLORD",
+    "influenceMultiplier": 3.5,
+    "honorsMultiplier": 2.5
+   },
+   {
+    "rank": "WARMASTER",
+    "influenceMultiplier": 5,
+    "honorsMultiplier": 3
+   },
+   {
+    "rank": "WARLORD",
+    "influenceMultiplier": 7,
+    "honorsMultiplier": 4
+   },
+   {
+    "rank": "IMMORTAL",
+    "influenceMultiplier": 9,
+    "honorsMultiplier": 5
+   },
+   {
+    "rank": "TRANSCENDENT",
+    "influenceMultiplier": 12,
+    "honorsMultiplier": 6
+   }
+  ],
+  "note": "getRankFightMultiplier (L667663): per-rank multipliers for fight influence/honors."
+ },
+ "positionTiers": {
+  "lines": [
+   668361,
+   668377
+  ],
+  "values": [
+   {
+    "label": "1st",
+    "minPosition": 1,
+    "maxPosition": 1,
+    "multiplier": 1.6
+   },
+   {
+    "label": "2-3",
+    "minPosition": 2,
+    "maxPosition": 3,
+    "multiplier": 1.4
+   },
+   {
+    "label": "4-10",
+    "minPosition": 4,
+    "maxPosition": 10,
+    "multiplier": 1.2
+   },
+   {
+    "label": "11-20",
+    "minPosition": 11,
+    "maxPosition": 20,
+    "multiplier": 1
+   },
+   {
+    "label": "21-30",
+    "minPosition": 21,
+    "maxPosition": 30,
+    "multiplier": 0.8
+   },
+   {
+    "label": "31+",
+    "minPosition": 31,
+    "maxPosition": "Infinity",
+    "multiplier": 0.5
+   }
+  ]
+ },
+ "rankThresholds": {
+  "lines": [
+   668031,
+   668233
+  ],
+  "count": 28,
+  "values": [
+   {
+    "rank": "INITIATE",
+    "division": null,
+    "requiredInfluence": 0
+   },
+   {
+    "rank": "VANGUARD",
+    "division": null,
+    "requiredInfluence": 500
+   },
+   {
+    "rank": "ELITE",
+    "division": null,
+    "requiredInfluence": 1500
+   },
+   {
+    "rank": "CHAMPION",
+    "division": null,
+    "requiredInfluence": 2000
+   },
+   {
+    "rank": "CONQUEROR",
+    "division": "II",
+    "requiredInfluence": 3500
+   },
+   {
+    "rank": "CONQUEROR",
+    "division": "I",
+    "requiredInfluence": 5000
+   },
+   {
+    "rank": "OVERLORD",
+    "division": "III",
+    "requiredInfluence": 7000
+   },
+   {
+    "rank": "OVERLORD",
+    "division": "II",
+    "requiredInfluence": 9500
+   },
+   {
+    "rank": "OVERLORD",
+    "division": "I",
+    "requiredInfluence": 11000
+   },
+   {
+    "rank": "WARMASTER",
+    "division": "III",
+    "requiredInfluence": 12500
+   },
+   {
+    "rank": "WARMASTER",
+    "division": "II",
+    "requiredInfluence": 21000
+   },
+   {
+    "rank": "WARMASTER",
+    "division": "I",
+    "requiredInfluence": 25000
+   },
+   {
+    "rank": "WARLORD",
+    "division": "V",
+    "requiredInfluence": 30000
+   },
+   {
+    "rank": "WARLORD",
+    "division": "IV",
+    "requiredInfluence": 35000
+   },
+   {
+    "rank": "WARLORD",
+    "division": "III",
+    "requiredInfluence": 40000
+   },
+   {
+    "rank": "WARLORD",
+    "division": "II",
+    "requiredInfluence": 45000
+   },
+   {
+    "rank": "WARLORD",
+    "division": "I",
+    "requiredInfluence": 50000
+   },
+   {
+    "rank": "IMMORTAL",
+    "division": "X",
+    "requiredInfluence": 56000
+   },
+   {
+    "rank": "IMMORTAL",
+    "division": "IX",
+    "requiredInfluence": 62000
+   },
+   {
+    "rank": "IMMORTAL",
+    "division": "VIII",
+    "requiredInfluence": 68000
+   },
+   {
+    "rank": "IMMORTAL",
+    "division": "VII",
+    "requiredInfluence": 75000
+   },
+   {
+    "rank": "IMMORTAL",
+    "division": "VI",
+    "requiredInfluence": 82000
+   },
+   {
+    "rank": "IMMORTAL",
+    "division": "V",
+    "requiredInfluence": 90000
+   },
+   {
+    "rank": "IMMORTAL",
+    "division": "IV",
+    "requiredInfluence": 100000
+   },
+   {
+    "rank": "IMMORTAL",
+    "division": "III",
+    "requiredInfluence": 110000
+   },
+   {
+    "rank": "IMMORTAL",
+    "division": "II",
+    "requiredInfluence": 125000
+   },
+   {
+    "rank": "IMMORTAL",
+    "division": "I",
+    "requiredInfluence": 140000
+   },
+   {
+    "rank": "TRANSCENDENT",
+    "division": null,
+    "requiredInfluence": 200000
+   }
+  ],
+  "note": "Influence needed to enter each rank/division (getRankForInfluence L667448)."
+ },
+ "pvpRatingK": {
+  "line": 1080517,
+  "value": 200,
+  "note": "module 3959 closure slot4 (getter PVP_RATING_K); fraction = r/(r+K)"
+ },
+ "combatCeilings": {
+  "lines": [
+   1080486,
+   1080486
+  ],
+  "values": {
+   "MISS_CHANCE": 90,
+   "BLIND_CHANCE": 60,
+   "DAMAGE_REDUCTION": 75,
+   "BLOCK_CHANCE": 85,
+   "CRIT_CHANCE": 95,
+   "LIFESTEAL": 80,
+   "ATTACK_SPEED": 4.5,
+   "PENETRATION": 80,
+   "SPELL_CRIT_CHANCE": 95,
+   "SPELL_VAMP": 80,
+   "HP_REGEN": 70,
+   "MINION_CRIT_CHANCE": 95,
+   "MINION_LIFESTEAL": 80,
+   "SOUL_LINK": 80,
+   "MINION_ATTACK_SPEED": 4.5
+  },
+  "note": "Caps applied to buff-boosted values inside combat (module 3959 slot1). Hard/soft stat caps are owned by stats.md."
+ },
+ "engineStatusConstants": {
+  "lines": [
+   1089572,
+   1089579
+  ],
+  "module": 3963,
+  "values": {
+   "DISRUPTION_SILENCE_MS": 3000,
+   "STAGGER_STACKS_TO_STUN": 3,
+   "STAGGER_STUN_MS": 2000,
+   "FEAR_DURATION_MS": 1000,
+   "PARALYZE_DURATION_MS": 1000
+  }
+ },
+ "clanWarPvp": {
+  "line": 1063264,
+  "values": {
+   "TOKENS_PER_DAY": 3,
+   "TOKEN_RESET_HOUR": 0,
+   "WP_FOR_WIN": 30,
+   "WP_FOR_LOSS": 0
+  }
+ },
+ "clanBattleDuel": {
+  "line": 1533919,
+  "values": {
+   "DUEL_DURATION_MS": 120000,
+   "TICK_MS": 10,
+   "PVP_HP_MULTIPLIER": 36,
+   "PVP_SHIELD_BASE_MULTIPLIER": 2,
+   "LOW_HP_THRESHOLD_PCT": 25,
+   "SWING_LEAD_MS": 400,
+   "REGEN_LOG_INTERVAL_MS": 1000,
+   "TICK_ORDER": "alternate"
+  }
+ },
+ "stackSigilDefs": {
+  "lines": [
+   1069192,
+   1069213,
+   1069426,
+   1069445,
+   1070130
+  ],
+  "values": [
+   {
+    "name": "Bulwark of Thorns",
+    "class": "WARRIOR",
+    "rarity": "LEGENDARY",
+    "kind": "BULWARK",
+    "maxStacks": 8,
+    "hpPercentPerStack": 8,
+    "drPercentPerStack": 4,
+    "thornsPercentPerStack": 7,
+    "stackLossPerHit": 1,
+    "trigger": "own block"
+   },
+   {
+    "name": "Sunder Mark",
+    "class": "WARRIOR",
+    "rarity": "LEGENDARY",
+    "kind": "SUNDER",
+    "maxStacks": 8,
+    "drReductionPerStack": 4,
+    "blindReductionPerStack": 4,
+    "blockReductionPerStack": 4,
+    "missReductionPerStack": 4,
+    "decayPerSecond": 1.75,
+    "trigger": "own landed hit (on target)"
+   },
+   {
+    "name": "Elusive Supremacy",
+    "class": "SENTINEL",
+    "rarity": "LEGENDARY",
+    "kind": "ELUSIVE",
+    "maxStacks": 8,
+    "attackPercentPerStack": 3,
+    "critChancePercentPerStack": 3,
+    "lifestealPercentPerStack": 3,
+    "attackSpeedPercentPerStack": 3,
+    "stackLossPerHit": 2,
+    "trigger": "own evade (miss label or blind fizzle)"
+   },
+   {
+    "name": "Siegebreaker Mark",
+    "class": "SENTINEL",
+    "rarity": "LEGENDARY",
+    "kind": "SIEGEBREAKER",
+    "maxStacks": 8,
+    "hpRegenReductionPerStack": 3,
+    "blockReductionPerStack": 3,
+    "missReductionPerStack": 4,
+    "blindReductionPerStack": 4,
+    "decayPerSecond": 1.75,
+    "trigger": "own landed hit (on target)"
+   },
+   {
+    "name": "Primal Instinct (Druid) BEAR",
+    "class": "MYSTIC",
+    "rarity": "LEGENDARY",
+    "kind": "BULWARK",
+    "maxStacks": 8,
+    "hpPercentPerStack": 4,
+    "drPercentPerStack": 2,
+    "thornsPercentPerStack": 5,
+    "stackLossPerHit": 2
+   },
+   {
+    "name": "Primal Instinct (Druid) WOLF",
+    "class": "MYSTIC",
+    "rarity": "LEGENDARY",
+    "kind": "SIEGEBREAKER",
+    "maxStacks": 8,
+    "hpRegenReductionPerStack": 3,
+    "blockReductionPerStack": 4,
+    "missReductionPerStack": 4,
+    "blindReductionPerStack": 4,
+    "decayPerSecond": 1.75
+   }
+  ],
+  "note": "Catalogue ownership: sigils.md. Included because the PVP engine consumes them."
+ }
+}
