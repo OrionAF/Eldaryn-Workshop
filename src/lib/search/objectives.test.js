@@ -141,6 +141,17 @@ describe('measures', () => {
     expect(m.aborted).toBe(false);
   });
 
+  it('dps against a finite-HP mob measures the window without the mob dying, so builds stay comparable', () => {
+    // 30 000 HP would die in 30 s to the weak build and 10 s to the strong one; both used to score hp / 60 = 500.
+    const target = resolveTarget({ kind: 'custom', mob: { hp: 30000, attack: 0, attackSpeed: 1 }, seconds: 60 });
+    const o = makeObjective({ kind: 'dps' }, target);
+    const weak = o.measure(fighter({ totalAttack: 1000 }), { n: 4, seed: 1 });
+    const strong = o.measure(fighter({ totalAttack: 3000 }), { n: 4, seed: 1 });
+    expect(weak.value).toBeCloseTo(1000, 0);
+    expect(strong.value).toBeCloseTo(3000, 0);
+    expect(strong.score).toBeGreaterThan(weak.score);
+  });
+
   it('ttk: a stronger fighter is faster; a fighter that loses ranks below any winner and by win rate', () => {
     const target = resolveTarget({ kind: 'custom', mob: { hp: 20000, attack: 100, attackSpeed: 1 }, seconds: 120 });
     const o = makeObjective({ kind: 'ttk-median' }, target);
