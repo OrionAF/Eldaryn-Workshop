@@ -1,10 +1,28 @@
-// store/awakening.js - STUB from M1, owned by B6a from here on (rebuild-plan §7.3 ownership transfer).
-// Mutators for this domain. Pattern (see store/characters.js and store/context.js):
-//   export function createAwakeningStore(ctx) { ...; return { mutatorA, mutatorB }; }
-// Every mutator edits through ctx.edit(fn) (or ctx.current() + ctx.persist()) so it ends with persist().
-// The facade (rosterStore.svelte.js) spreads the returned object into the public store.
+// store/awakening.js - Awakening mutators (character-wide).
+import { normaliseAwakening } from '../model/awakening.js';
 
-// eslint-disable-next-line no-unused-vars
 export function createAwakeningStore(ctx) {
-  return {};
+  const make = (path, level) => normaliseAwakening({ awakening: { path, level } }).awakening;
+
+  /** Choosing a different path resets the points; null clears. */
+  function setAwakeningPath(path) {
+    ctx.edit((c) => {
+      const next = make(path, 0);
+      if (next.path !== c.awakening.path) c.awakening = next;
+    });
+  }
+
+  function setAwakeningLevel(level) {
+    ctx.edit((c) => {
+      c.awakening = make(c.awakening.path, level);
+    });
+  }
+
+  function resetAwakening() {
+    ctx.edit((c) => {
+      c.awakening = make(null, 0);
+    });
+  }
+
+  return { setAwakeningPath, setAwakeningLevel, resetAwakening };
 }

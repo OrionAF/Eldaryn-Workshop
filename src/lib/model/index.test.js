@@ -207,7 +207,8 @@ describe('v1 migration contract (plan §3)', () => {
     for (const d of DOMAINS) {
       const out = d.migrate(V1_CHARACTER);
       expect(out, d.name).toHaveProperty('value');
-      expect(out.idMap, d.name).toEqual(d.name === 'transcendence' ? { '*': 'default' } : {});
+      // relics (B6a) and transcendence (B7) own real idMaps; the rest are still {} for this fixture
+      if (d.name !== 'relics') expect(out.idMap, d.name).toEqual(d.name === 'transcendence' ? { '*': 'default' } : {});
     }
   });
 });
