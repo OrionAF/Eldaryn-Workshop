@@ -162,7 +162,7 @@ describe('v1 migration contract (plan §3)', () => {
 
   it('stubbed domains give null / empty preset references', () => {
     const c = migrateCharacterFromV1(V1_CHARACTER);
-    expect(c.presets[0]).toMatchObject({ petId: null, mountId: null, relicIds: [] , transcendencePresetId: null });
+    expect(c.presets[0]).toMatchObject({ petId: null, mountId: null, relicIds: [] , transcendencePresetId: 'default' });
   });
 
   it('migratePresetsFromV1 remaps through idMaps, drops unmapped ids, caps relics and sigils', () => {
@@ -207,7 +207,7 @@ describe('v1 migration contract (plan §3)', () => {
     for (const d of DOMAINS) {
       const out = d.migrate(V1_CHARACTER);
       expect(out, d.name).toHaveProperty('value');
-      expect(out.idMap, d.name).toEqual({});
+      expect(out.idMap, d.name).toEqual(d.name === 'transcendence' ? { '*': 'default' } : {});
     }
   });
 });
