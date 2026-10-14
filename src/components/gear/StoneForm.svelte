@@ -15,6 +15,7 @@
   import { STONE_TYPES, OBLIVION_GRADES, amplifyStep, oblivionGrade } from '../../lib/game/stones.js';
   import { stoneRecipe, STONE_STAT_DEFS, MAX_AMPLIFY_LEVEL } from '../../lib/model/stones.js';
   import { slotLabel, statLabel, toDisplay, fromDisplay } from './gearFormat.js';
+  import { formatFlat } from '../../lib/format.js';
   import ConfirmButton from '../ConfirmButton.svelte';
 
   let { realm = 'base', stones, cls = null, setKey, setLabel, selectedSlot, canSocket = true, selectedStoneId = null, onSelect } = $props();
@@ -187,7 +188,7 @@
         </select>
       </label>
       <p class="hint mono">
-        Base {oblivionGrade(selected.oblivionLevel)?.baseAttack.toLocaleString('en-US')} Attack / {oblivionGrade(selected.oblivionLevel)?.baseHp.toLocaleString('en-US')} Health,
+        Base {formatFlat(oblivionGrade(selected.oblivionLevel)?.baseAttack)} Attack / {formatFlat(oblivionGrade(selected.oblivionLevel)?.baseHp)} Health,
         Power x{oblivionGrade(selected.oblivionLevel)?.powerGradeMult}
       </p>
     {/if}

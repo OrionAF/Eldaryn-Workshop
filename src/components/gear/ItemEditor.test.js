@@ -1,7 +1,7 @@
 import { it, expect, beforeEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import ItemEditor from './ItemEditor.svelte';
-import { parseFlat, formatFlat, toDisplay, fromDisplay } from './gearFormat.js';
+import { parseFlat, flatFieldText, toDisplay, fromDisplay } from './gearFormat.js';
 
 let target;
 beforeEach(() => {
@@ -123,8 +123,9 @@ it('parse / format helpers', () => {
   expect(parseFlat('48,124')).toBe(48124);
   expect(parseFlat('12.5')).toBe(12.5);
   expect(parseFlat('abc')).toBe(0);
-  expect(formatFlat(48124)).toBe('48,124');
-  expect(formatFlat(0)).toBe('');
+  expect(flatFieldText(48124)).toBe('48.124'); // the game's "." thousands separator, as everywhere else
+  expect(parseFlat(flatFieldText(48124))).toBe(48124);
+  expect(flatFieldText(0)).toBe('');
   expect(toDisplay('CRIT_DAMAGE', 0.2)).toBe('20');
   expect(toDisplay('CRIT_CHANCE', 3.2)).toBe('3.2');
   expect(fromDisplay('CRIT_DAMAGE', '20')).toBeCloseTo(0.2);

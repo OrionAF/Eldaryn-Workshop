@@ -1,6 +1,7 @@
 // gearFormat.js (B1): display and parse helpers shared by the gear components. Pure; no store.
 import { SECONDARY_STAT_POOL, slotDisplayName, weaponOffhandName } from '../../lib/game/gear.js';
 import { isMultiplierStat } from '../../lib/model/equipment.js';
+import { formatFlat } from '../../lib/format.js';
 
 const POOL_LABEL = new Map(SECONDARY_STAT_POOL.map((s) => [s.type, s.label]));
 
@@ -41,7 +42,8 @@ export function formatStatValue(type, value) {
 
 /**
  * Flat stat text -> number. The game's own UI groups thousands with "." or "," (device locale,
- * stats.md §1.3), so "48.124" and "48,124" both mean 48124 while "12.5" stays 12.5.
+ * stats.md §1.3), so "48.124" and "48,124" both mean 48124 while "12.5" stays 12.5. Display is always
+ * "." grouping (flatFieldText), so what the field shows parses back to the same value.
  */
 export function parseFlat(text) {
   const s = String(text ?? '').trim().replace(/\s/g, '');
@@ -50,9 +52,10 @@ export function parseFlat(text) {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
-export function formatFlat(n) {
+/** Field text for a flat stat: grouped like the game ("48.124", lib/format.js), blank for 0 so the placeholder shows. */
+export function flatFieldText(n) {
   const v = Number(n);
-  return Number.isFinite(v) && v !== 0 ? v.toLocaleString('en-US') : '';
+  return Number.isFinite(v) && v !== 0 ? formatFlat(v) : '';
 }
 
 /** Stone type -> CSS colour tokens (app.css --stone-* / --nav-oblivion). */

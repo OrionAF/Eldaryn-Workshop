@@ -1,6 +1,7 @@
 // dropFormat.js (F1): display helpers for the Drop Check components. Pure; no store.
 import { statLabel, toDisplay, rarityColor } from '../gear/gearFormat.js';
 import { rarityById } from '../../lib/game/gear.js';
+import { formatFlat } from '../../lib/format.js';
 
 export const VERDICT_LABEL = {
   upgrade: 'Upgrade',
@@ -11,17 +12,15 @@ export const VERDICT_LABEL = {
 };
 export const VERDICT_GLYPH = { upgrade: '▲', downgrade: '▼', sidegrade: '=', mixed: '±', empty: '' };
 
-const grouped = (n) => Math.round(n).toLocaleString('en-US');
-
-/** 12345.6 -> "12,346" (blank for a non-number). */
+/** 12345.6 -> "12.346" (the game's "." thousands separator; a dash for a non-number). */
 export function flat(n) {
-  return Number.isFinite(n) ? grouped(n) : '—';
+  return Number.isFinite(n) ? formatFlat(n) : '—';
 }
 
 /** 5 -> "+5", -5 -> "-5", 0 -> "0" (grouped thousands). */
 export function signedFlat(n, digits = 0) {
   if (!Number.isFinite(n)) return '—';
-  const v = digits ? n.toFixed(digits) : grouped(n);
+  const v = digits ? n.toFixed(digits) : formatFlat(n);
   return n > 0 ? `+${v}` : v;
 }
 
@@ -44,7 +43,7 @@ export function signedPts(d, digits = 1) {
   return d > 0 ? `+${v} pts` : `${v} pts`;
 }
 
-/** "95% CI +800 to +1,400" for a DPS-style delta interval. */
+/** "+800 to +1.400" for a DPS-style delta interval. */
 export function ciFlat(delta) {
   return `${signedFlat(delta.lo)} to ${signedFlat(delta.hi)}`;
 }
