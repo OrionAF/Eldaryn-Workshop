@@ -5,6 +5,8 @@ import {
 } from './spellConfig.js';
 import { emptySigilGlyphMods } from './glyphMods.js';
 import { initSpellRuntimes } from './spells.js';
+import { SIGIL_CATALOGUE } from '../../game/sigils.js';
+import { getSigilDefinitionForSpec } from '../sources/sigilScale.js';
 
 const owned = (...list) => list.map(([species, level, activationCondition]) => ({ species, level, activationCondition }));
 
@@ -81,5 +83,65 @@ describe('summon / form / DoT duration builders', () => {
     expect(getSpellDotDurationMs('ARROWSTORM', 'WARRIOR_DPS', null)).toBe(6000);
     expect(getSpellDotDurationMs('BLADE_OF_JUDGMENT', 'WARRIOR_DPS', null)).toBe(0);
     expect(getSpellDotDurationMs('WARBORN_FURY', 'WARRIOR_DPS', null)).toBe(0);
+  });
+});
+
+describe('Druid variants: form spells and client spell types (sigils.md §12, L1069570-1070178)', () => {
+  const druid = (species, level) => ({ ownedSigils: owned([species, level]), druidEquippedSpecies: [species] });
+  const cast = (species, form, level = 1) => getActiveCombatSpells(druid(species, level), 'MYSTIC', 'MYSTIC_DRUID', form);
+
+  it('PRIMAL_AWAKENING: WOLF casts ATTACK_PERCENT + ATTACK_SPEED, BEAR casts HP_PERCENT, no form casts nothing', () => {
+    // L5 scale 1.32: 8 -> 10.6, 0.05 -> 0.1 (1 decimal, cap 0.1), 15 -> 19.8; timers r12 8000 / r22 12000
+    expect(cast('PRIMAL_AWAKENING', 'WOLF', 5)).toMatchObject([{
+      species: 'PRIMAL_AWAKENING',
+      spell: {
+        spellType: 'BUFF', durationMs: 8000, cooldownMs: 12000,
+        effects: [{ stat: 'ATTACK_PERCENT', value: 10.6 }, { stat: 'ATTACK_SPEED', value: 0.1 }],
+      },
+    }]);
+    expect(cast('PRIMAL_AWAKENING', 'BEAR', 5)).toMatchObject([{
+      spell: { spellType: 'BUFF', durationMs: 8000, cooldownMs: 12000, effects: [{ stat: 'HP_PERCENT', value: 19.8 }] },
+    }]);
+    expect(cast('PRIMAL_AWAKENING', null, 5)).toEqual([]);
+  });
+
+  it('catalogue: no top-level formSpell; every druidVariant spell / formSpell stores its type; castable ones have timers', () => {
+    const castable = new Set(['DAMAGE', 'DEBUFF', 'BUFF', 'HEAL', 'DEFENSE', 'TRANSFORM']);
+    const timed = new Set(['BUFF', 'HEAL', 'DEFENSE', 'TRANSFORM']);
+    const problems = [];
+    for (const e of SIGIL_CATALOGUE) {
+      if ('formSpell' in e) problems.push(`${e.species}: top-level formSpell`);
+      const dv = e.druidVariant;
+      if (!dv) continue;
+      const spells = [['spell', dv.spell], ...Object.entries(dv.formSpell ?? {})].filter(([, s]) => s);
+      if (spells.length === 0) problems.push(`${e.species}: empty druidVariant`);
+      for (const [k, s] of spells) {
+        if (!s.spellType) problems.push(`${e.species}.${k}: no spellType`);
+        if (!castable.has(s.spellType)) continue;
+        if (!(s.cooldownMs > 0)) problems.push(`${e.species}.${k}: no cooldownMs`);
+        if (timed.has(s.spellType) && !(s.durationMs > 0)) problems.push(`${e.species}.${k}: no durationMs`);
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+
+  // client SigilSpellType per variant spell / form (L1069587-1070048); opening cooldown 0 for BUFF,
+  // 1000 for DAMAGE / DEBUFF (getOpeningCastDelayMs)
+  it.each([
+    ['ARCANE_SHARD', 'BEAR', 'DAMAGE'],
+    ['PRIMAL_AWAKENING', 'BEAR', 'BUFF'], ['PRIMAL_AWAKENING', 'WOLF', 'BUFF'],
+    ['RUNIC_AFFLICTION', 'BEAR', 'DEBUFF'],
+    ['ARCANE_BURST', 'BEAR', 'DAMAGE'], ['ARCANE_BURST', 'WOLF', 'DAMAGE'],
+    ['ARCANE_SURGE', 'BEAR', 'BUFF'], ['ARCANE_SURGE', 'WOLF', 'BUFF'],
+    ['BLINDING_AFFLICTION', 'BEAR', 'DEBUFF'],
+    ['WITHERING_BRAND', 'BEAR', 'BUFF'], ['WITHERING_BRAND', 'WOLF', 'DEBUFF'],
+    ['ARCANE_BARRAGE', 'BEAR', 'DAMAGE'], ['ARCANE_BARRAGE', 'WOLF', 'DEBUFF'],
+    ['AETHER_RENEWAL', 'BEAR', 'BUFF'], ['AETHER_RENEWAL', 'WOLF', 'BUFF'],
+  ])('%s in %s form is a %s spell with the matching opening cooldown', (species, form, type) => {
+    const def = getSigilDefinitionForSpec(species, 'MYSTIC_DRUID', form);
+    expect(def.spell.spellType).toBe(type); // stored in the catalogue, not inferred
+    const spells = cast(species, form);
+    expect(spells.map((s) => s.spell.spellType)).toEqual([type]);
+    expect(initSpellRuntimes(spells)[0].cooldownRemaining).toBe(type === 'BUFF' ? 0 : 1000);
   });
 });

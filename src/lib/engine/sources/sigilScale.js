@@ -24,9 +24,9 @@ export function getSigilBonusHp(def, level, tier = 1) {
 }
 
 /**
- * Spell type of a catalogue spell object. The catalogue keeps `spellType` on the sigil, and druid
- * variant spells carry none (the client's variant spells carry their own), so the type is inferred
- * from the spell's shape when it is missing, falling back to `fallback`.
+ * Spell type of a catalogue spell object: the stored `spellType` first (every druid variant spell
+ * stores the client's, sigils.md §12). A base sigil spell keeps its type on the sigil entry, so a
+ * spell without one is typed from its shape, falling back to `fallback`.
  * @param {Object} spell
  * @param {string} [fallback]
  */
