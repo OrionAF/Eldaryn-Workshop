@@ -30,7 +30,7 @@ Stat sheet integration: the client sums flat Attack/HP and aura percents in `cal
 | `getSigilsUnlockLevel(class)` fallback when class unknown | 25 | [CODE] L668388-668407 |
 | Sigils catalogue per class | Warrior 12 forge + 2 Ancient (Flameborn, Earthwarden); Sentinel 12 forge + 2 Ancient (Stormcaller, Flameborn); Mystic 21 entries (druid-only and mage-only mixed); Necromancer 10 entries | [CODE] Warrior L1068994-1069232, Sentinel L1069233-1069466, Ancient L1069467-1069552, Mystic L1069570-1070318, Necromancer L1070319-1070528 |
 
-The app only models Warrior and Sentinel. Mystic and Necromancer sigils are in `data/sigils.json` (see §8).
+All four classes' sigils are in `data/sigils.json` (see §8).
 
 ## §2 Slots
 
@@ -116,7 +116,7 @@ Base values by rarity (identical for every sigil of that rarity) [CODE] definiti
 Notes and consequences:
 
 - **The tier multiplier is uniform for every rarity.** There is no "Legendary starts its x3 ladder at tier 2" rule in the stat code. Legendary appears from tier 2 only because the forge cannot roll it at tier 1 (`isSigilLegendaryUnlocked`, L1066809). [CODE]
-- **The old "14 unexplained level-5 Health rows" are floating-point.** `1300 * (1 + 4*0.1)` is `1819.9999999999998` in IEEE doubles, so `floor` gives 1819 at L5. Same effect at L14 and L19 (Common and Epic Health, plus Ancient Attack at L14). The old doc's `Math.floor` finding stands. [DERIVED] reproduced with a double-precision script (`agent-scripts/sigils/stat.py`): 18 Health cells for Common/Epic at L5/14/19 over tiers 1-3, plus Ancient Attack at L14 (tiers 2 and 3).
+- **The old "14 unexplained level-5 Health rows" are floating-point.** `1300 * (1 + 4*0.1)` is `1819.9999999999998` in IEEE doubles, so `floor` gives 1819 at L5. Same effect at L14 and L19 (Common and Epic Health, plus Ancient Attack at L14). The old doc's `Math.floor` finding stands. [DERIVED] reproduced in double precision: 18 Health cells for Common/Epic at L5/14/19 over tiers 1-3, plus Ancient Attack at L14 over tiers 1-3 (`6000 * (1 + 13*0.1)` is `13799.999999999998`, floor gives 13799; 21 cells in all). Ancients stay level 1, so the Attack cell has no gameplay effect.
 - Percent-based aura sigils also add flat Attack/Health: every sigil carries both. [CODE]
 - The Ancient's stats follow the same formula at level 1: `6000 * tierMult` Attack, `40000 * tierMult` Health. [DERIVED]
 - Whether the client formula equals the server's authoritative `computedStats` is not provable here. [SERVER] (see §11)
@@ -136,8 +136,8 @@ Per spell type, which fields scale [CODE] L1067622-1068264:
 | spellType | Scaled fields (with their cap) | Not scaled |
 |---|---|---|
 | AURA | `bonusValue` (no cap; `toFixed(2)` instead of 1 when `bonusStat == ATTACK_SPEED`) | |
-| DAMAGE | `baseDamage` (floored), `attackPercent` (cap `maxAttackPercent`), `damagePerTick` (floored), `slow.attackSpeedReductionPercent`, `wound.regenReductionPercent`, `critDown.critChanceReduction` (each with its own `max*`) | cooldown, duration, tick interval, paralyze/fear/silence ms |
-| DEBUFF | `initialAttackPercent` (cap), `debuff.regenReductionPercent` (cap), `debuff.damagePerTickPercent` (cap) | cooldown, duration, maxStacks, tick interval |
+| DAMAGE | `baseDamage` (floored unconditionally, so a spell with no `baseDamage` would give NaN; every catalogued DAMAGE spell has 0), `attackPercent` (cap `maxAttackPercent`), `damagePerTick` (floored), `slow.attackSpeedReductionPercent`, `wound.regenReductionPercent`, `critDown.critChanceReduction` (each with its own `max*`) | cooldown, duration, tick interval, paralyze/fear/silence ms |
+| DEBUFF | `initialAttackPercent` (cap; scales uncapped when no max), `debuff.regenReductionPercent` and `debuff.damagePerTickPercent` (each scaled only when its `max*` sibling exists, otherwise left at the level-1 value; the shipped catalogue has all the maxes) | cooldown, duration, maxStacks, tick interval |
 | BUFF | each `effects[i].value` (cap `maxValue`, `toFixed(1)`), `thornsPercent`, `minionEmpower.*`, `minionFrenzy.*` | duration, cooldown |
 | HEAL | `healPercentPerTick` (no cap) | tick interval, duration, cooldown |
 | SHIELD | `shieldHpPercent` (cap `maxShieldHpPercent`) | |
@@ -158,7 +158,7 @@ Consequences worked through (script `agent-scripts/sigils/scale.py`, all [DERIVE
 Types (`SigilSpellType`): AURA, DAMAGE, BUFF, HEAL, DEBUFF, TRANSFORM, SHIELD, STACK, SUMMON, FORM, DEFENSE. [CODE] L1067622-1067700 (DEFENSE exists in the enum and in `getSigilSpellScaled` but no sigil in 2.7.0 uses it).
 
 - **AURA**: permanent while equipped. `bonusStat` in {ATTACK_PERCENT, HP_PERCENT, ATTACK_SPEED, MISS_CHANCE, HP_REGEN, SPELL_DAMAGE}; `bonusValue` is added to that stat accumulator. Level-scaled (§5). [CODE] `calculateSigilBonuses` L1095765-1096000. Auras have no cooldown/duration; they never go through the combat spell list. [CODE] L1096025-1096225 (`getActiveCombatSpells` excludes AURA, STACK, SHIELD, FORM, SUMMON).
-- **DAMAGE**: hit for `floor(playerAttack * attackPercent / 100)` if `attackPercent` is set (else `baseDamage`), then through `modSpellDmg`: `max(1, floor(x * (1 + (SPELL_DAMAGE stat + buffs + spellDamagePercent)/100) * k))` where `k` is a further multiplier not resolved. [CODE] `processSpellsTick` L1090474-1092345: base L1091965-1091975, `modSpellDmg` L1090892-1090930. The 5th argument at the call site (L1074777-1074830) is `attacker.attack`. [UNRESOLVED] the multiplier `k` (register `_closure2_slot9`) and the crit path; see combat-pve.md. `isDoT: true` sigils repeat the hit every `tickIntervalMs` for `durationMs`.
+- **DAMAGE**: hit for `floor(playerAttack * attackPercent / 100)` if `attackPercent` is set (else `baseDamage`), then through `modSpellDmg`: `max(1, floor(x * (1 + (SPELL_DAMAGE stat + buffs + spellDamagePercent)/100) * k))` where `k` is the target's spell-resist factor (see combat-pve.md §10.2). [CODE] `processSpellsTick` L1090474-1092345: base L1091965-1091975, `modSpellDmg` L1090892-1090930. The 5th argument at the call site (L1074777-1074830) is `attacker.attack`. The crit path and `k` are in combat-pve.md. `isDoT: true` sigils repeat the hit every `tickIntervalMs` for `durationMs`.
 - **DEBUFF**: an initial hit `initialAttackPercent` plus a status: WOUND (reduces enemy HP regen/healing by `regenReductionPercent`), BLEED (stacking, `damagePerTickPercent` x stacks every tick), POISON. Bleed/poison tick damage per stack scales with level and caps. Hemorrhage/Ember Curse/Arcane Corruption stack up to 8 with duration 0 (permanent); Venom Wound is a single 10s poison. [CODE] defs L1069150-1069191, L1069368-1069425, Arcane Corruption in L1069570-1070318.
 - **BUFF**: timed list of stat effects (`stat`, `value`, `maxValue`) for `durationMs`, then cooldown `cooldownMs` (cooldown starts at activation, no level scaling). [CODE]
 - **HEAL**: `healPercentPerTick` of max HP every `tickIntervalMs` for `durationMs` (Rejuvenation 8%/s for 6s, Aether Renewal 25% instant + refills shield). [CODE]
@@ -173,7 +173,7 @@ Types (`SigilSpellType`): AURA, DAMAGE, BUFF, HEAL, DEBUFF, TRANSFORM, SHIELD, S
 | Sigil | Trigger | Per stack | Max | Loss | Cite |
 |---|---|---|---|---|---|
 | Bulwark of Thorns (Warrior) | each **blocked** hit | +8% Max HP, +4% DR (cap 75%), +7% Thorns | 8 | an unblocked hit burns **1** stack | [CODE] L1069192-1069212 |
-| Sunder Mark (Warrior) | each landed hit marks the enemy | enemy loses 4% DR, 4% Block, 4% Miss, 4% Blind | 8 | enemy decays 1.75 stacks/s | [CODE] L1069213-1069232 |
+| Sunder Mark (Warrior) | each landed hit marks the enemy | enemy loses 4% DR, 4% Block, 4% Miss, 4% Blind | 8 | enemy decays 1.75 stacks/s (catalogue value; the engine default when a def has no `decayPerSecond` is 2/s) | [CODE] L1069213-1069232 |
 | Elusive Supremacy (Sentinel) | each dodged or Blind-fizzled hit | +3% Attack, +3% Crit Chance, +3% Lifesteal, +3% Attack Speed | 8 | unblocked hit burns **2** | [CODE] L1069426-1069444 |
 | Siegebreaker Mark (Sentinel) | each landed hit | enemy loses 3% HP Regen, **3%** Block, 4% Miss, 4% Blind | 8 | decays 1.75/s | [CODE] L1069445-1069466 |
 | Primal Instinct (Mystic Druid) | bear: blocked hits; wolf: landed hits | bear Ironhide: +4% HP, +2% DR, +5% Thorns, burns 2; wolf Rend: -3% regen, -4% Block/Miss/Blind, 1.75/s | 8 | | [CODE] L1070149-1070200 |
@@ -189,15 +189,16 @@ Elusive effect on stats: `attack = round(attack * (1 + stacks*3/100))`, `attackS
   - DAMAGE, DEBUFF: `ON_COOLDOWN`, `ENEMY_HP_BELOW_80/60/40/20`.
   - BUFF, HEAL, DEFENSE: `ON_COOLDOWN`, `MY_HP_BELOW_80/60/40/20`.
   - AURA, TRANSFORM, STACK, SHIELD, FORM, SUMMON: `ON_COOLDOWN` only.
+  - `getAvailableConditions` (L1068673-1068800) takes one spell type. A form-conditional sigil can be a different family per form (Withering Brand is a buff in BEAR form and a debuff in WOLF form), so the two forms' option sets differ. [UNRESOLVED] which type the client passes for such a sigil; the catalogue's top-level `spellType` is only one of the two.
 - Evaluation: `ENEMY_HP_BELOW_X` is met iff `enemyHpPct <= X`. `MY_HP_BELOW_X` is met iff `flag || myHpPct <= X` (an optional 4th boolean argument short-circuits it to true; its meaning is unresolved). [CODE] L1089843-1089960
-- Scope: "Damage & debuff spells: conditions apply only in PvP (Arena). In PvE they always fire on cooldown. Buff & heal spells: conditions apply everywhere (PvE & PvP)." [CODE] popup text L668833. Condition is stored per owned sigil (`activationCondition`) and returned by `getActiveCombatSpells` L1096025-1096225.
+- Scope: "Damage & debuff spells: conditions apply only in PvP (Arena). In PvE they always fire on cooldown (DAMAGE and DEBUFF skip `isConditionMet` when `processSpellsTick`'s arg9 is false, as in both PvE callers, L1091462-1091542; only PvP passes true). Buff & heal spells: conditions apply everywhere (PvE & PvP)." [CODE] popup text L668833. Condition is stored per owned sigil (`activationCondition`) and returned by `getActiveCombatSpells` L1096025-1096225.
 - Minimum cooldown after glyph reductions: `MIN_SIGIL_COOLDOWN_MS` = 1000. [CODE] L1080869-1081230; applied in `applySigilGlyphMods`.
 
 For an optimiser: in PvE, damage/debuff conditions are ignored (always on cooldown), so only buff/heal conditions can change PvE output. [DERIVED]
 
 ## §8 Catalogue (summary; full data in `data/sigils.json`)
 
-IDs in the JSON are kebab-cased names; the app's persisted id `berserkt-stance` is a historical typo for Berserk Stance (species `BERSERK_STANCE`). All numbers are level-1 values with the cap in parentheses. Cooldown/duration in seconds.
+IDs in the JSON are kebab-cased names (`berserk-stance` is species `BERSERK_STANCE`). All numbers are level-1 values with the cap in parentheses. Cooldown/duration in seconds.
 
 ### Warrior (12 forge + Earthwarden + Flameborn) [CODE] L1068994-1069232, L1069467-1069523
 
@@ -242,7 +243,7 @@ Mystic (21 entries incl. druid variants/forms, Mage and Druid share the 3 generi
 
 - Acquired from the Transcendence board, not the Forge. Node ids: top-left `sig_-13,-25`, top-right `sig_13,-25`. Default mapping: top-left Earthwarden, top-right Flameborn. Sentinel override: top-left Stormcaller (top-right stays Flameborn). [CODE] `ANCIENT_SIGIL_BY_TRANSCENDENCE_NODE` L1069553-1069569, `getAncientSigilForNode` L1068346-1068375. Costs and unlocking: see transcendence.md (UI: flat Ichor cost for both corner nodes).
 - Transform: `durationMs` = 60000 (`TRANSFORM_DURATION_MS`). Effects: ATTACK_PERCENT and HP_PERCENT apply directly; PENETRATION, BLOCK_CHANCE, MISS_CHANCE go through `softCapGainFromSheet` (diminishing against the character sheet's current value, "counts like gear"). [CODE] `resolveTransformEffects` L1089965-1090085; stat values above in §8. Soft-cap curve itself: see stats.md.
-- Charge: Chrono Flux bar max 7000; Flame conduit gains 1.0 per hit dealt, 0.7 per blocked hit; Earthen conduit gains 0.7 per hit taken, 1.0 when blocked. "When it maxes out, it awakens your equipped Ancient Sigil's transform." [CODE] L1094180 (`MAX 7000, FLAME_HIT 1, FLAME_BLOCKED 0.7, EARTHEN_HIT 0.7, EARTHEN_BLOCKED 1`); gear conduit source: see gear.md. [UNRESOLVED] the absolute flux-per-hit units (damage-scaled or per-event) and `CHRONO_FLUX_RECHARGE_FACTOR` (50); checked L1093990-1094200, event math belongs to `chronoFluxFromEvents`.
+- Charge: Chrono Flux bar max 7000; Per event the bar gains `conduit value x weight`: attacker hit or crit = Flame x 1; defender block = Flame x 0.7; defender hit = Earthen x 0.7; attacker block = Earthen x 1. The Dark conduit value is added to both Flame and Earthen; if Flame+Dark and Earthen+Dark are both <= 0 the gain is 0. The sum is divided by `3^max(0, transformFireCount)` (`CHRONO_FLUX_RECHARGE_FACTOR` = 3, so each transform fired this fight cuts later gain by a further factor 3). The bar is clamped to 0..7000, and the caller skips accrual while a transform is active (L1089052-1089081). [CODE] L1094006-1094178 (`chronoFluxGainDivisor`, `chronoFluxFromEvents(events, flame, earthen, dark, transformFireCount)`) "When it maxes out, it awakens your equipped Ancient Sigil's transform." [CODE] L1094180 (`MAX 7000, FLAME_HIT 1, FLAME_BLOCKED 0.7, EARTHEN_HIT 0.7, EARTHEN_BLOCKED 1`); gear conduit source: see gear.md.
 - Once per fight, no cooldown (no `cooldownMs` on the spell). [CODE]
 - Unique: only one of each can exist, stays level 1, survives Altar evolve. Only one Ancient equipped at a time. [CODE] strtab / `sigil.notify.oneAncient`.
 - The Transcendence popup still says "the two Ancient Sigils await in a future update" (stale text), but the species, node mapping and equip UI are present in 2.7.0. [CODE] L668837 vs L1069553.

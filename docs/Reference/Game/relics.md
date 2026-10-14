@@ -67,7 +67,7 @@ Medal sources seen elsewhere (owned by other systems; only noted): siege/clan-ra
 
 ## §7 Contribution to character stats
 
-Relic bonuses are "permanent stat bonuses" while equipped (§1). How they add into the stat pipeline (additive vs multiplicative, raw vs percent) is owned by stats.md; the client's relic module only supplies the numbers. Stat units as shown by `formatStatValue` **[CODE]** L1345034-1345110:
+Relic bonuses are "permanent stat bonuses" while equipped (§1). How they add into the stat pipeline (additive vs multiplicative, raw vs percent) is owned by stats.md; the client's relic module only supplies the numbers. No client function that sums relic bonuses into a stat sheet was found in the decompile (searched for relic bonus/stat calculators), so mapping `HP_PERCENT` to the HP-percent accumulator (`healthPercent`, the same pool as mount `hpPercent` and pet/glyph `HEALTH_PERCENT`) is an assumption **[UNRESOLVED]**. Stat units as shown by `formatStatValue` **[CODE]** L1345034-1345110:
 
 | Stat type | Display | Meaning of stored number |
 |---|---|---|
@@ -81,7 +81,7 @@ Stat enum (`RelicStatType`) L669568+: HP_PERCENT, ATTACK_PERCENT, PENETRATION, B
 
 ## §8 Catalogue summary and sentinel migration
 
-Counts **[CODE]**: Warrior 14 (6/4/4), Sentinel 14 (6/4/4), Mystic 20 (8/6/6, includes Mage- and Druid-hinted relics), Necromancer 20 (8/6/6) = 68. `SENTINEL_RELIC_MIGRATION` (L1143969) maps the 14 Warrior ids to their Sentinel equivalents (e.g. relic_iron_heart -> relic_falcons_eye, relic_dragon_core -> relic_void_arrow), i.e. Sentinel relics replaced a legacy shared set; `getSentinelRelicId` falls back to the same id. Per-relic data is in the JSON.
+Counts **[CODE]**: Warrior 14 (6/4/4), Sentinel 14 (6/4/4), Mystic 20 (8/6/6, includes Mage- and Druid-hinted relics), Necromancer 20 (8/6/6) = 68. `SENTINEL_RELIC_MIGRATION` (L1143969) maps the 14 Warrior ids to their Sentinel equivalents (e.g. relic_iron_heart -> relic_falcons_eye, relic_dragon_core -> relic_void_arrow), i.e. Sentinel relics replaced a legacy shared set; `getSentinelRelicId` falls back to the same id. The rename is applied only when the player's class is SENTINEL, to both `ownedRelics[].relicId` and `equippedRelicIds` (L1139715-1139790); the old Warrior ids stay valid Warrior relics, so a migration must be class-conditional. Per-relic data is in the JSON.
 
 Old-doc check: `Warrior Relics.txt` shows Crimson Charm Penetration 12-24 and Dragon Core Penetration 12-50; the code has Crimson Edge 6-10 and Dragon Core 6-22 **[CODE]** (refuted: old doc stale). Other Warrior numbers match.
 

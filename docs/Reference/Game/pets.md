@@ -79,7 +79,7 @@ The per-pet `level`/`xp` fields exist on the pet object but the stat path ignore
 
 ## 5. Secondary stats
 
-Each pet carries `secondaryStats: [{type, value}]` set by the server at hatch (number of entries per section 3). Rolled values and ranges are not in the client [SERVER]. The client scales the stored value by altar level:
+Each pet carries `secondaryStats: [{type, value}]` set by the server at hatch (number of entries per section 3). Rolled values and ranges are not in the client [SERVER]. Units follow `stats.md` §1.3: `ATTACK_SPEED`, `CRIT_DAMAGE` and `MINION_ATTACK_SPEED` secondaries are multiplier deltas (0.08 = +8%), all others percent points. [DERIVED] the pet bonus is summed into the same `attackSpeed`/`critDamage` accumulators as stones and glyphs (L1216389-1216409), whose ranges are 0.01-0.1 and 0.05-0.16 (stones.md §5) and 0.03-0.2 (mounts-glyphs.md §9), so the stored value is not in percent points. Any store that keeps such a roll in percent points must divide by 100 before it enters the totals. The client scales the stored value by altar level:
 
 ```
 secondary(value, altarLevel) = parseFloat( (value * (1 + (altarLevel-1)*0.02)).toFixed(2) )
@@ -121,7 +121,7 @@ getAltarProgress(totalXp, tier):
 - The server returns the new `ownedPets, eggs, equippedPetId, favoritePetIds, altar{totalXp,tier}, totalPetsPurchased, dungeonCoins, stats` and the client overwrites them [CODE L1071249-1071324]. The new values are not computed client-side [SERVER].
 - UI text: "Releases all pets & resets altar, coins and drop odds. New pets are evolved and far stronger." (strtab L2100); "Altar Evolved to Tier N! Collection released. New pets are evolved." (L11243); "The altar drops back to Lv 1" (L7590). So ascending **wipes the collection** and resets the altar to level 1, and the dungeon-coin balance and drop odds (see `totalPetsPurchased` in section 9) also reset [DERIVED: the string plus the returned fields]. Whether `altar.totalXp` is set to 0 is [SERVER], and so is the surviving egg count.
 - Effects of a higher tier: base ATK/HP multiplier `t^2 - t + 1` (section 4), altar XP need x `2^(t-1)` (section 6), evolved names, and the power-score multiplier `3^(t-1)` (section 8). Secondary stats do not scale with tier [CODE].
-- There is no client-side list of species that are only obtainable at certain tiers. All 18 species exist at every tier [CODE]. The old doc's "tier-1 vs tier-2 pets" are the base and evolved names of the same 18 species.
+- There is no client-side list of species that are only obtainable at certain tiers. All 18 species exist at every tier [CODE]. The old doc's "tier-1 vs tier-2 pets" are the base and evolved names of the same 18 species, so a store with separate tier-1 and tier-2 definitions (36) double-counts. Max altar tier is 8 (`MAX_TIER`), so a companion/altar tier above 8 is invalid. Legendary species have 3 secondary slots (section 3).
 
 ## 8. Power score contribution
 
