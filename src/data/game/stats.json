@@ -1,0 +1,708 @@
+{
+ "source": {
+  "file": "decompiled.js",
+  "version": "2.7.0",
+  "citations": {
+   "calculateTotalStats": "L1215735-1217872",
+   "SOFT_CAPS": "L1080443-1080485",
+   "COMBAT_CEILINGS": "L1080486-1080515",
+   "applySoftCap": "L1080181-1080222",
+   "rawFromSoftCapped": "L1080224-1080265",
+   "softCapEfficiency": "L1080367-1080400",
+   "softCapGainFromSheet": "L1080334-1080366",
+   "pvpRatingToPercent": "L1080412-1080429",
+   "SecondaryStatType": "L665656-665713",
+   "classStatTables": "L1213731-1213862",
+   "TOTAL_POWER_CONFIG": "L1187673-1187818",
+   "calculatePowerBreakdown": "L1187242-1187617",
+   "GAME_CONSTANTS": "L670527",
+   "baseStats": "L664443-664456"
+  }
+ },
+ "schema": {
+  "stats[]": "one entry per SecondaryStatType enum value",
+  "enumName": "SecondaryStatType member (module 3130)",
+  "computedKey": "key in the computedStats object (null if folded into another total)",
+  "rawKey": "extra computedStats key emitted only when the raw (pre-curve) sum exceeds the soft cap",
+  "unit": "unit of the internal value: 'percent points' = 12.5 means 12.5%; 'multiplier' = 1.0 means 100%",
+  "softCap/hardCap": "SOFT_CAPS entry in the SAME unit as the internal value; null = no curve",
+  "combatCeiling": "COMBAT_CEILINGS entry in the same unit; null = none. Applied only after in-combat additive buffs",
+  "classesAvailable": "classes for which isSecondaryStatAvailableForClass is true (gear can roll it / sheet shows it)",
+  "displayMult": "sheet multiplies the internal value by this before showing (100 for multiplier-unit stats)",
+  "roundDigits": "toFixed digits applied to the effective total in calculateTotalStats"
+ },
+ "stats": [
+  {
+   "enumName": "ATTACK_SPEED",
+   "computedKey": "totalAttackSpeed",
+   "sheetLabel": "Attack Speed",
+   "bonusListLabel": "Attack Speed",
+   "unit": "multiplier (1.0 = 100%)",
+   "softCap": 2,
+   "hardCap": 4,
+   "combatCeiling": 4.5,
+   "classesAvailable": [
+    "WARRIOR",
+    "SENTINEL",
+    "MYSTIC",
+    "NECROMANCER"
+   ],
+   "rawKey": "rawAttackSpeed",
+   "displayMult": 100,
+   "roundDigits": 2,
+   "citation": "L1080443,L1080486,L1217178-1217190"
+  },
+  {
+   "enumName": "DOUBLE_HIT",
+   "computedKey": "totalDoubleHit",
+   "sheetLabel": "Double Hit",
+   "bonusListLabel": null,
+   "unit": "percent points",
+   "softCap": 60,
+   "hardCap": 90,
+   "combatCeiling": null,
+   "classesAvailable": [
+    "WARRIOR",
+    "SENTINEL"
+   ],
+   "rawKey": "rawDoubleHit",
+   "roundDigits": 1,
+   "citation": "L1080450,L1217191-1217202"
+  },
+  {
+   "enumName": "CRIT_CHANCE",
+   "computedKey": "totalCritChance",
+   "sheetLabel": "Crit Chance",
+   "bonusListLabel": "Crit Chance",
+   "unit": "percent points",
+   "softCap": 50,
+   "hardCap": 90,
+   "combatCeiling": 95,
+   "classesAvailable": [
+    "WARRIOR",
+    "SENTINEL",
+    "MYSTIC"
+   ],
+   "rawKey": "rawCritChance",
+   "roundDigits": 1,
+   "note": "Necromancer total forced to 0 (class-excluded)",
+   "citation": "L1080445,L1217128"
+  },
+  {
+   "enumName": "CRIT_DAMAGE",
+   "computedKey": "totalCritDamage",
+   "sheetLabel": "Crit Damage",
+   "bonusListLabel": "Crit Damage",
+   "unit": "multiplier (1.5 = 150%)",
+   "softCap": 3,
+   "hardCap": 7,
+   "combatCeiling": null,
+   "classesAvailable": [
+    "WARRIOR",
+    "SENTINEL",
+    "MYSTIC",
+    "NECROMANCER"
+   ],
+   "rawKey": "rawCritDamage",
+   "displayMult": 100,
+   "roundDigits": 2,
+   "note": "flat bonuses from talents/transcendence/awakening (critDamageFlat) are percent points and are divided by 100 before adding",
+   "citation": "L1080447,L1216241,L1217215-1217226"
+  },
+  {
+   "enumName": "HP_REGEN",
+   "computedKey": "totalHpRegen",
+   "sheetLabel": "HP Regen",
+   "bonusListLabel": "HP Regen",
+   "unit": "percent of max HP per second",
+   "softCap": 40,
+   "hardCap": 60,
+   "combatCeiling": 70,
+   "classesAvailable": [
+    "WARRIOR",
+    "SENTINEL",
+    "MYSTIC",
+    "NECROMANCER"
+   ],
+   "rawKey": "rawHpRegen",
+   "roundDigits": 1,
+   "citation": "L1080453"
+  },
+  {
+   "enumName": "LIFESTEAL",
+   "computedKey": "totalLifesteal",
+   "sheetLabel": "Lifesteal",
+   "bonusListLabel": "Lifesteal",
+   "unit": "percent points",
+   "softCap": 40,
+   "hardCap": 70,
+   "combatCeiling": 80,
+   "classesAvailable": [
+    "WARRIOR",
+    "SENTINEL",
+    "MYSTIC"
+   ],
+   "rawKey": "rawLifesteal",
+   "roundDigits": 1,
+   "note": "Necromancer total forced to 0",
+   "citation": "L1080451,L1217129"
+  },
+  {
+   "enumName": "HEALTH_PERCENT",
+   "computedKey": "totalHealthPercent",
+   "sheetLabel": "Health (bonus)",
+   "bonusListLabel": "Max HP",
+   "unit": "percent points",
+   "softCap": null,
+   "hardCap": null,
+   "combatCeiling": null,
+   "classesAvailable": [
+    "WARRIOR",
+    "SENTINEL",
+    "MYSTIC",
+    "NECROMANCER"
+   ],
+   "roundDigits": 1,
+   "note": "uncapped; multiplies flat HP",
+   "citation": "L1217251-1217255"
+  },
+  {
+   "enumName": "ATTACK_PERCENT",
+   "computedKey": "totalAttackPercent",
+   "sheetLabel": "Attack (bonus)",
+   "bonusListLabel": "Attack",
+   "unit": "percent points",
+   "softCap": null,
+   "hardCap": null,
+   "combatCeiling": null,
+   "classesAvailable": [
+    "WARRIOR",
+    "SENTINEL",
+    "MYSTIC",
+    "NECROMANCER"
+   ],
+   "roundDigits": 1,
+   "note": "uncapped; multiplies flat Attack",
+   "citation": "L1217256-1217260"
+  },
+  {
+   "enumName": "DAMAGE_REDUCTION",
+   "computedKey": "totalDamageReduction",
+   "sheetLabel": "Dmg Reduction",
+   "bonusListLabel": "Damage Reduction",
+   "unit": "percent points",
+   "softCap": 30,
+   "hardCap": 60,
+   "combatCeiling": 75,
+   "classesAvailable": [
+    "WARRIOR",
+    "MYSTIC"
+   ],
+   "rawKey": "rawDamageReduction",
+   "roundDigits": 1,
+   "note": "Mystic total forced to 0 unless the equipped form has unlocksBlockAndDr",
+   "citation": "L1080455,L1216903-1216916"
+  },
+  {
+   "enumName": "BLOCK_CHANCE",
+   "computedKey": "totalBlockChance",
+   "sheetLabel": "Block Chance",
+   "bonusListLabel": "Block",
+   "unit": "percent points",
+   "softCap": 40,
+   "hardCap": 80,
+   "combatCeiling": 85,
+   "classesAvailable": [
+    "WARRIOR",
+    "MYSTIC"
+   ],
+   "rawKey": "rawBlockChance",
+   "roundDigits": 1,
+   "note": "Mystic total forced to 0 unless form unlocksBlockAndDr",
+   "citation": "L1080457"
+  },
+  {
+   "enumName": "MISS_CHANCE",
+   "computedKey": "totalMissChance",
+   "sheetLabel": "Miss Chance",
+   "bonusListLabel": "Miss Chance",
+   "unit": "percent points",
+   "softCap": 50,
+   "hardCap": 85,
+   "combatCeiling": 90,
+   "classesAvailable": [
+    "SENTINEL"
+   ],
+   "rawKey": "rawMissChance",
+   "roundDigits": 1,
+   "note": "hard cap is 85 (app has 90)",
+   "citation": "L1080461-1080462"
+  },
+  {
+   "enumName": "BLIND_CHANCE",
+   "computedKey": "totalBlindChance",
+   "sheetLabel": "Blind Chance",
+   "bonusListLabel": "Blind Chance",
+   "unit": "percent points",
+   "softCap": 30,
+   "hardCap": 50,
+   "combatCeiling": 60,
+   "classesAvailable": [
+    "SENTINEL"
+   ],
+   "rawKey": "rawBlindChance",
+   "roundDigits": 1,
+   "citation": "L1080463"
+  },
+  {
+   "enumName": "PARALYZE_CHANCE",
+   "computedKey": "totalParalyzeChance",
+   "sheetLabel": "Paralyze Chance",
+   "bonusListLabel": "Paralyze Chance",
+   "unit": "percent points",
+   "softCap": 8,
+   "hardCap": 18,
+   "combatCeiling": null,
+   "classesAvailable": [
+    "SENTINEL"
+   ],
+   "rawKey": "rawParalyzeChance",
+   "roundDigits": 1,
+   "citation": "L1080465"
+  },
+  {
+   "enumName": "PENETRATION",
+   "computedKey": "totalPenetration",
+   "sheetLabel": "Penetration",
+   "bonusListLabel": "Armor Pen",
+   "unit": "percent points",
+   "softCap": 30,
+   "hardCap": 70,
+   "combatCeiling": 80,
+   "classesAvailable": [
+    "WARRIOR",
+    "SENTINEL",
+    "MYSTIC"
+   ],
+   "rawKey": "rawPenetration",
+   "roundDigits": 1,
+   "note": "Necromancer total forced to 0",
+   "citation": "L1080459"
+  },
+  {
+   "enumName": "PVP_ATTACK",
+   "computedKey": "totalPvpAttack",
+   "sheetLabel": "PVP Attack",
+   "bonusListLabel": null,
+   "unit": "rating (integer)",
+   "softCap": null,
+   "hardCap": null,
+   "combatCeiling": null,
+   "classesAvailable": [
+    "WARRIOR",
+    "SENTINEL",
+    "MYSTIC",
+    "NECROMANCER"
+   ],
+   "roundDigits": 0,
+   "note": "Math.round; converted by r/(r+200) in PVP; no softcap",
+   "citation": "L1217333-1217336"
+  },
+  {
+   "enumName": "PVP_DEFENSE",
+   "computedKey": "totalPvpDefense",
+   "sheetLabel": "PVP Defense",
+   "bonusListLabel": null,
+   "unit": "rating (integer)",
+   "softCap": null,
+   "hardCap": null,
+   "combatCeiling": null,
+   "classesAvailable": [
+    "WARRIOR",
+    "SENTINEL",
+    "MYSTIC",
+    "NECROMANCER"
+   ],
+   "roundDigits": 0,
+   "citation": "L1217337-1217340"
+  },
+  {
+   "enumName": "SPELL_DAMAGE",
+   "computedKey": "totalSpellDamage",
+   "sheetLabel": "Spell Damage",
+   "bonusListLabel": "Spell Damage",
+   "unit": "percent points",
+   "softCap": null,
+   "hardCap": null,
+   "combatCeiling": null,
+   "classesAvailable": [
+    "WARRIOR",
+    "SENTINEL",
+    "MYSTIC",
+    "NECROMANCER"
+   ],
+   "roundDigits": 1,
+   "note": "no softcap, no ceiling",
+   "citation": "L1217341-1217346"
+  },
+  {
+   "enumName": "SPELL_RESIST",
+   "computedKey": "totalSpellResist",
+   "sheetLabel": "Spell Resist",
+   "bonusListLabel": "Spell Resist",
+   "unit": "percent points",
+   "softCap": 30,
+   "hardCap": 60,
+   "combatCeiling": null,
+   "classesAvailable": [
+    "WARRIOR",
+    "SENTINEL",
+    "MYSTIC",
+    "NECROMANCER"
+   ],
+   "rawKey": "rawSpellResist",
+   "roundDigits": 1,
+   "citation": "L1080469"
+  },
+  {
+   "enumName": "SPELL_CRIT_CHANCE",
+   "computedKey": "totalSpellCritChance",
+   "sheetLabel": "Crit Spell %",
+   "bonusListLabel": "Crit Spell",
+   "unit": "percent points",
+   "softCap": 50,
+   "hardCap": 90,
+   "combatCeiling": 95,
+   "classesAvailable": [
+    "MYSTIC",
+    "NECROMANCER"
+   ],
+   "rawKey": "rawSpellCritChance",
+   "roundDigits": 1,
+   "note": "Mystic total forced to 0 unless activeSpec is MYSTIC_MAGE",
+   "citation": "L1080467,L1216917-1216935"
+  },
+  {
+   "enumName": "SPELL_VAMP",
+   "computedKey": "totalSpellVamp",
+   "sheetLabel": "Spell Vamp",
+   "bonusListLabel": "Spell Vamp",
+   "unit": "percent points",
+   "softCap": 40,
+   "hardCap": 70,
+   "combatCeiling": 80,
+   "classesAvailable": [
+    "MYSTIC",
+    "NECROMANCER"
+   ],
+   "rawKey": "rawSpellVamp",
+   "roundDigits": 1,
+   "citation": "L1080471"
+  },
+  {
+   "enumName": "DISRUPTION_CHANCE",
+   "computedKey": "totalDisruptionChance",
+   "sheetLabel": "Disruption",
+   "bonusListLabel": "Disruption",
+   "unit": "percent points",
+   "softCap": 10,
+   "hardCap": 20,
+   "combatCeiling": null,
+   "classesAvailable": [
+    "MYSTIC"
+   ],
+   "rawKey": "rawDisruptionChance",
+   "roundDigits": 1,
+   "note": "total = softcap(disruption + fear); effect type chosen by class/form",
+   "citation": "L1080473,L1216975-1216976"
+  },
+  {
+   "enumName": "FEAR_CHANCE",
+   "computedKey": null,
+   "sheetLabel": "Fear Chance",
+   "bonusListLabel": "Fear Chance",
+   "unit": "percent points",
+   "softCap": 10,
+   "hardCap": 20,
+   "combatCeiling": null,
+   "classesAvailable": [
+    "NECROMANCER"
+   ],
+   "note": "no separate total; folded into totalDisruptionChance (shares the 10/20 DISRUPTION cap)",
+   "citation": "L1080475,L1216975-1216976"
+  },
+  {
+   "enumName": "MINION_ATTACK",
+   "computedKey": "totalMinionAttack",
+   "sheetLabel": "Minion Attack",
+   "bonusListLabel": "Minion Attack",
+   "unit": "percent points",
+   "softCap": null,
+   "hardCap": null,
+   "combatCeiling": null,
+   "classesAvailable": [
+    "NECROMANCER"
+   ],
+   "roundDigits": 1,
+   "note": "uncapped",
+   "citation": "L1217405-1217411"
+  },
+  {
+   "enumName": "MINION_HEALTH",
+   "computedKey": "totalMinionHealth",
+   "sheetLabel": "Minion Health",
+   "bonusListLabel": "Minion Health",
+   "unit": "percent points",
+   "softCap": null,
+   "hardCap": null,
+   "combatCeiling": null,
+   "classesAvailable": [
+    "NECROMANCER"
+   ],
+   "roundDigits": 1,
+   "note": "uncapped",
+   "citation": "L1217412-1217418"
+  },
+  {
+   "enumName": "MINION_CRIT_CHANCE",
+   "computedKey": "totalMinionCritChance",
+   "sheetLabel": "Minion Crit",
+   "bonusListLabel": "Minion Crit",
+   "unit": "percent points",
+   "softCap": 50,
+   "hardCap": 90,
+   "combatCeiling": 95,
+   "classesAvailable": [
+    "NECROMANCER"
+   ],
+   "rawKey": "rawMinionCritChance",
+   "roundDigits": 1,
+   "citation": "L1080477"
+  },
+  {
+   "enumName": "MINION_LIFESTEAL",
+   "computedKey": "totalMinionLifesteal",
+   "sheetLabel": "Minion Lifesteal",
+   "bonusListLabel": "Minion Lifesteal",
+   "unit": "percent points",
+   "softCap": 40,
+   "hardCap": 70,
+   "combatCeiling": 80,
+   "classesAvailable": [
+    "NECROMANCER"
+   ],
+   "rawKey": "rawMinionLifesteal",
+   "roundDigits": 1,
+   "citation": "L1080479"
+  },
+  {
+   "enumName": "SOUL_LINK",
+   "computedKey": "totalSoulLink",
+   "sheetLabel": "Soul Link",
+   "bonusListLabel": "Soul Link",
+   "unit": "percent points",
+   "softCap": 40,
+   "hardCap": 70,
+   "combatCeiling": 80,
+   "classesAvailable": [
+    "NECROMANCER"
+   ],
+   "rawKey": "rawSoulLink",
+   "roundDigits": 1,
+   "citation": "L1080481"
+  },
+  {
+   "enumName": "MINION_ATTACK_SPEED",
+   "computedKey": "totalMinionAttackSpeed",
+   "sheetLabel": "Minion Atk Speed",
+   "bonusListLabel": "Minion Atk Speed",
+   "unit": "multiplier (additive on top of player Attack Speed)",
+   "softCap": 2,
+   "hardCap": 4,
+   "combatCeiling": 4.5,
+   "classesAvailable": [
+    "NECROMANCER"
+   ],
+   "displayMult": 100,
+   "roundDigits": 2,
+   "note": "no rawKey is emitted for this stat in calculateTotalStats",
+   "citation": "L1080483,L1217458-1217464"
+  },
+  {
+   "enumName": "OBLIVION_POWER",
+   "computedKey": "totalOblivionPower",
+   "sheetLabel": "(not on stat sheet list)",
+   "bonusListLabel": null,
+   "unit": "integer",
+   "softCap": null,
+   "hardCap": null,
+   "combatCeiling": null,
+   "classesAvailable": [
+    "WARRIOR",
+    "SENTINEL",
+    "MYSTIC",
+    "NECROMANCER"
+   ],
+   "roundDigits": 0,
+   "note": "Math.round of summed gear + stone values; no softcap; consumer is pve-content",
+   "citation": "L1217470-1217474"
+  }
+ ],
+ "primaryStats": [
+  {
+   "key": "totalAttack",
+   "unit": "integer",
+   "formula": "floor((base.attack + sum(gear primaryStats.attack) + pet.flatAttack + sigil.flatAttack + stone.flatAttack) * (1 + attackPercentSum/100) * (formConfig.attackMult ?? 1))",
+   "citation": "L1217155-1217165"
+  },
+  {
+   "key": "totalHp",
+   "unit": "integer",
+   "formula": "floor((base.hp + sum(gear primaryStats.hp) + pet.flatHp + sigil.flatHp + stone.flatHp + sum(gear primaryStats.hp) * ((formConfig.gearHpMult ?? 1) - 1)) * (1 + hpPercentSum/100))",
+   "citation": "L1217166-1217174"
+  }
+ ],
+ "baseStats": {
+  "attack": 10,
+  "hp": 100,
+  "attackSpeed": 1,
+  "critChance": 0,
+  "critDamage": 1.5,
+  "citation": "L664443-664456,L670527,L1138564"
+ },
+ "derivedTotals": [
+  {
+   "key": "totalDominion",
+   "unit": "integer",
+   "formula": "Necromancer: talents.dominionFlat + transcendence.dominionFlat + 1; other classes: 0",
+   "citation": "L1216304,L1216387,L1217116-1217133,L1217465-1217469"
+  },
+  {
+   "key": "totalFlameConduit / totalEarthenConduit / totalDarkConduit",
+   "unit": "integer",
+   "formula": "Math.round(sum of equipped gear conduit.value grouped by conduit.type FLAME/EARTHEN/DARK)",
+   "citation": "L1215856-1215901,L1217475-1217489"
+  }
+ ],
+ "softCapCurve": {
+  "exponent": 2,
+  "scale": 2,
+  "formula": "over>0: soft + K*(1-(2K/(over+2K))^2), K=hard-soft, over=raw-soft",
+  "marginalGainFormula": "(2K/(over+2K))^3",
+  "citation": "L1080181-1080222,L1080367-1080400,L1080442,L1080516"
+ },
+ "pvpRating": {
+  "K": 200,
+  "effect": "r/(r+200) (fraction); 0 if r<=0",
+  "citation": "L1080412-1080429,L1452748-1452764"
+ },
+ "classStatTables": {
+  "unique": {
+   "WARRIOR": [
+    "DAMAGE_REDUCTION",
+    "BLOCK_CHANCE",
+    "DOUBLE_HIT"
+   ],
+   "SENTINEL": [
+    "MISS_CHANCE",
+    "BLIND_CHANCE",
+    "PARALYZE_CHANCE",
+    "DOUBLE_HIT"
+   ],
+   "MYSTIC": [
+    "DAMAGE_REDUCTION",
+    "BLOCK_CHANCE",
+    "SPELL_CRIT_CHANCE",
+    "SPELL_VAMP",
+    "DISRUPTION_CHANCE"
+   ],
+   "NECROMANCER": [
+    "SPELL_CRIT_CHANCE",
+    "SPELL_VAMP",
+    "FEAR_CHANCE",
+    "MINION_ATTACK",
+    "MINION_HEALTH",
+    "MINION_CRIT_CHANCE",
+    "MINION_LIFESTEAL",
+    "SOUL_LINK",
+    "MINION_ATTACK_SPEED"
+   ]
+  },
+  "excluded": {
+   "WARRIOR": [],
+   "SENTINEL": [],
+   "MYSTIC": [],
+   "NECROMANCER": [
+    "CRIT_CHANCE",
+    "LIFESTEAL",
+    "PENETRATION"
+   ]
+  },
+  "controlStats": [
+   "MISS_CHANCE",
+   "BLIND_CHANCE",
+   "PARALYZE_CHANCE",
+   "DISRUPTION_CHANCE",
+   "FEAR_CHANCE"
+  ],
+  "citation": "L1213731-1213862"
+ },
+ "powerConfig": {
+  "EQUIP_RARITY_POWER": {
+   "COMMON": 5,
+   "UNCOMMON": 12,
+   "RARE": 28,
+   "EPIC": 65,
+   "LEGENDARY": 150,
+   "MYTHIC": 340,
+   "ANCIENT": 750,
+   "DIVINE": 1600,
+   "ETERNAL": 3400,
+   "OBLIVION": 7000
+  },
+  "EQUIP_ILVL_WEIGHT": 0.6,
+  "EQUIP_QUALITY_WEIGHT": 0.35,
+  "SIGIL_RARITY_POWER": {
+   "COMMON": 150,
+   "UNCOMMON": 300,
+   "RARE": 700,
+   "EPIC": 1500,
+   "LEGENDARY": 2900,
+   "ANCIENT": 1000,
+   "_note": "COMMON=150 is register-traced; ANCIENT=1000 reads out of order vs LEGENDARY=2900 - verify"
+  },
+  "SIGIL_MAX_LEVEL": 30,
+  "ALTAR_TIER_BASE": 3,
+  "PET_RARITY_POWER": {
+   "COMMON": 120,
+   "UNCOMMON": 280,
+   "RARE": 600,
+   "EPIC": 1200,
+   "LEGENDARY": 2400,
+   "MYTHIC": 4400,
+   "ANCIENT": 7200
+  },
+  "PET_MAX_ALTAR_LEVEL": 50,
+  "MOUNT_RARITY_POWER": {
+   "COMMON": 300,
+   "UNCOMMON": 700,
+   "RARE": 1500,
+   "EPIC": 3000,
+   "LEGENDARY": 5200
+  },
+  "MOUNT_STAR_WEIGHT": 0.1,
+  "ENCHANT_SOCKET_POWER": 600,
+  "ENCHANT_QUALITY_FLOOR": 0.4,
+  "ENCHANT_AMPLIFY_WEIGHT": 0.06,
+  "TRANSCENDENCE_PER_NODE": 100,
+  "RELIC_TIER_POWER": {
+   "BRONZE": 400,
+   "SILVER": 900,
+   "GOLD": 1800
+  },
+  "TALENT_PER_POINT": 150,
+  "AWAKENING_PER_POINT": 350,
+  "LEVEL_POWER": 40,
+  "citation": "L1187673-1187818 (several values register-traced; see stats.md section 8)"
+ }
+}

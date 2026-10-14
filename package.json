@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "sync:data": "node scripts/sync-game-data.mjs",
     "test:watch": "vitest"
   },
   "devDependencies": {
