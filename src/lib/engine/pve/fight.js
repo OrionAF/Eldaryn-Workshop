@@ -1,6 +1,8 @@
 // PVE fight driver: the client's shared fight loop (`simulateFight`), the Oblivion strain state it is
 // fed, the World Boss hit-back, and `simulatePve`, the wrapper the metrics call with a Fighter.
 // Rules and the per-tick order: Game/combat-pve.md §2 (steps 1-11), §9, §10, §11, §13, §14, §16.
+// What differs per fight mode (tick, shield mitigation, mob sequencing, caps) is the `PVE_MODES` table;
+// which of its values come from the client and which are assumed is combat-pve.md §2, §13, §14.
 // Draw order is behaviour (rebuild-plan §6). One tick draws, in order: the spell pass (one draw per
 // spell crit roll), the debuff tick (one per crit-capable DoT tick), then processCombatTick's own draws
 // (see tick.js header). Nothing here calls Math.random.
@@ -8,8 +10,9 @@
 // Two engine paths exist in the client (combat-pve.md §10.2). This driver is the SHARED one
 // (`simulateFight`): the spell pass sees `spellResist + damageReduction` as the target resist, the
 // timers start at 0 and the tick is `dtMs` (the live progress loop uses 100 ms; the shared copy takes it
-// as an argument). `ctx.liveSpellResist` switches the resist to `mob.spellResist` only, and
-// `opening: 'half'` starts the mob's swing timer at half its interval as the live loop does.
+// as an argument). Three switches give the live progress loop's differences: `ctx.liveSpellResist` (the
+// resist is `mob.spellResist` only), `opening: 'half'` (the mob's swing timer starts at half its
+// interval) and `ctx.liveLoop` (the Chrono Flux transform fires at the top of the next tick, §10).
 import { processSpellsTick, isTransformActive, hasPendingTransform, triggerTransformSpell, transformFireCount,
   activeBuffThornsPercent, isSpellBuffActive, initSpellRuntimes } from '../core/spells.js';
 import { applyBuffsToEntity, hasActiveBuffs, getBuffedMaxHp } from '../core/buffs.js';
@@ -20,8 +23,8 @@ import {
   createHealBudget, refillHealBudget, spendHealBudget, shieldRefillAmount,
 } from '../core/shield.js';
 import {
-  advanceMinionRespawn, resummonIfDead, openingSummonWindowMs, openingSwingTimerStart, minionSummonMeta,
-  soulLinkHeal, killMinion, isMinionAlive, createMinion, summonMinion, carryMinionIntoNewFight,
+  advanceMinionRespawn, elapseMinionRespawn, resummonIfDead, openingSummonWindowMs, openingSwingTimerStart,
+  minionSummonMeta, soulLinkHeal, killMinion, isMinionAlive, createMinion,
 } from '../core/minions.js';
 import { createPlayerEntity, createMobEntity } from '../core/entity.js';
 import {
@@ -29,13 +32,88 @@ import {
 } from '../core/spellConfig.js';
 import { glyphCombatMods } from '../core/glyphMods.js';
 import { processCombatTick, routeSpellHealToMinion } from './tick.js';
+import { EngineInputError, assertFiniteEntity, assertPositive } from '../validate.js';
+import { PVE_PROGRESS_CONSTANTS } from '../../game/combatPve.js';
+import { RAID_CONSTANTS } from '../../game/fortress.js';
+import { WORLD_BOSS_CONSTANTS } from '../../game/worldBoss.js';
 
-/** Fight cap of the shared engine: 20 min (combat-pve.md §8.1, L1087922). */
+/** Fight cap of the shared engine: 20 min (combat-pve.md §14, L1087922). */
 export const FIGHT_CAP_MS = 1_200_000;
 /** Tick of the live progress loop and of the world boss (combat-pve.md §2). */
 export const DEFAULT_DT_MS = 100;
-/** `SHIELD_MITIGATION` in every PVE mode (combat-pve.md §13). */
-export const PVE_SHIELD_MITIGATION = 0.5;
+/** `SHIELD_MITIGATION` of the campaign and dungeon constants (combat-pve.md §13). */
+export const PVE_SHIELD_MITIGATION = PVE_PROGRESS_CONSTANTS.shieldMitigation;
+// DUNGEON_CONSTANTS (L1062719) are not in the synced catalogue, so their two combat values sit here
+const DUNGEON_TICK_MS = 10;
+const DUNGEON_SHIELD_MITIGATION = 0.5;
+/** simulateDungeonStep's wait before every mob, the first included (L1671080-1671084). */
+export const INTER_MOB_GAP_MS = 500;
+
+// ---------------------------------------------------------------------------------------------
+// Fight modes
+// ---------------------------------------------------------------------------------------------
+
+const note = (key, text) => Object.freeze({ key, text });
+/** Labels for the modelling choices a mode makes, for the UI to show next to its results. */
+export const PVE_ASSUMPTIONS = Object.freeze({
+  serverFight: note('server-fight', "Server-run fight: simulated with the client's shared engine; whether the server runs it is unresolved."),
+  campaignCap: note('campaign-cap', 'The campaign loop has no time limit; a fight past 20 minutes is reported as timed out.'),
+  raidShield: note('raid-shield', 'Raid shield mitigation 0.5 assumed (the dungeon value): the raid constants carry none.'),
+  oblivionConstants: note('oblivion-constants', 'Oblivion floors assume the dungeon tick (10 ms), shield mitigation (0.5) and 500 ms start gap: the floor config carries none.'),
+  oblivionOutputCut: note('oblivion-output-cut', 'The instability output cut is off unless switched on: the client fight never applies it, and where the server does is unresolved.'),
+  worldBossModel: note('world-boss-model', 'World Boss hit-back, ramp and rebound are modelled from the affinity record; the fight itself is server-run.'),
+  customShield: note('custom-shield', 'Shield mitigation 0.5 assumed (the campaign and dungeon value).'),
+});
+
+const A = PVE_ASSUMPTIONS;
+const pveMode = (o) => Object.freeze({
+  perFightCapMs: FIGHT_CAP_MS, interMobGapMs: 0, liveLoop: false, ...o, assumptions: Object.freeze(o.assumptions),
+});
+
+/**
+ * Per-mode engine settings (combat-pve.md §2, §13, §14). `dtMs` the tick; `shieldMitigation` what the
+ * mode's caller stamps on the player (World Boss: the affinity record's value, read at run time);
+ * `interMobGapMs` the wait before each mob, the minion respawn aged by the same amount; `perFightCapMs`
+ * each mob's own cap when the caller gives no `maxMs` window; `liveLoop` the campaign loop's own rules
+ * (opening 'half', mob-only spell resist, next-tick transform); `assumptions` the labels to show.
+ */
+export const PVE_MODES = Object.freeze({
+  campaign: pveMode({
+    dtMs: PVE_PROGRESS_CONSTANTS.tickIntervalMs, shieldMitigation: PVE_PROGRESS_CONSTANTS.shieldMitigation,
+    liveLoop: true, assumptions: [A.campaignCap],
+  }),
+  dungeon: pveMode({
+    dtMs: DUNGEON_TICK_MS, shieldMitigation: DUNGEON_SHIELD_MITIGATION, interMobGapMs: INTER_MOB_GAP_MS,
+    assumptions: [A.serverFight],
+  }),
+  raid: pveMode({
+    dtMs: RAID_CONSTANTS.TICK_INTERVAL_MS, shieldMitigation: DUNGEON_SHIELD_MITIGATION, interMobGapMs: INTER_MOB_GAP_MS,
+    assumptions: [A.serverFight, A.raidShield],
+  }),
+  oblivion: pveMode({
+    dtMs: DUNGEON_TICK_MS, shieldMitigation: DUNGEON_SHIELD_MITIGATION, interMobGapMs: INTER_MOB_GAP_MS,
+    assumptions: [A.serverFight, A.oblivionConstants, A.oblivionOutputCut],
+  }),
+  worldBoss: pveMode({
+    dtMs: WORLD_BOSS_CONSTANTS.tickIntervalMs, shieldMitigation: 0, assumptions: [A.serverFight, A.worldBossModel],
+  }),
+  custom: pveMode({ dtMs: DEFAULT_DT_MS, shieldMitigation: PVE_SHIELD_MITIGATION, assumptions: [A.customShield] }),
+  dummy: pveMode({ dtMs: DEFAULT_DT_MS, shieldMitigation: PVE_SHIELD_MITIGATION, assumptions: [] }),
+});
+
+/**
+ * The mode of a PVE run: `o.mode`, else the first mob's stamped `mode`, else what the spec itself says
+ * (an `affinity` record is a World Boss, an `instability` an Oblivion floor), else 'custom'.
+ * @param {{mode?: string}} o
+ * @param {Object} [first]  the first MobSpec
+ * @returns {string} a PVE_MODES key
+ */
+export function pveModeOf(o, first) {
+  const id = o?.mode ?? first?.mode
+    ?? (first?.affinity ? 'worldBoss' : first?.instability != null ? 'oblivion' : 'custom');
+  if (!Object.hasOwn(PVE_MODES, id)) throw new EngineInputError(`unknown PVE mode '${id}'`, { kind: 'mode', key: 'mode', value: id });
+  return id;
+}
 
 // ---------------------------------------------------------------------------------------------
 // Oblivion strain
@@ -76,8 +154,8 @@ const biteMult = (bite, k) => Math.max(0, Math.min(1, 1 - (bite * k) / 100));
  * `oblivionEffectiveInstability(instability, power)`; `instability` is the floor's raw instability
  * (the sustain cap and the shield-overflow block are on whenever it rounds above 0).
  * `playerDamageMult` (getInstabilityOutputMult), `mobAttack*` and `defenceBand` ride along as the
- * client builds them but the shared fight loop never reads them; `simulatePve` applies
- * `playerDamageMult` to the player's Attack and leaves the rest unused (the fight is [SERVER]).
+ * client builds them but the shared fight loop never reads them. `simulatePve` applies
+ * `playerDamageMult` only when asked (`applyOutputCut`, pve-content.md §11) and leaves the rest unused.
  * @param {number} effective
  * @param {number} instability
  */
@@ -125,6 +203,11 @@ export function oblivionCombatState(effective, instability) {
  * @property {boolean} [liveSpellResist=false]  spell resist = enemy.spellResist only (live loop)
  * @property {((elapsedMs:number) => Object|null)|null} [enemyAt]  per-tick enemy field overrides
  * @property {((event:Object, enemy:Object) => number)|null} [reboundFor]  extra enemy damage per event
+ * @property {boolean} [liveLoop=false]  the live progress loop's transform: it fires at the top of the
+ *   next tick, before the spell pass, and its heal joins the clamped spell heal (L1074747-1074773,
+ *   L1074900-1074909), so a lethal tick ends the fight first
+ * @property {number} [outputMult=1]  not the client's: the app's optional Oblivion output cut, applied to
+ *   every damage the player side lands (swings, minion, spells, DoT ticks, thorns, rebound)
  */
 
 /**
@@ -152,8 +235,10 @@ export function simulateFight(player, enemy, ctx, rng) {
   const {
     dtMs = DEFAULT_DT_MS, startMs = 0, maxMs = FIGHT_CAP_MS, opening = 'zero', spells = null, chrono = null,
     stacks: stackCombat = null, thornsPercent = 0, oblivion = null, minion = null, log = true,
-    liveSpellResist = false, enemyAt = null, reboundFor = null,
+    liveSpellResist = false, enemyAt = null, reboundFor = null, liveLoop = false, outputMult = 1,
   } = ctx ?? {};
+  // the output cut on a landed amount (a positive number)
+  const cut = outputMult === 1 ? (d) => d : (d) => Math.round(d * outputMult);
   const debuffs = ctx?.debuffs ?? initDebuffState();
   const ticks = [];
   const emit = log ? (ev) => ticks.push(ev) : null;
@@ -245,6 +330,8 @@ export function simulateFight(player, enemy, ctx, rng) {
   let buffHpPct = 0;
   let buffedMaxHp = player.maxHp;
   let totalHpPct = 0;
+  let transformFired = false;
+  let transformHeal = 0;
 
   while (hp > 0 && enemyHp > 0 && ts - startMs < maxMs) {
     ts += dtMs;
@@ -307,6 +394,23 @@ export function simulateFight(player, enemy, ctx, rng) {
     buffedMaxHp = player.maxHp;
     totalHpPct = stackHpPct;
 
+    // live loop: a bar filled last tick fires the transform now, before the spell pass (L1074747-1074773)
+    transformFired = false;
+    transformHeal = 0;
+    if (liveLoop && chronoOn && spells && chrono.flux >= CHRONO_FLUX.MAX) {
+      const tr = triggerTransformSpell(spells, ts, hp, player.maxHp, player);
+      if (tr.triggered) {
+        transformFired = true;
+        transformHeal = tr.ownerHpDelta;
+        chrono.flux = 0;
+        if (emit) {
+          for (const ev of tr.events) {
+            emit({ timestamp: ts, type: ev.type, damage: ev.value, attackerHp: hp, defenderHp: enemyHp, spell: ev.spell, chronoFlux: 0 });
+          }
+        }
+      }
+    }
+
     if (spells) {
       const sr = spellsStep();
       if (sr) return sr;
@@ -317,7 +421,7 @@ export function simulateFight(player, enemy, ctx, rng) {
       const d = processDebuffsTick(debuffs, dtMs, ts, rng);
       if (d.targetHpDelta < 0) {
         const before = enemyHp;
-        enemyHp = Math.max(0, enemyHp + d.targetHpDelta);
+        enemyHp = Math.max(0, enemyHp - cut(-d.targetHpDelta));
         tickDealt += before - enemyHp;
       }
       if (emit) {
@@ -382,6 +486,7 @@ export function simulateFight(player, enemy, ctx, rng) {
       healBudget,
       blocksShieldOverflow,
       minion,
+      attackerOutputMult: outputMult,
     }, rng);
     tickDealt += t.attackerDamageDealt;
     hp = t.attackerHp;
@@ -404,15 +509,17 @@ export function simulateFight(player, enemy, ctx, rng) {
       if (enemy.shieldMax > 0) for (const ev of events) ev.defenderShieldHp = enemyShield;
     }
 
-    // 8. Chrono Flux and the transform it fires (L1089035-1089180)
+    // 8. Chrono Flux and the transform it fires (L1089035-1089180). The live loop charges the bar here
+    // but fires it at the top of the next tick, and keeps the bar empty on the tick it fired
+    // (L1076680-1076700).
     if (chronoOn) {
       const active = spells ? isTransformActive(spells) : false;
-      if (!active) {
+      if (!active && !transformFired) {
         const fires = spells ? transformFireCount(spells) : 0;
         chrono.flux = clampChronoFlux(chrono.flux + chronoFluxFromEvents(
           events, chrono.flameConduit, chrono.earthenConduit, chrono.darkConduit, fires));
       }
-      if (chrono.flux >= CHRONO_FLUX.MAX && spells && hasPendingTransform(spells)) {
+      if (!liveLoop && chrono.flux >= CHRONO_FLUX.MAX && spells && hasPendingTransform(spells)) {
         const tr = triggerTransformSpell(spells, ts, hp, player.maxHp, player);
         if (tr.triggered) {
           chrono.flux = 0;
@@ -479,6 +586,7 @@ export function simulateFight(player, enemy, ctx, rng) {
       }
     }
     if (reboundFor) for (const ev of events) thorns += reboundFor(ev, enemyNow);
+    thorns = cut(thorns);
     if (thorns > 0 && enemyHp > 0 && hp > 0) {
       const before = enemyHp;
       enemyHp = Math.max(0, enemyHp - thorns);
@@ -529,6 +637,8 @@ export function simulateFight(player, enemy, ctx, rng) {
       minionAlive: isMinionAlive(minion),
     }, rng);
     const minionEvents = routeSpellHealToMinion(minion, res, player.maxHp);
+    // live loop: the transform's heal joins the spell heal and its clamp (L1074900-1074909)
+    if (transformHeal > 0) res.ownerHpDelta += transformHeal;
     const bm = res.buffModifiers;
     playerView = hasActiveBuffs(bm) ? applyBuffsToEntity(player, bm) : player;
     buffHpPct = bm.hpPercent;
@@ -559,7 +669,7 @@ export function simulateFight(player, enemy, ctx, rng) {
 
     if (res.targetHpDelta < 0) {
       const before = enemyHp;
-      enemyHp = Math.max(0, enemyHp + res.targetHpDelta);
+      enemyHp = Math.max(0, enemyHp - cut(-res.targetHpDelta));
       tickDealt += before - enemyHp;
     }
     if (res.targetParalyzeMs && enemyHp > 0) {
@@ -638,7 +748,8 @@ export function simulateFight(player, enemy, ctx, rng) {
  *  - `avoidedReboundPct` % of every hit the player blocks or dodges is dealt back (the would-be hit,
  *    before the player's DR);
  *  - `penetrationPiercesSpellResist` needs no extra rule: Penetration already pierces a Block roll in
- *    processCombatTick, and the spell resist is the mob's `spellResist`.
+ *    processCombatTick, and the spell resist is the mob's `spellResist`;
+ *  - the player's shield mitigation is the record's `shieldMitigation` (0), set by `simulatePve`.
  * @param {Object} affinity  world-boss.json affinity record
  * @param {number} playerMaxHp
  * @returns {{enemyAt: (elapsedMs:number) => Object|null, reboundFor: ((ev:Object, enemy:Object) => number)|null}|null}
@@ -689,52 +800,91 @@ export function sigilStateOf(fighter) {
   };
 }
 
+/** The player entity fields the PVE engine reads (tick, spell pass, buffs, transforms), all numbers. */
+export const PVE_PLAYER_KEYS = Object.freeze([
+  'maxHp', 'attack', 'attackSpeed', 'doubleHit', 'critChance', 'critDamage', 'lifesteal', 'hpRegen',
+  'damageReduction', 'blockChance', 'missChance', 'blindChance', 'paralyzeChance', 'penetration',
+  'disruptionChance', 'spellDamage', 'spellResist', 'spellCritChance', 'spellVamp',
+]);
+/** The mob entity fields the PVE engine reads. */
+const PVE_MOB_KEYS = Object.freeze([
+  'maxHp', 'attack', 'attackSpeed', 'critChance', 'critDamage', 'lifesteal', 'hpRegen', 'damageReduction',
+  'blockChance', 'missChance', 'blindChance', 'penetration', 'spellResist',
+]);
+// the sheet keys createMinion reads (classes.md §7)
+const MINION_STAT_KEYS = Object.freeze([
+  'totalMinionAttack', 'totalMinionHealth', 'totalMinionAttackSpeed', 'totalMinionCritChance',
+  'totalMinionLifesteal', 'totalSoulLink',
+]);
+
 /**
- * Everything about a Fighter that does not change between fights, resolved once. `fresh()` returns the
- * mutable per-fight state (player entity, spell runtimes, minion, stack combat, Chrono Flux bar).
+ * Everything about a Fighter that does not change between fights, resolved once into `inputs`: a plain
+ * object holding exactly what the fight reads (the player entity fields, spell configs after glyphs, form
+ * and spec, shield, summon and the minion's sheet keys, stack config, conduits, thorns; conditions sit in
+ * the spell configs). `fresh()` reads only `inputs` and returns the mutable per-fight state (player
+ * entity, spell runtimes, a not-yet-summoned minion, stack combat, Chrono Flux bar). The minion is
+ * summoned by the first fight's opening, with its cast window (combat-pve.md §12).
  * @param {import('../types.js').Fighter} fighter
- * @returns {{fighter: Object, fresh: (opts?: {attackMult?: number}) => Object}}
+ * @returns {{fighter: Object, formKind: string|null, inputs: Object, fresh: () => Object}}
  */
 export function preparePveFighter(fighter) {
-  const stats = fighter.stats;
+  const stats = fighter?.stats;
+  if (stats == null || typeof stats !== 'object') throw new EngineInputError('fighter.stats is missing', { kind: 'fighter', key: 'stats' });
   const cls = fighter.class;
   const spec = fighter.spec ?? null;
   const state = sigilStateOf(fighter);
   const { mods, combat } = glyphCombatMods(fighter.glyphMods ?? [], cls, spec);
   const formCfg = getEquippedFormConfig(state, cls, spec);
   const formKind = formCfg?.form ?? null;
-  const spellConfigs = buildCombatSpells(state, cls, spec, formKind, mods);
-  const shieldCfg = getEquippedShieldConfig(state, spec, mods);
-  const summonCfg = getEquippedSummonConfig(state);
-  const stackEquipped = state.druidEquippedSpecies.length > 0 ? state.druidEquippedSpecies : state.equippedSpecies;
-  const stackCtx = { playerClass: cls, activeSpec: spec, form: formKind };
-  const flame = stats.totalFlameConduit ?? 0;
-  const earthen = stats.totalEarthenConduit ?? 0;
-  const dark = stats.totalDarkConduit ?? 0;
+  const entity = createPlayerEntity(stats);
+  assertPositive('player', entity, ['maxHp', 'attack', 'attackSpeed']);
+  assertFiniteEntity('player', entity, PVE_PLAYER_KEYS);
+  const player = { disruptionEffect: entity.disruptionEffect };
+  for (const k of PVE_PLAYER_KEYS) player[k] = entity[k];
+  const summon = getEquippedSummonConfig(state);
+  const minionStats = {};
+  if (summon) for (const k of MINION_STAT_KEYS) minionStats[k] = stats[k] ?? 0;
+  assertFiniteEntity('player', minionStats, Object.keys(minionStats));
+  const conduits = {
+    flame: stats.totalFlameConduit ?? 0, earthen: stats.totalEarthenConduit ?? 0, dark: stats.totalDarkConduit ?? 0,
+  };
+  assertFiniteEntity('conduits', conduits, ['flame', 'earthen', 'dark']);
+  const inputs = {
+    player,
+    spells: buildCombatSpells(state, cls, spec, formKind, mods),
+    shield: getEquippedShieldConfig(state, spec, mods),
+    summon,
+    minionStats,
+    stack: {
+      equipped: state.druidEquippedSpecies.length > 0 ? state.druidEquippedSpecies : state.equippedSpecies,
+      glyph: combat.stack,
+      ctx: { playerClass: cls, activeSpec: spec, form: formKind },
+    },
+    conduits,
+    thornsPercent: combat.ironBastionThornsPercent,
+  };
   return {
     fighter,
     formKind,
-    fresh({ attackMult = 1 } = {}) {
-      const player = createPlayerEntity(stats);
-      if (attackMult !== 1) player.attack = Math.floor(player.attack * attackMult);
-      player.shieldMitigation = PVE_SHIELD_MITIGATION;
-      if (shieldCfg.hpPercent > 0) {
-        player.shieldMax = Math.floor((player.maxHp * shieldCfg.hpPercent) / 100);
-        player.shieldHp = player.shieldMax;
+    inputs,
+    fresh() {
+      const { shield, conduits: c } = inputs;
+      const p = { ...inputs.player, hp: inputs.player.maxHp, shieldHp: 0, shieldMax: 0 };
+      if (shield.hpPercent > 0) {
+        p.shieldMax = Math.floor((p.maxHp * shield.hpPercent) / 100);
+        p.shieldHp = p.shieldMax;
       }
-      player.shieldVampAlwaysRefills = shieldCfg.vampAlwaysRefills;
-      player.shieldRegenAlwaysRefills = shieldCfg.regenAlwaysRefills;
-      const minion = createMinion(summonCfg, player, stats);
-      if (minion) summonMinion(minion);
-      const sc = createStackCombat(stackEquipped, true, combat.stack, stackCtx);
+      p.shieldVampAlwaysRefills = shield.vampAlwaysRefills;
+      p.shieldRegenAlwaysRefills = shield.regenAlwaysRefills;
+      const sc = createStackCombat(inputs.stack.equipped, true, inputs.stack.glyph, inputs.stack.ctx);
       return {
-        player,
-        spells: spellConfigs.length > 0 ? initSpellRuntimes(spellConfigs) : null,
-        minion,
+        player: p,
+        spells: inputs.spells.length > 0 ? initSpellRuntimes(inputs.spells) : null,
+        minion: createMinion(inputs.summon, p, inputs.minionStats),
         stacks: sc.active ? sc : null,
-        chrono: flame > 0 || earthen > 0 || dark > 0
-          ? { flux: 0, flameConduit: flame, earthenConduit: earthen, darkConduit: dark } : null,
-        thornsPercent: combat.ironBastionThornsPercent,
+        chrono: c.flame > 0 || c.earthen > 0 || c.dark > 0
+          ? { flux: 0, flameConduit: c.flame, earthenConduit: c.earthen, darkConduit: c.dark } : null,
+        thornsPercent: inputs.thornsPercent,
       };
     },
   };
@@ -764,31 +914,63 @@ export const trainingDummy = (hp = 1e15) => ({ id: 'dummy', hp, attack: 0, attac
  * @property {import('../types.js').Fighter|{fighter: Object, fresh: Function}} fighter  a Fighter, or
  *   a `preparePveFighter` result (reuse it across the fights of a metric)
  * @property {import('../types.js').MobSpec|import('../types.js').MobSpec[]} enemy  one mob, or mobs fought
- *   in order with HP, spells and the minion carried over (a campaign level or dungeon step)
- * @property {number} [dtMs=100]
- * @property {number} [maxMs]   defaults to the mob's `fightDurationMs`, else 1 200 000
- * @property {'zero'|'half'} [opening='zero']
+ *   in order with HP, spells, stacks and the minion carried over (a campaign level or dungeon step)
+ * @property {string} [mode]  a PVE_MODES key; default `pveModeOf`
+ * @property {number} [maxMs]  one shared window over the whole sequence (dps / survival windows, World
+ *   Boss, custom). Without it every mob gets its own cap: its `fightDurationMs`, else the mode's
+ * @property {number} [dtMs]  overrides the mode's tick (tests)
+ * @property {'zero'|'half'} [opening]  overrides the mode's opening (tests)
+ * @property {boolean} [liveSpellResist]  overrides the mode's spell resist rule (tests)
  * @property {Object|{power?: number}|null} [oblivion]  an `oblivionCombatState`, or `{power}` to build it
  *   from the enemy's `instability` (Oblivion floor mobs)
- * @property {boolean} [applyOutputCut=true]  apply the Oblivion `playerDamageMult` to the player's Attack
- * @property {boolean} [liveSpellResist=false]
+ * @property {boolean} [applyOutputCut=false]  apply the Oblivion `playerDamageMult` to all player-side
+ *   damage (an assumption, pve-content.md §11; the client fight never applies it)
  * @property {() => number} rng
  * @property {boolean} [log=false]
  */
 
-// port of the shared fight, wrapped for the metrics (rebuild-plan §2.3)
+/**
+ * @typedef {Object} PveRunResult
+ * @property {boolean} won            every mob died
+ * @property {number} timeMs          timestamp the run ended (gaps and summon windows included)
+ * @property {number} damageDealt
+ * @property {number} damageTaken
+ * @property {number} hpLeft
+ * @property {number} enemyHpLeft
+ * @property {number} mobsDefeated
+ * @property {boolean} timedOut       a cap or the window ended the run with the player alive
+ * @property {string} mode            the PVE_MODES key used
+ * @property {Array<Object>} [log]
+ */
+
+// the client's shared fight, run per mode (simulateDungeonStep L1671071-1671135 for the dungeon family,
+// the live progress loop L1077281-1077640 for the campaign), wrapped for the metrics (rebuild-plan §2.3)
 /**
  * One PVE fight (or a sequence of mobs) between a Fighter and a MobSpec. World Boss mobs (those carrying
  * an `affinity`) get their hit-back from `worldBossHooks`.
  * @param {PveOptions} o
- * @returns {import('../types.js').PveResult & {mobsDefeated: number}}
+ * @returns {PveRunResult}
  */
 export function simulatePve(o) {
-  const {
-    dtMs = DEFAULT_DT_MS, opening = 'zero', applyOutputCut = true, liveSpellResist = false, rng, log = false,
-  } = o;
-  const prepared = o.fighter.fresh ? o.fighter : preparePveFighter(o.fighter);
   const mobs = Array.isArray(o.enemy) ? o.enemy : [o.enemy];
+  if (mobs.length === 0) throw new EngineInputError('the enemy list is empty', { kind: 'enemy' });
+  const enemies = mobs.map((mob, i) => {
+    const kind = mobs.length > 1 ? `mob ${i + 1}` : 'mob';
+    if (mob == null || typeof mob !== 'object') throw new EngineInputError(`${kind} is missing`, { kind });
+    const e = mobEntityOf(mob);
+    assertPositive(kind, e, ['maxHp']);
+    assertFiniteEntity(kind, e, PVE_MOB_KEYS);
+    return e;
+  });
+  const modeId = pveModeOf(o, mobs[0]);
+  const mode = PVE_MODES[modeId];
+  const { rng, log = false } = o;
+  const dtMs = o.dtMs ?? mode.dtMs;
+  const opening = o.opening ?? (mode.liveLoop ? 'half' : 'zero');
+  const liveSpellResist = o.liveSpellResist ?? mode.liveLoop;
+  const gapMs = mode.interMobGapMs;
+  if (!o.fighter) throw new EngineInputError('the fighter is missing', { kind: 'fighter' });
+  const prepared = o.fighter.fresh ? o.fighter : preparePveFighter(o.fighter);
 
   let obl = null;
   const first = mobs[0];
@@ -798,9 +980,14 @@ export function simulatePve(o) {
       : oblivionCombatState(
         Math.max(0, Math.round(first.instability ?? 0) - Math.round(o.oblivion.power ?? 0)), first.instability ?? 0);
   }
-  const f = prepared.fresh({ attackMult: obl && applyOutputCut ? obl.playerDamageMult ?? 1 : 1 });
+  const outputMult = obl && o.applyOutputCut === true ? obl.playerDamageMult ?? 1 : 1;
+  const f = prepared.fresh();
+  // the mode's caller sets the mitigation (combat-pve.md §13); the World Boss reads its affinity record
+  f.player.shieldMitigation = modeId === 'worldBoss'
+    ? first.affinity?.shieldMitigation ?? mode.shieldMitigation
+    : mode.shieldMitigation;
 
-  const capMs = o.maxMs ?? first.fightDurationMs ?? FIGHT_CAP_MS;
+  const windowMs = o.maxMs;
   let player = f.player;
   let elapsed = 0;
   let damageDealt = 0;
@@ -813,20 +1000,28 @@ export function simulatePve(o) {
 
   for (let i = 0; i < mobs.length; i++) {
     const mob = mobs[i];
+    const enemy = enemies[i];
     if (lost || timedOut) {
-      enemyHpLeft += mob.hp;
+      enemyHpLeft += enemy.hp;
       continue;
     }
-    const enemy = mobEntityOf(mob);
-    const wb = mob.affinity ? worldBossHooks(mob.affinity, player.maxHp) : null;
-    if (i > 0) {
-      f.stacks?.resetTarget();
-      if (f.minion) carryMinionIntoNewFight(f.minion);
+    // the dungeon family waits before every mob and ages a pending minion respawn by the same amount;
+    // a living minion is left as it is in every mode (L1671080-1671084; live loop L1077281-1077640)
+    const startMs = elapsed + gapMs;
+    if (gapMs > 0 && f.minion) elapseMinionRespawn(f.minion, gapMs);
+    if (i > 0) f.stacks?.resetTarget();
+    const maxMs = windowMs != null ? windowMs - startMs : mob.fightDurationMs ?? mode.perFightCapMs;
+    if (!(maxMs > 0)) {
+      elapsed = windowMs;
+      timedOut = true;
+      enemyHpLeft += enemy.hp;
+      continue;
     }
+    const wb = mob.affinity ? worldBossHooks(mob.affinity, player.maxHp) : null;
     const r = simulateFight(player, enemy, {
-      dtMs, startMs: elapsed, maxMs: capMs - elapsed, opening, spells: f.spells, chrono: f.chrono, stacks: f.stacks,
+      dtMs, startMs, maxMs, opening, spells: f.spells, chrono: f.chrono, stacks: f.stacks,
       thornsPercent: f.thornsPercent, oblivion: obl, minion: f.minion, log, liveSpellResist,
-      enemyAt: wb?.enemyAt ?? null, reboundFor: wb?.reboundFor ?? null,
+      liveLoop: mode.liveLoop, outputMult, enemyAt: wb?.enemyAt ?? null, reboundFor: wb?.reboundFor ?? null,
     }, rng);
     elapsed = r.endTime;
     damageDealt += r.damageDealt;
@@ -847,6 +1042,8 @@ export function simulatePve(o) {
     hpLeft: player.hp,
     enemyHpLeft,
     mobsDefeated: defeated,
+    timedOut,
+    mode: modeId,
   };
   if (logOut) out.log = logOut;
   return out;
