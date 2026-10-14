@@ -1,7 +1,7 @@
 // store/characters.js (M1): roster-level and character-core mutators. Every mutator ends with persist().
 import { newCharacter, normaliseCharacter } from '../model/index.js';
 import { normaliseClass, normaliseLevel, normaliseBaseResidual } from '../model/character.js';
-import { importRoster, downloadRoster } from '../storage.js';
+import { importJson, downloadRoster } from '../storage.js';
 
 export function createCharactersStore(ctx) {
   /** @returns {string} the new character's id (it becomes the current character). */
@@ -79,10 +79,16 @@ export function createCharactersStore(ctx) {
     });
   }
 
-  /** Replace the whole roster from exported JSON (v1 or v2). Throws on unparseable JSON. */
+  /**
+   * Import JSON text. An app export (v1 or v2) replaces the whole roster; a game profile is added as a
+   * new character, selected. Throws on unparseable JSON.
+   * @returns {{kind: 'profile'|'roster', name: string|null}}
+   */
   function importFromJson(text) {
-    ctx.setRoster(importRoster(text));
+    const { kind, roster, character } = importJson(text, ctx.roster());
+    ctx.setRoster(roster);
     ctx.persist();
+    return { kind, name: character?.name ?? null };
   }
 
   function exportDownload() {
