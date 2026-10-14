@@ -23,7 +23,7 @@ describe('task registry', () => {
   it('stubs reject with their owner slice; unknown modes reject', async () => {
     await expect(runTask('dropCheck', {})).rejects.toThrow(/F1/);
     await expect(runTask('oblivionFloors', {})).rejects.toThrow(/F4/);
-    await expect(runTask('optimize', {})).rejects.toThrow(/F2a/);
+    await expect(runTask('optimize', {})).rejects.toThrow(/character is required/); // F2a: implemented, validates its request
     await expect(runTask('nope', {})).rejects.toThrow(/unknown task/);
   });
 
