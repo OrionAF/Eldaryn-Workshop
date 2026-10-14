@@ -15,7 +15,7 @@
 
   let { opponent, onRemoved = () => {} } = $props();
 
-  const keys = $derived(sheetKeysForClass(opponent.class).filter((k) => k !== 'totalDominion'));
+  const keys = $derived(sheetKeysForClass(opponent.class, 'base').filter((k) => k !== 'totalDominion'));
 
   function onSheetChange(key, value) {
     const next = { ...opponent.sheet.values };

@@ -63,7 +63,7 @@
   // --- Sheet ---
   const stats = $derived(computePresetStats(character, preset.id, { realm: activeRealm }));
   const sheetValues = $derived(stats.sheet?.values ?? {});
-  const sheetKeys = $derived(sheetKeysForClass(character.class).filter((k) => k !== 'totalDominion'));
+  const sheetKeys = $derived(sheetKeysForClass(character.class, activeRealm).filter((k) => k !== 'totalDominion'));
   const ABSORB_KEYS = ['totalAttack', 'totalHp', 'totalAttackSpeed', 'totalCritChance', 'totalCritDamage'];
   const absorbable = $derived(ABSORB_KEYS.some((k) => stats.residual[k]));
 

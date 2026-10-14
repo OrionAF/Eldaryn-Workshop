@@ -6,7 +6,7 @@
    *
    * Props: value ({kind, ...}), realm ('base'|'oblivion'), onchange(spec).
    */
-  import { PVE_CHAPTERS, PVE_HARD_CHAPTERS, PVE_PROGRESS_CONSTANTS } from '../../lib/game/combatPve.js';
+  import { PVE_CHAPTERS, PVE_HARD_CHAPTERS, PVE_PROGRESS_CONSTANTS, chapterLabel } from '../../lib/game/combatPve.js';
   import { CLASSIC_DUNGEONS, OBLIVION_FLOORS } from '../../lib/game/pveContent.js';
 
   let { value, realm = 'base', onchange } = $props();
@@ -19,10 +19,7 @@
   );
   const kind = $derived(kinds.some((k) => k.id === value?.kind) ? value.kind : kinds[0].id);
 
-  const chapters = [
-    ...PVE_CHAPTERS.map((c) => ({ chapter: c.chapter, label: `${c.chapter}. ${c.name}` })),
-    ...PVE_HARD_CHAPTERS.map((c) => ({ chapter: c.chapter, label: `Hard: ${c.name}` })),
-  ];
+  const chapters = [...PVE_CHAPTERS, ...PVE_HARD_CHAPTERS].map((c) => ({ chapter: c.chapter, label: chapterLabel(c.chapter) }));
   const steps = Array.from({ length: 8 }, (_, i) => i + 1);
 
   function pickKind(k) {
