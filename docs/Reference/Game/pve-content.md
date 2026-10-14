@@ -64,17 +64,29 @@ Crusade cache chance **[CODE]**: NORMAL 10, HARD 10, MYTHIC (Mythic+0) 10 (perce
 
 **[CODE]** module 3943 (L1062171-1062963). `DUNGEON_CONFIG`: INITIAL_KEYS 4, KEYS_PER_DAY 2, RESET_HOUR 0 (UTC), TICK_INTERVAL_MS 10, PREPARED_FIGHT_TTL 1.8e6, FAST_PASS_COOLDOWN 300000, SHIELD_MITIGATION 0.5. Unlock `DUNGEON_1` level 5 (all 7 dungeons share `requiredPlayerLevel` = DUNGEON_1). Intro text: "2 dungeon keys a day; a clear spends one" (L668805 region).
 
-Seven dungeons (normal), each 8 steps: Forsaken Mines (dungeon_1), Howling Ruins, Frozen Catacombs, Infernal Temple, Abyssal Rift, Divine Gate, Chrono Sanctum. Each step has 3 mobs from a 5-6 entry roster and a step multiplier:
+Seven dungeons (normal), each 8 steps: Forsaken Mines (dungeon_1), Howling Ruins, Frozen Catacombs, Infernal Temple, Abyssal Rift, Divine Gate, Chrono Sanctum. Each step has 3 mobs from a 5-6 entry roster (L1062720-1062803) and a step multiplier. **[CODE]** `buildSteps` L1062441-1062526, `makeMob` L1062373-1062439:
 ```
-mob.hp   = round(baseHp  * stepMult)
-mob.atk  = round(baseAtk * stepMult)
+mob = { id, name, spriteKey, hp: round(baseHp * stepMult), attack: round(baseAtk * stepMult),
+        attackSpeed: baseSpd, blockChance / penetration / damageReduction copied when the entry sets them }
 step 1..7 mobs = roster[(3*s)%(n-1)], roster[(3*s+1)%(n-1)], roster[(3*s+2)%(n-1)]   (s = 0-based step)
 step 8 mobs    = roster[n-3], roster[n-2], roster[n-1]   (boss last)
-coins per step = table (stepCoins)
+coins per step = table (stepCoins), 10 when missing
 ```
-Forsaken Mines step multipliers `[1,1.2,2,3.2,4.4,6.4,7.8,9.6]`, coins `[45,60,78,86,90,95,100,105]`; full per-dungeon multipliers, coins, rosters in `data/pve-content.json` `classicDungeons`. The roster-index rule is **[DERIVED]** from `buildSteps` L1062171+271..326.
+Dungeons 1-2 have no Block or Penetration; dungeons 3-7 give every roster entry `blockChance` 5/10/15/18/20 and `penetration` 6/10/32/40/48, the boss 8/12/32/44/52. No normal roster sets `damageReduction`. Forsaken Mines step multipliers `[1,1.2,2,3.2,4.4,6.4,7.8,9.6]`, coins `[45,60,78,86,90,95,100,105]`; full per-dungeon multipliers, coins, rosters in `data/pve-content.json` `classicDungeons`.
 
-Hard variants (id `dungeon_N_hard`) **[CODE]** `hardVariant`: take the last 3 mobs' max baseAtk, cap normal mobs' baseAtk to `1.05 * thatMax`; `hp = round(baseHp * hpScale * hpMulStep * (1 - DR/100))`, `atk = round(min(baseAtk,cap) * atkScale * k / 1.25)` etc. Per-dungeon `{hpScale, atkScale, blockChance, penetration, damageReduction}` = `[216000/63000/20/50/0, 46500/17800/21/52/0, 16100/4670/22/54/30, 3690/1320/23/56/30, 707/325/24/58/30, 275/625/25/60/30, 308/604/26/62/30]`, with a per-dungeon `{hp,atk}` share `[.5/.85,.5/.85,.5/.55,1/.55,1/.65]`, multiplier ladder `[1,1.09,1.19,1.3,1.42,1.55,1.69,2.05]` and hard coins `3010 + 10*(8*idx+step)` (`hardCoinRewards`). Because the hard formula was only partly traced (register aliasing), the exact hard hp/atk are **[UNRESOLVED]**; the structure above is **[CODE]**. Outcome and coin payout are **[SERVER]** (`prepare/resolve/sweep/fastPass` modules 3607/3608).
+Hard variants (id `dungeon_N_hard`, `difficulty: 'hard'`, step label `H<N>-<step>`) **[CODE]**: the client builds one per normal dungeon (assembly L1062918-1062958) as `buildSteps(hardVariant(roster, HARD_CFG[k], k), HARD_LADDER, hardCoinRewards(k))`, `k` = 0-based dungeon index. `hardVariant` L1062199-1062371, constants L1062804-1062836:
+```
+last  = roster.length - 1
+cap   = 1.05 * max(baseAtk of roster[last-2], roster[last-1])      (the two entries before the boss)
+share = SHARE[k] ?? {hp: 1, atk: 1}                                 (dungeons 6-7 have none)
+entry i -> { ...entry, id: id + '_hard',
+  baseHp:  round(baseHp * hpScale * share.hp * (1 - DR/100)),
+  baseAtk: round((i == last ? min(baseAtk, cap) : baseAtk) * atkScale * share.atk / 1.25),
+  baseSpd: parseFloat((baseSpd * 1.25).toFixed(3)),
+  blockChance: cfg.blockChance, penetration: cfg.penetration (+4 on the boss), damageReduction: cfg.damageReduction }
+hard coins (step s, 0-based) = 3010 + 10 * (8*k + s)
+```
+The cap applies to the boss only. `HARD_CFG {hpScale, atkScale, blockChance, penetration, damageReduction}` = `[216000/63000/20/50/0, 46500/17800/21/52/0, 16100/4670/22/54/30, 3690/1320/23/56/30, 707/325/24/58/30, 275/625/25/60/30, 308/604/26/62/30]`, `SHARE {hp,atk}` = `[.5/.85, .5/.85, .5/.55, 1/.55, 1/.65]`, step ladder `[1,1.09,1.19,1.3,1.42,1.55,1.69,2.05]`. **[DERIVED]** examples: dungeon_1_hard step 1 Giant Rat = 108 000 000 HP / 2 570 400 attack / speed 1.625 / block 20 / pen 50; dungeon_7_hard step 8 Kairon = 91 931 840 000 HP / 653 769 600 attack / 1.063 / block 26 / pen 66 / DR 30. Outcome and coin payout are **[SERVER]** (`prepare/resolve/sweep/fastPass` modules 3607/3608).
 Camp bonus x1.1 coins applies (§2). Dungeon coins buy things in the shop (not a stat source).
 
 ---
@@ -191,7 +203,7 @@ Oblivion stone levels/grades (`OBLIVION_STONE_*`, module 4282) and `getOblivionP
 
 ## §12 Data file schema
 
-`data/pve-content.json`: `source`; `oblivionXpCurve.table[{toLevel,xpCost,cumulative}]`; `oblivionDropWeights.byOblivionLevel[{oblivionLevel,MYTHIC,ANCIENT,DIVINE,ETERNAL,OBLIVION,mobLevel}]`; `oblivionDungeonFloors.floors[{floor,mobHp,mobAttack,instability}]` (1-60); `classicDungeons.dungeons[{id,name,stepMultipliers[8],stepCoins[8],mobRoster[{name,baseHp,baseAtk,baseSpd}]}]`; `progressChapters[{chapter,displayChapter,difficulty,name,level1Mobs,level10Mobs}]`.
+`data/pve-content.json`: `source`; `oblivionXpCurve.table[{toLevel,xpCost,cumulative}]`; `oblivionDropWeights.byOblivionLevel[{oblivionLevel,MYTHIC,ANCIENT,DIVINE,ETERNAL,OBLIVION,mobLevel}]`; `oblivionDungeonFloors.floors[{floor,mobHp,mobAttack,instability}]` (1-60); `classicDungeons.dungeons[{id,name,stepMultipliers[8],stepCoins[8],mobRoster[{id,name,spriteKey,baseHp,baseAtk,baseSpd,blockChance?,penetration?,damageReduction?}]}]`; `classicDungeons.hard{configs[7]{hpScale,atkScale,blockChance,penetration,damageReduction},stepMultipliers[8],bossAtkCapMult,speedMult,bossPenetrationBonus,share[5]{hp,atk},coinBase,coinStep}` (§4; hard dungeons are built from these by `engine/pve/enemies.js`, not stored); `progressChapters[{chapter,displayChapter,difficulty,name,level1Mobs,level10Mobs}]`.
 
 ## §13 Verification note
 
