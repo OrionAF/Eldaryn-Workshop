@@ -1,8 +1,9 @@
 name: Deploy to GitHub Pages
 
+# Manual only (2026-10-14): the build bundles the extracted game catalogues (src/data/game),
+# which must not be published. The app runs locally for now. Don't re-enable the push trigger
+# (or run this) without the user's say-so.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:

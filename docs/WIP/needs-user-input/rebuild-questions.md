@@ -1,11 +1,13 @@
 # Rebuild — questions for the user
 
-> **Status:** open · **Raised:** 2026-10-14 · **Source:** `../being-worked-on/rebuild-plan.md` §8
+> **Status:** answered 2026-10-14 · **Raised:** 2026-10-14 · **Source:** `../being-worked-on/rebuild-plan.md` §8
 
 None of these block the overnight build. The default in each one is what is being built until you
 say otherwise.
 
 ## Q1 — Is publishing the extracted game catalogues OK?
+
+**Answer: no.** The Pages deploy is now manual-only, and the app runs locally.
 
 The rebuilt app bundles `src/data/game/*.json` (talent trees, sigils, relics, transcendence boards,
 …, copied from `docs/Reference/Game/data/`). When the app is deployed to GitHub Pages, those files
@@ -19,6 +21,8 @@ are publicly downloadable, even though the repo is private.
 
 ## Q2 — Should the optimiser also search for PVP win rate (plan slice F5)?
 
+**Answer: yes.** F5 is being built.
+
 The standalone Duel screen simulates fights against saved opponents either way. F5 would add
 "find the build with the best win rate against my saved opponents" to the optimiser. It is slow,
 because each candidate needs hundreds of simulated duels.
@@ -28,6 +32,8 @@ because each candidate needs hundreds of simulated duels.
 - **Default meanwhile:** F5 is not built.
 
 ## Q3 — GitHub Pages on a private repo
+
+**Answer: run locally for now.**
 
 The repo is private now. GitHub Pages for a private repo requires a paid plan (Pro/Team), so the
 live site may already be offline.

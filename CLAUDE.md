@@ -13,7 +13,8 @@ Two independent projects for the mobile game "Eldaryn":
 1. **Root (`/src`) — "Eldaryn Gear Optimiser"** (the active project): a Svelte 5 + Vite
    static web app: PVE build optimiser, Drop Check (gear-swap comparator) and PVP duel
    simulator, rebuilt (rebuild-plan.md) as a port of the 2.7.0 client's own stat and combat
-   code. Persists to `localStorage`; deployed to GitHub Pages. **Game truth lives in
+   code. Persists to `localStorage`; runs locally only (the bundle contains the extracted game
+   catalogues, which must not be published, so `deploy.yml` is manual-only). **Game truth lives in
    `docs/Reference/Game/`**, read from the decompiled 2.7.0 client.
 2. **`EldarynTracker/`** — separate Python/Streamlit gear-data entry & analysis apps, not
    part of the JS build. Own setup/run/test commands in `EldarynTracker/README.md`.
@@ -26,7 +27,7 @@ Everything below refers to the root Svelte project unless stated otherwise.
 `npm run sync:data` (copies `docs/Reference/Game/data/*.json` into `src/data/game/`; run it after
 editing the game data. `src/data/game/parity.test.js` fails when the copies drift).
 
-- Production build for GitHub Pages needs `BASE_PATH=/<repo-name>/`.
+- A GitHub Pages build would need `BASE_PATH=/<repo-name>/`; don't deploy (see above).
 - Single file: `npx vitest run src/lib/format.test.js` — by name: `npx vitest run -t "name"`.
 - There is no linter configured in this project.
 

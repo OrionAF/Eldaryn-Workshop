@@ -29,11 +29,11 @@ npm run build     # production build to dist/
 npm run preview   # serve the production build locally
 ```
 
-## Deploy
+## Running it
 
-Pushing to `main` runs `.github/workflows/deploy.yml`, which tests, builds, and publishes to
-GitHub Pages via `actions/deploy-pages`. One-time repo setup required: **Settings → Pages →
-Build and deployment → Source: GitHub Actions**.
+Local only for now: `npm install`, then `npm run dev` and open the printed URL
+(http://localhost:5173). The build bundles the extracted game catalogues, which are not to be
+published, so the GitHub Pages workflow (`.github/workflows/deploy.yml`) is manual-only.
 
 ## Legacy reference
 
