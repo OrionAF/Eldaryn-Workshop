@@ -191,6 +191,8 @@ multiplier except the three form multipliers in step 4.
      Mystic and activeSpec != MYSTIC_MAGE: spellCrit = 0                L1216917-1216935
      if formConfig: attackSpeed *= formConfig.attackSpeedMult           L1216937-1216941
      disruption += fear                                                 L1216975-1216976
+     disruptionEffect string is also decided here: default SILENCE; Mystic
+       BEAR form STAGGER, WOLF form FEAR; Necromancer FEAR   L1216943-1216988, L1217116-1217133
      formConfig.passiveEffects: add {stat,value} for ATTACK_SPEED, CRIT_CHANCE,
        HP_REGEN, LIFESTEAL, MISS_CHANCE, BLIND_CHANCE, PENETRATION,
        DAMAGE_REDUCTION, BLOCK_CHANCE (DR/block only if class != Mystic OR
@@ -203,7 +205,8 @@ multiplier except the three form multipliers in step 4.
      totalAttack = floor( attackFlat * (1 + attackPercent/100) * attackMult )
      totalHp     = floor( (hpFlat + gearHp*(gearHpMult - 1)) * (1 + hpPercent/100) )
 6. softcap each capped stat (§4), then round for output                 L1217178-1217394
-7. emit rawX = round(raw) only when raw > soft cap                      L1217495-1217870
+7. emit rawX = parseFloat(raw.toFixed(n)) only when raw > soft cap; n = 2 for
+   Attack Speed and Crit Damage, 1 for the rest (raw 50.25 -> 50.3)    L1217495-1217870
 ```
 
 Important consequences **[DERIVED]** from the above:
@@ -331,10 +334,15 @@ applySoftCap(x, soft, hard):
 | LIFESTEAL | 40 | 70 | | MINION_CRIT_CHANCE | 50 | 90 |
 | HP_REGEN | 40 | 60 | | MINION_LIFESTEAL | 40 | 70 |
 | DAMAGE_REDUCTION | 30 | 60 | | SOUL_LINK | 40 | 70 |
-| BLOCK_CHANCE | 40 | 80 | | MINION_ATTACK_SPEED (x) | 2 | 4 |
+| BLOCK_CHANCE | 40 | 80 | | MINION_ATTACK_SPEED (x) (see below) | 2 | 4 |
 | PENETRATION | 30 | 70 | | **MISS_CHANCE** | 50 | **85** |
 | BLIND_CHANCE | 30 | 50 | | SPELL_CRIT_CHANCE | 50 | 90 |
 | PARALYZE_CHANCE | 8 | 18 | | | | |
+
+`calculateTotalStats` never calls `applySoftCap` for Minion Attack Speed: the
+total is `parseFloat(x.toFixed(2))` of the raw sum, i.e. effectively uncapped
+on the sheet (`L1217458-1217464`) **[CODE]**. The 2 / 4 row is applied elsewhere: `createMinion` uses
+`SOFT_CAPS.MINION_ATTACK_SPEED` (`combat-pve.md` §12), then the combat ceiling 4.5 (below).
 
 No entry (no curve): Attack, HP, Attack%, HP%, Spell Damage, Minion Attack,
 Minion Health, PVP Attack/Defense, OBLIVION_POWER. The Fear total has no

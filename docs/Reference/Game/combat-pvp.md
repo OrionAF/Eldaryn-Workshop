@@ -121,7 +121,7 @@ are multipliers / swings per second.
 
 **HP pool.**
 ```
-applyPvpHpBuff(stats, mult):                       // L1454678-1454713
+applyPvpHpBuff(stats):                             // L1454678-1454717; mult read inside via getPvpHpMultiplier()
     if stats.pvpBaseHp is undefined and mult != 1:
         copy.totalHp   = floor(stats.totalHp * mult)
         copy.pvpBaseHp = stats.totalHp             // pre-multiplier HP
@@ -238,6 +238,16 @@ ranges adjusted.
    if avoid > 0 and random()*100 < avoid:       -> AVOIDED path (below)       // L1452914-1452927
    else -> HIT path
 ```
+Event labels **[CODE]**: `X_paralyze`, `X_fear`, `X_blind`, `X_hit`, `X_crit` are labelled by the
+swinger's side (`attacker_*` when the arena attacker swings). Avoided swings (`defender_block` /
+`defender_miss` for an attacker swing), minion events (`*_minion_damaged`, `*_minion_dead`) and
+proc events (`*_blinded`, `*_paralyzed`, `*_silenced`, `*_feared`, `*_staggered`) are labelled by
+the TARGET's side. Payload extras: `isCrit` / `doubleHit` on minion hits, `fearMs`,
+`staggerStacks`, `paralyzeMs` 2000 on the stagger-stun event, `minionRespawnMs` on minion death.
+Step 4 detail: the whole swing goes to the minion with no avoid roll, DR, PVP or on-hit procs;
+only the crit and double-hit draws are spent, the double-hit strike is skipped if the first
+killed the minion, and lifesteal heals from `dealt` (clamped to the minion's remaining HP).
+
 Order of statuses is paralyze > fear > blind; a blinded attacker that is also
 paralyzed/feared keeps the blind until it actually gets a swing. **[DERIVED]**.
 
@@ -324,7 +334,7 @@ timer -= 100
 if hpRegen <= 0: return
 amount = max(1, round(rawMaxHp * hpRegen/100 / 10))      // per 100 ms
 if hp < buffedMaxHp:  hp = min(buffedMaxHp, hp + amount); healed = hp - old
-overflow = amount                                        // when already at max
+overflow = amount                                        // when already at max (the whole pulse, regardless of shieldRegenAlwaysRefills)
 shield refill (regenShieldRefillAmount): alwaysRefills ? amount : amount - healed
 ```
 **[DERIVED]** regen per second = `rawMaxHp * hpRegen/100` (the *pre-x8* HP), i.e.
@@ -350,8 +360,10 @@ Engine detail `see combat-pve.md` §9-§10, catalogue `see sigils.md`. PVP-speci
 facts:
 
 - `processArenaSpells` `L1453857-1454667` runs `processSpellsTick` for each
-  caster with `target.spellResist` (+ buff resist) and the target's
-  `pvpDefense` multiplier. Spell and DoT damage then pass **PVP Defense only**
+  caster with `target.spellResist` + `computeActiveBuffModifiers(target runtimes).spellResist`
+  (the resolver's `a10`, `L1456340-1456400`; `target.damageReduction` is not added in PVP) and
+  `1 - pvpRatingToFraction(target.pvpDefense)` (`L1453922-1453938`), which lands in the tick's
+  `healingMult` slot (index 17) and scales only the caster's spell vamp and self-heal. Spell and DoT damage then pass **PVP Defense only**
   (§5).
 - **Activation conditions apply to Damage and Debuff sigils only in PVP**:
   PVE fires them on cooldown; Buff / Heal conditions apply everywhere.
@@ -359,6 +371,7 @@ facts:
   and `MY_HP_BELOW_{80,60,40,20}` (HP percentages, `<=` threshold; the
   `MY_HP_*` family has a bypass flag). The call-site gate is `L1091440-1091533`.
   strtab L29216-29217 states the rule. Unlock: level 54.
+- PVP passes `arg9` true, so Damage and Debuff conditions are evaluated here (PVE skips them, `combat-pve.md` §10.1).
 - Silence stops casting (`silencedMs` is passed to the tick `L1453962`); Fear
   and Paralyze stop swings only, not spells (they only gate `processAttack`).
   **[DERIVED]** from where the flags are read.
@@ -366,6 +379,14 @@ facts:
   summed, cap 100; SLOW attack-speed cut summed, cap 50; CRIT_DOWN flat
   crit-chance points `critDownChance` `L1093869-1093903`). Applied to the
   swinger each swing.
+- **[CODE]** Spell logging: `spell_damage` / `spell_dot_tick` event values are reduced by PVP
+  Defense per event (`max(1, round(v*(1-f)))`) while the HP loss rounds the net total once, so
+  logged hits need not sum to the HP lost. Minion intercept: for each `spell_damage` event > 0
+  while the target minion lives, `targetHpDelta += ` the full value even when the minion dies with
+  HP to spare (overkill absorbed); DoT ticks are never intercepted (`L1454054-1454112`). The caster
+  HP clamp adds a resolver-supplied `hpPercent` bonus (Chrono Flux, `L1456262-1456289`) to the
+  tick's buff `hpPercent`; when the sum is <= 0, hp is clamped to maxHp even without a heal
+  (`L1454006-1454052`).
 - Withering Touch (Warrior epic): cooldown 15000 ms, WOUND 8000 ms, regen
   reduction 60 % (max 85 %) `L1069150-1069167`; Hemorrhage BLEED `L1069168-1069185`.
 
@@ -398,6 +419,16 @@ Catalogue numbers `see sigils.md` (values in `data/combat-pvp.json`
   block, so 0 on a clean block). Iron Bastion buff thorns add the same way.
   Reflect goes through the reflected target's shield then HP, with **no DR or
   PVP rating** applied, and logs `*_thorns_reflect`.
+- **Event names in `reactToAttack` are from the evading side's view** **[CODE]**
+  (`L1454929-1455279`): `attacker_block` / `attacker_miss` mean the attacker blocked or evaded a
+  defender swing (the attacker's `blockReflect` / `onEvaded` run); `attacker_blind` means the
+  attacker's swing was blinded, so the defender's `onEvaded` runs (`L1455025`, `L1455056-1455068`).
+  `*_miss` triggers `blockReflect(damage)` as well as `onEvaded` (`L1455048-1455098`), so thorns
+  reflect on a miss, not only on a block.
+- `killMinionsOfDead` calls `killMinion` (sets `respawnMs` 0) and only then reads
+  `minionDeathMeta`, so a minion killed by its owner's death never carries `minionRespawnMs`
+  (`L1455485-1455514`). `minionStrike` calls `minionSwing(minion, TICK_INTERVAL_MS)`
+  (`L1455577-1455581`); minion crit randomness is internal to the client.
 - **Combat ceilings** (module 3959 `L1080486`): Miss 90, Blind 60, DR 75, Block
   85, Crit 95, Lifesteal 80, Attack Speed 4.5, Penetration 80, Spell Crit 95,
   Spell Vamp 80, HP Regen 70 (minion/soul-link values in the JSON). These clamp
@@ -453,7 +484,7 @@ paralyzed,fear,feared,silenced,staggered,regen,thorns_reflect,
 minion_summoned,minion_hit,minion_crit,minion_damaged,minion_dead,minion_heal,
 spell_*,debuff_*}`, plus `attacker_dead`, `defender_dead`, `time_up`. Every event
 has `timestamp` (ms), `damage`, `attackerHpAfter`, `defenderHpAfter` (clamped
->= 0), optional `isCrit`, `doubleHit`, `spell`, `debuffStacks`,
+>= 0; these are the swinger's and the target's HP, so when the defender swings `attackerHpAfter` holds the defender's HP, `L1453059`), optional `isCrit`, `doubleHit`, `spell`, `debuffStacks`,
 `attackerShieldHpAfter`, `defenderShieldHpAfter`, minion HP snapshots
 (`L1455280-1455346`, `L1452937-1453095`). A blind-wasted swing logs `damage 0`
 (strtab L92975 "logs blinded hits as a \"0\"").
@@ -546,11 +577,9 @@ keep the game's identifiers (e.g. `TOKENS_PER_DAY`).
 - Fortress PVP: x8 HP, outcome at time up (§2, §12).
 - Disruption effect per spec (Mage SILENCE / Bear STAGGER / Wolf FEAR per
   `combat-pve.md` §8.3); not re-derived here.
-- Last argument of `processSpellsTick` (receives `1 - pvpDefenseFraction`
-  twice from `processArenaSpells` `L1453990-1453991`); what it scales inside
-  the spell engine was not traced (module 3964 is 3000+ lines). The
-  *observable* effect used above (PVP Defense applied once to spell damage via
-  `targetHpDelta`) is read directly.
+- **Resolved (E7b):** `processArenaSpells` passes `1 - pvpDefenseFraction` at indices 17
+  (`healingMult`, read) and 20; `processSpellsTick` reads only up to index 19, so the 21st
+  argument is ignored (`L1453948-1453990`).
 - Spell opening delay and cooldown start (old doc: enemy-targeting sigils first
   fire at 1 s) `see combat-pve.md` §10.1; not re-measured.
 - Ladder: points on a loss, bracketing (`assignBrackets` exists but strtab

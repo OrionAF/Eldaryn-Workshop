@@ -219,6 +219,11 @@ blocked" (`L911271`).
 outcome of the hit is known. The double-hit strike is applied only if the enemy
 is still alive. Neither is rolled on a negated swing.
 
+**RNG draw rules** (`rollAttackDamage` `L1085998-1086047`) **[CODE]**: the crit draw is always
+consumed, even at 0 % crit; the double-hit draw only when `doubleHit > 0`. A port must follow
+these draws exactly to reproduce a seeded fight. `rollPenetrationCritMult` draws only when
+`critChance > 0`.
+
 ### §5.3 Where lifesteal reads from
 
 **[CODE]** `floor(dmg_after_DR * lifesteal / 100)`, then `min(that, maxHp - hp)`;
@@ -297,6 +302,10 @@ if defenderTimer >= enemyInterval:
 - Statuses exist only on the enemy side. The player cannot be blinded, paralyzed,
   feared or staggered by mobs in this engine; mobs have no such chances.
 - A hit that kills the player ends the fight: the returned `attackerHp` is 0.
+- **[CODE]** Event damage differs by side: `defender_hit` carries `round(effectiveDamage)` from
+  `absorbWithShield` (the shield-mitigated cost, `L1087035`); the player-hit event carries the
+  post-DR, pre-shield number (`L1086509`). `attackerDamageDealt` counts only the player's own
+  swings (first hit, double hit, pierce), pre-shield; minion hits are excluded (`L1086944`).
 
 ## §7 Damage, healing and rounding — summary
 
@@ -308,7 +317,7 @@ if defenderTimer >= enemyInterval:
 | Normal hit | `attack` | integer already |
 | Crit hit | `attack * critDamage` | `Math.round` |
 | Double-hit strike | `attack` | none |
-| Damage reduction | `d * (1 - DR/100)` | `Math.round`, `max(1, .)` when DR>0 and d>0 |
+| Damage reduction | `d * (1 - DR/100)` | `Math.round`, `max(1, .)` when DR>0 (the inline steps in the enemy swing, enemy penetration and player penetration check only DR>0, so a 0 base becomes 1; `L1087004-1087018`, `L1087129-1087143`, `L1086793-1086807`) |
 | Penetration damage | `round(attack*pen/100)`, `* critMult`, DR | `Math.round` twice, then DR |
 | Lifesteal | `dmg * ls/100` | `Math.floor`, capped at missing HP |
 | HP regen pulse | `maxHp * hpRegen/100 / 10` every 100 ms | `Math.round`, `max(1, .)`, capped at missing HP |
@@ -318,8 +327,11 @@ if defenderTimer >= enemyInterval:
 subtracts 100 (at most one pulse per `processCombatTick` call); pulse amount
 `max(1, round(maxHp * hpRegen / 100 / 10))` (10 pulses a second, so `hpRegen` is
 percent of max HP per second); `min(amount, maxHp - hp)` when below max, else 0;
-emits `attacker_regen` only if > 0. Only the attacker (player) regenerates in
-this function. The tooltip is consistent: "Percentage of max HP regenerated per
+emits `attacker_regen` only if > 0. The amount reads `player.maxHp` (the buffed entity) but the
+clamp and overheal read the separate `attackerMaxHp` argument (default `player.maxHp`;
+`L1086358` vs `L1086368`). Only the attacker (player) regenerates in
+this function. The regen shield refill (`regenShieldRefillAmount`) is skipped when
+`blocksShieldOverflow` is set (17th argument, from the Oblivion options, `L1087833-1087840`). The tooltip is consistent: "Percentage of max HP regenerated per
 second in combat" (`L911271`).
 
 **Expected output per player swing against a defender with DR `d`, Block `b`,
@@ -336,7 +348,7 @@ For `b = 0` and `d = 0` this reduces to the existing closed form
 
 ## §8 Status effects
 
-### §8.1 Constants — **[CODE]** `L1087437-1087498`, `L1089576-1089586`
+### §8.1 Constants — **[CODE]** values assigned `L1089570-1089584` (`L1087437-1087498` is only the export getters)
 
 | Name | Value | Used for |
 |---|---|---|
@@ -352,7 +364,7 @@ The Paralyze **tooltip says "fully stunned for 2 seconds"** (`L911271`); the
 constant used by the engine is 1000 ms. The 2 s figure matches `STAGGER_STUN_MS`,
 not `PARALYZE_DURATION_MS`. Whether the live server uses a different value is
 **[UNRESOLVED]**; for the client-run progress loop the code value (1000 ms) is
-what executes.
+what executes. The port uses 1000 ms.
 
 ### §8.2 Blind / Paralyze procs
 
@@ -360,7 +372,7 @@ Rolled once per landed swing (§5 step 7), against `blindChance` and
 `paralyzeChance` (percent). Blind needs the enemy not already blinded; Paralyze
 needs `paralyzedMs <= 0`.
 
-### §8.3 Disruption — `rollDisruption` `L1086073-1086165`
+### §8.3 Disruption — `rollDisruption` `L1086073-1086166`
 
 ```
 if disruptionChance <= 0: none
@@ -374,8 +386,13 @@ STAGGER: stacks += 1 ; if stacks >= 3: stunned -> stacks = 0, paralyzedMs = max(
 FEAR:    fearedMs = 1000                       event 'defender_feared' {fearMs: 1000}
 ```
 
-Silence has no consumer in the swing loop (it blocks enemy spell casts, and
-campaign mobs cast none). Bosses "resist" Fear per UI text (`L911271`); the
+**[CODE]** If the roll passes but `disruptionEffect` is none of the three, the function
+returns `undefined` rather than the no-proc record; the three real effects never reach it.
+
+Silence has no consumer in PVE: `defenderSilencedMs` is decremented and returned by
+`processCombatTick` (`L1086309-1086318`, `L1087092`) and only carried forward by `simulateFight`
+(`L1088987`), and `processSpellsTick` is passed `silencedMs` 0 by both PVE callers
+(`L1074777`, `L1088296-1088319`) **[CODE]**. Campaign mobs cast nothing either. Bosses "resist" Fear per UI text (`L911271`); the
 resist roll is server-side **[SERVER]**. Where the disruption effect comes from
 (class form) `see stats.md` / `see classes.md`.
 
@@ -416,7 +433,7 @@ Debuff types seen: BLEED, POISON (DoT), WOUND (heal / regen reduction), SLOW
 ```
 applyDebuff: new debuff -> stacks 1 (maxStacks from config), remainingMs = duration (or permanent)
              re-apply   -> stacks += 1 up to maxStacks (extra applications replace the oldest stackDamage),
-                           refresh remainingMs unless permanent
+                           refresh remainingMs unless permanent or the application carries a partySlot (L1093377-1093652)
 DoT tick (BLEED/POISON, every tickIntervalMs):
              dmg = sum(stackDamages) or damagePerTickFlat*stacks
              if debuff.critChance > 0 and random()*100 < critChance: dmg = floor(dmg*critMult)   // default critMult 1.5
@@ -429,7 +446,10 @@ critDownChance(c)     = max(0, c - reduction)
 ```
 
 Party feeders (crusade) share a debuff instance: `feedSharedInstance`
-`L1093035-1093236`; party detail `see pve-content.md`.
+`L1093035-1093239`; party detail `see pve-content.md`. **[CODE]** Merge rules: max stacks, max
+reductions, permanent if any feeder is, `remainingMs` from the longest live feeder, damage
+rescaled to the instance cadence. `processDebuffsTick` (`L1093653-1093868`) fires at most one
+tick per call (no catch-up for a long dt) and draws rng only when the debuff's `critChance` > 0.
 
 ### §9.3 Sunder on the enemy (stack sigils)
 
@@ -455,9 +475,14 @@ The spell *catalogue* is `see sigils.md`. The engine rules are:
   Cooldown restarts at cast time (`cooldownRemaining = spell.cooldownMs`).
   This confirms the old "1 s first-hit delay" observation.
 - A spell fires the first tick its cooldown is <= 0 and its optional activation
-  condition holds (`isConditionMet`, `L1089843`); there is no player input.
-- Silenced casters do not cast; this is enforced by the caller through the
-  `silencedMs` state **[UNRESOLVED consumer]**.
+  condition holds (`isConditionMet`, `L1089843`); there is no player input. **Exception
+  [CODE]:** when `processSpellsTick`'s `arg9` is false (both PVE callers, `L1074777`,
+  `L1088319`), DAMAGE and DEBUFF spells skip `isConditionMet` and cast on cooldown
+  (`L1091462-1091542`); only PVP passes true. So `ENEMY_HP_BELOW_*` has no effect in PVE.
+- Silence: a `silencedMs` (arg16) > 0 blocks every new cast while active effects keep
+  ticking (`L1091462-1091464`). PVE passes 0; PVP passes the caster's `silencedMs`.
+- Spell types sort with `SPELL_TYPE_CAST_ORDER_FALLBACK` = 9 when unknown (same register as
+  FORM, `L1092914`).
 
 ### §10.2 Spell damage — `modSpellDmg` `L1090892-1090927`, crit `L1090933-1090988`
 
@@ -499,7 +524,10 @@ if enemy wound/heal-reduction r > 0: heal = max(1, round(heal * (1 - r/100)))
 
 `heal = max(1, floor(maxHp * healPercentPerTick/100))`, reduced by the same wound
 factor; `refillsShield` spells push the amount into the shield (§13);
-`healsMinion` routes it to the minion (§12).
+`healsMinion` routes it to the minion (§12). The heal base is `healBaseMaxHp` (arg18) when
+above 0, else `maxHp`; PVP passes `rawMaxHp` (`L1453940-1453990`). A BUFF with an HP_PERCENT
+effect and a TRANSFORM both heal `floor((hp > 0 ? hp : maxHp) * value/100)` on cast; that heal
+is not wound-reduced and emits no event (`L1091814-1091839`, `L1092451-1092476`).
 
 ### §10.5 Other spell effects
 
@@ -507,7 +535,9 @@ Debuff-type spells apply SLOW / WOUND / CRIT_DOWN via `applyDebuff`; damage
 spells can also apply paralyze / silence / fear / blind (`paralyzeMs`,
 `silenceMs`, `fearMs`, `blinds`) and a bleed/poison debuff
 (`debuff.damagePerTickPercent`); selfHealPercent heals the caster for a share of
-the damage. Transform spells ("Chrono Flux") fire when `flux` reaches the max
+the damage. A DoT damage tick is `floor(attack * attackPercent/100)` whenever `attackPercent`
+is set, `damagePerTick` otherwise, with its own crit roll per tick; the first tick lands on the
+tick after the cast (`L1091150-1091172`). Transform spells ("Chrono Flux") fire when `flux` reaches the max
 (`CHRONO_FLUX.MAX`, `L1089079-1089104`). Per-spell numbers `see sigils.md`.
 
 ## §11 Stack mechanics and thorns — **[CODE]** `L1078983-1080177`
@@ -522,7 +552,7 @@ event wiring `L1089200-1089300`). Config per equipped sigil `see sigils.md`.
 | Sunder (Siegebreaker is the fallback when no Sunder is equipped) | +1 on every `attacker_hit` / `attacker_crit` event (a double-hit event counts too) | `decayPerSecond` (default **2**/s) | per stack the enemy loses DR, Block, Miss, Blind and HP Regen (§9.3) |
 
 Bulwark and Elusive share one stack counter (`slot4`); Sunder and Siegebreaker share
-the other (`slot5`). Stacks reset when a new mob enters (`resetTarget`).
+the other (`slot5`). `resetTarget` (new mob) clears only the Sunder/Siegebreaker counter (stacks and `decayAccumMs`, `L1080101-1080110`); the Bulwark/Elusive counter is not reset. Only Bulwark and Elusive are gated on `active`; Sunder and Siegebreaker are always built. Both Bulwark and Elusive shed `stackLossPerHit` of the shared def `bulwarkDef ?? elusiveDef` (catalogue: Elusive 2, Bulwark 1; engine default 2), and `thornsFor` returns 0 when damage <= 0. The engine default `decayPerSecond` is 2 when a def has none (catalogue Sunder 1.75).
 `applyElusiveBuff`: attack `round(a*(1+p/100))`; crit and lifesteal additive with
 ceilings; attack speed `x*(1+p/100)` capped at 4.5 (`L1079667-1079740`).
 
@@ -554,6 +584,18 @@ soulLinkHeal: minion heals floor(owner damage dealt * soulLink/100)
 minion lifesteal: floor(minion damage * lifesteal/100) to the minion
 ```
 
+**[CODE]** Further rules: `minionSwing` returns at most one swing per call (the timer subtracts
+one interval only); minion crit damage is `round(attack * critDamage)` with the player's
+`critDamage` inherited unchanged. Attack and attack speed are computed once at `createMinion`
+from the player's stats at that moment; later player buffs do not change an existing minion.
+`killMinion` sets `respawnMs` to 0 (no auto-respawn); `damageMinion` sets it to
+`respawnCooldownMs`; `advanceMinionRespawn` / `resummonIfDead` act only when `respawnMs > 0`.
+`OPENING_FIRST_SWING_MIN_MS` = 400 ms is used by `openingSwingTimerStart` (`L1095530`). The
+enemy rolls a crit draw when hitting the minion (`L1087238-1087245`) even at 0 % crit and never
+rolls Block/Miss against it. Enemy lifesteal is `floor(dmg*ls/100)` clamped to `enemy.maxHp`
+with no heal budget; its base is the damage the minion actually took (`L1087270`) or
+`round(effectiveDamage)` against the player.
+
 The player is untouched while a minion lives. Minion cast times and per-species
 numbers `see sigils.md`.
 
@@ -562,7 +604,7 @@ numbers `see sigils.md`.
 - A SHIELD spell sets `shieldMax = floor(maxHp * hpPercent/100)` where `hpPercent`
   is the spell value times `(1 + shieldPowerPercent/100)`; the shield starts full
   (`buildShield` `L1073206-1073236`).
-- `absorbWithShield(shield, dmg, m)` with mitigation `m` (0.5 in every PVE mode:
+- `absorbWithShield(shield, dmg, m)` with mitigation `m` as a fraction, not a percent (0.5 in every PVE mode:
   `SHIELD_MITIGATION` `L1062719`, `L1085224`):
 
 ```

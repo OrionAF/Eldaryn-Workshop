@@ -148,13 +148,13 @@ respawnCooldownMs = d.respawnCooldownMs;    summonCastMs = d.summonCastMs
 - Summon sigil minion percents seen: SKELETON `attackPercent 20..40`, `hpPercent 60..120`, respawn 10000 ms, cast 1500 ms; REAPER `attackPercent 60..120`, `hpPercent 30..60`, same respawn and cast. [CODE] L1070329, L1070442. How the min..max range is interpolated (sigil level): see `sigils.md`.
 - Soul Link: part of damage dealt heals the active minion. [CODE] L911271
 - **Stack mechanics** (Bulwark, Sunder, Elusive, Momentum) are sigil species with runtime modifiers (`bulwarkModifiers` hp/dr/thorns percent per stack; `sunderModifiers` reductions on target; `elusiveModifiers` attack/crit/lifesteal/attack-speed percent), modules 3956-3958, 3964. They are sigil-owned; see `sigils.md` and `combat-pve.md`. [CODE] L1078983-1080177
-- **Druid forms**: Mystic Druid has `bear` and `wolf` forms (`formSkins`), chosen through a Druid utility sigil slot (`druidUtilitySlotSpecies`, `useShapeshiftForm`). They are cosmetic skins plus sigil-driven effects; no class-level stat multiplier was found in the form code. [CODE] L664437, L1439831-1440481, L1440482-1440558. Sigil effect values: see `sigils.md`.
+- **Druid forms**: Mystic Druid has `bear` and `wolf` forms (`formSkins`), chosen through a Druid utility sigil slot (`druidUtilitySlotSpecies`, `useShapeshiftForm`). The form's stat effect comes from the equipped FORM sigil's spell object `{spellType, form, gearHpMult, attackMult, attackSpeedMult, unlocksBlockAndDr, passiveEffects}` (e.g. the bear: gearHpMult 1.6, attackMult 0.9, unlocksBlockAndDr; `L1070195-1070262`), which `calculateTotalStats` applies as `formConfig` (`stats.md` §3.2); no class-level multiplier exists outside it. [CODE] L664437, L1439831-1440481, L1440482-1440558. Sigil effect values: see `sigils.md`.
 - `useActiveSpecialization` reads `specialization` from state; the client uses it for UI branching (Druid, Arcanum board, etc.). [CODE] L2199654-2199722
 - Avatar/skin selection (`avatarId`, `selectedAvatarId`, `unlockedAvatarIds`) is cosmetic. [CODE] L664581. Skins do not affect stats (`skinOwnershipKey`, `getSkinsForClass`, L1046561-1047130).
 
 ## §8 Discrepancies with the app
 
-See the structured output. Summary: the app models only Warrior and Sentinel (`CLASSES` in `src/lib/constants.js` L168), and gates DR and Block to Warrior only although Mystic can roll them too. It has no Mystic or Necromancer specs, no class stat gating beyond four fields, and no XP curve.
+The app models all four classes and eight specs. Remaining gaps: no XP curve ([SERVER], §9).
 
 ## §9 Unresolved list
 
