@@ -9,6 +9,8 @@
 // every ~25 ms so a worker can see an 'abort' message; both stop early on `signal.aborted` and
 // return the interval over the samples taken so far with `aborted: true`.
 // Results of complete runs are memoised on a pure-input key (metricKey); aborted runs never are.
+// The cache lives in the calling realm: in the browser each job has its own worker, so it spans
+// one job (repeated metric calls inside it), not separate runs; inline runs share the page's.
 
 import { mulberry32, hashSeed } from './rng.js';
 import { simulatePve, preparePveFighter, trainingDummy } from './pve/fight.js';
