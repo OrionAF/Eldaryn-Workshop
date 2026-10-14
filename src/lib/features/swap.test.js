@@ -165,6 +165,10 @@ describe('enemies and opponents', () => {
     expect(c.oblivion).toBe(false);
     expect(buildEnemy({ kind: 'campaign', chapter: 13, level: 1 }).label).toMatch(/^Hard Chapter/);
     expect(buildEnemy({ kind: 'dungeon', id: 'dungeon_1', step: 2 }).mobs).toHaveLength(3);
+    const r = buildEnemy({ kind: 'raid', id: 'raid_2', step: 3 });
+    expect(r.mobs).toHaveLength(5);
+    expect(r.label).toBe('Village raid Fortified Stronghold, step 3');
+    expect(buildEnemy({ kind: 'raid', id: 'raid_2', step: 9 })).toBeNull();
     const o = buildEnemy({ kind: 'oblivion', floor: 10 });
     expect(o.oblivion).toBe(true);
     expect(o.mobs[0].instability).toBeGreaterThan(0);

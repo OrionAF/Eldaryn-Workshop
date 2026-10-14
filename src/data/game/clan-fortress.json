@@ -466,7 +466,8 @@
    "source": {
     "builder": "buildBanditVillageSteps",
     "line": 1064959,
-    "rotationK": 3
+    "rotationK": 3,
+    "stepMultipliersLine": 1064868
    },
    "roster": [
     {
@@ -719,6 +720,16 @@
       624
      ]
     }
+   ],
+   "stepMultipliers": [
+    1.8,
+    2.1,
+    2.4,
+    2.7,
+    3,
+    3.3,
+    3.6,
+    3.9
    ]
   },
   {
@@ -728,7 +739,8 @@
    "source": {
     "builder": "buildFortifiedStrongholdSteps",
     "line": 1065048,
-    "rotationK": 2
+    "rotationK": 2,
+    "stepMultipliersLine": 1064886
    },
    "roster": [
     {
@@ -981,6 +993,16 @@
       4200
      ]
     }
+   ],
+   "stepMultipliers": [
+    4.8,
+    5.8,
+    7,
+    8.2,
+    9.4,
+    10.6,
+    12.5,
+    14
    ]
   },
   {
@@ -990,7 +1012,8 @@
    "source": {
     "builder": "buildRoyalGarrisonSteps",
     "line": 1065136,
-    "rotationK": 3
+    "rotationK": 3,
+    "stepMultipliersLine": 1064904
    },
    "roster": [
     {
@@ -1243,6 +1266,16 @@
       86400
      ]
     }
+   ],
+   "stepMultipliers": [
+    1,
+    1.4,
+    2,
+    2.8,
+    3.8,
+    5.2,
+    7,
+    9
    ]
   },
   {
@@ -1252,7 +1285,8 @@
    "source": {
     "builder": "buildShadowEnclaveSteps",
     "line": 1065224,
-    "rotationK": 2
+    "rotationK": 2,
+    "stepMultipliersLine": 1064922
    },
    "roster": [
     {
@@ -1505,6 +1539,16 @@
       1078000
      ]
     }
+   ],
+   "stepMultipliers": [
+    1.2,
+    1.8,
+    2.6,
+    3.6,
+    4.8,
+    6.5,
+    8.5,
+    11
    ]
   },
   {
@@ -1514,7 +1558,8 @@
    "source": {
     "builder": "buildObsidianCitadelSteps",
     "line": 1065312,
-    "rotationK": 3
+    "rotationK": 3,
+    "stepMultipliersLine": 1064940
    },
    "roster": [
     {
@@ -1767,6 +1812,16 @@
       18400000
      ]
     }
+   ],
+   "stepMultipliers": [
+    1,
+    1.5,
+    2.2,
+    3.2,
+    4.5,
+    6.2,
+    8.5,
+    11.5
    ]
   }
  ]

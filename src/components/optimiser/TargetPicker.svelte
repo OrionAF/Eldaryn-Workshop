@@ -7,17 +7,19 @@
    */
   import { TARGET_KINDS, objectiveKindsFor } from '../../lib/search/objectives.js';
   import { chapterLabel } from '../../lib/game/combatPve.js';
+  import { RAIDS } from '../../lib/game/fortress.js';
   import { CLASSIC_DUNGEONS } from '../../lib/game/pveContent.js';
   import { PVP_MAX_OPPONENTS, PVP_SEATS } from '../../lib/search/pvpObjective.js';
   import { classLabel } from '../../lib/game/classes.js';
   import Chip from '../Chip.svelte';
 
-  let { target = $bindable(), objective = $bindable(), oblivionUnlocked = false, opponents = [], onNavigate = () => {} } = $props();
+  let { target = $bindable(), objective = $bindable(), oblivionUnlocked = false, playerLevel = null, opponents = [], onNavigate = () => {} } = $props();
 
   const KIND_LABEL = {
     dummy: 'Training dummy',
     chapter: 'Campaign chapter',
     dungeon: 'Dungeon',
+    raid: 'Village raid',
     oblivion: 'Oblivion floor',
     worldBoss: 'World boss',
     custom: 'Custom mob',
@@ -35,6 +37,7 @@
     dummy: { kind: 'dummy', seconds: 60 },
     chapter: { kind: 'chapter', chapter: 1, level: 1 },
     dungeon: { kind: 'dungeon', id: 'dungeon_1', step: 1 },
+    raid: { kind: 'raid', id: 'raid_1', step: 1 },
     oblivion: { kind: 'oblivion', floor: 1 },
     worldBoss: { kind: 'worldBoss', affinity: 'NONE' },
     custom: { kind: 'custom', mob: { hp: 1000000, attack: 10000, attackSpeed: 1 }, seconds: 60 },
@@ -114,6 +117,17 @@
       <span class="micro-label">Step</span>
       <input class="mono" type="number" min="1" max="8" value={target.step} onchange={(e) => (target = { ...target, step: intOf(e, 1, 8) })} />
     </label>
+  {:else if target.kind === 'raid'}
+    <label class="field">
+      <span class="micro-label">Village raid</span>
+      <select value={target.id} onchange={(e) => (target = { ...target, id: e.currentTarget.value })} data-testid="raid-id">
+        {#each RAIDS as r (r.id)}<option value={r.id}>{r.name}{playerLevel != null && playerLevel < r.requiredPlayerLevel ? ` (needs level ${r.requiredPlayerLevel})` : ''}</option>{/each}
+      </select>
+    </label>
+    <label class="field">
+      <span class="micro-label">Step</span>
+      <input class="mono" type="number" min="1" max="8" value={target.step} onchange={(e) => (target = { ...target, step: intOf(e, 1, 8) })} />
+    </label>
   {:else if target.kind === 'oblivion'}
     <label class="field">
       <span class="micro-label">Floor</span>
@@ -157,6 +171,11 @@
     </label>
   {/if}
 </div>
+{#if target.kind === 'raid' || target.kind === 'dungeon'}
+  <p class="hint" data-testid="server-hint">
+    {target.kind === 'raid' ? 'Village raid' : 'Dungeon'} fights are run by the server; the mobs are built from the client's own tables, the fight is a model of the server, not exact rules.
+  </p>
+{/if}
 {#if noOpponents}
   <p class="hint" data-testid="pvp-hint">
     PVP win rate needs a saved opponent.

@@ -153,7 +153,7 @@
     </div>
   </div>
 
-  <TargetPicker bind:target bind:objective oblivionUnlocked={character.oblivion?.unlocked ?? false} {opponents} {onNavigate} />
+  <TargetPicker bind:target bind:objective oblivionUnlocked={character.oblivion?.unlocked ?? false} playerLevel={character.level} {opponents} {onNavigate} />
   <SpacePicker bind:space />
 
   <div class="group">
