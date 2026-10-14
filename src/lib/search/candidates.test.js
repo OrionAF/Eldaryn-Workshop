@@ -290,6 +290,43 @@ describe('dimensions', () => {
     expect(dim('glyphs').neighbours({ ...s, mountId: null })).toEqual([]);
   });
 
+  describe('major glyphs act only with their sigil equipped (Game/mounts-glyphs.md §10)', () => {
+    // gl-7 modifies Iron Bastion: owned (the tank spec's sigil) but not in the DPS preset
+    const raw = JSON.parse(JSON.stringify(c));
+    raw.glyphs.push({ id: 'gl-7', glyphType: 'sg-bastion-cd', rarity: 'Rare', secondary: null });
+    const cw = normaliseCharacter(raw);
+    const sw = createBuildSpace(cw, cw.presets[0]);
+    const saved = cw.mounts.find((m) => m.id === 'mount-a').glyphs;
+    const majors = (moves) => new Set(moves.flatMap((m) => m.mountGlyphs?.major ?? []).filter(Boolean));
+    const withBastion = { ...sw.start, sigilSpecies: [...sw.start.sigilSpecies.filter((x) => x !== 'CATACLYSM'), 'IRON_BASTION'] };
+
+    it('the glyph dimension offers a major glyph only while the build equips its sigil', () => {
+      expect(sw.start.sigilSpecies).not.toContain('IRON_BASTION');
+      expect(majors(dim('glyphs', sw).neighbours(sw.start)).has('gl-7')).toBe(false);
+      expect(majors(dim('glyphs', sw).neighbours(withBastion)).has('gl-7')).toBe(true);
+    });
+
+    it('a move that drops the sigil undoes the suggested major glyph; the saved one stays', () => {
+      const cand = { ...withBastion, mountGlyphs: { ...saved, major: [saved.major[0], 'gl-7'] } };
+      const moves = dim('sigils', sw).neighbours(cand);
+      const dropped = moves.filter((m) => !m.sigilSpecies.includes('IRON_BASTION'));
+      expect(dropped.length).toBeGreaterThan(0);
+      // gl-7 goes; the rest equals the saved mount, so the candidate carries no socket change at all
+      for (const m of dropped) expect(m.mountGlyphs).toBeNull();
+      for (const m of moves.filter((x) => x.sigilSpecies.includes('IRON_BASTION'))) expect(m.mountGlyphs.major[1]).toBe('gl-7');
+      // the mount's own saved major glyph is the user's choice, kept even when its sigil is dropped
+      const noFury = dim('sigils', sw).neighbours({ ...sw.start, mountGlyphs: null }).filter((m) => !m.sigilSpecies.includes('WARBORN_FURY'));
+      expect(saved.major[0]).toBe('gl-3');
+      expect(noFury.length).toBeGreaterThan(0);
+      for (const m of noFury) expect(m.mountGlyphs).toBeNull();
+      // a suggested major glyph that displaced the saved one is swapped back, not just emptied
+      const swapped = { ...withBastion, mountGlyphs: { ...saved, major: ['gl-7', null] } };
+      const back = dim('sigils', sw).neighbours(swapped).filter((m) => !m.sigilSpecies.includes('IRON_BASTION'));
+      expect(back.length).toBeGreaterThan(0);
+      for (const m of back) expect(m.mountGlyphs).toBeNull();
+    });
+  });
+
   it('every neighbour of every dimension builds a fighter (no crash on any move)', () => {
     for (const cls of ['WARRIOR', 'MYSTIC']) {
       const ch = richCharacter(cls);
