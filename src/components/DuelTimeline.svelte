@@ -1,96 +1,113 @@
 <script>
   /**
-   * DuelTimeline.svelte - a compact SVG event strip for one traced duel
-   * (the capped `detail.timeline` a sample fight stores in the run
-   * history). Two lanes (you on top, opponent below); damage renders as
-   * vertical bars scaled by a square-root of the hit size, control/utility
-   * events as small marks. Hover any mark for the exact numbers. No chart
-   * libraries - hand-rolled SVG by policy.
+   * DuelTimeline.svelte - a compact SVG event strip for one traced PVP duel: the `DuelEvent` rows of
+   * engine/pvp/events.js. Two lanes (the arena attacker on top, the defender below); damage is a
+   * vertical bar scaled by the square root of the hit, everything else a small mark. Which lane a
+   * row belongs to, and what it looks like, is features/duel.js classifyDuelEvent. Hover a mark for
+   * the numbers. No chart libraries - hand-rolled SVG by policy.
    */
   import { formatFlat } from '../lib/format.js';
+  import { classifyDuelEvent } from '../lib/features/duel.js';
+  import { parseEventType } from '../lib/engine/pvp/events.js';
 
-  let { timeline = [], playerName = 'You', opponentName = 'Opponent', durationSeconds = 60 } = $props();
+  /** @type {{events?: import('../lib/engine/pvp/events.js').DuelEvent[], attackerName?: string, defenderName?: string, durationMs?: number}} */
+  let { events = [], attackerName = 'You', defenderName = 'Opponent', durationMs = 0 } = $props();
 
   const W = 600;
   const H = 96;
-  const LANE_Y = { player: 34, opponent: 82 }; // lane baselines
+  const LANE_Y = { attacker: 34, defender: 82 }; // lane baselines
   const MAX_BAR = 26;
 
-  const span = $derived.by(() => {
-    const last = timeline.length ? Math.max(...timeline.map((e) => e.t)) : 0;
-    return Math.max(Number(durationSeconds) || 0, last, 1);
-  });
-
-  const maxAmount = $derived(Math.max(1, ...timeline.filter((e) => e.kind === 'damage').map((e) => e.amount || 0)));
+  const marks = $derived(events.map((ev) => ({ ev, ...classifyDuelEvent(ev) })));
+  const span = $derived(Math.max(Number(durationMs) || 0, ...events.map((e) => e.timestamp || 0), 1000));
+  const maxAmount = $derived(Math.max(1, ...marks.filter((m) => m.mark === 'damage').map((m) => m.amount)));
 
   const x = (t) => 4 + (t / span) * (W - 8);
   const barH = (amount) => 3 + Math.sqrt((amount || 0) / maxAmount) * (MAX_BAR - 3);
 
-  const MARK_COLORS = {
+  const COLORS = {
     damage: 'var(--nav-pvp)',
-    heal: 'var(--color-hps, #58d68d)',
-    blind: '#f5c66b',
-    paralyze: '#c084fc',
-    sigil: '#7a8cff',
-    dodge: '#54d0ff',
-    block: '#a4b0c0',
-    death: '#ff5c5c',
+    heal: 'var(--color-hps)',
+    spell: 'var(--nav-sigils)',
+    avoid: 'var(--color-dps)',
+    status: 'var(--color-warning)',
+    lost: 'var(--color-muted)',
+    minion: 'var(--nav-pets)',
+    death: 'var(--color-danger)',
+    other: 'var(--color-dim)',
   };
+  const LEGEND = [
+    ['damage', '▍ damage'],
+    ['heal', '● heal'],
+    ['spell', '● spell'],
+    ['avoid', '● avoided'],
+    ['status', '● status'],
+    ['lost', '● swing lost'],
+    ['minion', '● minion'],
+    ['death', '✕ death'],
+  ];
 
-  const sideName = (side) => (side === 'player' ? playerName : opponentName);
+  const nameOf = (lane) => (lane === 'attacker' ? attackerName : lane === 'defender' ? defenderName : '');
+  const secs = (t) => (t / 1000).toFixed(2);
 
-  function markTitle(ev) {
-    const who = sideName(ev.side);
-    switch (ev.kind) {
-      case 'damage':
-        return `${ev.t.toFixed(2)}s — ${who} dealt ${formatFlat(Math.round(ev.amount))} (${ev.tag})${ev.crit ? ' CRIT' : ''}${ev.blocked ? ' blocked' : ''}`;
-      case 'heal':
-        return `${ev.t.toFixed(2)}s — ${who} healed ${formatFlat(Math.round(ev.amount))}`;
-      case 'death':
-        return `${ev.t.toFixed(2)}s — ${who} died`;
-      case 'sigil':
-        return `${ev.t.toFixed(2)}s — ${who} activated ${ev.name}`;
-      default:
-        return `${ev.t.toFixed(2)}s — ${who}: ${ev.kind.replace(/-/g, ' ')}`;
-    }
+  function title(m) {
+    const { ev, lane, mark, amount } = m;
+    const at = `${secs(ev.timestamp)}s`;
+    if (mark === 'end') return `${at} - time up`;
+    const who = nameOf(lane);
+    const { kind } = parseEventType(ev.type);
+    const what = (ev.spell?.name ? `${ev.spell.name} ` : '') + kind.replace(/_/g, ' ');
+    if (mark === 'death') return `${at} - ${who} died`;
+    const num = amount > 0 ? ` ${formatFlat(Math.round(amount))}` : '';
+    const flags = `${ev.isCrit ? ' CRIT' : ''}${ev.doubleHit ? ' double hit' : ''}`;
+    return `${at} - ${who}: ${what}${num}${flags}`;
   }
 </script>
 
 <div class="duel-timeline" data-testid="duel-timeline">
   <div class="lane-labels">
-    <span class="micro-label">{playerName}</span>
-    <span class="micro-label">{opponentName}</span>
+    <span class="micro-label">Top: {attackerName}</span>
+    <span class="micro-label">Bottom: {defenderName}</span>
   </div>
-  <svg viewBox="0 0 {W} {H}" role="img" aria-label="Combat timeline" preserveAspectRatio="none">
-    <line x1="0" y1={LANE_Y.player} x2={W} y2={LANE_Y.player} stroke="var(--color-border)" stroke-width="1" />
-    <line x1="0" y1={LANE_Y.opponent} x2={W} y2={LANE_Y.opponent} stroke="var(--color-border)" stroke-width="1" />
-    {#each timeline as ev, i (i)}
-      {@const laneY = LANE_Y[ev.side] ?? LANE_Y.player}
-      {#if ev.kind === 'damage'}
-        <rect x={x(ev.t) - 1} y={laneY - barH(ev.amount)} width="2" height={barH(ev.amount)} fill={MARK_COLORS.damage} opacity={ev.crit ? 1 : 0.75}>
-          <title>{markTitle(ev)}</title>
-        </rect>
-      {:else if ev.kind === 'death'}
-        <text x={x(ev.t)} y={laneY - 4} fill={MARK_COLORS.death} font-size="12" text-anchor="middle">✕<title>{markTitle(ev)}</title></text>
+  <svg viewBox="0 0 {W} {H}" role="img" aria-label="Duel timeline" preserveAspectRatio="none">
+    <line x1="0" y1={LANE_Y.attacker} x2={W} y2={LANE_Y.attacker} stroke="var(--color-border)" stroke-width="1" />
+    <line x1="0" y1={LANE_Y.defender} x2={W} y2={LANE_Y.defender} stroke="var(--color-border)" stroke-width="1" />
+    {#each marks as m, i (i)}
+      {#if m.mark === 'end'}
+        <line x1={x(m.ev.timestamp)} y1="0" x2={x(m.ev.timestamp)} y2={H} stroke="var(--color-border-strong)" stroke-dasharray="3 3">
+          <title>{title(m)}</title>
+        </line>
       {:else}
-        <circle cx={x(ev.t)} cy={laneY - 3} r="2.4" fill={MARK_COLORS[ev.kind] || '#8892a6'}>
-          <title>{markTitle(ev)}</title>
-        </circle>
+        {@const laneY = LANE_Y[m.lane] ?? LANE_Y.attacker}
+        {#if m.mark === 'damage'}
+          <rect
+            x={x(m.ev.timestamp) - 1}
+            y={laneY - barH(m.amount)}
+            width="2"
+            height={barH(m.amount)}
+            fill={COLORS.damage}
+            opacity={m.ev.isCrit ? 1 : 0.7}
+          >
+            <title>{title(m)}</title>
+          </rect>
+        {:else if m.mark === 'death'}
+          <text x={x(m.ev.timestamp)} y={laneY - 4} fill={COLORS.death} font-size="12" text-anchor="middle">✕<title>{title(m)}</title></text>
+        {:else}
+          <circle cx={x(m.ev.timestamp)} cy={laneY - 3} r="2.4" fill={COLORS[m.mark] ?? COLORS.other}>
+            <title>{title(m)}</title>
+          </circle>
+        {/if}
       {/if}
     {/each}
   </svg>
   <div class="axis mono">
     <span>0s</span>
-    <span>{span.toFixed(0)}s</span>
+    <span>{(span / 1000).toFixed(0)}s</span>
   </div>
   <p class="legend">
-    <span style="color: {MARK_COLORS.damage}">▍damage</span>
-    <span style="color: {MARK_COLORS.heal}">● heal</span>
-    <span style="color: {MARK_COLORS.sigil}">● sigil</span>
-    <span style="color: {MARK_COLORS.blind}">● blind</span>
-    <span style="color: {MARK_COLORS.paralyze}">● paralyze</span>
-    <span style="color: {MARK_COLORS.dodge}">● dodge</span>
-    <span style="color: {MARK_COLORS.death}">✕ death</span>
+    {#each LEGEND as [key, text] (key)}
+      <span style="color: {COLORS[key]}">{text}</span>
+    {/each}
   </p>
 </div>
 
