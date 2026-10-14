@@ -1,7 +1,7 @@
 // The four engine metrics (rebuild-plan §2.3, §5): dpsVsDummy, ttkVs, survival, pvpWinRate.
 //
 // Every metric is a Monte-Carlo sample loop with a 95 % interval (t for means, Wilson for
-// proportions). Fight i of every call uses rng = mulberry32(hashSeed(seed, i)), so two fighters
+// proportions; the methods live in ./stats, see docs/Reference/simulation.md §Statistics). Fight i of every call uses rng = mulberry32(hashSeed(seed, i)), so two fighters
 // measured with the same seed see the same random stream (common random numbers) and their
 // per-sample difference (pairedDelta) has far less variance than the difference of two means.
 //
@@ -13,41 +13,25 @@
 import { mulberry32, hashSeed } from './rng.js';
 import { simulatePve, preparePveFighter, trainingDummy } from './pve/fight.js';
 import { runDuel, fighterDuelArgs } from './pvp/resolver.js';
+import { tCrit, meanInterval, wilsonZ, isBinary, pairedProportion, pairedT } from './stats/index.js';
 
 // ---------------------------------------------------------------------------------------------
-// statistics
+// statistics: legacy shapes over engine/stats (docs/Reference/simulation.md §Statistics)
 
-// Two-sided 95 % Student-t critical values for df = 1..30, then the normal limit.
-const T95 = [12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262, 2.228, 2.201, 2.179, 2.16, 2.145,
-  2.131, 2.12, 2.11, 2.101, 2.093, 2.086, 2.08, 2.074, 2.069, 2.064, 2.06, 2.056, 2.052, 2.048, 2.045, 2.042];
-export const tCrit95 = (df) => (df < 1 ? Infinity : df <= 30 ? T95[df - 1] : df <= 60 ? 2.0 : df <= 120 ? 1.98 : 1.96);
+export * from './stats/index.js';
+
+/** Two-sided 95 % Student-t critical value, exact for every df; Infinity below df 1. */
+export const tCrit95 = (df) => tCrit(df, 0.05);
 
 /** Mean, sample sd and 95 % t interval. n = 0 gives nulls; n = 1 gives a degenerate interval. */
 export function meanCI(xs) {
-  const n = xs.length;
-  if (n === 0) return { mean: null, sd: null, lo: null, hi: null, n: 0 };
-  let sum = 0;
-  for (const x of xs) sum += x;
-  const mean = sum / n;
-  if (n === 1) return { mean, sd: 0, lo: mean, hi: mean, n };
-  let ss = 0;
-  for (const x of xs) ss += (x - mean) * (x - mean);
-  const sd = Math.sqrt(ss / (n - 1));
-  const h = tCrit95(n - 1) * sd / Math.sqrt(n);
-  return { mean, sd, lo: mean - h, hi: mean + h, n };
+  const r = meanInterval(xs);
+  if (r.n === 1) return { mean: r.est, sd: 0, lo: r.est, hi: r.est, n: 1 };
+  return { mean: r.est, sd: r.sd, lo: r.lo, hi: r.hi, n: r.n };
 }
 
 /** Wilson 95 % score interval for k successes in n trials. */
-export function wilson(k, n, z = 1.96) {
-  if (n === 0) return { p: null, lo: null, hi: null, n: 0 };
-  const p = k / n;
-  const z2 = z * z;
-  const d = 1 + z2 / n;
-  const c = (p + z2 / (2 * n)) / d;
-  const h = (z * Math.sqrt((p * (1 - p)) / n + z2 / (4 * n * n))) / d;
-  // Clamp to [0, p] / [p, 1]: at k = 0 or k = n, float error can put a bound a hair past p.
-  return { p, lo: Math.min(p, Math.max(0, c - h)), hi: Math.max(p, Math.min(1, c + h)), n };
-}
+export const wilson = (k, n, z = 1.96) => wilsonZ(k, n, z);
 
 /** Linear-interpolated quantile of an unsorted array (null when empty). */
 export function quantile(xs, q) {
@@ -59,16 +43,18 @@ export function quantile(xs, q) {
 }
 
 /**
- * Paired difference b - a of two sample arrays measured with the same seed (common random numbers).
- * Works for 0/1 win samples too (a difference of win rates). Uses the shared prefix when the
- * lengths differ (an aborted run).
+ * Paired difference b - a of two sample arrays measured with the same seed (common random numbers),
+ * over the shared prefix when the lengths differ (an aborted run). 0/1 data (wins, survival) use the
+ * paired-proportion score interval, never a t interval (#101); everything else a paired t.
  */
 export function pairedDelta(a, b) {
   const m = Math.min(a.length, b.length);
-  const d = new Array(m);
-  for (let i = 0; i < m; i++) d[i] = b[i] - a[i];
-  const r = meanCI(d);
-  return { delta: r.mean, lo: r.lo, hi: r.hi, sd: r.sd, n: m, significant: m > 1 && (r.lo > 0 || r.hi < 0) };
+  const x = b.slice(0, m);
+  const y = a.slice(0, m);
+  const r = isBinary(x) && isBinary(y) ? pairedProportion(x, y) : pairedT(x, y);
+  const lo = r.lo ?? r.delta;
+  const hi = r.hi ?? r.delta;
+  return { delta: r.delta, lo, hi, sd: r.sd ?? 0, n: m, method: r.method, significant: m > 1 && (lo > 0 || hi < 0) };
 }
 
 // ---------------------------------------------------------------------------------------------
