@@ -33,8 +33,11 @@ import {
   SIGIL_CONDITIONS_LEVEL,
 } from '../model/sigils.js';
 import { glyphSocketable } from '../model/mounts.js';
+import { MAJOR_GLYPHS } from '../game/mountsGlyphs.js';
 import { PRESET_RELIC_CAP, PRESET_SIGIL_CAP } from '../model/presets.js';
 import { choose, combinations } from './combinatorics.js';
+
+const MAJOR_SIGIL = new Map(MAJOR_GLYPHS.map((g) => [g.id, g.sigilSpecies]));
 
 /** Dimension toggles (all on by default) and the relic slot count the search may fill. */
 export const SPACE_DEFAULTS = {
@@ -219,9 +222,32 @@ export function createBuildSpace(character, preset, { realm = 'base', residual =
     return out;
   };
 
+  // A major glyph only acts while the sigil it modifies is equipped (Game/mounts-glyphs.md §10).
+  const majorSigilOf = new Map((character.glyphs ?? []).map((g) => [g.id, MAJOR_SIGIL.get(g.glyphType) ?? null]));
+  const majorActive = (c, id) => equippedOf(c).includes(majorSigilOf.get(id));
+  // A suggested major glyph whose sigil the build does not equip changes nothing, so undo that
+  // socket change: back to the mount's saved glyph, or empty if that glyph sits in another socket.
+  const pruneInertMajors = (c) => {
+    if (!c.mountGlyphs || !c.mountId) return c;
+    const saved = mountById(c.mountId)?.glyphs ?? emptySockets();
+    const major = [...(c.mountGlyphs.major ?? [])];
+    let changed = false;
+    for (let i = 0; i < major.length; i++) {
+      const id = major[i];
+      if (!id || id === saved.major?.[i] || majorActive(c, id)) continue;
+      const back = saved.major?.[i] ?? null;
+      major[i] = back && !major.includes(back) ? back : null;
+      changed = true;
+    }
+    if (!changed) return c;
+    const sockets = { ...c.mountGlyphs, major };
+    const same = ['minor', 'major', 'mythic'].every((t) => JSON.stringify(sockets[t] ?? []) === JSON.stringify(saved[t] ?? []));
+    return { ...c, mountGlyphs: same ? null : sockets };
+  };
+
   const dimensions = [];
   const add = (id, enabled, neighbours) => {
-    if (enabled) dimensions.push({ id, neighbours });
+    if (enabled) dimensions.push({ id, neighbours: (c) => neighbours(c).map(pruneInertMajors) });
   };
 
   add('equipmentSet', toggles.equipmentSet && realm !== 'oblivion', (c) => [{ ...c, equipmentSet: c.equipmentSet === 1 ? 2 : 1 }]);
@@ -275,6 +301,7 @@ export function createBuildSpace(character, preset, { realm = 'base', residual =
       const pool = [];
       for (const g of character.glyphs ?? []) {
         if (!glyphSocketable(character, g, tier)) continue;
+        if (tier === 'major' && !majorActive(c, g.id)) continue;
         const sig = JSON.stringify([g.glyphType, g.rarity, g.secondary?.stat ?? null, g.secondary?.quality ?? null]);
         if (seen.has(sig)) continue;
         seen.add(sig);
