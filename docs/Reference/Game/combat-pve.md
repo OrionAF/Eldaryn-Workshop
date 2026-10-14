@@ -468,6 +468,14 @@ crit        = random()*100 < chance ;  crit multiplier = the entity's critDamage
 amount      = max(1, floor( base * (1 + (spellDamage + buff SPELL_DAMAGE + momentum)/100) * (1 - min(R, 60)/100) ))
 ```
 
+**Resolved (E5b port):** the "further multiplier `k`" of older notes (`sigils.md` §5) is this
+resist factor, `_closure2_slot9 = 1 - min(R ?? 0, SOFT_CAPS.SPELL_RESIST.hard)/100`, computed once
+per `processSpellsTick` call (`L1090876-1090891`); there is no other factor. Crit path
+(`L1090933-1090982`): the chance is `applyCombatCeiling(spellCritChance + active SPELL_CRIT +
+momentum.spellCritPoints, COMBAT_CEILINGS.SPELL_CRIT_CHANCE)`; one `random()` draw is made only when
+that chance is above 0; a crit multiplies the base by the caller's `critDamage` argument (1.5 when
+null) *before* `modSpellDmg`. Code: `src/lib/engine/core/spells.js`.
+
 `R` is the target's spell resistance. **Two engine paths differ**:
 
 | Path | `R` | Where |
