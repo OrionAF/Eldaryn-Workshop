@@ -17,6 +17,7 @@
   import OblivionScreen from './components/screens/OblivionScreen.svelte';
   import { isNavVisible } from './components/navVisibility.js';
   import { rosterStore } from './lib/rosterStore.svelte.js';
+  import { classLabel } from './lib/game/classes.js';
 
   // Placeholder screens carry no per-screen banner scope yet; screen owners add entries.
   const SCREEN_CONTEXT = {
@@ -46,9 +47,10 @@
 
   const character = $derived(rosterStore.current);
   const profileReady = $derived(!!character.class);
-  const avatarIcon = $derived(character.class === 'Warrior' ? 'swords' : character.class === 'Sentinel' ? 'bow' : null);
+  const AVATAR_ICONS = { WARRIOR: 'swords', SENTINEL: 'bow', MYSTIC: 'star', NECROMANCER: 'skull' };
+  const avatarIcon = $derived(AVATAR_ICONS[character.class] ?? null);
   const contextSub = $derived.by(() => {
-    const cls = character.class || 'No class';
+    const cls = character.class ? classLabel(character.class) : 'No class';
     const suffix = SCREEN_CONTEXT[activeScreen]?.(character) ?? '';
     return suffix ? `${cls} · ${suffix}` : cls;
   });
@@ -97,6 +99,20 @@
               <path d="M18.5 9 21 12 18.5 15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
               <!-- fletching -->
               <path d="M13 12 10.5 10.5M13 12 10.5 13.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+            </svg>
+          {:else if avatarIcon === 'star'}
+            <svg viewBox="0 0 24 24" class="avatar-icon" aria-hidden="true">
+              <!-- four-point arcane star -->
+              <path d="M12 2.5 14 10 21.5 12 14 14 12 21.5 10 14 2.5 12 10 10Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
+              <circle cx="12" cy="12" r="1.3" fill="currentColor" />
+            </svg>
+          {:else if avatarIcon === 'skull'}
+            <svg viewBox="0 0 24 24" class="avatar-icon" aria-hidden="true">
+              <!-- skull -->
+              <path d="M12 3c-4.4 0-7.5 3-7.5 7 0 2.4 1.1 4.2 2.8 5.2V19h9.4v-3.8c1.7-1 2.8-2.8 2.8-5.2 0-4-3.1-7-7.5-7Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
+              <circle cx="9.2" cy="11" r="1.5" fill="currentColor" />
+              <circle cx="14.8" cy="11" r="1.5" fill="currentColor" />
+              <path d="M10.5 19v-2M13.5 19v-2" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
             </svg>
           {/if}
         </div>
