@@ -29,6 +29,9 @@ on the merged tip, and pushes only when both are green.
 | 4 | E5b Spells (Opus) · E6b PVE tick · E7a/E7b/E7c PVP hit, spells, reactions | merged | | 122 / 1499 after |
 | 4 | R1a/R1b Doc reconciliation | merged | | 91 slice findings checked against the decompile; confirmed ones folded into `Reference/Game` |
 | 4 | E6c PVE fight driver · E7d PVP resolver (Opus) · E8 Metrics + worker · E9 Server-log replay check | merged | | engine complete; 127 / 1630 after |
+| 5 | F3 PVP duel · F4 Oblivion hero | merged | | Duel screen (win rate N=400 with Wilson CI, traced timeline, swap sides, `/arena/fight` replay check); Oblivion screen (realm toggle, Oblivion Power, floor table with win % and max floor at ≥90%) |
+| — | PVP resolver reads `formKind` | merged | `7dcdb6f` | build layer emits `formKind`; the resolver read only `form`, so Druid forms were dropped for direct callers (found by F3) |
+| 5 | F2a PVE optimiser engine · F2b Optimiser UI · F1 Drop Check | merged | | tiered search (closed-form screen → N=16 → N=64 finalists, common random numbers); Drop Check verdict per equipment set with CIs; three trivial conflicts in `tasks/tasks.test.js` resolved; 146 / 1848 after |
 
 Test counts on the merged tip: 50 files / 612 tests after wave 1; 62 / 662 after wave 2.
 
