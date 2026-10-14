@@ -6,10 +6,12 @@
  * malformed/old files are safe to load). Rebuild-plan §3 "Rules":
  *  - the v1 key (`eldaryn_optimiser_state_v1`) is READ for migration when no v2 blob
  *    exists, and migration never deletes or overwrites it (only Reset all data does);
- *  - import accepts both v1 and v2 JSON (model/index.js dispatches on schemaVersion).
+ *  - import accepts both v1 and v2 JSON (model/index.js dispatches on schemaVersion), and a game
+ *    profile JSON (model/gameProfile.js), which is added to the roster as a new character.
  */
 
-import { emptyRoster, normaliseRoster, getCurrent } from './model/index.js';
+import { emptyRoster, normaliseRoster, normaliseCharacter, getCurrent } from './model/index.js';
+import { isGameProfile, gameProfileToCharacter, importedCharacterName } from './model/gameProfile.js';
 
 export const KEY = 'eldaryn_optimiser_state_v2';
 export const KEY_V1 = 'eldaryn_optimiser_state_v1';
@@ -55,6 +57,22 @@ export function exportRoster(roster) {
 /** Parse + normalise an imported JSON string into a valid roster. */
 export function importRoster(jsonText) {
   return normaliseRoster(JSON.parse(jsonText));
+}
+
+/**
+ * Import any supported JSON text into `roster` (the current one, which a game profile is added to).
+ *  - game profile: a NEW character is appended and selected; its name gets " (imported)" when taken;
+ *  - app export (v1 or v2): replaces the roster, as before.
+ * Pure: returns a new roster and leaves `roster` untouched. Throws on unparseable JSON.
+ * @returns {{kind: 'profile'|'roster', roster: object, character: object|null}}
+ */
+export function importJson(jsonText, roster = emptyRoster(), { now } = {}) {
+  const parsed = JSON.parse(jsonText);
+  if (!isGameProfile(parsed)) return { kind: 'roster', roster: normaliseRoster(parsed), character: null };
+  const character = normaliseCharacter(gameProfileToCharacter(parsed, now ? { now } : undefined));
+  character.name = importedCharacterName(character.name, roster.characters.map((c) => c.name));
+  const characters = [...roster.characters, character];
+  return { kind: 'profile', roster: { schemaVersion: roster.schemaVersion, characters, currentId: character.id }, character };
 }
 
 /**

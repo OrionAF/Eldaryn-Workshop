@@ -52,7 +52,7 @@
       rosterStore.importFromJson(text);
       importError = '';
     } catch {
-      importError = 'Import failed: not a valid roster file.';
+      importError = 'Import failed: not a valid roster file or game profile.';
     }
   }
 </script>
@@ -92,7 +92,10 @@
     {#if importError}
       <p class="import-error" role="alert">{importError}</p>
     {/if}
-    <p class="import-hint">Coming from another device? Import the roster file you exported there.</p>
+    <p class="import-hint">
+      Coming from another device? Import the roster file you exported there. A game profile JSON
+      (the player profile response captured from the game) also works and becomes a new character.
+    </p>
 
     <p class="privacy-note">
       🔒 100% local — everything runs in your browser and saves to this device only. No data or
