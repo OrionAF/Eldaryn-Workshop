@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PVE_CHAPTERS, PVE_HARD_CHAPTERS, pveChapter, pveHardChapter, PVE_PROGRESS_CONSTANTS } from './combatPve.js';
+import { PVE_CHAPTERS, PVE_HARD_CHAPTERS, pveChapter, pveHardChapter, chapterLabel, PVE_PROGRESS_CONSTANTS } from './combatPve.js';
 import {
   OBLIVION_XP_CURVE, OBLIVION_FLOORS, CLASSIC_DUNGEONS, PROGRESS_CHAPTERS, oblivionFloor, classicDungeon,
 } from './pveContent.js';
@@ -16,6 +16,14 @@ describe('game/combatPve catalogue', () => {
     expect(pveChapter(12)).toBeNull();
     expect(pveHardChapter(12).basedOnChapter).toBe(1);
     expect(PVE_PROGRESS_CONSTANTS.globalMultiplier).toBe(2);
+  });
+
+  it('chapterLabel names hard chapters after their base chapter (they carry no name of their own)', () => {
+    expect(chapterLabel(1)).toBe('1. Rat Warrens');
+    expect(chapterLabel(12)).toBe('Hard 1. Rat Warrens');
+    expect(chapterLabel(22)).toBe('Hard 11. Chrono Sanctum');
+    for (const c of [...PVE_CHAPTERS, ...PVE_HARD_CHAPTERS]) expect(chapterLabel(c.chapter)).not.toMatch(/undefined/);
+    expect(chapterLabel(99)).toBe('Chapter 99');
   });
 });
 

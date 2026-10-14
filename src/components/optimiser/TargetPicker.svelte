@@ -6,6 +6,7 @@
    */
   import contentData from '../../data/game/pve-content.json';
   import { TARGET_KINDS, objectiveKindsFor } from '../../lib/search/objectives.js';
+  import { chapterLabel } from '../../lib/game/combatPve.js';
 
   let { target = $bindable(), objective = $bindable(), oblivionUnlocked = false } = $props();
 
@@ -62,6 +63,7 @@
     <label class="field">
       <span class="micro-label">Chapter</span>
       <input class="mono" type="number" min="1" max="22" value={target.chapter} onchange={(e) => (target = { ...target, chapter: intOf(e, 1, 22) })} />
+      <span class="chapter-name" data-testid="chapter-name">{chapterLabel(target.chapter)}</span>
     </label>
     <label class="field">
       <span class="micro-label">Level</span>
@@ -126,4 +128,5 @@
   .picker { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-end; }
   .field { display: flex; flex-direction: column; gap: 4px; }
   .field input { width: 96px; }
+  .chapter-name { color: var(--color-muted); font-size: 11px; }
 </style>

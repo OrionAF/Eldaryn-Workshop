@@ -16,21 +16,28 @@ import { STATS } from '../../game/stats.js';
  * @property {string|null} rawKey  the raw key of a capped total, else null
  * @property {string|null} totalKey  for a raw key, the total it belongs to
  * @property {string[]} classes  classes whose sheet shows this row
+ * @property {'oblivion'|null} realm  the one realm whose sheet shows this row, or null for both
  */
 
 const ALL = ['WARRIOR', 'SENTINEL', 'MYSTIC', 'NECROMANCER'];
 const TOL = { integer: 1, percent: 0.1, multiplier: 0.01 };
 
+// stats.json carries "(not on stat sheet list)" as the Oblivion Power sheetLabel: the base stat sheet
+// has no such row, the Oblivion hero's does. Name it and show it on the Oblivion realm's sheet only.
+const LABEL_OVERRIDE = { totalOblivionPower: 'Oblivion Power' };
+const REALM_ONLY = { totalOblivionPower: 'oblivion' };
+
 /** @type {SheetKeyMeta[]} */
 const rows = [];
 function addRow(key, label, kind, digits, displayMult, rawKey, classes, tolerance = TOL[kind]) {
+  const realm = REALM_ONLY[key] ?? null;
   rows.push({
-    key, label, kind, digits, displayMult, tolerance, isRaw: false, rawKey, totalKey: null, classes,
+    key, label, kind, digits, displayMult, tolerance, isRaw: false, rawKey, totalKey: null, classes, realm,
   });
   if (rawKey) {
     rows.push({
       key: rawKey, label: `${label} (raw)`, kind, digits, displayMult, tolerance, isRaw: true,
-      rawKey: null, totalKey: key, classes,
+      rawKey: null, totalKey: key, classes, realm,
     });
   }
 }
@@ -45,7 +52,7 @@ for (const s of STATS) {
   // The sheet row also shows for a class whose Fear folds into Disruption.
   const classes = s.computedKey === 'totalDisruptionChance'
     ? [...s.classesAvailable, 'NECROMANCER'] : s.classesAvailable;
-  addRow(s.computedKey, s.sheetLabel, kind, digits, dm, s.rawKey ?? null, classes);
+  addRow(s.computedKey, LABEL_OVERRIDE[s.computedKey] ?? s.sheetLabel, kind, digits, dm, s.rawKey ?? null, classes);
 }
 // Dominion is derived, never user-entered (stats.md §3.5): exact match required. Conduits are sums
 // of rounded floats, so they keep the integer tolerance.
@@ -76,10 +83,13 @@ export const totalKeyOf = (rawKey) => byKey.get(rawKey)?.totalKey ?? null;
 /** Largest |computed - sheet| still counted as explained (0 for unknown keys). */
 export const toleranceFor = (key) => byKey.get(key)?.tolerance ?? 0;
 
-/** Total keys (no raw) the sheet shows for a class, in display order. */
-export function sheetKeysForClass(playerClass) {
+/**
+ * Total keys (no raw) the sheet shows for a class, in display order. With `realm` ('base' | 'oblivion'),
+ * rows that belong to the other realm's sheet (Oblivion Power) are left out; without it, nothing is.
+ */
+export function sheetKeysForClass(playerClass, realm = null) {
   return SHEET_KEY_META
-    .filter((m) => !m.isRaw && m.classes.includes(playerClass))
+    .filter((m) => !m.isRaw && m.classes.includes(playerClass) && (!realm || !m.realm || m.realm === realm))
     .map((m) => m.key);
 }
 

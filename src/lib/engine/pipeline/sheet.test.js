@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  SHEET_KEYS, TOTAL_KEYS, RAW_KEYS, isSheetKey, sheetKeyMeta, rawKeyOf, totalKeyOf, toleranceFor,
+  SHEET_KEYS, SHEET_KEY_META, TOTAL_KEYS, RAW_KEYS, isSheetKey, sheetKeyMeta, rawKeyOf, totalKeyOf, toleranceFor,
   sheetKeysForClass, normaliseSheetValues, toDisplay, fromDisplay, parseSheetInput,
 } from './sheet.js';
 
@@ -44,6 +44,17 @@ describe('sheet key list', () => {
     expect(sheetKeysForClass('WARRIOR')).toContain('totalBlockChance');
     expect(sheetKeysForClass('SENTINEL')).toContain('totalMissChance');
     expect(sheetKeysForClass('SENTINEL')).not.toContain('totalBlockChance');
+  });
+  it('names Oblivion Power and offers it on the Oblivion realm sheet only', () => {
+    expect(sheetKeyMeta('totalOblivionPower').label).toBe('Oblivion Power');
+    expect(sheetKeyMeta('totalOblivionPower').realm).toBe('oblivion');
+    expect(sheetKeysForClass('MYSTIC', 'oblivion')).toContain('totalOblivionPower');
+    expect(sheetKeysForClass('MYSTIC', 'base')).not.toContain('totalOblivionPower');
+    expect(sheetKeysForClass('MYSTIC', 'base')).toContain('totalAttack');
+    // Unfiltered keeps every row, and the key stays valid so a saved Oblivion sheet still normalises.
+    expect(sheetKeysForClass('MYSTIC')).toContain('totalOblivionPower');
+    expect(normaliseSheetValues({ totalOblivionPower: 170 })).toEqual({ totalOblivionPower: 170 });
+    for (const m of SHEET_KEY_META) expect(m.label).not.toMatch(/not on stat sheet/);
   });
 });
 
