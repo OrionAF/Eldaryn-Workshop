@@ -525,7 +525,7 @@
    ],
    "displayMult": 100,
    "roundDigits": 2,
-   "note": "no rawKey is emitted for this stat in calculateTotalStats",
+   "note": "no rawKey is emitted for this stat in calculateTotalStats; calculateTotalStats does not apply applySoftCap to it (only parseFloat(x.toFixed(2)), L1217458-1217464), so softCap/hardCap are not applied on the sheet; the consumer is createMinion (combat-pve.md section 12)",
    "citation": "L1080483,L1217458-1217464"
   },
   {
