@@ -1,10 +1,47 @@
-// store/stones.js - STUB from M1, owned by B1 from here on (rebuild-plan §7.3 ownership transfer).
-// Mutators for this domain. Pattern (see store/characters.js and store/context.js):
-//   export function createStonesStore(ctx) { ...; return { mutatorA, mutatorB }; }
-// Every mutator edits through ctx.edit(fn) (or ctx.current() + ctx.persist()) so it ends with persist().
-// The facade (rosterStore.svelte.js) spreads the returned object into the public store.
+// store/stones.js (B1): enchant-stone pool mutators. `realm` picks the pool: 'base' -> enchantStones,
+// 'oblivion' -> oblivionEnchantStones (separate lists, stones.md §4). Every mutator ends with
+// persist(); removal runs reconcile so a deleted stone leaves every socket.
+import { normaliseStone } from '../model/stones.js';
 
-// eslint-disable-next-line no-unused-vars
+function poolOf(c, realm) {
+  return realm === 'oblivion' ? c.oblivionEnchantStones : c.enchantStones;
+}
+
 export function createStonesStore(ctx) {
-  return {};
+  /** @returns {string|null} the new stone's id, or null when the stone is invalid (unknown type). */
+  function addEnchantStone(realm, stone) {
+    return ctx.edit((c) => {
+      const pool = poolOf(c, realm);
+      const norm = normaliseStone({ ...stone, id: undefined }, new Set(pool.map((s) => s.id)));
+      if (!norm) return null;
+      pool.push(norm);
+      return norm.id;
+    });
+  }
+
+  /** Merge a partial {quality, amplifyLevel, oblivionLevel, stats} into one stone (type and id are fixed). */
+  function updateEnchantStone(realm, stoneId, patch) {
+    return ctx.edit((c) => {
+      const pool = poolOf(c, realm);
+      const i = pool.findIndex((s) => s.id === stoneId);
+      if (i === -1) return false;
+      const { id, type } = pool[i];
+      const others = new Set(pool.filter((s) => s.id !== stoneId).map((s) => s.id));
+      pool[i] = normaliseStone({ ...pool[i], ...patch, id, type }, others);
+      return true;
+    });
+  }
+
+  function removeEnchantStone(realm, stoneId) {
+    return ctx.edit((c) => {
+      const pool = poolOf(c, realm);
+      const i = pool.findIndex((s) => s.id === stoneId);
+      if (i === -1) return false;
+      pool.splice(i, 1);
+      ctx.reconcile(c);
+      return true;
+    });
+  }
+
+  return { addEnchantStone, updateEnchantStone, removeEnchantStone };
 }
