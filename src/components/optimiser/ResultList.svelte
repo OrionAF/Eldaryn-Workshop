@@ -12,6 +12,9 @@
   let open = $state({});
   const toggle = (key) => (open = { ...open, [key]: !open[key] });
   const rows = $derived(results);
+  // A PVP win rate pools several matchups; the entry says how many duels each one had (F5).
+  const nSplit = (e) => (e?.matchups?.length > 1 ? ` (${e.perMatchupN} x ${e.matchups.length})` : '');
+  const nTitle = (e) => (e?.matchups ? 'Duels simulated for this number: N per matchup x matchups' : 'Fights simulated for this number');
 </script>
 
 <div class="results" data-testid="optimiser-results">
@@ -19,7 +22,7 @@
     <div class="row baseline" data-testid="baseline-row">
       <span class="micro-label">Current preset</span>
       <span class="value mono">{fmtWithCi(unit, baseline)}</span>
-      <span class="n mono">N={baseline.n ?? 0}</span>
+      <span class="n mono" title={nTitle(baseline)}>N={baseline.n ?? 0}{nSplit(baseline)}</span>
     </div>
   {/if}
 
@@ -28,7 +31,7 @@
       <div class="head">
         <span class="rank mono">#{e.rank}</span>
         <span class="value mono">{fmtWithCi(unit, e)}</span>
-        <span class="n mono" title="Fights simulated for this number">N={e.n ?? 0}</span>
+        <span class="n mono" title={nTitle(e)}>N={e.n ?? 0}{nSplit(e)}</span>
         {#if e.isBaseline}
           <span class="tag">current preset</span>
         {:else if e.vsBaseline}
@@ -54,6 +57,17 @@
         {:else}
           <p class="hint">No differences from the current preset.</p>
         {/if}
+      {/if}
+
+      {#if e.matchups?.length}
+        <ul class="matchups" data-testid="matchups">
+          {#each e.matchups as m (m.opponentId + m.seat)}
+            <li class="mono">
+              <span class="who">{m.name}, {m.seat === 'attacker' ? 'I attack' : 'I defend'}</span>
+              {fmtWithCi(unit, { value: m.p, lo: m.lo, hi: m.hi })} <span class="n">N={m.n}</span>
+            </li>
+          {/each}
+        </ul>
       {/if}
 
       {#if e.lines?.length}
@@ -88,6 +102,8 @@
   .changes { margin: 0; padding-left: 16px; font-size: 12px; color: var(--color-soft); }
   .changes .from { color: var(--color-muted); }
   .changes .to { color: var(--color-text); }
+  .matchups { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--color-soft); }
+  .matchups .who { font-family: var(--font-body, inherit); margin-right: var(--space-2); }
   .lines { display: grid; grid-template-columns: max-content 1fr; gap: 2px var(--space-3); margin: 0; font-size: 12px; }
   .lines dd { margin: 0; }
   .hint { color: var(--color-muted); font-size: 12px; margin: 0; }

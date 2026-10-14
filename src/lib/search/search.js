@@ -273,6 +273,8 @@ const finite = (x) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
  *   paired (common-random-number) difference in score space; positive = better than the current preset
  * @property {Array<{label: string, from: string, to: string}>} changes   describe lines that differ from the baseline
  * @property {Array<{label: string, value: string}>} lines                describeBuild of the candidate
+ * @property {Array<{opponentId: string, name: string, seat: 'attacker'|'defender', p: number, lo: number, hi: number, n: number}>} [matchups]
+ *   PVP objective only (pvpObjective.js): my win rate per (opponent, seat), each over `perMatchupN` duels
  *
  * @typedef {Object} OptimiserResult
  * @property {boolean} aborted
@@ -295,10 +297,13 @@ export async function optimizeBuild(req) {
   if (!character || typeof character !== 'object') throw new Error('optimize: request.character is required');
   const preset = resolvePreset(character, req.presetId);
   if (!preset) throw new Error('optimize: the character has no preset to optimise');
-  const target = resolveTarget(req.target ?? { kind: 'dummy' });
+  const target = resolveTarget(req.target ?? { kind: 'dummy' }, { character });
   const realm = target.realm ?? (req.realm === 'oblivion' ? 'oblivion' : 'base');
   const objective = makeObjective(req.objective ?? { kind: 'dps' }, target);
-  const budget = resolveBudget(req.budget);
+  const wanted = { ...objective.defaultBudget, ...req.budget }; // F5: PVP brings its own defaults
+  // F5: `finalMs` (outside DEFAULT_BUDGET) caps the tier-2 wall clock by shrinking n2 to what fits, never below 2 * n1.
+  const finalMs = typeof wanted.finalMs === 'number' && Number.isFinite(wanted.finalMs) && wanted.finalMs > 0 ? wanted.finalMs : null;
+  let budget = { ...resolveBudget(wanted), ...(finalMs ? { finalMs } : {}) };
   const seed = Number.isFinite(req.seed) ? req.seed : 1;
   const seed1 = hashSeed('tier1', seed, target.key);
   const seed2 = hashSeed('tier2', seed, target.key);
@@ -311,6 +316,8 @@ export async function optimizeBuild(req) {
   const ctxKey = metricKey('optctx', character, preset.id, realm, target.key, objective.key, seed);
   let cacheHits = 0;
   let tier2Evals = 0;
+  let tier1Measured = 0;
+  let tier1Ms = 0;
   const pacer = createPacer({ signal });
 
   const measureCached = async (cand, tier) => {
@@ -318,13 +325,15 @@ export async function optimizeBuild(req) {
     const hit = cache.get(ck);
     if (hit) { cacheHits++; return hit; }
     const fighter = space.fighterOf(cand);
-    const m = objective.measure(fighter, {
+    const tStart = Date.now();
+    const m = await objective.measure(fighter, { // F5: the PVP measure is async (it yields so abort lands)
       n: tier === 1 ? budget.n1 : budget.n2,
       seed: tier === 1 ? seed1 : seed2,
       keepSamples: tier === 2,
       signal,
     });
     if (m.aborted) return null;
+    if (tier === 1) { tier1Measured++; tier1Ms += Date.now() - tStart; }
     m.dist = space.distance(cand);
     m.equiv = metricKey('fighter', fighter);
     cache.set(ck, m);
@@ -366,6 +375,11 @@ export async function optimizeBuild(req) {
     (k) => search.records.get(k).rec.equiv,
   ).slice(0, budget.finalists);
   const finalKeys = ranked.includes(startKey) ? ranked : [...ranked.slice(0, Math.max(0, budget.finalists - 1)), startKey];
+  if (finalMs && tier1Measured > 0 && !search.aborted) {
+    const msPerFight = Math.max(tier1Ms / tier1Measured / budget.n1, 1e-3);
+    const fit = Math.floor(finalMs / (finalKeys.length * msPerFight));
+    budget = { ...budget, n2: Math.max(Math.min(budget.n2, fit), Math.min(budget.n2, 2 * budget.n1)) };
+  }
   const tier2 = new Map();
   let aborted = search.aborted;
   if (!aborted) {
@@ -411,6 +425,8 @@ export async function optimizeBuild(req) {
       rank, isBaseline, key: k, candidate: state,
       value: finite(m.value), lo: finite(m.lo), hi: finite(m.hi), n: m.n, score: m.score,
       vsBaseline: vs, changes, lines,
+      // F5: a PVP win rate also carries its per-matchup rates (same N, Wilson interval each).
+      ...(m.extra?.matchups ? { matchups: m.extra.matchups, perMatchupN: m.extra.perMatchupN } : {}),
     };
   };
   const results = order.slice(0, budget.topN).map((k, i) => entryOf(k, i + 1));
