@@ -20,10 +20,9 @@ describe('task registry', () => {
     expect(isTaskRequest({ mode: 'suggest-relics' })).toBe(false);
   });
 
-  it('stubs reject with their owner slice; unknown modes reject', async () => {
-    await expect(runTask('dropCheck', {})).rejects.toThrow(/F1/);
-    await expect(runTask('oblivionFloors', {})).rejects.toThrow(/fighter is required/); // F4: implemented
-    await expect(runTask('optimize', {})).rejects.toThrow(/character is required/); // F2a: implemented, validates its request
+  it('implemented tasks validate their request; unknown modes reject', async () => {
+    await expect(runTask('oblivionFloors', {})).rejects.toThrow(/fighter is required/); // F4
+    await expect(runTask('optimize', {})).rejects.toThrow(/character is required/); // F2a
     await expect(runTask('nope', {})).rejects.toThrow(/unknown task/);
   });
 
