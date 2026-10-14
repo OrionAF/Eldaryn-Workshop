@@ -2,9 +2,9 @@
 // summon config and the Druid form config (client L1095542-1096410). Pure; catalogue lookups via the
 // L1 accessor and sigilScale. Game rules: docs/Reference/Game/sigils.md §2, §5-§9.
 //
-// The catalogue keeps `spellType` on the sigil entry, not on the spell, so every spell these
-// builders return carries a copied `spellType` (spells.js and glyphMods.applySigilGlyphMods read it
-// from the spell, as the client does).
+// The catalogue keeps a base spell's `spellType` on the sigil entry (druid variant spells store
+// their own, sigils.md §12), so every spell these builders return carries a copied `spellType`
+// (spells.js and glyphMods.applySigilGlyphMods read it from the spell, as the client does).
 import { sigilBySpecies, isSigilSpeciesActiveForSpec } from '../../game/sigils.js';
 import { getSigilSpellScaled, getFormConditionalSpells, getSigilDefinitionForSpec } from '../sources/sigilScale.js';
 import { getActiveEquippedSpecies } from '../sources/sigilPassive.js';

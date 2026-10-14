@@ -1,7 +1,7 @@
 {
  "source": "Eldaryn 2.7.0 client, decompiled.js: module 3950 L1066475-1070529 (definitions L1068802-1070529, getSigilSpellScaled L1067622-1068262, constants L1068802-1068870, altar fns L1066838-1066975, forge odds L1066976-1067034 + L1068910-1068960), module 3145 L668383-668986 (unlock levels), module 3969 L1095537-1096574 (calculateSigilBonuses)",
  "extracted": "2026-10-14",
- "schema": "catalogue[]: one entry per sigil species. spell params are LEVEL-1 values; attackPercent/value fields scale by getSigilSpellScaled (see sigils.md section 5) and are clamped by the max* sibling. formSpell/druidVariant are the Mystic Druid variants.",
+ "schema": "catalogue[]: one entry per sigil species. spell params are LEVEL-1 values; attackPercent/value fields scale by getSigilSpellScaled (see sigils.md section 5) and are clamped by the max* sibling. druidVariant {name, spell?, formSpell?{BEAR, WOLF}} is the Mystic Druid variant (sigils.md section 12); every druidVariant spell and formSpell carries the client spellType.",
  "rarityBase": {
   "Common": {
    "baseAttack": 166,
@@ -1159,6 +1159,7 @@
    "druidVariant": {
     "name": "Primal Strike",
     "spell": {
+     "spellType": "DAMAGE",
      "baseDamage": 0,
      "isDoT": false,
      "attackPercent": 45,
@@ -1198,15 +1199,18 @@
    "druidVariant": {
     "name": "Primal Essence",
     "spell": {
+     "spellType": "AURA",
      "bonusStat": "HP_PERCENT",
      "bonusValue": 8
     },
     "formSpell": {
      "BEAR": {
+      "spellType": "AURA",
       "bonusStat": "HP_PERCENT",
       "bonusValue": 8
      },
      "WOLF": {
+      "spellType": "AURA",
       "bonusStat": "ATTACK_PERCENT",
       "bonusValue": 4
      }
@@ -1233,32 +1237,53 @@
     "durationMs": 8000,
     "cooldownMs": 12000
    },
-   "requiredSpec": "MYSTIC_DRUID",
-   "formSpell": {
-    "BEAR": {
+   "druidVariant": {
+    "name": "Primal Awakening",
+    "spell": {
+     "spellType": "BUFF",
      "effects": [
       {
        "stat": "HP_PERCENT",
        "value": 15,
        "maxValue": 25
       }
-     ]
+     ],
+     "durationMs": 8000,
+     "cooldownMs": 12000
     },
-    "WOLF": {
-     "effects": [
-      {
-       "stat": "ATTACK_PERCENT",
-       "value": 8,
-       "maxValue": 14
-      },
-      {
-       "stat": "ATTACK_SPEED",
-       "value": 0.05,
-       "maxValue": 0.1
-      }
-     ]
+    "formSpell": {
+     "BEAR": {
+      "spellType": "BUFF",
+      "effects": [
+       {
+        "stat": "HP_PERCENT",
+        "value": 15,
+        "maxValue": 25
+       }
+      ],
+      "durationMs": 8000,
+      "cooldownMs": 12000
+     },
+     "WOLF": {
+      "spellType": "BUFF",
+      "effects": [
+       {
+        "stat": "ATTACK_PERCENT",
+        "value": 8,
+        "maxValue": 14
+       },
+       {
+        "stat": "ATTACK_SPEED",
+        "value": 0.05,
+        "maxValue": 0.1
+       }
+      ],
+      "durationMs": 8000,
+      "cooldownMs": 12000
+     }
     }
-   }
+   },
+   "requiredSpec": "MYSTIC_DRUID"
   },
   {
    "id": "runic-affliction",
@@ -1282,6 +1307,7 @@
    "druidVariant": {
     "name": "Rending Wound",
     "spell": {
+     "spellType": "DEBUFF",
      "cooldownMs": 14000,
      "initialAttackPercent": 30,
      "maxInitialAttackPercent": 45,
@@ -1316,6 +1342,7 @@
     "name": "Bestial Dominance",
     "formSpell": {
      "BEAR": {
+      "spellType": "DAMAGE",
       "baseDamage": 0,
       "isDoT": false,
       "attackPercent": 45,
@@ -1324,6 +1351,7 @@
       "paralyzeMs": 1500
      },
      "WOLF": {
+      "spellType": "DAMAGE",
       "baseDamage": 0,
       "isDoT": false,
       "attackPercent": 45,
@@ -1363,6 +1391,7 @@
     "name": "Feral Empowerment",
     "formSpell": {
      "BEAR": {
+      "spellType": "BUFF",
       "effects": [
        {
         "stat": "DAMAGE_REDUCTION",
@@ -1379,6 +1408,7 @@
       "cooldownMs": 14000
      },
      "WOLF": {
+      "spellType": "BUFF",
       "effects": [
        {
         "stat": "ATTACK_SPEED",
@@ -1453,6 +1483,7 @@
    "druidVariant": {
     "name": "Savage Infection",
     "spell": {
+     "spellType": "DEBUFF",
      "cooldownMs": 9000,
      "initialAttackPercent": 40,
      "maxInitialAttackPercent": 60,
@@ -1492,6 +1523,7 @@
     "name": "Primal Retribution",
     "formSpell": {
      "BEAR": {
+      "spellType": "BUFF",
       "effects": [
        {
         "stat": "HP_PERCENT",
@@ -1505,6 +1537,7 @@
       "maxThornsPercent": 14
      },
      "WOLF": {
+      "spellType": "DEBUFF",
       "cooldownMs": 12000,
       "initialAttackPercent": 80,
       "maxInitialAttackPercent": 120,
@@ -1539,6 +1572,7 @@
     "name": "Savage Reaping",
     "formSpell": {
      "BEAR": {
+      "spellType": "DAMAGE",
       "baseDamage": 0,
       "isDoT": false,
       "attackPercent": 120,
@@ -1547,6 +1581,7 @@
       "selfHealPercent": 80
      },
      "WOLF": {
+      "spellType": "DEBUFF",
       "cooldownMs": 10000,
       "initialAttackPercent": 100,
       "maxInitialAttackPercent": 150,
@@ -1583,6 +1618,7 @@
     "name": "Primal Ascendancy",
     "formSpell": {
      "BEAR": {
+      "spellType": "BUFF",
       "effects": [
        {
         "stat": "DAMAGE_REDUCTION",
@@ -1604,6 +1640,7 @@
       "cooldownMs": 16000
      },
      "WOLF": {
+      "spellType": "BUFF",
       "effects": [
        {
         "stat": "ATTACK_PERCENT",
@@ -1709,9 +1746,10 @@
     "thornsPercentPerStack": 5,
     "stackLossPerHit": 2
    },
-   "requiredSpec": "MYSTIC_DRUID",
-   "formSpell": {
-    "BEAR": {
+   "druidVariant": {
+    "name": "Primal Instinct",
+    "spell": {
+     "spellType": "STACK",
      "kind": "BULWARK",
      "maxStacks": 8,
      "hpPercentPerStack": 4,
@@ -1719,16 +1757,29 @@
      "thornsPercentPerStack": 5,
      "stackLossPerHit": 2
     },
-    "WOLF": {
-     "kind": "SIEGEBREAKER",
-     "maxStacks": 8,
-     "hpRegenReductionPerStack": 3,
-     "blockReductionPerStack": 4,
-     "missReductionPerStack": 4,
-     "blindReductionPerStack": 4,
-     "decayPerSecond": 1.75
+    "formSpell": {
+     "BEAR": {
+      "spellType": "STACK",
+      "kind": "BULWARK",
+      "maxStacks": 8,
+      "hpPercentPerStack": 4,
+      "drPercentPerStack": 2,
+      "thornsPercentPerStack": 5,
+      "stackLossPerHit": 2
+     },
+     "WOLF": {
+      "spellType": "STACK",
+      "kind": "SIEGEBREAKER",
+      "maxStacks": 8,
+      "hpRegenReductionPerStack": 3,
+      "blockReductionPerStack": 4,
+      "missReductionPerStack": 4,
+      "blindReductionPerStack": 4,
+      "decayPerSecond": 1.75
+     }
     }
-   }
+   },
+   "requiredSpec": "MYSTIC_DRUID"
   },
   {
    "id": "dire-ursine",

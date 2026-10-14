@@ -5,7 +5,9 @@ import {
   stackGlyphOverrides, ironBastionThornsPercent, toSigilGlyphCombatMods, EMPTY_SIGIL_GLYPH_COMBAT_MODS,
   glyphCombatMods, uncoveredMajorGlyphIds,
 } from './glyphMods.js';
-import { createStackCombat } from './stacks.js';
+import { createStackCombat, getEquippedStackDef, withStackGlyphOverride } from './stacks.js';
+import { buildCombatSpells, getEquippedShieldConfig } from './spellConfig.js';
+import { specsForClass } from '../../game/classes.js';
 
 const g = (glyphType, rarity = 'Legendary', extra = {}) => ({ glyphType, rarity, ...extra });
 
@@ -18,6 +20,45 @@ describe('coverage of the 42 major glyphs', () => {
     const kinds = new Set(MAJOR_GLYPHS.map((m) => m.effectKind));
     expect([...kinds].filter((k) => !GLYPH_EFFECT_KINDS.includes(k))).toEqual([]);
     expect(GLYPH_EFFECT_KINDS.filter((k) => !kinds.has(k))).toEqual([]);
+  });
+});
+
+describe('every major glyph changes combat for its class / spec (and some Druid form)', () => {
+  // (glyph id, spec, form) cases where the client itself leaves the glyph inert. None in 2.7.0.
+  const EXPECTED_INERT = [];
+  const FORMS = (spec) => (spec === 'MYSTIC_DRUID' ? [null, 'BEAR', 'WOLF'] : [null]);
+  const STACK_KIND_LIST = ['BULWARK', 'ELUSIVE', 'SUNDER', 'SIEGEBREAKER'];
+
+  // Everything a fight reads from the sigil + glyph: castable spells after glyph mods, the shield
+  // config, the stack defs after overrides, and Iron Bastion thorns while Iron Bastion is cast.
+  const combatConfig = (species, cls, spec, form, glyphs) => {
+    const mods = resolveSigilGlyphMods(glyphs, cls, spec);
+    const state = {
+      ownedSigils: [{ species, level: 1 }],
+      equippedSpecies: [species], druidEquippedSpecies: [species], utilitySlotSpecies: species,
+    };
+    const spells = buildCombatSpells(state, cls, spec, form, mods);
+    const ctx = { playerClass: cls, activeSpec: spec, form };
+    const overrides = stackGlyphOverrides(mods);
+    return JSON.stringify({
+      spells,
+      shield: getEquippedShieldConfig(state, spec, mods),
+      stacks: STACK_KIND_LIST.map((k) => withStackGlyphOverride(getEquippedStackDef([species], k, ctx), k, overrides)),
+      thorns: spells.some((s) => s.species === 'IRON_BASTION') ? ironBastionThornsPercent(mods) : 0,
+    });
+  };
+
+  it('a Legendary copy alters the combat config in at least one form, for every applicable spec', () => {
+    const inert = [];
+    for (const m of MAJOR_GLYPHS) {
+      for (const { key: spec } of specsForClass(m.playerClass)) {
+        if (m.requiredSpec != null && m.requiredSpec !== spec) continue;
+        const changed = FORMS(spec).some((form) =>
+          combatConfig(m.sigilSpecies, m.playerClass, spec, form, []) !== combatConfig(m.sigilSpecies, m.playerClass, spec, form, [g(m.id)]));
+        if (!changed) inert.push(`${m.id} ${spec}`);
+      }
+    }
+    expect(inert).toEqual(EXPECTED_INERT);
   });
 });
 
