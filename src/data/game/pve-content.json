@@ -1460,13 +1460,13 @@
     "floor": 9,
     "mobHp": 53168884,
     "mobAttack": 54191,
-    "instability": 146
+    "instability": 147
    },
    {
     "floor": 10,
     "mobHp": 60080839,
     "mobAttack": 57442,
-    "instability": 170
+    "instability": 171
    },
    {
     "floor": 11,
@@ -1508,13 +1508,13 @@
     "floor": 17,
     "mobHp": 141346511,
     "mobAttack": 86372,
-    "instability": 352
+    "instability": 353
    },
    {
     "floor": 18,
     "mobHp": 159721557,
     "mobAttack": 91554,
-    "instability": 380
+    "instability": 381
    },
    {
     "floor": 19,
@@ -1556,13 +1556,13 @@
     "floor": 25,
     "mobHp": 375761810,
     "mobAttack": 137664,
-    "instability": 590
+    "instability": 591
    },
    {
     "floor": 26,
     "mobHp": 424610845,
     "mobAttack": 145924,
-    "instability": 622
+    "instability": 623
    },
    {
     "floor": 27,
@@ -1604,13 +1604,13 @@
     "floor": 33,
     "mobHp": 998941802,
     "mobAttack": 219415,
-    "instability": 860
+    "instability": 861
    },
    {
     "floor": 34,
     "mobHp": 1128804236,
     "mobAttack": 232580,
-    "instability": 896
+    "instability": 897
    },
    {
     "floor": 35,
@@ -1652,13 +1652,13 @@
     "floor": 41,
     "mobHp": 2655631033,
     "mobAttack": 349714,
-    "instability": 1162
+    "instability": 1163
    },
    {
     "floor": 42,
     "mobHp": 3000863067,
     "mobAttack": 370697,
-    "instability": 1202
+    "instability": 1203
    },
    {
     "floor": 43,
@@ -1700,13 +1700,13 @@
     "floor": 49,
     "mobHp": 7059846897,
     "mobAttack": 557392,
-    "instability": 1496
+    "instability": 1497
    },
    {
     "floor": 50,
     "mobHp": 7977626994,
     "mobAttack": 590835,
-    "instability": 1540
+    "instability": 1541
    },
    {
     "floor": 51,
@@ -1748,13 +1748,13 @@
     "floor": 57,
     "mobHp": 18768208987,
     "mobAttack": 888398,
-    "instability": 1862
+    "instability": 1863
    },
    {
     "floor": 58,
     "mobHp": 21208076155,
     "mobAttack": 941701,
-    "instability": 1910
+    "instability": 1911
    },
    {
     "floor": 59,
