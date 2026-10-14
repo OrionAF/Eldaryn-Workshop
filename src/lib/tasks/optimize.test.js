@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { runTask, isTaskRequest } from './index.js';
+import { runTask } from './index.js';
 import { runOptimizerTask } from '../optimizerClient.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { normaliseCharacter } from '../model/index.js';
@@ -10,13 +10,13 @@ const RELICS_ONLY = { equipmentSet: false, talentSet: false, talents: false, pet
 function request(extra = {}) {
   const raw = JSON.parse(JSON.stringify(fixtureCharacter('WARRIOR')));
   raw.presets[0].relicIds = [];
-  return { mode: 'optimize', v2: true, character: normaliseCharacter(raw), presetId: 'p1', space: RELICS_ONLY, budget: BUDGET, seed: 2, ...extra };
+  return { mode: 'optimize', character: normaliseCharacter(raw), presetId: 'p1', space: RELICS_ONLY, budget: BUDGET, seed: 2, ...extra };
 }
 
 describe("task 'optimize'", () => {
-  it('is routed through the registry only with v2: true (the legacy path keeps the bare mode until X1)', () => {
-    expect(isTaskRequest({ mode: 'optimize', v2: true })).toBe(true);
-    expect(isTaskRequest({ mode: 'optimize' })).toBe(false);
+  it('ignores a stale v2 flag on the request', async () => {
+    const r = await runTask('optimize', request({ v2: true }));
+    expect(r.tier).toBe(2);
   });
 
   it('runs the optimiser and returns plain JSON that a worker could post', async () => {

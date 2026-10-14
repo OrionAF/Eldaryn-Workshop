@@ -6,7 +6,6 @@ import {
 import { TRANSCENDENCE_BOARD_KEYS, transcendenceBoard } from './game/transcendence.js';
 import { normaliseCharacter, newCharacter, migrateCharacterFromV1, normaliseRoster } from './model/index.js';
 import { migrateTranscendenceFromV1, normaliseTranscendence } from './model/transcendence.js';
-import { TRANSCENDENCE_TREES } from './transcendenceData.js';
 import { rosterStore } from './rosterStore.svelte.js';
 
 const ALLOCATABLE = (b) => b.nodes.filter((n) => ['minor', 'notable', 'sigil'].includes(n.kind));
@@ -128,23 +127,14 @@ describe('model', () => {
 });
 
 describe('v1 migration', () => {
-  it('every v1 node position lands on a v2 cell of the same kind', () => {
-    const kindMap = { common: 'minor', uncommon: 'notable', glyph: 'socket', sigil: 'sigil' };
+  it('every v1 node position (v2 col+14, row+26) lands on the v2 cell it came from', () => {
     const g = boardGraph('WARRIOR');
-    for (const cls of ['Warrior', 'Sentinel']) {
-      const tree = TRANSCENDENCE_TREES[cls];
-      const positions = [tree.startPosition, ...tree.nodes.map((n) => n.position)];
-      const { value } = migrateTranscendenceFromV1({ transcendence: { unlockedPositions: positions } });
-      const ids = value.transcendence.presets[0].allocatedNodeIds;
-      // sockets are dropped by sanitise only after migrate; here they map to socket cells
-      const expected = tree.nodes.length;
-      expect(ids.length).toBe(expected);
-      for (const n of tree.nodes) {
-        const [c, r] = n.position.split(':').map(Number);
-        expect(g.byId.get(g.byCell.get(`${c - 14},${r - 26}`)).kind, n.position).toBe(kindMap[n.type]);
-      }
-      expect(ids[0]).toBe('n_0,-1');
-    }
+    const cells = [...g.byId.values()].filter((n) => n.id !== 'core');
+    const positions = cells.map((n) => `${n.col + 14}:${n.row + 26}`);
+    const { value } = migrateTranscendenceFromV1({ transcendence: { unlockedPositions: positions } });
+    const ids = value.transcendence.presets[0].allocatedNodeIds;
+    expect(new Set(ids)).toEqual(new Set(cells.map((n) => n.id)));
+    expect(ids[0]).toBe('n_0,-1');
   });
   it('a v1 character keeps its connected nodes, in the default preset, and links every preset to it', () => {
     const v1 = {

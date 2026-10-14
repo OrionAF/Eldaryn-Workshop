@@ -6,8 +6,7 @@
    * unique and stay level 1, so they get an owned toggle instead of a stepper.
    * Adapted from the v1 components/SigilsScreen.svelte card.
    */
-  import { rarityClass } from '../../lib/constants.js';
-  import { formatFlat } from '../../lib/format.js';
+  import { rarityClass, formatFlat } from '../../lib/format.js';
   import { sigilImage } from '../../lib/assets.js';
   import { MAX_SIGIL_LEVEL } from '../../lib/model/sigils.js';
   import { getSigilBonusAttack, getSigilBonusHp } from '../../lib/engine/sources/sigilScale.js';

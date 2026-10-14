@@ -57,7 +57,6 @@
     const snapshot = { presetId: preset.id, presetName: preset.name, characterId: character.id };
     const req = {
       mode: 'optimize',
-      v2: true,
       character: $state.snapshot(character),
       presetId: snapshot.presetId,
       target: $state.snapshot(target),

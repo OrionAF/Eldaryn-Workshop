@@ -6,13 +6,8 @@
    *  - Reset all data: two-step, type the exact word RESET - a plain
    *    "are you sure?" click is too easy to fat-finger for something this
    *    destructive and irreversible (wipes every character, no undo).
-   *  - Reset initial linking simulations: two-click confirm (ConfirmButton
-   *    bar - destructive but narrow); clears the current character's
-   *    linking-simulation outcome so the Dashboard's setup section returns.
    */
   import { clearAllData } from '../lib/storage.js';
-  import { rosterStore } from '../lib/rosterStore.svelte.js';
-  import ConfirmButton from './ConfirmButton.svelte';
 
   let { open, onClose, onStatus } = $props();
 
@@ -41,11 +36,6 @@
     if (e.key === 'Enter') doReset();
   }
 
-  function resetLinkingSim() {
-    rosterStore.resetLinkingSim();
-    onStatus?.(`Linking simulations reset for ${rosterStore.current.name} — the Dashboard setup returns`);
-  }
-
   function close() {
     confirming = false;
     confirmText = '';
@@ -63,16 +53,6 @@
 
     <div class="danger-zone" role="group" aria-label="Danger Zone">
       <span class="micro-label danger-label">Danger Zone</span>
-
-      <div class="danger-row">
-        <ConfirmButton
-          label="Reset initial linking simulations"
-          confirmLabel="Confirm reset"
-          prompt="Clears this character's linking-simulation outcome"
-          onConfirm={resetLinkingSim}
-          class="btn-danger"
-        />
-      </div>
 
       <div class="danger-row">
         {#if !confirming}

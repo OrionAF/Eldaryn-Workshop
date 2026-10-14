@@ -138,7 +138,7 @@ export function normaliseEquipment(rawCharacter, ctx) {
   return { equipment };
 }
 
-// v1 OffensiveStats key -> SecondaryStatType (constants.js STAT_FIELDS). v1 holds percent points
+// v1 OffensiveStats key -> SecondaryStatType (the v1 STAT_FIELDS). v1 holds percent points
 // for every pct key, so the three multiplier stats are divided by 100 on the way in.
 // pvp_attack / pvp_defense were never gear stats and attack / health become primaryStats.
 export const V1_STAT_TO_SECONDARY = {

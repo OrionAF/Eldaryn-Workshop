@@ -1,16 +1,16 @@
 // L1 catalogue: mount species, glyph tiers and the 42 major glyph modifiers. Lookups only.
 // Sources: Game/mounts-glyphs.md; data/mounts-glyphs.json (majorGlyphModifiers: decompile L1083900-1084786).
-import mountsData from '../../data/game/mounts-glyphs.json';
+import mountsJson from '../../data/game/mounts-glyphs.json';
 
-export const MOUNT_SPECIES = mountsData.mountSpecies;
-export const MOUNT_RARITY_STAT_RANGE = mountsData.mountRarityStatRange;
-export const MOUNT_ALTAR_TIERS = mountsData.altarTiers;
-export const MINOR_GLYPH_TYPES = mountsData.minorGlyphTypes;
-export const MYTHIC_GLYPH_TYPES = mountsData.mythicGlyphTypes;
-export const GLYPH_QUALITY_BANDS = mountsData.glyphQualityBands;
-export const GLYPH_SECONDARY_POOL = mountsData.glyphSecondaryPool;
+export const MOUNT_SPECIES = mountsJson.mountSpecies;
+export const MOUNT_RARITY_STAT_RANGE = mountsJson.mountRarityStatRange;
+export const MOUNT_ALTAR_TIERS = mountsJson.altarTiers;
+export const MINOR_GLYPH_TYPES = mountsJson.minorGlyphTypes;
+export const MYTHIC_GLYPH_TYPES = mountsJson.mythicGlyphTypes;
+export const GLYPH_QUALITY_BANDS = mountsJson.glyphQualityBands;
+export const GLYPH_SECONDARY_POOL = mountsJson.glyphSecondaryPool;
 /** 42 major glyph modifiers. perRarity arrays index Common..Legendary (0..4). */
-export const MAJOR_GLYPHS = mountsData.majorGlyphModifiers;
+export const MAJOR_GLYPHS = mountsJson.majorGlyphModifiers;
 
 const mountMap = new Map(MOUNT_SPECIES.map((m) => [m.species, m]));
 const majorBySigil = new Map(MAJOR_GLYPHS.map((g) => [g.sigilSpecies, g]));

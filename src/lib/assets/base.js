@@ -19,7 +19,7 @@
  *   - the `pet_ryme_wyrm.png` file is misspelled (the pet is "Rime Wyrm");
  *   - the sigil id `berserkt-stance` carries a typo, but it's a PERSISTED key
  *     (character.sigilValues / preset.sigilIds), so renaming it would need a
- *     migration - the display name is fixed in sigilsData.js instead;
+ *     migration - the display name is fixed in the sigil catalogue instead;
  *   - three glyph tier/rarity combinations have no art yet and borrow the
  *     mythic icon (there are no Mythic glyphs in game, so it's unused).
  */

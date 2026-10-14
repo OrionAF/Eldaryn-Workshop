@@ -1,4 +1,4 @@
-// search/combinatorics.js (F2a): subset enumeration salvaged from the legacy optimizer.js (subsetsUpTo,
+// search/combinatorics.js (F2a): subset enumeration salvaged from the the retired v1 optimiser (subsetsUpTo,
 // subsetCount); `combinations` and `choose` are new. Pure, no imports.
 
 /**

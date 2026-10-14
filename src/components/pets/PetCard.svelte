@@ -8,13 +8,12 @@
    * When the parent passes the altar level and tier, a read-only line shows the altar-scaled ATK/HP
    * and each secondary's scaled value, straight from the engine pet source (engine/sources/pet.js).
    */
-  import { rarityClass } from '../../lib/constants.js';
   import { petImage } from '../../lib/assets.js';
   import { petSpeciesById, petDisplayName } from '../../lib/game/pets.js';
   import { statByEnum } from '../../lib/game/stats.js';
   import { PET_SECONDARY_RANGES, secondarySlots } from '../../lib/model/pets.js';
   import { petFlatAttack, petFlatHp, petSecondaryValue } from '../../lib/engine/sources/pet.js';
-  import { formatFlat, formatPct } from '../../lib/format.js';
+  import { rarityClass, formatFlat, formatPct } from '../../lib/format.js';
   import Slider from '../Slider.svelte';
   import ConfirmButton from '../ConfirmButton.svelte';
 

@@ -93,7 +93,7 @@ export function normaliseStones(rawCharacter) {
   };
 }
 
-// v1 stone type keys (stonesData.js) -> EnchantStoneType
+// v1 stone type keys (the v1 stone catalogue) -> EnchantStoneType
 const V1_TYPE = { verdant: 'PVE_DEFENSE', crimson: 'PVE_ATTACK', azure: 'PVP', eldaryn: 'ULTIMATE', mythic: 'MYTHIC' };
 // v1 stat key -> enum; pct stats are percent points in v1, the three multiplier stats /100
 const V1_STAT = {
