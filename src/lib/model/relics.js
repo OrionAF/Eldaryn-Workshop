@@ -5,9 +5,17 @@
 //
 // Domain contract (§3 "Normalisation layout"): partial-character functions, see model/index.js.
 import { relicById, relicsForClass, relicIdFromV1, RELICS } from '../game/relics.js';
+import { relicSlotCap, RELIC_MAX_EXTRA_SLOTS } from './legality.js';
 
 export function defaultRelics() {
-  return { relics: {} };
+  return { relics: {}, extraRelicSlots: RELIC_MAX_EXTRA_SLOTS };
+}
+
+/** Purchased relic slots (0-2). Absent -> 2, so saves from before the field keep their 4 slots. */
+export function normaliseExtraRelicSlots(raw) {
+  if (raw == null || raw === '' || typeof raw === 'boolean') return RELIC_MAX_EXTRA_SLOTS;
+  const n = Math.floor(Number(raw));
+  return Number.isFinite(n) ? Math.max(0, Math.min(RELIC_MAX_EXTRA_SLOTS, n)) : RELIC_MAX_EXTRA_SLOTS;
 }
 
 const clampLevel = (v, max) => {
@@ -28,7 +36,7 @@ function levelsFrom(raw, cls) {
 }
 
 export function normaliseRelics(rawCharacter, ctx) {
-  return { relics: levelsFrom(rawCharacter?.relics, ctx?.class) };
+  return { relics: levelsFrom(rawCharacter?.relics, ctx?.class), extraRelicSlots: normaliseExtraRelicSlots(rawCharacter?.extraRelicSlots) };
 }
 
 const isSentinel = (v1) => typeof v1?.class === 'string' && v1.class.toUpperCase() === 'SENTINEL';
@@ -50,12 +58,17 @@ export function migrateRelicsFromV1(v1Character) {
   return { value: { relics: levelsFrom(raw, String(v1Character?.class ?? '').toUpperCase()) }, idMap };
 }
 
-/** Drop preset relic references that are not legal relics of the character's class. */
+/**
+ * Drop preset relic references that are not owned relics of the character's class (a relic at level
+ * 0 is not owned), then clamp each preset to the slots the level and purchases allow, keeping the
+ * first ones (relics.md, L1142530-1142573).
+ */
 export function reconcileRelics(character) {
   if (!character.class) return; // class not chosen yet: nothing to gate against
   const legal = new Set(relicsForClass(character.class).map((r) => r.id));
+  const cap = relicSlotCap(character.level ?? 100, character.extraRelicSlots);
   for (const p of character.presets ?? []) {
-    if (Array.isArray(p.relicIds)) p.relicIds = p.relicIds.filter((id) => legal.has(id));
+    if (Array.isArray(p.relicIds)) p.relicIds = p.relicIds.filter((id) => legal.has(id) && character.relics?.[id] > 0).slice(0, cap);
   }
 }
 

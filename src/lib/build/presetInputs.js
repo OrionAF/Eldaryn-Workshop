@@ -18,6 +18,7 @@ import { sigilBySpecies } from '../game/sigils.js';
 import { transcendenceBoard } from '../game/transcendence.js';
 import { boardKeyFor } from '../transcendence.js';
 import { isMultiplierStat } from '../model/equipment.js';
+import { resolveTranscendencePreset, ancientActive } from '../model/legality.js';
 
 /** The fortress group -> the catalogue id that stands for it (each group counts once). */
 const FORTRESS_ID = { TOP: 'TOP_1', BOTTOM: 'BOTTOM_1', CORE: 'CORE' };
@@ -100,10 +101,7 @@ function transcendenceBoardFor(character, spec) {
 }
 
 /** The transcendence preset a build preset uses: its own link, else 'default', else the first. */
-export function transcendencePreset(character, preset) {
-  const list = character.transcendence?.presets ?? [];
-  return list.find((p) => p.id === preset?.transcendencePresetId) ?? list.find((p) => p.id === 'default') ?? list[0] ?? null;
-}
+export const transcendencePreset = resolveTranscendencePreset;
 
 /** Sum two StoneBonuses-shaped bundles key by key (relics ride in the stones argument). */
 function addBundles(a, b) {
@@ -133,7 +131,8 @@ export function sigilState(character, preset, spec) {
  * @param {string} [presetId]  default: the active preset
  * @param {{realm?: 'base'|'oblivion'}} [opts]
  * @returns {{args: any[], ctx: {playerClass: string, formConfig: Object|null, activeSpec: string|null},
- *   preset: Object, setKey: string, spec: string|null, realm: string, formKind: 'BEAR'|'WOLF'|null}}
+ *   preset: Object, setKey: string, spec: string|null, realm: string, formKind: 'BEAR'|'WOLF'|null,
+ *   ancientDropped: boolean, warnings: string[]}}
  *   `args` is the 11 positional arguments before ctx: spread them with ctx as the twelfth.
  */
 export function buildPresetInputs(character, presetId, { realm = 'base' } = {}) {
@@ -150,7 +149,13 @@ export function buildPresetInputs(character, presetId, { realm = 'base' } = {}) 
   const tr = transcendencePreset(character, preset);
   const transcendence = calculateTranscendenceBonuses(tr?.allocatedNodeIds ?? [], transcendenceBoardFor(character, spec));
   const pet = calculatePetBonuses(petInput(character, preset));
-  const sigils = calculateSigilBonuses(sigilState(character, preset, spec), cls, spec, formKind);
+  // Q3 strict: an Ancient counts only while the resolved board allocates its Transcendence sigil node.
+  const ancientDropped = !!preset?.ancientSigilSpecies && !ancientActive(preset.ancientSigilSpecies, tr);
+  const warnings = ancientDropped
+    ? [`${preset.ancientSigilSpecies} is ignored: the Transcendence board does not allocate its sigil node.`]
+    : [];
+  const effective = ancientDropped ? { ...preset, ancientSigilSpecies: null } : preset;
+  const sigils = calculateSigilBonuses(sigilState(character, effective, spec), cls, spec, formKind);
   const relics = (preset?.relicIds ?? [])
     .map((id) => ({ id, level: character.relics?.[id] ?? 0 }))
     .filter((r) => r.level > 0);
@@ -176,5 +181,7 @@ export function buildPresetInputs(character, presetId, { realm = 'base' } = {}) 
     spec,
     realm,
     formKind,
+    ancientDropped,
+    warnings,
   };
 }

@@ -30,6 +30,7 @@ export const SIGIL_CONDITIONS_LEVEL = SIGIL_CONDITIONS_UNLOCK_LEVEL;
 export const DEFAULT_CONDITION = 'ON_COOLDOWN';
 export const ENEMY_CONDITIONS = ['ENEMY_HP_BELOW_80', 'ENEMY_HP_BELOW_60', 'ENEMY_HP_BELOW_40', 'ENEMY_HP_BELOW_20'];
 export const SELF_CONDITIONS = ['MY_HP_BELOW_80', 'MY_HP_BELOW_60', 'MY_HP_BELOW_40', 'MY_HP_BELOW_20'];
+const KNOWN_CONDITIONS = new Set([...ENEMY_CONDITIONS, ...SELF_CONDITIONS]);
 
 export function defaultSigils() {
   return { sigils: { altarTier: 1, owned: {} } };
@@ -49,9 +50,14 @@ export function sigilForClass(species, playerClass) {
   return !!def && !!playerClass && sigilClasses(def).includes(playerClass);
 }
 
-/** Ancients are unique and stay level 1 (sigils.md §3, §9). */
+/** Form sigils (Druid utility slot) are granted, not forged: the game keeps them at level 1 (L1328698, L1066539). */
+export function isFormSigil(species) {
+  return sigilBySpecies(species)?.spellType === 'FORM';
+}
+
+/** Ancients are unique and stay level 1 (sigils.md §3, §9); so do Form sigils. */
 export function clampSigilLevel(species, level) {
-  if (isAncient(sigilBySpecies(species))) return 1;
+  if (isAncient(sigilBySpecies(species)) || isFormSigil(species)) return 1;
   return clampInt(level, 1, MAX_SIGIL_LEVEL, 1);
 }
 
@@ -144,7 +150,10 @@ export function sigilConditionOptions(species, spec = null) {
 /**
  * @param {object} rawCharacter  untrusted
  * @param {{class: string|null, spec: string|null}} ctx
- * @returns {{sigils: {altarTier: number, owned: Record<string, {level: number}>}}}
+ * Conditions are character-wide (one per owned sigil, sigils.md §7): `owned[sp].condition`, absent for
+ * ON_COOLDOWN. Pre-M1 saves kept them per preset; those are lifted here (active preset wins, else the
+ * first non-default) and a conflict is reported through `ctx.report`.
+ * @returns {{sigils: {altarTier: number, owned: Record<string, {level: number, condition?: string}>}}}
  */
 export function normaliseSigils(rawCharacter, ctx) {
   const raw = rawCharacter?.sigils && typeof rawCharacter.sigils === 'object' ? rawCharacter.sigils : {};
@@ -161,8 +170,30 @@ export function normaliseSigils(rawCharacter, ctx) {
     const n = typeof level === 'string' ? Number(level) : level;
     if (typeof n !== 'number' || !Number.isFinite(n) || n < 1) continue; // 0 / junk = not owned
     out.owned[def.species] = { level: clampSigilLevel(def.species, n) };
+    if (typeof entry === 'object' && KNOWN_CONDITIONS.has(entry.condition)) out.owned[def.species].condition = entry.condition;
   }
+  liftPresetConditions(rawCharacter, out.owned, ctx?.report);
   return { sigils: out };
+}
+
+/** Pre-M1 `preset.sigilConditions` -> `owned[sp].condition`. A value already on the sigil is never overwritten. */
+function liftPresetConditions(rawCharacter, owned, report) {
+  const presets = Array.isArray(rawCharacter?.presets) ? rawCharacter.presets.filter((p) => p && typeof p === 'object') : [];
+  if (presets.length === 0) return;
+  const active = presets.find((p) => p.id === rawCharacter.activePresetId) ?? presets[0];
+  const ordered = [active, ...presets.filter((p) => p !== active)];
+  for (const sp of Object.keys(owned)) {
+    if (owned[sp].condition) continue;
+    const seen = [];
+    for (const p of ordered) {
+      const c = p.sigilConditions?.[sp];
+      if (KNOWN_CONDITIONS.has(c)) seen.push(c);
+    }
+    if (seen.length === 0) continue;
+    owned[sp].condition = seen[0];
+    const dropped = [...new Set(seen.filter((c) => c !== seen[0]))];
+    if (dropped.length) report?.push({ kind: 'conditionConflict', species: sp, kept: seen[0], dropped });
+  }
 }
 
 // v1 ids were catalogue slugs except one historical typo (sigils.md §8).
@@ -238,9 +269,19 @@ export function reconcileSigils(character) {
     p.utilitySigilSpecies = pickUtility && ok(pickUtility) && utility.has(pickUtility) ? pickUtility : null;
     p.ancientSigilSpecies = pickAncient && ok(pickAncient) && ancient.has(pickAncient) ? pickAncient : null;
 
-    const used = new Set([...p.sigilSpecies, p.utilitySigilSpecies, p.ancientSigilSpecies].filter(Boolean));
-    for (const [sp, cond] of Object.entries(p.sigilConditions ?? {})) {
-      if (!used.has(sp) || cond === DEFAULT_CONDITION || !sigilConditionOptions(sp, spec).includes(cond)) delete p.sigilConditions[sp];
+  }
+  reconcileConditions(character);
+}
+
+// A stored condition must be selectable on at least one of the character's specs (it is one value for
+// every preset); otherwise it is dropped and the sigil fires ON_COOLDOWN.
+function reconcileConditions(character) {
+  const specs = (character.talentSets ?? []).map((s) => s?.spec ?? null);
+  const checkSpecs = specs.some(Boolean) ? specs.filter(Boolean) : [null];
+  for (const [sp, own] of Object.entries(character.sigils?.owned ?? {})) {
+    if (own.condition === undefined) continue;
+    if (own.condition === DEFAULT_CONDITION || !checkSpecs.some((spec) => sigilConditionOptions(sp, spec).includes(own.condition))) {
+      delete own.condition;
     }
   }
 }

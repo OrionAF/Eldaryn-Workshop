@@ -172,16 +172,16 @@ function mapMountsAndGlyphs(mountState, rawGlyphs) {
 function mapSigils(sigilState) {
   const owned = {};
   for (const s of arr(sigilState?.ownedSigils)) {
-    if (isObj(s) && typeof s.species === 'string' && typeof s.level === 'number') owned[s.species] = { level: s.level };
+    if (!isObj(s) || typeof s.species !== 'string' || typeof s.level !== 'number') continue;
+    owned[s.species] = { level: s.level };
+    const cond = str(s.activationCondition);
+    if (cond && cond !== DEFAULT_CONDITION) owned[s.species].condition = cond;
   }
   return { altarTier: num(sigilState?.altarTier) ?? 1, owned };
 }
 
 /** The sigil slots of a client preset: Ancients have their own v2 slot, the rest stay in the generic list. */
-function mapPresetSigils(preset, sigilState) {
-  const conditionOf = new Map(
-    arr(sigilState?.ownedSigils).filter(isObj).map((s) => [s.species, str(s.activationCondition)]),
-  );
+function mapPresetSigils(preset) {
   const generic = [];
   let ancient = null;
   for (const sp of arr(preset.sigilSpecies)) {
@@ -190,12 +190,7 @@ function mapPresetSigils(preset, sigilState) {
     else generic.push(sp);
   }
   const utility = str(preset.utilitySigilSpecies);
-  const sigilConditions = {};
-  for (const sp of [...generic, ancient, utility]) {
-    const cond = sp ? conditionOf.get(sp) : null;
-    if (cond && cond !== DEFAULT_CONDITION) sigilConditions[sp] = cond;
-  }
-  return { sigilSpecies: generic, ancientSigilSpecies: ancient, utilitySigilSpecies: utility, sigilConditions };
+  return { sigilSpecies: generic, ancientSigilSpecies: ancient, utilitySigilSpecies: utility };
 }
 
 // --- presets, talents, transcendence ---
@@ -248,7 +243,7 @@ function mapPresets(profile, sheet) {
     petId: str(p.petId),
     mountId: str(p.mountId),
     relicIds: arr(p.relicIds).filter((x) => typeof x === 'string'),
-    ...mapPresetSigils(p, profile.sigilState),
+    ...mapPresetSigils(p),
     transcendencePresetId: str(p.transcendencePresetId),
     sheet: p.id === activeId ? sheet : null,
   }));
@@ -328,6 +323,7 @@ export function gameProfileToCharacter(profile, { now = new Date().toISOString()
         .filter((r) => isObj(r) && typeof r.relicId === 'string' && typeof r.level === 'number')
         .map((r) => [r.relicId, r.level]),
     ),
+    extraRelicSlots: profile.relicState?.extraSlotsPurchased,
     awakening: { path: str(profile.awakeningState?.path), level: profile.awakeningState?.level },
     transcendence: mapTranscendence(profile),
     skills: mapSkills(profile.skills),

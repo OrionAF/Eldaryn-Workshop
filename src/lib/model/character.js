@@ -18,8 +18,10 @@ export function normaliseClass(raw) {
   return CLASSES.includes(up) ? up : null;
 }
 
+/** 1..MAX_PLAYER_LEVEL. Only a number or a non-empty numeric string counts; anything else is the max level (#122). */
 export function normaliseLevel(raw) {
-  const n = Math.floor(Number(raw));
+  const usable = typeof raw === 'number' || (typeof raw === 'string' && raw.trim() !== '');
+  const n = usable ? Math.floor(Number(raw)) : NaN;
   if (!Number.isFinite(n)) return MAX_PLAYER_LEVEL;
   return Math.min(MAX_PLAYER_LEVEL, Math.max(1, n));
 }

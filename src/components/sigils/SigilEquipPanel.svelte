@@ -148,7 +148,7 @@
           <label class="cond-row">
             <span>{sigilBySpecies(sp).name}</span>
             <select
-              value={preset.sigilConditions[sp] ?? 'ON_COOLDOWN'}
+              value={rosterStore.current.sigils.owned[sp]?.condition ?? 'ON_COOLDOWN'}
               aria-label="{sigilBySpecies(sp).name} activation condition"
               onchange={(e) => rosterStore.setPresetSigilCondition(preset.id, sp, e.currentTarget.value === 'ON_COOLDOWN' ? null : e.currentTarget.value)}
             >

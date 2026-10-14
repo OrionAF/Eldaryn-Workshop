@@ -12,14 +12,15 @@ function sigilEntry(character, species) {
 }
 
 /**
- * Condition per equipped species. Activation conditions only take effect from character level 54
- * (sigils.md §7); below that every sigil fires ON_COOLDOWN whatever the preset stores. Whether
- * damage/debuff conditions apply (PvP only) is the combat engine's call, not stored here.
+ * Condition per equipped species, read from the character-wide value on the owned sigil. Activation
+ * conditions only take effect from character level 54 (sigils.md §7); below that every sigil fires
+ * ON_COOLDOWN whatever is stored. Whether damage/debuff conditions apply (PvP only) is the combat
+ * engine's call, not stored here.
  */
-function conditionsFor(character, preset, species) {
+function conditionsFor(character, species) {
   const gated = (character.level ?? 100) >= SIGIL_CONDITIONS_LEVEL;
   const out = {};
-  for (const sp of species) out[sp] = (gated && preset.sigilConditions?.[sp]) || DEFAULT_CONDITION;
+  for (const sp of species) out[sp] = (gated && character.sigils?.owned?.[sp]?.condition) || DEFAULT_CONDITION;
   return out;
 }
 
@@ -52,7 +53,7 @@ export function buildFighter(character, presetId, { realm = 'base' } = {}) {
   const { preset, spec } = res;
   const sigils = (preset.sigilSpecies ?? []).map((sp) => sigilEntry(character, sp)).filter(Boolean);
   const utility = sigilEntry(character, preset.utilitySigilSpecies);
-  const ancient = sigilEntry(character, preset.ancientSigilSpecies);
+  const ancient = res.ancientDropped ? null : sigilEntry(character, preset.ancientSigilSpecies);
   const equipped = [...sigils, utility, ancient].filter(Boolean).map((s) => s.species);
   return {
     stats: res.effective,
@@ -62,7 +63,7 @@ export function buildFighter(character, presetId, { realm = 'base' } = {}) {
     sigils,
     utility,
     ancient,
-    conditions: conditionsFor(character, preset, equipped),
+    conditions: conditionsFor(character, equipped),
     glyphMods: glyphModsFor(character, preset, spec, equipped),
     altarTier: character.sigils?.altarTier ?? 1,
     formKind: res.formKind,
