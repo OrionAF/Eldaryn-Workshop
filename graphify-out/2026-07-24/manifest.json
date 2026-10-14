@@ -1,0 +1,732 @@
+{
+  "package.json": {
+    "mtime": 1783218141.9223752,
+    "ast_hash": "bd2de797710a681393bbeb31c151a828",
+    "semantic_hash": ""
+  },
+  "src/App.svelte": {
+    "mtime": 1784497211.924452,
+    "ast_hash": "afae8dd1c21fa8d717aadd1d3b50aaca",
+    "semantic_hash": ""
+  },
+  "src/App.test.js": {
+    "mtime": 1783423643.247514,
+    "ast_hash": "8855f7291ba5969c54e5059560c091eb",
+    "semantic_hash": ""
+  },
+  "src/components/ConfirmButton.svelte": {
+    "mtime": 1782895774.513472,
+    "ast_hash": "943f13408ea0d56bd1288fc1edbc0790",
+    "semantic_hash": "943f13408ea0d56bd1288fc1edbc0790"
+  },
+  "src/components/ConfirmButton.test.js": {
+    "mtime": 1782895786.2633977,
+    "ast_hash": "2e75c7cec96fa99ace31c1aad6a521e3",
+    "semantic_hash": "2e75c7cec96fa99ace31c1aad6a521e3"
+  },
+  "src/components/SettingsPanel.svelte": {
+    "mtime": 1784497511.5597808,
+    "ast_hash": "34ca039721c659cfa80199de03ba64c2",
+    "semantic_hash": ""
+  },
+  "src/components/SettingsPanel.test.js": {
+    "mtime": 1784497659.9063358,
+    "ast_hash": "67e2b2a2521edc4a99b77e52feccd0df",
+    "semantic_hash": ""
+  },
+  "src/components/SlotSilhouette.svelte": {
+    "mtime": 1783170445.9582386,
+    "ast_hash": "0cca3a7402ab1c5008cde1aeb3c793f8",
+    "semantic_hash": ""
+  },
+  "src/components/SlotSilhouette.test.js": {
+    "mtime": 1783170844.0564656,
+    "ast_hash": "db2657317594119b970395389e6a192d",
+    "semantic_hash": ""
+  },
+  "src/components/StatsFields.svelte": {
+    "mtime": 1784242073.2725885,
+    "ast_hash": "5fb32921f72eaea6c6f2cbb0fc0e6bdc",
+    "semantic_hash": ""
+  },
+  "src/components/StatsFields.test.js": {
+    "mtime": 1782868511.7475462,
+    "ast_hash": "327be8ac852539d88bebfe9e36a30f6c",
+    "semantic_hash": "327be8ac852539d88bebfe9e36a30f6c"
+  },
+  "src/components/TalentTierList.svelte": {
+    "mtime": 1783120610.548234,
+    "ast_hash": "3708af6775d7de403eead412210c4794",
+    "semantic_hash": ""
+  },
+  "src/components/TalentTierList.test.js": {
+    "mtime": 1783120765.699203,
+    "ast_hash": "589dae122c23f4e008cb83e6087be8bf",
+    "semantic_hash": ""
+  },
+  "src/lib/awakeningData.js": {
+    "mtime": 1782890909.1593554,
+    "ast_hash": "63cd2be0719e7fc3dadc5368913e1e0e",
+    "semantic_hash": "63cd2be0719e7fc3dadc5368913e1e0e"
+  },
+  "src/lib/constants.js": {
+    "mtime": 1784348792.4914339,
+    "ast_hash": "9aabec1897465ad563d147f9456f8f66",
+    "semantic_hash": ""
+  },
+  "src/lib/dps.js": {
+    "mtime": 1782886159.0451314,
+    "ast_hash": "464e5db1bcac43c5bd918d7d599a49d3",
+    "semantic_hash": "464e5db1bcac43c5bd918d7d599a49d3"
+  },
+  "src/lib/dps.test.js": {
+    "mtime": 1782886245.2657838,
+    "ast_hash": "d0e180a2c1f103225ae9174c6be390d0",
+    "semantic_hash": "d0e180a2c1f103225ae9174c6be390d0"
+  },
+  "src/lib/format.js": {
+    "mtime": 1783093667.7244306,
+    "ast_hash": "8ba49c9c4deed2219292ef72bd5cd616",
+    "semantic_hash": ""
+  },
+  "src/lib/format.test.js": {
+    "mtime": 1783001570.7644713,
+    "ast_hash": "b0d3353b39628be3e1082a64cf71d522",
+    "semantic_hash": "b0d3353b39628be3e1082a64cf71d522"
+  },
+  "src/lib/model.js": {
+    "mtime": 1784541017.7602532,
+    "ast_hash": "254501aabefba6e501aef8a6dd562e1c",
+    "semantic_hash": ""
+  },
+  "src/lib/model.test.js": {
+    "mtime": 1784539516.175821,
+    "ast_hash": "346fc3abde05a06d7e72b723622a75fc",
+    "semantic_hash": ""
+  },
+  "src/lib/relicsData.js": {
+    "mtime": 1783979961.4361234,
+    "ast_hash": "084db175c5f6930b8adfd9ce2013c03b",
+    "semantic_hash": ""
+  },
+  "src/lib/relicsData.test.js": {
+    "mtime": 1782997523.959498,
+    "ast_hash": "6bae207ce0d67531f7898667311d143e",
+    "semantic_hash": "6bae207ce0d67531f7898667311d143e"
+  },
+  "src/lib/rosterStore.svelte.js": {
+    "mtime": 1784539487.0858517,
+    "ast_hash": "25e4513c16105d9f287e5967ef81290b",
+    "semantic_hash": ""
+  },
+  "src/lib/rosterStore.test.js": {
+    "mtime": 1784539531.7083516,
+    "ast_hash": "74381a4bfa5d5a108223fbeb23b64361",
+    "semantic_hash": ""
+  },
+  "src/lib/storage.js": {
+    "mtime": 1783165104.239874,
+    "ast_hash": "7469289219ffd05ac79661fba2ac3e3a",
+    "semantic_hash": ""
+  },
+  "src/lib/storage.test.js": {
+    "mtime": 1783165154.8412306,
+    "ast_hash": "96b3643f8ecef4a292967e1df5f6041e",
+    "semantic_hash": ""
+  },
+  "src/lib/talentTreeData.js": {
+    "mtime": 1783000707.9499786,
+    "ast_hash": "4e42f39cdf86b509017949854b1ebafc",
+    "semantic_hash": "4e42f39cdf86b509017949854b1ebafc"
+  },
+  "src/lib/totals.js": {
+    "mtime": 1784241998.5530498,
+    "ast_hash": "d88b2bd67d69042abfcf8afd607b0b5e",
+    "semantic_hash": ""
+  },
+  "src/lib/totals.test.js": {
+    "mtime": 1784347089.7865496,
+    "ast_hash": "e654594f2b174c9d0d8b8f8f08be4a3d",
+    "semantic_hash": ""
+  },
+  "src/main.js": {
+    "mtime": 1782656303.3965561,
+    "ast_hash": "18bcc4cb6181d45f167d62301229b372",
+    "semantic_hash": "18bcc4cb6181d45f167d62301229b372"
+  },
+  "svelte.config.js": {
+    "mtime": 1782867395.894982,
+    "ast_hash": "8080eb9cd091eb4be3e2d622a442be3d",
+    "semantic_hash": "8080eb9cd091eb4be3e2d622a442be3d"
+  },
+  "vite.config.js": {
+    "mtime": 1783165235.2250583,
+    "ast_hash": "d569e9e2d1c02475a591f8d9bc3da166",
+    "semantic_hash": ""
+  },
+  ".github/workflows/deploy.yml": {
+    "mtime": 1782869228.3977683,
+    "ast_hash": "4c700b2b5bac7fd8514ca04463fe2dc1",
+    "semantic_hash": "4c700b2b5bac7fd8514ca04463fe2dc1"
+  },
+  "CLAUDE.md": {
+    "mtime": 1783003110.9785376,
+    "ast_hash": "8a6643a420fdad6bfb583523bc6cef16",
+    "semantic_hash": "8a6643a420fdad6bfb583523bc6cef16"
+  },
+  "README.md": {
+    "mtime": 1782869264.7211597,
+    "ast_hash": "300ef6d22e4a55f7f90ebdcb4b8f3005",
+    "semantic_hash": "300ef6d22e4a55f7f90ebdcb4b8f3005"
+  },
+  "index.html": {
+    "mtime": 1783092673.5401528,
+    "ast_hash": "507f1f4751920689a5546842eb398742",
+    "semantic_hash": ""
+  },
+  "src/components/TranscendenceDrawer.svelte": {
+    "mtime": 1783218997.369558,
+    "ast_hash": "50eb5373baa3a4d81754b9871856c7ef",
+    "semantic_hash": ""
+  },
+  "src/components/TranscendenceGrid.svelte": {
+    "mtime": 1783531688.3411212,
+    "ast_hash": "6f76ab5e771c20291f3b669f6eca392b",
+    "semantic_hash": ""
+  },
+  "src/components/TranscendenceNode.svelte": {
+    "mtime": 1783531681.1790657,
+    "ast_hash": "7c4cf58293f075c255b2029aafa31359",
+    "semantic_hash": ""
+  },
+  "src/lib/transcendence.js": {
+    "mtime": 1784348808.950318,
+    "ast_hash": "46813494372554eceeccc5dffc241966",
+    "semantic_hash": ""
+  },
+  "src/lib/transcendence.test.js": {
+    "mtime": 1784348854.7167895,
+    "ast_hash": "679d996c8de1802d7d6462d6617deedd",
+    "semantic_hash": ""
+  },
+  "src/lib/transcendenceData.js": {
+    "mtime": 1783439454.1696074,
+    "ast_hash": "6d65b78adc526cb5d0ab5ac6c432e477",
+    "semantic_hash": ""
+  },
+  "src/components/AwakeningScreen.svelte": {
+    "mtime": 1783120656.179128,
+    "ast_hash": "ef8b654cd0265a5a8992186119d187da",
+    "semantic_hash": ""
+  },
+  "src/components/AwakeningScreen.test.js": {
+    "mtime": 1784067772.8118107,
+    "ast_hash": "d6851b6f34538b04cae825dbd80635ab",
+    "semantic_hash": ""
+  },
+  "src/components/Chip.svelte": {
+    "mtime": 1783219094.791039,
+    "ast_hash": "4293bfe71f9e76077804275df34f54e6",
+    "semantic_hash": ""
+  },
+  "src/components/DropCheckScreen.svelte": {
+    "mtime": 1784461308.042798,
+    "ast_hash": "3cb8ba742cc61dc7e38c3d531692bd20",
+    "semantic_hash": ""
+  },
+  "src/components/DropCheckScreen.test.js": {
+    "mtime": 1784463975.1928046,
+    "ast_hash": "7e60b06e7aabaa6aabcabdcc70062d82",
+    "semantic_hash": ""
+  },
+  "src/components/GearLoadoutsScreen.svelte": {
+    "mtime": 1783423527.906893,
+    "ast_hash": "449ca12452b4bbec03901ef3cd978862",
+    "semantic_hash": ""
+  },
+  "src/components/GearLoadoutsScreen.test.js": {
+    "mtime": 1783170968.9453418,
+    "ast_hash": "55f8f4dc06ba6641a361ad95c493742d",
+    "semantic_hash": ""
+  },
+  "src/components/LoadoutColumn.svelte": {
+    "mtime": 1783219022.114805,
+    "ast_hash": "a73d75cfb646c337ac833c6a35ba29eb",
+    "semantic_hash": ""
+  },
+  "src/components/MountAndGlyphsScreen.svelte": {
+    "mtime": 1783981471.1362474,
+    "ast_hash": "46e96bcac776e349f5ae9783442cf53c",
+    "semantic_hash": ""
+  },
+  "src/components/MountAndGlyphsScreen.test.js": {
+    "mtime": 1783981614.1073892,
+    "ast_hash": "2b29542ad8be8a641db9f9ef9ef10d80",
+    "semantic_hash": ""
+  },
+  "src/components/PetsScreen.svelte": {
+    "mtime": 1783994477.7486186,
+    "ast_hash": "42864eb5edc0874c4e3cb57f0c0749fa",
+    "semantic_hash": ""
+  },
+  "src/components/PetsScreen.test.js": {
+    "mtime": 1783212810.5944161,
+    "ast_hash": "93c8f6ae9bb7ae47726877e2425096c9",
+    "semantic_hash": ""
+  },
+  "src/components/PresetCard.svelte": {
+    "mtime": 1784461218.0845857,
+    "ast_hash": "23c99eeb612a71bf3a2e3ac5a240ac0d",
+    "semantic_hash": ""
+  },
+  "src/components/PresetEditor.svelte": {
+    "mtime": 1784461298.307407,
+    "ast_hash": "ed2475980d1d7b69bf0dab540ac2a468",
+    "semantic_hash": ""
+  },
+  "src/components/PresetsScreen.svelte": {
+    "mtime": 1783981512.9824593,
+    "ast_hash": "d7c1a261b98268a51f5589b6c15d1c9b",
+    "semantic_hash": ""
+  },
+  "src/components/PresetsScreen.test.js": {
+    "mtime": 1784470045.539706,
+    "ast_hash": "d6bffed1cab3118e3aa8cc2f3b97074c",
+    "semantic_hash": ""
+  },
+  "src/components/RelicsScreen.svelte": {
+    "mtime": 1783211252.6785214,
+    "ast_hash": "ebce6c1f75cce293821f43abf04bcd05",
+    "semantic_hash": ""
+  },
+  "src/components/RelicsScreen.test.js": {
+    "mtime": 1783211291.1866972,
+    "ast_hash": "8a4b311b0e61dfec671ecc6a8d0321ac",
+    "semantic_hash": ""
+  },
+  "src/components/Sidebar.svelte": {
+    "mtime": 1784497531.285431,
+    "ast_hash": "cb7229190c712f66c67272bfe8e26ec9",
+    "semantic_hash": ""
+  },
+  "src/components/Sidebar.test.js": {
+    "mtime": 1784497562.7700536,
+    "ast_hash": "4726350a5dab0a3b789b1a25e7e08755",
+    "semantic_hash": ""
+  },
+  "src/components/TalentSetsScreen.svelte": {
+    "mtime": 1783120604.130038,
+    "ast_hash": "72975917e3abd1601180b3bd2550d633",
+    "semantic_hash": ""
+  },
+  "src/components/TalentSetsScreen.test.js": {
+    "mtime": 1783092673.5511537,
+    "ast_hash": "7eff13b0a9a3963de82c865ffd82b988",
+    "semantic_hash": ""
+  },
+  "src/components/TranscendenceScreen.svelte": {
+    "mtime": 1784348838.3752239,
+    "ast_hash": "4638dba9c45753d61da79e4543bffacd",
+    "semantic_hash": ""
+  },
+  "src/components/TranscendenceScreen.test.js": {
+    "mtime": 1784067775.67917,
+    "ast_hash": "43d323adefed041b3a2ba877ba424bd7",
+    "semantic_hash": ""
+  },
+  "src/components/VerdictCard.svelte": {
+    "mtime": 1784461190.6398523,
+    "ast_hash": "079cca10f6edebe3399256d2d640760b",
+    "semantic_hash": ""
+  },
+  "src/components/StoneForm.svelte": {
+    "mtime": 1783532297.7491424,
+    "ast_hash": "1ab566ef447ed5b911ae0e6419378e6e",
+    "semantic_hash": ""
+  },
+  "src/components/StoneForm.test.js": {
+    "mtime": 1784067777.074557,
+    "ast_hash": "74a75f30693118bbc645e7a6a9c6a77b",
+    "semantic_hash": ""
+  },
+  "src/components/StoneGrid.svelte": {
+    "mtime": 1783532295.7553077,
+    "ast_hash": "1ffd59100a50b6cf3b7d9d96ff74b872",
+    "semantic_hash": ""
+  },
+  "src/components/StoneGrid.test.js": {
+    "mtime": 1784067779.4238403,
+    "ast_hash": "2f52f36fc275b4b36a68069f4d06241f",
+    "semantic_hash": ""
+  },
+  "src/components/WelcomeScreen.svelte": {
+    "mtime": 1783217601.8989668,
+    "ast_hash": "ab367bc64d664708ce1efc415c52be19",
+    "semantic_hash": ""
+  },
+  "src/lib/stonesData.js": {
+    "mtime": 1783170484.3180485,
+    "ast_hash": "7843b5cb4e4fd64d54d8465566a6fc76",
+    "semantic_hash": ""
+  },
+  "src/lib/stonesData.test.js": {
+    "mtime": 1783170860.7660477,
+    "ast_hash": "2da715c49c90884feec14ebfc0e0be55",
+    "semantic_hash": ""
+  },
+  "src/test-setup.js": {
+    "mtime": 1783165231.5817473,
+    "ast_hash": "bc528077641c6e6cdff66a861e3f3002",
+    "semantic_hash": ""
+  },
+  "src/components/AddPetModal.svelte": {
+    "mtime": 1783218993.748595,
+    "ast_hash": "bdc20b69e6d195d29dc8c770cafdddd0",
+    "semantic_hash": ""
+  },
+  "src/components/SimulatedPresetCard.svelte": {
+    "mtime": 1784044268.8529758,
+    "ast_hash": "4c4ee8141a2acc11eb17fc74de04fb04",
+    "semantic_hash": ""
+  },
+  "src/components/SimulationScreen.svelte": {
+    "mtime": 1784497285.6313763,
+    "ast_hash": "457b760154906eb3f4255a115be8e2be",
+    "semantic_hash": ""
+  },
+  "src/components/SimulationScreen.test.js": {
+    "mtime": 1784497090.9617007,
+    "ast_hash": "a17ac8a343c1a891873ef2d690ee4ed7",
+    "semantic_hash": ""
+  },
+  "src/lib/optimizer.js": {
+    "mtime": 1784348827.919852,
+    "ast_hash": "d00f7bb1bec39acd730b34775d10beee",
+    "semantic_hash": ""
+  },
+  "src/lib/optimizer.test.js": {
+    "mtime": 1784348865.3351297,
+    "ast_hash": "e78c6686f281700d25c96a6fa0b5d616",
+    "semantic_hash": ""
+  },
+  "src/lib/simulation.js": {
+    "mtime": 1784442867.4773283,
+    "ast_hash": "88bf64c38151050bc42cd2683e68a926",
+    "semantic_hash": ""
+  },
+  "src/lib/simulation.test.js": {
+    "mtime": 1784442885.460872,
+    "ast_hash": "819429a1e312bf10f052e6ffff3a3bb4",
+    "semantic_hash": ""
+  },
+  "src/components/SigilsScreen.svelte": {
+    "mtime": 1783994452.6317992,
+    "ast_hash": "b482e94c84a9925afde0eb13db5f7cff",
+    "semantic_hash": ""
+  },
+  "src/components/SigilsScreen.test.js": {
+    "mtime": 1783994530.0483513,
+    "ast_hash": "0aca6287deba8ca4800c2179d96c6458",
+    "semantic_hash": ""
+  },
+  "src/lib/sigilsData.js": {
+    "mtime": 1783980116.1116097,
+    "ast_hash": "e26cd0b3fd687f36b140b90267aa7f88",
+    "semantic_hash": ""
+  },
+  "src/lib/sigilEffects.js": {
+    "mtime": 1784243285.7062435,
+    "ast_hash": "a0ff506f37b6e4fa5fc89e6d3de4f1c5",
+    "semantic_hash": ""
+  },
+  "src/lib/sigilEffects.test.js": {
+    "mtime": 1784243443.3025503,
+    "ast_hash": "c51830bb976238c9ede50d5fa3915de8",
+    "semantic_hash": ""
+  },
+  "src/components/PvpScreen.svelte": {
+    "mtime": 1784541213.0369556,
+    "ast_hash": "26bbf26eb382b1780b4bc2a21efa46ea",
+    "semantic_hash": ""
+  },
+  "src/components/PvpScreen.test.js": {
+    "mtime": 1784541329.7839072,
+    "ast_hash": "7f5c0cfa6f41087a16ae4c80d2463881",
+    "semantic_hash": ""
+  },
+  "src/lib/pvpSimulation.js": {
+    "mtime": 1784442874.030305,
+    "ast_hash": "03583a2843d544aa5a6996a85740b5e9",
+    "semantic_hash": ""
+  },
+  "src/lib/pvpSimulation.test.js": {
+    "mtime": 1784442112.16678,
+    "ast_hash": "b691f11f765083892b802575cea08865",
+    "semantic_hash": ""
+  },
+  "src/lib/pvpOptimizer.js": {
+    "mtime": 1784044599.7042444,
+    "ast_hash": "d04e74077b30c81aee3d2f5274ef88f4",
+    "semantic_hash": ""
+  },
+  "src/lib/pvpOptimizer.test.js": {
+    "mtime": 1784044823.2116616,
+    "ast_hash": "c289a837236e1012452a2d9d9cf9b5be",
+    "semantic_hash": ""
+  },
+  "src/components/SimulatedPresetCard.test.js": {
+    "mtime": 1783581196.833905,
+    "ast_hash": "41e4d127431238317d9d9a688464db09",
+    "semantic_hash": ""
+  },
+  "src/lib/optimizerClient.js": {
+    "mtime": 1784539598.5819561,
+    "ast_hash": "0ad4f2576840f01423100233cabca497",
+    "semantic_hash": ""
+  },
+  "src/lib/optimizerClient.test.js": {
+    "mtime": 1783608352.3753934,
+    "ast_hash": "b1141f3a724405790622fe720bec38c9",
+    "semantic_hash": ""
+  },
+  "src/lib/optimizerObjectives.js": {
+    "mtime": 1784479208.8788674,
+    "ast_hash": "f3f9ef28d7e3172925f2ed676a9a1d63",
+    "semantic_hash": ""
+  },
+  "src/lib/optimizerObjectives.test.js": {
+    "mtime": 1784479445.216426,
+    "ast_hash": "5e4c9bf547258d412057cbcee3ccfe32",
+    "semantic_hash": ""
+  },
+  "src/lib/optimizerWorker.js": {
+    "mtime": 1784539601.2198327,
+    "ast_hash": "dd46cd0b023a5d141f71de40ed4c1400",
+    "semantic_hash": ""
+  },
+  "src/lib/mountsData.js": {
+    "mtime": 1783980737.2045512,
+    "ast_hash": "c8f695be089b5614557de8ebe9a4a0c5",
+    "semantic_hash": ""
+  },
+  "src/lib/tankObjective.js": {
+    "mtime": 1784158845.3369184,
+    "ast_hash": "449cd4114c43bad38e6fcfc223a5b487",
+    "semantic_hash": ""
+  },
+  "src/lib/tankObjective.test.js": {
+    "mtime": 1784159086.1568458,
+    "ast_hash": "f810d51e880da1cd58b1f7023bc9c10c",
+    "semantic_hash": ""
+  },
+  "src/lib/buildConfig.js": {
+    "mtime": 1783999695.68329,
+    "ast_hash": "d57431fabaf330447e438d5bb9e016b2",
+    "semantic_hash": ""
+  },
+  "src/lib/buildConfig.test.js": {
+    "mtime": 1783999794.885527,
+    "ast_hash": "22098e935469871577a09f2fbecbe4bb",
+    "semantic_hash": ""
+  },
+  "src/lib/statWeights.js": {
+    "mtime": 1784539215.434343,
+    "ast_hash": "c6915459cb2e7d2288469b8412f98392",
+    "semantic_hash": ""
+  },
+  "src/lib/statWeights.test.js": {
+    "mtime": 1784539382.1952395,
+    "ast_hash": "53fb164d0e73a9c8228a973935d95444",
+    "semantic_hash": ""
+  },
+  "src/lib/dropGoals.js": {
+    "mtime": 1784461165.9711676,
+    "ast_hash": "ba274d49db5485b28b161b548150ba22",
+    "semantic_hash": ""
+  },
+  "src/lib/dropGoals.test.js": {
+    "mtime": 1784463855.9769273,
+    "ast_hash": "06291a18bab21f7ce57b811508a853bb",
+    "semantic_hash": ""
+  },
+  "src/lib/statCaps.js": {
+    "mtime": 1784346988.2810268,
+    "ast_hash": "ce612859be162d57b99c1693e2abe430",
+    "semantic_hash": ""
+  },
+  "src/lib/statCaps.test.js": {
+    "mtime": 1784347016.0277095,
+    "ast_hash": "acd8e11eda1efd39990d1684bcc10b2b",
+    "semantic_hash": ""
+  },
+  "src/components/RelicSuggesterPanel.svelte": {
+    "mtime": 1784351113.010536,
+    "ast_hash": "64e81aa78447783174a5c0447c21dd19",
+    "semantic_hash": ""
+  },
+  "src/components/RelicSuggesterPanel.test.js": {
+    "mtime": 1784351245.1058037,
+    "ast_hash": "86f53e528666d7aa6b64187df40e6b06",
+    "semantic_hash": ""
+  },
+  "src/lib/relicSuggester.js": {
+    "mtime": 1784350953.2017517,
+    "ast_hash": "8dacc7c682f59ca05c44b1a72aeb16e2",
+    "semantic_hash": ""
+  },
+  "src/lib/relicSuggester.test.js": {
+    "mtime": 1784351200.1648085,
+    "ast_hash": "e5d26c64185fa3882265b6b018247d2d",
+    "semantic_hash": ""
+  },
+  "src/components/GoalSliders.svelte": {
+    "mtime": 1784461257.9436913,
+    "ast_hash": "eb6ab23a498fb7d4cecec1c1e2e9a495",
+    "semantic_hash": ""
+  },
+  "src/components/GoalSliders.test.js": {
+    "mtime": 1784463945.1609695,
+    "ast_hash": "e039767725d22c54ca8dae7d584650c3",
+    "semantic_hash": ""
+  },
+  "src/lib/pvpGoalObjective.js": {
+    "mtime": 1784479439.3724456,
+    "ast_hash": "805c946670ab5825a2ee6bb210613e36",
+    "semantic_hash": ""
+  },
+  "src/lib/pvpGoalObjective.test.js": {
+    "mtime": 1784479430.7339518,
+    "ast_hash": "997b9b4ef811784231b2a584aa92a995",
+    "semantic_hash": ""
+  },
+  "src/components/DashboardSetupCard.svelte": {
+    "mtime": 1784539637.9390204,
+    "ast_hash": "2631862c6cae30641a83566cb243fbe3",
+    "semantic_hash": ""
+  },
+  "src/components/DuelTimeline.svelte": {
+    "mtime": 1784497397.300028,
+    "ast_hash": "1521e37aa8f910798955334c7347b668",
+    "semantic_hash": ""
+  },
+  "src/components/DuelTimeline.test.js": {
+    "mtime": 1784497650.3033688,
+    "ast_hash": "ecb39b00f806de61ddd40688f762de3c",
+    "semantic_hash": ""
+  },
+  "src/components/GoalTimelineChart.svelte": {
+    "mtime": 1784497374.0554914,
+    "ast_hash": "1b8a8e601aea4ad0d0064b7dac48f8a4",
+    "semantic_hash": ""
+  },
+  "src/components/GoalTimelineChart.test.js": {
+    "mtime": 1784497641.7170994,
+    "ast_hash": "17a8a948a9d94227b6399740298141db",
+    "semantic_hash": ""
+  },
+  "src/components/RunHistoryPanel.svelte": {
+    "mtime": 1784541073.4081864,
+    "ast_hash": "81121c86182e9915f378e93253aa337c",
+    "semantic_hash": ""
+  },
+  "src/components/RunHistoryPanel.test.js": {
+    "mtime": 1784541275.1194363,
+    "ast_hash": "f13cb36edd2c86cf02b1e5e9f5a42976",
+    "semantic_hash": ""
+  },
+  "src/components/SimulationsDashboard.svelte": {
+    "mtime": 1784539685.027763,
+    "ast_hash": "bb4fd79e6bb5c4a2dad83be656dbbc31",
+    "semantic_hash": ""
+  },
+  "src/components/SimulationsScreen.svelte": {
+    "mtime": 1784497713.8915837,
+    "ast_hash": "fb1de61fe5a8cbaf50dc4efe705ff5ff",
+    "semantic_hash": ""
+  },
+  "src/components/SimulationsScreen.test.js": {
+    "mtime": 1784497598.215083,
+    "ast_hash": "60068863fb924b6cfce5196827e0322a",
+    "semantic_hash": ""
+  },
+  "src/lib/linkingSetup.js": {
+    "mtime": 1784497305.5338266,
+    "ast_hash": "91104f4e991ce2408c41d83200967a0e",
+    "semantic_hash": ""
+  },
+  "src/lib/linkingSetup.test.js": {
+    "mtime": 1784497577.0275064,
+    "ast_hash": "446ec086bd8669c68c3926ea8a83549f",
+    "semantic_hash": ""
+  },
+  "src/components/DashboardSetupCard.test.js": {
+    "mtime": 1784539765.021779,
+    "ast_hash": "d8e4ecb50139253b3e43c67f58b82797",
+    "semantic_hash": ""
+  },
+  "src/components/LinkingReportCard.svelte": {
+    "mtime": 1784539677.9746292,
+    "ast_hash": "4359053b5c489da0fb090e8e1264cf10",
+    "semantic_hash": ""
+  },
+  "src/components/LinkingReportCard.test.js": {
+    "mtime": 1784539823.468382,
+    "ast_hash": "a7943513183deb25b3bd714a46b73ef7",
+    "semantic_hash": ""
+  },
+  "src/components/SimulationsDashboard.test.js": {
+    "mtime": 1784539837.0205798,
+    "ast_hash": "b6211c42e5eacb5347c8662a48221869",
+    "semantic_hash": ""
+  },
+  "src/lib/linkingSimulation.js": {
+    "mtime": 1784539264.2385705,
+    "ast_hash": "e5c5163e0a6582b1df2d3b0c0b3b6249",
+    "semantic_hash": ""
+  },
+  "src/lib/linkingSimulation.test.js": {
+    "mtime": 1784539421.2224576,
+    "ast_hash": "95eedf7dd2e451b2049d9817cecde621",
+    "semantic_hash": ""
+  },
+  "src/lib/talentLean.js": {
+    "mtime": 1784539187.3298278,
+    "ast_hash": "d19d948cff9842bee52e0a62798d9942",
+    "semantic_hash": ""
+  },
+  "src/lib/talentLean.test.js": {
+    "mtime": 1784539345.3917007,
+    "ast_hash": "83025cf4bf67309edc5f25e211a8d393",
+    "semantic_hash": ""
+  },
+  "src/components/GauntletResultPanel.svelte": {
+    "mtime": 1784541110.4293122,
+    "ast_hash": "e41979c7fb03822c21c97f6568a56f92",
+    "semantic_hash": ""
+  },
+  "src/components/GauntletResultPanel.test.js": {
+    "mtime": 1784541253.0325775,
+    "ast_hash": "44f3375d0fba9ccb12761e487a4e1232",
+    "semantic_hash": ""
+  },
+  "src/lib/pvpArchetypes.js": {
+    "mtime": 1784540894.8831646,
+    "ast_hash": "2351283e910967bd6032eb5cd26ce1c4",
+    "semantic_hash": ""
+  },
+  "src/lib/pvpArchetypes.test.js": {
+    "mtime": 1784540965.5470824,
+    "ast_hash": "2133f418bcfa76b1495b86e1ce6fb517",
+    "semantic_hash": ""
+  },
+  "src/lib/pvpGauntlet.js": {
+    "mtime": 1784540927.4631982,
+    "ast_hash": "ce9f2ce043fd9980c9fd81f280f97f66",
+    "semantic_hash": ""
+  },
+  "src/lib/pvpGauntlet.test.js": {
+    "mtime": 1784540995.5597286,
+    "ast_hash": "3336656ebcaabfa33454ce78d9035a4f",
+    "semantic_hash": ""
+  }
+}

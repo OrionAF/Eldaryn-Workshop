@@ -1,0 +1,139 @@
+The layout of the Transcendence tree is a bit weird.  This is the layout for the Sentinel tree.
+If we look at the tree as a spreadsheet, it consists of 25 rows and 27 columns, but not all cells of the sheet contain a node.
+Below I will map out the location of every node for each stat, like this: "Column:Row".  1:1 would be the top-left most node, and 28:25 would be the bottom-right most node.
+
+# Cost
+Nodes 1-4 = 1
+Nodes 5-9 = 2
+Nodes 10-16 = 3
+Nodes 17-26 = 5
+Nodes 27-41 = 8
+Nodes 42-61 = 12
+Nodes 62-86 = 18
+Nodes 87-116 = 26
+Nodes 117-156 = 38
+Nodes 157-206 = 55
+Nodes 207+ = 80
+
+# Special Nodes
+Uncommon (Big) nodes cost x3 the node price at that point
+Ancient Sigils cost flat 30
+Glyph Sockets(not implemented)
+
+# Types
+Common Nodes - Single bonus stat
+Uncommon (Big) Nodes - Two different bonus stats
+Ancient Sigils - No bonus stats, but special effect
+Glyph Sockets(not implemented)
+
+# Categories
+Offense Nodes
+Defense Nodes
+
+# Sentinel Stats
+Offense
+ - Attack% | Common: +0.8% | Uncommon: +1.6%
+ - Attack Speed | Common: +1% | Uncommon: +2%
+ - Crit Damage | Common: +1.4% | Uncommon: +2.8%
+ - Crit Chance | Common: +0.4% | Uncommon: +0.8%
+ - Penetration | Common: +1% | Uncommon: +2%
+ - Lifesteal | Common: +0.5% | Uncommon: +1%
+Defense
+ - Blind Chance | Common: +0.4% | Uncommon: +0.8%
+ - Miss Chance | Common: +0.8% | Uncommon: +1.6%
+ - Paralyze Chance | Common: +0.2% | Uncommon: +0.4%
+ - Health% | Common: +1% | Uncommon: N/A
+ - HP Regen | Common: +0.6% | Uncommon: N/A
+
+# Tree Layout Common Nodes - Sentinel
+Attack%
+5:9, 10:14, 12:20, 14:10, 14:24, 15:8, 16:15, 16:22, 18:16,
+19:11, 20:3, 20:9, 20:13, 20:14, 20:17, 20:19, 21:6, 22:5,
+23:7, 23:8, 23:12, 27:2
+
+Attack Speed
+7:7, 7:11, 8:4, 9:9, 10:18, 14:14, 15:10, 15:24, 17:8, 17:20,
+17:22, 18:15, 19:16, 20:11, 21:14, 21:17, 22:3, 22:9, 22:13,
+23:6, 24:7
+
+Crit Damage
+4:8, 7:15, 9:5, 10:6, 12:16, 15:11, 15:12, 16:9, 16:13, 16:14,
+16:21, 16:23, 17:10, 18:7, 19:8, 19:20, 20:15, 20:18, 23:4,
+23:11, 24:3
+
+Crit Chance
+5:5, 6:6, 8:12, 8:16, 11:7, 11:11, 13:9, 13:13, 13:21, 15:14,
+15:23, 16:10, 18:8, 18:20, 19:15, 19:18, 21:16, 22:4, 22:11,
+23:3, 24:9
+
+Penetration
+2:2, 3:3, 6:10, 8:8, 9:17, 11:15, 11:19, 14:22, 15:16, 16:11,
+17:9, 17:13, 17:14, 17:21, 18:12, 19:6, 19:7, 19:10, 20:5,
+21:8, 22:15
+
+Lifesteal
+6:14, 7:3, 10:10, 12:8, 15:15, 15:22, 17:16, 18:9, 18:11, 18:13,
+18:17, 18:21, 19:14, 19:19, 20:6, 20:10, 21:5, 22:7, 22:8, 22:12,
+25:2
+
+Blind Chance
+5:11, 5:12, 6:4, 7:5, 7:14, 7:17, 8:3, 8:6, 9:10, 9:16, 9:19,
+9:20, 10:7, 10:8, 10:13, 10:21, 11:9, 12:11, 12:15, 12:23, 13:14,
+20:16, 22:10, 23:9, 24:8, 26:2
+
+Miss Chance
+3:2, 5:4, 6:3, 6:5, 7:6, 7:16, 8:10, 8:13, 8:19, 9:7, 9:8,
+10:9, 10:11, 10:15, 12:14, 13:22, 13:24, 15:13, 15:21, 16:16,
+18:10, 18:18, 19:9, 20:8, 20:12, 21:15
+
+Paralyze Chance
+4:7, 4:9, 5:8, 6:11, 6:12, 6:15, 8:5, 8:14, 8:17, 9:6, 10:16,
+10:20, 11:8, 11:10, 11:13, 11:21, 12:9, 13:11, 13:15, 13:23,
+17:7, 17:19, 18:14, 20:4, 21:3
+
+Health%
+1:2, 5:3, 5:6, 6:7, 6:13, 7:8, 8:9, 9:11, 9:15, 9:18, 11:14,
+12:22, 13:10, 13:12, 13:16, 14:13, 14:21, 14:25, 15:9, 16:8,
+16:20, 17:15, 19:17, 21:11, 22:6, 23:5
+
+HP Regen
+4:3, 5:7, 6:8, 6:9, 8:11, 8:15, 8:18, 9:14, 10:12, 10:17,
+11:16, 11:20, 11:22, 12:10, 12:13, 12:21, 13:8, 14:9, 14:15,
+17:11, 18:6, 19:5, 21:7, 22:14, 25:3
+
+
+# Tree Layout Uncommon (Big) Nodes - Sentinel
+Attack%
+14:16, 14:23, 20:7, 21:4, 21:9
+
+Attack Speed
+10:19, 14:11, 14:23, 18:19
+
+Crit Damage
+19:13, 20:7, 21:4
+
+Crit Chance
+18:19, 19:13
+
+Penetration
+21:9
+
+Lifesteal
+14:16
+
+Blind Chance
+7:4, 7:9, 8:7, 9:13, 10:19
+
+Miss Chance
+8:7, 9:13, 14:8, 14:11
+
+Paralyze Chance
+7:4, 7:9, 14:8
+
+
+# Tree Layout Glyph Sockets - Sentinel
+5:10, 5:13, 9:12, 14:12, 19:12, 23:10, 23:13
+
+
+# Tree Layout Ancient Sigils
+1:1, 27:1

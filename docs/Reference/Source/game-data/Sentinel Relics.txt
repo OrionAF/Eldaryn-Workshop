@@ -1,0 +1,97 @@
+Bronze - Max level 10
+Blinding Powder
+Bonus stat: Blind Chance
+Min: +3.0%
+Max: +10.0%
+
+Falcon's Eye
+Bonus stat: Crit %
+Min: +3.0%
+Max: +10.0%
+
+Phantom Veil
+Bonus stat: Miss Chance
+Min: +4.0%
+Max: +12.0%
+
+Serpent Fang
+Bonus stat: Lifesteal
+Min: +3.0%
+Max: +10.0%
+
+Hunter's Mark
+Bonus stat: Attack %
+Min: +6.0%
+Max: +26.0%
+
+Swift Quiver
+Bonus stat: Speed
+Min: +8.0%
+Max: +35.0%
+
+
+
+Silver - Max level 15
+Deadeye Charm
+Bonus stat 1: Crit %
+Min 1: +6.0%
+Max 2: +14.0%
+Bonus stat 2: Crit DMG
+Min 2: +40%
+Max 2: +80%
+
+Nerve Sigil
+Bonus stat 1: Paralyze chance
+Min 1: +1.0%
+Max 2: +3.0%
+Bonus stat 2: Blind chance
+Min 2: +2.0%
+Max 2: +10.0%
+
+Warden's Totem
+Bonus stat 1: Health %
+Min 1: +15.0%
+Max 2: +35.0%
+Bonus stat 2: Miss chance
+Min 2: +5.0%
+Max 2: +13.0%
+
+Viper Glyph
+Bonus stat 1: Attack %
+Min 1: +14.0%
+Max 2: +32.0%
+Bonus stat 2: Penetration
+Min 2: +12.0%
+Max 2: +24.0%
+
+
+
+Gold - Max level 20
+Eclipse Shard
+Bonus stat 1: Crit %
+Min 1: +8.0%
+Max 2: +18.0%
+Bonus stat 2: Crit DMG
+Min 2: +60%
+Max 2: +120%
+
+Shadowbind
+Bonus stat: Paralyze chance
+Min: +2.0%
+Max: +6.0%
+
+Spirit Eagle
+Bonus stat 1: Health %
+Min 1: +15.0%
+Max 2: +50.0%
+Bonus stat 2: PVP Defense
+Min 2: +50
+Max 2: +180
+
+Void Arrow
+Bonus stat 1: Penetration
+Min 1: +12.0%
+Max 1: +50.0%
+Bonus stat 2: PVP Attack
+Min 2: +40
+Max 2: +120

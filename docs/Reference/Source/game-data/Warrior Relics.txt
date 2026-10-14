@@ -1,0 +1,97 @@
+Bronze - Max level 10
+Basalt Guard
+Bonus stat: DMG Reduction
+Min: +3.0%
+Max: +12.0%
+
+Iron Heart
+Bonus stat: Health %
+Min: +6.0%
+Max: +26.0%
+
+Mending Stone
+Bonus stat: HP Regen
+Min: +2.0%
+Max: +8.0%
+
+Stone Ward:
+Bonus stat: Block
+Min: +2.0%
+Max: +10.0%
+
+Swift Emblem
+Bonus stat: Speed
+Min: +8%
+Max: +35%
+
+War Charm
+Bonus stat: Attack %
+Min: +4.0%
+Max: +20.0%
+
+
+
+Silver - Max level 15
+Fortune Token
+Bonus stat 1: Crit %
+Min 1: +6.0%
+Max 2: +14.0%
+Bonus stat 2: Crit DMG
+Min 2: +40%
+Max 2: +80%
+
+Guardian's Signet
+Bonus stat 1: Health %
+Min 1: +12.0%
+Max 2: +30.0%
+Bonus stat 2: DMG Reduction
+Min 2: +5.0%
+Max 2: +12.0%
+
+Lifewell Charm
+Bonus stat 1: HP Regen
+Min 1: +4.0%
+Max 2: +12.0%
+Bonus stat 2: Block
+Min 2: +6.0%
+Max 2: +12.0%
+
+Crimson Charm
+Bonus stat 1: Attack %
+Min 1: +12.0%
+Max 2: +28.0%
+Bonus stat 2: Penetration
+Min 2: +12.0%
+Max 2: +24.0%
+
+
+
+Gold - Max level 20
+Dragon Core
+Bonus stat 1: Penetration
+Min 1: +12.0%
+Max 2: +50.0%
+Bonus stat 2: PVP Attack
+Min 2: +40
+Max 2: +120
+
+Fatebreaker
+Bonus stat 1: Crit %
+Min 1: +8.0%
+Max 2: +18.0%
+Bonus stat 2: Crit DMG
+Min 2: +60%
+Max 2: +120%
+
+Phoenix Feather
+Bonus stat 1: Health %
+Min 1: +15.0%
+Max 2: +50.0%
+Bonus stat 2: PVP Defense
+Min 2: +50
+Max 2: +180
+
+Titan's Oath
+Bonus stat: DMG Reduction
+Min: +8.0%
+Max: +26.0%
