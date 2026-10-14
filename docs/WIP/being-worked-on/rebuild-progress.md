@@ -1,6 +1,6 @@
 # Rebuild progress log
 
-> **Status:** built 2026-10-14 (all slices except optional F5) — not merged to `main` · **Plan:** `rebuild-plan.md` · **Branch:** `claude/sweet-cannon-klhjs3`
+> **Status:** built 2026-10-14, all slices including F5 — merged to `main` (deploy is manual-only; the app runs locally) · **Plan:** `rebuild-plan.md` · **Branch:** `claude/sweet-cannon-klhjs3`
 
 How the build runs: each wave's slices run in parallel, one agent per slice in its own git
 worktree. The orchestrator cherry-picks each slice's commit, runs `npm test` and `npm run build`
@@ -34,6 +34,7 @@ on the merged tip, and pushes only when both are green.
 | 5 | F2a PVE optimiser engine · F2b Optimiser UI · F1 Drop Check | merged | | tiered search (closed-form screen → N=16 → N=64 finalists, common random numbers); Drop Check verdict per equipment set with CIs; three trivial conflicts in `tasks/tasks.test.js` resolved; 146 / 1848 after |
 | 6 | X1 Cleanup + docs · R2 Doc reconciliation (late findings) | merged | | legacy lib, components and quarantined tests deleted; `data-model.md` and `CLAUDE.md` rewritten for v2; 115 / 1413 after |
 | 6 | Browser smoke test + fixes | merged | | 4 classes × 14 screens × desktop/390 px, main flows exercised; zero console errors; 2 major (mobile overflow) and 3 minor defects fixed, plus number-format consistency and the optimiser's DPS-vs-finite-HP tie |
+| 7 | F5 PVP objective in the optimiser | merged | | win rate vs saved opponents (attacker/defender/both), N=64 beam then up to 400 for finalists, CRN per matchup; 120 / 1437 after |
 | — | Wilson interval clamp | merged | `b799a87` | float error put a bound past p at k = 0 / k = n; regression test added |
 
 Test counts on the merged tip: 50 files / 612 tests after wave 1; 62 / 662 after wave 2.
@@ -87,20 +88,18 @@ sigils pick their condition family.
 
 - 118 test files, 1421 tests, `npm run build` and the Pages build (`BASE_PATH=/Eldaryn-Workshop/`)
   green; GitHub CI green on the branch.
-- Everything is on `claude/sweet-cannon-klhjs3`. Nothing is merged to `main` or deployed.
+- Merged to `main` on 2026-10-14 (fast-forward). Nothing is deployed.
 
 ## What is next (needs the user)
 
 - **Check the app against the game.** Enter your in-game stat sheet on a preset (Presets screen).
-  The diff shows, per stat, whether the computed stats explain the sheet. Unexplained gaps are the
-  first thing to look at: per-class base stats and the relic contribution are server-side
-  ([SERVER] in `Game/stats.md`), so the base defaults to the client's `baseStats` until you
-  "absorb" the gap.
+  The diff shows, per stat, whether the computed stats explain the sheet. Per-class base stats and
+  the relic contribution are server-side ([SERVER] in `Game/stats.md`), so the base defaults to the
+  client's `baseStats` until you "absorb" the gap.
 - **A real `/arena/fight` response** would let the Duel screen's replay check confirm that the
   ported resolver matches the server (today that match is an inference).
-- **Questions** in `../needs-user-input/rebuild-questions.md`: publishing the catalogues, the
-  optional PVP objective in the optimiser (F5), and Pages on a private repo.
-- **Merging** the branch to `main` (which deploys) is your call.
+- Answered 2026-10-14 (`../needs-user-input/rebuild-questions.md`): no publishing of the
+  catalogues (deploy made manual-only), F5 built, run locally.
 
 ## Still open (engineering)
 
