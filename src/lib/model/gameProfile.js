@@ -53,7 +53,8 @@ export function importedCharacterName(name, existingNames = []) {
 
 // --- equipment and stones ---
 
-function mapItem(raw) {
+/** A server item (equipment slot, loot-bag `pendingItems` entry) -> raw v2 Item; normaliseItem validates it. */
+export function mapItem(raw) {
   if (!isObj(raw)) return null;
   const item = {
     rarity: str(raw.rarity),
