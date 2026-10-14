@@ -1491,5 +1491,5 @@
    "line": 1084733
   }
  ],
- "_note": "majorGlyphModifiers[].perRarity arrays are indexed by rarity Common..Legendary (index 0..4). Units: *Seconds in s, *Percent in %. Class lists: WARRIOR 12, SENTINEL 13, MYSTIC 17 (9 MYSTIC_MAGE + 8 MYSTIC_DRUID), NECROMANCER 0."
+ "_note": "majorGlyphModifiers[].perRarity arrays are indexed by rarity Common..Legendary (index 0..4). Keys are the client's camelCase effect field names lower-cased. Units: *Seconds in s, *Percent in %. Class lists: WARRIOR 12, SENTINEL 13, MYSTIC 17 (10 MYSTIC_MAGE + 7 MYSTIC_DRUID), NECROMANCER 0."
 }
