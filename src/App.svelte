@@ -189,7 +189,7 @@
     height: 62%;
   }
   .banner-text {
-    flex: 1;
+    flex: 1 1 0;
     min-width: 0;
   }
   .character-name {
@@ -200,13 +200,26 @@
     font-size: 11px;
     color: var(--color-muted);
   }
+  /* A long toast wraps inside its own bounds rather than forcing the banner (and the page) wider;
+     on the phone layout it drops to its own row so the character name keeps the full width. */
   .status-pill {
     font-size: 11px;
     padding: 4px 10px;
     border-radius: var(--radius-pill);
     background: var(--color-gold-tint);
     color: var(--color-gold-light);
-    white-space: nowrap;
+    max-width: 50%;
+    overflow-wrap: anywhere;
+  }
+  @media (max-width: 700px) {
+    .banner {
+      flex-wrap: wrap;
+    }
+    .status-pill {
+      flex: 1 1 100%;
+      max-width: none;
+      border-radius: var(--radius-mini-chip);
+    }
   }
   .onboarding-hint {
     color: var(--color-muted);

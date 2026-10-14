@@ -11,6 +11,7 @@
   import { FORTRESS_GROUPS } from '../../lib/model/fortress.js';
   import { attunementMaxBans, bannableStats } from '../../lib/model/skills.js';
   import { RESIDUAL_KEYS } from '../../lib/model/character.js';
+  import { fortressStatLabel, fortressStatValue } from '../character/fortressView.js';
 
   // eslint-disable-next-line no-unused-vars
   let { setStatus = () => {}, onNavigate = () => {} } = $props();
@@ -118,7 +119,10 @@
           </label>
           <ul>
             {#each remapped(group) as r (r.from)}
-              <li class="num">{r.stat}{r.stat !== r.from ? ` (was ${r.from})` : ''}: {r.value}</li>
+              <li>
+                <span>{fortressStatLabel(r.stat)}{#if r.stat !== r.from}<span class="muted remap">(was {fortressStatLabel(r.from)})</span>{/if}</span>
+                <span class="num">{fortressStatValue(r.stat, r.value)}</span>
+              </li>
             {/each}
           </ul>
         </div>
@@ -139,19 +143,27 @@
 {/if}
 
 <style>
-  .character-screen { padding-top: var(--space-4); display: grid; gap: var(--space-3); }
-  .panel { background: var(--color-panel); border: 1px solid var(--color-border); padding: var(--space-3); }
+  /* Body text matches the other screens (12.5px rows, 12px hints); the browser default is 16px. */
+  .character-screen { padding-top: var(--space-4); display: grid; gap: var(--space-2); font-size: 12.5px; }
+  .character-screen h2 { margin: 0; }
+  .character-screen .subheading { margin: var(--space-3) 0 0; }
+  .panel { background: var(--color-panel); border: 1px solid var(--color-border); border-radius: var(--radius-panel); padding: var(--space-3); }
   .summary { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: end; }
   .summary label, .residual label { display: grid; gap: var(--space-1); }
   .check { display: flex; align-items: center; gap: var(--space-2); }
   .hint, .muted { color: var(--color-muted); }
+  .hint { font-size: 12px; margin: 0; }
   .skills { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
-  .skill { display: grid; grid-template-columns: 1fr auto; gap: var(--space-1) var(--space-3); align-items: center; background: var(--color-inset); border: 1px solid var(--color-border-hairline); padding: var(--space-2) var(--space-3); }
-  .skill-name { font-weight: 600; }
+  .skill { display: grid; grid-template-columns: 1fr auto; gap: var(--space-1) var(--space-3); align-items: center; background: var(--color-inset); border: 1px solid var(--color-border-hairline); border-radius: var(--radius-chip); padding: var(--space-2) var(--space-3); }
+  .skill-name { font-weight: 600; font-size: 13px; }
   .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
   .chip.active { border-color: var(--color-gold); color: var(--color-gold-light); background: var(--color-gold-tint); }
-  .fortress { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-3); }
+  .fortress { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: var(--space-3); }
   .fortress-card.active { border-color: var(--color-gold); }
-  .fortress-card ul { list-style: none; margin: var(--space-2) 0 0; padding: 0; }
-  .residual { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-3); }
+  .fortress-card ul { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: grid; gap: var(--space-1); }
+  .fortress-card li { display: flex; justify-content: space-between; gap: var(--space-2); }
+  .remap { margin-left: var(--space-1); }
+  /* min(...) keeps a column from out-growing a narrow phone, where it would push the inputs off-screen. */
+  .residual { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); gap: var(--space-3); }
+  .residual input { min-width: 0; width: 100%; }
 </style>

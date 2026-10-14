@@ -64,7 +64,7 @@
     <div class="sheet-row" data-key={m.key}>
       <label class="row-label" for={`sheet-${m.key}`}>{m.label}</label>
       <span class="model-value mono" title="Value the model computes for this stat">
-        {show(m.key, computed?.[m.key])}{suffix(m)}
+        {#if show(m.key, computed?.[m.key]) !== ''}{show(m.key, computed?.[m.key])}{suffix(m)}{:else}&mdash;{/if}
       </span>
       <span class="input-wrap">
         <input
@@ -124,7 +124,14 @@
   .input-wrap input { width: 100%; min-width: 0; text-align: right; }
   .input-wrap .unit { width: 10px; color: var(--color-muted); font-size: 11px; }
   input.invalid { border-color: var(--color-downgrade); }
+  /* Phone: label and model value on one line, the input(s) on the next at half the row each, so a
+     value like "5.000.000" and the "from sheet" placeholder fit without clipping. */
   @media (max-width: 700px) {
-    .sheet-row { grid-template-columns: minmax(70px, 1fr) 64px 90px 70px; }
+    .sheet-row {
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-1) var(--space-2);
+      padding: var(--space-2) 4px;
+    }
+    .model-value { font-size: 12px; }
   }
 </style>

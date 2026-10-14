@@ -10,6 +10,7 @@
   import {
     strainRows, maxFloorAtThreshold, highestFreeFloor, runFloorScan, WIN_THRESHOLD,
   } from '../../lib/features/oblivionDungeon.js';
+  import { formatFlat } from '../../lib/format.js';
   import Chip from '../Chip.svelte';
   import FloorTable from '../oblivion/FloorTable.svelte';
   import GearScreen from './GearScreen.svelte';
@@ -61,7 +62,7 @@
   }
   onDestroy(() => cancelScan?.());
 
-  const fmt = (v) => (v == null ? '-' : Math.round(v).toLocaleString('en-US'));
+  const fmt = (v) => (v == null ? '-' : formatFlat(v));
 </script>
 
 {#if character}
@@ -87,7 +88,7 @@
         </label>
         <div>
           <span class="micro-label">Oblivion Power</span>
-          <strong class="num" data-testid="power">{power}</strong>
+          <strong class="num" data-testid="power">{formatFlat(power)}</strong>
         </div>
         <div>
           <span class="micro-label">Attack</span>
@@ -99,7 +100,7 @@
         </div>
       </div>
       <p class="hint">
-        Power cancels floor instability point for point; floors up to {freeFloor} have no net strain at {power} power.
+        Power cancels floor instability point for point; floors up to {freeFloor} have no net strain at {formatFlat(power)} power.
         The rest of the active preset (talents, pet, sigils, relics) carries into this realm.
       </p>
 
@@ -117,13 +118,28 @@
       </div>
       <FloorTable {rows} {results} threshold={WIN_THRESHOLD} />
 
-      <h3 class="subheading">Oblivion gear</h3>
-      <GearScreen realm="oblivion" />
+      <!-- GearScreen draws its own "Oblivion Gear" heading. -->
+      <div class="gear"><GearScreen realm="oblivion" /></div>
     {/if}
   </section>
 {/if}
 
 <style>
+  /* Body text matches the other screens (12.5px rows, 12px hints); the browser default is 16px. */
+  .oblivion-screen {
+    font-size: 12.5px;
+  }
+  .oblivion-screen h2 {
+    margin-bottom: var(--space-3);
+  }
+  .oblivion-screen .subheading {
+    margin: var(--space-4) 0 var(--space-2);
+  }
+  .hint {
+    color: var(--color-muted);
+    font-size: 12px;
+    margin: var(--space-3) 0 0;
+  }
   .summary,
   .actions,
   .realm {
@@ -139,5 +155,11 @@
   }
   .summary > .realm {
     flex-direction: row;
+  }
+  .gear {
+    margin-top: var(--space-6);
+  }
+  .muted {
+    color: var(--color-muted);
   }
 </style>

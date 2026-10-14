@@ -187,6 +187,8 @@
   --space-8: 34px;
 
   --content-max-width: 1200px;
+  /* Mobile tab bar height without the safe-area inset: 44px tap target + 4px padding each side + 1px border. */
+  --bottom-bar-h: 53px;
 
   --radius-chip: 7px;
   --radius-mini-chip: 12px;
