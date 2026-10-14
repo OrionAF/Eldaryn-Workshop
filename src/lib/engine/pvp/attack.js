@@ -81,8 +81,9 @@ function strike(def, dmg) {
  *
  * Event labels: the swing events (hit, crit, lost swing) name the swinger's side; avoid, minion and
  * proc events (blinded, paralyzed, silenced, ...) name the target's side. `attackerHpAfter` /
- * `defenderHpAfter` are the swinger's and target's HP (clamped at 0), verbatim from the client even
- * when the defender is the swinger. `log=false` skips building events (state changes are identical).
+ * `defenderHpAfter` here are the swinger's and target's HP (clamped at 0), as processAttack builds
+ * them; the resolver then re-stamps every swing row with the arena attacker's and defender's HP, as
+ * the client does (see Game/combat-pvp.md §11). `log=false` skips building events (state changes are identical).
  *
  * @param {Object} atk the swinger
  * @param {Object} def the target
