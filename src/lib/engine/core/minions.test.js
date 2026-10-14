@@ -3,8 +3,9 @@ import {
   createMinion, minionSwing, minionAttackSpeed, minionSwingIntervalMs, minionCurrentAttack,
   advanceMinionRespawn, elapseMinionRespawn, resummonIfDead, damageMinion, killMinion, summonMinion,
   soulLinkHeal, healMinionLifesteal, endMinionEmpower, carryMinionIntoNewFight, minionMsUntilSwing,
-  mitigateMinionHit, openingSummonWindowMs,
+  mitigateMinionHit, openingSummonWindowMs, openingSwingTimerStart, minionCurrentLifesteal, currentSoulLink,
 } from './minions.js';
+import { applyCombatCeiling, capConfig, softCapGainFromSheet } from './caps.js';
 import { scripted } from '../rng.js';
 
 const d = { species: 'skeleton', name: 'Skel', icon: 'i', minion: 'SKELETON', hpPercent: 60, attackPercent: 20,
@@ -62,8 +63,42 @@ describe('minionSwing', () => {
     const m = mk(); m.attackSpeed = 1; summonMinion(m);
     m.frenzy = { attackPercent: 50, attackSpeedPercent: 100, lifesteal: 0 };
     expect(minionCurrentAttack(m)).toBe(150);
-    expect(minionSwingIntervalMs(m)).toBeLessThanOrEqual(501);
+    expect(minionSwingIntervalMs(m)).toBe(500);
     expect(minionMsUntilSwing(m)).toBe(minionSwingIntervalMs(m));
+  });
+});
+
+describe('ceilings (MINION_ATTACK_SPEED 4.5, MINION_LIFESTEAL 80, SOUL_LINK 80)', () => {
+  it('a frenzied swing interval is ceilinged at 4.5 attacks/s; no frenzy skips the ceiling', () => {
+    expect(minionSwingIntervalMs({ attackSpeed: 3.5, frenzy: { attackSpeedPercent: 50 } })).toBe(222);
+    expect(minionSwingIntervalMs({ attackSpeed: 3.5 })).toBe(286);
+  });
+  it('frenzy lifesteal and the soul-link bonus are ceilinged at 80; with no bonus the base passes through', () => {
+    expect(minionCurrentLifesteal({ lifesteal: 70, frenzy: { lifesteal: 20 } })).toBe(80);
+    expect(minionCurrentLifesteal({ lifesteal: 70, frenzy: { lifesteal: 0 } })).toBe(70);
+    expect(currentSoulLink({ soulLink: 75, soulLinkBonus: 20 })).toBe(80);
+    expect(currentSoulLink({ soulLink: 75 })).toBe(75);
+  });
+  it('minion attack speed adds the soft-capped gain, then the 4.5 ceiling', () => {
+    const cfg = capConfig('MINION_ATTACK_SPEED');
+    expect(minionAttackSpeed(1.8, 0.5)).toBe(applyCombatCeiling(1.8 + softCapGainFromSheet(1.8, 0.5, cfg), 4.5));
+    expect(minionAttackSpeed(1.8, 0.5)).toBeGreaterThan(1.8);
+    // the gain is soft-capped toward 4, so only a sheet already above 4.5 meets the ceiling
+    expect(minionAttackSpeed(5, 0.5)).toBe(4.5);
+    expect(minionAttackSpeed(5, 0)).toBe(5);
+  });
+});
+
+describe('openingSwingTimerStart (L1094757; caller L1087885 passes round(1000 / attackSpeed))', () => {
+  it('a positive summon window caps the timer at swingInterval - 400', () => {
+    expect(openingSwingTimerStart(300, 1500, 0)).toBe(-100);
+    expect(openingSwingTimerStart(500, 1500, 0)).toBe(0);
+    expect(openingSwingTimerStart(1000, 1500, 900)).toBe(600);
+  });
+  it('no window returns the fallback', () => {
+    expect(openingSwingTimerStart(500, 0, 0)).toBe(0);
+    expect(openingSwingTimerStart(500, 0, 250)).toBe(250);
+    expect(openingSwingTimerStart(500, 0)).toBe(0);
   });
 });
 
@@ -80,9 +115,18 @@ describe('respawn', () => {
     const m = mk(); summonMinion(m); damageMinion(m, 9999);
     elapseMinionRespawn(m, 99999);
     expect(m).toMatchObject({ alive: false, respawnMs: 0 });
-    expect(resummonIfDead(m)).toBe(false);
-    m.respawnMs = 5;
-    expect(resummonIfDead(m)).toBe(true);
+  });
+  it('resummonIfDead summons only a dead minion with no respawn pending (L1094677-1094700)', () => {
+    const fresh = mk(); // createMinion: dead, respawnMs 0
+    expect(resummonIfDead(fresh)).toBe(true);
+    expect(fresh).toMatchObject({ alive: true, hp: 600, timer: 0, respawnMs: 0 });
+    const pending = mk(); pending.respawnMs = 5;
+    expect(resummonIfDead(pending)).toBe(false);
+    expect(pending.alive).toBe(false);
+    const alive = mk(); summonMinion(alive); alive.hp = 10;
+    expect(resummonIfDead(alive)).toBe(false);
+    expect(alive.hp).toBe(10);
+    expect(resummonIfDead(null)).toBe(false);
   });
   it('killMinion clears the timer', () => {
     const m = mk(); summonMinion(m);

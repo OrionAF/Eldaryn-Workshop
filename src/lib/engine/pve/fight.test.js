@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   simulateFight, simulatePve, preparePveFighter, sigilStateOf, mobEntityOf, trainingDummy,
-  oblivionCombatState, worldBossHooks, FIGHT_CAP_MS, PVE_SHIELD_MITIGATION,
+  oblivionCombatState, worldBossHooks, FIGHT_CAP_MS, PVE_SHIELD_MITIGATION, PVE_PLAYER_KEYS, PVE_MODES, pveModeOf,
 } from './fight.js';
 import { createPlayerEntity, createMobEntity } from '../core/entity.js';
 import { initSpellRuntimes } from '../core/spells.js';
@@ -24,6 +24,14 @@ const mob = (o = {}) => createMobEntity({ hp: 1e9, attack: 0, attackSpeed: 0, ..
 const never = () => 0.99;
 const always = () => 0;
 const types = (r) => r.ticks.map((e) => e.type);
+const errorName = (fn) => {
+  try {
+    fn();
+  } catch (e) {
+    return e.name;
+  }
+  return null;
+};
 
 describe('simulateFight loop skeleton (L1087661-1089480)', () => {
   it('returns at once when either side starts dead (attackerWon false)', () => {
@@ -413,11 +421,12 @@ describe('minion (finishMinionTick L1087924-1088000, respawn L1088096-1088119)',
 
   it('a dead minion respawns on the timer with a minion_summoned event', () => {
     const m = makeMinion({ alive: false, hp: 0, respawnMs: 250 });
-    // resummonIfDead at the opening: respawn pending -> summoned before tick 1, shifting ts by the cast time
+    // a pending respawn is not resummoned at the opening: advanceMinionRespawn counts it down, no cast window
     const r = simulateFight(hero(), mob(), { minion: m, maxMs: 1000 }, never);
-    expect(r.ticks[0]).toMatchObject({ type: 'minion_summoned', timestamp: 0, summonReadyMs: 800 });
+    expect(r.ticks[0]).toMatchObject({ type: 'minion_summoned', timestamp: 300 });
+    expect(r.ticks[0].summonReadyMs).toBeUndefined();
     expect(m.alive).toBe(true);
-    expect(r.endTime).toBeGreaterThanOrEqual(900);
+    expect(r.endTime).toBe(1000);
   });
 
   it('a minion with a pending respawn timer is summoned by advanceMinionRespawn mid-fight', () => {
@@ -565,11 +574,15 @@ describe('preparePveFighter / sigilStateOf', () => {
     expect(st.druidUtilitySlotSpecies).toBe('URSINE_FORM');
   });
 
-  it('fresh() gives a player with shield mitigation 0.5 and independent state per call', () => {
+  it('fresh() reads only the plain `inputs` and gives independent state per call', () => {
     const prep = preparePveFighter(fighter({ sigils: [{ species: 'BLADE_OF_JUDGMENT', level: 1 }] }));
+    expect(JSON.parse(JSON.stringify(prep.inputs))).toEqual(prep.inputs);
+    expect(Object.keys(prep.inputs.player).sort()).toEqual(['disruptionEffect', ...PVE_PLAYER_KEYS].sort());
+    expect(prep.inputs.minionStats).toEqual({}); // no summon equipped: the minion keys are not inputs
     const a = prep.fresh();
     const b = prep.fresh();
-    expect(a.player.shieldMitigation).toBe(0.5);
+    // the shield mitigation belongs to the mode; simulatePve stamps it (combat-pve.md §13)
+    expect(a.player.shieldMitigation).toBeUndefined();
     expect(a.player.shieldRegenAlwaysRefills).toBe(false);
     expect(a.spells).toHaveLength(1);
     expect(a.spells).not.toBe(b.spells);
@@ -588,15 +601,19 @@ describe('preparePveFighter / sigilStateOf', () => {
     expect(f.player.shieldRegenAlwaysRefills).toBe(true); // Abyssal Ward refills from regen
   });
 
-  it('a summon sigil gives the Necromancer a live minion scaled from the owner', () => {
+  it('a summon sigil gives the Necromancer a minion scaled from the owner, summoned by the first opening', () => {
     const prep = preparePveFighter(fighter({
       class: 'NECROMANCER', spec: 'NECROMANCER_SUMMONER', utility: { species: 'BONE_SERVANT', level: 1 },
       stats: stats({ totalMinionAttack: 0, totalMinionHealth: 0 }),
     }));
+    expect(prep.inputs.minionStats).toMatchObject({ totalMinionAttack: 0, totalMinionHealth: 0, totalSoulLink: 0 });
     const f = prep.fresh();
-    expect(f.minion.alive).toBe(true);
+    expect(f.minion).toMatchObject({ alive: false, hp: 0, respawnMs: 0, summonCastMs: 1500 });
     expect(f.minion.maxHp).toBeGreaterThan(0);
-    expect(f.minion.hp).toBe(f.minion.maxHp);
+  });
+
+  it('a fighter without stats is an input error', () => {
+    expect(errorName(() => preparePveFighter({ class: 'WARRIOR', sigils: [] }))).toBe('EngineInputError');
   });
 
   it('conduits on the sheet switch the Chrono Flux bar on', () => {
@@ -662,30 +679,18 @@ describe('simulatePve', () => {
     expect(r.mobsDefeated).toBe(3);
   });
 
-  it('applies the Oblivion output cut to the player Attack and the strain to the fight', () => {
+  it('applies the Oblivion strain to the fight: power cancels it point for point', () => {
     const f = fighter({ stats: stats({ totalHp: 1e9, totalAttack: 1e6 }) });
     const floor = oblivionFloorMob(10);
     expect(oblivionEffectiveInstability(floor.instability, 0)).toBe(floor.instability);
-    const free = simulatePve({ fighter: f, enemy: { ...floor, hp: 1e6, blockChance: 0 }, oblivion: { power: floor.instability }, rng: rng(), log: true });
-    const hard = simulatePve({ fighter: f, enemy: { ...floor, hp: 1e6, blockChance: 0 }, oblivion: { power: 0 }, rng: rng(), log: true });
+    const free = simulatePve({ fighter: f, enemy: { ...floor, hp: 1e7, blockChance: 0 }, oblivion: { power: floor.instability }, rng: rng(), log: true });
+    const hard = simulatePve({ fighter: f, enemy: { ...floor, hp: 1e7, blockChance: 0 }, oblivion: { power: 0 }, rng: rng(), log: true });
     expect(oblivionEffectiveInstability(floor.instability, floor.instability)).toBe(0);
-    // no strain: Attack untouched (1e6 per swing) and no pulses
+    expect(free.mode).toBe('oblivion');
     expect(free.log.some((e) => e.type === 'attacker_instability')).toBe(false);
-    expect(free.log.find((e) => e.type === 'attacker_hit').damage).toBe(1e6);
-    // full strain x: output x (1 - 0.97 * x / (x + 6)) -> the same hit is far smaller
-    const x = floor.instability;
-    const cut = hard.log.find((e) => e.type === 'attacker_hit').damage;
-    expect(cut).toBe(Math.floor(1e6 * (1 - (97 * x) / (x + 6) / 100)));
     expect(hard.log.some((e) => e.type === 'attacker_instability')).toBe(true);
-  });
-
-  it('applyOutputCut:false leaves the Attack alone', () => {
-    const f = fighter({ stats: stats({ totalHp: 1e9, totalAttack: 1e6 }) });
-    const r = simulatePve({
-      fighter: f, enemy: { ...oblivionFloorMob(10), hp: 1e6, blockChance: 0 }, oblivion: { power: 0 },
-      applyOutputCut: false, rng: rng(), log: true,
-    });
-    expect(r.log.find((e) => e.type === 'attacker_hit').damage).toBe(1e6);
+    // the output cut is off by default (see 'Oblivion output cut' below)
+    expect(hard.log.find((e) => e.type === 'attacker_hit').damage).toBe(1e6);
   });
 
   it('an Oblivion state object is used as given', () => {
@@ -740,7 +745,7 @@ describe('World Boss through simulatePve', () => {
 
   it('Enraged: 28 % of a blocked hit is dealt back to the boss', () => {
     const r = simulatePve({
-      fighter: f({ totalHp: 1e9, totalBlockChance: 85, totalAttack: 0 }), enemy: worldBossMob('ENRAGED'),
+      fighter: f({ totalHp: 1e9, totalBlockChance: 85, totalAttack: 1 }), enemy: worldBossMob('ENRAGED'),
       maxMs: 10000, rng: mulberry32(5), log: true,
     });
     const reflected = r.log.filter((e) => e.type === 'thorns_reflect');
@@ -787,7 +792,7 @@ describe('convergence to the closed form (combat-pve.md §7, plan E6c acceptance
   });
 
   it('incoming damage matches Attack * swings * (1 - DR) when nothing is avoided', () => {
-    const fighter = { stats: stats({ totalHp: 1e9, totalDamageReduction: 25, totalAttack: 0 }), class: 'WARRIOR', spec: null, sigils: [] };
+    const fighter = { stats: stats({ totalHp: 1e9, totalDamageReduction: 25, totalAttack: 1 }), class: 'WARRIOR', spec: null, sigils: [] };
     const enemy = { hp: 1e12, attack: 400, attackSpeed: 1.6 };
     // interval round(1000 / 1.6) = 625 -> 1.6 swings / s; hit = round(400 * 0.75) = 300
     const r = simulatePve({ fighter, enemy, maxMs: 60000, rng: mulberry32(1) });
@@ -838,5 +843,262 @@ describe('real sigils through simulatePve', () => {
     const fighter = { ...base, sigils: [{ species: 'BULWARK_OF_THORNS', level: 1 }] };
     const r = simulatePve({ fighter, enemy: { hp: 1e12, attack: 1000, attackSpeed: 1 }, maxMs: 3000, rng: rng(), log: true });
     expect(r.log.some((e) => e.bulwarkStacks !== undefined)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// PVE modes and minion sequencing (combat-pve.md §2, §12-§14)
+
+describe('PVE modes (combat-pve.md §2, §13, §14)', () => {
+  const fighter = (o = {}) => ({ stats: stats(), class: 'WARRIOR', spec: 'WARRIOR_TANK', sigils: [], ...o });
+  const rng = () => mulberry32(hashSeed('modes', 1));
+  const target = (hp) => ({ hp, attack: 0, attackSpeed: 0 });
+
+  it('World Boss: the affinity record\'s shield mitigation 0 (L1153433-1153452): a shield point absorbs 1 damage', () => {
+    const mage = {
+      stats: stats({ totalHp: 1e6, totalAttack: 1 }), class: 'MYSTIC', spec: 'MYSTIC_MAGE', sigils: [],
+      utility: { species: 'ARCANE_BARRIER', level: 1 },
+    };
+    const shieldMax = preparePveFighter(mage).fresh().player.shieldMax;
+    expect(shieldMax).toBeGreaterThan(0);
+    const r = simulatePve({ fighter: mage, enemy: worldBossMob('ENRAGED'), maxMs: 1500, rng: rng(), log: true });
+    const hit = r.log.find((e) => e.type === 'defender_hit');
+    // 18 % of 1 000 000 = 180 000, shield-effective 1:1
+    expect(hit.damage).toBe(180000);
+    expect(hit.attackerShieldHp).toBe(Math.max(0, shieldMax - 180000));
+  });
+
+  it('dungeon: 10 ms tick (L1062719) and the first mob starts 500 ms in (L1671071-1671084)', () => {
+    // interval round(1000 / 1.3) = 769: at 10 ms the timer passes it after 77 ticks (770)
+    const r = simulatePve({
+      fighter: fighter({ stats: stats({ totalAttackSpeed: 1.3 }) }), enemy: [target(3000)], mode: 'dungeon', rng: rng(), log: true,
+    });
+    expect(r.log.filter((e) => e.type === 'attacker_hit').map((e) => e.timestamp)).toEqual([1270, 2040, 2810]);
+    expect(r.log.every((e) => e.timestamp % 10 === 0)).toBe(true);
+    expect(r.timeMs).toBe(2810);
+    expect(r.won).toBe(true);
+  });
+
+  it('raid: 10 ms tick (RAID_CONSTANTS L1064866)', () => {
+    const r = simulatePve({
+      fighter: fighter({ stats: stats({ totalAttackSpeed: 1.3 }) }), enemy: [target(1000)], mode: 'raid', rng: rng(), log: true,
+    });
+    expect(r.log.find((e) => e.type === 'attacker_hit').timestamp).toBe(1270);
+  });
+
+  it('dungeon: each fight has its own 20-minute cap, so 3 mobs of 8 minutes are won', () => {
+    // 480 swings of 1000 at one per second: 480 s per mob, 1 441.5 s with the 500 ms gaps
+    const mobs = [target(480000), target(480000), target(480000)];
+    const r = simulatePve({ fighter: fighter(), enemy: mobs, mode: 'dungeon', rng: rng() });
+    expect(r).toMatchObject({ won: true, mobsDefeated: 3, timedOut: false, timeMs: 3 * 500 + 3 * 480000 });
+  });
+
+  it('campaign: per-mob cap (the live loop has none, so it is a safety stop reported as timedOut)', () => {
+    const mobs = [target(480000), target(480000), target(480000)];
+    const won = simulatePve({ fighter: fighter(), enemy: mobs, mode: 'campaign', rng: rng() });
+    expect(won).toMatchObject({ won: true, mobsDefeated: 3, timeMs: 3 * 480000 });
+    const stuck = simulatePve({ fighter: fighter({ stats: stats({ totalAttack: 1 }) }), enemy: [target(1e9)], mode: 'campaign', rng: rng() });
+    expect(stuck).toMatchObject({ won: false, timedOut: true, timeMs: FIGHT_CAP_MS, mobsDefeated: 0 });
+    expect(stuck.hpLeft).toBe(10000);
+  });
+
+  it('an explicit maxMs keeps one shared window over the sequence', () => {
+    const r = simulatePve({ fighter: fighter(), enemy: [target(3000), target(3000)], maxMs: 4000, rng: rng() });
+    expect(r).toMatchObject({ won: false, mobsDefeated: 1, timedOut: true, timeMs: 4000 });
+  });
+
+  it('the mode table: client values, and the labelled assumptions where the client has none', () => {
+    const pick = (m) => [m.dtMs, m.shieldMitigation, m.interMobGapMs, m.perFightCapMs, m.liveLoop];
+    expect(pick(PVE_MODES.campaign)).toEqual([100, 0.5, 0, FIGHT_CAP_MS, true]);
+    expect(pick(PVE_MODES.dungeon)).toEqual([10, 0.5, 500, FIGHT_CAP_MS, false]);
+    expect(pick(PVE_MODES.raid)).toEqual([10, 0.5, 500, FIGHT_CAP_MS, false]);
+    expect(pick(PVE_MODES.oblivion)).toEqual([10, 0.5, 500, FIGHT_CAP_MS, false]);
+    expect(pick(PVE_MODES.worldBoss)).toEqual([100, 0, 0, FIGHT_CAP_MS, false]);
+    expect(PVE_MODES.raid.assumptions.map((a) => a.key)).toContain('raid-shield');
+    expect(PVE_MODES.oblivion.assumptions.map((a) => a.key)).toEqual(['server-fight', 'oblivion-constants', 'oblivion-output-cut']);
+  });
+
+  it('an unstamped spec says its own mode: an affinity is a World Boss, an instability an Oblivion floor', () => {
+    expect(pveModeOf({}, worldBossMob('NONE'))).toBe('worldBoss');
+    expect(pveModeOf({}, oblivionFloorMob(5))).toBe('oblivion');
+    expect(pveModeOf({}, { hp: 1, mode: 'raid' })).toBe('raid');
+    expect(pveModeOf({ mode: 'dungeon' }, { hp: 1, mode: 'raid' })).toBe('dungeon');
+    expect(pveModeOf({}, { hp: 1 })).toBe('custom');
+  });
+
+  it('a mode the engine does not know is an input error', () => {
+    expect(errorName(() => simulatePve({ fighter: fighter(), enemy: target(10), mode: 'arena', rng: rng() }))).toBe('EngineInputError');
+  });
+});
+
+describe('minion sequencing (L1094190-1095536, simulateDungeonStep L1671071-1671135)', () => {
+  const summonDef = (o = {}) => ({
+    species: 'BONE', name: 'Bone', icon: 'i', minion: 'SKELETON', hpPercent: 10, attackPercent: 1,
+    respawnCooldownMs: 3000, summonCastMs: 0, ...o,
+  });
+  const owner = { maxHp: 10000, attack: 1000, attackSpeed: 1, critDamage: 1.5 };
+  // a prepared fighter whose fresh() hands out the given minion (simulatePve accepts {fresh})
+  const preparedWith = (minion) => ({
+    fighter: null,
+    fresh: () => ({ player: createPlayerEntity(stats()), spells: null, minion, stacks: null, chrono: null, thornsPercent: 0 }),
+  });
+  const target = (hp) => ({ hp, attack: 0, attackSpeed: 0 });
+
+  it('a dead minion with nothing pending is summoned at the opening, after its cast window', () => {
+    const m = createMinion(summonDef({ summonCastMs: 1500 }), owner, {});
+    expect(m.alive).toBe(false);
+    const e = mob({ attack: 10, attackSpeed: 4 }); // interval 250
+    const r = simulateFight(hero(), e, { minion: m, maxMs: 3000, log: true }, never);
+    expect(r.ticks[0]).toMatchObject({ type: 'minion_summoned', timestamp: 0, summonReadyMs: 1500 });
+    expect(m.alive).toBe(true);
+    // timers: player min(0, 1000 - 400) = 0, enemy min(0, 250 - 400) = -150, minion min(0, 1000 - 400) = 0
+    expect(r.ticks.find((ev) => ev.type === 'minion_damaged').timestamp).toBe(1500 + 400);
+    expect(r.ticks.find((ev) => ev.type === 'attacker_hit').timestamp).toBe(2500);
+  });
+
+  it('a Necromancer\'s first fight starts with the summon cast (fresh() no longer summons)', () => {
+    const necro = {
+      stats: stats({ totalHp: 1e6, totalAttack: 1e4 }), class: 'NECROMANCER', spec: 'NECROMANCER_SUMMONER', sigils: [],
+      utility: { species: 'BONE_SERVANT', level: 1 },
+    };
+    const r = simulatePve({ fighter: necro, enemy: trainingDummy(), maxMs: 3000, rng: mulberry32(1), log: true });
+    expect(r.log[0]).toMatchObject({ type: 'minion_summoned', timestamp: 0, summonReadyMs: 1500 });
+    expect(r.log.find((e) => e.type === 'attacker_hit').timestamp).toBe(2500);
+  });
+
+  it('campaign: a surviving minion keeps its hp, frenzy and swing timer into the next mob', () => {
+    const m = createMinion(summonDef(), { ...owner, attackSpeed: 0.5 }, {}); // interval 2000
+    summonMinion(m);
+    m.hp = 300;
+    m.frenzy = { attackPercent: 10, attackSpeedPercent: 0, lifesteal: 0 };
+    m.frenzySpell = 'f';
+    const r = simulatePve({ fighter: preparedWith(m), enemy: [target(1000), target(1000)], mode: 'campaign', rng: mulberry32(1) });
+    expect(r.won).toBe(true);
+    // 9 ticks of each 10-tick fight reach the minion (the kill tick returns before its swing)
+    expect(m.timer).toBe(1800);
+    expect(m.hp).toBe(300);
+    expect(m.frenzy).toEqual({ attackPercent: 10, attackSpeedPercent: 0, lifesteal: 0 });
+  });
+
+  it('dungeon: mob k starts at prevEnd + 500 and the respawn ages 500 ms per gap', () => {
+    const m = createMinion(summonDef(), owner, {});
+    m.respawnMs = 2000; // dead with a respawn pending
+    const r = simulatePve({ fighter: preparedWith(m), enemy: [target(1000), target(1000)], mode: 'dungeon', rng: mulberry32(1), log: true });
+    // mob 1: 500 -> 1500 (respawn 2000 - 500 - 1000 = 500); gap: 500 -> 0; mob 2's opening resummons at 2000
+    expect(r.log.filter((e) => e.type === 'defender_dead').map((e) => e.timestamp)).toEqual([1500, 3000]);
+    expect(r.log.filter((e) => e.type === 'minion_summoned').map((e) => e.timestamp)).toEqual([2000]);
+    expect(r.timeMs).toBe(3000);
+  });
+});
+
+describe('live-loop transform (chapter, L1074747-1074773, L1074900-1074909)', () => {
+  const phoenix = {
+    species: 'TESTPHOENIX', name: 'Phoenix', icon: null,
+    spell: { spellType: 'TRANSFORM', durationMs: 60000, effects: [{ stat: 'HP_PERCENT', value: 50 }] },
+  };
+  const both = { attackerTimer: 900, defenderTimer: 900, regenTimer: 0 };
+
+  it('the bar filling on a lethal tick does not revive the player on the live loop', () => {
+    const run = (liveLoop) => simulateFight(hero({ totalHp: 100 }), mob({ attack: 500, attackSpeed: 1 }), {
+      chrono: { flux: 6999, flameConduit: 1, earthenConduit: 0, darkConduit: 0 },
+      spells: initSpellRuntimes([phoenix]), opening: both, liveLoop, log: true,
+    }, never);
+    const live = run(true);
+    expect(live.attackerWon).toBe(false);
+    expect(live.endTime).toBe(100);
+    expect(types(live)).toEqual(['attacker_hit', 'attacker_dead']);
+    // the shared engine fires the transform at hp 0 in step 8 and its heal revives the player
+    const shared = run(false);
+    expect(types(shared).slice(0, 2)).toEqual(['spell_cast', 'spell_buff_start']);
+    expect(shared.endTime).toBeGreaterThan(100);
+  });
+
+  it('the transform fires at the top of the next tick, before the spell pass', () => {
+    const chrono = { flux: 6999, flameConduit: 1, earthenConduit: 0, darkConduit: 0 };
+    const spells = initSpellRuntimes([phoenix]);
+    const r = simulateFight(hero(), mob(), {
+      chrono, spells, maxMs: 200, liveLoop: true, log: true,
+      opening: { attackerTimer: 900, defenderTimer: 0, regenTimer: 0 },
+    }, never);
+    expect(r.ticks.map((e) => [e.type, e.timestamp])).toEqual([
+      ['attacker_hit', 100], ['spell_cast', 200], ['spell_buff_start', 200],
+    ]);
+    expect(chrono.flux).toBe(0);
+    expect(spells[0].isEffectActive).toBe(true);
+  });
+});
+
+describe('Oblivion output cut (pve-content.md §11, plan Q2)', () => {
+  const fighter = () => ({ stats: stats({ totalHp: 1e9, totalAttack: 1e6 }), class: 'WARRIOR', spec: 'WARRIOR_TANK', sigils: [] });
+  const rng = () => mulberry32(hashSeed('cut', 1));
+  const floor = () => ({ ...oblivionFloorMob(10), hp: 1e7, blockChance: 0 });
+
+  it('is off by default: the client fight never reads playerDamageMult', () => {
+    const r = simulatePve({ fighter: fighter(), enemy: floor(), oblivion: { power: 0 }, rng: rng(), log: true });
+    expect(r.log.find((e) => e.type === 'attacker_hit').damage).toBe(1e6);
+  });
+
+  it('when on, it scales the landed damage, not the Attack', () => {
+    const r = simulatePve({ fighter: fighter(), enemy: floor(), oblivion: { power: 0 }, applyOutputCut: true, rng: rng(), log: true });
+    const inst = floor().instability;
+    const mult = oblivionCombatState(oblivionEffectiveInstability(inst, 0), inst).playerDamageMult;
+    expect(r.log.find((e) => e.type === 'attacker_hit').damage).toBe(Math.round(1e6 * mult));
+  });
+
+  it('when on, thorns are cut too', () => {
+    const iron = {
+      species: 'IRON_BASTION', name: 'Iron', icon: null,
+      spell: { spellType: 'BUFF', effects: [], durationMs: 5000, cooldownMs: 15000 },
+    };
+    const r = simulateFight(hero(), mob({ hp: 1e6, attack: 100, attackSpeed: 1 }), {
+      spells: initSpellRuntimes([iron]), thornsPercent: 50, maxMs: 100, outputMult: 0.5,
+      opening: { attackerTimer: 0, defenderTimer: 900, regenTimer: 0 },
+    }, never);
+    expect(r.ticks.find((e) => e.type === 'thorns_reflect').damage).toBe(25);
+  });
+});
+
+describe('Oblivion heal and shield wiring (L1088538-1088556)', () => {
+  const heal = {
+    species: 'TESTHEAL', name: 'Heal', icon: null,
+    spell: { spellType: 'HEAL', healPercentPerTick: 10, durationMs: 4000, tickIntervalMs: 1000, cooldownMs: 12000 },
+  };
+  const state = (o) => ({
+    pulseMs: 500, trueDamagePercentPerPulse: 0, rampPerSecond: 0, rampMaxMult: 1, healingMult: 0.5, regenMult: 1,
+    healCapPctPerSec: 0, blocksShieldOverflow: false, ...o,
+  });
+  const run = (blocksShieldOverflow) => {
+    const p = hero({ totalHp: 1000 });
+    p.hp = 990;
+    p.shieldMax = 500;
+    p.shieldHp = 0;
+    const spells = initSpellRuntimes([heal]).map((rt) => ({ ...rt, cooldownRemaining: 0 }));
+    return simulateFight(p, mob(), { spells, oblivion: state({ blocksShieldOverflow }), maxMs: 1200 }, never);
+  };
+
+  it('healingMult halves the heal (floored); the overflow refills the shield', () => {
+    // heal 100 -> floor(100 * 0.5) = 50; 10 reaches HP, 40 overflows
+    const r = run(false);
+    expect(r.hp).toBe(1000);
+    expect(r.shieldHp).toBe(40);
+  });
+  it('blocksShieldOverflow: only an explicit shield refill reaches the shield', () => {
+    const r = run(true);
+    expect(r.hp).toBe(1000);
+    expect(r.shieldHp).toBe(0);
+  });
+});
+
+describe('engine input validation (plan I9)', () => {
+  const rng = () => mulberry32(1);
+  const f = (s) => ({ stats: s, class: 'WARRIOR', spec: null, sigils: [] });
+  it('a fighter with missing stats is an EngineInputError, not NaN', () => {
+    expect(errorName(() => simulatePve({ fighter: f({}), enemy: { hp: 1000, attack: 0, attackSpeed: 0 }, rng: rng() }))).toBe('EngineInputError');
+  });
+  it('an empty enemy list is an EngineInputError', () => {
+    expect(errorName(() => simulatePve({ fighter: f(stats()), enemy: [], rng: rng() }))).toBe('EngineInputError');
+  });
+  it('a mob without HP is an EngineInputError', () => {
+    expect(errorName(() => simulatePve({ fighter: f(stats()), enemy: { attack: 1, attackSpeed: 1 }, rng: rng() }))).toBe('EngineInputError');
   });
 });
