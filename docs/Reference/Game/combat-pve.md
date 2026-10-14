@@ -49,7 +49,10 @@ player's build:
 
 - The bundle also contains a **complete shared engine** (`simulateFight`,
   `simulateDungeonStep`, `simulateBossFight`, `simulateCrusadeFight`) whose
-  rules are identical in structure to the live progress loop. **No call site
+  rules are identical in structure to the live progress loop, with three
+  exceptions: the live loop starts the mob's swing timer at half its interval,
+  takes the spell resist from `mob.spellResist` alone, and fires a Chrono Flux
+  transform at the top of the next tick (§10.6). **No call site
   for any of these was found** in the client (`grep` for the names returns only
   definitions and export lines). **[CODE]** `L1087661`, `L1670939`, `L1862921`,
   `L1868835`. They document the server's fight rules but whether the server runs
@@ -70,6 +73,10 @@ player's build:
 | Progress (client) | 100 ms | `PROGRESS_CONSTANTS.TICK_INTERVAL_MS` `L1085224` |
 | World boss | 100 ms | `WORLD_BOSS_CONSTANTS` `L1153423` |
 | Dungeon, raid, arena, crusade, fortress boss | 10 ms | `L1062719`, `L1064866`, `L667970`, `L1702151`, `L1223934` |
+| Oblivion dungeon | **[UNRESOLVED]**: its config (`L1706694`) has no tick constant; it borrows `DUNGEON_CONSTANTS.RESET_HOUR` | `L1706694-1706697` |
+
+The app runs each mode at its client tick and assumes the dungeon's 10 ms for Oblivion floors
+(`engine/pve/fight.js` `PVE_MODES`, labelled as an assumption).
 
 No 400 ticks/second clock exists anywhere. The engine is delta-time based: every
 step receives `dt` (the tick length) and advances three timers (§4).
@@ -552,6 +559,20 @@ max HP, so HP can exceed max after a transform fires (`L1089094-1089130`). Its e
 immediately (`L1089135-1089170`), i.e. before the tick's own swing events are appended
 (`L1089186`). **[CODE]**
 
+### §10.6 Transform timing: shared engine vs live progress loop — **[CODE]**
+
+- **Shared engine** (step 8 of §2): the bar charges from this tick's events and a full bar fires
+  the transform in the same tick, after the swings, with the unclamped heal of §10.5
+  (`L1089035-1089180`). It has no `hp > 0` guard, so a bar that fills on the tick the player dies
+  fires at `hp = 0`, and an `HP_PERCENT` transform heals `floor(maxHp * value/100)` and revives the
+  player.
+- **Live progress loop** (the campaign): a full bar fires the transform at the **top of the next
+  tick**, before `processSpellsTick` (`L1074747-1074773`). Its heal is added to the spell pass's
+  `ownerHpDelta` and clamped with it to the buffed max HP, and the combined delta feeds the shield
+  refill (`L1074900-1074930`). On the tick it fired the bar stays at 0; while a transform is active
+  the bar does not charge (`L1076680-1076700`). A lethal tick therefore ends the level at the
+  end-of-tick death check before the transform can fire. **[DERIVED]** from the order above.
+
 ## §11 Stack mechanics and thorns — **[CODE]** `L1078983-1080177`
 
 Stack sigils are driven by the tick events (`createStackCombat` `L1079785-1080125`;
@@ -601,8 +622,29 @@ one interval only); minion crit damage is `round(attack * critDamage)` with the 
 `critDamage` inherited unchanged. Attack and attack speed are computed once at `createMinion`
 from the player's stats at that moment; later player buffs do not change an existing minion.
 `killMinion` sets `respawnMs` to 0 (no auto-respawn); `damageMinion` sets it to
-`respawnCooldownMs`; `advanceMinionRespawn` / `resummonIfDead` act only when `respawnMs > 0`.
-`OPENING_FIRST_SWING_MIN_MS` = 400 ms is used by `openingSwingTimerStart` (`L1095530`). The
+`respawnCooldownMs`; `advanceMinionRespawn` counts a pending `respawnMs > 0` down each tick and
+summons at <= 0 (`L1094614-1094646`); `elapseMinionRespawn(m, ms)` counts it down, floored at 0,
+without summoning (`L1094648-1094675`); `resummonIfDead` summons a dead minion only when **no**
+respawn is pending (`respawnMs` not > 0), and leaves a pending countdown alone (`L1094677-1094700`).
+
+**Who summons [CODE].** `createMinion` returns a dead minion (`hp 0`, `respawnMs 0`). Nothing in
+`simulateDungeonStep` calls `summonMinion`: it creates the minion (`L1671066`) and hands it to
+`simulateFight`, whose opening calls `resummonIfDead` (`L1087850`). When that summons, the opening
+emits `minion_summoned` with `summonReadyMs = start + window`, moves the clock forward by the window
+`openingSummonWindowMs` (the largest `summonCastMs`, 1 500 ms for both summon sigils, see
+sigils.md), and caps each swing timer with `openingSwingTimerStart(round(1000 / attackSpeed),
+window, timer) = window > 0 ? min(timer, interval - 400) : timer` (`L1094757-1094789`, callers
+`L1087856-1087909`; `OPENING_FIRST_SWING_MIN_MS` = 400 ms, `L1095530`). The live progress loop calls
+`resummonIfDead` and opens the same summon window at the start of every mob (`L1074420-1074440`). So
+every fight with a fresh minion starts with the cast window.
+
+**Between mobs [CODE].** The live progress loop leaves the minion as it is (hp, swing timer,
+empower, frenzy); a dead one comes back through the next opening's `resummonIfDead` or its pending
+countdown. `simulateDungeonStep` calls `elapseMinionRespawn(minion, 500)` before every mob, the first
+included (`L1671080-1671084`, §14). Only `simulateBossFight` calls `carryMinionIntoNewFight`
+(`L1863431`), which ends empower and frenzy and resummons a living minion at full HP.
+
+The
 enemy rolls a crit draw when hitting the minion (`L1087238-1087245`) even at 0 % crit and never
 rolls Block/Miss against it. Enemy lifesteal is `floor(dmg*ls/100)` clamped to `enemy.maxHp`
 with no heal budget; its base is the damage the minion actually took (`L1087270`) or
@@ -622,7 +664,8 @@ numbers `see sigils.md`.
   stamps `DUNGEON_CONSTANTS.SHIELD_MITIGATION` unless the shield spell carries its own
   `mitigation` (`L1670985-1671018`, constant `L1062719`) and the live progress loop passes
   `PROGRESS_CONSTANTS.SHIELD_MITIGATION` (`L1076145`, `L1085224`). The world boss mode tables carry
-  `shieldMitigation: 0` (`L1153433-1153447`) and nothing in that module reads it. A caller that
+  `shieldMitigation: 0` (`L1153433-1153447`) and nothing in that module reads it. The raid constants
+  (`L1064866`) and the Oblivion dungeon config (`L1706694`) carry no `SHIELD_MITIGATION`. A caller that
   sets nothing gets 0 (plain 1:1 absorb). **[CODE]**:
 
 ```
@@ -635,6 +678,10 @@ else: absorbed = min(shield, dmg) ; shield -= absorbed ; hpDamage = dmg - absorb
 ```
 
 At `m = 0.5` every shield point absorbs **2** damage. **[DERIVED]**
+
+The app stamps the value per mode (`engine/pve/fight.js` `PVE_MODES`): campaign and dungeon 0.5
+(client constants), World Boss the affinity record's 0; raid, Oblivion and custom mobs 0.5, the
+dungeon value, labelled as an assumption because the server fight is **[SERVER]**.
 - The live progress loop applies the shield after `processCombatTick`, by walking
   the returned events (`L1076008-1076190`); shield refills from lifesteal / regen
   only if the spell sets `vampAlwaysRefills` / `regenAlwaysRefills`
@@ -658,8 +705,19 @@ At `m = 0.5` every shield point absorbs **2** damage. **[DERIVED]**
   only affect farming throughput, not combat.
 - First clear of a level grants its `influenceReward` (§15); `highestChapter` /
   `highestLevel` advance if beaten (`L1077297-1077336`).
-- `simulateDungeonStep` runs mobs sequentially with a 500 ms gap between them and
-  a failed mob ends the step (`L1671071-1671135`).
+- `simulateDungeonStep` runs mobs sequentially; a failed mob ends the step and returns
+  `totalDuration` = that fight's `endTime` (`L1671071-1671135`). Before **every** mob, the first
+  included, it calls `elapseMinionRespawn(minion, 500)` and `resetTarget()` on the stack runtimes, and
+  starts the fight at `previous endTime + 500` (the first at 500): `r31 = r8 + r9`, `r9 = 500`
+  (`L1671080-1671084`). Each `simulateFight` has its own 20-minute cap, counted from that fight's
+  start (`elapsed - startMs < cap`, `L1088006-1088009`), so a step of three 8-minute mobs is a win.
+  The tick is `DUNGEON_CONSTANTS.TICK_INTERVAL_MS` (10 ms) and the shield mitigation
+  `DUNGEON_CONSTANTS.SHIELD_MITIGATION` unless the shield spell carries its own (`L1670985-1671018`).
+  **[CODE]**
+- The app runs dungeon, raid and Oblivion sequences this way (per-mob cap, 500 ms gaps, respawn
+  aged), the campaign with the live loop's rules (no gap, minion untouched, a per-mob 20-minute
+  safety stop reported as a timeout since the loop itself has none), and keeps one shared window
+  only when the caller gives one (dps and survival windows, World Boss, custom mobs).
 - Dungeon / raid / boss outcomes are **[SERVER]**; the replay ends with
   `defender_dead` (mob) or `attacker_dead` (player).
 

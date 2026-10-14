@@ -3,9 +3,9 @@
 
 // port of absorbWithShield L1085790-1085856
 /**
- * Damage taken by a shield. `mitigation` is a fraction (0.5 in every PVE mode, see
- * combat-pve.md §13): each point of damage costs `1 - mitigation` shield, so at 0.5 a shield point
- * absorbs 2 damage. No absorb when damage <= 0 or shield <= 0.
+ * Damage taken by a shield. `mitigation` is a fraction set by the fight's caller, per mode
+ * (combat-pve.md §13): each point of damage costs `1 - mitigation` shield, so at 0.5 a shield point
+ * absorbs 2 damage, at 0 one. No absorb when damage <= 0 or shield <= 0.
  * @returns {{shieldHp:number, hpDamage:number, effectiveDamage:number}}
  */
 export function absorbWithShield(shieldHp, damage, mitigation = 0) {

@@ -338,6 +338,18 @@ describe('player kills the enemy (L1087410-1087433)', () => {
     expect(rng.draws).toBe(1);
     expect(m.timer).toBe(5000);
   });
+
+  it('the dead check sits inside the player-swing branch: a no-swing tick at defenderHp 0 runs the enemy swing', () => {
+    // L1086433 jumps past the check at L1086896 when the player does not swing
+    const rng = scripted([FAIL, FAIL]);
+    const { r, types } = run(player(), mob({ attack: 50 }), {
+      ehp: 0, timers: { attackerTimer: 0, defenderTimer: 950, regenTimer: 0 }, rng,
+    });
+    expect(types).toEqual(['defender_hit']);
+    expect(r.attackerHp).toBe(950);
+    expect(r.defenderHp).toBe(0);
+    expect(r.timers).toEqual({ attackerTimer: 100, defenderTimer: 50, regenTimer: 0 });
+  });
 });
 
 describe('minion swing (L1086910-1086950)', () => {
