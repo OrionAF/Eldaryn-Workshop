@@ -43,13 +43,19 @@ it('renders the sidebar nav and defaults to the Presets screen, banner subline s
   cleanup();
 });
 
-it('clicking a nav item swaps the visible screen and the banner subline', () => {
+it('clicking a nav item swaps the visible screen', () => {
   const navButtons = [...target.querySelectorAll('.nav-item')];
   navButtons.find((b) => b.textContent.trim() === 'Transcendence').click();
   flushSync();
 
-  expect(target.querySelector('.context-sub').textContent).toBe('Warrior · character-wide');
-  expect(target.textContent).toContain('Nodes placed:'); // Warrior tree data exists, so the grid renders
+  expect(target.querySelector('.pending-screen h2').textContent).toBe('Transcendence');
+  cleanup();
+});
+
+it('hides Oblivion from the nav while the character has not unlocked it', () => {
+  const labels = [...target.querySelectorAll('.nav-item')].map((b) => b.textContent.trim());
+  expect(labels).not.toContain('Oblivion');
+  expect(labels).toContain('Optimiser');
   cleanup();
 });
 

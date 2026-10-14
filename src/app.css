@@ -49,6 +49,18 @@
   --color-danger: #f08b8e;
 
   /* Nav / domain hues - one per rail item and its matching screen accents. */
+  --nav-character: #e0e4ee;
+  --nav-character-light: #f2f4f9;
+  --nav-character-tint: rgba(224, 228, 238, 0.1);
+  --nav-optimiser: #4fe3c1;
+  --nav-optimiser-light: #a4f1de;
+  --nav-optimiser-tint: rgba(79, 227, 193, 0.1);
+  --nav-duel: #ff5c5c;
+  --nav-duel-light: #ffa3a3;
+  --nav-duel-tint: rgba(255, 92, 92, 0.1);
+  --nav-oblivion: #8a7dff;
+  --nav-oblivion-light: #bdb5ff;
+  --nav-oblivion-tint: rgba(138, 125, 255, 0.1);
   --nav-presets: #d9a94b;
   --nav-presets-light: #f3d78d;
   --nav-presets-tint: rgba(217, 169, 75, 0.13);

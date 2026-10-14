@@ -11,31 +11,15 @@
   import { CLASSES } from '../lib/constants.js';
   import ConfirmButton from './ConfirmButton.svelte';
   import SettingsPanel from './SettingsPanel.svelte';
+  import { visibleNav } from './navVisibility.js';
 
   let { activeScreen, onSelectScreen, onStatus } = $props();
 
-  const PRESET_NAV = [
-    { id: 'presets', label: 'Presets', color: 'presets' },
-    { id: 'drop', label: 'Drop Check', color: 'drop' },
-    { id: 'gear', label: 'Gear Loadouts', color: 'gear' },
-    { id: 'talents', label: 'Talent Sets', color: 'talents' },
-    { id: 'pets', label: 'Pets', color: 'pets' },
-    { id: 'relics', label: 'Relics', color: 'relics' },
-    { id: 'sigils', label: 'Sigils', color: 'sigils' },
-    { id: 'simulations', label: 'Simulations', color: 'simulations' },
-  ];
-
-  const CHARACTER_NAV = [
-    { id: 'mounts', label: 'Mount & Glyphs', color: 'mounts' },
-    { id: 'awakening', label: 'Awakening', color: 'awakening' },
-    { id: 'transcendence', label: 'Transcendence', color: 'transcendence' },
-  ];
-
-  // The bottom bar only has room for 4 direct slots + "More" - everything
-  // else (Pets, Relics, and the whole Character group) lives in the sheet.
-  const MOBILE_MAIN_IDS = ['presets', 'drop', 'gear', 'talents'];
-  const MOBILE_MAIN_NAV = PRESET_NAV.filter((i) => MOBILE_MAIN_IDS.includes(i.id));
-  const MORE_NAV = [...PRESET_NAV.filter((i) => !MOBILE_MAIN_IDS.includes(i.id)), ...CHARACTER_NAV];
+  // Final nav (rebuild-plan §2.5) lives in navVisibility.js. Mobile has four
+  // direct slots + "More"; everything else goes in the sheet.
+  const NAV = $derived(visibleNav(rosterStore.current));
+  const MOBILE_MAIN_NAV = $derived(NAV.filter((i) => i.mobileMain));
+  const MORE_NAV = $derived(NAV.filter((i) => !i.mobileMain));
 
   const CHOOSE_CLASS_VALUE = '__none__';
 
@@ -260,15 +244,7 @@
     <div class="brand">ELDARYN<br />WORKSHOP</div>
 
     <div class="nav-group">
-      <div class="group-label">Preset</div>
-      {#each PRESET_NAV as item (item.id)}
-        {@render navButton(item)}
-      {/each}
-    </div>
-
-    <div class="nav-group">
-      <div class="group-label">Character</div>
-      {#each CHARACTER_NAV as item (item.id)}
+      {#each NAV as item (item.id)}
         {@render navButton(item)}
       {/each}
     </div>

@@ -32,23 +32,25 @@ afterEach(() => {
   delete window.matchMedia;
 });
 
-it('desktop: renders the left rail with Preset/Character nav groups', () => {
+it('desktop: renders the left rail with the final nav (Oblivion hidden)', () => {
   render();
   expect(target.querySelector('nav.sidebar')).not.toBeNull();
   expect(target.querySelector('.bottom-bar')).toBeNull();
   const labels = [...target.querySelectorAll('.nav-item')].map((b) => b.textContent.trim());
   expect(labels).toEqual([
+    'Character',
     'Presets',
     'Drop Check',
-    'Gear Loadouts',
-    'Talent Sets',
-    'Pets',
-    'Relics',
+    'Gear',
+    'Talents',
     'Sigils',
-    'Simulations',
-    'Mount & Glyphs',
+    'Pets',
+    'Mounts',
+    'Relics',
     'Awakening',
     'Transcendence',
+    'Optimiser',
+    'Duel',
   ]);
 });
 
@@ -67,10 +69,10 @@ it('mobile: renders a bottom bar with 4 main items + More, no left rail', () => 
   const bar = target.querySelector('.bottom-bar');
   expect(bar).not.toBeNull();
   const labels = [...bar.querySelectorAll('.bottom-item')].map((b) => b.textContent.trim());
-  expect(labels).toEqual(['Presets', 'Drop Check', 'Gear Loadouts', 'Talent Sets', 'More']);
+  expect(labels).toEqual(['Presets', 'Drop Check', 'Optimiser', 'Duel', 'More']);
 });
 
-it('mobile: More opens a sheet with the remaining nav (Pets/Relics/Sigils/Simulations/Mount & Glyphs/Awakening/Transcendence) + account panel', () => {
+it('mobile: More opens a sheet with the remaining nav (Character, Gear ... Transcendence) + account panel', () => {
   stubMobile();
   render();
   expect(target.querySelector('.more-sheet')).toBeNull();
@@ -81,7 +83,7 @@ it('mobile: More opens a sheet with the remaining nav (Pets/Relics/Sigils/Simula
   const sheet = target.querySelector('.more-sheet');
   expect(sheet).not.toBeNull();
   const labels = [...sheet.querySelectorAll('.nav-item')].map((b) => b.textContent.trim());
-  expect(labels).toEqual(['Pets', 'Relics', 'Sigils', 'Simulations', 'Mount & Glyphs', 'Awakening', 'Transcendence']);
+  expect(labels).toEqual(['Character', 'Gear', 'Talents', 'Sigils', 'Pets', 'Mounts', 'Relics', 'Awakening', 'Transcendence']);
   expect(sheet.querySelector('.change-character')).not.toBeNull();
   expect(sheet.querySelector('.reset-toggle')).not.toBeNull();
 });
