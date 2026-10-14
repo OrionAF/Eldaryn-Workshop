@@ -4,6 +4,7 @@
    * which build dimensions may change; the worker searches (tier 1 screens candidates cheaply, tier 2 re-measures
    * the finalists with more fights). Results show the top builds with N and a 95% interval on every simulated
    * number, a paired difference vs the current preset, and Apply to preset. Finished runs auto-save to history.
+   * The PVP target (F5) scores win rate vs saved opponents; a duel costs several ms, so it has its own effort levels.
    */
   import { onDestroy } from 'svelte';
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
@@ -23,6 +24,13 @@
     standard: { label: 'Standard', budget: {} },
     thorough: { label: 'Thorough', budget: { n1: 24, n2: 128, maxEvals: 800, maxMs: 40000 } },
   };
+  // PVP: the budget merges over PVP_BUDGET (search/pvpObjective.js): N = 64 per matchup in the beam, then up to 400
+  // for the finalists; maxMs and finalMs bound the two stages (a longer effort buys a wider search, not more N).
+  const PVP_EFFORT = {
+    quick: { label: 'Quick', budget: { maxEvals: 40, maxMs: 4000, finalMs: 4000, finalists: 3 }, maxEvals: 40, maxMs: 4000 },
+    standard: { label: 'Standard', budget: {}, maxEvals: 120, maxMs: 9000 },
+    thorough: { label: 'Thorough', budget: { maxEvals: 400, maxMs: 40000, finalMs: 20000, finalists: 6, screenKeep: 16, perGroup: 3 }, maxEvals: 400, maxMs: 40000 },
+  };
   const MAX_EVALS_DEFAULT = 400;
 
   const character = $derived(rosterStore.current);
@@ -35,18 +43,29 @@
   let seed = $state(1);
   let running = $state(false);
   let progress = $state(null);
+  let startedAt = 0;
+  let nowMs = $state(0);
+  let ticker = null;
   let last = $state(null); // { result, presetName, runId }
   let applying = $state(false);
   let job = null;
 
   const preset = $derived(character.presets.find((p) => p.id === presetPick) ?? character.presets.find((p) => p.id === character.activePresetId) ?? character.presets[0]);
   const noRelics = $derived(space.relics && space.relicSlots < 1);
+  const isPvp = $derived(target.kind === 'pvp');
+  const opponents = $derived(character.opponents ?? []);
+  // Opponents deleted since they were picked fall out of the request; a PVP run needs at least one left.
+  const pvpIds = $derived(isPvp ? target.opponentIds.filter((id) => opponents.some((o) => o.id === id)) : []);
+  const noPvpPick = $derived(isPvp && pvpIds.length === 0);
+  const effortSet = $derived(isPvp ? PVP_EFFORT : EFFORT);
 
   const pctDone = $derived.by(() => {
     if (!progress) return 0;
     if (progress.phase === 'final') return progress.total ? Math.min(1, progress.done / progress.total) : 1;
-    const cap = EFFORT[effort].budget.maxEvals ?? MAX_EVALS_DEFAULT;
-    return Math.min(0.85, (progress.evals / cap) * 0.85); // tier 1 fills the first 85%, tier 2 the rest
+    const e = effortSet[effort];
+    const byEvals = progress.evals / (e.maxEvals ?? e.budget.maxEvals ?? MAX_EVALS_DEFAULT);
+    const byTime = isPvp ? (nowMs - startedAt) / e.maxMs : 0; // a PVP search usually ends on its time limit
+    return Math.min(0.85, Math.max(byEvals, byTime) * 0.85); // tier 1 fills the first 85%, tier 2 the rest
   });
   const progressText = $derived(
     !progress ? 'starting' : progress.phase === 'final' ? `re-measuring finalists ${progress.done}/${progress.total}` : `screening builds: ${progress.evals} tried, searching ${progress.dimension ?? ''}`,
@@ -59,14 +78,17 @@
       mode: 'optimize',
       character: $state.snapshot(character),
       presetId: snapshot.presetId,
-      target: $state.snapshot(target),
+      target: isPvp ? { ...$state.snapshot(target), opponentIds: [...pvpIds] } : $state.snapshot(target),
       objective: $state.snapshot(objective),
       space: { ...$state.snapshot(space) },
-      budget: EFFORT[effort].budget,
+      budget: effortSet[effort].budget,
       seed: Number(seed) || 1,
     };
     running = true;
     progress = null;
+    startedAt = nowMs = Date.now();
+    clearInterval(ticker);
+    ticker = setInterval(() => (nowMs = Date.now()), 250);
     setStatus('');
     const own = runOptimizerTask(req, { onProgress: (p) => (progress = p) });
     job = own;
@@ -83,6 +105,7 @@
       if (job === own) setStatus(`Optimiser failed: ${e.message}`);
     } finally {
       if (job === own) {
+        clearInterval(ticker);
         running = false;
         job = null;
       }
@@ -90,7 +113,10 @@
   }
 
   const cancel = () => job?.cancel();
-  onDestroy(cancel);
+  onDestroy(() => {
+    clearInterval(ticker);
+    cancel();
+  });
 
   function apply(entry) {
     if (!last || applying) return;
@@ -127,13 +153,13 @@
     </div>
   </div>
 
-  <TargetPicker bind:target bind:objective oblivionUnlocked={character.oblivion?.unlocked ?? false} />
+  <TargetPicker bind:target bind:objective oblivionUnlocked={character.oblivion?.unlocked ?? false} {opponents} {onNavigate} />
   <SpacePicker bind:space />
 
   <div class="group">
     <span class="micro-label">Effort</span>
     <div class="chip-list">
-      {#each Object.entries(EFFORT) as [key, e] (key)}
+      {#each Object.entries(effortSet) as [key, e] (key)}
         <Chip label={e.label} selected={effort === key} onClick={() => (effort = key)} />
       {/each}
       <label class="seed">
@@ -150,7 +176,8 @@
       <progress max="1" value={pctDone} aria-label="Optimiser progress"></progress>
       <span class="mono progress-text" data-testid="optimiser-progress">{progressText}</span>
     {:else}
-      <button type="button" class="btn-gold" disabled={noRelics} onclick={run}>Optimise {preset?.name ?? ''}</button>
+      <button type="button" class="btn-gold" disabled={noRelics || noPvpPick} onclick={run}>Optimise {preset?.name ?? ''}</button>
+      {#if noPvpPick && opponents.length}<span class="hint">Pick at least one opponent.</span>{/if}
     {/if}
   </div>
 </section>
@@ -169,9 +196,15 @@
       <p class="note" role="status">Cancelled before the current preset was measured; nothing to show.</p>
     {:else}
       <ResultList {unit} baseline={res.baseline} results={res.results} onApply={apply} {applying} />
+      {#if res.objective.kind === 'pvp-winrate'}
+        <p class="hint">
+          Win rates are the mean over every opponent and seat, with N duels and a 95% Wilson interval; the finalists are re-measured with more duels than the beam used. Ties go to the defender. Your side is computed stats plus the preset's sheet residual.
+        </p>
+      {:else}
       <p class="hint">
         Builds are scored as computed stats plus the preset's sheet residual, so gains are approximate when a build changes Attack% or HP% a lot. Verify a pick in game or on the Duel screen.
       </p>
+      {/if}
     {/if}
   </section>
 {/if}
