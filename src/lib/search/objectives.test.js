@@ -22,6 +22,7 @@ describe('resolveTarget', () => {
       { kind: 'chapter', chapter: 1, level: 1 },
       { kind: 'chapter', chapter: 12, level: 3 },
       { kind: 'dungeon', id: 'dungeon_1', step: 2 },
+      { kind: 'raid', id: 'raid_3', step: 4 },
       { kind: 'oblivion', floor: 10 },
       { kind: 'worldBoss', affinity: 'ENRAGED' },
       { kind: 'custom', mob: { hp: 5e5, attack: 800, attackSpeed: 1 } },
@@ -43,6 +44,15 @@ describe('resolveTarget', () => {
     expect(c.label).toBe('Chapter 2, level 4');
     expect(resolveTarget({ kind: 'chapter', chapter: 12, level: 1 }).label).toBe('Hard chapter 12, level 1');
     expect(resolveTarget({ kind: 'dungeon', id: 'dungeon_1', step: 8 }).enemy).toHaveLength(3);
+  });
+
+  it('a village raid step is five mobs, labelled by name, with the dungeon objectives', () => {
+    const t = resolveTarget({ kind: 'raid', id: 'raid_1', step: 8 });
+    expect(t.enemy).toHaveLength(5);
+    expect(t.label).toBe('Village raid Bandit Village, step 8');
+    expect(objectiveKindsFor('raid')).toEqual(objectiveKindsFor('dungeon'));
+    expect(() => resolveTarget({ kind: 'raid', id: 'nope', step: 1 })).toThrow(/does not exist/);
+    expect(() => resolveTarget({ kind: 'raid', id: 'raid_1', step: 9 })).toThrow(/does not exist/);
   });
 
   it('Oblivion forces the Oblivion realm and World Boss sets its own window', () => {

@@ -20,7 +20,8 @@ import {
 } from '../engine/metrics.js';
 import { statByEnum } from '../game/stats.js';
 import { PVE_HARD_CHAPTER_OFFSET } from '../game/combatPve.js';
-import { chapterMobs, dungeonMobs, oblivionFloorMob } from '../engine/pve/enemies.js';
+import { raidById } from '../game/fortress.js';
+import { chapterMobs, dungeonMobs, raidMobs, oblivionFloorMob } from '../engine/pve/enemies.js';
 
 // ---------------------------------------------------------------------------------------------
 // item -> raw delta
@@ -197,6 +198,7 @@ export function groupBySet(rows) {
  * A PVE target for the survival metric.
  * @param {{kind: 'campaign', chapter: number, level: number}
  *   | {kind: 'dungeon', id: string, step: number}
+ *   | {kind: 'raid', id: string, step: number}
  *   | {kind: 'oblivion', floor: number}} spec
  * @returns {{label: string, mobs: Object[], oblivion: boolean}|null}
  */
@@ -212,6 +214,10 @@ export function buildEnemy(spec) {
   if (spec.kind === 'dungeon') {
     const mobs = dungeonMobs(spec.id, spec.step);
     return mobs ? { label: `${spec.id}, step ${spec.step}`, mobs, oblivion: false } : null;
+  }
+  if (spec.kind === 'raid') {
+    const mobs = raidMobs(spec.id, spec.step);
+    return mobs ? { label: `Village raid ${raidById(spec.id).name}, step ${spec.step}`, mobs, oblivion: false } : null;
   }
   if (spec.kind === 'oblivion') {
     const mob = oblivionFloorMob(spec.floor);

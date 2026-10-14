@@ -1,21 +1,22 @@
 <script>
   /**
    * EnemyPicker.svelte - the PVE target for Drop Check's survival metric: a campaign chapter and
-   * level, a classic dungeon step, or (Oblivion realm) a dungeon floor. Emits a spec for
+   * level, a classic dungeon step, a village raid step, or (Oblivion realm) a dungeon floor. Emits a spec for
    * features/swap.js buildEnemy().
    *
-   * Props: value ({kind, ...}), realm ('base'|'oblivion'), onchange(spec).
+   * Props: value ({kind, ...}), realm ('base'|'oblivion'), playerLevel (marks raids above it), onchange(spec).
    */
   import { PVE_CHAPTERS, PVE_HARD_CHAPTERS, PVE_PROGRESS_CONSTANTS, chapterLabel } from '../../lib/game/combatPve.js';
+  import { RAIDS } from '../../lib/game/fortress.js';
   import { CLASSIC_DUNGEONS, OBLIVION_FLOORS } from '../../lib/game/pveContent.js';
 
-  let { value, realm = 'base', onchange } = $props();
+  let { value, realm = 'base', playerLevel = null, onchange } = $props();
 
   const levels = Array.from({ length: PVE_PROGRESS_CONSTANTS.levelsPerChapter }, (_, i) => i + 1);
   const kinds = $derived(
     realm === 'oblivion'
       ? [{ id: 'oblivion', label: 'Oblivion floor' }]
-      : [{ id: 'campaign', label: 'Campaign' }, { id: 'dungeon', label: 'Dungeon' }],
+      : [{ id: 'campaign', label: 'Campaign' }, { id: 'dungeon', label: 'Dungeon' }, { id: 'raid', label: 'Village raid' }],
   );
   const kind = $derived(kinds.some((k) => k.id === value?.kind) ? value.kind : kinds[0].id);
 
@@ -25,6 +26,7 @@
   function pickKind(k) {
     if (k === 'campaign') onchange({ kind: 'campaign', chapter: 1, level: 1 });
     else if (k === 'dungeon') onchange({ kind: 'dungeon', id: CLASSIC_DUNGEONS[0].id, step: 1 });
+    else if (k === 'raid') onchange({ kind: 'raid', id: RAIDS[0].id, step: 1 });
     else onchange({ kind: 'oblivion', floor: 10 });
   }
   const patch = (p) => onchange({ ...value, ...p });
@@ -63,6 +65,23 @@
       <select aria-label="Dungeon" value={value.id} onchange={(e) => patch({ id: e.currentTarget.value })}>
         {#each CLASSIC_DUNGEONS as d (d.id)}
           <option value={d.id}>{d.name}</option>
+        {/each}
+      </select>
+    </label>
+    <label class="field">
+      <span class="micro-label">Step</span>
+      <select aria-label="Step" value={value.step} onchange={(e) => patch({ step: Number(e.currentTarget.value) })}>
+        {#each steps as s (s)}
+          <option value={s}>{s}</option>
+        {/each}
+      </select>
+    </label>
+  {:else if kind === 'raid'}
+    <label class="field">
+      <span class="micro-label">Village raid</span>
+      <select aria-label="Village raid" value={value.id} onchange={(e) => patch({ id: e.currentTarget.value })}>
+        {#each RAIDS as r (r.id)}
+          <option value={r.id}>{r.name}{playerLevel != null && playerLevel < r.requiredPlayerLevel ? ` (needs level ${r.requiredPlayerLevel})` : ''}</option>
         {/each}
       </select>
     </label>

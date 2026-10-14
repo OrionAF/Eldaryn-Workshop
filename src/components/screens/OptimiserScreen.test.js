@@ -57,6 +57,16 @@ it('the dungeon target lists every classic dungeon', () => {
   expect(names[0]).toBe('Forsaken Mines');
 });
 
+it('the raid target lists all five village raids by name', () => {
+  const kind = q('[data-testid="target-kind"]');
+  kind.value = 'raid';
+  kind.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+  const names = [...q('[data-testid="raid-id"]').options].map((o) => o.textContent);
+  expect(names).toEqual(['Bandit Village', 'Fortified Stronghold', 'Royal Garrison', 'Shadow Enclave', 'Obsidian Citadel']);
+  expect(q('[data-testid="server-hint"]').textContent).toMatch(/server/);
+});
+
 it('runs a quick search, shows N and CIs, auto-saves the run and applies a result', async () => {
   for (const label of ['Gear set', 'Talent set', 'Talent points', 'Pet', 'Mount', 'Glyphs', 'Sigils', 'Utility sigil', 'Ancient sigil', 'Sigil conditions', 'Transcendence']) {
     click(btn(new RegExp(`^${label}$`)));
