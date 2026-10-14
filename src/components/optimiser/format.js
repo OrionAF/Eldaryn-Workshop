@@ -35,6 +35,6 @@ export function fmtDelta(unit, vs) {
 
 export function fmtDeltaCi(unit, vs) {
   if (!vs || vs.lo == null || vs.hi == null) return '';
-  const f = (x) => (unit === 'dps' ? formatFlat(x) : unit === 'ms' ? sec(Math.abs(x)) : `${(x * 100).toFixed(1)} pts`);
+  const f = (x) => (unit === 'dps' ? formatFlat(x) : unit === 'ms' ? signed(sec(Math.abs(x)), x) : `${(x * 100).toFixed(1)} pts`);
   return `95% CI ${f(vs.lo)} to ${f(vs.hi)}`;
 }
