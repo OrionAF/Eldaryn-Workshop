@@ -1,0 +1,306 @@
+/**
+ * Eldaryn Workshop design tokens: "Forge & Ember on Obsidian" (hybrid).
+ * Rationale, contrast measurements and component rules: design-system.md.
+ * This :root block replaces the token section of src/app.css. The --rarity-*
+ * names and values are the game's own and are unchanged; -fg-on-raised is new.
+ *
+ * Dark only. Desktop first. Fonts: Grenze (display), Alegreya Sans (UI),
+ * Red Hat Mono (data). Self-host them in the app (it runs offline); the
+ * mockup loads them from Google Fonts.
+ */
+:root {
+  color-scheme: dark;
+
+  /* ── Surfaces: navy black-glass, darkest to lightest ─────────────────── */
+  --surface-0: #070a11;          /* page */
+  --surface-1: #0b0f18;          /* rail, top bar, bottom tab bar */
+  --surface-2: #0f141e;          /* panel */
+  --surface-3: #151b27;          /* raised: inputs, plate header, table head, tiles */
+  --surface-4: #1c2331;          /* hover, selected row, pressed segment */
+  --surface-scrim: rgba(3, 5, 9, 0.72);   /* behind modal / phone sheet */
+  --sheen: linear-gradient(180deg, rgba(150, 175, 220, 0.035), rgba(150, 175, 220, 0) 72px);
+  --glow-page: rgba(60, 90, 150, 0.10);   /* page-top radial wash behind .main (one gradient, no blend layer) */
+  --selection: rgba(214, 176, 106, 0.35); /* ::selection */
+
+  /* ── Lines ────────────────────────────────────────────────────────────── */
+  --line-hairline: #252d3c;      /* decorative dividers only (1.33:1, not a boundary) */
+  --line-rule: #323b4c;          /* secondary-panel edge, table row rules */
+  --line-control: #6f7889;       /* EVERY control boundary: 4.15:1 on s2, 3.54:1 on s4 (WCAG 1.4.11) */
+  --line-control-hover: #8e97a8; /* 6.27:1 on s2 */
+  --frame-edge: #03050a;         /* outer dark edge of a primary frame */
+  --frame-brass: var(--brass-500); /* border of every F2 primary frame (6.4:1 on s2) */
+  --frame-inner: inset 0 0 0 1px rgba(239, 213, 156, 0.10); /* F2 inner brass hairline */
+
+  /* ── Text: warm parchment on cool ground ─────────────────────────────── */
+  --text-ink: #eee7d9;           /* primary text and numbers   12.8:1 on s4 */
+  --text-soft: #cec5b4;          /* secondary text              9.2:1 on s4 */
+  --text-muted: #a69e91;         /* captions, CI brackets, N    5.9:1 on s4 (floor) */
+  --text-disabled: #7d786f;      /* disabled only (exempt)      4.2:1 on s2 */
+
+  /* ── Brass: structure (frames, titles, character scope) ──────────────── */
+  --brass-200: #efd59c;          /* plate titles               12.9:1 on s2 */
+  --brass-400: #d6b06a;          /* brass text, labels          9.0:1 on s2 */
+  --brass-500: #b8924f;          /* brass button border, rivet  6.4:1 on s2 */
+  --brass-700: #7d6234;          /* character frame rule        3.2:1 on s2 */
+  --brass-tint: rgba(214, 176, 106, 0.10);
+
+  /* ── Ember: the one hot colour (primary action, active nav, running work, selection marker) */
+  --ember-300: #ffa465;          /* ember text, primary hover   9.4:1 on s2 */
+  --ember-500: #ff8a3d;          /* primary fill, active bar    7.9:1 on s2 */
+  --ember-600: #d9651f;          /* primary pressed fill (on-ember text 5.3:1) */
+  --ember-700: #a8420a;          /* primary border (3.0:1 on s2, non-text) */
+  --ember-tint: rgba(255, 138, 61, 0.10);
+  --on-ember: #1a0c02;           /* text on ember               8.2:1 */
+  --on-brass: #14100a;           /* text on brass-400           9.3:1 */
+
+  /* ── Focus: pale gold OUTLINE, never box-shadow, never the selection colour */
+  --focus-ring: #ffe6a0;         /* 15.0:1 on s2 */
+  --focus-width: 2px;
+  --focus-offset: 2px;
+  --focus-offset-inset: -3px;    /* for rows flush with a scroll container edge */
+
+  /* ── Verdicts and status: always glyph + word, colour only adds ──────── */
+  --verdict-up: #6fd69c;         /* ▲ upgrade / significant gain  10.3:1 on s2 */
+  --verdict-down: #ff8170;       /* ▼ downgrade / loss / error     7.6:1 */
+  --verdict-side: #b8c0cd;       /* ◆ sidegrade, ≈ within noise   10.1:1 (neutral, not a hue) */
+  --verdict-up-tint: rgba(111, 214, 156, 0.10);
+  --verdict-down-tint: rgba(255, 129, 112, 0.10);
+  --status-warn: #f2c35b;        /* 11.2:1 */
+  --status-info: #8ec5ff;        /* 10.2:1 */
+  --status-estimate: var(--text-muted);  /* "estimate, no interval": never a verdict colour */
+
+  /* ── Scopes: badge text + border, and the 2px TOP RULE of a panel. The frame
+        itself is brass for every F2 panel; scope never recolours the frame. ── */
+  --scope-character: #d6b06a;    /* 9.0:1 */
+  --scope-preset: #86b6f2;       /* 8.8:1 */
+  --scope-mount: #d6a27a;        /* 8.2:1 */
+  --scope-oblivion: #bf93ff;     /* 7.8:1 realm, added as an inner rule */
+  --scope-tool: var(--text-soft);
+  --frame-character: #b8924f;    /* top rule */
+  --frame-preset: #5b8fd0;       /* top rule */
+  --frame-mount: #c08a5c;        /* top rule */
+  --frame-oblivion: #8a63c8;     /* realm frame ring (see .realm-oblivion) */
+  --frame-tool: #5b6579;         /* top rule */
+
+  /* ── Rarity: the game's own values (unchanged) ───────────────────────── */
+  --rarity-common-fg: #9d9d9d;     --rarity-common-fg-strong: #9d9d9d;     --rarity-common-border: #5a5e67;     --rarity-common-bg: #1e2536;
+  --rarity-uncommon-fg: #1eff00;   --rarity-uncommon-fg-strong: #1eff00;   --rarity-uncommon-border: #168216;   --rarity-uncommon-bg: #103025;
+  --rarity-rare-fg: #0070dd;       --rarity-rare-fg-strong: #0885ff;       --rarity-rare-border: #093d75;       --rarity-rare-bg: #0d203d;
+  --rarity-epic-fg: #a335ee;       --rarity-epic-fg-strong: #b55cf1;       --rarity-epic-border: #5a268d;       --rarity-epic-bg: #1f1a3f;
+  --rarity-legendary-fg: #ff8000;  --rarity-legendary-fg-strong: #ff8000;  --rarity-legendary-border: #8d4e14;  --rarity-legendary-bg: #292225;
+  --rarity-mythic-fg: #ff4081;     --rarity-mythic-fg-strong: #ff4081;     --rarity-mythic-border: #822a54;     --rarity-mythic-bg: #291b33;
+  --rarity-ancient-fg: #00e5ff;    --rarity-ancient-fg-strong: #00e5ff;    --rarity-ancient-border: #078198;    --rarity-ancient-bg: #0d2d41;
+  --rarity-divine-fg: #ffd76b;     --rarity-divine-fg-strong: #ffd76b;     --rarity-divine-border: #8b7a4b;     --rarity-divine-bg: #292c31;
+  --rarity-eternal-fg: #8b5cff;    --rarity-eternal-fg-strong: #976cff;    --rarity-eternal-border: #433383;    --rarity-eternal-bg: #1c1e41;
+  --rarity-oblivion-fg: #c04cff;   --rarity-oblivion-fg-strong: #c251ff;   --rarity-oblivion-border: #582d83;   --rarity-oblivion-bg: #221c41;
+  /* New: lifted until >= 5.0:1 on --surface-4 (hover/selected rows and tiles). */
+  --rarity-common-fg-on-raised: #9d9d9d;
+  --rarity-uncommon-fg-on-raised: #1eff00;
+  --rarity-rare-fg-on-raised: #2694ff;
+  --rarity-epic-fg-on-raised: #bd6ef3;
+  --rarity-legendary-fg-on-raised: #ff8000;
+  --rarity-mythic-fg-on-raised: #ff4d8a;
+  --rarity-ancient-fg-on-raised: #00e5ff;
+  --rarity-divine-fg-on-raised: #ffd76b;
+  --rarity-eternal-fg-on-raised: #a079ff;
+  --rarity-oblivion-fg-on-raised: #c964ff;
+
+  /* Kept from app.css (game accents): stones and relic tiers. Stone hues are
+     icon/edge colours only; text uses the -light value (>= 7:1 on --surface-4).
+     --stone-oblivion replaces the old --nav-oblivion reuse. */
+  --stone-verdant: #22c55e;  --stone-verdant-light: #86efac;  --stone-verdant-tint: rgba(34, 197, 94, 0.12);
+  --stone-crimson: #ef4444;  --stone-crimson-light: #fca5a5;  --stone-crimson-tint: rgba(239, 68, 68, 0.12);
+  --stone-azure: #3b82f6;    --stone-azure-light: #93c5fd;    --stone-azure-tint: rgba(59, 130, 246, 0.12);
+  --stone-eldaryn: #a855f7;  --stone-eldaryn-light: #d8b4fe;  --stone-eldaryn-tint: rgba(168, 85, 247, 0.12);
+  --stone-mythic: #ec4899;   --stone-mythic-light: #f9a8d4;   --stone-mythic-tint: rgba(236, 72, 153, 0.12);
+  --stone-oblivion: #8a7dff; --stone-oblivion-light: #c4bcff; --stone-oblivion-tint: rgba(138, 125, 255, 0.12);
+  --tier-gold: #e8c84f;      --tier-silver: #c0cbe0;    --tier-bronze: #c98d5e;   /* carried from app.css for the Relic tile port */
+
+  /* ── Type ─────────────────────────────────────────────────────────────── */
+  --font-display: 'Grenze', 'Iowan Old Style', Georgia, serif;          /* titles >= 16px only */
+  --font-ui: 'Alegreya Sans', 'Segoe UI', system-ui, sans-serif;        /* all prose and labels */
+  --font-data: 'Red Hat Mono', ui-monospace, 'Cascadia Code', Consolas, monospace; /* numbers only */
+
+  --fs-11: 11px;   /* micro label: uppercase, 700, tracking .1em */
+  --fs-12: 12px;   /* caption, meta line, chip text */
+  --fs-13: 13px;   /* table data (mono), dense UI */
+  --fs-14: 14px;   /* body UI (default) */
+  --fs-16: 16px;   /* panel title (display) */
+  --fs-20: 20px;   /* section headline, secondary figure */
+  --fs-26: 26px;   /* page title (display) */
+  --fs-34: 34px;   /* hero figure (mono), one per view */
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-bold: 700;
+  --fw-heavy: 700;  /* Alegreya Sans 800 is not loaded; kept as an alias so micro labels stay at 700 */
+
+  --lh-tight: 1.15;
+  --lh-body: 1.45;
+  --track-label: 0.1em;
+  --track-title: 0.01em;
+
+  /* ── Space (4-pt) ─────────────────────────────────────────────────────── */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;
+  --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+
+  /* ── Radii: forged, not rounded ──────────────────────────────────────── */
+  --r-1: 2px;      /* panels, buttons, inputs (default) */
+  --r-2: 4px;      /* tiles, cards inside panels */
+  --r-3: 6px;      /* popovers, modals, drawers */
+  --r-pill: 999px; /* status pills only (Jobs, Saved), count badges */
+
+  /* ── Frames and ornament (levels) ────────────────────────────────────── */
+  --tick: 10px;      /* corner tick length on F2 frames */
+  --tick-w: 2px;
+  --plate: linear-gradient(180deg, #171e2b, #121823);
+  --frame-highlight: inset 0 1px 0 rgba(255, 236, 200, 0.05);
+  --rule-gold: linear-gradient(90deg, transparent, var(--brass-700) 18%, var(--brass-500) 50%, var(--brass-700) 82%, transparent);
+
+  /* ── Elevation ────────────────────────────────────────────────────────── */
+  --elev-2: 0 10px 28px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--frame-edge);  /* popover, tray, toast */
+  --elev-3: 0 18px 56px rgba(0, 0, 0, 0.65), 0 0 0 1px var(--frame-edge);  /* modal, drawer */
+  --glow-ember: 0 0 8px rgba(255, 138, 61, 0.35);  /* the current RunProgress segment only */
+
+  /* ── Motion ───────────────────────────────────────────────────────────── */
+  --dur-1: 120ms;  /* hover, press */
+  --dur-2: 200ms;  /* expand, tab change, toast in */
+  --dur-3: 320ms;  /* drawer, modal */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+
+  /* ── Z-index ─────────────────────────────────────────────────────────── */
+  --z-sticky: 10;    /* context header, pinned baseline row */
+  --z-rail: 20;
+  --z-topbar: 30;
+  --z-drawer: 40;
+  --z-popover: 50;   /* menus, jobs tray, select lists */
+  --z-modal: 60;
+  --z-toast: 70;
+  --z-tooltip: 80;
+
+  /* ── Layout ───────────────────────────────────────────────────────────── */
+  --topbar-h: 56px;
+  --topbar-h-phone: 52px;
+  --rail-w: 240px;
+  --rail-w-icon: 64px;
+  --inspector-w: 344px;
+  --setup-w: 360px;
+  --setup-w-compact: 320px;
+  --context-h: 64px;
+  --tabbar-h: 56px;
+  --page-pad: 24px;
+  --page-pad-phone: 16px;
+  --gutter: 16px;
+  --content-max: 1680px;
+  --rail-item-h: 36px;
+  --jobs-tray-w: 420px;
+  --drawer-w: 420px;
+  --drawer-w-compact: 380px;
+  --modal-w: 560px;
+  --row-h: 32px;
+  --control-h: 32px;
+  --hit: 44px;      /* touch target on coarse pointers / phone */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-1: 0.01ms; --dur-2: 0.01ms; --dur-3: 0.01ms; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Base elements ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--surface-0);
+  color: var(--text-ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-14);
+  line-height: var(--lh-body);
+  font-weight: var(--fw-regular);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-title);
+  line-height: var(--lh-tight);
+  margin: 0;
+  color: var(--text-ink);
+}
+h1 { font-size: var(--fs-26); }
+h2 { font-size: var(--fs-16); color: var(--brass-200); }
+h3 { font-family: var(--font-ui); font-size: var(--fs-14); font-weight: var(--fw-bold); }
+
+/* Micro label: the one uppercase style. UI face, never mono, never display. */
+.micro-label, th {
+  font-family: var(--font-ui);
+  font-size: var(--fs-11);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+/* Numbers: every figure in tabular mono. Prose stays in --font-ui. */
+.num, td.num, data, output, input[type='number'], .stat-value, .ci, .n {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums slashed-zero;
+  font-feature-settings: 'tnum' 1, 'zero' 1;
+}
+.ci, .n { color: var(--text-muted); font-size: var(--fs-12); }
+/* Numbers inside a sentence stay in the UI face (bold, lining, tabular) so the
+   line keeps its rhythm. Mono is for numbers in DATA positions: table cells,
+   CI brackets, stat values, hero figures, tile meta, stepper values. */
+p .num, .note .num, .prose .num, .toast .num, .panel-note .num, .legend .num, .plan .num,
+.hint .num, .hint-line .num, .muted .num, .pick .meta .num, .sigil-cond .num, .banner .num, .warnline .num, .scope-line .num, .headline .num, .apply-bar .num,
+.btn .num, .tab .sub.num, .banner .num, .tooltip .num, .modal p .num {
+  font-family: var(--font-ui); font-variant-numeric: lining-nums tabular-nums; font-feature-settings: 'lnum' 1, 'tnum' 1; font-weight: var(--fw-bold);
+}
+.unit { font-size: 0.82em; color: var(--text-soft); margin-left: 1px; }
+
+a { color: var(--brass-400); text-underline-offset: 3px; }
+a:hover { color: var(--brass-200); }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+/* Focus: designed, visible, never clipped. Outline (not box-shadow) so
+   overflow and border-radius cannot hide it; pale gold so it never reads as
+   the ember selection marker. */
+:focus { outline: none; }
+:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+/* Anything inside an overflow:auto/hidden container draws the ring inside
+   itself, by default: one rule instead of a list. Lint: a new component that
+   sits flush in a scroll container must be matched here or carry .focus-inset. */
+.focus-inset:focus-visible, .scroll-x :focus-visible, .rail :focus-visible,
+[role='tablist'] :focus-visible, [role='row']:focus-visible, tr:focus-visible {
+  outline-offset: var(--focus-offset-inset);
+}
+@media (forced-colors: active) {
+  :focus-visible { outline: 2px solid Highlight; }
+}
+@media (prefers-contrast: more) {
+  :root { --line-control: #9aa3b4; --line-rule: #6f7889; --text-muted: #cec5b4; --focus-width: 3px; }
+}
+
+::selection { background: var(--selection); color: var(--text-ink); }
+
+.visually-hidden {
+  position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+@media (pointer: coarse) {
+  :root { --control-h: 44px; --row-h: 44px; }
+}

@@ -1,0 +1,54 @@
+### [9] CONFIRMED minor doc-mismatch | src/lib/engine/core/minions.js:95
+TITLE: openingSwingTimerStart documents its first argument as the summon-ready time, but the client and every caller pass the swing interval
+SCEN: A future caller who follows the parameter name passes `startMs + windowMs` (the summon-ready time, as minionSummonMeta takes it) instead of round(1000/attackSpeed). The opening swing timer then becomes min(timer, readyMs - 400) and the first player or enemy swing lands at the wrong time. No unit test pins the function (no *.test.js references openingSwingTimerStart), so the error would not be caught.
+FIX: Rename the parameter to `swingIntervalMs`. Rewrite the comment as: 'a positive summon window caps the swing timer at interval - 400 ms, so the first swing comes no sooner than 400 ms; otherwise fallback.' Add a unit test with window > 0 and window = 0.
+CORR:  | 
+NOTES: Rename the first parameter to `swingIntervalMs`. Reword the comment: "a positive summon window caps the timer at min(fallback, interval - 400), else fallback; callers pass round(1000/attackSpeed)". Cite L1094757 and the caller at L1087885. Add a unit test in core/minions.test.js covering window > 0 (with fallback above and below interval - 400) and window = 0. | Rename the first parameter to `swingIntervalMs`. Change the comment to: 'port of openingSwingTimerStart: with a positive summon window, min(fallback, swingInterval - 400), else fallback.' Add a unit test that pins window > 0 (for example interval 500 and fallback 0 give -100) and window = 0 (returns fallback). No behaviour change is needed.
+
+### [10] CONFIRMED minor test-gap | src/lib/engine/core/minions.test.js:61
+TITLE: Minion ceiling branches and soft-cap gain value are untested
+SCEN: A regression that drops the ceiling or applies it unconditionally would pass the suite. Example: a frenzied minion at attack speed 3.5 with +50 % would swing at 5.25/s instead of 4.5/s. A soul link of 75 + 20 would heal at 95 % instead of 80 %.
+FIX: Add exact-value tests: minionSwingIntervalMs with attackSpeed 3.5 and frenzy 50 % returns round(1000/4.5) = 222; minionCurrentLifesteal at 70 + 20 returns 80; currentSoulLink at 70 + 20 returns 80; minionAttackSpeed(1.8, 0.5) equals 1.8 + softCapGainFromSheet(1.8, 0.5, {soft 2, hard 4}).
+CORR:  | 
+NOTES: Add exact-value tests to minions.test.js. (1) In the frenzy test, change `<= 501` to `toBe(500)`. (2) minionSwingIntervalMs({attackSpeed: 3.5, frenzy: {attackSpeedPercent: 50}}) returns 222, which exercises the 4.5 ceiling. With no frenzy it returns round(1000/3.5) = 286; this checks that the ceiling is skipped when pct is 0. (3) minionCurrentLifesteal({lifesteal: 70, frenzy: {lifesteal: 20}}) returns 80, and with frenzy lifesteal 0 it returns 70. (4) currentSoulLink({soulLink: 75, soulLinkBonus: 20}) returns 80. (5) minionAttackSpeed(1.8, 0.5) is toBeCloseTo 1.8 + softCapGainFromSheet(1.8, 0.5, capConfig('MINION_ATTACK_SPEED')), currently about 2.2693. Also add a case that reaches the 4.5 ceiling. | Add exact-value tests to src/lib/engine/core/minions.test.js:
+- Swing interval at the ceiling: attackSpeed 3.5 with frenzy attackSpeedPercent 50 gives round(1000/4.5) = 222.
+- Swing interval below the ceiling: tighten the existing assertion to exactly 500.
+- Lifesteal: minionCurrentLifesteal with lifesteal 70 and frenzy.lifesteal 20 gives 80.
+- Soul link: currentSoulLink with soulLink 70 and soulLinkBonus 20 gives 80.
+- No bonus: without frenzy or bonus, an out-of-range base value passes through uncapped (or pin the current client behaviour, whichever it is).
+- Soft-capped gain: minionAttackSpeed(1.8, 0.5) equals the exact applyCombatCeiling(1.8 + softCapGainFromSheet(...)) value.
+
+### [11] REFUTED resolveSigilGlyphMods treats a glyph with no tier as MAJOR and one with no sealed flag as unsealed; the client requires tier === MAJOR and sealed === false
+
+### [12] CONFIRMED major fidelity | src/lib/engine/pve/fight.js:824
+TITLE: simulatePve resets the Necromancer minion between mobs using a crusade-only rule (full heal, swing timer reset, empower/frenzy ended)
+SCEN: Fixture NECROMANCER_DEATHLORD (Bone Servant plus Ravenous Frenzy) on chapter 3 level 10 (3 mobs), 40 seeds. Port: avg clear time 2000 ms. The same loop without the carry call (the client behaviour): 1600 ms. Ch6-5: 3720 vs 2798 ms. Doomweaver ch3-10: 1800 vs 1100 ms. Win rate and HP are unchanged here, so the error lands entirely on time-based PVE metrics. Under the client rule the minion keeps its empower bonus HP into mob 2 (maxHp 829518 vs 592513), keeps its frenzy and keeps its swing progress. The port also heals a damaged minion to full for free, which would flip wins in harder content.
+FIX: Remove the carryMinionIntoNewFight call from simulatePve's mob loop. The minion should carry over as is: the existing opening resummonIfDead in simulateFight already covers a dead minion with a pending respawn. Keep carryMinionIntoNewFight for a future crusade port only. Add a fight.test case: a Necromancer over 2 mobs, where the minion's hp, frenzy and timer survive the transition.
+CORR: This is accurate as stated, with one nuance. The campaign transition does reset the player and mob combat timers (slot46), but not the minion's timer. The minion's timer is changed only by the opening summon window adjustment, which the port already handles in simulateFight's opening. | 
+NOTES: Remove `carryMinionIntoNewFight(f.minion)` from simulatePve's mob loop (fight.js:824) and keep `f.stacks?.resetTarget()`. For dungeon steps, consider also porting the client's `elapseMinionRespawn(minion, 500)` and the 500 ms start offset between mobs (L1671080-1671084), via a mode flag on simulatePve. Add a fight.test.js case: a Necromancer against 2 mobs, asserting that the minion's hp, its empower/frenzy state and its timer persist across the transition, and that a dead minion with a pending respawn is resummoned at mob 2's opening. Keep carryMinionIntoNewFight for a crusade port only, with a comment citing L1863431. | Drop the carryMinionIntoNewFight call from simulatePve's mob loop (fight.js:824). Keep resetTarget. While here, for dungeon/raid steps match simulateDungeonStep more closely: call elapseMinionRespawn(minion, 500) before each mob and start each mob at prevEnd + 500. The port currently passes startMs: elapsed with no gap and no elapse. Campaign also resets attacker/defender/regen timers between mobs (slot58) and has MOB_DEFEATED/MOB_ENTER pauses; check those separately. Add a fight.test.js case: a Necromancer with a minion over 2 mobs, damaged and frenzied at the end of mob 1, keeps hp, frenzy and timer into mob 2.
+
+### [13] UNRESOLVED minor fidelity | src/lib/engine/pve/fight.js:826
+TITLE: simulatePve omits the client's 500 ms inter-mob gap and the minion respawn elapse that goes with it
+SCEN: A 3-mob dungeon step reports timeMs 1000 ms shorter than the client's replay. A Necromancer whose minion died near the end of mob 1 gets the respawn 500 ms later in the port than in the client, so the minion fights less of mob 2.
+FIX: For dungeon/raid steps, add 500 ms to startMs per transition and call elapseMinionRespawn(f.minion, 500) before the next simulateFight. Campaign levels do not use this, so pass the gap as an option. Cite combat-pve.md §14.
+CORR: 
+NOTES: 
+
+### [14] CONFIRMED minor test-gap | src/lib/engine/core/glyphMods.test.js:13
+TITLE: The glyph coverage test checks only the accumulator, not that each glyph changes combat for its class/spec/form
+SCEN: Today all 42 glyphs do reach combat. A sweep script that builds each glyph's sigil through getActiveCombatSpells for every spec and form confirmed it. But if a catalogue sync changed a druid-variant spell's inferred type (spellTypeOf heuristic) or dropped a field such as paralyzeMs, the glyph would silently become inert. The optimiser would keep suggesting it, the same 'legal-looking but inert' class as the reported bug, and no test would fail.
+FIX: Add an end-to-end coverage test. For each MAJOR_GLYPHS entry, each spec it applies to and each Druid form, build the sigil's spell with getActiveCombatSpells (or getEquippedShieldConfig / createStackCombat / ironBastionThornsPercent for SHIELD, STACK and THORNS kinds). Assert that the Legendary glyph changes the result.
+CORR:  | Every glyph reaches combat today only when the Druid has a form (BEAR/WOLF). Five Druid glyphs on form-conditional sigils have no effect with formKind=null, by design. A new end-to-end test should assert "changes combat in at least one form" for those glyphs, not "in every form".
+NOTES: Add an end-to-end sweep test. For each MAJOR_GLYPHS entry, each allowed spec and, for MYSTIC_DRUID, each form, build the combat config with and without the Legendary glyph:
+- getActiveCombatSpells for spell-modifying kinds.
+- getEquippedShieldConfig for SHIELD_POWER.
+- createStackCombat with stackGlyphOverrides for the BULWARK and ELUSIVE kinds.
+- ironBastionThornsPercent for THORNS.
+Assert that the two results differ. Wherever the client itself makes a glyph inert for a particular form, list that case explicitly as an expected exception. | Add a test in glyphMods.test.js or spellConfig.test.js. For each MAJOR_GLYPHS entry and each applicable spec:
+- Build state = { ownedSigils: [{ species: sigilSpecies, level: 1 }], equippedSpecies / druidEquippedSpecies / utilitySlotSpecies: [sigilSpecies] }.
+- Compare buildCombatSpells with and without the Legendary glyph mods, together with getEquippedShieldConfig and toSigilGlyphCombatMods (stack / ironBastionThornsPercent).
+- For MYSTIC_DRUID, try forms [null, 'BEAR', 'WOLF'] and require a change in at least one of them.
+- Optionally also check levels 1 and 6, and the minion config for SUMMON sigils.
+
+The sweep script above can serve as the template.
+
