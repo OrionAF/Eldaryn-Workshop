@@ -53,10 +53,10 @@ rolls, most fights and every random outcome.
 | [`sigils.md`](sigils.md) | Sigil catalogue, flat stat formula, spell scaling and caps, stack sigils, Ancient transforms, activation conditions | `data/sigils.json` |
 | [`mounts-glyphs.md`](mounts-glyphs.md) | Mount levels and stat formula, minor glyphs, all 42 major glyphs | `data/mounts-glyphs.json` |
 | [`pets.md`](pets.md) | 18 species, Pet Altar levels and tiers, pet stat formulas | `data/pets.json` |
-| [`awakening.md`](awakening.md) | Shadow/Radiant paths and per-class/spec point bundles | — |
+| [`awakening.md`](awakening.md) | Shadow/Radiant paths and per-class/spec point bundles | `data/awakening.json` |
 | [`transcendence.md`](transcendence.md) | The 6 boards, node values, Ichor costs, Transcendence Presets | `data/transcendence.json` |
 | [`clan-fortress.md`](clan-fortress.md) | Fortress group buffs and their class remap, clan wars, village raids | `data/clan-fortress.json` |
-| [`pve-content.md`](pve-content.md) | World map, chapters, dungeons, Crusade, Celestial, World Boss, Arcane Quarry, Oblivion prestige | `data/pve-content.json` |
+| [`pve-content.md`](pve-content.md) | World map, chapters, dungeons, Crusade, Celestial, World Boss, Arcane Quarry, Oblivion prestige | `data/pve-content.json`, `data/world-boss.json` (World Boss) |
 
 **Each fact lives in one document.** A document that needs a fact owned by
 another points to it (`see stats.md`) instead of copying it. The `data/*.json`
