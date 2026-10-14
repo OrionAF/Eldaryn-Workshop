@@ -1,4 +1,5 @@
-> **Status:** Current · **Last verified:** 2026-07-04 (⚠ not re-checked since)
+> **Status:** Superseded 2026-10-14 · **Superseded by:** `Reference/Game/stones.md` and the Gear screen (`src/components/screens/GearScreen.svelte`).
+> Describes the pre-rebuild app (v1 model, `src/lib/*Data.js`, legacy components). True on its date, not since.
 > **Covers:** the Socketed Stones system — the design spec for a feature that
 > has since shipped (`stonesData.js`, `socketedStones` on the loadout, the
 > optimizer's stone pass).

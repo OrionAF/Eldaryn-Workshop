@@ -1,4 +1,5 @@
-> **Status:** Current · **Last verified:** 2026-07-28
+> **Status:** Superseded 2026-10-14 · **Superseded by:** the rebuilt optimiser/search (`src/lib/search/`; relics are a toggle in the search space).
+> Describes the pre-rebuild app (v1 model, `src/lib/*Data.js`, legacy components). True on its date, not since.
 > **Covers:** the Relic Suggester — "if I invested N relic levels anywhere,
 > which pays off most?" The feature has shipped (`relicSuggester.js`,
 > `RelicSuggesterPanel.svelte`).

@@ -1,4 +1,5 @@
-> **Status:** Current · **Last verified:** 2026-07-28
+> **Status:** Superseded 2026-10-14 · **Superseded by:** the rebuilt optimiser/search (`src/lib/search/`, `features/`); presets no longer carry goals or linking.
+> Describes the pre-rebuild app (v1 model, `src/lib/*Data.js`, legacy components). True on its date, not since.
 > **Covers:** the goals/linking redesign — grilling decisions 1–7, slice status
 > (all five complete), and the Jul 2026 game patches applied since.
 

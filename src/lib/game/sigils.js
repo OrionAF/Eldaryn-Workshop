@@ -1,22 +1,22 @@
 // L1 catalogue: sigil species, altar/forge constants, class and spec gating. Lookups only.
 // Sources: Game/sigils.md §2 (utility slots), §11 (class gating), §12 (schema); data/sigils.json.
-import sigilsData from '../../data/game/sigils.json';
+import sigilsJson from '../../data/game/sigils.json';
 
-export const SIGIL_CATALOGUE = sigilsData.catalogue;
-export const SIGIL_RARITY_BASE = sigilsData.rarityBase;
-export const SIGIL_CONSTANTS = sigilsData.constants.SIGIL_CONSTANTS;
-export const SIGIL_ALTAR_CONSTANTS = sigilsData.constants.SIGIL_ALTAR_CONSTANTS;
-export const SIGIL_FORGE_CONSTANTS = sigilsData.constants.SIGIL_FORGE_CONSTANTS;
-export const SIGIL_SLOT_UNLOCKS = sigilsData.constants.SIGIL_SLOT_UNLOCKS;
-export const SIGIL_SLOT_UNLOCKS_MYSTIC = sigilsData.constants.SIGIL_SLOT_UNLOCKS_MYSTIC;
-export const SIGIL_UNLOCK_LEVEL_BY_CLASS = sigilsData.constants.SIGILS_UNLOCK_LEVEL_BY_CLASS;
-export const SIGIL_CONDITIONS_UNLOCK_LEVEL = sigilsData.constants.SIGIL_CONDITIONS_UNLOCK_LEVEL;
-export const MIN_SIGIL_COOLDOWN_MS = sigilsData.constants.MIN_SIGIL_COOLDOWN_MS;
-export const TRANSFORM_DURATION_MS = sigilsData.constants.TRANSFORM_DURATION_MS;
-export const FORGE_ODDS = sigilsData.forgeOdds;
-export const FORGE_ODDS_BY_ALTAR_LEVEL = sigilsData.forgeOddsByAltarLevel;
-export const ALTAR_FORGES_TO_NEXT_LEVEL = sigilsData.altarForgesToNextLevel;
-export const ALTAR_CUMULATIVE_FORGES_TO_LEVEL_30 = sigilsData.altarCumulativeForgesToLevel30;
+export const SIGIL_CATALOGUE = sigilsJson.catalogue;
+export const SIGIL_RARITY_BASE = sigilsJson.rarityBase;
+export const SIGIL_CONSTANTS = sigilsJson.constants.SIGIL_CONSTANTS;
+export const SIGIL_ALTAR_CONSTANTS = sigilsJson.constants.SIGIL_ALTAR_CONSTANTS;
+export const SIGIL_FORGE_CONSTANTS = sigilsJson.constants.SIGIL_FORGE_CONSTANTS;
+export const SIGIL_SLOT_UNLOCKS = sigilsJson.constants.SIGIL_SLOT_UNLOCKS;
+export const SIGIL_SLOT_UNLOCKS_MYSTIC = sigilsJson.constants.SIGIL_SLOT_UNLOCKS_MYSTIC;
+export const SIGIL_UNLOCK_LEVEL_BY_CLASS = sigilsJson.constants.SIGILS_UNLOCK_LEVEL_BY_CLASS;
+export const SIGIL_CONDITIONS_UNLOCK_LEVEL = sigilsJson.constants.SIGIL_CONDITIONS_UNLOCK_LEVEL;
+export const MIN_SIGIL_COOLDOWN_MS = sigilsJson.constants.MIN_SIGIL_COOLDOWN_MS;
+export const TRANSFORM_DURATION_MS = sigilsJson.constants.TRANSFORM_DURATION_MS;
+export const FORGE_ODDS = sigilsJson.forgeOdds;
+export const FORGE_ODDS_BY_ALTAR_LEVEL = sigilsJson.forgeOddsByAltarLevel;
+export const ALTAR_FORGES_TO_NEXT_LEVEL = sigilsJson.altarForgesToNextLevel;
+export const ALTAR_CUMULATIVE_FORGES_TO_LEVEL_30 = sigilsJson.altarCumulativeForgesToLevel30;
 
 const bySpecies = new Map(SIGIL_CATALOGUE.map((s) => [s.species, s]));
 

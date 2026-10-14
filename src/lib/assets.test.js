@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { assetUrl, mountImage, petImage, sigilImage, glyphImage } from './assets.js';
-import { MOUNT_DEFS } from './mountsData.js';
-import { COMPANION_DEFS } from './petsData.js';
-import { SIGILS_BY_CLASS } from './sigilsData.js';
-import { GLYPH_RARITIES } from './constants.js';
+import { MOUNT_SPECIES } from './game/mountsGlyphs.js';
+import { PET_SPECIES, petDisplayName } from './game/pets.js';
+import { ownableSigils } from './model/sigils.js';
+
+const GLYPH_RARITIES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
 
 /**
  * These are coverage fences, not behaviour tests: they exist so that renaming a
@@ -12,20 +13,20 @@ import { GLYPH_RARITIES } from './constants.js';
  */
 describe('asset coverage', () => {
   it('every mount in the catalogue has art', () => {
-    const missing = MOUNT_DEFS.filter((d) => !mountImage(d.id)).map((d) => d.id);
+    const missing = MOUNT_SPECIES.filter((d) => !mountImage(d.species)).map((d) => d.species);
     expect(missing).toEqual([]);
   });
 
-  it('every companion in the catalogue has art', () => {
-    const missing = COMPANION_DEFS.filter((d) => !petImage(d.name)).map((d) => d.name);
+  it('every pet species (base and evolved name) has art', () => {
+    const missing = PET_SPECIES.flatMap((d) => [petDisplayName(d.id, false), petDisplayName(d.id, true)]).filter((n) => !petImage(n));
     expect(missing).toEqual([]);
   });
 
   it('every sigil in both class catalogues has art', () => {
     const missing = [];
-    for (const [cls, defs] of Object.entries(SIGILS_BY_CLASS)) {
-      for (const def of defs) {
-        if (!sigilImage(cls, def.id)) missing.push(`${cls}/${def.id}`);
+    for (const cls of ['WARRIOR', 'SENTINEL']) {
+      for (const def of ownableSigils(cls)) {
+        if (!sigilImage(def.class, def.id)) missing.push(`${cls}/${def.id}`);
       }
     }
     expect(missing).toEqual([]);

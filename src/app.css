@@ -531,16 +531,14 @@ select {
 /* Signature: numeric data reads as a ledger - tabular, monospaced, aligned. */
 input[type='text'],
 input[type='number'],
-.dps-hps-readout,
-.field-value,
-.field-derived,
-.stats-fields input,
 .deltas,
-.footer-line,
 .talent-value,
 .bonus-value,
 .per-point,
 .relic-stats,
+.num,
+.rank-value,
+.points-readout,
 .mono {
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums;

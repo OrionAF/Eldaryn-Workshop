@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TASKS, hasTask, isTaskRequest, runTask } from './index.js';
+import { TASKS, hasTask, runTask } from './index.js';
 import { runOptimizerTask } from '../optimizerClient.js';
 
 const stats = (o = {}) => ({
@@ -11,13 +11,9 @@ const stats = (o = {}) => ({
 const fighter = (o = {}) => ({ stats: stats(o), class: 'WARRIOR', spec: null, sigils: [] });
 
 describe('task registry', () => {
-  it('names the four tasks and routes legacy optimize requests away', () => {
+  it('names the four tasks', () => {
     expect(Object.keys(TASKS).sort()).toEqual(['dropCheck', 'duel', 'oblivionFloors', 'optimize']);
     expect(hasTask('toString')).toBe(false);
-    expect(isTaskRequest({ mode: 'duel' })).toBe(true);
-    expect(isTaskRequest({ mode: 'optimize' })).toBe(false);
-    expect(isTaskRequest({ mode: 'optimize', v2: true })).toBe(true);
-    expect(isTaskRequest({ mode: 'suggest-relics' })).toBe(false);
   });
 
   it('implemented tasks validate their request; unknown modes reject', async () => {

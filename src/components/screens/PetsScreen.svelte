@@ -10,7 +10,7 @@
    * computed by engine/sources/pet.js).
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
-  import { RARITIES } from '../../lib/constants.js';
+  import { RARITY_ORDER } from '../../lib/format.js';
   import { PET_SPECIES } from '../../lib/game/pets.js';
   import { PET_MAX_TIER, PET_MAX_LEVEL, MAX_OWNED_PETS, secondaryTypesFor } from '../../lib/model/pets.js';
   import Slider from '../Slider.svelte';
@@ -24,7 +24,7 @@
   const owned = $derived(character.pets.owned);
   const evolved = $derived(altar.tier >= 2);
   const types = $derived(secondaryTypesFor(character.class));
-  const species = PET_SPECIES.toSorted((a, b) => RARITIES.indexOf(a.rarity) - RARITIES.indexOf(b.rarity) || a.name.localeCompare(b.name));
+  const species = PET_SPECIES.toSorted((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || a.name.localeCompare(b.name));
 
   let newSpecies = $state(species[0].id);
   let pendingTier = $state(null); // null = follows the altar

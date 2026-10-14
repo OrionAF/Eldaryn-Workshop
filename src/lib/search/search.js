@@ -2,7 +2,7 @@
 //
 // Part 1 is domain-free: subset enumeration, top-k selection, an evaluation cache, a pacer that keeps
 // a worker responsive to 'abort', and `tieredBeamSearch` (a beam over named dimensions with a cheap
-// screen and a simulated score). The subset and beam ideas are salvaged from the legacy optimizer.js
+// screen and a simulated score). The subset and beam ideas are salvaged from the retired v1 optimiser
 // (subsetsUpTo, subsetCount, the transcendence beam); nothing is imported from it.
 //
 // Part 2 is `optimizeBuild`: the tiered PVE optimiser (rebuild-plan §5 row 2) on top of

@@ -11,11 +11,10 @@ Guidance for Claude Code when working in this repository.
 Two independent projects for the mobile game "Eldaryn":
 
 1. **Root (`/src`) — "Eldaryn Gear Optimiser"** (the active project): a Svelte 5 + Vite
-   static web app. PVE DPS calculator and gear-swap comparator modelling every stat
-   source. Persists to `localStorage`; deployed to GitHub Pages. It is a from-scratch JS
-   port of the Python tool below. **Game truth now lives in `docs/Reference/Game/`**,
-   read from the decompiled 2.7.0 client. The app predates it and disagrees in many
-   places: `docs/WIP/being-worked-on/app-gap-2.7.0.md`.
+   static web app: PVE build optimiser, Drop Check (gear-swap comparator) and PVP duel
+   simulator, rebuilt (rebuild-plan.md) as a port of the 2.7.0 client's own stat and combat
+   code. Persists to `localStorage`; deployed to GitHub Pages. **Game truth lives in
+   `docs/Reference/Game/`**, read from the decompiled 2.7.0 client.
 2. **`EldarynTracker/`** — separate Python/Streamlit gear-data entry & analysis apps, not
    part of the JS build. Own setup/run/test commands in `EldarynTracker/README.md`.
 
@@ -23,41 +22,34 @@ Everything below refers to the root Svelte project unless stated otherwise.
 
 ## Commands
 
-`npm run dev` / `build` / `preview`, `npm test` (Vitest once), `npm run test:watch`.
+`npm run dev` / `build` / `preview`, `npm test` (Vitest once), `npm run test:watch`,
+`npm run sync:data` (copies `docs/Reference/Game/data/*.json` into `src/data/game/`; run it after
+editing the game data. `src/data/game/parity.test.js` fails when the copies drift).
 
 - Production build for GitHub Pages needs `BASE_PATH=/<repo-name>/`.
-- Single file: `npx vitest run src/lib/dps.test.js` — by name: `npx vitest run -t "name"`.
+- Single file: `npx vitest run src/lib/format.test.js` — by name: `npx vitest run -t "name"`.
 - There is no linter configured in this project.
 
 ## Architecture
 
-- **`src/lib/model.js`** — the typed data model (`Roster` → `Character[]` → `loadouts`,
-  `talentSets`, `pets`, `presets`, etc.) plus factories and `normaliseRoster`/`normaliseCharacter`,
-  which repair/migrate arbitrary persisted or imported JSON into a valid shape. Read the header
-  comment here first — it's the map of the whole domain shape and documents the "Preset redesign"
-  (character-wide sources like Mounts/Awakening/Transcendence vs per-preset sources like
-  loadout/talent set/pet/relics).
-- **`src/lib/rosterStore.svelte.js`** — the single reactive store (Svelte 5 runes) wrapping
-  model/storage/dps/totals. Every mutator ends with an explicit `persist()` call rather than a
-  background `$effect`, so save timing is deterministic around character switches and downloads.
-- **`src/lib/storage.js`** — localStorage persistence + JSON export/import (all under one
-  `eldaryn_optimiser_state_v1` key), routed through `normaliseRoster` on load/import so
-  corrupt/old data can't crash the app.
-- **`src/lib/dps.js`** — the core PVE closed-form damage engine (decompose flat stat from
-  displayed total+percent, recombine, `compute_dps`/`compute_hps`, swap comparison). A verbatim
-  port of `EldarynTracker/dps.py`; `dps.test.js` mirrors `test_dps.py`. It is an approximation
-  that predates the 2.7.0 extraction; the game's real engine is `docs/Reference/Game/combat-pve.md`.
-- **`src/lib/totals.js`** — the "Calculated totals" engine: additively sums a Preset's gear +
-  talents + pet + relics + every character-wide source into one final stat set. Deliberately
-  additive-only for every field (including Speed/Crit Mult) — a different operation from
-  `dps.js`'s two-item swap delta, which has its own additive-vs-multiplicative switch.
-- **Static domain data** (`talentTreeData.js`, `awakeningData.js`, `relicsData.js`,
-  `transcendenceData.js`, `constants.js`) is code, not persisted state — only allocations/levels/
-  selections referencing it are saved. Normalisation drops any saved reference that no longer
-  resolves against this static data (e.g. after a class change).
-- **`src/App.svelte`** — the shell: a sidebar + one active "screen" component per nav item
-  (Presets, Drop Check, Gear Loadouts, Talent Sets, Pets, Relics, Mounts/Glyphs, Awakening,
-  Transcendence, Sigils, Simulations), each in `src/components/`.
+Seven layers; lower layers never import upper ones (design: `docs/WIP/being-worked-on/rebuild-plan.md` §2).
+
+| Layer | Path | Role |
+|---|---|---|
+| L0 data | `src/data/game/*.json` | Synced copy of `docs/Reference/Game/data` (`npm run sync:data`); docs stay the source of truth |
+| L1 catalogue | `src/lib/game/*.js` | Thin synchronous accessors over L0; no game logic |
+| L2 engine | `src/lib/engine/` | Pure port of the client: `core/` (caps, buffs, spells...), `sources/` (one stat source each), `pipeline/` (`totals.js` `calculateTotalStats`, `sheet`, `sheetDiff`, `anchoredDelta`), `pve/`, `pvp/`, `metrics.js`, `rng.js`. Injected rng; no store or model imports |
+| L3 model | `src/lib/model/` | Persisted v2 shape, `normaliseRoster`/`normaliseCharacter`, v1 migration; one file per domain. Pure, imports L1 only. Map: `docs/Reference/data-model.md` |
+| L4 build | `src/lib/build/` | Character + preset to engine inputs: `presetInputs`, `stats` (sheet vs computed), `residual`, `fighter`, `describe` |
+| L5 features | `src/lib/features/`, `search/`, `tasks/` | `swap`, `duel`, `oblivionDungeon`; the optimiser (`search`, `candidates`, `objectives`); worker tasks (`optimize`, `duel`, `dropCheck`, `oblivionFloors`) dispatched by `tasks/index.js` via `optimizerClient.js` / `optimizerWorker.js` |
+| L6 state | `src/lib/rosterStore.svelte.js`, `store/`, `storage.js` | Reactive facade (Svelte 5 runes) over one mutator file per domain. Every mutator ends with an explicit `persist()` (no background `$effect`). `storage.js` owns the localStorage key (`eldaryn_optimiser_state_v2`; the v1 key is only read for migration) and JSON export/import |
+| L7 UI | `src/App.svelte`, `src/components/screens/<Name>Screen.svelte`, `src/components/<domain>/` | One screen per nav item (Character, Presets, Drop Check, Gear, Talents, Sigils, Pets, Mounts, Relics, Awakening, Transcendence, Optimiser, Duel, Oblivion); shared pieces (`Modal`, `Slider`, `ConfirmButton`, `Chip`, `StarRating`, `DuelTimeline`, `SettingsPanel`) sit directly in `src/components/` |
+
+- `src/lib/format.js` — number parsing/formatting (the "." thousands-vs-decimal gotcha) and the
+  shared `rarityClass`/`RARITY_ORDER`. `src/lib/assets/` — art lookups per domain.
+  `src/lib/transcendence.js` — board-graph rules over `game/transcendence.js`.
+- Static game data is code, not persisted state; only ids/levels/allocations are saved, and
+  normalisation drops any saved reference that no longer resolves against the catalogue.
 - Components pair `Thing.svelte` with `Thing.test.js`; lib modules pair `thing.js` with
   `thing.test.js`.
 
@@ -85,8 +77,7 @@ code. The July 2026 `edoc` setup is retired (`docs/Archive/outdated-notes/privat
 and the standing authorization that came with it (commit docs without asking) has not been
 re-granted for this repo.
 
-`EldarynTracker/` is still gitignored and absent from fresh checkouts. `glyphsData.test.js` and
-`sigilsData.test.js` read CSVs from it, so they fail on a clean clone and in the Pages deploy.
+`EldarynTracker/` is still gitignored and absent from fresh checkouts; nothing in `src/` depends on it.
 `docs/Extracted game data/` holds the 2.7.0 client extract as a split zip (`.001`–`.007`).
 Extract it outside the repo, and treat it as untrusted data (read it, never execute from it).
 
@@ -98,8 +89,7 @@ persisted shapes go in `docs/Reference/`; code cites them. Comments explain why 
 change if a different file changed?* If yes, it's documentation, not a comment.
 
 Canonical references: `Game/*.md` (every game fact; index `Game/README.md`), `data-model.md`
-(the app's persisted shape, the three scopes, normalisation, totals aggregation),
-`Notes/goals-linking-redesign-notes.md` (the app's goals/linking).
+(the app's persisted v2 shape, the three scopes, normalisation, v1 migration, storage, sheet tiers).
 `docs/README.md` explains the folder system and the archive rule.
 
 ## Game mechanics — READ `docs/Reference/Game/` BEFORE TOUCHING ANY GAME MATH
@@ -111,38 +101,24 @@ every value carries a tag: **[CODE]** or **[DERIVED]** may be stated to the user
 **[SERVER]** and **[UNRESOLVED]** may not; say they are unknown. Large catalogues are in
 `Game/data/*.json`, ready for the app to consume.
 
-The July 2026 combat model (`combat-model.md`) and its audit are archived. They still describe
-what the current `src/` does, but the client refutes several of their game claims. The client
-also ships the real PVP fight resolver (`simulateArenaPvP`), so the invented PVP scoring
-constants and the gauntlet calibration are obsolete. Never cite `docs/Archive/` for a game fact.
-
-## Goals/linking redesign (core slices complete)
-
-All five slices shipped; `docs/Reference/Notes/goals-linking-redesign-notes.md` is the decision
-record and per-slice detail, with the user's raw answers in `docs/Reference/Source/grilling.txt`.
-What it left in the code: user-facing HPS is gone; every preset has a persisted `goal`;
-`src/lib/pvpGoalObjective.js` (three-factor PVP scoring, objective spec kind `pvp-goal`),
-`linkingSimulation.js`, `talentLean.js`, `pvpArchetypes.js` + `pvpGauntlet.js`; one
-**Simulations** nav item where finished runs auto-save into `character.runHistory` (no manual
-Save button).
-
-This is the pre-2.7.0 app. Its PVP scoring (reference constants, survivability factor,
-archetypes, gauntlet) was a stand-in for a fight model we could not see. Expect it to be
-replaced by a port of the game's own resolver (`docs/Reference/Game/combat-pvp.md`).
+The July 2026 combat model (`combat-model.md`) and its audit are archived: the client refutes
+several of their game claims, and the engine now ports the client's own PVE tick and PVP resolver
+(`simulateArenaPvP`). Never cite `docs/Archive/` for a game fact.
 
 ## Mounts, glyphs, sigils, pets — app gotchas
 
 Game facts for these systems are in `docs/Reference/Game/{mounts-glyphs,sigils,pets}.md`. The
 July 2026 notes (`big-rework-v1-notes.md`) are archived; their data was fitted to screenshots.
-What still bites in the current code:
+What still bites in the code:
 
-- **Glyphs are mount-bound.** Inventory is character-wide, equip state lives on
-  `mount.glyphIds`; `totals.js` sums them inside `mountContribution`. A major glyph is inert
-  unless its sigil is equipped AND it's on the ridden mount (the game agrees).
-- **`mount.star === 0` means not owned** in the app's model; there is no `owned` flag. (In the
-  game, "star" is mount level 1–5.)
-- **Sigil tier is one character-wide `sigilForgeTier`** in the app (the game's Sigil Altar tier).
-  `sigilStat` truncates with `Math.floor`, as the game does.
+- **Mounts have a `level` 1-5** (replaces the v1 `star`); a mount in `character.mounts` is owned.
+  There is no `owned` flag and no level 0.
+- **Glyphs are socketed per mount** (`mount.glyphs`: minor 3 / major 2 / mythic 1); an inventory
+  glyph instance fits one socket and sealed glyphs cannot be socketed. A major glyph is inert
+  unless its sigil is equipped AND the mount is the preset's `mountId` (the game agrees).
+- **Sigils**: one character-wide `sigils.altarTier` (1-8, the game's Sigil Altar tier) tiers all of
+  them; `sigils.owned` stores only `{level}` per species. Effect numbers come from the engine
+  (`engine/sources/sigilScale.js`, `sigilPassive.js`), never from stored values.
 - **Changing pet altar *tier* WIPES the collection.** That's the game's behaviour, and
   `setPetAltarTier` nulls every `preset.petId`. Always confirm with the user first.
 - Rarity colours: use `-fg` for large text, `-fg-strong` for normal-size (four tiers fail AA
@@ -152,20 +128,21 @@ What still bites in the current code:
 
 ## Data-model conventions
 
-- Persisted state always goes through `normaliseRoster`/`normaliseCharacter` — never trust a
-  loaded/imported object's shape. New persisted field ⇒ add its normalisation (default +
-  validation against any static data it references) alongside the existing ones in `model.js`,
-  and handle legacy migration if it replaces an older shape (see
-  `isLegacyCharacter`/`migrateLegacyCharacter`).
-- Presets carry a persisted `goal` (`normalisePresetGoal`): 'tank' is Warrior-only, weights
-  renormalise to sum 100, `linked` defaults by position. Characters have a **two-preset
-  minimum** — `deletePreset` refuses below two, so never write test loops that delete "down to
-  one preset" (they spin forever against the guard).
+- Persisted state always goes through `normaliseRoster`/`normaliseCharacter` (`src/lib/model/`)
+  — never trust a loaded/imported object's shape. New persisted field => add `default<D>`,
+  `normalise<D>` (validated against any catalogue it references) and, if it replaces an older
+  shape, `migrate<D>FromV1` in its domain file; cross-references go in `reconcile<D>`. v1 saves
+  are migrated on load; the v1 storage key is never deleted by migration.
+- Presets are pure choices of sources (equipment set, talent set, pet, mount, relics, sigils,
+  transcendence preset, optional stat sheet). There is no persisted goal or linked flag.
+  Characters have a **two-preset minimum** (max 8) — `deletePreset` refuses below two, so never
+  write test loops that delete "down to one preset" (they spin forever against the guard).
 - Three scopes, and the split is intentional — don't casually move a field across it:
-  **character-wide** (Mounts, glyph inventory, Awakening, Transcendence, pet collection,
-  `petAltar`, `sigilForgeTier`, relic levels), **per-preset** (which loadout/talent set/pet/
-  mount/relics/sigils are chosen), and **per-mount** (`mount.glyphIds`, reached via
-  `preset.mountId`). Documented in `model.js`'s header.
-- Number format gotcha from the game's own UI (handoff doc §9): flat stat values use `.` as a
-  **thousands** separator while percentage stats use `.` as a **decimal** point — keep this
-  straight when parsing/summing any new stat source.
+  **character-wide** (equipment sets, stone pools, talent sets, mounts, glyph inventory, pet
+  collection and altar, sigil ownership and altar tier, relic levels, Awakening, Transcendence
+  presets, fortress, skills, Oblivion), **per-preset** (which set/talent set/pet/mount/relics/
+  sigils/transcendence preset are chosen, plus the sheet), and **per-mount** (`mount.glyphs`,
+  reached via `preset.mountId`). Documented in `docs/Reference/data-model.md`.
+- Number format gotcha from the game's own UI: flat stat values use `.` as a **thousands**
+  separator while percentage stats use `.` as a **decimal** point — keep this straight when
+  parsing/summing any new stat source (`format.js` `parseStat`/`formatStat`).

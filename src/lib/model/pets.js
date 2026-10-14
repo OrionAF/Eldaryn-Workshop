@@ -55,7 +55,7 @@ export const PET_SECONDARY_RANGES = {
 };
 export const PET_SECONDARY_TYPES = Object.keys(PET_SECONDARY_RANGES);
 
-/** v1 petsData.js statKey -> stats.json enumName, for migration. */
+/** v1 the v1 pet catalogue statKey -> stats.json enumName, for migration. */
 const V1_STAT_KEY_TO_TYPE = {
   attack_pct: 'ATTACK_PERCENT', health_pct: 'HEALTH_PERCENT', crit: 'CRIT_CHANCE', crit_mult: 'CRIT_DAMAGE',
   double_hit: 'DOUBLE_HIT', speed: 'ATTACK_SPEED', lifesteal: 'LIFESTEAL', penetration: 'PENETRATION',
