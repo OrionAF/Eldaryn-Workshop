@@ -281,8 +281,17 @@
  * @property {{species: string, level: number}|null} [ancient]
  * @property {Object<string, string>} [conditions]  species -> conditionId
  * @property {Array<{glyphType: string, rarity: string}>} [glyphMods]  major glyphs on the ridden mount
- * @property {number} [altarTier]
- * @property {number} [level]
+ *   whose sigil is equipped (inert ones are left out); input of engine/core/glyphMods.js
+ * @property {number} [altarTier]  sigil altar tier (character.sigils.altarTier)
+ * @property {number} [level]  character level
+ * @property {'BEAR'|'WOLF'|null} [formKind]  the equipped Form sigil's form (Mystic Druid), else null
+ * @property {Object|null} [formConfig]  that sigil's `spell` object from sigils.json (the same one
+ *   calculateTotalStats received), else null
+ * @property {'base'|'oblivion'} [realm]
+ * @property {string} [presetId]
+ * @property {'sheet'|'computed'} [source]  where `stats` came from (build/stats.js)
+ *   (C1a produces every field of Fighter; `conditions` always names every equipped species,
+ *   defaulting to ON_COOLDOWN, and is all ON_COOLDOWN below character level 54.)
  */
 
 /**
