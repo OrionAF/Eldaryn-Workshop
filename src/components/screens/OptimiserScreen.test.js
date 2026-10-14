@@ -46,6 +46,17 @@ it('objective choices follow the target kind', () => {
   expect(opts).toEqual(['ttk-median', 'ttk-p90', 'survival']);
 });
 
+it('the dungeon target lists every classic dungeon', () => {
+  const kind = q('[data-testid="target-kind"]');
+  kind.value = 'dungeon';
+  kind.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+  const sel = [...target.querySelectorAll('label.field')].find((l) => l.querySelector('.micro-label')?.textContent.trim() === 'Dungeon')?.querySelector('select');
+  const names = [...sel.options].map((o) => o.textContent);
+  expect(names).toHaveLength(7);
+  expect(names[0]).toBe('Forsaken Mines');
+});
+
 it('runs a quick search, shows N and CIs, auto-saves the run and applies a result', async () => {
   for (const label of ['Gear set', 'Talent set', 'Talent points', 'Pet', 'Mount', 'Glyphs', 'Sigils', 'Utility sigil', 'Ancient sigil', 'Sigil conditions', 'Transcendence']) {
     click(btn(new RegExp(`^${label}$`)));

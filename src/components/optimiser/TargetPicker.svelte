@@ -5,9 +5,9 @@
    * objective list follows objectiveKindsFor(target.kind). The PVP target (F5) names saved opponents and a
    * seat; it is disabled, with a link to the Duel screen, while the character has none.
    */
-  import contentData from '../../data/game/pve-content.json';
   import { TARGET_KINDS, objectiveKindsFor } from '../../lib/search/objectives.js';
   import { chapterLabel } from '../../lib/game/combatPve.js';
+  import { CLASSIC_DUNGEONS } from '../../lib/game/pveContent.js';
   import { PVP_MAX_OPPONENTS, PVP_SEATS } from '../../lib/search/pvpObjective.js';
   import { classLabel } from '../../lib/game/classes.js';
   import Chip from '../Chip.svelte';
@@ -41,7 +41,8 @@
   };
   const pvpDefault = () => ({ kind: 'pvp', opponentIds: opponents.slice(0, 1).map((o) => o.id), seats: 'attacker' });
 
-  const dungeons = contentData.classicDungeons ?? [];
+  // classicDungeons is {note, dungeons}; the L1 accessor exposes the list
+  const dungeons = CLASSIC_DUNGEONS;
   const kinds = $derived([...TARGET_KINDS.filter((k) => k !== 'oblivion' || oblivionUnlocked || target.kind === 'oblivion'), 'pvp']);
   const noOpponents = $derived(opponents.length === 0);
   const chosenIds = $derived(target.kind === 'pvp' ? target.opponentIds : []);
