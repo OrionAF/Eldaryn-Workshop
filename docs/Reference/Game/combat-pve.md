@@ -79,8 +79,8 @@ loop `L1074489-1078279`):
 
 ```
 1  minion respawn timer advances (necromancer)                        L1088096-1088119
-2  Oblivion "instability" pulse (true damage to player)               L1088142-1088208   (see pve-content.md)
-3  heal budget refills (Oblivion sustain cap only)                    L1088127
+2  heal budget refills (Oblivion sustain cap only)                    L1088126-1088128
+3  Oblivion "instability" pulse (true damage to player)               L1088129-1088208   (see pve-content.md)
 4  processSpellsTick: cooldowns, casts, DoT/HoT ticks, buff expiry    L1088292-1088319
    -> apply owner heal / shield refill, target damage, control effects, new debuffs
 5  processDebuffsTick on the enemy (DoT damage, expiry)               L1088736
@@ -139,7 +139,8 @@ A mob's Miss is always 0, which matters for the penetration rule in §5.4.
 
 ```
 attackerTimer += dt ; defenderTimer += dt ; regenTimer += dt
-interval(side) = round(1000 / attackSpeed)            // ms, Math.round
+interval(side) = round(1000 / attackSpeed)            // ms, Math.round; attackSpeed is the totalAttackSpeed
+                                                      // multiplier (1.3 -> 769 ms), not a per-swing time
 player swings this tick  iff  attackerTimer >= interval(player)
     then attackerTimer = attackerTimer - interval(player)      // remainder kept
 enemy  swings this tick  iff  defenderTimer >= interval(enemy)
@@ -479,6 +480,12 @@ The spell *catalogue* is `see sigils.md`. The engine rules are:
   [CODE]:** when `processSpellsTick`'s `arg9` is false (both PVE callers, `L1074777`,
   `L1088319`), DAMAGE and DEBUFF spells skip `isConditionMet` and cast on cooldown
   (`L1091462-1091542`); only PVP passes true. So `ENEMY_HP_BELOW_*` has no effect in PVE.
+  The gate is `(type is DAMAGE or DEBUFF) and not arg9` (`L1090474` signature: `offensiveConditions`
+  is `arguments[9]`; the simulateFight call passes `false` there, `L1088296-1088319`). Spells of any
+  other type still call `isConditionMet`, whose 4th argument (`arguments[10]`, also passed `false`
+  in PVE) is the `MY_HP_BELOW_*` bypass. So for BUFF / HEAL / DEFENSE sigils `MY_HP_BELOW_X` is
+  honoured in PVE against the owner's real HP percent (`hp / maxHp * 100 <= X`), and the optimiser
+  may search those conditions. **[CODE]** (`L1089843-1090050`, call `L1091440-1091533`).
 - Silence: a `silencedMs` (arg16) > 0 blocks every new cast while active effects keep
   ticking (`L1091462-1091464`). PVE passes 0; PVP passes the caster's `silencedMs`.
 - Spell types sort with `SPELL_TYPE_CAST_ORDER_FALLBACK` = 9 when unknown (same register as
@@ -538,7 +545,12 @@ spells can also apply paralyze / silence / fear / blind (`paralyzeMs`,
 the damage. A DoT damage tick is `floor(attack * attackPercent/100)` whenever `attackPercent`
 is set, `damagePerTick` otherwise, with its own crit roll per tick; the first tick lands on the
 tick after the cast (`L1091150-1091172`). Transform spells ("Chrono Flux") fire when `flux` reaches the max
-(`CHRONO_FLUX.MAX`, `L1089079-1089104`). Per-spell numbers `see sigils.md`.
+(`CHRONO_FLUX.MAX`, `L1089079-1089104`). Per-spell numbers `see sigils.md`. The transform's
+owner heal is applied as `hp = hp + granted` (granted comes through the heal-budget consumer, scaled
+for Oblivion) with NO clamp to max HP, unlike the spell-pass heal which is `min`'d with the buffed
+max HP, so HP can exceed max after a transform fires (`L1089094-1089130`). Its events are logged
+immediately (`L1089135-1089170`), i.e. before the tick's own swing events are appended
+(`L1089186`). **[CODE]**
 
 ## §11 Stack mechanics and thorns — **[CODE]** `L1078983-1080177`
 
@@ -604,8 +616,14 @@ numbers `see sigils.md`.
 - A SHIELD spell sets `shieldMax = floor(maxHp * hpPercent/100)` where `hpPercent`
   is the spell value times `(1 + shieldPowerPercent/100)`; the shield starts full
   (`buildShield` `L1073206-1073236`).
-- `absorbWithShield(shield, dmg, m)` with mitigation `m` as a fraction, not a percent (0.5 in every PVE mode:
-  `SHIELD_MITIGATION` `L1062719`, `L1085224`):
+- `absorbWithShield(shield, dmg, m)` with mitigation `m` as a fraction, not a percent. The shared
+  `simulateFight` reads only `player.shieldMitigation ?? 0` (`L1087021`, `L1087146`) and
+  `createPlayerEntity` never sets it, so the 0.5 comes from the caller: the dungeon fight setup
+  stamps `DUNGEON_CONSTANTS.SHIELD_MITIGATION` unless the shield spell carries its own
+  `mitigation` (`L1670985-1671018`, constant `L1062719`) and the live progress loop passes
+  `PROGRESS_CONSTANTS.SHIELD_MITIGATION` (`L1076145`, `L1085224`). The world boss mode tables carry
+  `shieldMitigation: 0` (`L1153433-1153447`) and nothing in that module reads it. A caller that
+  sets nothing gets 0 (plain 1:1 absorb). **[CODE]**:
 
 ```
 if dmg <= 0 or shield <= 0: no absorb
