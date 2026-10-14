@@ -29,7 +29,7 @@ export const EMPTY_SUNDER_MODIFIERS = Object.freeze({
 });
 
 /**
- * A STACK sigil spell as stored in sigils.json (`spell` / `formSpell[form]`).
+ * A STACK sigil spell as stored in sigils.json (`spell` / `druidVariant.formSpell[form]`).
  * @typedef {Object} StackDef
  * @property {'BULWARK'|'ELUSIVE'|'SUNDER'|'SIEGEBREAKER'} kind
  * @property {number} maxStacks
@@ -63,9 +63,9 @@ export const EMPTY_SUNDER_MODIFIERS = Object.freeze({
 const n0 = (v) => (v == null ? 0 : v);
 const speciesOf = (e) => (typeof e === 'string' ? e : e.species);
 
-/** Form-conditional spells of a species (Druid), or null. Reads entry or druidVariant. */
+/** Form-conditional spells of a species (Druid), or null (sigils.md §12). */
 function formSpellsOf(entry) {
-  return entry.druidVariant?.formSpell ?? entry.formSpell ?? null;
+  return entry.druidVariant?.formSpell ?? null;
 }
 
 /**
