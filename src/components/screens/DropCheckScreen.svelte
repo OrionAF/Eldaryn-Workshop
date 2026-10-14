@@ -6,17 +6,24 @@
    * instant numbers (stats after the swap, closed-form auto-attack DPS); the worker task 'dropCheck' adds
    * the simulated DPS, survival and PVP deltas with intervals. Results are keyed to the inputs: any edit
    * cancels the run and starts a new one after a short pause. "Apply to set" writes the item into the set.
+   *
+   * "Import drops" (features/dropBatch.js) takes a whole loot bag, judges every item against every preset
+   * with the same evaluation, and lists them best first. Clicking one loads it as the drop above. The
+   * batch is view state: it is not persisted.
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { runOptimizerTask } from '../../lib/optimizerClient.js';
   import { prepareSwap, groupBySet, buildEnemy, opponentFighter } from '../../lib/features/swap.js';
   import { dropHasStats } from '../../lib/model/drop.js';
+  import { parseDropBatch, prepareBatch, rankEntries } from '../../lib/features/dropBatch.js';
   import { EQUIP_SETS } from '../../lib/model/equipment.js';
   import Chip from '../Chip.svelte';
   import SlotSilhouette from '../gear/SlotSilhouette.svelte';
   import ItemEditor from '../gear/ItemEditor.svelte';
   import VerdictCard from '../drop/VerdictCard.svelte';
   import EnemyPicker from '../drop/EnemyPicker.svelte';
+  import DropImport from '../drop/DropImport.svelte';
+  import BatchList from '../drop/BatchList.svelte';
   import { itemSummary } from '../drop/dropFormat.js';
 
   let { setStatus, onNavigate } = $props();
@@ -154,6 +161,74 @@
       : '',
   );
 
+  // --- import drops (batch) ----------------------------------------------------------------
+
+  /** @type {{entries, skipped, source, rows, offsets, results, sig, status, progress}|null} */
+  let batch = $state.raw(null);
+  let batchError = $state('');
+  let importOpen = $state(true);
+  let selectedKey = $state(null);
+  let gridEl = $state(null);
+  let cancelBatchRun = null;
+  let batchRunId = 0;
+
+  /** Gear and presets as the batch saw them; a change marks its verdicts stale. */
+  const gearSig = $derived(JSON.stringify([character.equipment, character.presets]));
+  const batchStale = $derived(!!batch && batch.sig !== gearSig);
+  const ranked = $derived(batch ? rankEntries(batch.entries, batch.rows, batch.offsets, batch.results) : []);
+
+  function runBatch(base) {
+    cancelBatchRun?.();
+    const id = ++batchRunId;
+    const { request, rows, offsets } = prepareBatch(character, base.entries);
+    batch = { ...base, rows, offsets, results: [], sig: gearSig, status: request ? 'running' : 'done', progress: null };
+    if (!request) return;
+    const task = runOptimizerTask(request, {
+      onProgress: (p) => {
+        if (id === batchRunId && batch) batch = { ...batch, progress: p };
+      },
+    });
+    cancelBatchRun = task.cancel;
+    task.promise
+      .then((r) => {
+        if (id === batchRunId) batch = { ...batch, results: r.results, status: r.aborted ? 'cancelled' : 'done' };
+      })
+      .catch(() => {
+        if (id === batchRunId) batch = { ...batch, status: 'error' };
+      });
+  }
+
+  function importDrops(text) {
+    const parsed = parseDropBatch(text, character);
+    if (parsed.error) {
+      batchError = parsed.error;
+      return;
+    }
+    batchError = '';
+    selectedKey = null;
+    importOpen = false;
+    runBatch(parsed);
+    const n = parsed.entries.length;
+    setStatus?.(`Imported ${n} drop${n === 1 ? '' : 's'}${parsed.skipped.length ? `, skipped ${parsed.skipped.length}` : ''}`);
+  }
+
+  function cancelBatch() {
+    cancelBatchRun?.();
+  }
+
+  function loadFromBatch(entry) {
+    rosterStore.startDrop(entry.slot, entry.realm);
+    rosterStore.setDropItem(entry.item);
+    selectedKey = entry.key;
+    setStatus?.(`Loaded ${entry.name} into the single-drop view`);
+    gridEl?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  }
+
+  $effect(() => () => {
+    batchRunId += 1;
+    cancelBatchRun?.();
+  });
+
   // --- actions ---------------------------------------------------------------------------------
 
   function applyTo(setKey) {
@@ -188,7 +263,38 @@
       duels and the Oblivion dungeon are a model of the server, not exact rules.
     </p>
 
-    <div class="grid">
+    <details class="import-panel" bind:open={importOpen}>
+      <summary>Import drops from a loot bag</summary>
+      <p class="hint">
+        Load the loot-bag response (or a full game profile) as a .json file, or paste it. Every item is
+        checked against every preset, and the best verdict comes first. Items of another class are skipped.
+      </p>
+      <DropImport onimport={importDrops} error={batchError} busy={batch?.status === 'running'} />
+    </details>
+
+    {#if batch}
+      {#if batch.entries.length}
+        <BatchList
+          {ranked}
+          cls={character.class}
+          status={batch.status}
+          progress={batch.progress}
+          stale={batchStale}
+          skipped={batch.skipped}
+          {selectedKey}
+          onselect={loadFromBatch}
+          oncancel={cancelBatch}
+          onrerun={() => runBatch(batch)}
+        />
+      {:else}
+        <div class="batch-empty" role="status">
+          <p class="hint">No usable items in that loot bag.</p>
+          {#each batch.skipped as sk}<p class="hint">{sk.name}: {sk.reason}</p>{/each}
+        </div>
+      {/if}
+    {/if}
+
+    <div class="grid" bind:this={gridEl}>
       <div class="input-col">
         {#if unlocked}
           <div class="realm-toggle" role="group" aria-label="Realm">
@@ -324,6 +430,28 @@
     border-radius: 6px;
     padding: 8px 10px;
     margin: 0 0 var(--space-4);
+  }
+  .import-panel,
+  .batch-empty {
+    background: var(--color-panel);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-panel);
+    padding: 10px 14px;
+    margin-bottom: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .import-panel summary {
+    cursor: pointer;
+    font-size: 12.5px;
+    color: var(--color-gold-light);
+  }
+  .import-panel[open] summary {
+    margin-bottom: var(--space-2);
+  }
+  :global(.drop-check > .batch) {
+    margin-bottom: var(--space-4);
   }
   .grid {
     display: grid;
