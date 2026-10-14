@@ -24,6 +24,7 @@
     footer,
   } = $props();
 
+  const uid = $props.id();
   let dialog = $state(null);
 
   $effect(() => {
@@ -56,7 +57,7 @@
 <dialog
   bind:this={dialog}
   class="modal"
-  aria-labelledby={labelledBy ?? (title ? 'modal-title' : undefined)}
+  aria-labelledby={labelledBy ?? (title ? `${uid}-title` : undefined)}
   aria-label={!title && !labelledBy ? 'Dialog' : undefined}
   onclick={onBackdropClick}
   oncancel={(e) => {
@@ -69,7 +70,7 @@
 >
   <div class="modal-body">
     <header class="modal-head">
-      {#if title}<h2 id="modal-title" class="subheading">{title}</h2>{/if}
+      {#if title}<h2 id="{uid}-title">{title}</h2>{/if}
       <button type="button" class="modal-close" onclick={requestClose} aria-label="Close">×</button>
     </header>
 
@@ -86,18 +87,18 @@
 <style>
   .modal {
     padding: 0;
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-panel);
-    background: var(--color-panel);
-    color: var(--color-ink);
-    max-width: min(760px, calc(100vw - 32px));
+    border: 1px solid var(--frame-brass);
+    border-radius: var(--r-3);
+    background: var(--surface-2);
+    color: var(--text-ink);
+    width: min(var(--modal-w), calc(100vw - 32px));
     max-height: calc(100vh - 64px);
     overflow: hidden;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.4), var(--color-gold-glow);
+    box-shadow: var(--elev-3);
   }
 
   .modal::backdrop {
-    background: rgba(8, 6, 16, 0.66);
+    background: var(--surface-scrim);
   }
 
   .modal-body {
@@ -110,52 +111,58 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-3);
-    padding: var(--space-4) var(--space-4) var(--space-3);
-    border-bottom: 1px solid var(--color-border-hairline);
+    gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+    background: var(--plate);
+    border-bottom: 2px solid var(--frame-brass);
   }
 
   .modal-head h2 {
     margin: 0;
+    flex: 1;
+    font-family: var(--font-display);
+    font-size: var(--fs-20);
+    line-height: var(--lh-tight);
   }
 
   .modal-close {
     background: none;
     border: 1px solid transparent;
-    border-radius: var(--radius-field);
-    color: var(--color-muted);
-    font-size: 20px;
+    border-radius: var(--r-1);
+    color: var(--text-soft);
+    font-size: var(--fs-20);
     line-height: 1;
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     cursor: pointer;
   }
 
   .modal-close:hover {
-    color: var(--color-ink);
-    border-color: var(--color-border);
+    color: var(--text-ink);
+    border-color: var(--line-control);
   }
 
   .modal-content {
-    padding: var(--space-4);
+    padding: var(--sp-4);
     overflow: auto;
   }
 
   .modal-foot {
-    padding: var(--space-3) var(--space-4);
-    border-top: 1px solid var(--color-border-hairline);
+    padding: var(--sp-3) var(--sp-4);
+    border-top: 1px solid var(--line-hairline);
     display: flex;
     justify-content: flex-end;
-    gap: var(--space-2);
+    gap: var(--sp-2);
   }
 
   @media (max-width: 700px) {
     .modal {
-      max-width: calc(100vw - 16px);
+      width: calc(100vw - 16px);
+      margin-bottom: 0;
     }
     .modal-close {
-      width: 44px;
-      height: 44px;
+      width: var(--hit);
+      height: var(--hit);
     }
   }
 </style>

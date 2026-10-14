@@ -1,77 +1,100 @@
 <script>
   /**
-   * Chip.svelte - the selection-pill primitive used throughout the redesign
-   * (gear-loadout picker, talent-set picker, pet/relic picker in the preset
-   * editor, drop-check slot picker). Selected state defaults to gold; pass
-   * `color` to override (e.g. a relic's tier color).
+   * Chip.svelte - the selection pill (design-system §4.9). A toggle chip (button, aria-pressed)
+   * with a check tick, or a static label chip (`static`). Selected is brass; pass `color` to
+   * override the accent (a relic's tier colour). `count` is the optional mono count.
+   *
+   * `disabled` with a `reason` is the "not owned" state: it stays focusable (aria-disabled), is
+   * dashed, and the reason is the title and visible-to-assistive-tech text. Without a reason a
+   * disabled chip is natively disabled.
    */
-  let { label, selected = false, color = null, onClick, disabled = false, size = 'default' } = $props();
+  let {
+    label,
+    selected = false,
+    color = null,
+    onClick = () => {},
+    disabled = false,
+    reason = '',
+    count = null,
+    static: isStatic = false,
+    size = 'default',
+  } = $props();
+
+  const soft = $derived(disabled && !!reason);
 </script>
 
-<button
-  type="button"
-  class="chip"
-  class:selected
-  class:small={size === 'small'}
-  class:compact={size === 'compact'}
-  style={selected && color ? `--chip-color: ${color}` : ''}
-  {disabled}
-  onclick={onClick}
->
-  {label}
-</button>
+{#if isStatic}
+  <span class="chip static" class:small={size === 'small'} class:compact={size === 'compact'}>{label}{#if count != null}<span class="num">{count}</span>{/if}</span>
+{:else}
+  <button
+    type="button"
+    class="chip"
+    class:selected
+    class:small={size === 'small'}
+    class:compact={size === 'compact'}
+    style={selected && color ? `--chip-color: ${color}` : ''}
+    aria-pressed={selected}
+    disabled={disabled && !reason}
+    aria-disabled={soft ? 'true' : undefined}
+    title={soft ? reason : undefined}
+    onclick={() => !disabled && onClick()}
+  >
+    <span class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10" /></svg></span>{label}{#if count != null}<span class="num">{count}</span>{/if}
+    {#if soft}<span class="visually-hidden"> ({reason})</span>{/if}
+  </button>
+{/if}
 
 <style>
   .chip {
-    border-radius: var(--radius-chip);
-    border: 1px solid #3a3468;
-    background: none;
-    color: #8d86b8;
-    font-size: 12px;
-    padding: 6px 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 28px;
+    padding: 0 var(--sp-3) 0 var(--sp-2);
+    border: 1px solid var(--line-control);
+    border-radius: var(--r-1);
+    background: transparent;
+    color: var(--text-soft);
+    font-family: var(--font-ui);
+    font-size: var(--fs-13);
+    font-weight: var(--fw-medium);
     white-space: nowrap;
+    cursor: pointer;
   }
-  .chip.small {
-    border-radius: var(--radius-pill);
-    font-size: 10.5px;
-    padding: 3px 9px;
+  .chip.small { height: 24px; font-size: var(--fs-12); padding: 0 var(--sp-2) 0 6px; }
+  .chip.compact { height: 24px; font-size: var(--fs-12); }
+  .chip:hover:not(:disabled):not([aria-disabled='true']) {
+    color: var(--text-ink);
+    border-color: var(--chip-color, var(--line-control-hover));
+    background: var(--surface-3);
   }
-  .chip.compact {
-    font-size: 11px;
-    padding: 4px 10px;
-    border-radius: 7px;
-    border: 1px solid var(--color-border);
-    color: var(--color-dim);
+  .tick {
+    width: 12px;
+    height: 12px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line-control);
+    border-radius: 2px;
+    color: transparent;
   }
-  /* Drop Check's slot-filter row (the only "small" usage) sits in a
-     horizontal-scroll strip on mobile - trading a little extra width for a
-     real touch target is free there. */
-  @media (max-width: 700px) {
-    .chip.small {
-      padding: 13px 11px;
-    }
-  }
+  .tick svg { width: 9px; height: 9px; }
   .chip.selected {
-    font-weight: 600;
-    border-color: var(--chip-color, var(--color-gold));
-    color: var(--chip-color, var(--color-gold-light));
-    background: var(--chip-color-tint, var(--color-gold-tint));
+    color: var(--text-ink);
+    border-color: var(--chip-color, var(--brass-500));
+    background: var(--brass-tint);
   }
-  .chip.compact.selected {
-    border-color: var(--chip-color, var(--color-gold));
-    background: rgba(217, 169, 75, 0.08);
-    color: var(--chip-color, var(--color-gold));
-  }
-  /* A disabled chip is one the character does not own (a relic at level 0). It stays
-     readable - muted text at 5.3:1 on the panel, where the global 50% fade left ~1.7:1 - and the dashed
-     border is what marks it "unowned". */
-  .chip:disabled {
-    opacity: 1;
-    color: var(--color-muted);
+  .chip.selected .tick { background: var(--chip-color, var(--brass-400)); border-color: var(--chip-color, var(--brass-400)); color: var(--on-brass); }
+  .num { font-family: var(--font-data); color: var(--text-muted); font-size: var(--fs-12); }
+  .chip.static { cursor: default; padding-left: var(--sp-3); }
+  .chip:disabled,
+  .chip[aria-disabled='true'] {
+    color: var(--text-disabled);
+    border-color: var(--line-rule);
     border-style: dashed;
-    border-color: var(--color-border-strong);
+    background: transparent;
+    cursor: not-allowed;
   }
-  .chip:hover:not(:disabled) {
-    border-color: var(--chip-color, var(--color-gold));
+  @media (pointer: coarse), (max-width: 700px) {
+    .chip { min-height: var(--hit); }
   }
 </style>

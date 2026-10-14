@@ -529,114 +529,6 @@ select {
   padding: 6px 10px;
 }
 
-/**
- * Range sliders.
- *
- * Why this is more than a repaint: a native range thumb is *edge*-aligned
- * inside its track, so the thumb's CENTRE only ever travels from
- * `track.left + thumb/2` to `track.right - thumb/2`. Reading the knob's centre
- * as "the value", the knob visibly stops short of both ends - it feels stuck.
- * No amount of styling the native track fixes that, because the thumb is
- * constrained by the same box that draws the track.
- *
- * So the visible track is a SEPARATE element (`.slider-track` in
- * Slider.svelte) and the real input is overlaid `thumb`-wider than it,
- * offset by `-thumb/2`. That makes the thumb's centre travel exactly the
- * visible track's full 0-100%. The thumb overhangs the wrapper by thumb/2 at
- * each extreme - that overhang is the point, so never clip `.slider`.
- *
- * `--fill` (0-100%) is set inline from format.js's fillPct().
- */
-.slider {
-  --slider-thumb: 18px;
-  --slider-track-h: 6px;
-  --fill: 0%;
-  position: relative;
-  display: flex;
-  align-items: center;
-  height: var(--slider-thumb);
-  min-width: 60px;
-  /* Reserve the thumb's overhang so the knob never laps onto a neighbouring
-     label or value at 0%/100%. */
-  margin-inline: calc(var(--slider-thumb) / 2);
-}
-
-.slider-track {
-  position: absolute;
-  inset-inline: 0;
-  height: var(--slider-track-h);
-  border-radius: var(--radius-pill);
-  background: linear-gradient(
-    to right,
-    var(--color-gold) 0 var(--fill),
-    var(--color-field) var(--fill) 100%
-  );
-  border: 1px solid var(--color-border);
-  pointer-events: none;
-}
-
-.slider input[type='range'] {
-  position: relative;
-  appearance: none;
-  -webkit-appearance: none;
-  width: calc(100% + var(--slider-thumb));
-  margin-inline: calc(var(--slider-thumb) / -2);
-  height: var(--slider-thumb);
-  padding: 0;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-}
-
-/* Both native tracks stay invisible - .slider-track is what you actually see. */
-.slider input[type='range']::-webkit-slider-runnable-track {
-  height: var(--slider-thumb);
-  background: transparent;
-  border: none;
-}
-
-.slider input[type='range']::-moz-range-track {
-  height: var(--slider-thumb);
-  background: transparent;
-  border: none;
-}
-
-.slider input[type='range']::-webkit-slider-thumb {
-  appearance: none;
-  -webkit-appearance: none;
-  width: var(--slider-thumb);
-  height: var(--slider-thumb);
-  border-radius: 50%;
-  background: var(--color-gold-light);
-  border: 2px solid var(--surface-1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
-  transition: background-color 120ms ease-out, transform 120ms ease-out;
-}
-
-.slider input[type='range']::-moz-range-thumb {
-  width: var(--slider-thumb);
-  height: var(--slider-thumb);
-  box-sizing: border-box;
-  border-radius: 50%;
-  background: var(--color-gold-light);
-  border: 2px solid var(--surface-1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
-  transition: background-color 120ms ease-out, transform 120ms ease-out;
-}
-
-.slider input[type='range']:active::-webkit-slider-thumb {
-  transform: scale(1.12);
-}
-
-.slider input[type='range']:active::-moz-range-thumb {
-  transform: scale(1.12);
-}
-
-.slider input[type='range']:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
-
 /* Mobile (same 700px contract as App.svelte/Sidebar.svelte): fields must be
    >=16px or iOS Safari zooms the whole page in on focus and never zooms back
    out. Rank steppers get a real touch target instead of their compact
@@ -654,14 +546,6 @@ select {
     height: 44px;
     padding: 0;
     font-size: 16px;
-  }
-
-  /* Dragging a 18px knob with a fingertip is the same problem as the rank
-     steppers above - grow the thumb (and the row it sits in) to a real target. */
-  .slider {
-    --slider-thumb: 28px;
-    --slider-track-h: 8px;
-    height: 44px;
   }
 }
 
