@@ -15,9 +15,6 @@ on the merged tip, and pushes only when both are green.
 | 1 | D1 Data sync + core catalogues | merged | `c964a2b` | `npm run sync:data`, `src/data/game/`, `game/{stats,classes}.js` |
 | 1 | E0 RNG + types | merged | `f8daa3c` | `engine/rng.js`, `engine/types.js` |
 | — | Vitest excludes `.claude/**` | merged | `2d12e4e` | agent worktrees live inside the checkout |
-
-After wave 1: 50 test files, 612 tests, build green.
-
 | 2 | D2 Catalogues: gear, stones, drops, talents, relics, skills | merged | `rebuild/D2` | new `Game/data/skills.json` (14 skills, checked against the decompile) |
 | 2 | D3 Catalogues: sigils, mounts-glyphs, pets, fortress, transcendence, content | merged | `rebuild/D3` | `transcendence.json` costs about 25.6 KB gzip once something imports it |
 | 2 | D4 New extractions: awakening, world boss | merged | `rebuild/D4` | new `Game/data/{awakening,world-boss}.json` |
@@ -25,7 +22,12 @@ After wave 1: 50 test files, 612 tests, build green.
 | 2 | M1 Model v2 + store facade + storage v2 | merged | `rebuild/M1` | `model/*`, `store/*`, key `eldaryn_optimiser_state_v2`; v1 key read once, never written |
 | — | Four-class pickers and avatars | merged | | shell still compared `'Warrior'`/`'Sentinel'` after M1 moved to the class enum |
 
-After wave 2: 62 test files, 662 tests, build green.
+Test counts on the merged tip: 50 files / 612 tests after wave 1; 62 / 662 after wave 2.
+
+From wave 3 on, slices run through a dependency-driven scheduler: a slice starts as soon as its
+dependencies finish, merging their `rebuild/<id>` branches into its worktree. Three schedulers run
+side by side (engine chain + Sigils; sources, pipeline, gear, relics, awakening; the other domain
+screens). Slice branches are merged into the rebuild branch with real merges.
 
 ## Findings to fold back into docs
 
