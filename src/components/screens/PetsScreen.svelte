@@ -6,8 +6,8 @@
    * Changing the altar TIER wipes the collection (the game's behaviour) and clears every preset's
    * pet, so it sits behind a ConfirmButton. From tier 2 the pets show their evolved names.
    *
-   * Only base species values are shown. TODO(C1a): once the E2b pet source is wired, show the
-   * altar-scaled computed ATK/HP and secondaries per pet here (use its preview, do not re-derive).
+   * Each card shows the altar-scaled ATK/HP and secondaries next to the base values (read-only,
+   * computed by engine/sources/pet.js).
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { RARITIES } from '../../lib/constants.js';
@@ -117,6 +117,8 @@
       {species}
       {types}
       {evolved}
+      altarLevel={altar.level}
+      altarTier={altar.tier}
       usedBy={usedBy(pet.id)}
       editing={editingIds.has(pet.id)}
       onSpecies={(s) => rosterStore.setPetSpecies(pet.id, s)}

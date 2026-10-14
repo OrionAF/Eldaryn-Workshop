@@ -5,22 +5,25 @@
    * type + value editor per secondary slot. Every change persists as it is made (Save is only a
    * view toggle). Secondary types are class-gated by the parent via `types`.
    *
-   * Base values only: the altar-scaled preview comes from the E2b pet source (see PetsScreen).
+   * When the parent passes the altar level and tier, a read-only line shows the altar-scaled ATK/HP
+   * and each secondary's scaled value, straight from the engine pet source (engine/sources/pet.js).
    */
   import { rarityClass } from '../../lib/constants.js';
   import { petImage } from '../../lib/assets.js';
   import { petSpeciesById, petDisplayName } from '../../lib/game/pets.js';
   import { statByEnum } from '../../lib/game/stats.js';
   import { PET_SECONDARY_RANGES, secondarySlots } from '../../lib/model/pets.js';
+  import { petFlatAttack, petFlatHp, petSecondaryValue } from '../../lib/engine/sources/pet.js';
   import { formatFlat, formatPct } from '../../lib/format.js';
   import Slider from '../Slider.svelte';
   import ConfirmButton from '../ConfirmButton.svelte';
 
-  let { pet, species = [], types = [], evolved = false, usedBy = [], editing = false, onSpecies, onType, onValue, onDropSecondary, onToggleEdit, onRemove } = $props();
+  let { pet, species = [], types = [], evolved = false, altarLevel = null, altarTier = 1, usedBy = [], editing = false, onSpecies, onType, onValue, onDropSecondary, onToggleEdit, onRemove } = $props();
 
   const def = $derived(petSpeciesById(pet.species));
   const slots = $derived(secondarySlots(pet.species));
   const name = $derived(petDisplayName(pet.species, evolved));
+  const scaled = $derived(altarLevel != null && altarLevel > 1);
   const label = (type) => statByEnum(type)?.sheetLabel ?? type;
   const taken = (current) => new Set(pet.secondaries.map((s) => s.type).filter((t) => t !== current));
   const choices = (current) => types.filter((t) => !taken(current).has(t) || t === current);
@@ -43,6 +46,15 @@
     Base HP <span class="num">{formatFlat(def.baseHp)}</span>
   </p>
 
+  {#if altarLevel != null}
+    <p class="base-stats preview" data-testid="pet-preview">
+      Altar L{altarLevel} T{altarTier}:
+      ATK <span class="num">{formatFlat(petFlatAttack(def.baseAttack, altarLevel, altarTier))}</span>
+      <span class="sep">|</span>
+      HP <span class="num">{formatFlat(petFlatHp(def.baseHp, altarLevel, altarTier))}</span>
+    </p>
+  {/if}
+
   <div class="secondaries">
     <span class="micro-label">SECONDARY {pet.secondaries.length}/{slots}</span>
     {#each pet.secondaries as sec, i (i)}
@@ -64,7 +76,7 @@
           <button type="button" class="drop-sec" aria-label="Remove secondary {i + 1}" onclick={() => onDropSecondary(i)}>×</button>
         </div>
       {:else}
-        <p class="sec-line"><span class="sec-name">{label(sec.type)}</span><span class="num">+{formatPct(sec.value)}%</span></p>
+        <p class="sec-line"><span class="sec-name">{label(sec.type)}</span><span class="num">+{formatPct(sec.value)}%{#if scaled}<span class="scaled"> → +{formatPct(petSecondaryValue(sec.value, altarLevel))}%</span>{/if}</span></p>
       {/if}
     {/each}
     {#if editing && pet.secondaries.length < slots}
@@ -92,6 +104,7 @@
   .base-stats { margin: 0; text-align: center; font-size: 12px; color: var(--color-soft); }
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--color-ink); }
   .sep { color: var(--color-dim); margin: 0 4px; }
+  .scaled { color: var(--color-gold); }
   .secondaries { display: flex; flex-direction: column; gap: 4px; background: var(--color-inset); border-radius: var(--radius-field); padding: 6px 8px; }
   .sec-edit { display: flex; flex-direction: column; gap: 3px; padding-bottom: 4px; position: relative; }
   .sec-edit select { width: 100%; font-size: 11.5px; }
