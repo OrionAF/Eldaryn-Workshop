@@ -78,6 +78,7 @@ function runInWorker(plain, hooks) {
       settled = true;
       worker.terminate();
       fallback = runInline(plain, hooks);
+      if (cancelled) fallback.cancel();
       fallback.promise.then(resolve, reject);
     }
   });
