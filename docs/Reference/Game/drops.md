@@ -104,7 +104,7 @@ else:
 
 - `MIN_ITEM_LEVEL 1`, `MAX_ITEM_LEVEL 100` in `GAME_CONSTANTS` (L670527); no client code reads either, so the bound is only documentary **[CODE]** (grep of `MIN_ITEM_LEVEL`/`MAX_ITEM_LEVEL`: definition lines only).
 - How the server picks an item level is **[SERVER]**. The client persists `itemLevelWatermarks` (an object keyed per slot/realm; initialised `{}` at L670693, round-tripped L1138683) and the Ascension skill text says "your drops climb toward the new cap over time (via the item-level watermark)" (L885983). So drops trend to a per-slot watermark rather than being uniformly random, **[UNRESOLVED]** beyond that: the watermark update rule is not in the client.
-- Ascension skill (`ascension`, unlock level 78): max item level `[100,130,160,190,240]`, costs `[500,1000,1500,2000]` gems; `getMaxItemLevel(level) = effects[max(1,level)-1] ?? effects[0]` **[CODE]** L885676-885700, L885983-885991, L668649. Above item level 100, stat level is `ascensionEffectiveLevel(L) = 100 + (L - 100) * 0.4` (`ASCENSION_ABOVE_100_STAT_RATE = 0.4`) **[CODE]** L677322-677337, L677995. Example: item level 240 gives stat level 156 **[DERIVED]** 100 + 140*0.4. The skill text says "roughly twice as high at item level 200" which does not match 0.4 (200 would be 140 stat level, 1.4x); trust the code **[DERIVED]**.
+- Ascension skill (`ascension`, unlock level 78): max item level `[100,130,160,190,240]`, costs `[500,1000,1500,2000]` gems; `getMaxItemLevel(level) = effects[max(1,level)-1] ?? effects[0]` **[CODE]** L885676-885700, L885983-885991, L668649. Above item level 100, stat level is `ascensionEffectiveLevel(L) = 100 + (L - 100) * 0.4` (`ASCENSION_ABOVE_100_STAT_RATE = 0.4`) **[CODE]** L677322-677337, L677995 (`_closure1_slot5 = 0.4`). Example: item level 240 gives stat level 156 **[DERIVED]** 100 + 140*0.4. The skill text says "roughly twice as high at item level 200" which does not match 0.4 (200 would be 140 stat level, 1.4x); trust the code **[DERIVED]**.
 - Item primary stats **[CODE]** L677533-677620:
   ```
   statLevel = itemLevel (regular) or itemLevel * 0.5 (Oblivion realm)   -- statLevelForItem
@@ -112,7 +112,7 @@ else:
   attack = floor((atkBase[rarity] + eff * atkScale[rarity]) * (Oblivion ? 2.75 : 1))
   hp     = floor((hpBase[rarity]  + eff * hpScale[rarity])  * (Oblivion ? 2.8  : 1))
   ```
-  Per-rarity bases are in `gear.md`; rarity base table at L677953-677994 (Common atk 5+1x, hp 15+3x ... Oblivion atk 61000+370x, hp 126000+820x). Per-slot attack/HP weights by class are at L678046-678207 (see `gear.md`).
+  Per-rarity bases are in `gear.md`; rarity base table at L677953-677994 (verified: Common 5+1x / 15+3x, Oblivion 61000+370x / 126000+820x); constants ITEM_LEVEL_SCALE 0.5, POWER_MULT_ATTACK 2.75, POWER_MULT_HP 2.8 defined at L669119, ASCENSION_ABOVE_100_STAT_RATE 0.4 at L677994-677995 (Common atk 5+1x, hp 15+3x ... Oblivion atk 61000+370x, hp 126000+820x). Per-slot attack/HP weights by class are at L678046-678207 (see `gear.md`).
 
 ## §5 Which stats can roll
 

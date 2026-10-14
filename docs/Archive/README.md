@@ -31,5 +31,6 @@ on that date, what was recoverable, and what was not. Two placeholder files
 (`outdated-notes/LOST-*.md`) stand in for documents that are gone entirely, so
 the gaps stay visible instead of quietly vanishing.
 
-Live combat documentation: `../Reference/combat-model.md` (canonical) and
-`../WIP/being-worked-on/combat-audit-2026-07-28.md` (open findings).
+Live game documentation: `../Reference/Game/` (read from the 2.7.0 client).
+The July 2026 combat model and its audit are archived here as
+`outdated-notes/combat-model.md` and `outdated-notes/combat-audit-2026-07-28.md`.

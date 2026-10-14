@@ -12,13 +12,13 @@ Skills are permanent, gem-purchased account upgrades. They are **not stat source
 - Skill level `L` ranges 1..`maxLevel`. Effect at level L = `effects[L-1]`; the cost to go from L to L+1 = `costs[L-1]` (so `costs.length = maxLevel-1`, `effects.length = maxLevel`). **[CODE]** L885363-885442 (getSkillUpgradeCost: null if L<1 or L>maxLevel, null at maxLevel absent oblivion point)
 - Base level is 1 (every skill's level-1 effect is its un-upgraded baseline, e.g. Mastery 0%, Bargain 0%). That a new character starts at level 1 is **[DERIVED]** from `effects[0]` being the baseline and `costs[0]` being the 1->2 price; the initial level itself is stored server-side. **[SERVER]**
 - Gems spent on skill L: `sum(costs[0 .. min(L,maxLevel)-2])` + (`oblivionPoint.cost` if the skill has one and `L > maxLevel`). **[CODE]** L885801-885852
-- Reset: `POST /skills/reset` costs 200 gems fee; UI text: "Every skill returns to its base level. You pay a {{cost}} gem fee and get back all {{refund}} gems spent on upgrades." Net = refund - 200. **[CODE]** L911293, L932003-932008 (refund amount computed server-side; client mirrors with getSkillGemsSpent) **[SERVER]**
+- Reset: `POST /skills/reset` costs 200 gems fee; UI text: "Every skill returns to its base level. You pay a {{cost}} gem fee and get back all {{refund}} gems spent on upgrades." Net = refund - 200. **[CODE]** L911293, L932003-932008, net computed in UI as `resetRefund - RESET_COST` L2171093-2171100 (refund amount computed server-side; client mirrors with getSkillGemsSpent) **[SERVER]**
 - Upgrade: `POST /skills/upgrade {skillId}`; info `GET /skills`; attunement bans `POST /skills/attunement {excludedStats}`. Server validates. **[CODE]** L931933, L931971, L932045
 - Tracks (UI grouping): hunt, fortune, merchant. **[CODE]** L911287
 
 ## §2 Oblivion point (extra level)
 
-Seven skills carry an `oblivionPoint {cost, effect}`: one extra level above `maxLevel`, shown only when the player has `oblivionUnlocked` (Oblivion prestige realm). `OBLIVION_SKILL_POINTS_ENABLED = true`, `OBLIVION_SKILL_POINT_COST = 3000` (all seven use cost 3000). **[CODE]** L885213, L885870, L2172294-2172322
+Seven skills carry an `oblivionPoint {cost, effect}`: one extra level above `maxLevel`, shown only when the player has `oblivionUnlocked` (Oblivion prestige realm). `OBLIVION_SKILL_POINTS_ENABLED = true`, `OBLIVION_SKILL_POINT_COST = 3000` (all seven use cost 3000). **[CODE]** L885213, L885870, the seven `oblivionPoint` literals L885880, L885909, L885920, L885931, L885942, L885971, L886009, UI L2172294-2172322
 
 ```
 getSkillLevelCap(skill, oblivionUnlocked) = maxLevel + (skill.oblivionPoint && oblivionUnlocked ? 1 : 0)

@@ -24,5 +24,5 @@ stale:
 - The work landed and the document was only a plan → archive it under
   `Archive/outdated-notes/`; the code is now the truth.
 - The approach was dropped → `Archive/scrapped/`, with the reasoning.
-- The document changed how the app models the world →
-  fold it into `Reference/combat-model.md` and archive the rest.
+- The document established a game fact → fold it into the owning
+  `Reference/Game/<system>.md` and archive the rest.

@@ -24,11 +24,17 @@ the failure mode this folder exists to avoid.
 
 ## Exit
 
-When answered, the answer becomes **[RULED]** or **[OBSERVED]** provenance in
-`Reference/combat-model.md`, the resulting work moves to `../being-worked-on/`,
-and the question is struck from the open list here.
+When answered, the answer goes into the owning `Reference/Game/<system>.md`
+(or the app's own docs, if it is about the app). The resulting work moves to
+`../being-worked-on/`, and the question is struck from the open list here.
+
+Since 2026-10-14 most game questions can be answered from the decompiled
+client (`Reference/Game/`), not by asking. Ask the user only about what the
+client cannot show: [SERVER] values, and their own goals and preferences.
 
 ## Contents
 
-- `open-questions.md` — three questions from the 2026-07-28 combat audit
-  (tasks #1–#3).
+Nothing is currently blocked on the user. The 2026-07-28 questions were all
+answered and are archived as `Archive/outdated-notes/open-questions-2026-07-28.md`.
+The 2.7.0 client refutes one of those answers (Q2, how Attack % buffs stack);
+see `Reference/Game/combat-pve.md`.

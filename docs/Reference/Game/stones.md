@@ -124,6 +124,7 @@ getOblivionEssenceYield(stone) = 1 + (level - 1) * 1       # GRIND_ESSENCE_BASE 
 ```
 
 - Base attack/HP are flat bonuses added to `flatAttack`/`flatHp` regardless of rolled stats; "mirrors tier" is a design label for gear tiers **[CODE]**. `GEAR_PIECE_FRACTION` 0.5 is defined (L1206808) but its use was not traced **[UNRESOLVED]**.
+- Closure bounds resolved **[CODE]**: slot4 = first stone-table level = 1 (L1206775), slot5 = last = 5 (L1206780), from the COMMON..LEGENDARY level 1..5 table (L1206735-1206768). So the `(L - 1)` and `target - 2` exponents and the 2..5 range are exact.
 - Upgrade cost argument being the target level is **[DERIVED]** from the range check (valid only 2..5); caller not traced. Total essence 1->5 = 8+18+39+85 = 150 **[DERIVED]**.
 - Raising the grade adds base HP/Attack and multiplies Oblivion Power; "other rolled stats stay exactly as they are" (L910037 `ruleBaseOnly`) **[CODE]**. Upgrade call is `upgradeStone` in module 5848 (L1705211-1705301) with server-side result **[SERVER]**.
 - What Oblivion Power does in combat: see `pve-content.md` / `combat-pve.md`.

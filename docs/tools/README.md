@@ -5,19 +5,26 @@ number that a document in `Reference/` states as fact**.
 
 ## Contents
 
-**`calibrate-pvp-refs.mjs`** — fits the PVP goal's four reference constants
-(`REF_BLOCK`, `REF_PEN`, `REF_MISS`, `REF_FIGHT_SEC`) against the duel engine's
-own rankings.
+**`gamedata/`** — the scripts that map the decompiled game client. These
+produce the line numbers that every `Reference/Game/*.md` document cites.
 
 ```
-node docs/tools/calibrate-pvp-refs.mjs [--iterations 300] [--budget 120000]
+python3 -I docs/tools/gamedata/index_modules.py <decompiled.js> modules.json
+python3 -I docs/tools/gamedata/filter_logic_modules.py modules.json logic_modules.tsv
 ```
 
-Produces every number in `Reference/combat-model.md` §9 "Calibration of the
-reference constants": the baseline ρ, the per-axis sensitivity spans, the
-held-out check, and the per-build disagreement table. Also the acceptance test
-for the open survivability-factor redesign — see
-`WIP/being-worked-on/combat-audit-2026-07-28.md` §C1.
+- `index_modules.py` lists every Metro module with its line range, deps,
+  original function names and top strings.
+- `filter_logic_modules.py` keeps only the likely game-logic modules.
+- `logic_modules-2.7.0.tsv` is the filtered output for 2.7.0: 1,350 modules.
+  Diff a new version's output against it to see which systems changed.
+
+Run them against an extract that sits outside the repo. Never run anything
+from inside the extract. The steps are in `Reference/Game/README.md`.
+
+`calibrate-pvp-refs.mjs` was archived on 2026-10-14. The PVP reference
+constants it fitted were invented stand-ins for a fight model we could not see.
+The 2.7.0 client contains the real one.
 
 ## Why these live in `docs/`, not in the published tree
 

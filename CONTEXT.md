@@ -16,39 +16,16 @@ effect% = rating / (rating + 200) * 100
 Effect is never entered directly and never appears as its own stored field — it's always computed
 live from the current Rating total for display (e.g. `PVP Attack: 303 (60.2%)`).
 
-Verified against a real combat example: 303 rating → 60.2% effect, 283 rating → 58.6% effect.
+The formula is confirmed by the 2.7.0 client. Where the effect applies in a fight (attacker
+swings only, not spells, DoTs or thorns) is in `docs/Reference/Game/combat-pvp.md`, and the
+conversion itself is in `docs/Reference/Game/stats.md`.
 
-## PVP damage formula (documented, not implemented)
+## Defensive and PVP stats
 
-The full PVP damage calculation, supplied during the Phase 0 UI planning session, for future
-reference:
-
-```
-final_damage = (attacker_normal_damage × (1 − defender_dmg_reduction%))
-               × (1 + attacker_pvp_attack_effect%)
-               × (1 − defender_pvp_defense_effect%)
-```
-
-Worked example: attacker normal damage 862,534; defender DMG Reduction 9.9%; attacker PVP Attack
-303 rating (60.2% effect); defender PVP Defense 283 rating (58.6% effect).
-
-```
-862534 × (1 − 0.099) = 777,142
-777,142 × (1 + 0.602) = 1,244,562
-1,244,562 × (1 − 0.586) = 515,248   (≈ 515,423 reported in-game; small delta from rounding)
-```
-
-This tool is **PVE-only** in its current phase. PVP damage is not calculated anywhere in the
-codebase — see [docs/adr/0001-defer-pvp-combat-modeling.md](docs/adr/0001-defer-pvp-combat-modeling.md)
-for why the stat fields exist ahead of the calculation that will eventually use them.
-
-## Defensive/PVP-adjacent stat fields (tracked, not computed)
-
-`block_chance`, `miss_chance`, `blind_chance`, `penetration`, `dmg_reduction`, `paralyze_chance`,
-`pvp_attack`, `pvp_defense` are all part of `OffensiveStats` (`src/lib/dps.js`) and participate in
-gear-swap math (`applySwap`), but are **not** read by `computeDps`, `computeHps`, or `compareSwap`'s
-verdict logic. They exist purely for display and data continuity ahead of a future PVP/defensive
-phase.
+Block, Miss, Blind, Penetration, DMG Reduction, Paralyze/Disruption, PVP Attack and PVP Defense
+all take part in combat in the game. How each one resolves is in
+`docs/Reference/Game/combat-pve.md` and `combat-pvp.md`. (An earlier version of this glossary
+called them display-only and the tool PVE-only. Both claims went stale long ago.)
 
 ## Mode: Compare vs. Edit (Gear Panel tab)
 

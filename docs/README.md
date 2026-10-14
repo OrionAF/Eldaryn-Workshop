@@ -57,7 +57,7 @@ It stays a **code comment** when it is:
 - Why *this* function does *this* non-obvious thing.
 - A local invariant or gotcha, stated where it actually bites.
 - An algorithm step that is not apparent from the code itself.
-- A citation: `see combat-model.md §6`.
+- A citation: `see Game/combat-pvp.md §4`.
 
 Comments are not being discouraged — they are being *scoped*. A file header
 should orient a reader in a few lines and point at the reference; it should not
@@ -69,27 +69,28 @@ because it read as authoritative.
 
 | Document | Owns |
 |---|---|
-| `Reference/combat-model.md` | Damage, healing, mitigation, survivability, duels, scoring, the gauntlet, the cap pipeline |
-| `Reference/data-model.md` | Persisted shape, the three scopes, normalisation, totals aggregation |
-| `Reference/Notes/big-rework-v1-notes.md` | Mounts, glyphs, sigils, pets — decisions and data derivations |
-| `Reference/Notes/goals-linking-redesign-notes.md` | Goals, linking, the Simulations page |
+| `Reference/Game/*.md` | Every game fact: stats, caps, combat (PVE and PVP), gear, drops and every progression system, read from the 2.7.0 client. Index: `Reference/Game/README.md` |
+| `Reference/data-model.md` | The app's persisted shape, the three scopes, normalisation, totals aggregation |
+| `Reference/Notes/goals-linking-redesign-notes.md` | The app's goals, linking and Simulations page (a decision record from before 2.7.0) |
 
 ## Layout
 
 ```
 docs/
+├── Extracted game data/          the 2.7.0 client extract (split zip) — the primary source
 ├── Reference/                    current truth
-│   ├── combat-model.md           THE canonical combat reference — read first
-│   ├── data-model.md             persisted shape, scopes, normalisation, totals
+│   ├── Game/                     THE game reference, one document per system — read first
+│   │   └── data/                 machine-readable catalogues the app consumes
+│   ├── data-model.md             the app's persisted shape, scopes, normalisation, totals
 │   ├── Source/                   raw inputs: game screenshots, scrapes, the user's own words
-│   └── Notes/                    derived notes, each datestamped and currently accurate
+│   └── Notes/                    app decision records, each datestamped and currently accurate
 ├── WIP/
-│   ├── being-worked-on/          the active work queue
-│   └── needs-user-input/         blocked on an answer or a measurement from the user
+│   ├── being-worked-on/          the active work queue (app-gap-2.7.0.md)
+│   └── needs-user-input/         blocked on an answer only the user can give
 ├── Archive/
 │   ├── scrapped/                 approaches we abandoned
 │   └── outdated-notes/           notes superseded by later work
-└── tools/                        run-by-hand scripts behind the numbers above
+└── tools/                        scripts that rebuild the module index the Game docs cite
 ```
 
 Each folder has its own README explaining what belongs in it and what does not.
@@ -104,48 +105,18 @@ Each folder has its own README explaining what belongs in it and what does not.
   Raw data, still valid; the derivation built on it is retired
   (`Archive/scrapped/`).
 
-## This folder is version-controlled — but not by the public repo
+## Version control
 
-**`docs/` is not in the public repository.** `Eldaryn-Workshop`'s `.gitignore`
-deliberately excludes it, along with `EldarynTracker/`, `CLAUDE.md` and
-`CONTEXT.md` — "internal planning/domain notes, kept locally, not published".
+Since 2026-10-14, `docs/`, `CLAUDE.md` and `CONTEXT.md` live in the main
+repository, `github.com/OrionAF/Eldaryn-Workshop`, which is now private. Commit
+them with plain `git`, like the code. The separate `edoc` repo from July 2026
+is retired; its setup note is `Archive/outdated-notes/private-repo-setup.md`.
 
-Those paths live in a **separate private repo** whose git-dir sits outside the
-project, so the two never collide:
+`EldarynTracker/` (the old Python tools and about 610 MB of screenshots) is still
+excluded by `.gitignore` and is not in the repository. Two tests,
+`src/lib/glyphsData.test.js` and `sigilsData.test.js`, read CSVs from it.
+They fail on a fresh checkout, including the GitHub Pages deploy.
 
-```
-D:\CodingProjects\
-├── .eldaryn-private.git\      <- private repo's git-dir
-└── Eldaryn-Workshop\
-    ├── .git\                  <- public repo, untouched
-    ├── src\                   <- public
-    └── docs\, EldarynTracker\, CLAUDE.md, CONTEXT.md   <- private repo
-```
-
-Commit with **`edoc`**, which is plain `git` pointed at that repo:
-
-```powershell
-edoc status
-edoc add docs/
-edoc commit -m "..."
-edoc push
-```
-
-**Editing anything in `docs/` and running `git commit` does nothing** — the
-public repo cannot see these files. Use `edoc`, or the change stays only on
-this disk.
-
-Two traps, both easy to hit:
-
-- **A brand-new file will not show in `edoc status`** (`showUntrackedFiles=no`
-  is set, so the thousands of public-repo files stay out of the way). Add new
-  paths explicitly, with `-f` the first time.
-- **Never `edoc add -f EldarynTracker`** — `-f` overrides the exclude list and
-  would sweep in ~610 MB of gear screenshots.
-
-Full details, including why this exists and what is deliberately left
-untracked: `Reference/Notes/private-repo-setup.md`.
-
-> This setup is a direct consequence of `Archive/DATA-LOSS-2026-07-28.md`:
-> `docs/` was untracked when a restructure accident destroyed five documents,
-> and nothing could recover them.
+> `docs/` is under version control because of `Archive/DATA-LOSS-2026-07-28.md`:
+> it was untracked when a restructure accident destroyed five documents, and
+> nothing could recover them.

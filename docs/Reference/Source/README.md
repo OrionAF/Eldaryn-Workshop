@@ -9,8 +9,16 @@ it shows. If newer captures supersede older ones, keep both and datestamp them
 — the old capture is how we know what changed.
 
 **Nothing in here is interpretation.** The moment you write down what a
-screenshot *means* for the app, that belongs in `../Notes/` or in
-`../combat-model.md`, and it inherits a provenance tag there.
+screenshot *means* for the app, that belongs in `../Game/` (game facts)
+or `../Notes/` (app decisions), and it inherits a provenance tag there.
+
+## The primary source since 2026-10-14
+
+`../../Extracted game data/idlehunt_2.7.0.zip.001`–`.007` is a split zip of the
+extracted 2.7.0 client. It contains the decompiled bundle, string tables, the
+earlier line-cited JSON builds, art and the original APKs. Everything in
+`../Game/` was read from it, and it outranks every capture below. The captures
+stay as the record of what the game showed before.
 
 ## Layout
 

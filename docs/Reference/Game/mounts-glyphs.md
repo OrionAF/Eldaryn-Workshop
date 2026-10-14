@@ -105,7 +105,7 @@ If no mount is active (or `activeMountId` unresolved) the bundle is all zeros (`
 
 - Per-level requirement: `altarSummonsRequired(tier, level) = level >= 10 ? Infinity : max(1, round(summonsToMax/9))` -> Common 2, Uncommon 3, Rare 6, Epic 7, Legendary 9 summons per level. [CODE L1071769-1071797] [DERIVED] values.
 - `getAltarProgress(tier, tierSummons)` starts at level 1 and subtracts requirements until summons run out. `canUpgradeAltar` needs altar level 10 and a next tier. [CODE L1071799-1071849, L1072369-1072392]
-- Success chance: `clamp(0.6 + bonus, 0, 1)` with `SUMMON_BASE_SUCCESS = 0.6`. [CODE L1072404-1072433] The merchant skill "Summoner's Pact" lists effects `[60,70,80,90,100]` (% summon success, max level 5, costs [100,200,400,700]); at max "every summon succeeds". [CODE L885974-885985] `see skills.md`. A failed summon still raises the altar (UI string "The altar still grew stronger. Try again.").
+- Success chance: `clamp(0.6 + bonus, 0, 1)` with `SUMMON_BASE_SUCCESS = 0.6`. [CODE L1072404-1072433; base 0.6 at L1072839] The merchant skill "Summoner's Pact" lists effects `[60,70,80,90,100]` (% summon success, max level 5, costs [100,200,400,700]); at max "every summon succeeds". [CODE L885974-885985] `see skills.md`. A failed summon still raises the altar (UI string "The altar still grew stronger. Try again.").
 - Summon rolls species by weights among the altar tier's rarity (`rollMountSpecies`). The summon itself is [SERVER]. Upgrading the tier is server-side; whether it wipes mounts is [UNRESOLVED] (the pet altar does wipe, see `pets.md`).
 
 ## §8 Glyph architecture
@@ -129,7 +129,7 @@ quality = clamp(band[0] + random()*(band[1]-band[0]), 0, 1)
 ```
 value = parseFloat( (minValue + (maxValue-minValue)*quality).toFixed(decimals) )
 ```
-Quality bands [CODE L1226000-1226020]: Common [0.1,0.2], Uncommon [0.2,0.35], Rare [0.35,0.6], Epic [0.6,0.8], Legendary [0.8,1], Mythic and above [1,1] (always max).
+Quality bands [CODE L1225980-1226017]: Common [0.1,0.2], Uncommon [0.2,0.35], Rare [0.35,0.6], Epic [0.6,0.8], Legendary [0.8,1], Mythic and above [1,1] (always max).
 
 Only MINOR glyphs roll a secondary (`glyphRollsSecondary(tier) = tier === MINOR`). [CODE L1225050-1225060] Applied to the active mount bundle by adding `value` to the stat's key (`applyGlyphSecondary`, 27 keys: attackSpeed, doubleHit, critChance, critDamage, hpRegen, lifesteal, healthPercent, attackPercent, damageReduction, blockChance, missChance, blindChance, paralyzeChance, penetration, spellDamage, spellResist, spellCritChance, spellVamp, disruptionChance, fearChance, minionAttack, minionHealth, minionCritChance, minionLifesteal, soulLink, minionAttackSpeed). [CODE L1224588-1224875] Note `ATTACK_PERCENT`/`HEALTH_PERCENT` secondary go into `attackPercent`/`healthPercent`; mount base goes into `attackPercent`/`hpPercent` (both reach the same totals, §5).
 

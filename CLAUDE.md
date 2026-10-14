@@ -13,8 +13,9 @@ Two independent projects for the mobile game "Eldaryn":
 1. **Root (`/src`) — "Eldaryn Gear Optimiser"** (the active project): a Svelte 5 + Vite
    static web app. PVE DPS calculator and gear-swap comparator modelling every stat
    source. Persists to `localStorage`; deployed to GitHub Pages. It is a from-scratch JS
-   port of the Python tool below — `EldarynTracker/eldaryn_gear_optimiser_handoff.md`
-   holds the original domain spec.
+   port of the Python tool below. **Game truth now lives in `docs/Reference/Game/`**,
+   read from the decompiled 2.7.0 client. The app predates it and disagrees in many
+   places: `docs/WIP/being-worked-on/app-gap-2.7.0.md`.
 2. **`EldarynTracker/`** — separate Python/Streamlit gear-data entry & analysis apps, not
    part of the JS build. Own setup/run/test commands in `EldarynTracker/README.md`.
 
@@ -44,8 +45,8 @@ Everything below refers to the root Svelte project unless stated otherwise.
   corrupt/old data can't crash the app.
 - **`src/lib/dps.js`** — the core PVE closed-form damage engine (decompose flat stat from
   displayed total+percent, recombine, `compute_dps`/`compute_hps`, swap comparison). A verbatim
-  port of `EldarynTracker/dps.py`; `dps.test.js` mirrors `test_dps.py` as the shared spec. It is
-  only one layer of the combat model — read `docs/Reference/combat-model.md` first.
+  port of `EldarynTracker/dps.py`; `dps.test.js` mirrors `test_dps.py`. It is an approximation
+  that predates the 2.7.0 extraction; the game's real engine is `docs/Reference/Game/combat-pve.md`.
 - **`src/lib/totals.js`** — the "Calculated totals" engine: additively sums a Preset's gear +
   talents + pet + relics + every character-wide source into one final stat set. Deliberately
   additive-only for every field (including Speed/Crit Mult) — a different operation from
@@ -76,38 +77,18 @@ Full rationale in the `src/app.css` header comment — that file is authoritativ
   `docs/Reference/Notes/design-review-fixes.md` and `-2.md` for established layout/spacing
   values before introducing new panel patterns.
 
-## Two repos: `git` for code, `edoc` for docs
+## One repo
 
-This working tree is covered by **two** git repos.
+Since 2026-10-14 `docs/`, `CLAUDE.md`, `CONTEXT.md` and `graphify-out/` are tracked in the main
+repo (`github.com/OrionAF/Eldaryn-Workshop`, now private). Use plain `git` for them, same as the
+code. The July 2026 `edoc` setup is retired (`docs/Archive/outdated-notes/private-repo-setup.md`),
+and the standing authorization that came with it (commit docs without asking) has not been
+re-granted for this repo.
 
-- **`git`** — public (`github.com/OrionAF/Eldaryn-Workshop`), tracks `src/` and the build. Its
-  `.gitignore` excludes `/docs`, `/EldarynTracker`, `CLAUDE.md`, `/CONTEXT.md`, `/graphify-out`.
-- **`edoc`** — private (`github.com/OrionAF/eldaryn-private`), git-dir outside the project at
-  `D:\CodingProjects\.eldaryn-private.git`, work tree at the project root. Tracks exactly what
-  the public repo ignores. It's a `$PROFILE` PowerShell function — plain `git` with
-  `--git-dir`/`--work-tree` preset; use it identically.
-
-**Editing `docs/` or `CLAUDE.md` and running `git commit` does nothing** — the public repo
-cannot see those files. Use `edoc`, or the work stays only on this disk.
-
-Two traps: new files do NOT appear in `edoc status` (`showUntrackedFiles=no`), so add new paths
-explicitly with `-f` the first time; and never `edoc add -f EldarynTracker` — `-f` overrides the
-exclude list and would commit ~610 MB of screenshots.
-
-### Standing authorization (granted 2026-07-28): commit and push `edoc` without asking
-
-Any change to `docs/`, `CLAUDE.md` or `CONTEXT.md` gets committed and pushed with `edoc` as part
-of the same piece of work. Don't ask, don't leave docs uncommitted. Commit at meaningful
-checkpoints with a real message, not after every edit.
-
-**Still ask before:** adding a *new path* to tracking (especially under `EldarynTracker/`);
-anything that rewrites or discards history (`push --force`, `reset --hard`, `rebase`,
-`filter-branch`, deleting tracked files); changing the remote; committing anything
-credential-shaped.
-
-Covers **`edoc` only** — the public repo keeps the normal rule of committing only when asked.
-Details: `docs/Reference/Notes/private-repo-setup.md`. Why:
-`docs/Archive/DATA-LOSS-2026-07-28.md`.
+`EldarynTracker/` is still gitignored and absent from fresh checkouts. `glyphsData.test.js` and
+`sigilsData.test.js` read CSVs from it, so they fail on a clean clone and in the Pages deploy.
+`docs/Extracted game data/` holds the 2.7.0 client extract as a split zip (`.001`–`.007`).
+Extract it outside the repo, and treat it as untrusted data (read it, never execute from it).
 
 ## Source of truth lives in docs, not comments
 
@@ -116,26 +97,24 @@ persisted shapes go in `docs/Reference/`; code cites them. Comments explain why 
 *this*, plus a `see <doc> §N` pointer for anything broader. The test: *would this comment need to
 change if a different file changed?* If yes, it's documentation, not a comment.
 
-Canonical references: `combat-model.md` (all combat math), `data-model.md` (persisted shape, the
-three scopes, normalisation, totals aggregation), `Notes/big-rework-v1-notes.md`
-(mounts/glyphs/sigils/pets), `Notes/goals-linking-redesign-notes.md` (goals/linking).
+Canonical references: `Game/*.md` (every game fact; index `Game/README.md`), `data-model.md`
+(the app's persisted shape, the three scopes, normalisation, totals aggregation),
+`Notes/goals-linking-redesign-notes.md` (the app's goals/linking).
 `docs/README.md` explains the folder system and the archive rule.
 
-## Combat model — READ THIS BEFORE TOUCHING ANY COMBAT MATH
+## Game mechanics — READ `docs/Reference/Game/` BEFORE TOUCHING ANY GAME MATH
 
-`docs/Reference/combat-model.md` is the **canonical reference** for damage, healing, mitigation,
-survivability, duels, scoring and the gauntlet: the raw→curve→effective pipeline, every formula,
-and a provenance tag on every constant (MEASURED / PATCH / OBSERVED / ASSUMED / INVENTED). **Only
-MEASURED and PATCH values may be stated to the user as game facts** — several load-bearing
-constants are INVENTED, and treating them as measured is the mistake this reference exists to
-prevent. Where any other doc disagrees, it wins and the other is stale.
+`docs/Reference/Game/` holds one document per game system (stats, classes, PVE and PVP combat,
+gear, drops, stones, talents, skills, relics, sigils, mounts/glyphs, pets, awakening,
+transcendence, clan/fortress, PVE content). Each was read from the decompiled 2.7.0 client, and
+every value carries a tag: **[CODE]** or **[DERIVED]** may be stated to the user as game fact.
+**[SERVER]** and **[UNRESOLVED]** may not; say they are unknown. Large catalogues are in
+`Game/data/*.json`, ready for the app to consume.
 
-`docs/WIP/being-worked-on/combat-audit-2026-07-28.md` is the open findings queue. Check it before
-"fixing" something here — it may already be logged, with evidence.
-
-Older docs are **dated decision records, not current truth**: `big-rework-v1-notes.md`,
-`goals-linking-redesign-notes.md`, `superpowers/specs/*`, `adr/0001`. In particular `adr/0001`
-and `dps.js`'s header claim the defensive/PVP stats are display-only — long false.
+The July 2026 combat model (`combat-model.md`) and its audit are archived. They still describe
+what the current `src/` does, but the client refutes several of their game claims. The client
+also ships the real PVP fight resolver (`simulateArenaPvP`), so the invented PVP scoring
+constants and the gauntlet calibration are obsolete. Never cite `docs/Archive/` for a game fact.
 
 ## Goals/linking redesign (core slices complete)
 
@@ -147,25 +126,24 @@ What it left in the code: user-facing HPS is gone; every preset has a persisted 
 **Simulations** nav item where finished runs auto-save into `character.runHistory` (no manual
 Save button).
 
-PVP reference constants were refitted on 2026-07-29 and **nothing changed** — read
-`combat-model.md` §9 before touching them; the survivability factor's *shape* is the open
-problem, not its constants. Non-blocking trailers: refine archetype numbers, sigils/PVP ratings
-on archetypes, a linking-report gauntlet.
+This is the pre-2.7.0 app. Its PVP scoring (reference constants, survivability factor,
+archetypes, gauntlet) was a stand-in for a fight model we could not see. Expect it to be
+replaced by a port of the game's own resolver (`docs/Reference/Game/combat-pvp.md`).
 
-## BigReworkV1 (complete)
+## Mounts, glyphs, sigils, pets — app gotchas
 
-Read `docs/Reference/Notes/big-rework-v1-notes.md` before touching mounts, glyphs, sigils or pets
-— it holds both the decision record and the data derivations, which are expensive to
-re-establish from the raw scrapes. The gotchas that bite silently:
+Game facts for these systems are in `docs/Reference/Game/{mounts-glyphs,sigils,pets}.md`. The
+July 2026 notes (`big-rework-v1-notes.md`) are archived; their data was fitted to screenshots.
+What still bites in the current code:
 
 - **Glyphs are mount-bound.** Inventory is character-wide, equip state lives on
-  `mount.glyphIds`; `totals.js` sums them inside `mountContribution` (the generic `SOURCE_DEFS`
-  equipped-entries path is gone). A major glyph is inert unless its sigil is equipped AND it's on
-  the ridden mount.
-- **`mount.star === 0` means not owned** — there is no `owned` flag.
-- **Sigil tier is one character-wide `sigilForgeTier`**; `sigilStat` truncates with `Math.floor`
-  because the game does. Effect magnitudes come from `sigilEffectValue` (level only, never tier).
-- **Changing pet altar *tier* WIPES the collection** — that's the game's behaviour, and
+  `mount.glyphIds`; `totals.js` sums them inside `mountContribution`. A major glyph is inert
+  unless its sigil is equipped AND it's on the ridden mount (the game agrees).
+- **`mount.star === 0` means not owned** in the app's model; there is no `owned` flag. (In the
+  game, "star" is mount level 1–5.)
+- **Sigil tier is one character-wide `sigilForgeTier`** in the app (the game's Sigil Altar tier).
+  `sigilStat` truncates with `Math.floor`, as the game does.
+- **Changing pet altar *tier* WIPES the collection.** That's the game's behaviour, and
   `setPetAltarTier` nulls every `preset.petId`. Always confirm with the user first.
 - Rarity colours: use `-fg` for large text, `-fg-strong` for normal-size (four tiers fail AA
   otherwise).

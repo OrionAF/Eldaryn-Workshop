@@ -1,0 +1,1351 @@
+id	lines(decompiled.js)	n	function names	top strings
+3124	662889-663688	800		useGameStore
+3125	663689-663791	103		
+3127	663925-664048	124	useStore,identity,createImpl,useBoundStore,create	create,useStore
+3128	664049-664401	353	noteStoreAction,noteStoreSet,getStoreActivity,resetStoreActivity,instrumentStoreActions,_loop,instrumentedActi	noteStoreAction,noteStoreSet,topActions,lastAction,lastActionAgeMs,setsInWindow,setsCapped
+3129	664402-664580	179	createPlayerSlice,setStamina,addStamina,updateLastStaminaTick,applyAvatarState	player,stamina,class,formSkins,lastStaminaTick,avatarId,selectedAvatarId,unlockedAvatarIds
+3130	664581-665399	819		GameScreen,PlayerClass,Rarity,EquipmentSlotType,SecondaryStatType,ItemType,RarityFilterMod
+3141	666102-666220	119		MEMBER,OFFICER,LEADER,OPEN,CLOSED,JOIN,LEAVE,KICK
+3143	666597-666668	72		IDLE,LOADING,WALKING_IN,FIGHTING,FIGHT_WON,FIGHT_LOST,ArenaRank
+3144	666669-668382	1714	getRankDivisionGroups,getBracketCount,assignBrackets,getSessionRewards,getGlobalSessionStartedAt,getPositionTi	rank,division,requiredInfluence,dungeonKeys,raidKeys,gems,energy,bonusHonors
+3145	668383-668986	604	getSigilsUnlockLevel,getClassAttunementBonus,isUnlockVisible,getVisibleUnlocks,getNewUnlocks	level,icon,description,iconName,title,action,tier,system,text,Upgrade it in the Skills pag
+3146	668987-669133	147	isOblivionPrestigeEnabled,isOblivionActivationOpen,isOblivionPrestigeUnlocked,getOblivionXpPenaltyPct,getObliv	ASCENSION_MAX_ITEM_LEVELS,START_RARITY,DARK_CONDUIT_MIN_RARITY,OBLIVION_PRESTIGE,isOblivio
+3147	669134-669275	142	isRarityAtLeast	name,color,tailwindClass,bgClass,borderClass,secondaryStatCount,RARITY_CONFIG
+3163	670535-671001	467	writeSlotForRealm,watermarkKey,createEquipmentSlice,equipItem,setViewedEquipmentSet,applySwitchSetResult,apply	computedStats,OBLIVION,equipment,equipment2,activeEquipmentSet,viewedEquipmentSet,oblivion
+3164	671002-674496	3495	scopedKey,rarityKey,rarityModesKey,statKey,qualityKey,ilvlKey,afkModeKey,statModeKey,conduitKey,loadRarityMode	BASE,touchedAt,nextAttemptAt,queued,OBLIVION,confirmedAt,realm,inFlight
+3165	674497-674622	126		Mode
+3167	675142-675210	69	createMMKV	createMMKV,number,mode
+3168	675211-675299	89	getMMKVTurboModule	SINGLE_PROCESS,MULTI_PROCESS,Mode,MmkvCxx,getMMKVTurboModule
+3170	675539-675595	57	getMMKVPlatformContextTurboModule	MmkvPlatformContext,getMMKVPlatformContextTurboModule
+3174	675856-675959	104	addMemoryWarningListener	memoryWarning,addMemoryWarningListener
+3176	676534-677172	639	isConduitFilterAvailable,filterByLootSettings,defaultRarityModes,defaultLootFilterConfig,partitionDrops	ALL,kept,discarded,secondaryStatFilters,secondaryStatMode,matchedSet,rarity,itemLevel,slot
+3177	677173-677316	144	calculateStatQuality,calculateItemQuality	calculateStatQuality,calculateItemQuality
+3178	677317-678505	1189	ascensionEffectiveLevel,statLevelForItem,secondaryStatMaxValue,rollConduitType,rollConduitValue,rollConduit,it	type,minRarity,attack,minValue,maxValue,decimals,weightExponent,atkBase
+3179	678506-679793	1288	readDsn,fingerprintStacklessJsi,crumbSignature,dedupeSyncedBreadcrumbs,dropNoisyBreadcrumb,stampBootStage,reco	POST,http,xhr,guard,extra,dsn,REPLACE_WITH
+3180	679794-680822	1029		addBreadcrumb,addIntegration,captureException,captureEvent,captureFeedback,captureMessage,
+3181	680823-685685	4863		registerSpanErrorInstrumentation,getCapturedScopesOnSpan,setCapturedScopesOnSpan,TRACING_D
+3184	685850-685955	106	addGlobalErrorInstrumentationHandler,instrumentError	error,column,line,msg,url,onerror,addGlobalErrorInstrumentationHandler
+3186	685986-686217	232	addHandler,resetInstrumentationHandlers,maybeInstrument,triggerHandlers	Error while instrumenting ,addHandler,maybeInstrument,resetInstrumentationHandlers,trigger
+3191	687362-687457	96	addGlobalUnhandledRejectionInstrumentationHandler,instrumentUnhandledRejection	unhandledrejection,onunhandledrejection,addGlobalUnhandledRejectionInstrumentationHandler
+3192	687458-688359	902	spanToTransactionTraceContext,spanToTraceContext,spanToTraceHeader,spanToTraceparentHeader,convertSpanLinksFor	span_id,trace_id,parent_span_id,data,status,origin,links,start_timestamp
+3193	688360-688442	83	setAsyncContextStrategy,getAsyncContextStrategy	acs,getAsyncContextStrategy,setAsyncContextStrategy
+3194	688443-688851	409	getAsyncContextStack,withScope,withSetScope,withIsolationScope,getStackAsyncContextStrategy,withSetIsolationSc	key,scope,withScope,getIsolationScope,stack,withIsolationScope
+3195	688852-688938	87	getDefaultCurrentScope,getDefaultIsolationScope	defaultCurrentScope,defaultIsolationScope,getDefaultCurrentScope,getDefaultIsolationScope
+3196	688939-690157	1219	Scope,clone,setClient,setLastEventId,getClient,lastEventId,addScopeListener,addEventProcessor,setUser,getUser,	key,event_id,traceId,sampleRand,user,originalException,syntheticException
+3197	690158-690543	386	makeSession,toJSON,updateSession,closeSession,sessionToJSON	duration,status,sid,timestamp,started,init,errors,did
+3199	691153-691743	591	fill,addNonEnumerableProperty,markFunctionWrapped,getOriginalFunction,convertToPlainObject,serializeEventTarge	prototype,object,function,writable,configurable,type,target
+3200	691744-692228	485	htmlTreeAsString,_htmlElementAsString,getLocationHref,getComponentName	html,aria-label,type,name,title,alt,getComponentName
+3202	692740-692869	130	withRandomSafeContext,safeMathRandom,safeDateNow	function,safeDateNow,safeMathRandom,withRandomSafeContext
+3203	692870-693234	365	truncate,snipLine,safeJoin,isMatchingPattern,stringMatchesSomePattern	string,isMatchingPattern,safeJoin,snipLine,stringMatchesSomePattern,truncate
+3204	693235-693462	228	dateTimestampInSeconds,createUnixTimestampInSecondsFunc,timestampInSeconds,getBrowserTimeOrigin,browserPerform	number,browserPerformanceTimeOrigin,dateTimestampInSeconds,timestampInSeconds
+3206	693564-693627	64	generateTraceId,generateSpanId	generateSpanId,generateTraceId
+3207	693628-693703	76	_setSpanForScope,_getSpanForScope	
+3208	693704-694004	301	getCurrentScope,getIsolationScope,getGlobalScope,withScope,withIsolationScope,getClient,getTraceContextFromSco	globalScope,trace_id,span_id,parent_span_id,getClient,getCurrentScope,getGlobalScope
+3211	694505-694670	166	wrapScopeWithWeakRef,unwrapScopeFromWeakRef,setCapturedScopesOnSpan,getCapturedScopesOnSpan	function,object,deref,scope,isolationScope,getCapturedScopesOnSpan,setCapturedScopesOnSpan
+3217	697164-697247	84	hasSpansEnabled	boolean,hasSpansEnabled
+3218	697248-697510	263	logIgnoredSpan,shouldIgnoreSpan,reparentChildSpans,isStringOrRegExp	Ignoring span ,parent_span_id,string,reparentChildSpans,shouldIgnoreSpan
+3221	697906-698129	224	SentryNonRecordingSpan,spanContext,end,setAttribute,setAttributes,setStatus,updateName,isRecording,addEvent,ad	key,SentryNonRecordingSpan,spanContext,spanId,traceId,traceFlags
+3222	698130-699125	996	isSpanTimeInput,isFullFinishedSpan,isStandaloneSpan,sendSpanEnvelope,SentrySpan,addLink,addLinks,recordExcepti	key,span,start_timestamp,timestamp,measurements,transaction,number,before_send
+3223	699126-699656	531	_enhanceEventWithSdkInfo,createSessionEnvelope,createEventEnvelope,createSpanEnvelope	type,sdk,sent_at,dsn,name,version,integrations,packages
+3224	699657-700433	777	createEnvelope,addItemToEnvelope,forEachEnvelopeItem,envelopeContainsItemType,encodeUTF8,decodeUTF8,serializeE	string,span,attachment,session,profile,metric,type
+3226	701161-701400	240	logSpanStart,logSpanEnd	root ,unsampled,sampled,span,op: ,name: ,ID: ,parent ID: 
+3227	701401-701576	176	setMeasurement,timedEventsToMeasurements	string,number,unit,setMeasurement,timedEventsToMeasurements
+3230	702980-703193	214	sampleSpan,inheritOrSampleWith	function,undefined,number,boolean,inheritOrSampleWith,tracesSampler returned 0 or false,sa
+3231	703194-704161	968	captureException,captureMessage,captureEvent,setContext,setExtras,setExtra,setTags,setTag,setUser,setConversat	status,monitorSlug,error,string,captureContext,Cannot capture check-in. No client defined.
+3232	704162-705054	893	prepareEvent,applyClientOptions,applyDebugIds,applyDebugMeta,applyIntegrationsMetadata,normalizeEvent,getFinal	data,debug_id,user,contexts,extra,captureContext,event_id
+3233	705055-705236	182	notifyEventProcessors,_notifyEventProcessors	notifyEventProcessors
+3235	705731-706037	307	getFilenameToDebugIdMap,processDebugIds,getDebugImagesForResources	sourcemap,type,code_file,debug_id,getDebugImagesForResources,getFilenameToDebugIdMap
+3236	706038-706523	486	applyScopeDataToEvent,mergeScopeData,mergeAndOverwriteScopeData,getCombinedScopeData,applyDataToEvent,applyBre	transaction,contexts,sdkProcessingMetadata,fingerprint,extra,tags,user,level
+3238	706810-709704	2895	_makeInternalError,_makeDoNotSendEventError,_isInternalError,_isDoNotSendEventError,setupWeightBasedFlushing,g	key,error,flush,before_send,span,event_id,message,object,sdkProcessingMetadata
+3239	709705-710148	444	filterDuplicates,getIntegrationsToSetup,setupIntegrations,afterSetupIntegrations,setupIntegration,addIntegrati	function,isDefaultInstance,preprocessEvent,Integration installed: ,Integration skipped bec
+3241	710760-711068	309	isAttributeObject,attributeValueToTypedAttributeValue,serializeAttributes,getTypedAttributeValue	string,unit,type,object,skip-undefined,boolean,number
+3242	711069-711170	102	_getTraceInfoFromScope	
+3244	711201-711309	109	createLogContainerEnvelopeItem,createLogEnvelope	item_count,type,log,content_type,items,name,version,sdk
+3246	711919-712027	109	createMetricContainerEnvelopeItem,createMetricEnvelope	item_count,type,trace_metric,content_type,items,name,version,sdk
+3247	712028-712358	331	createTransport,send,recordEnvelopeLoss,requestTask,flush	ratelimit_backoff,client_report,body,Sentry responded with status code ,network_error,Enco
+3249	712575-712950	376	parseRetryAfterHeader,disabledUntil,isRateLimited,updateRateLimits	all,custom,metric_bucket,DEFAULT_RETRY_AFTER,disabledUntil,isRateLimited,parseRetryAfterHe
+3250	712951-713029	79	createClientReportEnvelope	client_report,type,timestamp,discarded_events,dsn,createClientReportEnvelope
+3252	713122-713312	191	convertTransactionEventToSpanJson,convertSpanJsonToTransactionEvent	data,parent_span_id,span_id,start_timestamp,status,timestamp,trace_id,origin,measurements,
+3253	713313-713919	607	setCurrentRequestSessionErroredOrCrashed,ServerRuntimeClient,eventFromException,eventFromMessage,captureExcept	key,status,crashed,captureException,captureEvent,duration,contexts,errored
+3254	713920-714030	111	createCheckInEnvelope,createCheckInEnvelopeItem	sent_at,name,version,sdk,dsn,trace,check_in,type
+3256	714141-714767	627	parseStackFrames,hasSentryFetchUrlHost,_enhanceErrorWithSentryInfo,exceptionFromError,getErrorPropertyFromObje	message,string,type,frames,stacktrace,synthetic,values
+3257	714768-714884	117	initAndBind,setCurrentClient	initAndBind,setCurrentClient
+3258	714885-715475	591	makeOfflineTransport,log,shouldQueue,flushIn,flushWithBackOff,send,_send,flush	client_report,Attempting to send previously queued event,sent_at,Failed to retry sending,n
+3259	715476-716079	604	eventFromEnvelope,makeOverrideReleaseTransport,send,overrideDsn,makeMultiplexedTransport,getTransport,_send,ge	event,send,url,transaction,profile,replay_event,release
+3260	716080-716209	130	_INTERNAL_skipAiProviderWrapping,_INTERNAL_shouldSkipAiProviderWrapping,_INTERNAL_clearAiProviderSkips	Cleared AI provider skip registrations
+3266	717302-717515	214	getTraceData,scopeToTraceHeader,scopeToTraceparentHeader	Invalid sentry-trace data. Cannot generate trace data,sentry-trace,baggage,traceparent,get
+3267	717516-717610	95	getTraceMetaTags	getTraceMetaTags
+3270	718457-718576	120	addBreadcrumb	timestamp,beforeAddBreadcrumb,addBreadcrumb
+3271	718577-718712	136	_functionToStringIntegration,setupOnce,setup	functionToStringIntegration,FunctionToString,name,toString,setupOnce,setup
+3272	718713-719518	806	_mergeOptions,_shouldDropEvent,_isIgnoredError,_isIgnoredTransaction,_isDeniedUrl,_isAllowedUrl,_getLastValidU	name,allowUrls,denyUrls,ignoreErrors,ignoreTransactions,transaction,Cannot extract url for
+3273	719519-719616	98	_linkedErrorsIntegration,preprocessEvent	linkedErrorsIntegration,cause,LinkedErrors,name,preprocessEvent
+3274	719617-719923	307	applyAggregateErrorsToEvent,aggregateExceptionsFromError,isExceptionGroup,applyExceptionGroupFieldsForParentEx	handled,type,exception_id,mechanism,values,auto.core.linked_errors,is_exception_group,chai
+3275	719924-720046	123	setup	moduleMetadataIntegration,ModuleMetadata,name,beforeEnvelope,event,applyFrameMetadata,setu
+3276	720047-720411	365	getFilenameToMetadataMap,ensureMetadataStacksAreParsed,getMetadataForUrl,addMetadataToStackFrames,stripMetadat	module_metadata,addMetadataToStackFrames,getFilenameToMetadataMap,getMetadataForUrl,stripM
+3277	720412-720667	256	addNormalizedRequestDataToEvent,extractNormalizedRequestData,_requestDataIntegration,processEvent	headers,url,cookies,query_string,data,request,ip_address,user,method
+3280	721017-721305	289	consoleHandler,_captureConsoleIntegration,setup	arguments,console,captureContext,syntheticException,level,extra,logger,handled,auto.core.c
+3281	721306-721464	159	addConsoleInstrumentationHandler,instrumentConsole	console,args,level,addConsoleInstrumentationHandler
+3283	721515-721892	378	_shouldDropEvent,_isSameMessageEvent,_isSameExceptionEvent,_isSameStacktrace,_isSameFingerprint,_getExceptionF	dedupeIntegration,Dedupe,name,processEvent
+3284	721893-722292	400	_enhanceEventWithErrorData,_extractErrorData,_extraErrorDataIntegration,processEvent	name,cause,contexts,message,stack,line,column,fileName,lineNumber,columnNumber
+3285	722293-722621	329	generateIteratee,_processExceptionsEvent,_processStacktrace,processEvent	filename,generateIteratee,rewriteFramesIntegration,stacktrace,values,exception,frames
+3287	723179-724516	1338	markAsInstrumented,isInstrumented,extractOperation,translateFiltersIntoMethods,instrumentAuthOperation,apply,i	select,code,type,apply,name,handled,delete,update
+3288	724517-725048	532	originalExceptionIsZodError,flattenIssue,flattenIssuePath,formatIssueMessage,applyZodErrorsToEvent,_zodErrorsI	extra,ZodError,path,keys,unionErrors,number,Failed to validate keys: 
+3289	725049-725421	373	isSentryInternalFrame,getBundleKeysForAllFramesWithFilenames,setup,processEvent	sentry,helpers,thirdPartyErrorFilterIntegration,ThirdPartyErrorsFilter,name,beforeEnvelope
+3290	725422-725672	251	addConsoleBreadcrumb,formatConsoleArgs,setup	arguments,level,message,console,category,logger,data,assert
+3291	725673-725739	67	processEvent,addFeatureFlag	featureFlagsIntegration,FeatureFlags,name,processEvent,addFeatureFlag
+3292	725740-726078	339	_INTERNAL_copyFlagsFromScopeToEvent,_INTERNAL_insertFlagToScope,_INTERNAL_insertToFlagBuffer,_INTERNAL_addFeat	values,flags,boolean,contexts,flag,result,flag.evaluation.
+3293	726079-726226	148	_wrapAndCaptureBooleanResult,setupOnce,processEvent	string,boolean,growthbookIntegration,GrowthBook,name,function,isOn
+3294	726227-726314	88	_conversationIdIntegration,setup	conversationIdIntegration,ConversationId,name,spanStart,setup
+3295	726315-726513	199	isProfilingIntegrationWithProfiler,startProfiler,stopProfiler	function,ProfilingIntegration,ProfilingIntegration is not available,Profiler is not availa
+3297	727319-727687	369	captureIfError,trpcMiddleware	input,object,error,procedure_path,procedure_type,function,trpc,trpc/,name,rpc.server
+3299	727941-728393	453	wrapMethodHandler,createWrappedHandler,createErrorCapturingHandler,captureHandlerError,wrapToolHandlers,wrapRe	function,tool,resource,prompt,validation,timeout,MCP handler wrapping failed:,object
+3300	728394-728506	113	captureError	code,internal_error,message,type,auto.ai.mcp_server,handled,handler_execution,error_type,d
+3301	728507-729176	670	wrapTransportOnMessage,wrapTransportSend,wrapTransportOnClose,wrapTransportError,captureJsonRpcErrorResponse,c	onmessage,initialize,send,onclose,onerror,object,code,message
+3303	729584-729843	260	getOrCreateSpanMap,storeSpanForRequest,completeSpanWithResults,cleanupPendingSpansForTransport	span,method,startTime,initialize,tools/call,prompts/get,cancelled,code
+3304	729844-730307	464	buildAllContentItemAttributes,_loop,safeSet,extractToolResultAttributes,extractPromptResultAttributes,_loop2	string,role,mcp.tool.result,mcp.tool.result.,mime_type,uri,name,resource_uri
+3305	730308-730568	261	isJsonRpcRequest,isJsonRpcNotification,isJsonRpcResponse,validateMcpServerInstance,isValidContentItem	object,jsonrpc,method,result,error,resource,tool,prompt
+3309	731825-732196	372	formatLoggingData,getNotificationAttributes,buildTypeSpecificAttributes	string,notifications/cancelled,notifications/message,notifications/progress,notifications/
+3310	732197-732474	278	extractTargetInfo,getRequestArguments	targetAttribute,targetField,attributes,name,captureArguments,argumentsField,arguments,uri
+3311	732475-732590	116	isNetworkPiiAttribute,filterMcpPiiFromSpanData	filterMcpPiiFromSpanData
+3312	732591-732701	111	captureFeedback	contexts,feedback,type,level,info,contact_email,name,message,url,source
+3313	732702-732991	290	captureLog,trace,debug,info,warn,error,fatal	trace,debug,info,warn,error,fatal,level,message
+3314	732992-733252	261	_consoleLoggingIntegration,setup	level,message,attributes,consoleLoggingIntegration,auto.log.console,ConsoleLogs,name
+3316	733462-733619	158	captureMetric,count,gauge,distribution	gauge,distribution,type,name,unit,attributes,scope
+3318	733866-734751	886	addOriginToSpan,mapVercelAiOperationName,onVercelAiSpanStart,vercelAiEventProcessor,processEndedVercelAiSpan,r	auto.vercelai.otel,ai.,ai.toolCall,execute_tool,string,embeddings,generate_content,invoke_
+3322	736175-736565	391	getFinalOperationName,getSpanOperation,buildMethodPath,setTokenUsageAttributes,getTruncatedJsonString,extractS	systemInstructions,filteredMessages,chat,string,messages,completions,generateContent,model
+3325	737728-738634	907	extractAvailableTools,extractRequestAttributes,addResponseAttributes,addRequestAttributes,instrumentMethod,ins	object,type,function,auto.ai.openai,unknown,input,name,attributes,handled,data
+3333	742095-743147	1053	extractRequestAttributes,addPrivateRequestAttributes,addContentAttributes,addMetadataAttributes,addResponseAtt	object,unknown,auto.ai.anthropic,type,function,number,handled,data,mechanism,name
+3335	745259-745518	260	shouldInstrument,setMessagesAttribute,handleResponseError,messagesFromParams	code,internal_error,message,handled,type,auto.ai.anthropic.anthropic_error,mechanism,strin
+3337	745562-746702	1141	extractModel,extractConfigAttributes,extractRequestAttributes,addPrivateRequestAttributes,addResponseAttribute	number,object,string,auto.ai.google_genai,user,function,unknown,config,message
+3343	749594-750798	1205	asString,normalizeMessageRole,normalizeRoleNameFromCtor,getInvocationParams,normalizeLangChainMessages,extract	role,content,user,string,function,unknown,System,Human
+3344	750799-751366	568	instrumentStateGraphCompile,apply,instrumentCompiledGraphInvoke,instrumentLangGraph	string,gen_ai.create_agent,name,create_agent,attributes,code,internal_error,message,handle
+3346	751410-751965	556	extractToolCalls,extractTokenUsageFromMessage,extractModelMetadata,extractToolsFromCompiledGraph,setResponseAt	object,number,inputTokens,outputTokens,totalTokens,string,name,description
+3350	753005-753392	388	supportsErrorEvent,supportsDOMError,supportsDOMException,supportsHistory,_isFetchSupported,isNativeFunction,su	history,fetch,string,function,iframe,hidden,ReportingObserver,origin
+3351	753393-753475	83	isBrowser,isElectronNodeRenderer	undefined,renderer,isBrowser
+3352	753476-753617	142	isNodeEnv,dynamicRequire,loadModule	undefined,process,isNodeEnv,loadModule
+3355	753768-754114	347	filenameIsInApp,node,nodeStackLineParser,_parseIntOrUndefined	filename,function,node_modules/,native,module,lineno,colno,in_app
+3356	754115-754296	182	watchdogTimer,poll,enabled,callFrameToStackFrame	poll,enabled,filename,module,function,colno,lineno,in_app
+3357	754297-754529	233	LRUMap,set,remove,clear,keys,values	key,LRUMap,size,set,remove,clear
+3358	754530-754611	82	vercelWaitUntil	string,vercelWaitUntil
+3359	754612-754939	328	flushWithTimeout,_flushWithTimeout,flushIfServerless,_flushIfServerless	function,Flushing events...,Done flushing events,cloudflareWaitUntil,cloudflareCtx,undefin
+3363	757209-757250	42		feedbackAsyncIntegration,lazyLoadIntegration
+3364	757251-766464	9214	isScreenshotSupported,mergeOptions,onFormOpen,onFormClose,onSubmitSuccess,onSubmitError,onFormSubmitted,create	class,function,name,width,height,type,div,style,email
+3367	767174-767223	50	getModalIntegration,getScreenshotIntegration	feedbackSyncIntegration,getModalIntegration,getScreenshotIntegration
+3368	767224-767621	398	applyDefaultOptions,BrowserClient,eventFromException,eventFromMessage,_prepareEvent	key,release,browser,sendClientReports,parentSpanIsAlwaysRootSpan,string
+3369	767622-768501	880	exceptionFromError,eventFromPlainObject,eventFromError,parseStackFrames,getSkipFirstStackStringLines,getPopFir	exception,values,frames,stacktrace,synthetic,type,extra
+3370	768502-768734	233	makeFetchTransport,_makeRequest,makeRequest	body,headers,fetch,method,POST,referrerPolicy,strict-origin,keepalive,statusCode,X-Sentry-
+3371	768735-769121	387		addClsInstrumentationHandler,addInpInstrumentationHandler,addLcpInstrumentationHandler,add
+3372	769122-769648	527	addClsInstrumentationHandler,addLcpInstrumentationHandler,addTtfbInstrumentationHandler,addInpInstrumentationH	metric,cls,lcp,ttfb,inp,reportAllChanges,event,durationThreshold
+3374	769689-769902	214	onCLS,handleEntries	CLSThresholds,onCLS,CLS,entries,layout-shift
+3375	769903-769937	35		WINDOW
+3377	770050-770322	273	isPageHidden,initHiddenTime,onVisibilityUpdate,getVisibilityWatcher,onHidden	pagehide,hidden,visibilitychange,prerenderingchange,getVisibilityWatcher,visibility-state,
+3378	770323-770377	55	getActivationStart	getActivationStart
+3380	770466-770552	87	addPageListener,removePageListener	addPageListener,removePageListener
+3387	771148-771331	184	onFCP,handleEntries	FCPThresholds,onFCP,FCP,paint,first-contentful-paint
+3388	771332-771402	71	whenActivated	whenActivated,prerenderingchange
+3392	772108-772219	112	whenIdleOrHidden	capture,visibilitychange,once,pagehide,whenIdleOrHidden,hidden
+3393	772220-772502	283	onLCP,handleEntries,stopListeningWrapper	capture,LCPThresholds,onLCP,LCP,entries,largest-contentful-paint,keydown
+3395	772600-772799	200	whenReady,onTTFB	TTFBThresholds,onTTFB,complete,load,TTFB,entries
+3396	772800-774612	1813	startTrackingWebVitals,startTrackingLongTasks,startTrackingLongAnimationFrames,startTrackingInteractions,_trac	name,attributes,unit,millisecond,auto.ui.browser.metrics,navigation,measure
+3398	774879-775453	575	isMeasurementValue,startAndEndSpan,startStandaloneWebVitalSpan,getBrowserPerformanceAPI,msToSec,extractNetwork	startTime,name,number,function,Replay,release,environment
+3400	775492-775574	83	onHidden,onHiddenOrPageHide	pagehide,capture,once,onHidden,hidden,visibilitychange
+3402	775840-776054	215	getAbsoluteTime,resourceTimingToSpanAttributes,dropUndefinedKeysFromObject	network.protocol.version,network.protocol.name,http.request.redirect_start,http.request.re
+3404	776380-776886	507	addClickKeypressInstrumentationHandler,instrumentDOM,isSimilarToLastCapturedEvent,shouldSkipDOMEvent,makeDOMEv	keypress,click,refCount,dom,addEventListener,handler,EventTarget,Node
+3405	776887-777101	215	addHistoryInstrumentationHandler,instrumentHistory,historyReplacementFunction,getAbsoluteUrl	history,from,popstate,pushState,replaceState,addHistoryInstrumentationHandler,instrumentHi
+3406	777102-777341	240	getNativeImplementation,clearCachedImplementation,fetch,setTimeout	fetch,setTimeout,function,iframe,hidden,Could not create sandbox iframe for ,clearCachedIm
+3407	777342-777743	402	addXhrInstrumentationHandler,instrumentXHR,apply,onreadystatechangeHandler,parseXhrUrlArg	xhr,apply,startTimestamp,onreadystatechange,method,url,request_headers,POST
+3409	778096-778596	501	startTrackingINP,_trackINP,registerInpInteractionListener,captureElementFromEvent,resolveElementNameFromEntry,	click,hover,drag,press,capture,passive,span,elementName
+3410	778597-778726	130	startProfiler,stopProfiler	BrowserProfiling,uiProfiler,BrowserProfiling integration is not available,startUIProfiler,
+3412	778767-779359	593	createFrame,chromeStackParserFn,gecko,winjs,opera10,opera11,extractSafariExtensionDetails	filename,function,eval,in_app,lineno,colno,chromeStackLineParser
+3413	779360-779479	120	createUserFeedbackEnvelope,createUserFeedbackEnvelopeItem	event_id,sent_at,name,version,sdk,dsn,user_report,type
+3414	779480-779730	251	getDefaultIntegrations,init,forceLoad,onLoad	integrations,enabled,stackParser,defaultIntegrations,transport,forceLoad,getDefaultIntegra
+3415	779731-780459	729	_getSentryBreadcrumbHandler,addSentryBreadcrumb,_getDomBreadcrumbHandler,_innerDomBreadcrumb,_getConsoleBreadc	data,category,level,message,input,event,xhr,startTimestamp,endTimestamp,type
+3416	780460-781015	556	_wrapTimeFunction,_wrapRAF,_wrapXHR,_wrapEventTarget,isEventListenerObject,unregisterOriginalCallback,_browser	data,handled,type,mechanism,handler,function,XMLHttpRequest,addEventListener,target,remove
+3417	781016-781132	117	setupOnce	ignoreDuration,browserSessionIntegration,BrowserSession,name,undefined,setupOnce
+3420	781734-781828	95	_linkedErrorsIntegration,preprocessEvent	linkedErrorsIntegration,cause,LinkedErrors,name,preprocessEvent
+3422	782122-782274	153	checkAndWarnIfIsEmbeddedBrowserExtension,_isEmbeddedBrowserExtension	undefined,chrome-extension,moz-extension,ms-browser-extension,safari-web-extension,checkAn
+3423	782275-782485	211	showReportDialog,reportDialogClosedMessageHandler	message,user,eventId,script,async,anonymous,crossOrigin,src,onload
+3425	782739-783586	848	_fetchResponseHandler,_parseCookieHeaders,_xhrResponseHandler,_getResponseSizeFromHeaders,_parseCookieString,_	type,url,method,Set-Cookie,status,requestHeaders,responseHeaders,responseCookies,error
+3426	783587-783806	220	addSourceContext,applySourceContextToFrame,_contextLinesIntegration,processEvent	frames,applySourceContextToFrame,contextLinesIntegration,ContextLines,name,processEvent
+3428	784351-812097	27747	isElement$1,isShadowRoot,isNativeShadowDom,fixBrowserCompatibilityIssuesInCSS,escapeImportStatement,stringifyS	key,type,data,maskInputFn,attributes,mirror,session,string,maskInputOptions
+3429	812098-815780	3683	createMirror$2,elementClassMatchesRegex,distanceToMatch,createMatchPredicate,hookSetter,set,patch,closestEleme	key,type,rr_type,args,property,function,canvas,all,object
+3434	818282-818786	505	linkTraces,addPreviousTraceSpanLink,storePreviousTraceInSessionStorage,getPreviousTraceFromSessionStorage,span	sampleRand,session-storage,spanStart,beforeSampling,sample_rate,sampled,dsc,parentSampled
+3435	818787-818850	64	reportPageLoaded	endPageloadSpan,reportPageLoaded
+3436	818851-818936	86	setActiveSpanInBrowser,apply	apply,end,setActiveSpanInBrowser
+3438	819667-820114	448	_browserProfilingIntegration,setup,processEvent	manual,trace,browserProfilingIntegration,BrowserProfiling,name,profileLifecycle,startUIPro
+3439	820115-820480	366	startProfileForSpan,onProfileHandler,_onProfileHandler,profilingWrappedSpanEnd	profile_id,start_timestamp,profile,end,startProfileForSpan
+3440	820481-822562	2082	isProcessedJSSelfProfile,enrichWithThreadInformation,getTraceId,createProfilePayload,createProfileChunkPayload	reason,number,name,version,thread_metadata,platform,profile,function
+3441	822563-823698	1136	UIProfiler,initialize,start,stop,notifyRootSpanActive,_beginProfiling,_endProfiling,_setupTraceLifecycleListen	key,trace,profile,UIProfiler,initialize,start
+3443	823782-823929	148	processEvent,OpenFeatureIntegrationHook,after,error	key,OpenFeatureIntegrationHook,openFeatureIntegration,OpenFeature,name,processEvent
+3444	823930-824076	147	_wrappedIsEnabled,setupOnce,processEvent	string,boolean,unleashIntegration,Unleash,name,isEnabled,setupOnce
+3445	824077-824122	46	growthbookIntegration	growthbookIntegration,growthbookClass
+3446	824123-824204	82	setup,processEvent	statsigIntegration,Statsig,name,gate_evaluation,setup,processEvent
+3449	824922-824986	65	init	react,version,init
+3450	824987-825228	242	isAtLeastReact17,setCause,recurse,captureReactException,reactErrorHandler	cause,React ErrorBoundary ,name,stack,componentStack,react,handled,auto.function.react.err
+3451	825229-825954	726	withProfiler,Wrapped,useProfiler,Profiler,componentDidMount,shouldComponentUpdate,componentDidUpdate,component	name,onlyIfParent,auto.ui.react.profiler,ui.component_name,attributes,key,startTime
+3454	826265-826854	590	withErrorBoundary,ErrorBoundary,componentDidCatch,componentDidMount,componentWillUnmount,resetErrorBoundary,re	eventId,key,componentStack,error,function,displayName
+3456	826895-827176	282	createReduxEnhancer,sentryWrapReducer,apply,actionTransformer,stateTransformer	state,data,type,redux,undefined,category,function,redux_state.json,filename
+3462	832236-832641	406	captureCurrentLocation,captureActiveSpan,createAsyncHandlerProxy,apply,handleAsyncHandlerResult,checkRouteForA	pathname,search,hash,state,key,undefined,apply
+3468	835424-835896	473	getSentryMetroSourceContextUrl,getDevServer,fetchSourceContext,parseErrorStack,symbolicateStackTrace,adopt,ful	React Native Devtools not available.,Could not fetch source context. No dev server URL fou
+3471	836239-836324	86	createStealthXhr	XHR_READYSTATE_DONE,open,send,createStealthXhr
+3472	836325-836359	35		RN_GLOBAL_OBJ
+3473	836360-836949	590	processEvent,adopt,fulfilled,rejected,step,deviceContextIntegration,setupOnce	app,Failed to get device context from native: ,user,unknown,active,in_foreground,contexts,
+3474	836950-837064	115	breadcrumbFromObject	DEFAULT_BREADCRUMB_LEVEL,string,type,level,event_id,category,message
+3488	841215-841273	59	convertToNormalizedObject	object,convertToNormalizedObject
+3492	842167-842504	338	disable,logError,matchWhitelist,enable,onUnhandled,onHandled	displayId,logged,disable,error,timeout,enable
+3493	842505-842980	476	preprocessEvent,walkErrorTree,exceptionFromJavaStackElements,exceptionFromAppleStackReturnAddresses,fetchNativ	type,exceptions,debugImages,frames,stacktrace,values,debug_meta,images,stackElements
+3494	842981-843378	398	processEvent,adopt,fulfilled,rejected,step,nativeReleaseIntegration,setupOnce	release,dist,string,nativeReleaseIntegration,Release,name,setupOnce
+3496	843442-843899	458	processEvent,createCachedFetchNativeSdkInfo,adopt,fulfilled,rejected,step,sdkInfoIntegration,setupOnce	name,version,packages,javascript,platform,sdk,Could not fetch native sdk info.
+3499	844236-844543	308	createProcessEvent,adopt,fulfilled,rejected,step,modulesLoaderIntegration,setupOnce	Failed to get modules from native: ,modules,modulesLoaderIntegration,ModulesLoader,name,se
+3505	846289-846326	38		DEFAULT_BUNDLE_NAME
+3506	846327-846496	170	createReactNativeRewriteFrames,iteratee	filename,app://,ANDROID_DEFAULT_BUNDLE_NAME,IOS_DEFAULT_BUNDLE_NAME,java,cocoa,native
+3508	847305-847398	94	getDebugMetadata	code_file,debug_id,sourcemap,type,getDebugMetadata
+3509	847399-847742	344	processEvent,adopt,fulfilled,rejected,step,screenshotIntegration,setupOnce	attachments,screenshotIntegration,Screenshot,name,setupOnce,processEvent
+3510	847743-848090	348	processEvent,adopt,fulfilled,rejected,step,viewHierarchyIntegration,setupOnce	Failed to get view hierarchy from native.,filename,contentType,attachmentType,data,attachm
+3512	848518-848826	309	setup,sendEnvelopesToSidecar,getDefaultSidecarUrl,getHostnameFromString,spotlightIntegration,setupOnce	beforeEnvelope,string,image,POST,Content-Type,application/x-sentry-envelope,onreadystatech
+3513	848827-849511	685	mergeOptions,adopt,fulfilled,rejected,step,mobileReplayIntegration,updateCachedReplayId,getCachedReplayId,setu	replay_id,enableViewRendererV2,name,contexts,replay,options,getReplayId
+3515	849537-849676	140	_getBodySize,enrichXhrBreadcrumbsForMobileReplay	json,object,xhr,content-length,start_timestamp,end_timestamp,request_body_size,response_bo
+3516	849677-849822	146	_serializeFormData,parseContentLengthHeader,getBodySize	parseContentLengthHeader,string,getBodySize
+3517	849823-850206	384	feedbackIntegration,_getClientIntegration,getFeedbackOptions,getFeedbackButtonOptions,getScreenshotButtonOptio	buttonOptions,screenshotButtonOptions,colorScheme,themeLight,themeDark,system,MOBILE_FEEDB
+3519	850353-851942	1590	_captureAppStart,setRootComponentCreationTimestampMs,attachFrameDataToSpan,setSpanDurationAsMeasurementOnTrans	start_timestamp,timestamp,origin,description,timestampMs,endFrames,data,measurements,milli
+3520	851943-852155	213	appRegistryIntegration,setupOnce,onRunApplication,patchAppRegistryRunApplication,getAppRegistryIntegration	INTEGRATION_NAME,appRegistryIntegration,patchAppRegistryRunApplication,getAppRegistryInteg
+3521	852156-852189	34	fillTyped	fillTyped
+3528	853942-854306	365	setSpanMeasurement,createSpanJSON,getTimeOriginMilliseconds,isNearToNow,setSpanDurationAsMeasurement,setSpanDu	trace_id,millisecond,status,span_id,data,defaultTransactionSource,customTransactionSource
+3529	854307-855350	1044	fetchNativeFrames,isClose,adopt,fulfilled,rejected,step,createNativeFramesIntegrations,nativeFramesIntegration	unit,ttl,timestamp,nativeFrames,Fetching native frames took too long. Dropping frames.,Nat
+3531	855845-856611	767	stallTrackingIntegration,backgroundEventListener,iteration,_onSpanStart,_onSpanEnd,_onChildSpanEnd,_markSpanFi	lastIntervalMs,isTracking,timeout,isBackground,totalStallTime,stallCount,atTimestamp,unit,
+3532	856612-856878	267	userInteractionIntegration,startUserInteractionSpan	UserInteraction,name,userInteractionIntegration,startUserInteractionSpan,scope,idleTimeout
+3534	857201-858384	1184	addTimeToInitialDisplay,addAutomaticTimeToInitialDisplay,addTimeToFullDisplay,adopt,fulfilled,rejected,step,is	timestamp,spans,event,rootSpanId,transactionStartTimestampSeconds,description,start_timest
+3535	858385-859553	1169	getPathFromState,getReactNavigationIntegration,reactNavigationIntegration,startIdleNavigationSpan,updateLatest	name,navigation,PRELOAD,route.name,code,INTEGRATION_NAME,reactNavigationIntegration
+3536	859554-859814	261	adopt,fulfilled,rejected,step,addTimeToInitialDisplayFallback,getTimeToInitialDisplayFallback	addTimeToInitialDisplayFallback,getTimeToInitialDisplayFallback,ttl
+3538	859940-860065	126	primitiveTagIntegration,setup,afterAllSetup	INTEGRATION_NAME,primitiveTagIntegration,PrimitiveTagIntegration,name,beforeSendEvent,setu
+3541	860820-860854	35	graphqlIntegration	endpoints,graphqlIntegration
+3542	860855-860889	35	supabaseIntegration	supabaseClient,supabaseIntegration
+3543	860890-861732	843	ReactNativeClient,eventFromException,eventFromMessage,nativeCrash,close,captureUserFeedback,sendEnvelope,init,	key,enableLogs,close,init,emit,ReactNativeClient
+3544	861733-861868	136	createUserFeedbackEnvelopeItem,createUserFeedbackEnvelope	user_report,type,header,items,event_id,sent_at,name
+3545	861869-861916	48	ignoreRequireCycleLogs	Require cycle:,ignoreRequireCycleLogs
+3548	862987-863800	814	FeedbackWidgetProvider,onStartShouldSetPanResponder,onMoveShouldSetPanResponder,onPanResponderMove,onPanRespon	toValue,useNativeDriver,duration,easing,key,screen,style
+3549	863801-864169	369	FeedbackButton,componentDidMount,componentWillUnmount,render	key,style,FeedbackButton,componentDidMount,componentWillUnmount,render
+3550	864170-864307	138	onFormOpen,onFormClose,onAddScreenshot,onSubmitSuccess,onSubmitError,onFormSubmitted	Report a Bug,triggerLabel,triggerAriaLabel,defaultConfiguration,defaultButtonConfiguration
+3554	864870-865449	580	NOOP_SET_VISIBILITY,FeedbackManager,initialize,reset,show,hide,isFormVisible,FeedbackWidgetManager,FeedbackBut	key,PULL_DOWN_CLOSE_THRESHOLD,SLIDE_ANIMATION_DURATION,BACKGROUND_ANIMATION_DURATION,Feedb
+3555	865450-865664	215	lazyLoadFeedbackIntegration,lazyLoadAutoInjectFeedbackIntegration,lazyLoadAutoInjectFeedbackButtonIntegration,	name,lazyLoadFeedbackIntegration,AUTO_INJECT_FEEDBACK_INTEGRATION_NAME,lazyLoadAutoInjectF
+3557	865708-867599	1892	adopt,fulfilled,rejected,step,FeedbackWidget,componentDidMount,componentWillUnmount,render,onCancel,onChangeTe	style,filename,attachment,attachmentUri,name,email,testID,onPress,description
+3559	867630-868271	642	adopt,fulfilled,rejected,step,takeScreenshot,getCapturedScreenshot,ScreenshotButton,componentDidMount,componen	key,style,getCapturedScreenshot,ScreenshotButton,ErrorCapturingScreenshot,componentDidMoun
+3562	868947-869415	469	reactNativeNavigationIntegration,startIdleNavigationSpan,updateLatestNavigationSpanWithCurrentComponent,pushRe	navigation,INTEGRATION_NAME,reactNativeNavigationIntegration,ReactNativeNavigation,route.n
+3564	869710-869948	239	onRunApplicationHook,ReactNativeProfiler,componentDidMount,_reportAppStart	appStartReported,ReactNativeProfiler,componentDidMount,key,onRunApplicationHook,name
+3567	870305-872106	1802	TimeToInitialDisplay,TimeToFullDisplay,TimeToDisplay,startTimeToInitialDisplaySpan,startTimeToFullDisplaySpan,	code,ui.load.initial_display,time_to_full_display,parentSpanId,initialDisplay,fullDisplay,
+3569	872372-872421	50	shouldEnableNativeNagger	boolean,shouldEnableNativeNagger
+3570	872422-872788	367	enableSyncToNative	This feature is currently not supported.,setUser,setTag,setTags,setExtras,setExtra,addBrea
+3571	872789-873730	942	getTouchedComponentInfo,getComponentName,getElementName,getFileName,getLabelValue,getSpanAttributes,TouchEvent	key,string,name,unknown,TouchEventBoundary,displayName
+3573	873945-874019	75	createReleaseFromGlobalReleaseConstants,getDefaultRelease	createReleaseFromGlobalReleaseConstants,getDefaultRelease
+3574	874020-874166	147	safeFactory,safeTracesSampler	function,The ,safeFactory,The tracesSampler callback threw an error,safeTracesSampler
+3575	874167-874491	325	warnMessage,warn,MaskFallback,UnmaskFallback,hasViewManagerConfig	RNSentryReplayMask,RNSentryReplayUnmask,Mask,Unmask,uiViewClassName,MaskFallback,UnmaskFal
+3576	874492-874653	162	isClientPlatform,lowestFloor,minClientVersionFor,minOtaVersionFor	ios,android,MIN_CLIENT_VERSION_BY_PLATFORM,OTA_VERSION,MIN_OTA_VERSION_BY_PLATFORM,MIN_CLI
+3578	874733-875754	1022	isFinished,monoNow,readRecord,writeRecord,mergedRafGap,stopRafProbe,startRafProbe,step,stopTracking,startTrack	aliveMono,unknown,drawn,function,maxGapMs,rafMaxGapMs,stageMono,fonts,ota,number
+3579	875755-876044	290		
+3580	876045-877155	1111	resolveImageSource,resolveReloadScreenOptions,_reloadAsync,_checkForUpdateAsync,_getExtraParamsAsync,_setExtra	manifestString,ERR_UPDATES_DISABLED,manifest,string,url,number,object
+3583	877314-877552	239	_handleNativeStateChangeEvent,transformNativeStateMachineContext,addUpdatesStateChangeListener,remove,emitTest	string,context,latestManifest,downloadedManifest,lastCheckForUpdateTime,rollback,latestCon
+3584	877553-877667	115	useUpdates	useUpdates,currentlyRunning
+3585	877668-878007	340	updateFromManifest,updateFromRollback,updatesStateFromContext	createdAt,updateId,manifest,type,currentlyRunning,updateFromManifest,updateFromRollback
+3590	878342-878752	411		api,ApiError,getDeviceId,authService,playerService,huntService
+3592	880875-881792	918	_getDeviceTypeAsync,_getUptimeAsync,_getMaxMemoryAsync,_isRootedExperimentalAsync,_isSideLoadingEnabledAsync,_	expo-device,getDeviceTypeAsync,getUptimeAsync,getMaxMemoryAsync,isRootedExperimentalAsync,
+3595	881880-881933	54	getDeviceId	getDeviceId,device_id
+3600	882697-883327	631	_registerDevice,_loginDevice,_loginApple,_linkApple,_loginGoogle,_linkGoogle,_deleteAccount,_migrateLocalSave,	deviceId,name,class,referrer,server,identityToken,idToken,localSave,registerDevice
+3601	883328-883688	361	getFullState,_getFullState,_markAdminMessageRead,_setVipProfileTheme,_claimAdminMessageRewards,markAdminMessag	theme,getFullState,markAdminMessageRead,setVipProfileTheme,claimAdminMessageRewards
+3602	883689-884154	466	waitForHuntInFlight,_guardCombatStart,_hunt,_setOfflineHunt,_offlineHuntHeartbeat,isHuntInFlight,beginHuntInFl	realm,statFilters,statMode,quality,conduit,ilvlEnabled,timeoutMs,enabled,filterSnapshot
+3603	884155-884617	463	now,average,getHuntRateEstimate,sameEstimate,markPublished,flushHuntRate,resetHuntTelemetry,recordHuntSample,m	energyBaselineMs,samples,avgRttMs,avgCycleMs,avgXpPerHunt,MAX_HUNT_SAMPLES,HUNT_RATE_PUBLI
+3604	884618-885161	544	clamp,estimateHuntCycleMs,fallbackXpPerHunt,emptyHuntRateEstimate,staminaPerHunt,xpPerMinute,timeToEmptyStamin	unit,avgCycleMs,AUTO_HUNT_ANIMATION_MS,AUTO_HUNT_RESET_DELAY_MS,HUNT_LOOP_DELAY_MS,DEFAULT
+3605	885162-886032	871	getSkillEffect,getStaminaRegenIntervalMs,getEnergyForHours,getSkillLevelCap,isOblivionSkillLevel,getSkillUpgra	unlockLevel,costs,effects,name,description,icon,category,maxLevel
+3606	886033-886296	264	_equipItem,_discardItem,_discardItems,_switchActiveSet,equipItem,discardItem,discardItems,switchActiveSet	itemId,targetSet,requestId,itemIds,realm,silentRateLimit,activeSet,equipItem,discardItem
+3607	886297-886699	403	_prepare,_resolve,_testFight,_sweep,_fastPass,_resetFastPassCooldown,_getStatus,prepare,resolve,testFight,swee	dungeonId,stepNumber,fightId,action,testMode,prepare,resolve,testFight,sweep
+3608	886700-887102	403	_prepare,_resolve,_testFight,_sweep,_fastPass,_resetFastPassCooldown,_getStatus,prepare,resolve,testFight,swee	raidId,stepNumber,fightId,action,testMode,prepare,resolve,testFight,sweep
+3609	887103-887500	398	_getInfo,_chooseSpec,_allocate,_respec,_buyDual,_activate,getInfo,chooseSpec,allocate,respec,buyDual,activate	set,specialization,talentId,getInfo,chooseSpec,allocate,respec,buyDual,activate
+3610	887501-888325	825	delay,isStale,push,call,failHard,_failHard,pullServerTruth,_pullServerTruth,handle,_handle,drain,_drain,resetT	requestId,kind,set,allocate,chooseSpec,respec,buyDual,activate,length
+3611	888326-888480	155	setLanguage,getLanguage	setLanguage,getLanguage,app-language,resources,lng,fallbackLng
+3617	908785-908981	197		bundle,common,settings,character,mounts,transcendence,oblivion
+3651	912057-912243	187		bundle,arena,battlePass,character,chat,clan,clanWar
+3683	915096-915282	187		bundle,arena,battlePass,character,chat,clan,clanWar
+3715	918146-918332	187		bundle,arena,battlePass,character,chat,clan,clanWar
+3747	921183-921369	187		bundle,arena,battlePass,character,chat,clan,clanWar
+3779	924205-924391	187		bundle,arena,battlePass,character,chat,clan,clanWar
+3811	927243-927429	187		bundle,arena,battlePass,character,chat,clan,clanWar
+3843	930268-931909	1642	formatNumber,timeUnitSuffix,formatTimeUnit,setFormatterTranslator,translateShared,romanNumeral,formatGrouped,f	minutes,hours,seconds,days,weeks,common:timeUnit.,setFormatterTranslator
+3844	931910-932140	231	_getInfo,_upgrade,_reset,_setExcludedStats,getInfo,upgrade,reset,setExcludedStats	skillId,excludedStats,getInfo,upgrade,reset,setExcludedStats
+3845	932141-932275	135	_getQuests,_claim,getQuests,claim	questId,getQuests,claim
+3846	932276-932846	571	_getInfo,_purchase,_purchaseBatch,_hatchEgg,_hatchAll,_quickOpen,_equip,_unequip,_sacrifice,_ascend,_favorite,	count,petId,favorite,eggId,petIds,getInfo,purchase,purchaseBatch,hatchEgg
+3847	932847-933363	517	_getInfo,_claimTutorial,_purchase,_purchaseBatch,_setCondition,_equip,_unequip,_upgradeAll,_upgrade,_evolve,ge	species,quantity,condition,getInfo,claimTutorial,purchase,purchaseBatch,setCondition,equip
+3848	933364-933703	340	_activateStone,_activateStones,_socketStone,_unsocketStone,_amplifyStone,_grindStones,activateStone,activateSt	stoneId,stoneIds,slot,targetSet,activateStone,activateStones,socketStone,unsocketStone,amp
+3849	933704-934326	623	_getLeaderboard,_getLeaderboardAroundMe,_getClanLeaderboard,_getClanLeaderboardAroundMe,_getMyRank,_getPlayerD	sort,real,true,next,limit,direction,cursor,radius,OBLIVION,opponentId
+3850	934327-934627	301	_getStatus,_mine,_temperItem,_attuneStone,_exchangeEssences,quarryWriteRealm,getStatus,mine,temperItem,attuneS	tileIndex,oreLayout,slot,targetSet,stoneId,direction,lots,BASE,quarryWriteRealm
+3851	934628-934854	227	_getInfo,_choosePath,_awaken,_resetPath,getInfo,choosePath,awaken,resetPath	path,getInfo,choosePath,awaken,resetPath
+3852	934855-935091	237	_listCharacters,_createCharacter,_switchCharacter,_deleteCharacter,listCharacters,createCharacter,switchCharac	targetId,name,server,class,listCharacters,createCharacter,switchCharacter,deleteCharacter
+3853	935092-936363	1272	_getOfferings,bestEffortAttributeOp,_bestEffortAttributeOp,_setIntentAttribute,_clearIntentAttribute,waitForFo	active,change,number,apiKey,appUserID,initRevenueCat,isConfigured,getOfferings
+3854	936364-936560	197		
+3855	936561-942567	6007	throwIfNativeModuleNotAvailable,adopt,fulfilled,rejected,step,verb,sent,Purchases	label,userCancelled,android,undefined,function,ios,PURCHASE_TYPE
+3856	942568-942758	191		
+3868	943589-946697	3109	adopt,fulfilled,rejected,step,verb,sent,setupPurchases,setAllowSharingStoreAccount,setSimulatesAskToBuyInSandb	label,CustomerInfo,done,browserNativeModuleRNPurchases,setAllowSharingStoreAccount,setSimu
+3869	946698-1033840	87143	C,D,z,A,q,oe,ie,se,le,de,pe,_e,ge,me,fe,he,be,ve,ke,Pe,xe,Ee,Se,He,Ye,Ge,Xe,Ze,Je,kr,Pr,l,xr,Er,Sr,u,r,a,Ir,Cr	key,children,code,hash,size,mobile,desktop,height
+3871	1034136-1034200	65	ensurePurchasesConfigured,methodNotSupportedOnWeb	ensurePurchasesConfigured,methodNotSupportedOnWeb,PurchasesCommon is not configured. Call 
+3872	1034201-1034998	798	adopt,fulfilled,rejected,step,verb,sent,purchaseSimulatedPackage,handlePurchase,handleFailedPurchase,handleCan	label,code,done,purchaseSimulatedPackage,userCancelled,message,Generator is already execut
+3873	1034999-1035907	909	adopt,fulfilled,rejected,step,verb,sent,showSimulatedPurchaseAlert,handleCancel,handleFailedPurchase,handlePur	label,text,onPress,done,showSimulatedPurchaseAlert,style,cancelable,onDismiss,Generator is
+3874	1035908-1036717	810	adopt,fulfilled,rejected,step,verb,sent,loadSimulatedPurchaseData	label,done,loadSimulatedPurchaseData,Generator is already executing.,sent,trys,ops,next,th
+3875	1036718-1036872	155		
+3876	1036873-1037027	155		
+3877	1037028-1037182	155		
+3880	1037280-1037669	390	readExtra,_initAppsFlyer,initAppsFlyer,setAppsFlyerUserId,logAfEvent	devKey,appId,isDebug,onInstallConversionDataListener,onDeepLinkListener,timeToWaitForATTUs
+3882	1039799-1039881	83	AppsFlyerConstants	subscriptionValidationSuccess,SUBSCRIPTION_VALIDATION_SUCCESS,subscriptionValidationFailur
+3883	1039882-1039999	118	InAppPurchaseValidationResult,toJson,fromJson	success,productPurchase,failureData,key,toJson,fromJson
+3884	1040000-1040112	113	ValidationFailureData,toJson,fromJson	status,description,key,toJson,fromJson
+3885	1040113-1040230	118	SubscriptionValidationResult,toJson,fromJson	success,subscriptionPurchase,failureData,key,toJson,fromJson
+3886	1040231-1040331	101	MissingConfigurationException	MissingConfigurationException,Missing configuration for PurchaseConnector
+3887	1040332-1040410	79	ensureTrackingPermission	ensureTrackingPermission
+3888	1040411-1040616	206	requestTrackingPermissionsAsync,_requestTrackingPermissionsAsync,getTrackingPermissionsAsync,_getTrackingPermi	getAdvertisingId,requestTrackingPermissionsAsync,getTrackingPermissionsAsync,useTrackingPe
+3890	1040654-1041366	713	tenjinRegistrationEvent,linkRevenueCatToTenjin,_linkRevenueCatToTenjin,raiseSkanValue,skanWritingEnabled,track	totalUsd,highestFine,react-native-purchases,trackSkanActivation,trackSkanPurchase,initAttr
+3892	1041544-1041635	92	readNumber,loadSkanConversionState,saveSkanConversionState	number,totalUsd,highestFine,loadSkanConversionState,saveSkanConversionState,skan.cv.totalU
+3893	1041636-1042211	576	isAccountGrandfathered,resolvePremiumStatus,hasPremiumAccess,getFastPassMaxCharges,getLootBagMax,withEffective	maxCharges,charges,expiresAt,active,cooldownUntil,freeForAll,source,activatedAt
+3894	1042212-1043905	1694	resolvePackProductId,countCatalogItemsOnProduct,isProtectedPackCategory,isMaxLevelDiscountPack,resolveWebhookP	amount,type,category,name,description,priceLabel,priceCents,icon
+3895	1043906-1045889	1984	isServerOpen,isTestServer,getServerOpenedAt,getFortressUnlockAt,getShopItemUnlockAt,isShopItemUnlocked,isPackP	botSpawn,enabled,openedAt,botDailyActivity,botFrequentHunt,botFortressSiege,botClanReassig
+3896	1045890-1046560	671	formPairOwnershipKeys,bundleEntryKey,isBundleVisibleForClass,bundleOwnershipKeys,getGlamourShardPack,resolveWe	class,skinId,skins,WARRIOR,SENTINEL,name,accentColor,price
+3897	1046561-1047130	570	ownsMysticSecondDefault,skinOwnershipKey,formSkinOwnershipKey,druidFormOfKind,getSkinDef,getSkinsForClass,owns	name,hiddenInShop,class,priceLabel,priceCzk,revenueCatProductId,rarity,WARRIOR,SENTINEL,my
+3899	1047251-1047868	618	readExtra,readApiKey,getTenjin,_initTenjin,initTenjin,setTenjinUserId,logTenjinEvent,logTenjinEventWithValue,l	react-native-tenjin,googleplay,initTenjin,setTenjinUserId,logTenjinEvent,logTenjinEventWit
+3900	1047869-1048034	166	initialize,eventWithNameAndValue,makeTenjin	string,react-native-tenjin,initialize,updatePostbackConversionValue,eventWithNameAndValue,
+3901	1048035-1048113	79	updatePostbackConversionValue	updatePostbackConversionValue
+3902	1048114-1048151	38		Tenjin
+3903	1048152-1048267	116	toStringOrNull,subscription	subscription,string
+3904	1048268-1048487	220	emptyEquipment,emptySlots,oblivionLoadoutFrom	oblivionEquipment,oblivionEnchantSlots,oblivionEnchantStones,oblivionPendingItems,oblivion
+3906	1048596-1050353	1758	readPendingItems,readPendingItemsForRealm,filterForRealm,mergeMatchedSets,writePendingItems,bumpAxis,bumpObliv	phase,hunt,autoHuntRealm,offlineHuntRealm,OBLIVION,rarityModes,pendingItems,autoHuntResume
+3907	1050354-1050608	255	xpRequiredForLevel,levelFromXp,xpRewardForHunt	level,currentLevelXp,nextLevelXp,progress,xpRequiredForLevel,levelFromXp,xpRewardForHunt
+3908	1050609-1051693	1085	loadMobileSettings,saveMobileSettings,createUiSlice,resetOpenScreens,setActivePackPromo,setDevPackPromo,goWorl	mobileSettings,lowPerformanceMode,hapticsEnabled,soundEnabled,musicEnabled,keepAwakeEnable
+3909	1051694-1052094	401	featureTutorialStepCount,shouldEscapeOnDarkTap,getFeatureTutorial,featureTutorialGuideId	target,host,titleKey,textKey,advance,tap,textVars,button
+3910	1052095-1052846	752	chestSkinPoolForClass,isRareOrBetter,rollDailyChestInTier,unownedChestSkins,dailyChestTierChance,isRarestDaily	type,amount,chance,rarity,energy,gems,dungeonCoins,honors
+3911	1052847-1055342	2496	r,buildSeasonLevels,getCycleIndex,getPositionInCycle,getDayInCycle,getActiveBattlePass,isRestDay,getBattlePass	label,itemId,source,amount,name,theme,accentColor,bannerImageKey,iconKey,durationDays
+3912	1055343-1055909	567	computeLevel,getTotalTokensForLevel,getTokensToNextLevel,getTodayDateKey,ensureDailyEarnedReset,resolveSeasonC	level,current,needed,date,total,perSource,perSourceUnits,dailyEarned,tokensGranted,multipl
+3915	1056566-1059058	2493	NoopSoundManager,preloadSfx,playSfx,playOneShot,startMusic,stopMusic,getCurrentTrack,playBuildupReveal,unloadA	key,volume,musicA,musicB,activeSlot,currentTrack,isCrossfading
+3920	1059147-1059168	22		scales,httpServerLocation,hash,name,drop_low,type,m4a,fileHashes,exports
+3921	1059169-1059190	22		scales,httpServerLocation,hash,name,drop_high,type,m4a,fileHashes,exports
+3926	1059279-1059300	22		scales,d91fa7ff46f3381952fcaa496378e29e,httpServerLocation,hash,name,sigil_buildup,type,m4
+3927	1059301-1059322	22		scales,httpServerLocation,hash,name,sigil_reveal,type,m4a,fileHashes,exports
+3931	1059389-1059410	22		scales,c56b817424ea59e61b3744c5af007162,httpServerLocation,hash,name,crusade_bg,type,m4a,f
+3932	1059411-1059432	22		scales,httpServerLocation,hash,name,worldboss_bg,type,m4a,fileHashes,exports
+3933	1059433-1059454	22		scales,httpServerLocation,hash,name,pvp_bg,type,m4a,fileHashes,exports
+3934	1059455-1059625	171		PermissionStatus
+3935	1059626-1060669	1044	_setIsAudioActiveAsync,_setAudioModeAsync,_requestRecordingPermissionsAsync,_getRecordingPermissionsAsync,useA	shouldPlayInBackground,shouldRouteThroughEarpiece,interruptionMode,allowsBackgroundRecordi
+3938	1060763-1060815	53	createRecordingOptions	extension,sampleRate,numberOfChannels,bitRate,isMeteringEnabled,createRecordingOptions
+3939	1060816-1061196	381	getAssetFromSource,createSourceFromAsset,resolveSource,_resolveSourceWithDownload,resolveSourceWithDownload	uri,assetId,object,string,number,headers,name,mp3,type
+3942	1061377-1062170	794	createDungeonSlice,startDungeonCombat,setCombatPhase,setCombatLog,advanceDungeonPlayback,setActiveMobIndex,set	dungeon,currentKeys,keys,dungeonCoins,playerHp,mobHp,shieldHp,progress,combatPhase,activeM
+3943	1062171-1062963	793	hardCoinRewards,hardVariant,makeMob,buildSteps,getDungeonById,dungeonStepLabel,getDungeonStep,getDungeonIndex,	name,baseHp,baseAtk,baseSpd,spriteKey,blockChance,penetration,steps,requiredPlayerLevel,da
+3944	1062964-1063388	425	getDoubledActivities,getClanWarRewards,calculateWarPoints,calculateWarPointsWithRemainder,isActivityDoubled,ge	amount,per,label,description,energy,bonusHonors,gems,crusadeKeys
+3946	1063772-1064593	822	createRaidSlice,startRaidCombat,setRaidCombatPhase,setRaidCombatLog,advanceRaidPlayback,setRaidActiveMobIndex,	raid,currentKeys,keys,influence,activeMobIndex,playerHp,mobHps,shieldHp,progress,combatPha
+3947	1064594-1065404	811	makeRaidMob,getRaidById,getRaidIndex,getRaidStep,resolveRaidSweepTarget,_loop,isRaidAccessible,buildBanditVill	name,spriteKey,baseHp,baseAtk,baseSpd,steps,requiredPlayerLevel,villager1,villager2,villag
+3948	1065405-1065752	348	toTalentState,consumeOne,createTalentSlice,setViewedTalentSet,applyTalentResult,addPendingTalentPoint,resetPen	allocation,pendingTalentPoints,specialization,talentPointsSpent,talentSets,viewedTalentSet
+3949	1065753-1066474	722	mapSigil,mergeForgedSigil,createSigilSlice,setSigilTutorialStep,setSigilTutorialTargetRect,applySigilTutorialC	sigilState,ownedSigils,equippedSpecies,druidEquippedSpecies,computedStats,utilitySlotSpeci
+3950	1066475-1070529	4055	getSigilSlotUnlocks,getUtilitySlotSpellType,isFormSigilSpecies,getDotRiderDebuffType,getSigilDefinitionForSpec	spellType,species,class,rarity,name,icon,description,spell,baseAttack,baseHp
+3951	1070530-1070761	232	createQuestSlice,markQuestsCompleted,applyQuestClaim,setQuestState	quests,questState,questId,status,createQuestSlice,markQuestsCompleted
+3952	1070762-1071355	594	mapPet,mapEgg,createPetSlice,applyEggPurchase,applyEggPurchaseBatch,applyEggHatch,applyBatchHatch,applyQuickOp	petState,eggs,ownedPets,equippedPetId,totalPetsPurchased,dungeonCoins,dungeon,computedStat
+3953	1071356-1071632	277	mapMount,mapMountState,createMountSlice,applyMountSummon,applyMountAltarUpgrade,applyMountSetActive,applyMount	mountState,tier,computedStats,ownedMounts,tierSummons,totalSummons,altar,activeMountId
+3954	1071633-1072874	1242	createEmptyMountSockets,getMountDefinition,getMountDefinitionsByRarity,mountSpeedPctForRarity,getAltarTierConf	species,rarity,name,weight,bias,attack,dustCost,legendaryDustCost
+3955	1072875-1073020	146	weightedRandom,rollRange,rollVariance,rollChance	weightedRandom,rollRange,rollVariance,rollChance
+3956	1073021-1078838	5818	snapshotDebuffs,carryRunningTransform,buildShield,buildMinion,minionUiFields,applyMinionSoulLink,clearSpellFlo	damage,progress,isCrit,side,bulwarkStacks,sunderStacks,momentumStacks,playerHp,combatPhase
+3957	1078839-1078982	144	readMomentumStacks,getMomentumMaxStacks	object,number,readMomentumStacks,getMomentumMaxStacks,momentumStacks,playerMomentumStacks,
+3958	1078983-1080177	1195	getEquippedStackDef,initBulwarkRuntime,bulwarkOnBlock,bulwarkOnUnblockedHit,bulwarkModifiers,elusiveOnEvade,el	stacks,decayAccumMs,hpPercent,drPercent,thornsPercent,attackPercent,critChancePercent,life
+3960	1080527-1081239	713	stackGlyphOverrides,ironBastionThornsPercent,toSigilGlyphCombatMods,getActiveMajorGlyphs,resolveActiveSigilGly	number,ironBastionThornsPercent,decayPerSecond,stack,cooldownMs,paralyzeMs,fearMs
+3961	1081240-1084786	3547	majorGlyphRarityIndex,getSigilGlyphModifier,fmt,describeSigilModAtRarity,numStr,sigilGlyphRows,emptySigilMods,	sigil,playerClass,kind,name,icon,sigilName,effect,requiredSpec,cooldownSeconds,delta
+3963	1085538-1089590	4053	applyBuffsToEntity,hasActiveBuffs,getBuffedMaxHp,absorbWithShield,shieldRefillAmount,regenShieldRefillAmount,c	timestamp,attackerHp,defenderHp,damage,type,shieldHp,attackerTimer,defenderTimer,regenTime
+3964	1089591-1092724	3134	momentumConfig,bankMomentum,momentumBonuses,minionEmpowerConfig,minionFrenzyConfig,requiresLivingMinion,moment	timestamp,spell,type,effectRemaining,nextTickIn,config,cooldownRemaining,isEffectActive,sp
+3965	1092725-1092929	205	getSpellTypeCastOrder,getOpeningCastRank,getOpeningCastDelayMs	SPELL_TYPE_CAST_ORDER,SPELL_TYPE_CAST_ORDER_FALLBACK,OFFENSIVE_OPENING_DELAY_MS,DEFAULT_OP
+3966	1092930-1094002	1073	isLiveFeeder,newFeeder,snapshotAtInstanceCadence,feedSharedInstance,computeDebuffModifiers,initDebuffState,app	remainingMs,maxStacks,timestamp,regenReductionPercent,stacks,attackSpeedReductionPercent,c
+3968	1094190-1095536	1347	minionAttackSpeed,summonMinion,minionSwingIntervalMs,minionCurrentAttack,minionCurrentLifesteal,currentSoulLin	spell,timestamp,minionMaxHp,respawnMs,type,healed,timer,alive,maxHp,dealt
+3969	1095537-1096574	1038	getEquippedShieldConfig,_loop3,getSpellDotDurationMs,calculateSigilBonuses,_loop,getActiveCombatSpells,_loop2,	hpPercent,vampAlwaysRefills,regenAlwaysRefills,attackPercent,flatAttack,flatHp,HP_PERCENT,
+3970	1096575-1096869	295	getAvailableTalentPoints,getActiveSpecialization,calculateTalentBonuses,canAllocateTalent	getActiveSpecialization,calculateTalentBonuses,getAvailableTalentPoints,canAllocateTalent,
+3971	1096870-1097948	1079	getTalentTree,getSpecsForClass	tier,name,description,icon,stat,valuePerRank,maxRank,bonusPerRank,pointsRequired,talents
+3972	1097949-1098039	91	_completeLevel,completeLevel	chapter,level,completeLevel
+3973	1098040-1098664	625	summonHoldUntil,idleGapCap,playCombatTicks,noteHold,scheduleNext,processFrame,playPvpTicks,isTerminal,onFrame	number,combatPlayback,guard,ATTACK_ANIM_LEAD_MS,summonHoldUntil,idleGapCap,playCombatTicks
+3975	1098920-1099033	114	loadDevProgressChapter,saveDevProgressChapter,progressLevelForDev	loadDevProgressChapter,saveDevProgressChapter,progressLevelForDev,dev_progress_chapter
+3976	1099034-1099158	125	setProgressTickTap,addProgressTickTap,hasProgressTickTap,emitProgressTickRecord	setProgressTickTap,addProgressTickTap,hasProgressTickTap,progressTickTap,where,kind,simTim
+3977	1099159-1100114	956	loadPendingTransactions,savePendingTransactions,createShopSlice,applyShopPurchase,applySupporterPackPurchase,a	shop,player,currentKeys,ownedSkins,pendingTransactions,lastKeyReset,purchaseIntents,skin,n
+3979	1100279-1101721	1443	createArenaSlice,adjustHonors,startArenaCombat,setArenaCombatPhase,setArenaCombatLog,advanceArenaPlayback,upda	arena,secondChanceError,secondChancePhase,idle,honors,tokens,combatPhase,secondChance,lost
+3981	1101876-1102165	290	_getStatus,_fight,_secondChance,_getSessionRewards,_claimSession,getStatus,fight,secondChance,getSessionReward	opponentId,fightId,getStatus,fight,secondChance,getSessionRewards,claimSession
+3982	1102166-1102592	427	adBackoffWaitMs,computeAdBackoff,nextAdBackoffRecord,notify,readRecord,subscribeAdBackoff,getAdBackoff,recordA	fails,waitMs,blocked,hopeless,lastFailAt,number,AD_BACKOFF_STEPS_MS
+3983	1102593-1105498	2906	lastSteps,isJsEngineFailure,isUndiagnosedInternalError,isForegroundEnoughToShow,ensureInitialised,_ensureIniti	outcome,earned,placement,adUnitId,granted,ms ,summary,timeline,error,change
+3985	1105554-1106202	649	hasAdsSdk,withTimeout,deriveDmaConsent,_deriveDmaConsent,consented,inRetryCooldown,runConsentFlow,_runConsentF	granted,gdprApplicable,dmaGranted,error,reason,react-native-google-mobile-ads,debugGeograp
+3986	1106203-1106838	636	notify,bestWaiting,clearGrantTimer,grantNext,evaluate,requestSlot,releaseSlot,clearAdPresentingGuards,setAdPre	adminMessage,offlineReturn,patchNotesScreen,unlock,whatsNew,fortressRewards,clanInvite,bat
+3988	1106961-1107048	88		THEME,RARITY_COLORS,bgDeep,surface,surfaceElevated,border,borderBright
+3989	1107049-1107213	165	saveGdprNotApplicable,loadGdprNotApplicable,applyServerGdprApplies,clearGdprNotApplicable	notApplicable,saveGdprNotApplicable,number,loadGdprNotApplicable,boolean,applyServerGdprAp
+3990	1107214-1107880	667		MobileAds,AdsConsentDebugGeography,AdsConsentInfo,AdsConsentInfoOptions,AdsConsentInterfac
+3992	1107911-1108237	327	MobileAdsModule,subscribeToNativeModuleEvent,initialize,setRequestConfiguration,openAdInspector,openDebugMenu,	key,MobileAds,google_mobile_ads_app_open_event,google_mobile_ads_interstitial_event,google
+3993	1108238-1108275	38		RNGoogleMobileAdsModule
+3994	1108276-1108439	164	validateAdRequestConfiguration	tagForChildDirectedTreatment,tagForUnderAgeOfConsent,testDeviceIdentifiers,requestConfigur
+3995	1108440-1108536	97	hasOwnProperty,isPropertySet	hasOwnProperty,isPropertySet
+3998	1108730-1108782	53		SharedEventEmitter
+3999	1108783-1108992	210	GANativeEventEmitter,addListener,removeAllListeners	ready,addListener,key,rnapp_,removeAllListeners,GoogleMobileAdsNativeEventEmitter
+4000	1108993-1109030	38		RNAppModule
+4001	1109031-1109137	107		UNKNOWN,REQUIRED,NOT_REQUIRED,DISABLED,EEA,NOT_EEA,REGULATED_US_STATE,OTHER
+4004	1109246-1109283	38		APP_OPEN,ADAPTIVE_BANNER,BANNER,INTERSTITIAL,REWARDED,REWARDED_INTERSTITIAL,NATIVE,NATIVE_
+4010	1109508-1110031	524	requestInfoUpdate,showForm,showPrivacyOptionsForm,loadAndShowConsentFormIfRequired,getConsentInfo,gatherConsen	options.testDeviceIdentifiers,AdsConsent,options,options.debugGeography,tagForUnderAgeOfCo
+4011	1110032-1110411	380		
+4012	1110412-1110746	335		
+4014	1111093-1111292	200		
+4015	1111293-1111397	105	DecodingError	DecodingError,name
+4016	1111398-1111502	105	EncodingError	EncodingError,name
+4017	1111503-1111607	105	GVLError	GVLError,name
+4018	1111608-1111738	131	TCModelError	TCModelError,invalid value ,name
+4019	1111739-1111881	143	BitLength	BitLength,anyBoolean,encodingType,maxId,numCustomPurposes,numEntries
+4020	1111882-1112531	650		
+4021	1112532-1113140	609	BinarySearchTree,getRoot,isEmpty,add,contains,min,max,remove,build	key,right,root,left,BinarySearchTree,getRoot
+4022	1113141-1113375	235	Cloneable,clone,deepClone	key,Cloneable,clone,deepClone,number,string
+4023	1113376-1113498	123	ConsentLanguages,has,forEach	key,ConsentLanguages,has,forEach,size,langSet
+4024	1113499-1113621	123	Fields	cmpId,cmpVersion,consentLanguage,consentScreen,created,supportOOB,isServiceSpecific,lastUp
+4027	1113638-1113932	295	PurposeRestriction,set,isValid,isSameAs,unHash	key,purposeId,restrictionType,hash,PurposeRestriction,cannot hash invalid PurposeRestricti
+4029	1113975-1114717	743	PurposeRestrictionVector,has,isOkToHave,add,restrictPurposeToLegalBasis,getVendors,getRestrictionType,vendorHa	key,bitLength,PurposeRestrictionVector,map,has,isOkToHave
+4033	1114800-1114900	101	SegmentIDs	SegmentIDs,ID_TO_KEY,KEY_TO_ID
+4034	1114901-1115463	563	Vector,value,values,has,unset,isIntMap,isValidNumber,isSet,set,empty,forEach,setAll	key,maxId_,bitLength,set_,object,Vector
+4035	1115464-1115888	425		
+4046	1115969-1116408	440	SegmentEncoder,encode,decode,isPublisherCustom	key,SegmentEncoder,encode,Error encoding ,Unable to encode version: ,decode
+4047	1116409-1116833	425		
+4048	1116834-1116937	104	BooleanEncoder,encode,decode	key,BooleanEncoder,encode,decode
+4049	1116938-1117086	149	DateEncoder,encode,decode	key,DateEncoder,encode,decode,invalid bit length
+4050	1117087-1117259	173	IntEncoder,encode,decode	key,IntEncoder,encode,string,decode,invalid bit length
+4051	1117260-1117475	216	FieldEncoderMap	segmentType,FieldEncoderMap
+4052	1117476-1117650	175	FixedVectorEncoder,encode,decode	key,FixedVectorEncoder,encode,decode,bitLength,bitfield encoding length mismatch
+4053	1117651-1117867	217	LangEncoder,encode,decode	key,LangEncoder,encode,invalid language code: ,decode,invalid bit length for language
+4054	1117868-1118349	482	PurposeRestrictionVectorEncoder,encode,_loop,decode	key,PurposeRestrictionVectorEncoder,encode,decode,bitLength,Invalid RangeEntry: endVendorI
+4055	1118350-1118841	492	VendorVectorEncoder,encode,decode,buildRangeEncoding	key,VendorVectorEncoder,encode,decode,bitLength,buildRangeEncoding
+4057	1118880-1119034	155		
+4058	1119035-1119242	208	FieldSequence	FieldSequence
+4059	1119243-1119399	157	SegmentSequence	SegmentSequence
+4061	1119408-1119760	353	SemanticPreEncoder,process	version,legIntPurposes,purposes,SemanticPreEncoder,process,key
+4063	1121083-1121442	360	Json,absCall,onLoad,onError,onAbort,onTimeout,post,fetch	key,error,Json,absCall,withCredentials,load
+4064	1121443-1122431	989	TCModel,set,setAllVendorConsents,unsetAllVendorConsents,setAllVendorsDisclosed,unsetAllVendorsDisclosed,setAll	key,set,gvl,isServiceSpecific_,supportOOB_,useNonStandardStacks_,purposeOneTreatment_,publ
+4065	1122432-1122669	238	TCString,encode,decode	key,TCString,encode,decode
+4066	1122670-1122893	224	AppOpenAd,addAdEventsListener,addAdEventListener,createForAdRequest	key,AppOpenAd,addAdEventsListener,addAdEventListener,createForAdRequest,adUnitId
+4067	1122894-1123344	451	validateAdRequestOptions	options.contentUrl,requestAgent,requestNonPersonalizedAdsOnly,options.keywords,rn-invertas
+4068	1123345-1123957	613	MobileAd,_handleAdEvent,_addAdEventsListener,_addAdEventListener,_getAdEventListeners,load,show,removeAllListe	key,type,listener,MobileAd,google_mobile_ads_,googleMobileAds
+4069	1123958-1124163	206	NativeError,fromEvent,getStackWithMessage	userInfo,key,NativeError,namespace,unknown,code
+4071	1124244-1124281	38		RNGoogleMobileAdsAppOpenModule
+4072	1124282-1124505	224	InterstitialAd,addAdEventsListener,addAdEventListener,createForAdRequest	key,InterstitialAd,addAdEventsListener,addAdEventListener,createForAdRequest,adUnitId
+4073	1124506-1124543	38		RNGoogleMobileAdsInterstitialModule
+4074	1124544-1124789	246	RewardedAd,addAdEventsListener,addAdEventListener,createForAdRequest	key,RewardedAd,addAdEventsListener,addAdEventListener,createForAdRequest,adUnitId
+4075	1124790-1124827	38		RNGoogleMobileAdsRewardedModule
+4076	1124828-1125073	246	RewardedInterstitialAd,addAdEventsListener,addAdEventListener,createForAdRequest	key,RewardedInterstitialAd,addAdEventsListener,addAdEventListener,createForAdRequest,adUni
+4077	1125074-1125111	38		RNGoogleMobileAdsRewardedInterstitialModule
+4078	1125112-1125307	196	BannerAd,load,render	ref,key,BannerAd,load,render,sizes
+4079	1125308-1125755	448	onNativeEvent	width,unitId,height,sizes,maxHeight,manualImpressionsEnabled,onAdLoaded,onSizeChange
+4080	1125756-1125871	116	recordManualImpression,load	onNativeEvent,recordManualImpression,load,Commands,RNGoogleMobileAdsBannerView,uiViewClass
+4082	1125962-1126369	408	NativeAd,onNativeAdEvent,addAdEventListener,removeAllAdEventListeners,destroy,createForAdRequest	key,responseId,type,adUnitId,nativeEventSubscription,NativeAd
+4083	1126370-1126407	38		RNGoogleMobileAdsNativeModule
+4084	1126408-1126540	133	validateNativeAdRequestOptions	options.adChoicesPlacement,adChoicesPlacement,options.aspectRatio,aspectRatio,options.star
+4085	1126541-1126656	116	NativeAdView	children,nativeAd,NativeAdView,ref,responseId,removeClippedSubviews
+4086	1126657-1126693	37		NativeAdContext
+4087	1126694-1126789	96	registerAsset	registerAsset,Commands,RNGoogleMobileAdsNativeView,uiViewClassName,responseId,validAttribu
+4089	1126922-1126981	60		RNGoogleMobileAdsMediaView,uiViewClassName,responseId,resizeMode,validAttributes
+4090	1126982-1127151	170	NativeAsset	NativeAssetType,NativeAsset,advertiser,ADVERTISER,body,BODY
+4092	1127310-1127524	215	GAMBannerAd,recordManualImpression,load,render	key,ref,GAMBannerAd,recordManualImpression,load,render
+4093	1127525-1127678	154	GAMInterstitialAd,addAdEventsListener,addAdEventListener,createForAdRequest	key,createForAdRequest,GAMInterstitialAd,addAdEventsListener,addAdEventListener
+4094	1127679-1127804	126	useAppOpenAd	useAppOpenAd
+4095	1127805-1127966	162	useDeepCompareMemoize,useDeepCompareEffect,useDeepCompareEffectNoCheck	current,useDeepCompareEffectNoCheck,useDeepCompareMemoize
+4097	1128395-1128679	285	useFullScreenAd	reward,isLoaded,error,isEarnedReward,isClicked,isClosed,isOpened,revenue,isShowing
+4098	1128680-1128805	126	useInterstitialAd	useInterstitialAd
+4099	1128806-1128931	126	useRewardedAd	useRewardedAd
+4100	1128932-1129057	126	useRewardedInterstitialAd	useRewardedInterstitialAd
+4101	1129058-1129140	83	useForeground	change,background,active,current,useForeground
+4103	1129187-1129746	560		
+4116	1129937-1130238	302	newEventId,rand,reportAdImpression,reportAdFailure	placement,adUnitId,eventId,currency,precision,reportAdImpression,outcome,reason,code
+4117	1130239-1130897	659	shortDetail,_probeOwnServer,_probeGoogleHost,_probeAdHost,probeUrl,_probeUrl,probeOwnServer,probeGoogleHost,pr	HEAD,reachable,timedOut,capMs,detail,status,GET,method
+4118	1130898-1131387	490	shortDetail,toCount,countEventNames,resolveModule,_readAdEventQueue,readAdEventQueue,describeAdEventQueue	kind,skipped,why,object,total,rewarded,fronta gma,number,RNAppModule
+4120	1131447-1131920	474	_probeWebView,describeDevice,probeWebView	react-native-device-info,string,webview ok chrome/,webview: bez UA,webview: strop ,webview
+4121	1131921-1136698	4778	syncUniqueId,_syncUniqueId,getMacAddress,_getMacAddress,getMacAddressSync,getReadableVersion,hasNotch,hasDynam	supportedPlatforms,getter,defaultValue,android,syncGetter,memoKey,ios,windows
+4122	1136699-1136932	234	useOnMount,getAsync,useOnEvent	loading,result,useOnMount,deviceInfoEmitter,useOnEvent
+4125	1137223-1137272	50		
+4126	1137273-1137606	334	getSupportedFunction,getSupportedPlatformInfoSync,getSupportedPlatformInfoAsync,_getSupportedPlatformInfoAsync	getter,android,syncGetter,clearMemo,getSupportedPlatformInfoSync,getSupportedPlatformInfoA
+4127	1137607-1141718	4112	offlineReportKey,offlineReturnKey,mapPetFromServer,mapSigilFromServer,createSyncSlice,syncFromServer,applyNewU	unlocks,petsUnlocked,sigilsUnlocked,combatPhase,nextResetAt,level,computedStats,offlineRew
+4128	1141719-1141876	158	normalizeSpotId,resolveWorldMapTravel,worldMapZoneIdForSpot,worldMapTravelRemainingMs	spotId,travel,resolveWorldMapTravel,ironhold_outpost,worldMapZoneIdForSpot,worldMapTravelR
+4129	1141877-1142335	459	getWorldMapSpots,getWorldMapZoneCamp,isWorldMapTravelDestination,isWorldMapSpotComingSoon,getWorldMapSpot	type,zoneId,labelKey,hit,plate,player,ironhold_outpost,huntingGrounds,eventSpot,divine_gat
+4130	1142336-1143998	1663	getMedalFieldForTier,getRelicUpgradeCost,getRelicDefinition,getRelicsByTier,getRelicsForClass,getRelicsForClas	type,tier,class,bonuses,baseValue,maxValue,cost,name,icon,description
+4133	1144328-1145909	1582	avatarClassOf,isAvatarId,defaultAvatarForClass,isAvatarUnlocked,getAvatarsInGroup,getSortedAvatarGroups,resolv	group,name,skinId,freeForClass,order,folder,unlockHint,ACHIEVEMENT
+4134	1145910-1146059	150	resolvePrestigeUnlock	PRESTIGE_UNLOCK_ID,PRESTIGE_UNLOCK,unlockPending,status,pendingUnlocks,announced,queued
+4135	1146060-1147428	1369	countSwings,tickFlags,toHistoryEntry,mergeActiveSpells,mergeMobDebuffs,_loop,createOblivionDungeonSlice,setObl	oblivionDungeonCombat,mob,mob_block,fightId,oblivionEssence,player,player_block,isBlocked
+4136	1147429-1147923	495	isSpellTick,isSpellDamageTick,isSpellHealTick,getDebuffDurationMs,processCombatTickBatch	damage,isCrit,side,spellIcon,right,left,isSpell,spell_damage,healTriggers,cataclysmTrigger
+4137	1147924-1149228	1305	minionBuffEffect,isMinionHealPulseSpell,parseKind,parseType,readMinionHp,readMinionTick,isQuickSummon,nextFloa	alive,kind,maxHp,empowered,frenzied,summoned,lastFloat,owner,crit,damaged
+4138	1149229-1149735	507	isMinionOwnerClass,minionSpriteFor,minionKindForSpecies,fitNecroMinionLayout,necroShiftX,minionOffsetX	shiftX,offsetX,NECRO_MINION_SKELETON,spriteClass,skin,headTopFrac,SKELETON
+4139	1149736-1149822	87	_claimOfflineBonus,claimOfflineBonus	claimOfflineBonus
+4140	1149823-1151079	1257	withDailyEarned,createBattlePassSlice,applyBattlePassStatus,loadBattlePassStatus,claimBattlePassReward,claimAl	battlePass,state,pendingLevelUp,seasonPromo,nonce,level,dailyEarned,accountClaimedRewardKe
+4141	1151080-1151370	291	_claimAllRewards,_getStatus,_claimReward,_unlockLevel,_markPromoSeen,claimAllRewards,getStatus,claimReward,unl	level,track,skinVariant,claimAllRewards,getStatus,claimReward,unlockLevel,markPromoSeen
+4142	1151371-1151775	405	darken,to2,getBattlePassPromo	introColors,gradient,tagline,lore,skin,headlineBlurb,gender,itemId,forms
+4144	1151888-1151949	62	isBattlePassEnabledForClass	BATTLE_PASS_DISABLED_CLASSES,isBattlePassEnabledForClass
+4145	1151950-1152854	905	createWorldBossSlice,applyWorldBossStatus,applyWorldBossSessionClaim,startWorldBossFight,setWorldBossCombatPha	worldBoss,combatPhase,tokens,fightDamageDealt,totalDamage,fightStartedAt,current,meteorTri
+4146	1152855-1153517	663	hashInt,affinityIndexForCycle,resolve,getWorldBossAffinity,getUpcomingWorldBossAffinity,getWorldBossPositionTi	label,minPosition,maxPosition,bonusHonors,gems,energy,rewards,i18nKey
+4147	1153518-1154423	906	spellKey,worldBossCombatLogBytes,encodeWorldBossCombatLog,_loop,put,decodeWorldBossCombatLog	minionHpAfter,damage,attackerHpAfter,defenderHpAfter,doubleHit,isCrit,debuffStacks,debuffM
+4148	1154424-1155388	965	isPlayerSwingTick,spellBaseType,isSpellTick,debuffTypeOf,applyWorldBossTicks,_loop	damage,isCrit,side,isSpell,right,attacker_crit,spellIcon,defender_block,attacker_hit,thorn
+4149	1155389-1156874	1486	createCrusadeSlice,setCrusadeGroupStatus,setCrusadeActiveGroup,setCrusadeCombatPhase,setCrusadeCombatLog,setCr	crusade,groupStatus,participants,isLeader,difficulty,highestMythicPlus,combatPhase,current
+4150	1156875-1160663	3789	getCelestialBossStats,rateFor,compound,getCelestialSpells,celestialPlayerPowerProxy,getGlyphRarityChances,at,v	key,tone,icon,fromLevel,hpGrowthPerLevel,attackGrowthPerLevel,name,level
+4151	1160664-1160826	163	unknownPosition,worldMapServerNow,createWorldMapSlice,setWorldMapOpen,applyWorldMapState,resetWorldMapState	worldMapZoneId,worldMapSpotId,worldMapTravel,worldMapClockOffsetMs,worldMapLoaded,worldMap
+4152	1160827-1162599	1773	createCelestialSlice,startCelestial,setCelestialPhase,processCelestialBatch,addById,_loop,resetCelestial	playerIndex,damage,isCrit,target,addId,celestial,player,EMBER_CURSE,ARCANE_CORRUPTION,phas
+4153	1162600-1162781	182	createGuideSlice,queueGuide,dismissGuide,markGuideSeen	activeGuideStep,activeGuide,pendingGuides,seenGuides,createGuideSlice,queueGuide
+4154	1162782-1163457	676	mapSlotsFromServer,applySlotsForRealm,updateStonesForRealm,createEnchantStoneSlice,syncEnchantStones,addRealmE	enchantStones,computedStats,OBLIVION,enchantSlots,enchantSlots2,oblivionEnchantStones,obli
+4155	1163458-1164358	901	createClanWarSlice,setClanWar,setFinalBattle,setPendingWarEnd,applyClanWarClaim,incrementMyWarPoints,accrueMyW	clanWarPvp,tokens,clanWar,finalBattle,phase,enemyNames,currentTickIndex,animTickIndex,pend
+4158	1164849-1165325	477	createTranscendenceSlice,setTranscendenceNodes,setActiveTranscendencePreset,applyTranscendenceResult	transcendenceNodes,transcendencePresets,activeTranscendencePresetId,transcendencePresetsUn
+4163	1166971-1167371	401	loadActiveChannel,saveActiveChannel,loadLastRead,saveLastRead,loadLanguage,loadLanguageSetAt,createChatSlice,s	chatUnreadRegion,chatUnreadWorld,chatUnreadClan,world,region,chat-last-read-region,chatLas
+4165	1167516-1167943	428	selectActivePreset,sameLoadout,selectPresetDirty,createPresetsSlice,applyPresetList,applyPresetBuy,applyPreset	presets,activePresetId,createPresetsSlice,selectActivePreset,selectPresetDirty,applyPreset
+4166	1167944-1168214	271	createBlockSlice,setBlockedPlayerIds,blockPlayer,unblockPlayer,isPlayerBlocked	blockedPlayerIds,targetPlayerId,createBlockSlice,setBlockedPlayerIds,blockPlayer,unblockPl
+4167	1168215-1168612	398	resolveDailyTab,createDailyLoginSlice,openDaily,closeDaily,setDailyTab,setDailyLoginState,setDailyReveal,clear	dailyReveal,claimedThrough,canClaim,grandClaimed,nextResetAt,dailyOpen,dailyTab,login,ches
+4168	1168613-1168699	87	_claimDailyLogin,claimDailyLogin	claimDailyLogin
+4169	1168700-1169424	725	canAskAdFallback,createDailyChestSlice,setDailyChestState,hasPendingChestUnlock,showStagedChestReveal,discardS	chestError,reason,adUnavailable,chestOpening,noChests,dailyChest,stagedChestReveal,chestDe
+4170	1169425-1169547	123	_openDailyChest,openDailyChest	adUnavailable,AD_REQUIRED_ERROR,openDailyChest,Ad required
+4171	1169548-1169692	145	unlockKey,clearPendingChestUnlock,loadPendingChestUnlock,savePendingChestUnlock	number,loadPendingChestUnlock,boundary,savePendingChestUnlock,clearPendingChestUnlock,dail
+4172	1169693-1169774	82	createAdsSlice,setAdsDisabled,setAdFallback,selectRequiresRewardedAd	adsDisabled,setAdsDisabled,adFallback,createAdsSlice,selectRequiresRewardedAd,setAdFallbac
+4173	1169775-1169881	107	createPremiumSlice,setPremium,setVipProfileTheme,selectHasPremium,selectLootBagMax	premium,vipProfileTheme,createPremiumSlice,selectHasPremium,selectLootBagMax,active,expire
+4174	1169882-1170210	329	loadFilterForRealm,createPrestigeSlice,setOblivionPrestige,beginRealmSwitch,endRealmSwitch,selectPrestigeEnabl	realmSwitchRequest,unlockLevel,prestige,oblivionPrestige,prestigeUnlockAnnounced,pendingUn
+4175	1170211-1170508	298	createFeatureTutorialSlice,queueFeatureTutorial,previewFeatureTutorial,startFeatureTutorial,advanceFeatureTuto	featureTutorial,queuedFeatureTutorials,spotlightTargets,step,visibleTutorialHosts,preview,
+4176	1170509-1170887	379	summaryFrom,createSocialSlice,setSocialSummary,setSocialPage,applyFriendUnread,addFriendLocal,removeFriendLoca	socialSummary,socialFriends,socialSent,socialIncoming,socialToast,incomingRequests,unreadC
+4178	1170933-1172299	1367	useActiveFeatureStep,useFeatureTutorialControls,useFeatureTutorialWatchdog,useFeatureTutorialCatchUp,useLevelT	current,level,playerClass,seenGuides,active,queued,alreadyUsing,tutorial,step,index
+4179	1172300-1172807	508	selectFeatureTutorialBlocking,selectFeatureTutorialStartBlock,selectNextFeatureTutorial,selectActiveStepMeasur	combat,dropModal,unlockModal,onboarding,tutorialActive,ano,feature_tutorial_,selectFeature
+4180	1172808-1173168	361	selectIsInCombat,selectBattlePassEnabled,selectItemDropModalVisible,selectLootReviewOpen,useIsInCombat,useComp	selectBattlePassEnabled,selectIsInCombat,selectItemDropModalVisible,selectLootReviewOpen,u
+4181	1173169-1173903	735	selectInOblivionRealm,selectDualSetAvailable,baseEquipmentForSet,baseSlotsForSet,selectEquipmentForSet,selectV	OBLIVION,selectInOblivionRealm,selectDualSetAvailable,selectEquipmentForSet,selectViewedEq
+4182	1173904-1174092	189	isOblivionOnlySlot,getEquipmentSlotOrder	name,icon,gridArea,EQUIPMENT_SLOT_INFO,EQUIPMENT_SLOT_ORDER,OBLIVION_ONLY_EQUIPMENT_SLOTS,
+4183	1174093-1174181	89	hasSeenGuide,markGuideSeen	hasSeenGuide,guideId,markGuideSeen
+4185	1174276-1174667	392	planLevelTriggeredTutorials,tutorialIdOf,planTutorialCatchUp	queue,markSeen,CATCH_UP_LEVELS_BACK,planTutorialCatchUp,planLevelTriggeredTutorials
+4190	1176606-1176680	75	glow	glow,ANIMATED_GLOW_SUPPORTED,GLOW_ELEVATION
+4192	1177128-1179412	2285	Bow,Thorn,Spiral,renderIcon,RPGIcon	fill,size,color,strokeWidth,stroke,round,strokeLinecap,strokeLinejoin,width,height
+4194	1179482-1179919	438	useSpotlightMeasureLoop,resolveSpotlightPad,sameRect,toSpotlightHole,useSpotlightTarget	top,left,width,height,right,bottom,number
+4196	1182106-1182312	207	allow,hrefKey,isCurrentRoute,noteCurrentPath,resetGuardedRouterState,useGuardedRouter,push,navigate	key,string,noteCurrentPath,resetGuardedRouterState,push:,push,navigate:,navigate,useGuarde
+4199	1182514-1182557	44	DevProfiler	children,DevProfiler
+4200	1182558-1182611	54	devPerfRecord,devPerfMeasure,devPerfDrain	devPerfRecord,devPerfMeasure,devPerfDrain
+4202	1184555-1184619	65		PROFILE,cardGrad,cardTop,redDim,blueDim,purpleDim,orange
+4203	1184620-1184935	316	formatTalentValue,pathColor,specHighlights,formatTalentRankValue	glow,Crits,Vitality,Power,necro,attackSpeedFlat,minionAttackSpeedFlat
+4207	1186665-1187236	572	useTotalPower	rarity,level,quality,tier,itemLevel,realm,amplifyLevel,altarLevel,stars
+4208	1187237-1187823	587	calculatePowerBreakdown,calculateTotalPower	EQUIP_RARITY_POWER,SIGIL_RARITY_POWER,PET_RARITY_POWER,power,equipment,sigils,enchants,tra
+4209	1187824-1189237	1414	petXpRequired,tierStatMultiplier,tierXpMultiplier,altarXpRequired,getAltarProgress,getPetDefinition,getPetDisp	species,rarity,name,icon,description,baseAttack,baseHp,secondaryStatCount
+4210	1189238-1189402	165	useSigilIndicatorSpec	specialization,equippedSpecies,ownedSigils,druidUtilitySlotSpecies,activeSpec,form,useSigi
+4211	1189403-1189710	308	oblivionAxisOf,selectRealmLevel,selectRealmMaxLevel,selectRealmLevelProgress,selectUsesOblivionAxis,useRealmLe	level,currentLevelXp,nextLevelXp,progress,maxLevel,atMaxLevel,oblivionAxis,OBLIVION,select
+4212	1189711-1190344	634	oblivionXpRampForLevel,oblivionXpRequiredForLevel,getOblivionRarityUnlockLevel,getOblivionDropRates,oblivionLe	unlockWeight,capWeight,shape,level,currentLevelXp,nextLevelXp,progress
+4213	1190345-1191038	694		accent,VOID,VOID_FILL,VOID_FILL_STRONG,VOID_BORDER,VOID_BORDER_SOFT,VOID_DEEP
+4215	1191357-1191724	368	getAvatarImage	getAvatarImage,avatars/basic/goblin.jpg,avatars/basic/warrior.jpg,avatars/basic/sentinel.j
+4216	1191725-1192317	593	report,disablePack,ensurePackState,nativeUri,_verifyAssetPack,resolveArt,reportMissing,verifyAssetPack,resolve	unknown,ready,uri,unusable,width,height,asset_pack,Native asset pack unusable: ,expo-updat
+4219	1193163-1193241	79	getRankImage	getRankImage,ranks/initiate.png,ranks/vanguard.png,ranks/elite.png,ranks/champion.png,rank
+4221	1194560-1194946	387	selectUnlockedAvatarIds,catalogRank,buildAvatarCatalog,buildAvatarCatalogGroups,useUnlockedAvatarIds,useUnlock	class,ownedSkins,ownedAvatarIds,avatar,unlocked,group,avatars,unlockedAvatarIds,player,sho
+4222	1194947-1195229	283	_fetchAvatarState,_selectAvatar,getAvatarErrorCode,fetchAvatarState,selectAvatar,getAvatarErrorMessage	avatarId,AvatarErrorCode,fetchAvatarState,selectAvatar,getAvatarErrorCode,character:avatar
+4223	1195230-1195526	297	gridInnerWidth,rawTile,avatarGridColumns,avatarSheetTop,avatarGridMetrics,avatarSheetHeight	relaxed,GRID_PADDING_H,GRID_MIN_GAP,TILE_MIN,TILE_MAX,TABLET_MIN_COLUMNS,TABLET_MAX_COLUMN
+4226	1196610-1196692	83	DustMark	width,height,viewBox,fill,children,DustMark
+4228	1198233-1198332	100	PresetIcon	size,color,strokeWidth,PresetIcon,shield,sword,skull,flame,bolt
+4229	1198333-1198615	283	_listPresets,_buyPreset,_updatePreset,_activatePreset,_deletePreset,listPresets,buyPreset,updatePreset,activat	presetId,listPresets,buyPreset,updatePreset,activatePreset,deletePreset
+4231	1199911-1200299	389	paperdollAvailableWidth,scaledSlotSize,scaledSideWidth,resolvePaperdollScale,paperdollRenderedWidth,buildPaper	left,center,right,PAPERDOLL_BOTTOM_ANCHOR,PAPERDOLL_SLOT_SIZES,PAPERDOLL_BODY_OVERLAP,PAPE
+4234	1200925-1201226	302	getPetImage	getPetImage
+4249	1201535-1201556	22		scales,httpServerLocation,width,height,hash,name,celestial_gryphon,type,png,fileHashes
+4267	1201931-1201952	22		scales,aa143d033e460e082f7a15f48d87066a,httpServerLocation,width,height,hash,name,celestia
+4273	1202497-1202599	103	getItemImage	getItemImage,items/
+4274	1202600-1202959	360	classFolder,rarityForItemType,itemArtPath,fallbackArtPath,resolveItemArtPath	SLOT_FILENAME,rarityForItemType,itemArtPath,fallbackArtPath,resolveItemArtPath,helmet
+4275	1202960-1203197	238	getItemTypeDisplayName,getDefaultItemType	type,displayName,ITEM_TYPES_BY_RARITY,Unknown,getItemTypeDisplayName,getDefaultItemType,Ir
+4276	1203198-1203280	83		SLOT_ICON_NAME,head,shoulders,chest,legs,boots,weapon
+4279	1205217-1205633	417	oblivionPowerForQuality,getEnchantStoneConfig	type,minValue,maxValue,weightExponent,decimals,statPool,name,dormantName,description,statC
+4280	1205634-1206179	546	getEnchantStoneStatMultiplier,getEnchantStoneStatValue,calculateEnchantStoneBonuses	flatAttack,flatHp,oblivionPower,minionAttackSpeed,soulLink,minionLifesteal,minionCritChanc
+4281	1206180-1206408	229	getBaseAmplifyDustCost,getStoneDustYield,getAmplifyDustCost,getAmplifySuccessRate,getAmplifyStatMultiplier	AMPLIFICATION_CONSTANTS,STONE_DUST,STONE_DUST_YIELD,getStoneDustYield,AMPLIFY_DUST,getAmpl
+4282	1206409-1206814	406	normalizeOblivionStoneLevel,gradeDefFor,getOblivionStoneLevelStats,getOblivionPowerGradeMult,getOblivionEssenc	attack,grade,level,dropKey,colorFrom,mirrorsTier,OBLIVION_STONE_GRADES
+4287	1208676-1208745	70	getEnchantImage	getEnchantImage,enchants/pve_attack.png,enchants/pve_deffense.png,enchants/pvp.png,enchant
+4288	1208746-1208813	68		color,label,glow,STONE_TYPE_META,Verdant,Crimson,Azure
+4293	1213507-1213879	373	isSecondaryStatAvailableForClass,filterStatDefsForClass,isControlSecondaryStat,filterStatTypesForClass,getBann	CLASS_UNIQUE_SECONDARY_STATS,CLASS_EXCLUDED_SECONDARY_STATS,CONTROL_SECONDARY_STATS,isCont
+4294	1213880-1214800	921	getDropRatesForLevel,getMaxDropRarity,getRarityUnlockLevel,w	DROP_RATE_TABLE,getDropRatesForLevel,getMaxDropRarity,getRarityUnlockLevel
+4297	1215722-1217887	2166	calculateTotalStats	FEAR,SILENCE,STAGGER,BLOCK_CHANCE,DAMAGE_REDUCTION,PENETRATION,BLIND_CHANCE,MISS_CHANCE,LI
+4298	1217888-1218020	133	calculateTranscendenceBonuses,calculateSpentMythicIchor	calculateTranscendenceBonuses,calculateSpentMythicIchor,attackPercent,hpPercent,attackSpee
+4299	1218021-1221319	3299	tierOf,boardFlavor,deathlordMinorMeta,usesArcanumBoard,isBoardStatExcludedForClass,withoutClassExcluded,atkPoo	stats,icon,name,effect,label,stat,hpPercent,side,cost
+4300	1221320-1221766	447	calculatePetBonuses	flatAttack,flatHp,minionAttackSpeed,soulLink,minionLifesteal,minionCritChance,minionHealth
+4301	1221767-1222003	237	calculateAwakeningBonuses	attackPercent,hpPercent,attackSpeedFlat,critChanceFlat,critDamageFlat,hpRegenFlat,lifestea
+4302	1222004-1222311	308	getAwakeningPath,getAwakeningBonusPerLevel,getAwakeningHighlights,getAvailableAwakeningPoints	highlights,attackPercent,hpPercent,attackSpeedFlat,critChanceFlat,critDamageFlat,hpRegenFl
+4303	1222312-1222827	516	calculateFortressBonuses,_loop,remapFortressBonusesForClass,calculateFortressNonCombatBonuses,_loop2	damageReduction,blockChance,hpRegen,hpPercent,lifesteal,missChance,blindChance,xpIncomePer
+4304	1222828-1224158	1331	getFortressBuffCombatForClass,getSiegeDayOfWeek,getTodaySiegeGroup,getSiegeDayStart,getCurrentSiegePhase,getCo	group,position,ratio,shield,name,gems,attackSpeed,maxRank
+4305	1224159-1224582	424	shieldToMultiplier,calculateContributionBonus,getFortressMedalTier,applyMedalTier,calculateBossShield,calculat	gold,bronzeMedals,silver,silverMedals,bronze,getFortressMedalTier,goldMedals,applyMedalTie
+4306	1224583-1225043	461	applyGlyphSecondary,calculateMountBonuses	attackPercent,minionAttackSpeed,soulLink,minionLifesteal,minionCritChance,minionHealth,min
+4307	1225044-1226109	1066	glyphRollsSecondary,getGlyphDefinition,getGlyphTypes,rollGlyphType,getGlyphQualityBand,getGlyphTransmuteCost,b	tier,rarity,name,icon,shield,color,bolt,flame
+4309	1227919-1228090	172	useHaptics	medium,useHaptics,light,heavy,success,warning
+4310	1228091-1228488	398	_notificationAsync,_impactAsync,_selectionAsync,_performAndroidHapticsAsync,notificationAsync,impactAsync,sele	notificationAsync,Haptic,impactAsync,selectionAsync,Haptics,performAndroidHapticsAsync
+4315	1234692-1234828	137	isQuickOpenCount	color,secondaryColor,name,PURCHASE_COST,EGG_CONSTANTS,QUICK_OPEN_OPTIONS,QUICK_OPEN_DEFAUL
+4316	1234829-1235083	255	useCampDungeonCoins,useCampArenaHonors,useCampEggCost,useCampRaidInfluence	spotId,travel,pct,apply,useCampDungeonCoins,useCampArenaHonors,useCampEggCost,useCampRaidI
+4317	1235084-1235687	604	worldMapCampBonusFactor,applyWorldMapCampBonus,worldMapHuntExtraRollPct,worldMapCampDiscountFactor,worldMapCru	WORLD_MAP_CAMP_BONUS_PCT,worldMapCampBonusFactor,worldMapDungeonCoinMultiplier,worldMapAre
+4318	1235688-1235763	76	getEggImage	getEggImage,pets/eggs/egg_common.png,pets/eggs/egg_uncommon.png,pets/eggs/egg_rare.png,pet
+4320	1236699-1236838	140	useSound,playSfx,playOneShot,startMusic,stopMusic,playBuildupReveal	playSfx,playOneShot,startMusic,stopMusic,playBuildupReveal,useSound
+4322	1236966-1237019	54	tierColor	tierColor
+4324	1238612-1239055	444		JsiSkImage
+4325	1239056-1239125	70		function
+4326	1239126-1239190	65		
+4327	1239191-1239272	82	resolveAsset	Platform,PixelRatio,uri,resolveAsset,findNodeHandle,View
+4328	1239273-1240912	1640		
+4329	1240913-1241067	155		
+4333	1241092-1241201	110		
+4336	1241246-1241355	110		
+4339	1241372-1241481	110		
+4342	1241520-1241584	65		
+4344	1241627-1241736	110		
+4347	1241753-1241862	110		
+4350	1242124-1242278	155		
+4354	1242616-1242725	110		
+4357	1242742-1242851	110		
+4360	1242904-1243013	110		
+4363	1243133-1243287	155		
+4367	1243537-1243646	110		
+4370	1243663-1243772	110		
+4373	1244036-1244235	200		
+4382	1244558-1244671	114	isMatrix,shopify_MatrixTs1Factory,shopify_MatrixTs1,toDegrees	processTransform3d,isMatrix,processTransform,toDegrees,Matrix,code
+4383	1244672-1246887	2216	shopify_Matrix4Ts1Factory,shopify_Matrix4Ts1,shopify_Matrix4Ts2Factory,shopify_Matrix4Ts2,shopify_Matrix4Ts3Fa	code,translate,multiply4,scale,rotateAxis,Matrix4,pivot,invert4
+4393	1247189-1247478	290		
+4400	1247749-1247813	65		
+4404	1248055-1248119	65		
+4407	1248278-1248315	38		RNSkiaModule
+4409	1248877-1249263	387	throwNotImplementedOnRNWeb,Host,BaseHostObject,dispose,value,HostObject,fromValue,getEnum,optEnum	key,object,function,throwNotImplementedOnRNWeb,Host,BaseHostObject
+4410	1249264-1249641	378	isMatrixHostObject,JsiSkMatrix,preMultiply,postMultiply,concat,translate,postTranslate,scale,postScale,skew,po	key,JsiSkMatrix,Matrix,preMultiply,postMultiply,concat
+4411	1249642-1249745	104	JsiSkShader	JsiSkShader,Shader
+4412	1249746-1249810	65		
+4413	1249811-1250640	830		
+4414	1250641-1251290	650		
+4415	1251291-1251340	50	Circle	Circle,skCircle
+4416	1251341-1251390	50	Rect	Rect,skRect
+4417	1251391-1251440	50	RoundedRect	RoundedRect,skRRect
+4418	1251441-1251490	50	DiffRect	DiffRect,skDiffRect
+4419	1251491-1251540	50	Line	Line,skLine
+4420	1251541-1251630	90	Path	start,end,Path,skPath
+4421	1251631-1251680	50	Oval	Oval,skOval
+4422	1251681-1251763	83	Points	mode,Points,points,skPoints
+4423	1251764-1251813	50	Patch	Patch,skPatch
+4424	1251814-1251896	83	Vertices	mode,Vertices,triangles,skVertices
+4425	1251897-1251946	50	Fill	Fill,skFill
+4426	1251947-1252198	252	shopify_FitBoxTsx1Factory,shopify_FitBoxTsx1,FitBox	translate,rotate,fitRects,rect2rect,fitbox,FitBox,code
+4427	1252199-1252308	110		
+4428	1252309-1252823	515		
+4440	1253052-1253431	380		
+4442	1253490-1253618	129	shopify_PathTs1Factory,shopify_PathTs1,shopify_PathTs2Factory,shopify_PathTs2	code,string,isPath,processPath,isPathDef,Invalid path: 
+4443	1253619-1254100	482	shopify_FittingTs1Factory,shopify_FittingTs1,shopify_FittingTs2Factory,shopify_FittingTs2,shopify_FittingTs3Fa	code,width,height,size,src,dst,exhaustiveCheck,applyBoxFit
+4445	1254264-1254701	438	shopify_RectTs1Factory,shopify_RectTs1,shopify_RectTs2Factory,shopify_RectTs2,shopify_RectTs3Factory,shopify_R	code,inflate,isRectCtor,isRRectCtor,processRadius,isEdge,processRect
+4448	1254882-1255235	354	shopify_GradientTs1Factory,shopify_GradientTs1,shopify_GradientTs2Factory,shopify_GradientTs2,shopify_Gradient	code,processColor,colors,positions,mode,flags,translateX,translateY
+4449	1255236-1255440	205	shopify_TransformTs1Factory,shopify_TransformTs1,shopify_TransformTs2Factory,shopify_TransformTs2	processTransform,code,processTransformProps,processTransformProps2
+4450	1255441-1255547	107	Group	layer,skGroup,Group,object,children,skLayer
+4451	1255548-1255621	74	BoxShadow,Box	BoxShadow,Box,skBoxShadow,skBox
+4452	1255622-1255671	50	Atlas	Atlas,skAtlas
+4453	1255672-1255781	110		
+4454	1255782-1255871	90	BackdropFilter	children,filter,BackdropFilter,skBackdropFilter
+4455	1255872-1255967	96	BackdropBlur	blur,children,BackdropBlur,clamp,mode,filter
+4456	1255968-1256257	290		
+4457	1256258-1256340	83	Blur	mode,Blur,decal,skBlurImageFilter
+4458	1256341-1256430	90	Offset	Offset,skOffsetImageFilter
+4459	1256431-1256480	50	DisplacementMap	DisplacementMap,skDisplacementMapImageFilter
+4460	1256481-1256530	50	Shadow	Shadow,skDropShadowImageFilter
+4461	1256531-1256613	83	Morphology	operator,Morphology,dilate,skMorphologyImageFilter
+4462	1256614-1256663	50	RuntimeShader	RuntimeShader,skRuntimeShaderImageFilter
+4463	1256664-1256818	155		
+4464	1256819-1256901	83	Image	fit,Image,contain,skImage
+4465	1256902-1257004	103	ImageShader	fit,transform,ImageShader,decal,none,skImageShader
+4467	1257055-1257479	425		
+4468	1257480-1257529	50	RadialGradient	RadialGradient,skRadialGradient
+4469	1257530-1257579	50	LinearGradient	LinearGradient,skLinearGradient
+4470	1257580-1257629	50	TwoPointConicalGradient	TwoPointConicalGradient,skTwoPointConicalGradient
+4471	1257630-1257679	50	SweepGradient	SweepGradient,skSweepGradient
+4472	1257680-1257729	50	ColorShader	ColorShader,skColorShader
+4473	1257730-1257826	97	Turbulence	seed,tileWidth,tileHeight,Turbulence,skTurbulence
+4474	1257827-1257923	97	FractalNoise	seed,tileWidth,tileHeight,FractalNoise,skFractalNoise
+4475	1257924-1258005	82	Shader	uniforms,Shader,skShader
+4477	1258036-1258235	200		
+4478	1258236-1258325	90	Text	Text,skText
+4479	1258326-1258415	90	Glyphs	Glyphs,skGlyphs
+4480	1258416-1258505	90	TextBlob	TextBlob,skTextBlob
+4481	1258506-1258588	83	TextPath	initialOffset,TextPath,skTextPath
+4482	1258589-1258878	290		
+4483	1258879-1258948	70	ColorMatrix,OpacityMatrix	ColorMatrix,OpacityMatrix,skMatrixColorFilter
+4484	1258949-1258998	50	BlendColor	BlendColor,skBlendColorFilter
+4485	1258999-1259048	50	Lerp	Lerp,skLerpColorFilter
+4486	1259049-1259098	50	LinearToSRGBGamma	LinearToSRGBGamma,skLinearToSRGBGammaColorFilter
+4487	1259099-1259148	50	SRGBToLinearGamma	SRGBToLinearGamma,skSRGBToLinearGammaColorFilter
+4488	1259149-1259198	50	LumaColorFilter	LumaColorFilter,skLumaColorFilter
+4489	1259199-1259263	65		
+4490	1259264-1259353	90	BlurMask	style,respectCTM,BlurMask,normal,skBlurMaskFilter
+4491	1259354-1259688	335		
+4492	1259689-1259771	83	DiscretePathEffect	seed,DiscretePathEffect,skDiscretePathEffect
+4493	1259772-1259821	50	DashPathEffect	DashPathEffect,skDashPathEffect
+4494	1259822-1259871	50	CornerPathEffect	CornerPathEffect,skCornerPathEffect
+4495	1259872-1259921	50	SumPathEffect	SumPathEffect,skSumPathEffect
+4496	1259922-1259971	50	Line2DPathEffect	Line2DPathEffect,skLine2DPathEffect
+4497	1259972-1260021	50	Path1DPathEffect	Path1DPathEffect,skPath1DPathEffect
+4498	1260022-1260071	50	Path2DPathEffect	Path2DPathEffect,skPath2DPathEffect
+4499	1260072-1260181	110		
+4500	1260182-1260246	65		
+4502	1260255-1260409	155		
+4505	1260844-1260920	77	shopify_TransformsTs1Factory,shopify_TransformsTs1	canvas2Polar,polar2Canvas,rotate,code,radius,theta
+4506	1260921-1260970	50	Picture	Picture,skPicture
+4507	1260971-1261109	139	Mask	children,layer,blendMode,Mask,alpha,src,luminance
+4508	1261110-1261159	50	Paint	Paint,skPaint
+4509	1261160-1261209	50	Blend	Blend,skBlend
+4510	1261210-1261259	50	Skottie	Skottie,skSkottie
+4511	1261260-1261309	50	ImageFilter	ImageFilter,skImageFilter
+4512	1261310-1261374	65		
+4513	1261375-1261424	50	Paragraph	Paragraph,skParagraph
+4514	1261425-1261972	548	useCanvasRef,useCanvasSize,Canvas,shopify_CanvasTsx1Factory,shopify_CanvasTsx1,makeImageSnapshot,makeImageSnap	onSize,ref,width,height,measure,debug,opaque,colorSpace
+4516	1262037-1262195	159	createModuleProxy,OptionalDependencyNotInstalledError	module,createModuleProxy,OptionalDependencyNotInstalledError
+4518	1262228-1262287	60		SkiaPictureView,uiViewClassName,debug,opaque,colorSpace,androidWarmup
+4519	1262288-1262631	344	SkiaSGRoot,updateContainer,render,drawOnCanvas,getPicture,unmount	key,SkiaSGRoot,Skia,container,root,type
+4521	1262647-1290281	27635	createFiber,noop,formatProdErrorMessage,getIteratorFn,getComponentNameFromType,describeBuiltInComponentFrame,d	flags,memoizedState,return,lanes,next,function,child,pending,sibling,stateNode
+4524	1291125-1291618	494	debug,getRootHostContext,getChildHostContext,shouldSetTextContent,createTextInstance,createInstance,appendInit	children,Function not implemented.,scheduleTimeout,cancelTimeout,getRootHostContext,getChi
+4530	1292139-1292973	835	ReanimatedRecorder,reset,processAnimationValues,getRecorder,getSharedValues,saveGroup,restoreGroup,savePaint,r	key,ReanimatedRecorder,values,recorder,reset,processAnimationValues
+4531	1292974-1293171	198	shopify_utilsTs1Factory,shopify_utilsTs1,shopify_utilsTs2Factory,shopify_utilsTs2,shopify_utilsTs3Factory,shop	isSharedValue,code,mapKeys,materialize,composeDeclarations
+4532	1293172-1293457	286	Container,set,mount,unmount,drawOnCanvas,StaticContainer,redraw	key,unmounted,recording,Container,StaticContainer,Skia
+4533	1293458-1294529	1072	Recorder,getRecording,processProps,add,saveGroup,restoreGroup,savePaint,restorePaint,restorePaintDeclaration,m	key,type,props,Invalid color filter type: ,animatedProps,commands,animationValues,children
+4534	1294530-1295062	533	shopify_NodeTs1Factory,shopify_NodeTs1,shopify_NodeTs2Factory,shopify_NodeTs2,shopify_NodeTs3Factory,shopify_N	NodeType,code,isColorFilter,isPathEffect,isImageFilter,isShader,type
+4537	1296291-1297243	953	shopify_PlayerTs1Factory,shopify_PlayerTs1,shopify_PlayerTs2Factory,shopify_PlayerTs2,shopify_PlayerTs3Factory	code,materializeCommand,isGroup,getZIndex,flushPendingGroups,play,replay
+4538	1297244-1298760	1517	shopify_DrawingTs1Factory,shopify_DrawingTs1,shopify_DrawingTs2Factory,shopify_DrawingTs2,shopify_DrawingTs3Fa	code,enumKey,processRect,BlendMode,processColor,processPath,fitRects,isCubicSampling
+4539	1298761-1299113	353	shopify_BoxTs1Factory,shopify_BoxTs1,shopify_BoxTs2Factory,shopify_BoxTs2	code,CommandType,materializeCommand,isRRect,processColor,BlurStyle,inflate,ClipOp
+4540	1299114-1299449	336	shopify_ColorFiltersTs1Factory,shopify_ColorFiltersTs1,shopify_ColorFiltersTs2Factory,shopify_ColorFiltersTs2,	code,CommandType,isColorFilter,NodeType,processColor,BlendMode,enumKey
+4541	1299450-1299677	228	shopify_CTMTs1Factory,shopify_CTMTs1,shopify_CTMTs2Factory,shopify_CTMTs2	code,isPathDef,processPath,isRRect,clipRect,clipRRect,computeClip,ClipOp,processTransformP
+4542	1299678-1300636	959	shopify_ImageFiltersTs1Factory,shopify_ImageFiltersTs1,shopify_ImageFiltersTs2Factory,shopify_ImageFiltersTs2,	code,enumKey,BlendMode,TileMode,processRadius,MorphologyOperator,Erode,Dilate
+4543	1300637-1300824	188	shopify_PaintTs1Factory,shopify_PaintTs1	processColor,BlendMode,enumKey,PaintStyle,StrokeJoin,StrokeCap,setPaintProperties
+4544	1300825-1301467	643	shopify_PathEffectsTs1Factory,shopify_PathEffectsTs1,shopify_PathEffectsTs2Factory,shopify_PathEffectsTs2,shop	code,processPath,composeDeclarations,Path1DEffectStyle,enumKey,CommandType,isPathEffect,No
+4545	1301468-1302436	969	shopify_ShadersTs1Factory,shopify_ShadersTs1,shopify_ShadersTs2Factory,shopify_ShadersTs2,shopify_ShadersTs3Fa	code,processGradientProps,processTransformProps,enumKey,processUniforms,processColor,getRe
+4549	1302812-1302937	126		Skia
+4551	1302968-1303482	515		
+4552	1303483-1303874	392	factoryWrapper,loadData,useLoading,useCollectionLoading,useRawData,identity,useData	current,loadData,useCollectionLoading,useRawData,useData,Could not load data
+4553	1303875-1304336	462	useFont,slant,weight,matchFont,listFontFamilies,loadTypefaces,useFonts	normal,useFont,matchFont,listFontFamilies,useFonts,fontFamily
+4554	1304337-1304392	56	useTypeface	useTypeface
+4555	1304393-1304512	120	useImage,makeImageFromView	useImage,makeImageFromView,Invalid view tag
+4556	1304513-1304568	56	useAnimatedImage	useAnimatedImage
+4557	1304569-1304667	99	shopify_PictureTs1Factory,shopify_PictureTs1	Skia,isRect,createPicture,code
+4559	1304724-1305004	281	shopify_VectorTs1Factory,shopify_VectorTs1,shopify_VectorTs2Factory,shopify_VectorTs2,shopify_VectorTs3Factory	vec,code,Skia,point,neg,add,sub
+4560	1305005-1305538	534	shopify_RectTs1Factory,shopify_RectTs1,shopify_RectTs2Factory,shopify_RectTs2,shopify_RectTs3Factory,shopify_R	isRRect,vec,code,rect,Skia,bounds,topLeft
+4561	1305539-1305602	64	shopify_RRectTsx1Factory,shopify_RRectTsx1	Skia,rrect,code
+4562	1305603-1305675	73	shopify_MatrixTs1Factory,shopify_MatrixTs1	processTransform,Skia,processTransform2d,code
+4563	1305676-1305740	65		
+4564	1305741-1306030	290		
+4565	1306031-1306239	209	useAnimatedImageValue,shopify_useAnimatedImageValueTs1Factory,shopify_useAnimatedImageValueTs1	animatedImage,currentFrame,isPaused,lastTimestamp,frameDuration,useAnimatedImageValue
+4566	1306240-1306744	505	shopify_interpolatorsTs1Factory,shopify_interpolatorsTs1,usePathValue,shopify_interpolatorsTs2Factory,shopify_	notifyChange,code,isOnMainThread,builder,init,transform,path
+4567	1306745-1306809	65		
+4568	1306810-1307009	200		
+4570	1307450-1307695	246	shopify_interpolateColorsTs1Factory,shopify_interpolateColorsTs1,shopify_interpolateColorsTs2Factory,shopify_i	Skia,code,interpolate,interpolateColorsRGB,mix,interpolateColors,mixColors
+4571	1307696-1307830	135	shopify_interpolateVectorTs1Factory,shopify_interpolateVectorTs1,shopify_interpolateVectorTs2Factory,shopify_i	interpolateVector,code,interpolate,mixVector
+4572	1307831-1308079	249	shopify_interpolatePathsTs1Factory,shopify_interpolatePathsTs1,shopify_interpolatePathsTs2Factory,shopify_inte	code,validateInterpolationOptions,Extrapolate,lerp,exhaustiveCheck,interpolatePaths
+4573	1308080-1308376	297	shopify_OffscreenTsx1Factory,shopify_OffscreenTsx1,drawAsPicture,drawAsImage,shopify_OffscreenTsx2Factory,shop	code,Platform,Skia,isOnMainThread,drawAsPicture,drawAsImage,drawAsImageFromPicture
+4574	1308377-1308724	348	shopify_texturesTsx1Factory,shopify_texturesTsx1,shopify_texturesTsx2Factory,shopify_texturesTsx2,useTexture,u	Skia,Platform,code,useTexture,usePictureAsTexture,useImageAsTexture
+4576	1309028-1309808	781	shopify_useVideoTs1Factory,shopify_useVideoTs1,shopify_useVideoTs2Factory,shopify_useVideoTs2,shopify_useVideo	code,video,seek,looping,volume,currentTime,currentFrame,Platform,copyFrameOnAndroid
+4577	1309809-1309974	166	useVideoLoading,shopify_useVideoLoadingTs1Factory,shopify_useVideoLoadingTs1	Skia,runOnJS,setVideo,useVideoLoading,video-metadata-runtime,code
+4578	1309975-1310129	155		
+4579	1310130-1310527	398	SkiaPictureView,componentDidUpdate,componentWillUnmount,tick,makeImageSnapshot,redraw,render,assertSkiaViewApi	key,debug,opaque,androidWarmup,requestId,picture,onSize
+4581	1310536-1310786	251	generateContextId,WebGPUCanvas,getContextId,getNativeSurface,getContext	transparent,ref,undefined,WebGPUCanvas,getContextId,getNativeSurface
+4582	1310787-1310846	60		SkiaWebGPUView,uiViewClassName,contextId,transparent,validAttributes
+4584	1311952-1312161	210	rarityRank,groupBySpecies,gridColumns,cellSize	count,key,pet,groupBySpecies,gridColumns,GRID_MAX,GRID_GAP
+4590	1317446-1317555	110	applyPetFilter	applyPetFilter
+4593	1319204-1319373	170	enabledKey,raritiesKey,loadAutoSacrifice,saveAutoSacrifice	enabled,rarities,loadAutoSacrifice,saveAutoSacrifice,petAutoSac.enabled,petAutoSac.raritie
+4594	1319374-1319438	65	loadQuickOpenCount,saveQuickOpenCount	loadQuickOpenCount,saveQuickOpenCount,petQuickOpen.count
+4595	1319439-1319698	260	defaultFilter,raritiesKey,statModeKey,statsKey,parseArray,loadCollectionFilter,saveCollectionFilter	rarities,statMode,stats,loadCollectionFilter,saveCollectionFilter,petFilter.rarities,petFi
+4599	1333784-1334234	451	getSigilImage	getSigilImage
+4644	1335203-1335224	22		scales,httpServerLocation,width,height,hash,name,primal_awakening,type,png,fileHashes
+4645	1335225-1335246	22		scales,c7ad9aa5f32c787a187c0348857f7637,httpServerLocation,width,height,hash,name,flamebor
+4646	1335247-1335268	22		scales,b39a35e808f624fdeff445d3797967ca,httpServerLocation,width,height,hash,name,earthwar
+4647	1335269-1335290	22		scales,httpServerLocation,width,height,hash,name,stormcaller_sigil,type,png,fileHashes
+4673	1345573-1345623	51	getRelicTierImage	getRelicTierImage,relics/bronze.png,relics/silver.png,relics/gold.png
+4676	1346740-1347183	444	_getInfo,_purchase,_equip,_unequip,_purchaseSlot,_upgrade,_exchangeMedals,_sell,getInfo,purchase,equip,unequip	relicId,from,direction,amount,getInfo,purchase,equip,unequip,purchaseSlot
+4678	1348762-1348900	139	celestialRealmLock,hasAnyCelestialTier,defaultCelestialDifficulty,canPlayCelestialMythic	BASE_ONLY,RIFT_ONLY,celestialRealmLock,CELESTIAL_DIFFICULTY_ORDER,hasAnyCelestialTier,defa
+4679	1348901-1349235	335	_getInfo,_summon,_upgradeAltar,_setActive,_socketGlyph,_unsocketGlyph,getInfo,summon,upgradeAltar,setActive,so	mountId,tier,index,glyphId,getInfo,summon,upgradeAltar,setActive,socketGlyph
+4683	1351322-1351912	591	getMountSprite,getMountMoveMode,getMountPreview	image,meta,idle,preview,run,fly,getMountSprite,getMountMoveMode,getMountPreview
+4744	1353497-1353518	22		scales,ec8ae23ad4615162569452f11d90d3ec,httpServerLocation,width,height,hash,name,celestia
+4746	1353552-1353573	22		scales,httpServerLocation,width,height,hash,name,celestial_moth_fly,type,png,fileHashes
+4748	1353607-1353628	22		scales,httpServerLocation,width,height,hash,name,celestial_moth_preview,type,png,fileHashe
+4770	1354304-1354446	143	majorArt,getGlyphImage,getGlyphTierArt	common,uncommon,rare,epic,legendary,getGlyphImage,getGlyphTierArt,mounts/glyphs/common_min
+4772	1356329-1356669	341	MountSpriteImpl,step,MountSpriteTsx1Factory,MountSpriteTsx1	current,frameSV,totalFrames,columns,scaledFrameW,displayHeight,width,height,style
+4778	1362041-1362273	233	_getInfo,_unlock,_transmute,_reforge,getInfo,unlock,transmute,reforge	glyphIds,glyphId,getInfo,unlock,transmute,reforge
+4786	1370302-1370718	417	formatRemainingMs,formatRemainingLabel,useMsUntil,update,msLeft,useRemainingLabel,useCountdownLabel,useIsPast,	minutes,hours,shop:time.minutes,shop:time.hoursMinutes,days,shop:time.daysHours,formatRema
+4791	1371509-1371550	42	hasRelicAccess	hasRelicAccess
+4792	1371551-1374180	2630	getSheetTrim,hasCharacterSprites,getSheetColumns,getCharacterSprites,getFormSpriteOverride,getWalkFrameRange,g	walk,attack,die,preview,attackMeta,walkMeta,dieMeta,skinMeta
+4794	1374203-1374224	22		scales,e82196f4c6115b55a6862140b4f7ab5a,httpServerLocation,width,height,hash,name,attack,t
+4804	1374506-1374527	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+4813	1374745-1374766	22		scales,c9d46c8a81d2aed497a8cdfe594ff2b3,httpServerLocation,width,height,hash,name,lobby_at
+4816	1374824-1374845	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+4825	1375063-1375084	22		scales,de04c65772648a8bdb14a3dd4df99415,httpServerLocation,width,height,hash,name,lobby_at
+4828	1375142-1375163	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+4836	1375346-1375367	22		scales,cbf5acd0d334b9d2b6c66b3248bc27ae,httpServerLocation,width,height,hash,name,attack,t
+4844	1375550-1375571	22		scales,a8efe7f02c6fb7824ad9d9318c6d112f,httpServerLocation,width,height,hash,name,attack,t
+4852	1375754-1375775	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+4860	1375958-1375979	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+4868	1376162-1376183	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+4876	1376366-1376387	22		scales,e385d74902e77c6ac458c92da325529f,httpServerLocation,width,height,hash,name,attack,t
+4884	1376570-1376591	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+4892	1376774-1376795	22		scales,f3c7b22796d0845b164cdb1a75ed4fef,httpServerLocation,width,height,hash,name,attack,t
+4900	1376980-1377001	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+4908	1377184-1377205	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+4916	1377390-1377411	22		scales,fbb082d98c89aa5f1880c7175b9c6489,httpServerLocation,width,height,hash,name,attack,t
+4924	1377594-1377615	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+4932	1377798-1377819	22		scales,e649930e8fa2f2123c8e1284df7dbecd,httpServerLocation,width,height,hash,name,attack,t
+4940	1378002-1378023	22		scales,a6f286f2831e5642aa2ba8c5e11fdc43,httpServerLocation,width,height,hash,name,attack,t
+4948	1378206-1378227	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+4956	1378410-1378431	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+4964	1378614-1378635	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+4972	1378818-1378839	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+4980	1379022-1379043	22		scales,a35174894c7a423ffa39bc6b30d383d8,httpServerLocation,width,height,hash,name,attack,t
+4990	1379271-1379292	22		scales,f0c163e45c84a270fce13596757cb82e,httpServerLocation,width,height,hash,name,attack,t
+4998	1379475-1379496	22		scales,aee02a8bc1a8d969f8760f61a0b14bfe,httpServerLocation,width,height,hash,name,attack,t
+5006	1379679-1379700	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5014	1379883-1379904	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5022	1380087-1380108	22		scales,e78bdf944611d1da760d8caab47b2c39,httpServerLocation,width,height,hash,name,attack,t
+5030	1380291-1380312	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5038	1380497-1380518	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5046	1380701-1380722	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5055	1380940-1380961	22		scales,httpServerLocation,width,height,hash,name,lobby_attack,type,png,fileHashes
+5058	1381019-1381040	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5066	1381223-1381244	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5074	1381427-1381448	22		scales,a34363762166bbd98ad1a289b343b732,httpServerLocation,width,height,hash,name,attack,t
+5082	1381631-1381652	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5090	1381837-1381858	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5098	1382041-1382062	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5106	1382245-1382266	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5114	1382449-1382470	22		scales,cd27c435738e83d8bad175788be171a1,httpServerLocation,width,height,hash,name,attack,t
+5122	1382633-1382654	22		scales,dfdf5837c5fe76168ec874e2541c27ae,httpServerLocation,width,height,hash,name,attack,t
+5130	1382837-1382858	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5138	1383041-1383062	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5146	1383245-1383266	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5154	1383449-1383470	22		scales,d42f06fdb8a421298a43a5dc42ca6c09,httpServerLocation,width,height,hash,name,attack,t
+5162	1383653-1383674	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5169	1383835-1383856	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5176	1384017-1384038	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5183	1384199-1384220	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5191	1384403-1384424	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5199	1384607-1384628	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5207	1384811-1384832	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5215	1385015-1385036	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5223	1385219-1385240	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5231	1385423-1385444	22		scales,ee559592b2238fc6467d51e4da3d0335,httpServerLocation,width,height,hash,name,attack,t
+5239	1385627-1385648	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5247	1385831-1385852	22		scales,ae05700d1a7980d600b27769a16470ac,httpServerLocation,width,height,hash,name,attack,t
+5255	1386035-1386056	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5263	1386239-1386260	22		scales,d7ed945f7e98b492a8ed5e05c00249a5,httpServerLocation,width,height,hash,name,attack,t
+5271	1386443-1386464	22		scales,e6581cb471ab9b9b6e52d03f8bef4d6e,httpServerLocation,width,height,hash,name,attack,t
+5279	1386647-1386668	22		scales,e26d783f7447273a063e2a89b26ddb7f,httpServerLocation,width,height,hash,name,attack,t
+5287	1386851-1386872	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5295	1387055-1387076	22		scales,httpServerLocation,width,height,hash,name,attack,type,png,fileHashes
+5305	1387320-1387341	22		scales,d65fef0a0d67f40e7175dd214b9f1425,httpServerLocation,width,height,hash,name,attack,t
+5314	1387563-1391727	4165	createPurchaseIntent,_createPurchaseIntent,checkLegacyEligibility,_checkLegacyEligibility,isPaymentPendingErro	itemId,deviceId,transactionId,code,name,object,intentId,shop
+5315	1391728-1391888	161	setPurchaseHint,clearPurchaseHint,getPurchaseHint	name,server,itemId,setPurchaseHint,clearPurchaseHint,number,string,getPurchaseHint,shop_pu
+5316	1391889-1392030	142	ClashScreen	children,left,right,edges,wide,widthVariant,clash
+5318	1393363-1394024	662	ensureDimensionWatch,countWithin,sortHistogram,readBootInsets,noteInsetChange,resetRenderLoopGuardProbe,useRen	length,changeCounts,histogramRenders,storm,unknown,stamps,prev,reported,suppressed,suppres
+5322	1397080-1397415	336	_getMyClanWar,_getWarContributions,_rollPvpOpponent,_fightPvpOpponent,_forfeitPvpOpponent,_claimWarRewards,get	getMyClanWar,getWarContributions,rollPvpOpponent,fightPvpOpponent,forfeitPvpOpponent,claim
+5323	1397416-1397596	181	isFinalBattleEnabled,finalBattleNeedsAttention,useFinalBattleEnabled,useFinalBattleAttention	clanWarFinalBattle,FORMING,RESULT,isFinalBattleEnabled,useFinalBattleEnabled,finalBattleNe
+5324	1397597-1397669	73	seenKey,isFinalBattleResultSeen,markFinalBattleResultSeen	isFinalBattleResultSeen,markFinalBattleResultSeen,finalBattle.resultSeen
+5325	1397670-1397932	263	formatBattleCountdown,serverLocalTime,battleLocalTime,battleClockAt,useServerLocalTime,displayPhase,useBattleL	remainingMs,countdown,localTime,FB_CLOCK_TICK_MS,formatBattleCountdown,serverLocalTime,bat
+5327	1398188-1399328	1141	_getMyClan,_getClanDetail,_browseClans,_createClan,_updateClanInfo,_pinMessage,_unpinMessage,_joinClan,_leaveC	playerId,clanId,search,cursor,limit,message,leaderPlayerId,joinPolicy,accept,candidateId
+5328	1399329-1399988	660	_getFortressMap,_getFortressDetail,_getSiegeStatus,_joinSiege,_attackDefender,_startBossFight,_getClanSiegePla	fortressId,suggestion,role,tactic,getFortressMap,getFortressDetail,getSiegeStatus,joinSieg
+5329	1399989-1400047	59	getClanRankImage	getClanRankImage,clans/warband.png,clans/legion.png,clans/dominion.png,clans/imperium.png,
+5342	1409534-1409707	174	classIconData,hasClassIcon,ClassIcon	fill,fillRule,hasClassIcon,ClassIcon,width,height
+5344	1409746-1409836	91		color,label,icon,CLAN,CLAN_CLASS_COLOR,CLAN_ROLE,card
+5345	1409837-1409899	63	seatOblivionLevel	OBLIVION,number,seatOblivionLevel,SEAT_RIFT_COLOR
+5367	1427833-1427919	87	loadScreen	isArenaStageEngine,ArenaStageScreen,ArenaSceneSwitch,isStageEngine,legacy,loadScreen
+5369	1436192-1436321	130	useActiveEquippedSpecies	equippedSpecies,druidEquippedSpecies,useActiveEquippedSpecies
+5371	1438477-1439049	573	rand,ShapeshiftAnimationImpl,ShapeshiftAnimationTsx1Factory,ShapeshiftAnimationTsx1,ShapeshiftAnimationTsx2Fac	motes,ring,flash,width,height,duration,easing,position,absolute
+5374	1439647-1439830	184	tick,subscribeAmbientClock	ambientClock,guard,AMBIENT_TICK_MS,subscribeAmbientClock
+5375	1439831-1440481	651	legendaryVariantFor,useShapeshiftForm,clearTimer,shiftIn,shiftOut,fireBurst,scheduleShiftIn	current,alpha,dire,specialization,idle,equippedSpecies,ownedSigils,druidUtilitySlotSpecies
+5376	1440482-1440558	77	useIsDruidSpec	specialization,useIsDruidSpec
+5377	1440559-1440728	170	useStackSigilSpecies	bulwark,sunder,bulwarkHpPerStack,useStackSigilSpecies
+5378	1440729-1440817	89	useOpponentStackSigils	useOpponentStackSigils
+5379	1440818-1441905	1088	PetSpriteInner,CombatPetSpriteTsx1Factory,CombatPetSpriteTsx1,CombatPetSpriteTsx2Factory,CombatPetSpriteTsx2,C	duration,easing,float,hop,left,style,scaleX,transform,zIndex
+5380	1441906-1442178	273	playerGroundShadow,mobGroundShadow,petGroundShadow,petFeetFraction	width,offsetX,bottomGap,feetY,playerGroundShadow,mobGroundShadow,petGroundShadow,petFeetFr
+5382	1442568-1442662	95	getPetMotion	ground,getPetMotion,flying
+5383	1442663-1443069	407	sceneRowWidth,feetDropFromBoxCentre,playerColumnLift,playerColumnShiftX,mobColumnLift,dungeonNecroMaxShiftX,du	pathScreenY,imgW,imgH,imgTop,scrollableDistance,SCENE_SCALE,ARENA_H
+5385	1443176-1443717	542	progressMapHeight,progressMapMetrics,arenaPathOffset,mapSpriteScale,progressStageGeometry	imgW,imgH,imgTop,scrollableDistance,pathScreenY,MAP_VISIBLE_WIDTH_FRACTION,TABLET_MAP_VISI
+5387	1443740-1444567	828	DamageNumber,safeDone,DamageNumberTsx1Factory,DamageNumberTsx1,DamageNumberTsx2Factory,DamageNumberTsx2	fontSize,left,duration,current,opacity,translateX,translateY
+5393	1449885-1450087	203	getDotRiderDebuffWindowMs,buildMobDebuffDisplay,_loop	remainingSec,species,stacks,getDotRiderDebuffWindowMs,maxStacks,damagePerTick,buildMobDebu
+5394	1450088-1450314	227	useMinionPlayback	current,quick,view,feed,strike,reset,carryOver,useMinionPlayback
+5395	1450315-1450498	184	pvpNecroShiftX,pvpFloatOffset,pvpMinionLayout	PVP_MINION_ADVANCE_X,pvpNecroShiftX,pvpFloatOffset,right,columnShiftX,columnShiftY,ownerFe
+5396	1450499-1451026	528	anchorDropFromRowCentre,arenaTopPad,arenaBuffRowTop,arenaSigilRowTop,arenaSpriteScale,arenaBgMetrics,arenaScen	imgW,imgH,imgLeft,imgTop,floorScreenY,scale,offset,clamped
+5399	1452736-1457672	4937	getPvpHpMultiplier,pvpRatingToFraction,applyRegen,processAttack,mitigate,applyLifesteal,mapSpellEventType,proc	timestamp,type,damage,attackerHpAfter,defenderHpAfter,shieldHp,paralyzedMs,attacker,timer,
+5402	1458890-1459047	158	formatRewardAmount,formatDailyCountdown	Icon,color,label,unit,LEG,LEG_DIM,GOLD_DIM
+5403	1459048-1459280	233	sameStatus,useAdBackoff,stopTimer,refresh	current,useAdBackoff
+5406	1460733-1461036	304	randomInRange,HealAnimationImpl	width,height,pool,HealAnimation,position,absolute
+5408	1461180-1461272	93	useSharedCombatFx,useFxSide	SharedCombatFxContext,useSharedCombatFx,FxSideContext,useFxSide
+5409	1461273-1461829	557	randomInRange,BladeOfJudgmentAnimationImpl,BladeOfJudgmentAnimationTsx1Factory,BladeOfJudgmentAnimationTsx1	duration,width,height,position,absolute,top,left,pool,style
+5411	1461852-1462624	773	randomInRange,SingleArrow,ArrowstormAnimationTsx1Factory,ArrowstormAnimationTsx1,ArrowstormAnimationImpl,tick	duration,offsetX,width,height,current,style,position,absolute,top
+5413	1462647-1463096	450	randomInRange,WarbornFuryAnimationImpl,tick	current,width,height,pool,WarbornFuryAnimation,position
+5414	1463097-1463910	814	randomInRange,SigilMeteorAnimationImpl,trailTick,SigilMeteorAnimationTsx1Factory,SigilMeteorAnimationTsx1	duration,current,width,height,easing,position,absolute,top,left
+5416	1463933-1464749	817	randomInRange,ArcaneShardAnimationImpl,trailTick,ArcaneShardAnimationTsx1Factory,ArcaneShardAnimationTsx1	duration,current,width,height,easing,position,absolute,top,left
+5420	1466948-1467399	452	randomInRange,PrimalAwakeningAnimationImpl,tick	current,width,height,pool,blurred,PrimalAwakeningAnimation
+5421	1467400-1468107	708	randomInRange,FeralEmpowermentAnimationImpl,FeralEmpowermentAnimationTsx1Factory,FeralEmpowermentAnimationTsx1	children,width,height,duration,current,offset,stopColor,stopOpacity,position
+5426	1470544-1470721	178	useAmbientTicker,tick	AMBIENT_TICK_MS,current,useAmbientTicker
+5430	1471954-1472661	708	randomInRange,PrimalAscendancyAnimationImpl,PrimalAscendancyAnimationTsx1Factory,PrimalAscendancyAnimationTsx1	children,width,height,duration,current,offset,stopColor,stopOpacity,position
+5432	1473210-1473661	452	randomInRange,ArcaneSurgeAnimationImpl,tick	current,width,height,pool,blurred,ArcaneSurgeAnimation
+5436	1475437-1476543	1107	HexSpark,WitheringHexAnimationTsx3Factory,WitheringHexAnimationTsx3,clamp01_WitheringHexAnimationTsx1Factory,c	style,code,width,height,top,current,transform,position,left
+5437	1476544-1476672	129		hideAfterMs,castMs,handScale,tickScale,sparkColors,heartScale,CURSE_TEXTURES
+5448	1478309-1479686	1378	FateSpark,FateUnraveledAnimationTsx2Factory,FateUnraveledAnimationTsx2,ThreadHalf,FateUnraveledAnimationTsx3Fa	top,style,clamp01,progress,code,width,height,position,left
+5450	1480461-1481093	633	randomInRange,NullPulseAnimationImpl,NullPulseAnimationTsx1Factory,NullPulseAnimationTsx1,NullPulseAnimationTs	duration,width,height,easing,position,absolute,style,pointerEvents,code
+5452	1481552-1481965	414	randomInRange,WitheringBrandAnimationImpl,tick	current,width,height,pool,WitheringBrandAnimation,position
+5455	1483344-1483656	313	IronBastionAnimationImpl,IronBastionAnimationTsx1Factory,IronBastionAnimationTsx1	position,absolute,width,height,top,left,duration,style,mirrored
+5456	1483657-1484070	414	randomInRange,WoundsAnimationImpl,tick	current,width,height,pool,WoundsAnimation,position
+5457	1484071-1484669	599	randomInRange,CrimsonArrowAnimationImpl,CrimsonArrowAnimationTsx1Factory,CrimsonArrowAnimationTsx1	duration,width,height,position,absolute,top,left,pool,style
+5458	1484670-1485274	605	randomInRange,VenomArrowAnimationImpl,VenomArrowAnimationTsx1Factory,VenomArrowAnimationTsx1	duration,width,height,position,absolute,top,left,pool,style
+5469	1489907-1489928	22		scales,httpServerLocation,width,height,hash,name,pvparena_bg,type,png,fileHashes
+5470	1489929-1489993	65	createPvpSceneEntry,SceneSwitch	Screen,SceneSwitch,createPvpSceneEntry
+5471	1489994-1490284	291	decideStageEngine,record,isStageEngineFor,createStageSwitch,decide,useCombat,isStageEngine,createStageSceneSwi	modeId,isStageEngine,server,killSwitch,devOverride,decideStageEngine,isStageEngineFor,useC
+5472	1490285-1490340	56	getDevCombatStageOverride,setDevCombatStageOverride,subscribeDevCombatStageOverride	auto,getDevCombatStageOverride,setDevCombatStageOverride,subscribeDevCombatStageOverride
+5474	1490370-1490472	103	isCombatStageEnabled,useCombatStageEnabled	combatStageV2,off,isCombatStageEnabled,server,killSwitch,devOverride,useCombatStageEnabled
+5475	1490473-1490523	51	setArenaStageEngine,isArenaStageEngine	arenaStageSession,setArenaStageEngine,isArenaStageEngine,runtime,scene,compiled
+5476	1490524-1490822	299	createStageSession,notify,subscribe,set,clear,use,setStageSize,getStageSize,createCompiledRegistry,register,co	width,height,set,clear,subscribe,use,setStageSize,getStageSize
+5478	1492319-1492371	53	useShallow	current,useShallow
+5479	1492372-1492657	286	isIterable,hasIterableEntries,compareEntries,compareIterables,shallow,entries	entries,object,shallow
+5481	1493612-1494370	759	useAtlasLabels,useGlyphAtlas,retainStageAssets,releaseStageAssets,useStageAssets	images,scene,shadow,background,fxImages,float.,keysId,cache,combatStage,common
+5482	1494371-1494404	34		Inter_900Black
+5485	1494985-1495104	120	createSceneImageCache,load,dispose	load,length,dispose,createSceneImageCache
+5486	1495105-1495238	134	_loadSkImage,loadSkImage	loadSkImage
+5488	1495362-1496486	1125	isStageLabelKey,sceneLabelGlyph,isIcon,nextPow2,planGlyphAtlas,place,glyphText,sceneLabelKeys,labelGlyphFor,bu	width,height,ascent,descent,entries,SCENE_LABEL_MAX,isStageLabelKey
+5489	1496487-1496616	130		ICON_VIEWBOX,ICON_STROKE,GLYPH_ICON_PATHS,GLYPH_ICON_FILLED,m11 19-6-6,m5 21-2-2,m8 16-4 4
+5490	1496617-1496900	284	petPhaseMs,petLook,defaultLookFor,resolveLook	shadowLungeFollow,shadowH,shadowOpacity,shadowBobShrink,breathX,breathY,hoverPx,hoverUpMs
+5493	1497556-1498165	610	spec,styleSpecs,hexToRgb,buildNumberStyleTable	label,labelMode,icon,prefix,strong,color,text,iconGlyph,blocked
+5495	1498375-1499210	836	sourceId,assetSize,characterSheetImage,anims,stageCharacterSkin,mountSheetImage,characterSpriteSet,staticSprit	image,start,count,fps,mode,source,cellW,cellH,width,height
+5496	1499211-1499330	120		hitFlashOpacity,critFlashOpacity,CAST_FPS,SPAWN_FPS,DEFAULT_STAGE_MOTION,PET_HOP_UP_MS,PET
+5497	1499331-1499634	304	flashIntensity,clampMs,attackIntervalMs,lungeTiming,hasStepIn,isStrikeVisiblePhase	flashIntensity,LUNGE_STRIKE_PX,LUNGE_STRIKE_MS,LUNGE_HOLD_MS,LUNGE_RETURN_MAX_MS,LUNGE_RET
+5500	1500102-1500382	281	createAnchorArrays,writeScreenAnchors_anchorsTs1Factory,writeScreenAnchors	SA_X,SA_FEET_Y,SA_HEAD_Y,SA_ALPHA,SCREEN_ANCHOR_STRIDE,CAM_SCALE,cameraToScreenY,cameraToS
+5501	1500383-1500784	402	createCamera_cameraTs1Factory,createCamera,cameraSetViewport_cameraTs2Factory,cameraSetViewport,cameraToScreen	CAM_SCALE,code,CAM_ORIGIN_X,CAM_ORIGIN_Y,CAM_SCROLL_X,CAM_FIELDS,tweenTo,StageEasing
+5502	1500785-1502186	1402	createTweenPool_tweenTs1Factory,createTweenPool,ease_tweenTs2Factory,ease,alloc_tweenTs3Factory,alloc,release_	code,FREE,release,alloc,ACTIVE,tweenCancel,MAX_CHANNELS,headKey
+5503	1502187-1506973	4787	createWorld_worldTs1Factory,createWorld,worldSetTimeline_worldTs2Factory,worldSetTimeline,facing_worldTs3Facto	code,StageEasing,tweenTo,animPlay,AnimKind,tweenCancel,entityEnter,animQueue
+5504	1506974-1507951	978	createChromeQueue_chromeQueueTs1Factory,createChromeQueue,chromeBeginFrame_chromeQueueTs2Factory,chromeBeginFr	ChromeKind,code,push,simTs,urgent,dropped,CONTROL_MASK_MUL,sfxPending
+5507	1509268-1512094	2827	createFxRuntime_fxRuntimeTs1Factory,createFxRuntime,fxRand_fxRuntimeTs2Factory,fxRand,fxRange_fxRuntimeTs3Fact	code,FX_MAX_EMITTERS,RECIPE_STRIDE,dropped,fxRecipeValid,fxAuraSet,FX_TABLE_VERSION,R_KIND
+5509	1512665-1513445	781	createNumberPool_numberPoolTs1Factory,createNumberPool,oldestSlot_numberPoolTs2Factory,oldestSlot,numberSpawn_	code,moveSlot,ease,StageEasing,oldestSlot,NUMBER_MAX_DIGITS,createNumberPool
+5510	1513446-1514240	795	createAnimTable_spriteAnimTs1Factory,createAnimTable,createAnimState_spriteAnimTs2Factory,createAnimState,anim	code,ANIM_KIND_COUNT,AnimKind,NO_QUEUED,AnimMode,animFrameAt,animPlay,start
+5511	1514241-1515234	994	createTimelineState_timelineTs1Factory,createTimelineState,timelineSetEntityLead_timelineTs2Factory,timelineSe	code,MAX_LEAD_CLASSES,skipPending,simNow,playing,pendingStart,impactIdx,animIdx
+5512	1515235-1515297	63	useStageRuntimeContext	StageRuntimeContext,useStageRuntimeContext
+5515	1515771-1516322	552	initChromeState,reduceChromeUpdate,useChromeState,cancel,commit,onLoad,onUpdate	seq,simTs,shield,controlMask,stagger,terminalIdx,exhausted,mode,initChromeState
+5517	1516505-1517168	664	pvpCompiledFor,both,initPvpChromeMode,other,withSide,reducePvpEvent,sameRecords,registerPvpCompiled,init,event	attacker,defender,activeSpells,debuffs,compiled,nextId,log,castTimes,bulwark,sunder
+5518	1517169-1518495	1327	stageEntityIndices,initEntityLife,setFlag,reduceEntityLife,fraction,stageEntityVitals,setEntityValue,entityLis	alive,present,hpMax,shield,fraction,active,mode,life
+5519	1518496-1519279	784	PvpDuelPanel,PvpDuelBadges,badgeFor,toTracked	tracked,bulwarkStacks,sunderSpecies,sunderStacks,activeSpellSpecies,spellCastTimes,simTime
+5521	1519534-1519819	286	dungeonStageMapMetrics,dungeonArenaReserve,dungeonStageViewport,dungeonMobBadgeOffsets	boxY,boxHeight,width,offsetY,viewport,clamped,containerHeight,viewportW
+5522	1519820-1519959	140	pvpBadgeOffsets,pvpClassicReserve,pvpClassicViewport,pvpClassicBadgeMask	rowDy,staggerDy,pvpBadgeOffsets,pvpClassicReserve,PVP_CLASSIC_BADGE_ROW_TOP,width,boxY
+5526	1520868-1521000	133	arenaStageReserve,arenaStageViewport,arenaBadgeOffsets	boxY,boxHeight,width,offsetY,arenaStageReserve,floorScreenY,spriteScale,arenaStageViewport
+5536	1530059-1530276	218		color,Icon,ROLE_VISUAL,SPEC_VISUAL,RANGE_COLOR,sheetTop,sheetBottom
+5538	1531727-1531981	255	useFinalBattleTerms,roleLabel,roleDescription,rowLabel,rowShort,rangeLabel,talentLabel,squadName,squadNumeral,	finalBattleGuide,roleLabel,roleDescription,rowLabel,rowShort,rangeLabel,terms.noTalent,tal
+5540	1533389-1534136	748	resolveSquadRange,defaultBattleRole,finalBattleOfficerPlacementFrom,finalBattleBonusWp,finalBattleSquadCount	kind,TICK_MS,MELEE,RANGED,order,FINAL_BATTLE_DUEL_DURATION_MS,CLAN_BATTLE_PVP_HP_MULTIPLIE
+5541	1534137-1534479	343	useRemainingUntil,check,useCountdownTo,useResolvePolling	RESOLVE_POLL_MS,RESOLVE_POLL_MAX_MS,useRemainingUntil,useCountdownTo,change,active,useReso
+5542	1534480-1534794	315	useClassLabel,useSlotRequirementLabel,requirementLook,useSlotRequirementVisual,fitsSlot,sameRequirement	ROLE,CLASS_ROLE,SPEC,role,settings,classes.,finalBattle,cls,req.classRole,req.any
+5543	1534795-1535735	941	slotRequirementFits,resolveRosterRole,comparePool,autoFillFits,rowRank,isRowRest,sameSlotRequirement,autoFillS	ROLE,CLASS_ROLE,SPEC,ANY,Unknown slot requirement: ,playerId,TANK,CONTROL,MELEE,RANGED
+5544	1535736-1536039	304	rowPositions,rowBit,reachesPosition,rowOfSlot,rowUpOf,positionsOfRowMask,livingRowCount,reachablePositions,rea	length,MELEE,SQUAD_ROWS,Squad slot out of range: ,rowOfSlot,rowUpOf,rowPositions
+5545	1536040-1536135	96	joinBlock,canJoinSlot	NOT_IN_WAR,cls,spec,role,MISMATCH,OWN_SQUAD_LOCKED,ROLE_REQUIRED,SQUAD_LOCKED,OCCUPIED
+5546	1536136-1537302	1167	parseError,fbToast,usePlacementLockedMessage,useFinalBattleActions	body,current,toast,sheet,code,rateLimited,NO_WAR,finalBattle,errors.unknown
+5547	1537303-1538036	734	squadPath,_getFinalBattle,_setBattleRole,_joinSlot,_leaveSlot,_setSquadLayout,_setSquadStrategy,_setSquadLock,	layout,strategy,lock,rename,getFinalBattle,setBattleRole,joinSlot,leaveSlot,setSquadLayout
+5562	1547126-1547237	112	diagramHitRows,rangedFromTable	key,range,attackerRow,enemyUp,RANGED,MELEE,REACH_DIAGRAMS
+5567	1550158-1550303	146	isFinalBattleReplayEnabled,finalBattleReplayHref,canWatchDuel,useFinalBattleReplayEnabled,parseDuelIndex,openF	clanWarFinalBattle,isFinalBattleReplayEnabled,canWatchDuel,useFinalBattleReplayEnabled,par
+5571	1552093-1552179	87	loadScreen	isClanWarStageEngine,ClanWarStageScreen,ClanWarSceneSwitch,isStageEngine,legacy,loadScreen
+5573	1559191-1559241	51	setClanWarStageEngine,isClanWarStageEngine	clanWarStageSession,setClanWarStageEngine,isClanWarStageEngine,runtime,scene,compiled
+5578	1563011-1563092	82		FORTRESS_IMAGES,FORTRESS_BOSS_BG,FORTRESS_BOSS_SPRITE,frost_citadel,flame_citadel,shadow_b
+5584	1563203-1563224	22		scales,httpServerLocation,width,height,hash,name,boss_bg,type,png,fileHashes
+5585	1563225-1563246	22		scales,httpServerLocation,width,height,hash,name,boss,type,png,fileHashes
+5586	1563247-1563379	133	fortressMapWidth,fortressMarkerBaseSize	MAX_MAP_ASPECT,MARKER_BASE_RATIO,FORTRESS_ART_HEIGHT_PX,fortressMapWidth,fortressMarkerBas
+5589	1565130-1565151	22		scales,httpServerLocation,width,height,hash,name,fortress_bg,type,png,fileHashes
+5595	1575486-1575572	87	loadScreen	isFortressPvpStageEngine,FortressPvpStageScreen,FortressPvpSceneSwitch,isStageEngine,legac
+5597	1582395-1582445	51	setFortressPvpStageEngine,isFortressPvpStageEngine	fortressPvpStageSession,setFortressPvpStageEngine,isFortressPvpStageEngine,runtime,scene,c
+5598	1582446-1582615	170	FortressPvpStageScreen,timerText	title,outcome,note,fortress,defeat,pvp.defeated,pvp.defeatedSub,victory,pvp.victory
+5599	1582616-1582719	104	FortressBossSceneSwitch	isFortressBossStageEngine,FortressBossStageScreen,FortressBossSceneSwitch
+5603	1588521-1588954	434	artReach,artLeftReach,artRightReach,ownerFeetInColumn,worldBossPlayerShiftX,fortressBossArtLeftX,fortressNecro	left,right,ownerFeetInColumn,WB_EDGE_MARGIN,artLeftReach,artRightReach,worldBossPlayerShif
+5604	1588955-1589035	81	setFortressBossArenaBox,getFortressBossArenaBox,setFortressBossStageEngine,isFortressBossStageEngine,isFortres	width,height,fortressBossStageSession,setFortressBossArenaBox,getFortressBossArenaBox,setF
+5607	1591089-1591314	226	sidesOf,fortressBossDamageOf,init,event	pvp,damage,playerSide,boss,fortressBossDamageOf,FORTRESS_BOSS_CHROME_REDUCER,init
+5608	1591315-1591974	660	fortressBossSceneWidth,fortressBossMetrics,fortressPlayerColumn,fortressIsRangedStance,fortressPlayerLeft,buil	side,boxH,playerClass,skin,minionKind,headY,kind,scale
+5609	1591975-1592260	286	bossArtSize,bossEntity	drawnW,drawnH,aspect,width,bossArtSize,shadowH,shadowOpacity,kind,side
+5610	1592261-1592675	415	parentColumn,companionDef,petCompanion,mountCompanion	boxW,boxH,feetDx,feetDy,shadowW,headY,look,entity,set,strikeEasing
+5612	1592724-1592977	254	summonHoldStep,createPvpAdapter,buildScene,compileTimeline,isTerminal,sfxForCue	mode,duel,solo,silent,arena,buildScene,index,attacker,defender,initialShield
+5613	1592978-1595626	2649	debuffDurationMs,speciesAux,emit,emitState,emitSpell,emitMinion,activate,emitCombat,retarget,ownerMinionDeath,	kind,damage,dst,flags,log,column,isCrit,src,dstHp
+5614	1595627-1596309	683	allocTimeline_timelineBuilderTs1Factory,allocTimeline,createTimelineBuilder_timelineBuilderTs2Factory,createTi	code,allocTimeline,INITIAL_CAPACITY,copyTimeline,grownCapacity,createTimelineBuilder,pushS
+5615	1596310-1596910	601	dungeonAncientVariant,dungeonSpellImpactFx,dungeonDotTickFx,dungeonDebuffCastFx,dungeonDebuffAuraFx,dungeonAct	burst.spell.damage,tick.savageInfection,tick.rendingWound,aura.fateUnraveled,aura.graveRot
+5616	1596911-1599048	2138	hitRecipe,spellBurstRecipe,auraEmitter,auraRecipe,spellAuraEmitter,spellAura,hexShackle,rotFlies,fateHalf,dome	speed,life,size,count,colors,twinkle,gravity,soft,alpha,fade
+5617	1599049-1600717	1669	hexToRgb01,imageIndex,writeEmitter,writeShape,writeProjectile,legacyVelocity,legacyGravity,compileFxTable	fx ,link,sprite,dome,ring,aura,center,cross,drop
+5618	1600718-1600831	114	pvpFxContexts,pvpFxRecipe	isDruid,form,pvpActiveSpellFx,pvpDebuffAuraFx,pvpDebuffCastFx,pvpDotTickFx,pvpSpellImpactF
+5619	1600832-1601703	872	pvpFighterAnchor,pvpCharacterSet,mirrorSetFeet,pvpFighterFeel,buildFighter,lookRef,buildCustom,buildPvpScene,a	defender,kind,fighter,attacker,index,spriteSet,anchor,side,shieldMax,parent
+5620	1601704-1602173	470	minionBoxH,minionHeadAboveFeet,minionHeadFrac,minionHpBarTop,minionLook,hasMinionArt,minionEntity	feetDx,strikeEasing,flashIntensity,shadowH,shadowOpacity,width,height,top,rgb,bgAlpha
+5621	1602174-1602302	129	dungeonPlayerFeel	strikePx,strikeMs,strikeHoldMs,strikeReturnMs,strikeEasing,tiltDeg,windupPx,windupMs,knock
+5622	1602303-1603175	873	dungeonLayoutFor,dungeonNecroFit,entity,dungeonQualityProfile,buildDungeonScene,addSet,lookRef	deathStyle,anchor,kind,hpMax,breathing,present,spriteSet,side,parent,spriteSetIndex
+5623	1603176-1603239	64	getDungeonMapImage	getDungeonMapImage
+5624	1603240-1603296	57	getProgressMapImage	getProgressMapImage
+5627	1603550-1603571	22		scales,b2db08c4722c858791fb2d4e689ed980,httpServerLocation,width,height,hash,name,celestia
+5633	1603682-1603703	22		scales,httpServerLocation,width,height,hash,name,hell_crusade,type,png,fileHashes
+5635	1603726-1603747	22		scales,httpServerLocation,width,height,hash,name,oblivion_rift,type,png,fileHashes
+5648	1604130-1604416	287	getMobImage,getVillagerImage	getMobImage,getVillagerImage,rat,wolf,skeleton,orc,troll,wraith,golem
+5655	1604549-1604570	22		scales,c5560a79ff8e4c443ff6267badacb9c2,httpServerLocation,width,height,hash,name,stone_go
+5700	1605539-1605635	97	devDungeonSkinDef,loadDevDungeonSkin,saveDevDungeonSkin,devDungeonMobSkin	loadDevDungeonSkin,saveDevDungeonSkin,devDungeonSkinDef,devDungeonMobSkin,dev_dungeon_skin
+5701	1605636-1605695	60	qualityTierFor,qualityProfile	full,reduced,minimal,tier,flash,breathing,numbers,shadows,fxLimit
+5702	1605696-1605834	139	dungeonPlayerAnchor,dungeonMobSize,dungeonMobAnchor	boxH,feetDy,boxW,feetDx,shadowW,headY,dungeonPlayerAnchor,dungeonMobSize,dungeonMobAnchor
+5704	1606067-1606153	87	pvpSfxForCue,pvpSfxForEvent	silent,pvpSfxForCue,pvpSfxForEvent
+5705	1606154-1606277	124	dungeonSfxForCue,dungeonSfxForEvent	dungeonSfxForCue,dungeonSfxForEvent
+5706	1606278-1608712	2435	debuffDurationMs,other,hpOf,parseType,minionOwner,sideState,speciesAux,emit,emitState,activate,emitSpell,emitM	kind,side,flags,dst,tick,src,dstHp,srcHp,column
+5708	1608743-1608897	155		FORTRESS_BOSS_WALK_DURATION_MS,FORTRESS_BOSS_WALK_IN_MS,FORTRESS_BOSS_PLAYER_ENTER_DX,FORT
+5711	1609493-1609730	238	cooldownOf,durationOf,useStageEquippedSigils,_loop	cooldownMs,durationMs,species,spellType,isAura,useStageEquippedSigils
+5712	1609731-1609791	61	useArenaCombatSwitch,loadDirector	useArenaCombatSwitch,arena,modeId,legacyHook,loadDirector,setStageEngine,session
+5713	1609792-1610459	668	useArenaCombat,isCancelled,setTimer,onFrame,onTerminal	current,change,active,ticks,startIdx,simClock,isCancelled,setTimer,onFrame
+5714	1610460-1611033	574	arenaDuelPhase,arenaSpriteMode,useArenaStageDirector,selectPhase,selectResult,setPhase,updateHp,sceneScale	current,lost,won,fighting,other,walking,loading,idle,arenaSpriteMode
+5715	1611034-1612370	1337	pvpDuelSpriteMode,usePvpDuelStage,hasScene,applyLook,burstEntity,onResume,finishFromTerminal,finishFromResult,	entity,type,current,anim,finished,fromDx,durationMs,alphaMs,fighting,idle
+5716	1612371-1613532	1162	acceptedByRuntime,notifyStagePlaybackFailed,reportStageRuntimeError,minionVitalsCommand,notifyStageStartFailed	current,type,entity,combatStage:,guard,info,hpMax,spec,sound
+5717	1613533-1613812	280	shouldPauseForAppState,useAppStatePause,apply,useActiveStageEntry,onLoad,onUpdate,useStageRuntime	app,background,inactive,change,onLoad,onUpdate,shouldPauseForAppState,onError,stage
+5719	1614006-1615788	1783	createStageRuntime,reportUiError,finishWithoutWorld,scheduleWithoutWorld,clearWithoutWorld,reportUiFailure,rej	type,simTs,world,records,failed,revision,picture,runOnJS,anchorRefs
+5720	1615789-1616976	1188	stepWorld_stepTs1Factory,stepWorld,stageDrainChrome_stepTs2Factory,stageDrainChrome,resetWorld_stepTs3Factory,	code,chromePushAnchor,timelineStop,entityTurn,entityResetState,clockTick,chromeBeginFrame,
+5721	1616977-1620223	3247	isSwingKind_eventsTs1Factory,isSwingKind,applyAnimRange_eventsTs2Factory,applyAnimRange,numberStyleFor_eventsT	code,StageEventKind,EventFlag,hpDirty,NumberStyle,P_SWING,P_STRIKE,P_WHITE
+5722	1620224-1623210	2987	fxAnchorX_fxRecipesTs1Factory,fxAnchorX,fxAnchorY_fxRecipesTs2Factory,fxAnchorY,fxDensity_fxRecipesTs3Factory,	code,RECIPE_STRIDE,RECIPE_PROJ_AT,RECIPE_EMITTERS_AT,EMIT_STRIDE,emit,E_COUNT,fxDensity
+5723	1623211-1623313	103		createStageRenderer,disposeStageRenderer,handOverStageRenderer,shouldRenderStageFrame,rend
+5724	1623314-1623970	657	disposeStageRenderer_rendererStateTs1Factory,disposeStageRenderer,handOverStageRenderer_rendererStateTs2Factor	code,Skia,prev,prevOlder,SPRITES_PER_NUMBER,lastWorld,lastVis,lastView
+5727	1625135-1626880	1746	affIdentity_transformTs1Factory,affIdentity,affTranslate_transformTs2Factory,affTranslate,affScaleAbout_transf	code,hoverAt,ANCHOR_STRIDE,shadowWidthOf,DEATH_TILT_DEG,PET_HOP_PX,SG_DST_X,SG_DST_Y
+5728	1626881-1627215	335	drawEntityGroup_renderFrameTs1Factory,drawEntityGroup,renderStageFrame_renderFrameTs2Factory,renderStageFrame	code,drawShadow,drawHostUnderFx,drawEntityBody,drawHostDomes,drawAuraLinks,drawBackground,
+5729	1627216-1627403	188	drawBackground_backgroundTs1Factory,drawBackground	CAM_SCROLL_X,FilterMode,MipmapMode,drawBackground,code
+5730	1627404-1627901	498	drawBar_barsTs1Factory,drawBar,drawHpBars_barsTs2Factory,drawHpBars	code,AnimKind,ANIM_KIND_COUNT,ANCHOR_STRIDE,A_HEAD_Y,drawBar,BAR_W,BAR_GAP,BAR_H,ALLY_RGB
+5731	1627902-1631962	4061	outQuad_fxTs1Factory,outQuad,setColor_fxTs2Factory,setColor,drawDomes_fxTs3Factory,drawDomes,drawHostDomes_fxT	code,RECIPE_STRIDE,SH_MS,SH_R0,SH_ALPHA,RECIPE_SHAPES_AT,SHAPE_STRIDE,SH_TYPE,SH_R1,batchP
+5732	1631963-1632692	730	drawNumbers_numbersTs1Factory,drawNumbers	GLYPH_NONE,batchBegin,numberAlpha,numberTravel,NS_STRIDE,numberTextGlyphs,NS_TEXT,numberRo
+5733	1632693-1633190	498	compactGlyphs_numberLayoutTs1Factory,compactGlyphs,numberTextGlyphs_numberLayoutTs2Factory,numberTextGlyphs,gl	code,numberDigits,GLYPH_DIGIT_0,NS_STRIDE,GLYPH_NONE,NUMBER_ICON_GAP,NS_LABEL_MODE,NS_LABE
+5734	1633191-1633389	199	drawShadow_shadowsTs1Factory,drawShadow	shadowGeometry,SH_CX,SH_W,SH_CY,SH_H,SH_ALPHA,FilterMode,MipmapMode
+5735	1633390-1633675	286	drawEntityBody_spritesTs1Factory,drawEntityBody	spriteGeometry,SG_IMAGE,SG_A,SG_C,SG_E,SG_B,SG_D,SG_F,SG_SRC_X,SG_SRC_Y
+5736	1633676-1633800	125	drawFlash_flashTs1Factory,drawFlash	FilterMode,MipmapMode,drawFlash,code
+5737	1633801-1634020	220	drawMissingArt_missingArtTs1Factory,drawMissingArt	GLYPH_ICON_GHOST,GLYPH_STRIDE,GHOST_SIZE,GA_PAD,SG_DST_X,SG_DST_W,SG_DST_Y,SG_DST_H,GA_X,G
+5739	1634051-1634438	388	createRendererHost,onSwapped,swapOnUi,rendererHostTs1Factory,rendererHostTs1,dropPending,tokenFor,attach,detac	renderer,createStageRenderer,runOnJS,reportUiError,handOverStageRenderer,picture,disposeSt
+5740	1634439-1635326	888	validateStageScene,validateStageTimeline	entita ,scale,free,slot ,fromDx,alphaMs,popFrom,popPeak,popUpMs
+5741	1635327-1635478	152	walkInCommands,applyStageCommands_commandsTs1Factory,applyStageCommands	LOAD_SCENE,createWorld,worldSetTimeline,applyCommand,applyStageCommands,ENTITY_ENTER,type
+5742	1635479-1635682	204	toChromeUpdate,routeChromeUpdate	records,shield,simTs,urgent,toChromeUpdate,routeChromeUpdate
+5743	1635683-1635799	117	stageFormInput	LEGENDARY_FORM_SCALE,kind,classKey,skin,scale,stageFormInput
+5744	1635800-1636070	271	pvpOpponentDome,pvpOpponentFromResponse,pvpMinionKinds,pvpDuelSceneInput	skin,name,playerClass,form,shieldVariant,attacker,defender,kind,maxHp,shieldMax
+5745	1636071-1636138	68		arenaAdapter,arenaOpponentDome,arenaSceneInput,arena
+5746	1636139-1636242	104		ARENA_WALK_DURATION_MS,ARENA_WALK_IN_MS,ARENA_PLAYER_ENTER_DX,ARENA_OPPONENT_ENTER_DX,AREN
+5747	1636243-1636303	61	useClanWarCombatSwitch,loadDirector	useClanWarCombatSwitch,clanWar,modeId,legacyHook,loadDirector,setStageEngine,session
+5748	1636304-1637094	791	useClanWarCombat,isCancelled,setTimer,onFrame,onTerminal	current,tokens,change,active,ticks,startIdx,simClock,isCancelled,setTimer
+5749	1637095-1637773	679	clanWarDuelPhase,useClanWarStageDirector,selectPhase,selectResult,setPhase,updateHp	won,current,lost,fighting,tokens,other,walking,loading,idle
+5750	1637774-1637812	39		clanWarAdapter,clanWar
+5751	1637813-1637916	104		CLAN_WAR_WALK_DURATION_MS,CLAN_WAR_WALK_IN_MS,CLAN_WAR_PLAYER_ENTER_DX,CLAN_WAR_OPPONENT_E
+5752	1637917-1637976	60	useFortressPvpCombatSwitch,loadDirector	useFortressPvpCombatSwitch,fortressPvp,modeId,legacyHook,loadDirector,setStageEngine,sessi
+5753	1637977-1638545	569	useFortressPvpCombat,isCancelled,setTimer,onFrame,onTerminal	current,fortressPvp:walkIn,Could not start the fight.,Cannot attack,ticks,simClock,isCance
+5754	1638546-1639113	568	fortressPvpDuelPhase,useFortressPvpStageDirector,selectPhase,selectResult,setPhase,updateHp,sceneScale	lost,won,fighting,current,result,other,walking,loading,idle
+5755	1639114-1639163	50		fortressPvpAdapter,FORTRESS_PVP_SCENE_SCALE,fortressPvp,timeUpTerminal
+5756	1639164-1639267	104		FORTRESS_PVP_WALK_DURATION_MS,FORTRESS_PVP_WALK_IN_MS,FORTRESS_PVP_PLAYER_ENTER_DX,FORTRES
+5757	1639268-1639327	60	useFortressBossCombatSwitch,loadDirector	useFortressBossCombatSwitch,fortressBoss,modeId,legacyHook,loadDirector,setStageEngine,ses
+5758	1639328-1639938	611	useFortressBossFight,finish,isCancelled,setTimer,isTerminal,onFrame,onTerminal,onExhausted	current,playerHp,bossHp,fortressBoss:walkIn,Could not start the fight.,Cannot attack,ticks
+5759	1639939-1641400	1462	fortressBossSpriteMode,isLivePhase,useFortressBossStageDirector,hasScene,applyLook,burstEntity,finish,onSfx,on	current,entity,type,scene,compiled,shapeshift,isDruid,finished,walkInStarted
+5760	1641401-1641488	88	fortressBossSfxForEvent	fortressBossSfxForEvent
+5761	1641489-1641582	94	HuntScreen	children,edges,wide,widthVariant,hunt,bottom
+5763	1644928-1645194	267	selectRealmPlayable,selectHasOblivionRealm,selectAutoHuntIn,selectAutoHunt,selectBackgroundHuntRealm,selectOff	BASE,OBLIVION,otherRealm,selectRealmPlayable,selectHasOblivionRealm,selectAutoHuntIn,selec
+5764	1645195-1645285	91	dismissedKey,loadAutoHuntPromptDismissed,saveAutoHuntPromptDismissed	loadAutoHuntPromptDismissed,saveAutoHuntPromptDismissed,autoHuntRealmPrompt.dismissed
+5767	1645803-1645852	50	canHunt	canHunt
+5768	1645853-1646185	333	ensureTickInterval,subscribeTick,runStaminaTick,useStamina,useStaminaTimer,update	staminaTick,change,active,current,useStamina,useStaminaTimer
+5771	1647231-1647346	116	useEffectiveHeight,useIsSmallScreen,useIsTightScreen	SMALL_SCREEN_MAX_HEIGHT,TIGHT_SCREEN_MAX_HEIGHT,TIGHT_SCREEN_MAX_WIDTH,useIsSmallScreen,us
+5772	1647347-1647420	74		isProgressStageEngine,ProgressSceneSwitch,ProgressStageScreenLazy
+5773	1647421-1647485	65	loadProgressStageScreen,isProgressStageEngine	loadProgressStageScreen,progressSceneSwitch,isProgressStageEngine,progress,modeId,legacy,l
+5775	1653091-1653153	63	useAncientSigilEquipped	useAncientSigilEquipped
+5776	1653154-1653255	102	scopedKey,loadProgressAutoRun,saveProgressAutoRun	loadProgressAutoRun,saveProgressAutoRun,progress_auto_run
+5777	1653256-1653847	592	useProgressCombat	current,combatPhase,currentMobIndex,playerHp,mobHp,playerAttackCount,mobAttackCount,progre
+5778	1653848-1654007	160	useProgressRunControls	running,canRun,start,pause,useProgressRunControls
+5780	1654751-1655078	328	rand,AncientTransformAnimationImpl	earth,width,height,pool,AncientTransformAnimation,fire
+5784	1657035-1657445	411	noopDmgDone,ProgressDamageNumbersImpl	ProgressDamageNumbers,current,expiresAt,damage,isCrit,isDoubleHit
+5786	1658046-1658880	835	progressNecroMaxShiftX,isProgressMinionSpellHealEvent,counterDelta,isProgressMinionHurtEvent,progressNecroMini	kind,none,view,amount,alive,dead,rawSummon,rawAttack
+5788	1660319-1660512	194	epochShim,appendProgressMeta,resetProgressMeta,progressMetaAt,init,event	compiled,timeline,speciesTable,meta,segments,victory,outcome,minionMaxHp
+5789	1660513-1661081	569	initMode,pushRow,appendDungeonLogRow,addSpell,reduceDungeonEvent,init,event	debuffs,activeSpells,nextId,mobLog,sunder,compiled,playerLog,mobIndex,castTimes,bulwark
+5790	1661082-1661198	117	getDungeonStageSession,setDungeonStageSession,clearDungeonStageSession,subscribeDungeonStageSession,useDungeon	getDungeonStageSession,setDungeonStageSession,clearDungeonStageSession,subscribeDungeonSta
+5791	1661199-1661523	325	encodePhaseMarker,decodePhaseMarker,phaseMarkerAt,isPhaseMarkerAt,phaseMarkerEvent,isPhaseMarkerEvent,withoutP	kind,EPOCH_START,EPOCH_END,WALKING_IN,FIGHTING,MOB_DEFEATED,WALKING_OFF
+5792	1661524-1662517	994	entity,feelKey,progressSceneKey,progressWalkFor,buildProgressScene,addSet,lookRef,progressLevelMobEntities,get	hpMax,side,deathStyle,anchor,kind,shield,shieldMax,present,spriteSet,entity
+5793	1662518-1662842	325	progressStageBox,progressStageMapMetrics,progressPlayerFeet,progressMobFeet,progressRowGeometry,progressStageB	boxY,boxHeight,viewportW,pathScreenY,width,offsetY,viewport,clamped
+5794	1662843-1666965	4123	remainingSummonWindow,ancientOf,levelOf,playerVitals,last,progressIdleStance,useProgressStageDirector,hasScene	entity,type,current,durationMs,hpMax,fromDx,alphaMs,ENTITY_ENTER,delayMs,shieldMax
+5795	1666966-1667134	169	combatSceneViewportWidth,combatSceneScale,combatSceneScaleCeiling,combatSceneClampedScale	SCENE_REF_WIDTH,SCENE_MAX_CONTAINER_WIDTH,combatSceneViewportWidth,combatSceneScale,SCENE_
+5796	1667135-1668328	1194	defaultClock,defaultSchedule,readEvent,sortByOffset,lateBucket,createLiveFeed,now,newEpoch,noteLate,emit,deliv	events,off,meta,endMarker,chunks,late,lateAnim
+5797	1668329-1669057	729	progressLevelTemplateSlots,progressLevelIndex,nowMs,sliceTimeline,same,samePrefix,createEpochCompiler,push,emi	compiles,ticks,events,lastMs,maxMs,totalMs,p95Ms,prefixBreaks,chunk,fromIdx
+5798	1669058-1669262	205	progressSfxForEvent	progressSfxForEvent
+5799	1669263-1670509	1247	makeTick,summonTick,stateTags,createProgressTickConverter,releaseDue,schedule,convertFight,convert,openingSumm	spell,minionHp,mob_death,ticks,impactFloats,timestamp,damage,mobIndex,type,playerHpAfter
+5800	1670510-1671196	687	mapFightTicks,mapTickType,simulateDungeonStep	ticks,totalDuration,mobsDefeated,mob_block,success,coinReward,playerHpRemaining,playerShie
+5804	1673511-1673930	420	buildUnlockLevels,usesOblivionDropModel,selectRealmRarityUnlockLevels,selectRealmMinDropRarity,selectRealmItem	spotId,travel,selectRealmDropRates,selectRealmRarityUnlockLevels,selectRealmMinDropRarity,
+5810	1677351-1677520	170	pairOf,sideOf,effectiveUnread,railSocialPending	pairKey,pairOf,sideOf: ,sideOf,effectiveUnread,railSocialPending
+5813	1677990-1678540	551	MapBagTile,MapBagTileTsx1Factory,MapBagTileTsx1	duration,color,easing,flash,shake,dropPop,FULL_COLOR,ANIMATED_GLOW_SUPPORTED,idleGlow
+5815	1678954-1679490	537	formatTimeLeft,noop,MapPassTile,handlePress	color,size,strokeWidth,icon,label,sub,grow,onPress,testID,mapTiles.pass
+5818	1681496-1681673	178	formatDropRate,useTopDrops	formatDropRate,rarity,chancePct,useTopDrops
+5823	1685287-1685616	330	_getChatMessages,_getChatUnreadCount,_sendChatMessage,_reportChatMessage,getChatMessages,getChatUnreadCount,se	channel,language,after,before,since,message,messageId,reasons,getChatMessages
+5824	1685617-1685864	248	useSocialSummaryPoll,tick,start,stop	change,active,useSocialSummaryPoll
+5825	1685865-1686614	750	_getSocialSummary,_getSocialFriends,_searchPlayers,_sendFriendRequest,_acceptFriendRequest,_declineFriendReque	friendId,name,targetPlayerId,after,before,markRead,message,messageId,reasons,object
+5828	1686690-1686857	168	HuntOnboardingCoachMark	title,text,icon,index,count,pad,HUNT_ONBOARDING_STEPS
+5831	1687768-1688043	276	buildCrackWeb,_loop,toPoints	front,back,shards,buildCrackWeb
+5834	1693911-1694023	113	useLang,useLangValue,useLangFontScale,useIsLongLang	useLang,useLangValue,useLangFontScale,useIsLongLang
+5835	1694024-1696092	2069	resetPhantomStrikes,publishHuntRate,isOnboardingBlocking,clearHuntTimers,scheduleHuntTimer,successHaptic,realm	realm,rediscard,rediscardAll,unmark,OBLIVION,info,needsSnapshot,levelup,BAG_FULL
+5836	1696093-1696338	246	_getStatus,_activate,_commit,_setRealm,getStatus,activate,commit,setRealm,fireAndForgetUnlockSeen	realm,getStatus,activate,commit,setRealm,fireAndForgetUnlockSeen
+5838	1696885-1697063	179	WorldScreen	children,left,right,edges,wide,widthVariant,world
+5840	1699011-1699198	188	useDungeonKeys,useKeyResetTimer	change,active,current,useDungeonKeys,useKeyResetTimer
+5841	1699199-1699438	240	useRaidKeys,useRaidResetTimer,update	change,active,current,useRaidKeys,useRaidResetTimer
+5843	1701581-1702426	846	getMythicPlusEnchantWeights,getCrusadeMap,getCrusadeEntryHonorCost,getCrusadePowerRequirement,getFinderMaxRuns	name,hpMultiplier,attackMultiplier,attackSpeedMultiplier,bossStatMultiplier,minPlayers,ent
+5844	1702427-1702600	174		type,description,shortLabel,name,icon,accentColor,WEEKLY_BUFF_DURATION_MS
+5845	1702601-1702828	228	isBuffActive,hasActiveBuff,getActiveBuffs,getActiveBuff,getXpMultiplier,getDailyKeyBonus,getDailyKeyBonusForRe	isBuffActive,getActiveBuffs,hasActiveBuff,getActiveBuff,getXpMultiplier,getDailyKeyBonus,g
+5846	1702829-1703116	288	_getStatus,_fightStart,_fightEnd,_claimSession,_getRewardsPreview,getStatus,fightStart,fightEnd,claimSession,g	fightId,damageDealt,getStatus,fightStart,fightEnd,claimSession,getRewardsPreview
+5847	1703117-1705027	1911	_getStatus,_listGroups,_createGroup,_joinGroup,_start,_solo,_disband,_leave,_kick,_getDetail,_toggleClanOnly,_	groupId,celestialTactics,mapId,difficulty,mythicPlusLevel,clanOnly,playerId,role,gems,enab
+5848	1705028-1705340	313	_getStatus,_prepareFloor,_resolveFloor,_sweepFloor,_upgradeStone,getStatus,prepareFloor,resolveFloor,sweepFloo	floor,requestId,fightId,action,stoneId,getStatus,prepareFloor,resolveFloor,sweepFloor
+5849	1705341-1705839	499	useOblivionPower,useOblivionHighestFloor,useOblivionSweepFloor,useOblivionFloors,buildLocalFloor,useOblivionDu	floor,instability,effectiveInstability,cleared,firstClear,dropRates,dropAmounts,enabled,av
+5850	1705840-1705990	151	deriveOblivionDungeonAccess,canDescendFloor,canSweepFloor	enabled,available,lockReason,OBLIVION,WRONG_REALM,deriveOblivionDungeonAccess,canDescendFl
+5851	1705991-1706763	773	normalizeFloor,getFloorFamilyChance,getFloorStoneLevelShares,getFloorDropAmount,getFloorMob,isOblivionDungeonE	reward,oblivionStone,name,spriteKey,minFloor,level,unlockFloor,baseShare
+5852	1706764-1707023	260	getEffectiveInstability,getInstabilityBitePercent,biteCurve,biteMult,getInstabilityOutputMult,getFloorEffectiv	getEffectiveInstability,getFloorEffectiveInstability,getInstabilityBitePercent,getInstabil
+5853	1707024-1707141	118	OblivionDungeonCard	oblivion,NO_OBLIVION_CHARACTER,dungeon.cardWrongRealm,dungeon.cardNoCharacter,dungeon.card
+5856	1708462-1708556	95	getWorldMapArt,getWorldMapHeader,getWorldMapZoneArt,getWorldMapBanner,getWorldMapTitleBanner,getWorldMapTravel	world_map/world_map.png,getWorldMapArt,world_map/headers/,getWorldMapHeader,world_map/zone
+5857	1708557-1708800	244	getWorldMapSpotMeta,spotLabelKey,worldSpotActionUnlockLevel	color,icon,kindKey,body,action,labelKey,ghost,crusade,none,arena
+5858	1708801-1709138	338	useWorldMapTravelCountdown	change,active,useWorldMapTravelCountdown
+5859	1709139-1709737	599	apply,fetchWorldMapState,_fetchWorldMapState,_startWorldMapTravel,_cancelWorldMapTravel,_tutorialSkipWorldMapT	WORLD_MAP_ALREADY_TRAVELING,WORLD_MAP_ALREADY_THERE,string,toSpotId,code,FAILED,DEV skip: 
+5865	1715045-1715128	84	describeFastPassReset	kind,resetNumber,escalating,nextCost,peak,plain,describeFastPassReset
+5866	1715129-1715188	60	useDungeonCombatSwitch,loadDirector	useDungeonCombatSwitch,dungeon,modeId,legacyHook,loadDirector,setStageEngine,session
+5867	1715189-1716615	1427	useDungeonCombat,applyResolve,finishStep,isCancelled,setTimer,isTerminal,onFrame,onTerminal	current,finalize,ticks,player_death,playerHp,mobHp,chronoFlux,shieldHp,flee
+5868	1716616-1719198	2583	dungeonSpriteMode,ancientOf,notifyStartFailed,useDungeonStageDirector,hasScene,applyLook,burstEntity,applyReso	current,type,entity,ENTITY_ANIM,anim,compiled,ticks,durationMs,shapeshift
+5869	1719199-1719340	142	createDungeonAdapter,compileTimeline,isTerminal	fxRecipe,dungeon,buildScene,index,isDruid,form,initialShield,compileTimeline,isTerminal,sf
+5872	1726590-1726688	99	useMobSpriteStyle	width,height,useMobSpriteStyle
+5873	1726689-1726737	49	isDungeonStrikeVisiblePhase	isDungeonStrikeVisiblePhase
+5876	1727071-1727173	103	buildPlayerUtilityBars	kind,progress,shield,flux,buildPlayerUtilityBars
+5877	1727174-1727232	59	DungeonStageScreen	isDungeonStageEngine,DungeonStageScreen
+5884	1733188-1733247	60	useRaidCombatSwitch,loadDirector	useRaidCombatSwitch,raid,modeId,legacyHook,loadDirector,setStageEngine,session
+5885	1733248-1734358	1111	useRaidCombat,applyResolve,finishStep,isCancelled,setTimer,isTerminal,onFrame,onTerminal,onExhausted	current,finalize,ticks,flee,success,totalDuration,mobsDefeated,influenceReward
+5886	1734359-1734443	85	setRaidStageSession,clearRaidStageSession,useRaidStageSession,registerRaidCompiled,raidCompiledFor,setRaidStag	setRaidStageSession,clearRaidStageSession,useRaidStageSession,registerRaidCompiled,raidCom
+5887	1734444-1736475	2032	raidSpriteMode,useRaidStageDirector,clearFadeTimers,hasScene,applyLook,burstEntity,onUnmount,applyResolve,stor	current,entity,type,compiled,ticks,shapeshift,isDruid,scene,finalize
+5888	1736476-1736718	243	raidNumbersOnlyOnMinion,raidHpsAfter,compileTimeline,isTerminal,sfxForCue	raidNumbersOnlyOnMinion,playerHp,mobHps,raidHpsAfter,raidAdapter,raid,buildScene
+5889	1736719-1737520	802	raidBackgroundSource,arenaToScene,raidPlayerAnchor,entity,raidQualityProfile,buildRaidScene,addSet,raidFacingF	side,anchor,deathStyle,kind,spriteSet,scale,hpMax,present
+5899	1743323-1743433	111	RaidCombatSceneSwitch	legacy,isRaidStageEngine,RaidStageScreen,RaidCombatSceneSwitch
+5901	1744639-1744863	225	raidLogRow,initMode,reduceRaidEvent,init,event	compiled,spells,player,nextId,playerLog,mobLog,isBlocked,raidLogRow,reduceRaidEvent
+5902	1744864-1745020	157	raidStageBgMetrics,raidArenaReserve,raidStageViewport	boxY,containerW,containerH,assetW,assetH,arenaY,raidArenaReserve,raidStageBgMetrics,arenaS
+5904	1746937-1746996	60	useWorldBossCombatSwitch,loadDirector	useWorldBossCombatSwitch,worldBoss,modeId,legacyHook,loadDirector,setStageEngine,session
+5905	1746997-1747994	998	useWorldBossCombat,isCancelled,setTimer,isTerminal,onFrame,onTerminal,onExhausted	current,info,worldBoss:errors.resultSyncFailed,damageRecorded,newTotalDamage,newPosition,t
+5906	1747995-1748082	88	registerWorldBossCompiled,worldBossCompiledFor,setWorldBossStageEngine,isWorldBossStageEngine	worldBossStageSession,worldBossSimClock,registerWorldBossCompiled,worldBossCompiledFor,set
+5907	1748083-1750137	2055	worldBossSpriteMode,isWorldBossInCombat,isWorldBossLivePhase,endFightOnServer,_endFightOnServer,useWorldBossSt	current,entity,type,scene,compiled,shapeshift,isDruid,finished,ENTITY_ANIM
+5908	1750138-1750650	513	isDamageKind,keepsNumber,scoreOf,finishWorldBossTimeline,worldBossSfxForEvent,compileTimeline,sfxForCue	kind,src,dst,flags,worldBoss,player,boss,minion,log
+5909	1750651-1751556	906	worldBossGeometry,worldBossPlayerAnchor,worldBossPlayerFeel,worldBossFxTable,worldBossBossDisplay,worldBossSce	kind,name,side,fighter,scale,anchor,headY,size
+5910	1751557-1751975	419		WB_WALK_IN_MS,WB_PLAYER_DEAD_DELAY_MS,WB_METEOR_LEAD_MS,WB_PLAYER_ENTER_DX,WB_PLAYER_ENTER
+5913	1758864-1759578	715	randomInRange,MeteorAnimation,trailTick,MeteorAnimationTsx1Factory,MeteorAnimationTsx1	duration,current,easing,width,height,style,position,absolute,top
+5915	1760137-1760158	22		scales,ff1fec87a26468ef7eb0c7c5b0c46331,httpServerLocation,width,height,hash,name,worldbos
+5916	1760159-1760269	111	WorldBossFightSwitch	legacy,isWorldBossStageEngine,WorldBossStageScreen,WorldBossFightSwitch
+5918	1761721-1761862	142	initWorldBossChromeMode,reduceWorldBossEvent,init,event	compiled,pvp,damage,initWorldBossChromeMode,reduceWorldBossEvent,WORLD_BOSS_CHROME_REDUCER
+5927	1773642-1773782	141	crusadeRoleLabel,crusadeRoleShort	CRUSADE_ROLE_ICON,CRUSADE_ROLE_COLOR,roles.,crusadeRoleLabel,rolesShort.,crusadeRoleShort,
+5930	1777103-1777158	56	celestialDifficultyBadge	labelKey,color,celestialDifficultyBadge,leaderboard.tabNormal,leaderboard.tabHard,leaderbo
+5931	1777159-1777720	562	getCelestialRewardTiers,getCelestialRewardTier,buildCelestialSoloRanks	tier,rarity,count,minRank,maxRank,gems,energy,dungeonKeys,glyphs,reward
+5933	1777791-1777917	127	crusadeBracketSeparates,storedCrusadeBracket,crusadeBracketsPair,crusadeBracketOf,crusadeBracketAllows	BASE,OBLIVION,CRUSADE_BRACKET_DIFFICULTIES,crusadeBracketSeparates,crusadeBracketOf,stored
+5936	1780455-1780515	61	getCelestialSpellImage	getCelestialSpellImage,celestial/halo_breach.png,celestial/gatekeepers_burden.png,celestia
+5943	1784904-1785522	619		Directions,State,PointerType,gestureHandlerRootHOC,GestureHandlerRootView,MouseButton
+5944	1785523-1785599	77	initialize,maybeInitializeFabric	initialize,maybeInitializeFabric
+5945	1785600-1786014	415	isStateChangeEvent,isTouchEvent,onGestureHandlerEvent,stopListening,startListening	onGestureHandlerEvent,nativeEvent,onGestureHandlerStateChange,startListening,stopListening
+5949	1786241-1786518	278	hasProperty,deepEqual,toArray,withPrevAndCurrent,isTestEnv,tagMessage,isFabric,isReact19,isRemoteDebuggingEnab	object,toArray,withPrevAndCurrent,hasProperty,process,isTestEnv,tagMessage,isFabric,isReac
+5950	1786519-1786889	371	create_reactNativeGestureHandler_gestureStateManagerTs5Factory,create,reactNativeGestureHandler_gestureStateMa	REANIMATED_AVAILABLE,setGestureState,State,warningMessage,handlerTag,code,GestureStateMana
+5951	1786890-1787001	112	reactNativeGestureHandler_reanimatedWrapperTs1Factory,reactNativeGestureHandler_reanimatedWrapperTs1	tagMessage,Reanimated,react-native-reanimated,code,setGestureState
+5952	1787002-1787049	48		
+5957	1787309-1787479	171	getStatics,hoistNonReactStatics	defaultProps,displayName,propTypes,type,string,childContextTypes,contextType,contextTypes,
+5961	1788155-1788205	51		
+5962	1788206-1788265	60		RNGestureHandlerRootView,uiViewClassName,validAttributes
+5965	1788474-1789724	1251	hasUnresolvedRefs,extract,createHandler,Handler,componentDidMount,componentDidUpdate,componentWillUnmount,upda	function,current,key,registrationName,onGestureHandlerEvent,onGestureHandlerStateChange,ha
+5966	1789725-1789759	35		customDirectEventTypes
+5968	1789787-1790055	269	isConfigParam,transformIntoHandlerTags,filterConfig,findNodeHandle,scheduleFlushOperations	onHandlerStateChange,onGestureEvent,object,hitSlop,waitFor,simultaneousHandlers,top,left,b
+5970	1790115-1790149	35		
+5972	1790180-1790214	35		PressabilityDebugView
+5973	1790215-1790442	228	MountRegistry,addMountListener,addUnmountListener,gestureHandlerWillMount,gestureHandlerWillUnmount,gestureWil	key,MountRegistry,addMountListener,addUnmountListener,gestureHandlerWillMount,gestureHandl
+5974	1790443-1790655	213	ForceTouchFallback,componentDidMount,render	key,forceTouchAvailable,forceTouchGestureHandlerProps,forceTouchHandlerName,ForceTouchGest
+5975	1790656-1790705	50		
+5981	1791273-1791564	292	createNativeWrapper	gestureHandlerProps,enabled,hitSlop,testID,childProps,handlerTag,ref
+5983	1791667-1792001	335	propagateDetectorConfig,GestureDetector	isMounted,firstRender,forceRebuildReanimatedEvent,attachedGestures,shouldUseReanimated,ref
+5984	1792002-1792671	670	useAnimatedGesture,reactNativeGestureHandler_useAnimatedGestureTs6Factory,reactNativeGestureHandler_useAnimate	CALLBACK_TYPE,code,TouchEventType,sharedHandlersCallbacks,isStateChangeEvent,State,runWork
+5987	1793720-1794017	298	convertToHandlerTag,extractValidHandlerTags,extractGestureRelations,checkGestureCallbacksForWorklets,validateD	number,ALLOWED_PROPS,waitFor,simultaneousHandlers,blocksHandlers,extractGestureRelations,c
+5989	1794250-1794333	84	enableExperimentalWebImplementation,enableLegacyWebImplementation,isNewWebImplementationEnabled	enableExperimentalWebImplementation,enableLegacyWebImplementation,isNewWebImplementationEn
+5990	1794334-1794381	48		RNRenderer
+5992	1794444-1794534	91	dropHandlers	dropHandlers
+5993	1794535-1794720	186	Wrap,render	Wrap,AnimatedWrap,render,key,collapsable
+5995	1794874-1795091	218	updateHandlers	handlerTag,config,handlers,updateHandlers
+5996	1795092-1795189	98	useViewRefHandler	viewRef,previousViewTag,useViewRefHandler
+5997	1795190-1795302	113	getShadowNodeFromRef,findHostInstance_DEPRECATED,getInternalInstanceHandleFromPublicInstance	react-native/Libraries/Renderer/shims/ReactFabric,getShadowNodeFromRef
+5998	1795303-1795451	149	shouldUpdateDetector,useMountReactions	useMountReactions
+6011	1798799-1798846	48		
+6012	1798847-1798919	73		rippleColor,borderColor,process,RNGestureHandlerButton,uiViewClassName,exclusive
+6013	1798920-1799023	104		TouchableNativeFeedback,TouchableWithoutFeedback,TouchableOpacity,TouchableHighlight
+6014	1799024-1799271	248	TouchableNativeFeedback,getExtraButtonProps,render	rippleRadius,ThemeAttrAndroid,borderless,type,style,key,RippleAndroid,selectableItemBackgr
+6015	1799272-1800063	792	GenericTouchable,handlePressIn,handleMoveOutside,handleGoToUndetermined,componentDidMount,reset,moveToState,co	key,pressOutTimeout,longPressDetected,pointerInside,pressInTimeout,longPressTimeout
+6016	1800064-1800228	165		delayLongPress,extraButtonProps,rippleColor,transparent,exclusive,ref
+6017	1800229-1800561	333	TouchableOpacity,render	style,opacity,onStateChange,getChildStyleOpacityWithDefault,toValue,duration
+6019	1800969-1801388	420	renderScrollComponent	refreshControl,waitFor,disallowInterruption,ref,shouldCancelWhenOutside,RefreshControl
+6022	1802709-1802756	48		
+6023	1802757-1804214	1458	Pressable,reactNativeGestureHandler_PressableTsx2Factory,reactNativeGestureHandler_PressableTsx2,reactNativeGe	stateMachine,current,code,StateMachineEvent,Platform,gestureTouchToPressableEvent,handleFi
+6026	1804688-1804763	76	getAndroidStatesConfig,getStatesConfig	eventName,callback,StateMachineEvent,getStatesConfig,nativeBegin,NATIVE_BEGIN,nativeStart
+6027	1804764-1804937	174	PressableStateMachine,setStates,reset,handleEvent	currentStepIndex,eventPayload,key,states,PressableStateMachine,setStates
+6029	1806370-1806872	503	freshCrusadeFilters,key,sanitize,bool,filtersEqual,filterGroups,activeFilterCount,loadCrusadeFilters,saveCrusa	diffs,ANY,WITH,WITHOUT,joinable,mythMin,tank,clan,object,boolean
+6030	1806873-1807099	227	crusadeGateFloor,crusadeGateBand,crusadeGateLevelFor,withinCrusadeLevelGate,crusadeLevelBadge	OBLIVION,minX,maxX,defaultX,floor,cap,crusadeGateFloor,crusadeGateBand,crusadeGateLevelFor
+6031	1807100-1807210	111	crusadeGateAxisFor,gateAxisOfGroup,gateLevelOnAxis	OBLIVION,BASE,hardCap,crusadeGateAxisFor,gateAxisOfGroup,gateLevelOnAxis,OBLIVION_GATE_BAN
+6037	1814295-1814840	546	fmtStat,requirementLabel,pct,specName,specText,describeRoleRequirement,describeRoleAdvice	have,need,gap,note,label,hits,spec,finder.req.value.noSpec,finder.req.gap.plus
+6042	1817767-1818572	806	clamp,finderSessionCrusadeType,isFinderSessionOver,finderErrorBody,text,toRoleEligibilityView,buildFinderQueue	role,difficulty,tierFrom,tierTo,runs,object,string,label,eligible,amount
+6043	1818573-1818897	325	useRoleEligibility	eligible,structured,requirements,reason,useRoleEligibility
+6044	1818898-1820759	1862	isWeightEnforced,getBossAttack,pct,readinessPercent,stat,checkEhpFloor,isActiveTankBuild,canHoldAsTank,tankHar	have,need,met,note,key,label,gap,kind,data,spec
+6045	1820760-1821780	1021	capShare,defenseScore,defensePeakShare,share,offenseScore,critFactor,autoAttackDps,spellDps,renewalUptime,comb	SILENCE,STAGGER,FEAR,miss,support,score,focus,floor,limitedBy
+6046	1821781-1821987	207	freshCrusadeUiPrefs,key,sanitizeCrusadeUiPrefs,bool,loadCrusadeUiPrefs,saveCrusadeUiPrefs,setCrusadeUiPref	customLobbiesExpanded,finderExpanded,celestialFinderDifficulty,object,boolean,string,DEFAU
+6054	1835587-1835652	66	isCrusadeStageEngine,loadScreen	CrusadeSceneSwitch,isCrusadeStageEngine,crusade,modeId,legacy,loadScreen
+6056	1842810-1843061	252	partyGroundBelowAxis,partyOffsetY,partyRowPitch,partySlotLift,partyFeetBelowAxis,bossColumnLift,partyNecroShif	PARTY_SLOT_H,PARTY_FEET_DROP,PARTY_GROUND_BELOW_AXIS_PHONE,PARTY_GROUND_BELOW_AXIS_TABLET,
+6059	1843213-1843244	32	getCrusadeMapImage	getCrusadeMapImage
+6060	1843245-1843842	598	useCrusadeCombat,isCancelled,setTimer,onFrame,onExhausted	current,change,active,playerHps,crusade,crusade:walkToNext,crusade:bossDefeated,ticks,maxI
+6064	1846546-1847723	1178	partyLatestCast,partyActiveSpecies,casterAt,partyEffectEnds,reducePartyBossDebuffs,partyBossDebuffDisplay,redu	species,stacks,damagePerTick,maxStacks,expiresAtMs,ends,starts,remainingSec
+6065	1847724-1848045	322	reduceCasters,init,event	sunder,debuffs,spells,casters,crusadeActiveSpecies,crusadeLatestCast,crusadeSimClock
+6066	1848046-1848384	339	crusadeSweepStep,crusadeMemberFx,crusadeBossFx,sameFxItems,crusadeHpPercent,crusadeHpTone,crusadeTrackStop	species,stacks,left,LOW,DEAD,DONE,CURRENT,UPCOMING
+6067	1848385-1849729	1345		HUD_GOLD,HUD_GOLD_BRIGHT,HUD_RED,HUD_GREEN,HUD_MUTED,HUD_DIM,HUD_LINE
+6069	1850922-1851369	448	memberName,latestCasterSlot,crusadeFxTooltip,sameFxTarget	buff,spells,simTs,activeSpec,form,debuffs,isFighting,sunderSpecies,sunderStacks
+6076	1855532-1857768	2237	localSpriteMode,findMyIndex,useCrusadeStageDirector,hasScene,applyLook,localPlayer,failPhase,loadBoss,endBoss,	entity,type,durationMs,current,toDx,fromDx,alphaMs,ENTITY_ENTER,isDruid,shapeshift
+6077	1857769-1858012	244	crusadeNumbersOnlyOnMinions,crusadeBossMaxHp,compileCrusadeBoss,crusadeBossMaxHps,buildScene,isTerminal,sfxFor	players,minions,boss,index,ctx,selfAuraSlot,all,heal,ancient,fxRecipe
+6078	1858013-1860286	2274	debuffDurationMs,flushHold,speciesAux,emit,playerOf,activeSpellFx,activate,emitState,emitSpell,emitMinion,emit	kind,dst,src,flags,srcHp,dstHp,tick,slot,lastT
+6079	1860287-1861437	1151	crusadePlayerFeel,crusadeQualityProfile,crusadeVisualOrder,buildCrusadeScene,addSet,inForm,anchorOf,inner	isMe,side,source,spriteSet,scale,strikePx,strikeMs,strikeHoldMs
+6080	1861438-1861996	559	partyLookSpriteSet,partyHasMinion,partyMemberLook,partyPlayerEntity,partyLocalLooks,partyMinionKinds,addPartyM	scale,anchor,cls,skin,spriteSet,kind,side,feel,attachDx
+6081	1861997-1862671	675	crusadeFormationBandW,crusadeDepthScale,crusadeFocusHolder,crusadeInnerOrder,crusadeFormation,spot,top,left,fr	player,kind,owner,minion,CRUSADE_BOSS_SCALE,CRUSADE_BOSS_EDGE_MARGIN,CRUSADE_PARTY_SCALE
+6082	1862672-1869326	6655	createBossEntity,findHighestHpPlayer,findHighestHpPlayerExcluding,makePlayerHpsTuple,bossOpeningSummons,simula	timestamp,type,damage,playerIndex,bossHpAfter,playerHpsAfter,success,totalDuration,bossInd
+6083	1869327-1869392	66	isCelestialStageEngine,loadScreen	CelestialSceneSwitch,isCelestialStageEngine,celestial,modeId,legacy,loadScreen
+6085	1877874-1878224	351	useCelestialCombat,isCancelled,setTimer,onFrame,onExhausted	current,FAILED,COMPLETE,FIGHTING,change,active,IDLE,WALKING_IN,ticks
+6086	1878225-1878339	115	hasResonanceReadout,showResonanceBadge,formatResonance	hasResonanceReadout,showResonanceBadge,formatResonance
+6089	1881049-1881353	305	reduceMechanic,init,event	burden,spells,debuffs,hiddenAdds,fury,overload,celestialSimClock
+6094	1883585-1884980	1396	localSpriteMode,finishPhase,useCelestialStageDirector,hasScene,applyLook,burstEntity,failPhase,startFight,star	current,entity,FAILED,COMPLETE,isDruid,shapeshift,windowWidth,walkInStarted,type,FIGHTING
+6095	1884981-1886317	1337	celestialAncientVariants,celestialAddMaxHp,celestialNumberPolicy,compileCelestialTimeline,entityOf,targetOf,pl	kind,src,dst,dstHp,aux,flags,add_spawn,player_crit_add,srcHp
+6096	1886318-1887452	1135	celestialPlayerFeel,celestialQualityProfile,celestialVisibleAdds,spriteBoxH,buildCelestialScene,addSet,anchorO	side,headY,spriteSet,scale,anchor,source,strikePx,strikeMs
+6098	1889443-1889631	189	essenceExchangeAmounts,maxAffordableLots	weight,minBonus,maxBonus,reward,toAttunement,temperingDelta,attunementDelta
+6099	1889632-1889684	53	getOreImage,getQuarryBackground	getOreImage,arcane/background.png,getQuarryBackground,arcane/ore1.png,arcane/ore2.png,arca
+6103	1892719-1892909	191	useKeyResetRefresh	current,change,active,useKeyResetRefresh
+6105	1892972-1893645	674	useShopPurchase	itemId,intentId,status,deferred,transactionId,type,paid,charged,purchase.verifyingTitle
+6109	1895622-1895781	160	hatchLineCount,StrainHatch	HATCH_SPACING,hatchLineCount,stroke,strokeWidth,style,width,height
+6110	1895782-1896129	348	gradeName,oblivionDropOrder,visibleDropRows,dropRowShowsAmount,dropStoneType,dropStoneOblivionLevel,formatDrop	color,labelKey,group,grade,labelVars,STONE,OBLIVION_DROP_META
+6112	1896693-1896767	75	SweepBroom	stroke,round,width,height,viewBox,strokeWidth,strokeLinecap,strokeLinejoin,fill
+6116	1897827-1897892	66	isOblivionStageEngine,loadScreen	OblivionDungeonSceneSwitch,isOblivionStageEngine,oblivion,modeId,legacy,loadScreen
+6118	1900765-1901447	683	useOblivionDungeonCombat,apply,succeeded,isCancelled,setTimer,onFrame,onExhausted	current,flee,FIGHTING,FAILED,WALKING_IN,finalize
+6121	1902762-1902875	114	oblivionCompiledFor,registerOblivionCompiled,init,event	compiled,registerOblivionCompiled,oblivionCompiledFor,OBLIVION_CHROME_REDUCER,init,event
+6123	1902971-1904285	1315	ancientOf,useOblivionStageDirector,hasScene,onUnmount,apply,finish,failPhase,startWalkIn,onSfx,onSimAnchor,onS	current,flee,isDruid,equippedSpecies,hasForm,finished,FAILED,type,entity
+6124	1904286-1904430	145	oblivionFxRecipe,compileTimeline,isTerminal	ancient.,oblivionFxRecipe,oblivionAdapter,aura.soulConduit,aura.gravebornVigor,aura.raveno
+6125	1904431-1904917	487	oblivionPlayerFeel,oblivionMapInfo,buildOblivionScene,addSet,lookRef	anchor,source,spriteSet,scale,shield,shieldMax,present,kind,side,index
+6127	1908383-1909312	930	worldArt,WorldMapPage,WorldMapScreen,onBack,onOpenSpot	view,zoneId,travel,world,testID,children,onBack,onPress,spot,spotId
+6129	1910589-1910683	95	worldMapZoneFocus,worldZoneSpotFocus	worldMapZoneFocus,worldZoneSpotFocus
+6135	1913340-1913493	154	useWorldMapTutorialHost,selectWorldMapTutorialSpeedUp	WORLD_MAP_TUTORIAL_ZONE_ID,WORLD_MAP_TUTORIAL_SPOT_ID,useWorldMapTutorialHost,selectWorldM
+6137	1917964-1918198	235	worldMapDungeonCoinsPerClear,worldMapRaidInfluencePerClear,worldMapArenaHonorRange,worldMapPetEggBaseCost	worldMapDungeonCoinsPerClear,worldMapRaidInfluencePerClear,min,max,worldMapArenaHonorRange
+6138	1918199-1918351	153	worldMapHuntDrops,formatHuntDropPct	rarity,base,boosted,notInRealm,WORLD_MAP_HUNT_FEATURED,lockedAtLevel,worldMapHuntDrops
+6139	1918352-1918637	286	isWorldSpotActionWired,useWorldSpotActionPress	enterDungeon,enterRaid,enterCrusade,enterArena,openPetShop,startHunt,isWorldSpotActionWire
+6141	1918964-1919151	188	zoneIndexFor,worldMapTravelBaseMinutes,speedFactor,worldMapTravelDurationSeconds,worldMapTravelDurationMinutes	WORLD_MAP_INTRA_ZONE_MINUTES,WORLD_MAP_ZONE_LEG_MINUTES,worldMapTravelBaseMinutes,worldMap
+6142	1919152-1919178	27	worldMapBottomInset	worldMapBottomInset
+6146	1923168-1926891	3724	scheduleBootTask,cancel,registerBootCleanup,cancelBootTasks,scheduleAttribution,startPostAuthServices,initApp,	current,phase,children,reload,code,complete,recoverPremium,push,proceed,loading
+6149	1927380-1928629	1250		type,property,warnings,IncompatibleNativeProperty,filter,light,IncompatibleNativeValue,dis
+6150	1928630-1929285	656	getStyle,getVariable,initiateStyle,getOpaqueStyles,getAnimation,resetData,injectData,getUniversalVariable	opaqueStyles,VariableContext,getUniversalVariable,object,getStyle,RemappedClassName,getOpa
+6151	1929286-1929876	591	assignToTarget,isDescriptorFunction,isDescriptorArray,isRuntimeDescriptor,getTargetValue	object,transform,string,INTERNAL_RESET,INTERNAL_SET,INTERNAL_FLAGS,StyleRuleSetSymbol,Styl
+6154	1930064-1930477	414	resetAppearanceListeners,cssVariableObservable,set,getSystem,toggle	light,name,isReduceMotionEnabled,active,systemColorScheme,colorScheme,dark,set,change
+6155	1930478-1930520	43		warnings,flags,containerContext
+6156	1930521-1930694	174	viewportReset	rem,INTERNAL_RESET,window,viewport,name,change,width
+6157	1930695-1930829	135		StatusBar,setStatusBarStyle,setStatusBarHidden,setStatusBarBackgroundColor,setStatusBarNet
+6160	1931100-1931200	101	useFonts	useFonts
+6161	1931201-1931326	126		useFonts
+6165	1932079-1932283	205	getAssetForSource,_loadSingleFontAsync,loadSingleFontAsync	string,number,object,undefined,ERR_FONT_SOURCE,ERR_DOWNLOAD,getAssetForSource,loadSingleFo
+6167	1932411-1932547	137	getServerResources,resetServerContext,registerStaticFont	expo-font,getServerResources,resetServerContext,ERR_FONT_SOURCE,registerStaticFont
+6170	1932732-1932922	191	isMapLoaded,useRuntimeFonts,useStaticFonts	string,useFonts,undefined
+6171	1932923-1932956	34		Inter_400Regular
+6173	1932979-1933012	34		Inter_700Bold
+6175	1933035-1933068	34		Inter_400Regular_Italic
+6177	1933091-1933124	34		Inter_700Bold_Italic
+6179	1933147-1933180	34		Inter_900Black_Italic
+6184	1938000-1938427	428	classifyEquipFailure,_equipFromBag,send,sameCharacter,equipFromBag	ambiguous,refused,notFound,stale,other,hunt:notifications.equipFailed,info,equipFromBag
+6185	1938428-1939073	646	HuntEngine	HuntEngine,active,hunt,OBLIVION,change,realm,notifications.autoStoppedNoAfk,info
+6188	1941767-1941841	75	markReviewPromptSeen,markDiscordPromptSeen	review,markReviewPromptSeen,discord,markDiscordPromptSeen
+6194	1948578-1948642	65		
+6195	1948643-1948752	110		
+6198	1951254-1951383	130	FileSystemShim	documentDirectory,cacheDirectory,bundleDirectory
+6204	1952968-1953037	70	SafeAreaInsetProbe	current,SafeAreaInsetProbe
+6207	1954524-1955959	1436	RealmSwitchTransition,schedule,store,startReveal,finish,RealmSwitchOverlayTsx1Factory,RealmSwitchOverlayTsx1,R	duration,easing,OBLIVION,kind,style,current,medium
+6210	1959520-1959599	80	prestigeErrorMessage	prestigeErrorMessage,PRESTIGE_DISABLED,oblivion:errors.PRESTIGE_DISABLED,PRESTIGE_LOCKED,o
+6214	1964174-1964406	233	ReferralRewardNotifier	ReferralRewardNotifier,current,system:notifications.referralFriendReached,success,name,gem
+6215	1964407-1964549	143	_getReferralStatus,_ackReferralRewards,getReferralStatus,ackReferralRewards	getReferralStatus,ackReferralRewards
+6219	1970197-1970472	276	getSkinVariantOptions,useSkinVariantPreview	Exclusive Skin,gender,itemId,forms,getSkinVariantOptions,bear,active,activeId,select
+6222	1971975-1972152	178	getRewardTypeLabel,getRewardLabel,getRewardTypeIconName,getRewardTypeColor,getRewardColor,getRewardIconName	sparkles,skin,honors,gems,energy,dungeon_keys,dungeon_coins,raid_keys,crusade_keys,bronze_
+6225	1974656-1974982	327	getRewardColor,getRewardIcon	size,color,getRewardColor,getRewardIcon
+6236	1982142-1982440	299	chestRarityColor,getChestFrames,formatChestAmount	Icon,color,labelKey,unit,energy,gems,dungeonCoins,honors
+6241	1985160-1985258	99	_getDailyTracker,getDailyTracker	getDailyTracker
+6244	1986182-1986445	264	dotScale,litDots	Icon,color,kind,view,world,count,perDot,quarry
+6246	1986560-1987167	608	useDailyTrackerRows,useTrackerOwnResets	dungeonKeys,raidKeys,crusadeKeys,arenaTokens,now,playerLevel,server,hasClan,battlePassPrem
+6247	1987168-1987760	593	dailyKeyCap,countRow,barRow,isFortressDayForPlayer,battlePassDailyCap,battlePassCompleted,buildDailyTrackerRow	PVE,PVP,group,kind,left,total,done,pending,count,bar
+6248	1987761-1987915	155	useTrackerRowPress	light,world,clash,daily,route,useTrackerRowPress
+6249	1987916-1988159	244	selectDailyChestAutoOpenEligible,DailyChestAutoOpen	dailyRewards,chest,DailyChestAutoOpen,selectDailyChestAutoOpenEligible
+6250	1988160-1988326	167	autoOpenKey,appRunsKey,hasAutoOpenedDailyChest,markAutoOpenedDailyChest,isFirstAppRunForCharacter,forgetAppRun	hasAutoOpenedDailyChest,markAutoOpenedDailyChest,isFirstAppRunForCharacter,forgetAppRunAns
+6251	1988327-1988473	147	popupKey,isAutoPopupEnabled,loadPopupPrefs,setAutoPopupEnabled	offlineEnergy,offlineHunt,dailyRewards,AUTO_POPUP_IDS,isAutoPopupEnabled,loadPopupPrefs,se
+6254	1991991-1992075	85	KeepAwakeController	KeepAwakeController,eldaryn-foreground
+6258	1992639-1992723	85	PushPermissionController	current,PushPermissionController
+6259	1992724-1993232	509	registerForPushNotifications,_registerForPushNotifications,_reclaimPushTokenForActivePlayer,_unregisterPushNot	importance,token,name,sound,granted,projectId
+6266	1995383-1995908	526	updatePushTokenAsync,_updatePushTokenAsync,_setAutoServerRegistrationEnabledAsync,__handlePersistedRegistratio	ServerRegistrationModule,setRegistrationInfoAsync,isEnabled,setAutoServerRegistrationEnabl
+6267	1995909-1996026	118		undefined,AbortController,AbortSignal
+6268	1996027-1996063	37		NotificationsServerRegistrationModule
+6269	1996064-1996135	72	addPushTokenListener	data,android,type,addPushTokenListener,onDevicePushToken
+6271	1997075-1997223	149	computeNextBackoffInterval	The initial backoff interval must be positive,The previous retry count must not be negativ
+6272	1997224-1999244	2021	_typeof,_toPropertyKey,_toPrimitive,_classCallCheck,lazyLoadComparison,innerFail,fail,innerOk,ok,notDeepStrict	actual,expected,operator,message,stackStartFn,string,function,object,Function,deepStrictEq
+6273	1999245-2000284	1040	_typeof,_defineProperties,_createClass,_toPropertyKey,_toPrimitive,_classCallCheck,_inherits,_setPrototypeOf,_	type,function,string,writable,The ,symbol,prototype,configurable,object
+6274	2000285-2002221	1937	inspect,stylizeWithColor,stylizeNoColor,arrayToHash,formatValue,formatPrimitive,formatError,formatArray,format	special,string,undefined,boolean,number,function,colors,regexp,yellow
+6330	2007729-2009817	2089	ownKeys,_objectSpread,_defineProperty,_classCallCheck,_defineProperties,_createClass,_toPropertyKey,_toPrimiti	writable,function,configurable,object,prototype,string,symbol,strictEqual
+6347	2013466-2013610	145	getPresentedNotificationsAsync,_getPresentedNotificationsAsync	Notifications,getPresentedNotificationsAsync
+6350	2013822-2013953	132	dismissNotificationAsync,_dismissNotificationAsync	Notifications,dismissNotificationAsync
+6351	2013954-2014084	131	dismissAllNotificationsAsync,_dismissAllNotificationsAsync	Notifications,dismissAllNotificationsAsync
+6352	2014085-2014221	137	getNotificationChannelsAsync,_getNotificationChannelsAsync	Notifications,getNotificationChannelsAsync
+6354	2014259-2014390	132	getNotificationChannelAsync,_getNotificationChannelAsync	Notifications,getNotificationChannelAsync
+6355	2014391-2014553	163	setNotificationChannelAsync,_setNotificationChannelAsync	Notifications,setNotificationChannelAsync,This may lead to errors on some Android versions
+6357	2014731-2014862	132	deleteNotificationChannelAsync,_deleteNotificationChannelAsync	Notifications,deleteNotificationChannelAsync
+6358	2014863-2014993	131	getNotificationChannelGroupsAsync,_getNotificationChannelGroupsAsync	Notifications,getNotificationChannelGroupsAsync
+6360	2015031-2015162	132	getNotificationChannelGroupAsync,_getNotificationChannelGroupAsync	Notifications,getNotificationChannelGroupAsync
+6361	2015163-2015295	133	setNotificationChannelGroupAsync,_setNotificationChannelGroupAsync	Notifications,setNotificationChannelGroupAsync
+6362	2015296-2015427	132	deleteNotificationChannelAsync,_deleteNotificationChannelAsync	Notifications,deleteNotificationChannelGroupAsync
+6366	2015807-2015951	145	getAllScheduledNotificationsAsync,_getAllScheduledNotificationsAsync	Notifications,getAllScheduledNotificationsAsync
+6368	2015989-2016928	940	scheduleNotificationAsync,_scheduleNotificationAsync,parseTrigger,parseCalendarTrigger,parseDateTrigger,toTime	type,hour,minute,object,channelId,day,repeats,number,weekday,month
+6369	2016929-2017013	85		PermissionStatus,SchedulableTriggerInputTypes,AndroidNotificationPriority,calendar,CALENDA
+6371	2017059-2017190	132	cancelScheduledNotificationAsync,_cancelScheduledNotificationAsync	Notifications,cancelScheduledNotificationAsync
+6372	2017191-2017321	131	cancelAllScheduledNotificationsAsync,_cancelAllScheduledNotificationsAsync	Notifications,cancelAllScheduledNotificationsAsync
+6373	2017322-2017452	131	getNotificationCategoriesAsync,_getNotificationCategoriesAsync	Notifications,getNotificationCategoriesAsync
+6375	2017490-2017623	134	setNotificationCategoryAsync,_setNotificationCategoryAsync	Notifications,setNotificationCategoryAsync
+6376	2017624-2017755	132	deleteNotificationCategoryAsync,_deleteNotificationCategoryAsync	Notifications,deleteNotificationCategoryAsync
+6378	2017896-2018069	174	useLastNotificationResponse,determineNextResponse	determineNextResponse
+6379	2018070-2018368	299	_getLastNotificationResponseAsync,getLastNotificationResponse,_clearLastNotificationResponseAsync,clearLastNot	ExpoNotifications,getLastNotificationResponse,clearLastNotificationResponse,DEFAULT_ACTION
+6381	2018406-2018537	132	registerTaskAsync,_registerTaskAsync	Notifications,registerTaskAsync
+6383	2018575-2018706	132	unregisterTaskAsync,_unregisterTaskAsync	Notifications,unregisterTaskAsync
+6384	2018707-2019040	334	setNotificationHandler,NotificationTimeoutError	NotificationTimeoutError,Notifications,handleNotificationAsync,setNotificationHandler,Noti
+6386	2019078-2019277	200	_getPermissionsAsync,_requestPermissionsAsync,getPermissionsAsync,requestPermissionsAsync	Notifications,getPermissionsAsync,requestPermissionsAsync,allowAlert,allowBadge,allowSound
+6391	2019425-2019670	246	DevRamOverlay,DevRamOverlayTsx1Factory,DevRamOverlayTsx1,DevRamOverlayHost	uiFrames,backgroundColor,borderRadius,borderWidth,DevRamOverlay,DevRamOverlayHost,react-na
+6392	2019671-2019800	130	loadDevRamOverlay,saveDevRamOverlay,toggleDevRamOverlay,subscribeDevRamOverlay	loadDevRamOverlay,saveDevRamOverlay,toggleDevRamOverlay,subscribeDevRamOverlay,dev_ram_ove
+6393	2019801-2019904	104	initGuideTriggers	guideTriggers,guard,initGuideTriggers
+6395	2020457-2020614	158	_warmUpAdsAtBoot,warmUpAdsAtBoot	warmUpAdsAtBoot
+6396	2020615-2020665	51	SitemapRedirect	href
+6397	2020666-2020744	79	BattlePassScreen	href
+6411	2032239-2032356	118	useBattlePassPremiumPrice	useBattlePassPremiumPrice
+6415	2033556-2033718	163		RPGText,RPGCard,RPGButton,RPGBadge,RPGProgressBar,RPGModal,RPGSafeView
+6417	2040652-2040883	232	useAppleAuth	requestedScopes,Apple Sign In failed: no identity token received,identityToken,fullName,is
+6418	2040884-2041022	139		AppleAuthenticationButton
+6419	2041023-2041522	500	_isAvailableAsync,_signInAsync,_refreshAsync,_signOutAsync,_getCredentialStateAsync,isAvailableAsync,signInAsy	expo-apple-authentication,requestedOperation,signInAsync,ERR_REQUEST_FAILED,refreshAsync,s
+6422	2041746-2041839	94	AppleAuthenticationButton	onButtonPress,onPress
+6423	2041840-2041875	36		
+6424	2041876-2042085	210	getGoogleSignin,ensureConfigured,useGoogleAuth	webClientId,showPlayServicesUpdateDialog,cancelled,Google Sign In failed: no id token rece
+6426	2042116-2042273	158		GoogleSignin,statusCodes,GoogleSigninButton
+6427	2042274-2042920	647	_signIn,_hasPlayServices,_addScopes,signInSilently,_signInSilently,_signOut,_revokeAccess,_clearCachedAccessTo	string,idToken,accessToken,GoogleSignin,success,type
+6428	2042921-2042958	38		NativeModule,RNGoogleSignin
+6429	2042959-2043046	88		NULL_PRESENTER,SIGN_IN_REQUIRED_CODE,SIGN_IN_CANCELLED_CODE,ios_only_SCOPES_ALREADY_GRANTE
+6431	2043096-2043149	54	translateCancellationError	translateCancellationError
+6434	2043434-2043508	75		onPress,RNGoogleSigninButton,uiViewClassName,captured,onPressCapture,bubbled
+6437	2043547-2045553	2007		GAME_CONSTANTS,RARITY_CONFIG,RARITY_ORDER,DROP_RATE_TABLE,getDropRatesForLevel,xpRequiredF
+6440	2048380-2048644	265	stopHuntBeforeTokenSwap,resetTransientCombatState,_applyActiveCharacterChange,applyActiveCharacterChange	stopHuntBeforeTokenSwap,resetTransientCombatState,applyActiveCharacterChange
+6441	2048645-2048893	249	ChatScreen,onBack,onPlayerPress,onClanPress	world,region,children,chat,clan,header.worldTitle,header.regionFallback,lang,header.region
+6443	2053535-2053610	76	useKeyboardBottomPadding,useKeyboardBottomPaddingTs1Factory,useKeyboardBottomPaddingTs1	keyboard,bottomInset,paddingBottom,useKeyboardBottomPadding,code
+6446	2055980-2056210	231	_listCharacters,_createAlt,_switchCharacter,_moderateChat,listCharacters,createAlt,switchCharacter,moderateCha	name,targetId,listCharacters,createAlt,switchCharacter,moderateChat
+6451	2059825-2059884	60	CodexScreen	children
+6452	2059885-2059938	54	DevStageRoute	href
+6455	2061646-2061968	323	sprayParticles_stressProbeTs1Factory,sprayParticles,countAlive_stressProbeTs2Factory,countAlive	SPRAY_PER_FRAME,code,ANCHOR_STRIDE,A_BOX_H,A_FEET_DY,fxSpawn,sprayParticles
+6456	2061969-2062474	506	stressLayout,stressSceneScale,withHead,baseEntity,stressFxRecipes,stressViewport,buildStressScene	cls,skin,kind,anchor,hpMax,side,slot,spriteSet,feel
+6457	2062475-2063327	853	createRng,createSyntheticLog,between,side,pickAlive,pickHurt,next,push,damage,rebase,hpOf,aliveOf	kind,src,dst,flags,dstHp,NO_SYNTHETIC_FX,DEFAULT_SYNTHETIC_OPTIONS
+6459	2063485-2063546	62	EnchantmentScreen	wide,widthVariant,children
+6475	2088085-2088368	284	_submitFeedback,_listFeedback,_markFeedbackRead,_markFeedbackDeleted,submitFeedback,listFeedback,markFeedbackR	message,status,limit,offset,submitFeedback,listFeedback,markFeedbackRead,markFeedbackDelet
+6478	2090128-2092239	2112	defaultOf,eventField,eventExtra,isEntityIndex,hasFlag,initialReplayState,editEntity,withEffect,clearCombatStat	diedAt,debuffs,effects,blinded,staggerStacks,healing,maxHp,shield,alive,paralyzedUntil
+6479	2092240-2092934	695		WIPE,MUTUAL_WIPE,TIMEOUT_SURVIVORS,TIMEOUT_HP,TIMEOUT_DRAW,WALKOVER,HIT,BLOCK
+6480	2092935-2096058	3124	emptyMeta,speciesAux,push,flushPending,stageOf,stateField,decode,has,spellOf,fxOf,feed,carrier,emitSwing,emitC	kind,dst,src,flags,aux,species,feed,spellIcon,stackName
+6481	2096059-2097096	1038	visualOf,columnOf,placeCompanions,_loop,classOf,buildFinalBattleScene,addSet,push	side,scale,anchor,minion,entity,visual,spriteSet,cell
+6482	2097097-2097131	35		ACTIVE_FINAL_BATTLE_VARIANT
+6483	2097132-2097768	637	columnCenter,bgMetrics,arenaSlotFeet,companionWidth,rowWidth,arenaSceneScale,arenaCompanionLayout,byRole,arena	layout,background,sceneScale,outward,bgX,bgY,bgW,bgH
+6485	2097807-2099171	1365	finalBattleViewerSide,finalBattleLogOutcome,finalBattleReplayResult,useFinalBattleReplayDirector,hasScene,fini	current,entity,finished,type,reason,survivors,draw,verdict,walkInStarted,ENTITY_ANIM
+6486	2099172-2099920	749	finalBattleCompiledFor,countAlive,count,initFinalBattleChromeMode,withDebuff,withoutDebuff,reduceFinalBattleEv	debuffs,positions,spells,feed,nextId,compiled,entities,aliveCount,timeUp,outcome
+6497	2106313-2107062	750	useRankedLeaderboard	current,idle,loading,offset,animated,index,around-me,next
+6500	2109356-2109488	133	_getStatus,_spin,getStatus,spin	getStatus,spin
+6501	2109489-2109785	297	getDayInCycle,getCycleStart,isWheelEventActive,getWheelEventEndsAt,getNextWheelEvent,spinWheel	reward,weight,label,rarity,energy,gems,LUCKY_WHEEL_CONSTANTS
+6511	2113640-2113763	124	getOblivionEnergyBonusLevels,getOblivionEnergyCarry,getOblivionEnergyCarryBonus,getOblivionEnergyCarryBreakdow	current,kept,lost,bonus,bonusLevels,carried,ownCap,getOblivionEnergyBonusLevels,getOblivio
+6520	2126236-2126282	47	getAwakeningImage	getAwakeningImage,awakening/shadow.png,awakening/radiant.png
+6521	2126283-2126369	87	loadScreen	isPracticeStageEngine,PracticeStageScreen,PracticeSceneSwitch,isStageEngine,legacy,loadScr
+6522	2126370-2126420	51	setPracticeStageEngine,isPracticeStageEngine	practiceStageSession,setPracticeStageEngine,isPracticeStageEngine,runtime,scene,compiled
+6523	2126421-2126556	136	practiceStageEdges,PracticeStageScreen	children,paddingTop,paddingBottom,paddingLeft,paddingRight,practiceStageEdges,visible,tran
+6524	2126557-2126627	71	usePracticeFightSwitch,legacyPractice,loadDirector	usePracticeFightSwitch,practice,modeId,legacyHook,loadDirector,setStageEngine,session
+6525	2126628-2127220	593	practiceDuelPhase,usePracticeStageDirector,selectPhase,selectResult,setPhase,updateHp,sceneScale	current,lost,won,fighting,opponentId,opponentName,other,walking
+6526	2127221-2127304	84		PRACTICE_OPPONENT_ENTER_DX,PRACTICE_PLAYER_ENTER_DX,PRACTICE_WALK_IN_EASING,PRACTICE_WALK_
+6532	2135505-2135710	206	iconFor,sideColor	ELD,SIDE,ANCIENT,ICHOR_COLOR,ICHOR_BRIGHT,GEM_COLOR,GEM_BRIGHT
+6533	2135711-2136605	895	transcendencePresetLabel,useTranscendencePresets	info,success,transcendence:presets.unnamed,transcendencePresetLabel,transcendence,current,
+6534	2136606-2137033	428	_getInfo,_allocate,_remove,_reset,_buyPreset,_activatePreset,_updatePreset,_deletePreset,getInfo,allocate,remo	presetId,nodeId,getInfo,allocate,remove,reset,buyPreset,activatePreset,updatePreset
+6535	2137034-2137133	100	canLinkTranscendencePreset,resolveTranscendenceLink	canLinkTranscendencePreset,preset,index,idToSave,resolveTranscendenceLink
+6537	2138438-2138499	62	QuestsScreen	wide,widthVariant,children
+6539	2139695-2141335	1641	hasRarityAtLeast,hasArenaRankAtLeast,getQuestById,getQuestsByTrigger,isComplete	trigger,description,title,icon,gemReward,isComplete,UNLOCK_LEVEL
+6545	2148421-2148502	82	DiscordMark	width,height,viewBox,fill,children,DiscordMark
+6546	2148503-2148584	82	AppleMark	width,height,viewBox,fill,children,AppleMark
+6547	2148585-2148680	96	GoogleMark	fill,width,height,viewBox,children,GoogleMark
+6552	2157167-2157234	68	isShopItemVisible,filterVisibleShopItemIds	isShopItemVisible,filterVisibleShopItemIds
+6560	2169051-2169672	622	isFreshDelivery,_refreshIntents,refreshIntents,createIntentPoller,clear,schedule,tick,start,stop,reset,isActiv	undeliverable,expired,delivered,intentId,itemId,status,deferred
+6563	2169855-2170311	457	isItemReflected,usePurchaseRecovery,tick	BATTLE_PASS_PREMIUM,usePurchaseRecovery
+6564	2170312-2170373	62	SkillsScreen	wide,widthVariant,children
+6570	2176746-2176859	114	useSocialErrorText	error.generic,FRIEND_LIMIT,social,them,max,error.FRIEND_LIMIT_me,error.FRIEND_LIMIT_them,u
+6580	2179259-2179325	67	SocialBackdrop	colors,center,radiusX,radiusY,locations,SocialBackdrop
+6595	2186328-2186641	314	useSocialPage,start,stop	current,change,active,loading,failed,refresh,useSocialPage
+6599	2191160-2191319	160	TalentIconImpl	width,height,style,source,TalentIcon,left,top
+6602	2192940-2193039	100	getTalentImage	source,col,row,atlasWidth,atlasHeight,getTalentImage,mystic_druid,talent_atlas/mystic_drui
+6603	2193040-2193310	271	talentNameToFilename,talentAtlasKey,isAtlasName,talentAtlasName,talentArtPath,talentDefaultArtPath,resolveTale	SPEC_FOLDER,CLASS_FOLDER,talentNameToFilename,talentArtPath,talentDefaultArtPath,talentAtl
+6606	2196843-2196904	62	TranscendenceRoute	wide,widthVariant,children
+6608	2198418-2199653	1236	filterKeyFor,loadFilter,saveFilter,dropLegacyFilter,useTranscendence	info,allocate,locked,start,core,soon,avail-poor,avail
+6609	2199654-2199722	69	useActiveSpecialization	specialization,useActiveSpecialization
+6612	2202442-2202545	104	getTranscendenceNodeImage	defense,notable,attack,minor,common,uncommon,control,getTranscendenceNodeImage,attack_comm
+6614	2203793-2203961	169	isUrsineOnlyStat,formatStatValue	label,icon,bolt,star,drop,attackSpeedFlat,minionAttackSpeedFlat,dominionFlat,damageReducti
+6623	2209761-2209915	155		
+6624	2209916-2209975	60	Head	Head,Provider
+6626	2209993-2210434	442	isBaseObject,isErrorShaped,convertError,ownKeys,renderRootComponent	string,object,renderRootComponent
