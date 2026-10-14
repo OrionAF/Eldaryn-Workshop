@@ -1,36 +1,43 @@
 <script>
   import Sidebar from './components/Sidebar.svelte';
   import WelcomeScreen from './components/WelcomeScreen.svelte';
-  import PresetsScreen from './components/PresetsScreen.svelte';
-  import DropCheckScreen from './components/DropCheckScreen.svelte';
-  import GearLoadoutsScreen from './components/GearLoadoutsScreen.svelte';
-  import TalentSetsScreen from './components/TalentSetsScreen.svelte';
-  import PetsScreen from './components/PetsScreen.svelte';
-  import RelicsScreen from './components/RelicsScreen.svelte';
-  import SigilsScreen from './components/SigilsScreen.svelte';
-  import MountAndGlyphsScreen from './components/MountAndGlyphsScreen.svelte';
-  import AwakeningScreen from './components/AwakeningScreen.svelte';
-  import TranscendenceScreen from './components/TranscendenceScreen.svelte';
-  import SimulationsScreen from './components/SimulationsScreen.svelte';
+  import CharacterScreen from './components/screens/CharacterScreen.svelte';
+  import PresetsScreen from './components/screens/PresetsScreen.svelte';
+  import DropCheckScreen from './components/screens/DropCheckScreen.svelte';
+  import GearScreen from './components/screens/GearScreen.svelte';
+  import TalentsScreen from './components/screens/TalentsScreen.svelte';
+  import SigilsScreen from './components/screens/SigilsScreen.svelte';
+  import PetsScreen from './components/screens/PetsScreen.svelte';
+  import MountsScreen from './components/screens/MountsScreen.svelte';
+  import RelicsScreen from './components/screens/RelicsScreen.svelte';
+  import AwakeningScreen from './components/screens/AwakeningScreen.svelte';
+  import TranscendenceScreen from './components/screens/TranscendenceScreen.svelte';
+  import OptimiserScreen from './components/screens/OptimiserScreen.svelte';
+  import DuelScreen from './components/screens/DuelScreen.svelte';
+  import OblivionScreen from './components/screens/OblivionScreen.svelte';
+  import { isNavVisible } from './components/navVisibility.js';
   import { rosterStore } from './lib/rosterStore.svelte.js';
 
-  // Per-screen suffix for the banner subline - what's actually in scope on
-  // that screen, not a redundant restatement of the screen's own <h2> title.
+  // Placeholder screens carry no per-screen banner scope yet; screen owners add entries.
   const SCREEN_CONTEXT = {
-    presets: (c) => `${c.presets.length} preset${c.presets.length === 1 ? '' : 's'} · 2 loadouts · 2 talent sets`,
-    drop: (c) => `${c.presets.length} preset${c.presets.length === 1 ? '' : 's'} watching this drop`,
-    gear: () => '2 loadouts',
-    talents: () => '2 talent sets',
-    pets: (c) => `${c.pets.length} pet${c.pets.length === 1 ? '' : 's'}`,
-    relics: () => 'character-wide levels',
-    sigils: (c) => `${c.presets.length} preset${c.presets.length === 1 ? '' : 's'} · 3 slots each`,
-    simulations: (c) => {
-      const goals = new Set(c.presets.map((p) => p.goal?.kind).filter(Boolean));
-      return `${goals.size} goal tab${goals.size === 1 ? '' : 's'} · ${(c.runHistory || []).length} saved run${(c.runHistory || []).length === 1 ? '' : 's'}`;
-    },
-    mounts: () => 'character-wide',
-    awakening: () => 'character-wide',
-    transcendence: () => 'character-wide',
+    presets: (c) => `${c.presets.length} preset${c.presets.length === 1 ? '' : 's'}`,
+  };
+
+  const SCREENS = {
+    character: CharacterScreen,
+    presets: PresetsScreen,
+    drop: DropCheckScreen,
+    gear: GearScreen,
+    talents: TalentsScreen,
+    sigils: SigilsScreen,
+    pets: PetsScreen,
+    mounts: MountsScreen,
+    relics: RelicsScreen,
+    awakening: AwakeningScreen,
+    transcendence: TranscendenceScreen,
+    optimiser: OptimiserScreen,
+    duel: DuelScreen,
+    oblivion: OblivionScreen,
   };
 
   // View-only, not persisted.
@@ -107,28 +114,11 @@
           Choose a class for this character to get started — open ⇄ Change character in the rail,
           click the ✎ next to the character, and pick a class.
         </p>
-      {:else if activeScreen === 'presets'}
-        <PresetsScreen {setStatus} onNavigate={selectScreen} />
-      {:else if activeScreen === 'drop'}
-        <DropCheckScreen {setStatus} />
-      {:else if activeScreen === 'gear'}
-        <GearLoadoutsScreen />
-      {:else if activeScreen === 'talents'}
-        <TalentSetsScreen />
-      {:else if activeScreen === 'pets'}
-        <PetsScreen />
-      {:else if activeScreen === 'relics'}
-        <RelicsScreen />
-      {:else if activeScreen === 'sigils'}
-        <SigilsScreen />
-      {:else if activeScreen === 'simulations'}
-        <SimulationsScreen {setStatus} />
-      {:else if activeScreen === 'mounts'}
-        <MountAndGlyphsScreen />
-      {:else if activeScreen === 'awakening'}
-        <AwakeningScreen />
+      {:else if activeScreen === 'oblivion' && !isNavVisible('oblivion', character)}
+        <CharacterScreen />
       {:else}
-        <TranscendenceScreen />
+        {@const Screen = SCREENS[activeScreen] ?? PresetsScreen}
+        <Screen {setStatus} onNavigate={selectScreen} />
       {/if}
     </main>
   </div>
