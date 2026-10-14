@@ -1771,7 +1771,7 @@
   ]
  },
  "classicDungeons": {
-  "note": "hard variants derived server-side/by hardVariant L1062199; steps: 8 per dungeon; 3 mobs per step, step 8 = last three roster entries",
+  "note": "[CODE] module 3943 L1062171-1062963. Rosters L1062720-1062803; steps: buildSteps L1062441-1062526 (8 per dungeon, 3 mobs per step, step 8 = last three roster entries); mob: makeMob L1062373-1062439. hard: hardVariant L1062199-1062371, constants L1062804-1062836, hardCoinRewards L1062174-1062198, assembly L1062918-1062958",
   "dungeons": [
    {
     "id": "dungeon_1",
@@ -1798,31 +1798,41 @@
     ],
     "mobRoster": [
      {
+      "id": "mine_rat",
       "name": "Giant Rat",
+      "spriteKey": "giant_rat",
       "baseHp": 1000,
       "baseAtk": 60,
       "baseSpd": 1.3
      },
      {
+      "id": "mine_slime",
       "name": "Sewer Slime",
+      "spriteKey": "sewer_slime",
       "baseHp": 1400,
       "baseAtk": 80,
       "baseSpd": 1
      },
      {
+      "id": "mine_croc",
       "name": "Sewer Crocodile",
+      "spriteKey": "sewer_croc",
       "baseHp": 2000,
       "baseAtk": 100,
       "baseSpd": 0.8
      },
      {
+      "id": "mine_troll",
       "name": "Cave Troll",
+      "spriteKey": "cave_troll",
       "baseHp": 3000,
       "baseAtk": 130,
       "baseSpd": 0.5
      },
      {
+      "id": "mine_boss",
       "name": "Mine Wraith",
+      "spriteKey": "mine_wraith",
       "baseHp": 5000,
       "baseAtk": 110,
       "baseSpd": 0.7
@@ -1854,31 +1864,41 @@
     ],
     "mobRoster": [
      {
+      "id": "ruins_ghoul",
       "name": "Crypt Ghoul",
+      "spriteKey": "crypt_ghoul",
       "baseHp": 10100,
       "baseAtk": 430,
       "baseSpd": 1.2
      },
      {
+      "id": "ruins_skeleton",
       "name": "Skeleton",
+      "spriteKey": "skeleton",
       "baseHp": 14200,
       "baseAtk": 630,
       "baseSpd": 0.9
      },
      {
+      "id": "ruins_wolf",
       "name": "Dire Wolf",
+      "spriteKey": "dire_wolf",
       "baseHp": 16600,
       "baseAtk": 860,
       "baseSpd": 0.7
      },
      {
+      "id": "ruins_golem",
       "name": "Stone Golem",
+      "spriteKey": "stone_golem",
       "baseHp": 22300,
       "baseAtk": 1020,
       "baseSpd": 0.6
      },
      {
+      "id": "ruins_boss",
       "name": "Ruin Drake",
+      "spriteKey": "ruin_drake",
       "baseHp": 28000,
       "baseAtk": 1600,
       "baseSpd": 0.8
@@ -1910,34 +1930,54 @@
     ],
     "mobRoster": [
      {
+      "id": "cata_skeleton",
       "name": "Frost Skeleton",
+      "spriteKey": "frost_skeleton",
       "baseHp": 53200,
       "baseAtk": 4620,
-      "baseSpd": 1
+      "baseSpd": 1,
+      "blockChance": 5,
+      "penetration": 6
      },
      {
+      "id": "cata_witch",
       "name": "Ice Witch",
+      "spriteKey": "ice_witch",
       "baseHp": 80200,
       "baseAtk": 3400,
-      "baseSpd": 1.1
+      "baseSpd": 1.1,
+      "blockChance": 5,
+      "penetration": 6
      },
      {
+      "id": "cata_revenant",
       "name": "Frozen Revenant",
+      "spriteKey": "frozen_revenant",
       "baseHp": 102000,
       "baseAtk": 5600,
-      "baseSpd": 0.8
+      "baseSpd": 0.8,
+      "blockChance": 5,
+      "penetration": 6
      },
      {
+      "id": "cata_beast",
       "name": "Glacial Beast",
+      "spriteKey": "glacial_beast",
       "baseHp": 164000,
       "baseAtk": 7800,
-      "baseSpd": 0.5
+      "baseSpd": 0.5,
+      "blockChance": 5,
+      "penetration": 6
      },
      {
+      "id": "cata_boss",
       "name": "Ice Lich",
+      "spriteKey": "ice_lich",
       "baseHp": 204000,
       "baseAtk": 12300,
-      "baseSpd": 0.8
+      "baseSpd": 0.8,
+      "blockChance": 5,
+      "penetration": 8
      }
     ]
    },
@@ -1966,34 +2006,54 @@
     ],
     "mobRoster": [
      {
+      "id": "temple_drake",
       "name": "Fire Drake",
+      "spriteKey": "fire_drake",
       "baseHp": 480000,
       "baseAtk": 32000,
-      "baseSpd": 1.1
+      "baseSpd": 1.1,
+      "blockChance": 10,
+      "penetration": 10
      },
      {
+      "id": "temple_demon",
       "name": "Infernal Demon",
+      "spriteKey": "infernal_demon",
       "baseHp": 680000,
       "baseAtk": 42000,
-      "baseSpd": 0.9
+      "baseSpd": 0.9,
+      "blockChance": 10,
+      "penetration": 10
      },
      {
+      "id": "temple_sentinel",
       "name": "Obsidian Sentinel",
+      "spriteKey": "obsidian_sentinel",
       "baseHp": 900000,
       "baseAtk": 30000,
-      "baseSpd": 0.6
+      "baseSpd": 0.6,
+      "blockChance": 10,
+      "penetration": 10
      },
      {
+      "id": "temple_colossus",
       "name": "Iron Colossus",
+      "spriteKey": "iron_colossus",
       "baseHp": 1100000,
       "baseAtk": 50000,
-      "baseSpd": 0.4
+      "baseSpd": 0.4,
+      "blockChance": 10,
+      "penetration": 10
      },
      {
+      "id": "temple_boss",
       "name": "Elder Dragon",
+      "spriteKey": "elder_dragon",
       "baseHp": 1400000,
       "baseAtk": 63000,
-      "baseSpd": 0.7
+      "baseSpd": 0.7,
+      "blockChance": 10,
+      "penetration": 12
      }
     ]
    },
@@ -2022,40 +2082,64 @@
     ],
     "mobRoster": [
      {
+      "id": "rift_stalker",
       "name": "Abyss Stalker",
+      "spriteKey": "abyss_stalker",
       "baseHp": 6000000,
       "baseAtk": 240000,
-      "baseSpd": 1.1
+      "baseSpd": 1.1,
+      "blockChance": 15,
+      "penetration": 32
      },
      {
+      "id": "rift_wraith",
       "name": "Rift Wraith",
+      "spriteKey": "chrono_wraith",
       "baseHp": 7000000,
       "baseAtk": 340000,
-      "baseSpd": 0.9
+      "baseSpd": 0.9,
+      "blockChance": 15,
+      "penetration": 32
      },
      {
+      "id": "rift_challenger",
       "name": "Rift Challenger",
+      "spriteKey": "rift_challenger",
       "baseHp": 8500000,
       "baseAtk": 280000,
-      "baseSpd": 0.6
+      "baseSpd": 0.6,
+      "blockChance": 15,
+      "penetration": 32
      },
      {
+      "id": "rift_devourer",
       "name": "Void Devourer",
+      "spriteKey": "void_devourer",
       "baseHp": 10500000,
       "baseAtk": 400000,
-      "baseSpd": 0.4
+      "baseSpd": 0.4,
+      "blockChance": 15,
+      "penetration": 32
      },
      {
+      "id": "rift_warden",
       "name": "Crystal Warden",
+      "spriteKey": "crystal_warden",
       "baseHp": 13000000,
       "baseAtk": 320000,
-      "baseSpd": 0.5
+      "baseSpd": 0.5,
+      "blockChance": 15,
+      "penetration": 32
      },
      {
+      "id": "rift_boss",
       "name": "Zar'keth",
+      "spriteKey": "zarketh",
       "baseHp": 19000000,
       "baseAtk": 700000,
-      "baseSpd": 0.7
+      "baseSpd": 0.7,
+      "blockChance": 15,
+      "penetration": 32
      }
     ]
    },
@@ -2084,40 +2168,64 @@
     ],
     "mobRoster": [
      {
+      "id": "divine_warden",
       "name": "Sanctum Warden",
+      "spriteKey": "sanctum_warden",
       "baseHp": 28600000,
       "baseAtk": 231000,
-      "baseSpd": 0.7
+      "baseSpd": 0.7,
+      "blockChance": 18,
+      "penetration": 40
      },
      {
+      "id": "divine_stalker",
       "name": "Halo Stalker",
+      "spriteKey": "halo_stalker",
       "baseHp": 36400000,
       "baseAtk": 275000,
-      "baseSpd": 1.3
+      "baseSpd": 1.3,
+      "blockChance": 18,
+      "penetration": 40
      },
      {
+      "id": "divine_seer",
       "name": "Radiant Seer",
+      "spriteKey": "radiant_seer",
       "baseHp": 45500000,
       "baseAtk": 248000,
-      "baseSpd": 1
+      "baseSpd": 1,
+      "blockChance": 18,
+      "penetration": 40
      },
      {
+      "id": "divine_archon",
       "name": "Crystal Archon",
+      "spriteKey": "crystal_archon",
       "baseHp": 57200000,
       "baseAtk": 311000,
-      "baseSpd": 0.9
+      "baseSpd": 0.9,
+      "blockChance": 18,
+      "penetration": 40
      },
      {
+      "id": "divine_devourer",
       "name": "Seraphic Devourer",
+      "spriteKey": "seraphic_devourer",
       "baseHp": 71500000,
       "baseAtk": 337000,
-      "baseSpd": 0.6
+      "baseSpd": 0.6,
+      "blockChance": 18,
+      "penetration": 40
      },
      {
+      "id": "divine_boss",
       "name": "Empyrean Gatekeeper",
+      "spriteKey": "empyrean_gatekeeper",
       "baseHp": 97500000,
       "baseAtk": 578000,
-      "baseSpd": 0.9
+      "baseSpd": 0.9,
+      "blockChance": 18,
+      "penetration": 44
      }
     ]
    },
@@ -2146,44 +2254,159 @@
     ],
     "mobRoster": [
      {
+      "id": "chrono_wraith",
       "name": "Chrono Wraith",
+      "spriteKey": "chrono_wraith",
       "baseHp": 52000000,
       "baseAtk": 358000,
-      "baseSpd": 1.5
+      "baseSpd": 1.5,
+      "blockChance": 20,
+      "penetration": 48
      },
      {
+      "id": "chrono_harbinger",
       "name": "Paradox Harbinger",
+      "spriteKey": "paradox_harbringer",
       "baseHp": 65000000,
       "baseAtk": 413000,
-      "baseSpd": 1.35
+      "baseSpd": 1.35,
+      "blockChance": 20,
+      "penetration": 48
      },
      {
+      "id": "chrono_sear",
       "name": "Fractured Sear",
+      "spriteKey": "fractured_sear",
       "baseHp": 80600000,
       "baseAtk": 495000,
-      "baseSpd": 1
+      "baseSpd": 1,
+      "blockChance": 20,
+      "penetration": 48
      },
      {
+      "id": "chrono_sentinel",
       "name": "Timeworn Sentinel",
+      "spriteKey": "timeworn_sentinel",
       "baseHp": 123500000,
       "baseAtk": 715000,
-      "baseSpd": 0.5
+      "baseSpd": 0.5,
+      "blockChance": 20,
+      "penetration": 48
      },
      {
+      "id": "chrono_colossus",
       "name": "Eonbound Colossus",
+      "spriteKey": "eonbound_colossus",
       "baseHp": 156000000,
       "baseAtk": 853000,
-      "baseSpd": 0.4
+      "baseSpd": 0.4,
+      "blockChance": 20,
+      "penetration": 48
      },
      {
+      "id": "chrono_boss",
       "name": "Kairon, the Timeless",
+      "spriteKey": "kairon",
       "baseHp": 208000000,
       "baseAtk": 660000,
-      "baseSpd": 0.85
+      "baseSpd": 0.85,
+      "blockChance": 20,
+      "penetration": 52
      }
     ]
    }
-  ]
+  ],
+  "hard": {
+   "note": "[CODE] hardVariant constants. configs and share are indexed by the normal dungeon's index (share missing = {hp:1, atk:1}); stepMultipliers replace the normal ladder; the boss's baseAtk is capped at bossAtkCapMult * max baseAtk of the two roster entries before it; speedMult multiplies baseSpd and divides attack; the boss gets penetration + bossPenetrationBonus; coins = coinBase + coinStep * (8 * dungeonIndex + stepIndex)",
+   "configs": [
+    {
+     "hpScale": 216000,
+     "atkScale": 63000,
+     "blockChance": 20,
+     "penetration": 50,
+     "damageReduction": 0
+    },
+    {
+     "hpScale": 46500,
+     "atkScale": 17800,
+     "blockChance": 21,
+     "penetration": 52,
+     "damageReduction": 0
+    },
+    {
+     "hpScale": 16100,
+     "atkScale": 4670,
+     "blockChance": 22,
+     "penetration": 54,
+     "damageReduction": 30
+    },
+    {
+     "hpScale": 3690,
+     "atkScale": 1320,
+     "blockChance": 23,
+     "penetration": 56,
+     "damageReduction": 30
+    },
+    {
+     "hpScale": 707,
+     "atkScale": 325,
+     "blockChance": 24,
+     "penetration": 58,
+     "damageReduction": 30
+    },
+    {
+     "hpScale": 275,
+     "atkScale": 625,
+     "blockChance": 25,
+     "penetration": 60,
+     "damageReduction": 30
+    },
+    {
+     "hpScale": 308,
+     "atkScale": 604,
+     "blockChance": 26,
+     "penetration": 62,
+     "damageReduction": 30
+    }
+   ],
+   "stepMultipliers": [
+    1,
+    1.09,
+    1.19,
+    1.3,
+    1.42,
+    1.55,
+    1.69,
+    2.05
+   ],
+   "bossAtkCapMult": 1.05,
+   "speedMult": 1.25,
+   "bossPenetrationBonus": 4,
+   "share": [
+    {
+     "hp": 0.5,
+     "atk": 0.85
+    },
+    {
+     "hp": 0.5,
+     "atk": 0.85
+    },
+    {
+     "hp": 0.5,
+     "atk": 0.55
+    },
+    {
+     "hp": 1,
+     "atk": 0.55
+    },
+    {
+     "hp": 1,
+     "atk": 0.65
+    }
+   ],
+   "coinBase": 3010,
+   "coinStep": 10
+  }
  },
  "progressChapters": [
   {
