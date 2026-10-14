@@ -27,7 +27,7 @@ import { chapterMobs, dungeonMobs, oblivionFloorMob } from '../engine/pve/enemie
 
 /** Secondary types the pipeline sums (totals.js SECONDARY_ACC) that have no stats.json computedKey. */
 const EXTRA_KEYS = { FEAR_CHANCE: 'fearChance' };
-/** Gear PVP ratings are ignored by the client's equipment switch (totals.js), so they never move a total. */
+/** Gear PVP ratings are ignored by the client's equipment switch (the client totals), so they never move a total. */
 const INERT = new Set(['PVP_ATTACK', 'PVP_DEFENSE']);
 const CONDUIT_KEY = { FLAME: 'totalFlameConduit', EARTHEN: 'totalEarthenConduit', DARK: 'totalDarkConduit' };
 

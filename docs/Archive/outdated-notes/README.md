@@ -23,6 +23,9 @@ trail runs both directions.
 | `comment-to-docs-migration.md` | 2026-10-14 | finished work; the rule it enforced lives in `docs/README.md` |
 | `open-questions-2026-07-28.md` | 2026-10-14 | `Reference/Game/stats.md` (Q1) and `combat-pve.md`. Q2's answer, that Attack % buffs add into the % total, is refuted by the client: they multiply final Attack |
 | `0001-defer-pvp-combat-modeling.md` | 2026-07-28 | `Reference/combat-model.md` — the defensive/PVP stats it deferred now drive the duel engine, both goal objectives and the gauntlet |
+| `goals-linking-redesign-notes.md` | 2026-10-14 | the rebuilt optimiser/search (`src/lib/search/`). Presets no longer carry goals, weights or linking; Simulations is gone |
+| `relic-suggester-design.md` | 2026-10-14 | the rebuilt optimiser/search (`src/lib/search/`): relics are a search-space toggle, not a separate suggester |
+| `socketed-stones-design.md` | 2026-10-14 | `Reference/Game/stones.md` and the Gear screen (stones are enchant stones with amplification, per the client) |
 | `LOST-2026-07-09-pvp-build-optimizer-design.md` | 2026-07-28 | the shipped implementation (`pvpOptimizer.js`, `optimizerObjectives.js`, `PvpScreen.svelte`) — placeholder only, the document was destroyed |
 | `LOST-design_handoff_preset_redesign.md` | 2026-07-28 | `model.js`'s header + `Reference/Notes/goals-linking-redesign-notes.md` — placeholder only, the bundle was destroyed |
 

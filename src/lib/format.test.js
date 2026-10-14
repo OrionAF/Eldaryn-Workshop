@@ -35,17 +35,17 @@ it('parsePct also accepts "," as a decimal point, instead of silently dropping i
 
 // --- parseStat dispatches by field kind ---
 it('parseStat parses flats and percentages by key', () => {
-  expect(parseStat('attack', '2.664')).toBe(2664); // flat
-  expect(parseStat('health', '15.654')).toBe(15654); // flat
-  expect(parseStat('attack_pct', '6.2')).toBe(6.2); // pct
-  expect(parseStat('crit', '5.0')).toBe(5.0); // pct
+  expect(parseStat('totalAttack', '2.664')).toBe(2664); // flat
+  expect(parseStat('totalHp', '15.654')).toBe(15654); // flat
+  expect(parseStat('totalCritChance', '6.2')).toBe(6.2); // pct
+  expect(parseStat('totalCritChance', '5.0')).toBe(5.0); // pct
 });
 
 // --- new defensive/PVP fields (added ahead of a future PVP phase) ---
-it('parseStat treats pvp_attack/pvp_defense as flat, block_chance as pct', () => {
-  expect(parseStat('pvp_attack', '1.500')).toBe(1500); // flat, "." thousands
-  expect(parseStat('pvp_defense', '283')).toBe(283); // flat
-  expect(parseStat('block_chance', '4.5')).toBe(4.5); // pct
+it('parseStat treats pvp attack/defense as flat, block chance as pct', () => {
+  expect(parseStat('totalPvpAttack', '1.500')).toBe(1500); // flat, "." thousands
+  expect(parseStat('totalPvpDefense', '283')).toBe(283); // flat
+  expect(parseStat('totalBlockChance', '4.5')).toBe(4.5); // pct
 });
 
 // --- formatting mirrors parsing (round-trip) ---
@@ -72,4 +72,13 @@ it('treats integer sheet rows as flat and percent/multiplier rows as decimals', 
   expect(parseStat('totalCritChance', '6.2')).toBe(6.2);
   expect(formatStat('totalHp', 15654)).toBe('15.654');
   expect(formatStat('totalHealthPercent', 12.5)).toBe('12.5');
+});
+
+import { rarityClass, RARITY_ORDER } from './format.js';
+
+it('rarityClass maps every tier to its app.css class and unknown names to rarity-unknown', () => {
+  expect(RARITY_ORDER[0]).toBe('Common');
+  expect(rarityClass('Legendary')).toBe('rarity-legendary');
+  expect(rarityClass('Oblivion')).toBe('rarity-oblivion');
+  expect(rarityClass('nope')).toBe('rarity-unknown');
 });

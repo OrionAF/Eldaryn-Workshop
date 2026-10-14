@@ -7,20 +7,16 @@
  *   pct:  "6.2"   -> 6.2
  *
  * Parsing per field is chosen by the key's kind: a stat-sheet key is flat when its row kind is
- * 'integer' (engine/pipeline/sheet.js); the pre-rebuild secondary-stat names below stay flat too,
- * for the components that still use them. Flats are integers; percentages are decimals.
+ * 'integer' (engine/pipeline/sheet.js). Flats are integers; percentages are decimals.
  * Sheet text entry (with the Attack Speed / Crit Damage multiplier handling) is parseSheetInput.
  */
 
 import { sheetKeyMeta } from './engine/pipeline/sheet.js';
 
-// Non-sheet keys that hold flat values (SecondaryStatType-style names used by older components).
-const EXTRA_FLAT_KEYS = new Set(['attack', 'health', 'pvp_attack', 'pvp_defense']);
-
 /** Does this key hold a flat (thousands-separated) value rather than a percentage? */
 export function isFlatKey(key) {
   const meta = sheetKeyMeta(key);
-  return meta ? meta.kind === 'integer' : EXTRA_FLAT_KEYS.has(key);
+  return meta ? meta.kind === 'integer' : false;
 }
 
 /**
@@ -81,25 +77,6 @@ export function formatStat(key, value) {
   return isFlatKey(key) ? formatFlat(value) : formatPct(value);
 }
 
-/** Short labels for summarizeStats() - keeps a stat-roll summary chip to one line. Falls back to the field's full label if a key isn't listed here. */
-const SHORT_STAT_LABELS = {
-  attack: 'ATK',
-  attack_pct: 'ATK',
-  health: 'HP',
-  health_pct: 'HP',
-  speed: 'speed',
-  crit: 'crit',
-  crit_mult: 'crit mult',
-  double_hit: 'double hit',
-  lifesteal: 'lifesteal',
-  hp_regen: 'HP regen',
-};
-
-/**
- * "1.200 ATK · +4% ATK · 1.5% crit" - a compact, capped summary of a stats
- * object's non-zero fields (in `fields` order), for one-line display in a
- * chip/summary row (Pets). `max` caps how many bits are shown.
- */
 /**
  * Where a slider's value sits on its own range, as a 0-100 percentage.
  * Drives the gold fill on `.slider` (see Slider.svelte / app.css). A zero-width
@@ -114,14 +91,10 @@ export function fillPct(value, min, max) {
   return Math.max(0, Math.min(100, ((v - lo) / (hi - lo)) * 100));
 }
 
-export function summarizeStats(stats, fields, max = 3) {
-  const bits = fields
-    .filter((f) => (stats[f.key] || 0) !== 0)
-    .map((f) => {
-      const label = SHORT_STAT_LABELS[f.key] || f.label;
-      const value = formatStat(f.key, stats[f.key]);
-      return f.kind === 'pct' ? `+${value}% ${label}` : `${value} ${label}`;
-    })
-    .slice(0, max);
-  return bits.length ? bits.join(' · ') : 'no stats yet';
+/** Display order of the rarity names (lowest first) shared by pets, sigils and mounts. */
+export const RARITY_ORDER = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Ancient', 'Divine', 'Eternal', 'Oblivion'];
+
+/** The app.css class that rebinds the --rarity-* tokens for a tier name; 'rarity-unknown' otherwise. */
+export function rarityClass(rarity) {
+  return RARITY_ORDER.includes(rarity) ? `rarity-${rarity.toLowerCase()}` : 'rarity-unknown';
 }

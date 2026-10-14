@@ -89,9 +89,6 @@ export function createCharactersStore(ctx) {
     downloadRoster(ctx.roster());
   }
 
-  /** Deprecated no-op: linking simulations are gone in v2. SettingsPanel.svelte still calls it (X1 removes the button). */
-  function resetLinkingSim() {}
-
   return {
     addCharacter,
     renameCharacter,
@@ -103,6 +100,5 @@ export function createCharactersStore(ctx) {
     setOblivionUnlocked,
     importFromJson,
     exportDownload,
-    resetLinkingSim,
   };
 }

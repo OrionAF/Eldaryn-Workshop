@@ -70,8 +70,7 @@ because it read as authoritative.
 | Document | Owns |
 |---|---|
 | `Reference/Game/*.md` | Every game fact: stats, caps, combat (PVE and PVP), gear, drops and every progression system, read from the 2.7.0 client. Index: `Reference/Game/README.md` |
-| `Reference/data-model.md` | The app's persisted shape, the three scopes, normalisation, totals aggregation |
-| `Reference/Notes/goals-linking-redesign-notes.md` | The app's goals, linking and Simulations page (a decision record from before 2.7.0) |
+| `Reference/data-model.md` | The app's persisted v2 shape, the three scopes, normalisation layout, v1 migration contract, storage keys, the sheet tiers |
 
 ## Layout
 
