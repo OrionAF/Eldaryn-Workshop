@@ -11,6 +11,9 @@
  * processed) - the client then still receives a normal 'done' whose result
  * carries `aborted: true`.
  *
+ * Modes 'duel' / 'dropCheck' / 'oblivionFloors' (and 'optimize' with v2: true) are dispatched
+ * through tasks/index.js instead.
+ *
  * Messages out: { type: 'progress', progress }  onProgress passthrough
  *               { type: 'done', result }        optimize() result
  *               { type: 'error', message }      search threw
@@ -19,6 +22,7 @@
 import { optimize, simulateCandidate } from './optimizer.js';
 import { suggestRelics } from './relicSuggester.js';
 import { objectivesFromSpec, specIsSampled } from './optimizerObjectives.js';
+import { isTaskRequest, runTask } from './tasks/index.js';
 
 const controller = new AbortController();
 
@@ -29,6 +33,15 @@ self.onmessage = async (e) => {
     return;
   }
   try {
+    if (isTaskRequest(msg)) {
+      // Registry tasks (tasks/index.js): cancel resolves with best-so-far, aborted: true.
+      const result = await runTask(msg.mode, msg, {
+        signal: controller.signal,
+        onProgress: (progress) => self.postMessage({ type: 'progress', progress }),
+      });
+      self.postMessage({ type: 'done', result });
+      return;
+    }
     const shared = {
       character: msg.character,
       preset: msg.preset,
