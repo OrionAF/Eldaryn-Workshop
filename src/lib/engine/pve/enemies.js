@@ -5,6 +5,7 @@ import {
   PVE_HARD_CHAPTERS, pveChapter, pveHardChapter,
 } from '../../game/combatPve.js';
 import { OBLIVION_FLOORS, classicDungeon } from '../../game/pveContent.js';
+import { raidById } from '../../game/fortress.js';
 import {
   WORLD_BOSS_AFFINITIES, WORLD_BOSS_AFFINITY_CYCLE, WORLD_BOSS_SEASON, WORLD_BOSSES,
   WORLD_BOSS_CONSTANTS,
@@ -132,6 +133,36 @@ export function dungeonSteps(id) {
 }
 
 export const dungeonMobs = (id, step) => dungeonSteps(id)?.[step - 1]?.mobs ?? null;
+
+// port of buildBanditVillageSteps L1064959 and its four siblings (L1065048, L1065136, L1065224, L1065312);
+// mob scaling port of makeRaidMob L1064597-1064623. Facts: clan-fortress.md §5.
+/**
+ * Village raid steps (8 per raid, 5 mobs each). Roster index for steps 1-7 is (i*k + j) % 5 with i = step-1,
+ * j = 0..4 and k the raid's rotationK; step 8 is roster [1..5] (the boss, index 5, always appears).
+ * Mob hp/attack are round(base * stepMultiplier); attack speed is unscaled.
+ * @param {string} id e.g. 'raid_1'
+ * @returns {Array<{step:number, multiplier:number, mobs:MobSpec[]}>|null}
+ */
+export function raidSteps(id) {
+  const raid = raidById(id);
+  if (!raid) return null;
+  const k = raid.source.rotationK;
+  return raid.stepMultipliers.map((mult, i) => {
+    const idxs = i === raid.stepMultipliers.length - 1
+      ? [1, 2, 3, 4, 5]
+      : [0, 1, 2, 3, 4].map((j) => (i * k + j) % 5);
+    const mobs = idxs.map((ix) => {
+      const r = raid.roster[ix];
+      return toMobSpec({
+        id: r.id, name: r.name,
+        hp: Math.round(r.baseHp * mult), attack: Math.round(r.baseAtk * mult), attackSpeed: r.baseSpd,
+      });
+    });
+    return { step: i + 1, multiplier: mult, mobs };
+  });
+}
+
+export const raidMobs = (id, step) => raidSteps(id)?.[step - 1]?.mobs ?? null;
 
 // Oblivion dungeon constants: pve-content.md (Oblivion Dungeon).
 const OBLIVION_ATTACK_SPEED = 1;

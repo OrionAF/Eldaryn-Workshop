@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
-  makeMob, chapterMobs, chapterLevels, hardInfluence, hardChapterVariant, dungeonSteps, dungeonMobs,
+  makeMob, chapterMobs, chapterLevels, hardInfluence, hardChapterVariant, dungeonSteps, dungeonMobs, raidSteps, raidMobs,
   oblivionFloorMob, oblivionInstability, oblivionEffectiveInstability, worldBossMob,
   worldBossAffinityForCycle, worldBossAffinityAt, isWorldBossActive, CHAPTER_COUNT,
 } from './enemies.js';
 import { PVE_CHAPTERS, PVE_HARD_CHAPTERS, PVE_HARD_LEVEL_MULTIPLIERS } from '../../game/combatPve.js';
+import { RAIDS } from '../../game/fortress.js';
 import { OBLIVION_FLOORS } from '../../game/pveContent.js';
 import { createMobEntity } from '../core/entity.js';
 
@@ -105,5 +106,44 @@ describe('world boss', () => {
     expect([e.attackSpeed, e.fightDurationMs, e.affinity.lethal]).toEqual([1, 300000, true]);
     expect(worldBossMob('x')).toBeNull();
     expect(createMobEntity(f).blockChance).toBe(80);
+  });
+});
+
+describe('village raids', () => {
+  it('raid_1 step 1: roster [0..4] x 1.8 (buildBanditVillageSteps L1064959, makeRaidMob L1064597)', () => {
+    const m = raidMobs('raid_1', 1);
+    expect(m.map((x) => x.name)).toEqual(['Villager', 'Militia', 'Bowman', 'Healer', 'Guard Captain']);
+    expect(m.map((x) => x.hp)).toEqual([4500, 6300, 3600, 3960, 9000]);
+    expect(m.map((x) => x.attack)).toEqual([126, 162, 198, 144, 234]);
+    expect(m.map((x) => x.attackSpeed)).toEqual([0.8, 0.7, 1.1, 0.6, 0.5]);
+  });
+  it('raid_1 step 8 uses roster [1..5] x 3.9 so the Village Elder appears', () => {
+    const m = raidMobs('raid_1', 8);
+    expect(m.map((x) => x.id)).toEqual(['militia', 'bowman', 'healer', 'guard_captain', 'village_elder']);
+    expect(m.map((x) => x.hp)).toEqual([13650, 7800, 8580, 19500, 27300]);
+    expect(m[4].attack).toBe(624);
+  });
+  it('raid_2 rotates by k=2 (step 2 starts at index 2) with the x5.8 multiplier', () => {
+    const m = raidSteps('raid_2')[1];
+    expect(m.multiplier).toBe(5.8);
+    expect(m.mobs).toHaveLength(5);
+    expect(m.mobs[0].hp).toBe(Math.round(RAIDS[1].roster[2].baseHp * 5.8));
+  });
+  it('rebuilds every step of every raid exactly as the extracted table lists it', () => {
+    expect(RAIDS).toHaveLength(5);
+    for (const raid of RAIDS) {
+      const steps = raidSteps(raid.id);
+      expect(steps).toHaveLength(8);
+      for (const st of steps) {
+        const want = raid.steps[st.step - 1];
+        expect(st.mobs.map((x) => x.id)).toEqual(want.mobIds);
+        expect(st.mobs.map((x) => x.hp)).toEqual(want.mobHp);
+        expect(st.mobs.map((x) => x.attack)).toEqual(want.mobAttack);
+      }
+    }
+  });
+  it('unknown raid or step is null', () => {
+    expect(raidSteps('nope')).toBeNull();
+    expect(raidMobs('raid_1', 9)).toBeNull();
   });
 });

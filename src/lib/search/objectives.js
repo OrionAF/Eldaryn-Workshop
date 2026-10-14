@@ -4,6 +4,7 @@
 //   {kind: 'dummy', seconds?: 60}                     dps only
 //   {kind: 'chapter', chapter: 1..22, level: 1..10}   chapters above 11 are the hard ones (enemies.js)
 //   {kind: 'dungeon', id: 'dungeon_1', step: 1..8}    classic dungeon step, 3 mobs
+//   {kind: 'raid', id: 'raid_1', step: 1..8}          village raid step, 5 mobs
 //   {kind: 'oblivion', floor: n}                      forces the Oblivion realm; power comes from the fighter
 //   {kind: 'worldBoss', affinity?: 'NONE'|'FORTIFIED'|'ENRAGED'}
 //   {kind: 'custom', mob: MobSpec, seconds?: 60}      a user-entered mob
@@ -19,7 +20,8 @@
 import { mulberry32, hashSeed } from '../engine/rng.js';
 import { dpsVsDummy, ttkVs, survival, meanCI, stableStringify, wilson } from '../engine/metrics.js';
 import { preparePveFighter, simulatePve, trainingDummy, FIGHT_CAP_MS } from '../engine/pve/fight.js';
-import { chapterMobs, dungeonMobs, oblivionFloorMob, worldBossMob } from '../engine/pve/enemies.js';
+import { chapterMobs, dungeonMobs, raidMobs, oblivionFloorMob, worldBossMob } from '../engine/pve/enemies.js';
+import { raidById } from '../game/fortress.js';
 import { WORLD_BOSS_AFFINITIES } from '../game/worldBoss.js';
 import { formatFlat } from '../format.js';
 import { resolvePvpTarget, makePvpObjective, PVP_TARGET_KIND, PVP_OBJECTIVE_KIND } from './pvpObjective.js';
@@ -27,12 +29,13 @@ import { resolvePvpTarget, makePvpObjective, PVP_TARGET_KIND, PVP_OBJECTIVE_KIND
 // The PVE kinds. The PVP pair (F5) is kept apart: it is only valid together and needs the character's
 // opponents, so the PVE lists (and anything iterating them) stay as they were.
 export const OBJECTIVE_KINDS = ['dps', 'ttk-median', 'ttk-p90', 'survival'];
-export const TARGET_KINDS = ['dummy', 'chapter', 'dungeon', 'oblivion', 'worldBoss', 'custom'];
+export const TARGET_KINDS = ['dummy', 'chapter', 'dungeon', 'raid', 'oblivion', 'worldBoss', 'custom'];
 
 const COMPAT = {
   dummy: ['dps'],
   chapter: ['ttk-median', 'ttk-p90', 'survival'],
   dungeon: ['ttk-median', 'ttk-p90', 'survival'],
+  raid: ['ttk-median', 'ttk-p90', 'survival'],
   oblivion: ['ttk-median', 'ttk-p90', 'survival'],
   worldBoss: ['dps', 'survival'],
   custom: ['dps', 'ttk-median', 'ttk-p90', 'survival'],
@@ -74,6 +77,12 @@ export function resolveTarget(raw = { kind: 'dummy' }, { character } = {}) {
     t.spec = { kind, id: raw.id, step: raw.step };
     t.enemy = mobs;
     t.label = `Dungeon ${raw.id}, step ${raw.step}`;
+  } else if (kind === 'raid') {
+    const mobs = posInt(raw.step) ? raidMobs(raw.id, raw.step) : null;
+    if (!mobs) throw new Error(`village raid '${raw.id}' step ${raw.step} does not exist`);
+    t.spec = { kind, id: raw.id, step: raw.step };
+    t.enemy = mobs;
+    t.label = `Village raid ${raidById(raw.id).name}, step ${raw.step}`;
   } else if (kind === 'oblivion') {
     const mob = posInt(raw.floor) ? oblivionFloorMob(raw.floor) : null;
     if (!mob) throw new Error(`Oblivion floor ${raw.floor} does not exist`);
