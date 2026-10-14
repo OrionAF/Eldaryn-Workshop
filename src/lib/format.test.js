@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { parseFlat, parsePct, parseStat, formatFlat, formatPct } from './format.js';
+import { parseFlat, parsePct, parseStat, formatFlat, formatPct, formatStat, isFlatKey } from './format.js';
 
 // --- parseFlat: "." is a thousands separator (handoff 9) ---
 it('parseFlat treats "." as a thousands separator', () => {
@@ -59,4 +59,17 @@ it('formatPct trims trailing zeros', () => {
   expect(formatPct(6.2)).toBe('6.2');
   expect(formatPct(5.0)).toBe('5');
   expect(formatPct(34.3)).toBe('34.3');
+});
+
+// --- keys are the sheet's computedKey names (rebuild-plan C1b) ---
+it('treats integer sheet rows as flat and percent/multiplier rows as decimals', () => {
+  expect(isFlatKey('totalAttack')).toBe(true);
+  expect(isFlatKey('totalHp')).toBe(true);
+  expect(isFlatKey('totalFlameConduit')).toBe(true);
+  expect(isFlatKey('totalCritChance')).toBe(false);
+  expect(isFlatKey('totalAttackPercent')).toBe(false);
+  expect(parseStat('totalAttack', '48.124')).toBe(48124);
+  expect(parseStat('totalCritChance', '6.2')).toBe(6.2);
+  expect(formatStat('totalHp', 15654)).toBe('15.654');
+  expect(formatStat('totalHealthPercent', 12.5)).toBe('12.5');
 });
