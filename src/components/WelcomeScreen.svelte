@@ -8,7 +8,9 @@
    * to the sidebar's edit panel required.
    */
   import { rosterStore } from '../lib/rosterStore.svelte.js';
-  import { CLASSES } from '../lib/constants.js';
+  import { CLASSES } from '../lib/game/classes.js';
+
+  const classLabel = (cls) => cls.charAt(0) + cls.slice(1).toLowerCase();
 
   const CHOOSE_CLASS_VALUE = '__none__';
 
@@ -21,8 +23,7 @@
 
   function createCharacter() {
     if (!canCreate) return;
-    const id = rosterStore.addCharacter(name.trim());
-    rosterStore.setCharacterClass(id, selectedClass);
+    rosterStore.addCharacter(name.trim(), selectedClass);
   }
 
   function onKeydown(e) {
@@ -77,7 +78,7 @@
       Class
       <select bind:value={selectedClass}>
         <option value={CHOOSE_CLASS_VALUE}>Choose class...</option>
-        {#each CLASSES as cls (cls)}<option value={cls}>{cls}</option>{/each}
+        {#each CLASSES as cls (cls)}<option value={cls}>{classLabel(cls)}</option>{/each}
       </select>
     </label>
 
