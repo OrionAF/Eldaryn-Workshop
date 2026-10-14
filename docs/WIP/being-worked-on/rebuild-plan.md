@@ -1,8 +1,8 @@
 # Rebuild plan: Eldaryn Gear Optimiser on the 2.7.0 client reference
 
-> **Status:** in progress — approved by the user 2026-10-14, building on `claude/sweet-cannon-klhjs3` · **Written:** 2026-10-14
+> **Status:** built 2026-10-14 on `claude/sweet-cannon-klhjs3` (all slices except optional F5); see `rebuild-progress.md`. Not merged to `main` · **Written:** 2026-10-14
 > **Truth lives in:** `docs/Reference/Game/*.md` + `data/*.json` (game facts), this file (the rebuild's
-> architecture, model and slice plan). Gap queue: `app-gap-2.7.0.md`.
+> architecture, model and slice plan). Gap queue (now archived): `Archive/outdated-notes/app-gap-2.7.0.md`.
 
 Decisions taken by the user on 2026-10-14: **rebuild the core and keep the shell**. All 4 classes and
 8 specs. Four features: (1) Gear swap / Drop Check, (2) PVE build optimiser, (3) PVP duel simulation

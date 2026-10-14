@@ -11,12 +11,10 @@ citation on every number. This is the source of truth for game facts. Where an
 app document, a code comment or a test disagrees with `Game/`, `Game/` wins
 and the other one is the bug. Start at `Game/README.md`.
 
-**`data-model.md` and `Notes/` — what the app does.** The app's persisted
-shape, its scopes and normalisation, and the records of its design decisions.
-These describe the current `src/`, which was built before the 2.7.0
-extraction and disagrees with the game in many places. The list of those
-disagreements is `../WIP/being-worked-on/app-gap-2.7.0.md`. A Notes file is
-accurate about the app. It is not evidence about the game.
+**`data-model.md` and `Notes/` — what the app does.** The app's persisted (v2) shape, its scopes
+and normalisation, and the records of its design decisions. Since the 2026-10-14 rebuild the app's
+engine is a port of the client, so app code cites `Game/` for every game fact; a Notes file is
+accurate about the app and is never evidence about the game.
 
 **`Source/` — raw inputs.** Screenshots, scrapes and the user's own answers.
 Source material is never archived; it is the record of what the game showed

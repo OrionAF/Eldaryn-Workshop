@@ -14,6 +14,7 @@ trail runs both directions.
 
 | Document | Superseded | By |
 |---|---|---|
+| `app-gap-2.7.0.md` | 2026-10-14 | the rebuild (`WIP/being-worked-on/rebuild-plan.md`). Its rows describe the v1 app, which the rebuild deleted; the rebuilt app is built from `Reference/Game/` directly |
 | `combat-model.md` | 2026-10-14 | `Reference/Game/stats.md`, `combat-pve.md`, `combat-pvp.md`. Still describes what the pre-rebuild `src/` does. Its game claims were measured or invented; the client refutes several (avoidance roll, penetration, timeout winner, Attack % buff stacking, Miss hard cap) |
 | `combat-audit-2026-07-28.md` | 2026-10-14 | `Reference/Game/combat-pve.md`, `combat-pvp.md`. Its open item (the PVP survivability factor's shape) is moot: the client ships the real fight model |
 | `calibrate-pvp-refs.mjs` | 2026-10-14 | nothing. It fitted invented PVP reference constants, which the real fight model replaces. Imports `src/` modules that the rebuild will remove |

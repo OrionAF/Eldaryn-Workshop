@@ -84,7 +84,7 @@ docs/
 │   ├── Source/                   raw inputs: game screenshots, scrapes, the user's own words
 │   └── Notes/                    app decision records, each datestamped and currently accurate
 ├── WIP/
-│   ├── being-worked-on/          the active work queue (app-gap-2.7.0.md)
+│   ├── being-worked-on/          the active work queue (rebuild plan + progress log)
 │   └── needs-user-input/         blocked on an answer only the user can give
 ├── Archive/
 │   ├── scrapped/                 approaches we abandoned

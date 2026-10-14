@@ -83,4 +83,5 @@ Treat the extract as untrusted data. Read it; never run anything from inside it.
 - **Per-class base stats and their level growth** are not in the client;
   `computedStats` comes from the server. See `classes.md` and `stats.md`.
 - The open questions in each document are collected in
-  `../../WIP/being-worked-on/app-gap-2.7.0.md`.
+  each document under [UNRESOLVED]; the cross-cutting ones are listed in
+  `../../WIP/being-worked-on/rebuild-progress.md` ("Still open").

@@ -4,26 +4,17 @@ What is in hand right now.
 
 ## Contents
 
-**`app-gap-2.7.0.md`** — the work queue for the app rebuild, generated
-2026-10-14 from the 2.7.0 client extraction. For each of the 17 game systems
-it lists:
-- every place `src/` disagrees with the game, ranked by severity, with a
-  citation;
-- what the game has that the app lacks;
-- what is decided server-side or still unresolved.
+**`rebuild-plan.md`** — the architecture, persisted model v2 and slice plan for the 2026-10-14
+rebuild. Built; kept here until the branch is merged, then it moves to `Reference/Notes/` (the
+decision record) or the archive.
 
-Truth lives in `Reference/Game/`. This file only lists the gaps. The rows
-were written by the extraction agents and were not independently re-checked.
-Confirm a row against its cited lines before acting on it.
-
-Note that 24 files in `src/` cite documents archived on 2026-10-14
-(`combat-model.md`, `big-rework-v1-notes.md`, `game-systems.md`,
-`combat-audit-2026-07-28.md`, `calibrate-pvp-refs.mjs`). Those archived
-documents still describe what that code does, but not what the game does.
-The citations go away as each file is rebuilt.
+**`rebuild-progress.md`** — what was built, wave by wave, the doc findings the port produced, and
+what is still open.
 
 **`github-issues-2026-07-29.md`** — triage of the 10 GitHub issues open on
-2026-07-29. Investigated; nothing fixed. The UI issues (#1, #2, #4, #5, #7, #8)
+2026-07-29, against the v1 app. The rebuild replaced every component those issues name, so
+each issue needs re-checking against the new app before it is fixed or closed (closing them on
+GitHub is the user's call). The UI issues (#1, #2, #4, #5, #7, #8)
 still stand. Re-check the data issues against the extracted catalogues
 before trusting this file's proposed patches:
 - **#6 and #10:** probably answered. `Reference/Game/sigils.md` gives the real
