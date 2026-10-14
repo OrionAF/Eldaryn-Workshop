@@ -23,6 +23,9 @@ export const CLAN_WAR_SESSION_REWARDS = fortressData.clanWarSessionRewards;
 export const RAID_CONSTANTS = fortressData.raidConstants;
 export const RAIDS = fortressData.raids;
 
+/** Village raid by id (e.g. 'raid_1'), or null. */
+export const raidById = (id) => RAIDS.find((r) => r.id === id) ?? null;
+
 const fortressMap = new Map(FORTRESSES.map((f) => [f.id, f]));
 
 /** Fortress entry by id (e.g. 'TOP_1'), or null. */

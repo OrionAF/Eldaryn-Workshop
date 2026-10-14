@@ -249,6 +249,7 @@ The full per-step table is in `data/clan-fortress.json` under `raids`. [CODE] L1
 - Mob scaling: `hp = round(baseHp * stepMult[step-1])`, `attack = round(baseAtk * stepMult[step-1])`, `attackSpeed = baseSpd` (L1064597-1064623). Roster of 6 per raid, 5 mobs per step. [CODE]
   - Steps 1-7 use mob indices `(i*k + j) mod 5`, with `i = step-1`, `j = 0..4`, and `k` = 3 for raids 1, 3 and 5 and 2 for raids 2 and 4.
   - Step 8 uses roster indices [1..5], so the boss (index 5) always appears on step 8. [CODE]
+  - Verified against the client: roster index rule and step 8 in `buildBanditVillageSteps` (L1064959-1065047, the other four builders at L1065048, L1065136, L1065224, L1065312 are the same code with k = 2/3), `makeRaidMob` (L1064597-1064623, a missing multiplier defaults to 1). Step multiplier arrays: L1064868 (raid_1), L1064886, L1064904, L1064922, L1064940, stored as `stepMultipliers` in the JSON. The app builds the mobs in `engine/pve/enemies.js` `raidMobs`. [CODE]
 - Step multipliers: raid_1 [1.8..3.9], raid_2 [4.8..14], raid_3 [1..9], raid_4 [1.2..11], raid_5 [1..11.5]. Exact arrays are in the JSON. [CODE]
 - Influence per step: raid_1 [15,20,28,36,45,60,85,95], raid_2 [100..135], raid_3 [140..280], raid_4 [300..640], raid_5 [680..1500]. [CODE]
 - Access: `isRaidAccessible(i, progress, level)` = `level >= required && (i == 0 || progress[prev.id] >= 8)`. [CODE]
@@ -309,7 +310,7 @@ War Pact is a **skill**, not a clan feature. `crusadeDiscount` ("War Pact", cate
 - `bossShieldControlPoints[]`, `stars`, `contributionBonus`
 - `attackRewardTiers[]`, `defenseReward`, `coreDefenseWinMultiplier`, `rewardScaleByClanCount[]`
 - `clanRanks[]`, `warPointRates[]`, `doubleRewardSchedule`, `clanWarSessionRewards[]`
-- `raidConstants`, `raids[]`: each has `{id, name, requiredPlayerLevel, source, roster[], steps[{stepNumber, influenceReward, mobIds[], mobHp[], mobAttack[]}]}`
+- `raidConstants`, `raids[]`: each has `{id, name, requiredPlayerLevel, source, stepMultipliers[], roster[], steps[{stepNumber, influenceReward, mobIds[], mobHp[], mobAttack[]}]}`
 
 ## §10 App comparison
 The app models Fortress Buffs as three checkboxes with fixed stat blocks (`src/lib/totals.js` `FORTRESS_BUFF_STATS`, `fortressBuffsContribution`). Nothing else from this system is modelled.

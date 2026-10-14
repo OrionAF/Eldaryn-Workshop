@@ -259,8 +259,8 @@
 
     <p class="fidelity">
       The closed-form line counts auto-attacks only. Simulated lines add spells, minions and damage over
-      time against a {SECONDS} s training dummy, and always show N and a 95% interval. Dungeons, arena
-      duels and the Oblivion dungeon are a model of the server, not exact rules.
+      time against a {SECONDS} s training dummy, and always show N and a 95% interval. Dungeons, village
+      raids, arena duels and the Oblivion dungeon are a model of the server, not exact rules.
     </p>
 
     <details class="import-panel" bind:open={importOpen}>
@@ -345,7 +345,7 @@
               <span>Survival vs an enemy (N={N_SURVIVAL})</span>
             </label>
             {#if survivalOn}
-              <EnemyPicker value={enemyEffective} {realm} onchange={(s) => (enemySpec = s)} />
+              <EnemyPicker value={enemyEffective} {realm} playerLevel={character.level} onchange={(s) => (enemySpec = s)} />
             {/if}
           </div>
 
