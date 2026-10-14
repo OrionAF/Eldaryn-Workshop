@@ -48,7 +48,7 @@ rolls, most fights and every random outcome.
 | [`drops.md`](drops.md) | Rarity odds by level, the Oblivion drop model, Fortune / Midas Touch / Artisan, loot filter and Loot Bag | `data/drops.json` |
 | [`stones.md`](stones.md) | Enchant Stones: types, stat pools, socketing, Amplification, Oblivion stones | `data/stones.json` |
 | [`talents.md`](talents.md) | All 8 talent trees, tiers, points, Dual Talents, respec | `data/talents.json` |
-| [`skills.md`](skills.md) | The 14 gem-bought Skills (new since July 2026) | — |
+| [`skills.md`](skills.md) | The 14 gem-bought Skills (new since July 2026) | `data/skills.json` |
 | [`relics.md`](relics.md) | Relic catalogue for all 4 classes, level scaling, slots, medal costs | `data/relics.json` |
 | [`sigils.md`](sigils.md) | Sigil catalogue, flat stat formula, spell scaling and caps, stack sigils, Ancient transforms, activation conditions | `data/sigils.json` |
 | [`mounts-glyphs.md`](mounts-glyphs.md) | Mount levels and stat formula, minor glyphs, all 42 major glyphs | `data/mounts-glyphs.json` |
