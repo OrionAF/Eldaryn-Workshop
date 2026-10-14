@@ -1,0 +1,3352 @@
+{
+ "source": "Eldaryn 2.7.0 decompiled.js: OBLIVION_PRESTIGE L669119; XP curve L1190285 (module 4212 L1189711-1190344); drop weights L1190296-1190330; dungeons L1062720-1062962 (module 3943); oblivion dungeon L1706694 (module ~4314); progress chapters via progress_chapters.json (L~1084788-1085500); crusade/celestial/world boss live in sibling JSONs celestial.json, crusade.json, world_boss.json (not duplicated)",
+ "oblivionXpCurve": {
+  "formula": "xpCost(toLevel L, 2..100)=floor(85000*L*ramp(L)); ramp per code L1189711+; max level 100",
+  "table": [
+   {
+    "toLevel": 2,
+    "xpCost": 170000,
+    "cumulative": 170000
+   },
+   {
+    "toLevel": 3,
+    "xpCost": 255000,
+    "cumulative": 425000
+   },
+   {
+    "toLevel": 4,
+    "xpCost": 340000,
+    "cumulative": 765000
+   },
+   {
+    "toLevel": 5,
+    "xpCost": 425000,
+    "cumulative": 1190000
+   },
+   {
+    "toLevel": 6,
+    "xpCost": 510000,
+    "cumulative": 1700000
+   },
+   {
+    "toLevel": 7,
+    "xpCost": 595000,
+    "cumulative": 2295000
+   },
+   {
+    "toLevel": 8,
+    "xpCost": 680000,
+    "cumulative": 2975000
+   },
+   {
+    "toLevel": 9,
+    "xpCost": 765000,
+    "cumulative": 3740000
+   },
+   {
+    "toLevel": 10,
+    "xpCost": 850000,
+    "cumulative": 4590000
+   },
+   {
+    "toLevel": 11,
+    "xpCost": 935000,
+    "cumulative": 5525000
+   },
+   {
+    "toLevel": 12,
+    "xpCost": 1020000,
+    "cumulative": 6545000
+   },
+   {
+    "toLevel": 13,
+    "xpCost": 1105000,
+    "cumulative": 7650000
+   },
+   {
+    "toLevel": 14,
+    "xpCost": 1190000,
+    "cumulative": 8840000
+   },
+   {
+    "toLevel": 15,
+    "xpCost": 1275000,
+    "cumulative": 10115000
+   },
+   {
+    "toLevel": 16,
+    "xpCost": 1360000,
+    "cumulative": 11475000
+   },
+   {
+    "toLevel": 17,
+    "xpCost": 1445000,
+    "cumulative": 12920000
+   },
+   {
+    "toLevel": 18,
+    "xpCost": 1530000,
+    "cumulative": 14450000
+   },
+   {
+    "toLevel": 19,
+    "xpCost": 1615000,
+    "cumulative": 16065000
+   },
+   {
+    "toLevel": 20,
+    "xpCost": 1700000,
+    "cumulative": 17765000
+   },
+   {
+    "toLevel": 21,
+    "xpCost": 1785000,
+    "cumulative": 19550000
+   },
+   {
+    "toLevel": 22,
+    "xpCost": 1870000,
+    "cumulative": 21420000
+   },
+   {
+    "toLevel": 23,
+    "xpCost": 1955000,
+    "cumulative": 23375000
+   },
+   {
+    "toLevel": 24,
+    "xpCost": 2040000,
+    "cumulative": 25415000
+   },
+   {
+    "toLevel": 25,
+    "xpCost": 2125000,
+    "cumulative": 27540000
+   },
+   {
+    "toLevel": 26,
+    "xpCost": 2342600,
+    "cumulative": 29882600
+   },
+   {
+    "toLevel": 27,
+    "xpCost": 2570400,
+    "cumulative": 32453000
+   },
+   {
+    "toLevel": 28,
+    "xpCost": 2808400,
+    "cumulative": 35261400
+   },
+   {
+    "toLevel": 29,
+    "xpCost": 3056600,
+    "cumulative": 38318000
+   },
+   {
+    "toLevel": 30,
+    "xpCost": 3315000,
+    "cumulative": 41633000
+   },
+   {
+    "toLevel": 31,
+    "xpCost": 3583599,
+    "cumulative": 45216599
+   },
+   {
+    "toLevel": 32,
+    "xpCost": 3862400,
+    "cumulative": 49078999
+   },
+   {
+    "toLevel": 33,
+    "xpCost": 4151400,
+    "cumulative": 53230399
+   },
+   {
+    "toLevel": 34,
+    "xpCost": 4450600,
+    "cumulative": 57680999
+   },
+   {
+    "toLevel": 35,
+    "xpCost": 4760000,
+    "cumulative": 62440999
+   },
+   {
+    "toLevel": 36,
+    "xpCost": 5079600,
+    "cumulative": 67520599
+   },
+   {
+    "toLevel": 37,
+    "xpCost": 5409400,
+    "cumulative": 72929999
+   },
+   {
+    "toLevel": 38,
+    "xpCost": 5749400,
+    "cumulative": 78679399
+   },
+   {
+    "toLevel": 39,
+    "xpCost": 6099599,
+    "cumulative": 84778998
+   },
+   {
+    "toLevel": 40,
+    "xpCost": 6460000,
+    "cumulative": 91238998
+   },
+   {
+    "toLevel": 41,
+    "xpCost": 6830600,
+    "cumulative": 98069598
+   },
+   {
+    "toLevel": 42,
+    "xpCost": 7211400,
+    "cumulative": 105280998
+   },
+   {
+    "toLevel": 43,
+    "xpCost": 7602400,
+    "cumulative": 112883398
+   },
+   {
+    "toLevel": 44,
+    "xpCost": 8003599,
+    "cumulative": 120886997
+   },
+   {
+    "toLevel": 45,
+    "xpCost": 8415000,
+    "cumulative": 129301997
+   },
+   {
+    "toLevel": 46,
+    "xpCost": 8836600,
+    "cumulative": 138138597
+   },
+   {
+    "toLevel": 47,
+    "xpCost": 9268400,
+    "cumulative": 147406997
+   },
+   {
+    "toLevel": 48,
+    "xpCost": 9710400,
+    "cumulative": 157117397
+   },
+   {
+    "toLevel": 49,
+    "xpCost": 10162600,
+    "cumulative": 167279997
+   },
+   {
+    "toLevel": 50,
+    "xpCost": 10625000,
+    "cumulative": 177904997
+   },
+   {
+    "toLevel": 51,
+    "xpCost": 11097600,
+    "cumulative": 189002597
+   },
+   {
+    "toLevel": 52,
+    "xpCost": 11580400,
+    "cumulative": 200582997
+   },
+   {
+    "toLevel": 53,
+    "xpCost": 12073399,
+    "cumulative": 212656396
+   },
+   {
+    "toLevel": 54,
+    "xpCost": 12576600,
+    "cumulative": 225232996
+   },
+   {
+    "toLevel": 55,
+    "xpCost": 13090000,
+    "cumulative": 238322996
+   },
+   {
+    "toLevel": 56,
+    "xpCost": 14184800,
+    "cumulative": 252507796
+   },
+   {
+    "toLevel": 57,
+    "xpCost": 15310199,
+    "cumulative": 267817995
+   },
+   {
+    "toLevel": 58,
+    "xpCost": 16466200,
+    "cumulative": 284284195
+   },
+   {
+    "toLevel": 59,
+    "xpCost": 17652799,
+    "cumulative": 301936994
+   },
+   {
+    "toLevel": 60,
+    "xpCost": 18870000,
+    "cumulative": 320806994
+   },
+   {
+    "toLevel": 61,
+    "xpCost": 20117800,
+    "cumulative": 340924794
+   },
+   {
+    "toLevel": 62,
+    "xpCost": 21396199,
+    "cumulative": 362320993
+   },
+   {
+    "toLevel": 63,
+    "xpCost": 22705200,
+    "cumulative": 385026193
+   },
+   {
+    "toLevel": 64,
+    "xpCost": 24044800,
+    "cumulative": 409070993
+   },
+   {
+    "toLevel": 65,
+    "xpCost": 25414999,
+    "cumulative": 434485992
+   },
+   {
+    "toLevel": 66,
+    "xpCost": 26815799,
+    "cumulative": 461301791
+   },
+   {
+    "toLevel": 67,
+    "xpCost": 28247200,
+    "cumulative": 489548991
+   },
+   {
+    "toLevel": 68,
+    "xpCost": 29709200,
+    "cumulative": 519258191
+   },
+   {
+    "toLevel": 69,
+    "xpCost": 31201800,
+    "cumulative": 550459991
+   },
+   {
+    "toLevel": 70,
+    "xpCost": 32725000,
+    "cumulative": 583184991
+   },
+   {
+    "toLevel": 71,
+    "xpCost": 34278800,
+    "cumulative": 617463791
+   },
+   {
+    "toLevel": 72,
+    "xpCost": 35863200,
+    "cumulative": 653326991
+   },
+   {
+    "toLevel": 73,
+    "xpCost": 37478199,
+    "cumulative": 690805190
+   },
+   {
+    "toLevel": 74,
+    "xpCost": 39123800,
+    "cumulative": 729928990
+   },
+   {
+    "toLevel": 75,
+    "xpCost": 40800000,
+    "cumulative": 770728990
+   },
+   {
+    "toLevel": 76,
+    "xpCost": 42506800,
+    "cumulative": 813235790
+   },
+   {
+    "toLevel": 77,
+    "xpCost": 44244200,
+    "cumulative": 857479990
+   },
+   {
+    "toLevel": 78,
+    "xpCost": 46012200,
+    "cumulative": 903492190
+   },
+   {
+    "toLevel": 79,
+    "xpCost": 47810800,
+    "cumulative": 951302990
+   },
+   {
+    "toLevel": 80,
+    "xpCost": 49640000,
+    "cumulative": 1000942990
+   },
+   {
+    "toLevel": 81,
+    "xpCost": 51499800,
+    "cumulative": 1052442790
+   },
+   {
+    "toLevel": 82,
+    "xpCost": 53390199,
+    "cumulative": 1105832989
+   },
+   {
+    "toLevel": 83,
+    "xpCost": 55311200,
+    "cumulative": 1161144189
+   },
+   {
+    "toLevel": 84,
+    "xpCost": 57262800,
+    "cumulative": 1218406989
+   },
+   {
+    "toLevel": 85,
+    "xpCost": 59244999,
+    "cumulative": 1277651988
+   },
+   {
+    "toLevel": 86,
+    "xpCost": 63596999,
+    "cumulative": 1341248987
+   },
+   {
+    "toLevel": 87,
+    "xpCost": 68034000,
+    "cumulative": 1409282987
+   },
+   {
+    "toLevel": 88,
+    "xpCost": 72556000,
+    "cumulative": 1481838987
+   },
+   {
+    "toLevel": 89,
+    "xpCost": 77163000,
+    "cumulative": 1559001987
+   },
+   {
+    "toLevel": 90,
+    "xpCost": 81855000,
+    "cumulative": 1640856987
+   },
+   {
+    "toLevel": 91,
+    "xpCost": 86632000,
+    "cumulative": 1727488987
+   },
+   {
+    "toLevel": 92,
+    "xpCost": 91494000,
+    "cumulative": 1818982987
+   },
+   {
+    "toLevel": 93,
+    "xpCost": 96441000,
+    "cumulative": 1915423987
+   },
+   {
+    "toLevel": 94,
+    "xpCost": 101473000,
+    "cumulative": 2016896987
+   },
+   {
+    "toLevel": 95,
+    "xpCost": 106590000,
+    "cumulative": 2123486987
+   },
+   {
+    "toLevel": 96,
+    "xpCost": 111792000,
+    "cumulative": 2235278987
+   },
+   {
+    "toLevel": 97,
+    "xpCost": 117079000,
+    "cumulative": 2352357987
+   },
+   {
+    "toLevel": 98,
+    "xpCost": 122451000,
+    "cumulative": 2474808987
+   },
+   {
+    "toLevel": 99,
+    "xpCost": 127908000,
+    "cumulative": 2602716987
+   },
+   {
+    "toLevel": 100,
+    "xpCost": 133450000,
+    "cumulative": 2736166987
+   }
+  ]
+ },
+ "oblivionDropWeights": {
+  "note": "[DERIVED] from getOblivionDropRates L1189930-1190010 with consts L1190296-1190330. Values are percent-ish weights per mob roll; Mythic unlock fraction 0 is [DERIVED] (decompiler lost the key; START_RARITY=Mythic).",
+  "byOblivionLevel": [
+   {
+    "oblivionLevel": 1,
+    "MYTHIC": 10.0,
+    "ANCIENT": 0,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 40
+   },
+   {
+    "oblivionLevel": 2,
+    "MYTHIC": 10.503,
+    "ANCIENT": 0,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 41
+   },
+   {
+    "oblivionLevel": 3,
+    "MYTHIC": 10.711,
+    "ANCIENT": 0,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 41
+   },
+   {
+    "oblivionLevel": 4,
+    "MYTHIC": 10.87,
+    "ANCIENT": 0,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 42
+   },
+   {
+    "oblivionLevel": 5,
+    "MYTHIC": 11.005,
+    "ANCIENT": 0,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 42
+   },
+   {
+    "oblivionLevel": 6,
+    "MYTHIC": 11.124,
+    "ANCIENT": 0,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 43
+   },
+   {
+    "oblivionLevel": 7,
+    "MYTHIC": 11.231,
+    "ANCIENT": 0,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 44
+   },
+   {
+    "oblivionLevel": 8,
+    "MYTHIC": 11.33,
+    "ANCIENT": 0,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 44
+   },
+   {
+    "oblivionLevel": 9,
+    "MYTHIC": 11.421,
+    "ANCIENT": 0,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 45
+   },
+   {
+    "oblivionLevel": 10,
+    "MYTHIC": 11.508,
+    "ANCIENT": 0.3,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 45
+   },
+   {
+    "oblivionLevel": 11,
+    "MYTHIC": 11.589,
+    "ANCIENT": 0.353,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 46
+   },
+   {
+    "oblivionLevel": 12,
+    "MYTHIC": 11.667,
+    "ANCIENT": 0.421,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 47
+   },
+   {
+    "oblivionLevel": 13,
+    "MYTHIC": 11.741,
+    "ANCIENT": 0.498,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 47
+   },
+   {
+    "oblivionLevel": 14,
+    "MYTHIC": 11.812,
+    "ANCIENT": 0.579,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 48
+   },
+   {
+    "oblivionLevel": 15,
+    "MYTHIC": 11.88,
+    "ANCIENT": 0.665,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 48
+   },
+   {
+    "oblivionLevel": 16,
+    "MYTHIC": 11.946,
+    "ANCIENT": 0.754,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 49
+   },
+   {
+    "oblivionLevel": 17,
+    "MYTHIC": 12.01,
+    "ANCIENT": 0.846,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 50
+   },
+   {
+    "oblivionLevel": 18,
+    "MYTHIC": 12.072,
+    "ANCIENT": 0.941,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 50
+   },
+   {
+    "oblivionLevel": 19,
+    "MYTHIC": 12.132,
+    "ANCIENT": 1.038,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 51
+   },
+   {
+    "oblivionLevel": 20,
+    "MYTHIC": 12.19,
+    "ANCIENT": 1.138,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 52
+   },
+   {
+    "oblivionLevel": 21,
+    "MYTHIC": 12.247,
+    "ANCIENT": 1.239,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 52
+   },
+   {
+    "oblivionLevel": 22,
+    "MYTHIC": 12.303,
+    "ANCIENT": 1.343,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 53
+   },
+   {
+    "oblivionLevel": 23,
+    "MYTHIC": 12.357,
+    "ANCIENT": 1.448,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 53
+   },
+   {
+    "oblivionLevel": 24,
+    "MYTHIC": 12.41,
+    "ANCIENT": 1.554,
+    "DIVINE": 0,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 54
+   },
+   {
+    "oblivionLevel": 25,
+    "MYTHIC": 12.462,
+    "ANCIENT": 1.663,
+    "DIVINE": 0.1,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 55
+   },
+   {
+    "oblivionLevel": 26,
+    "MYTHIC": 12.513,
+    "ANCIENT": 1.772,
+    "DIVINE": 0.109,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 55
+   },
+   {
+    "oblivionLevel": 27,
+    "MYTHIC": 12.562,
+    "ANCIENT": 1.884,
+    "DIVINE": 0.124,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 56
+   },
+   {
+    "oblivionLevel": 28,
+    "MYTHIC": 12.611,
+    "ANCIENT": 1.996,
+    "DIVINE": 0.143,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 56
+   },
+   {
+    "oblivionLevel": 29,
+    "MYTHIC": 12.659,
+    "ANCIENT": 2.11,
+    "DIVINE": 0.164,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 57
+   },
+   {
+    "oblivionLevel": 30,
+    "MYTHIC": 12.706,
+    "ANCIENT": 2.225,
+    "DIVINE": 0.188,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 58
+   },
+   {
+    "oblivionLevel": 31,
+    "MYTHIC": 12.752,
+    "ANCIENT": 2.341,
+    "DIVINE": 0.214,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 58
+   },
+   {
+    "oblivionLevel": 32,
+    "MYTHIC": 12.798,
+    "ANCIENT": 2.458,
+    "DIVINE": 0.241,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 59
+   },
+   {
+    "oblivionLevel": 33,
+    "MYTHIC": 12.843,
+    "ANCIENT": 2.576,
+    "DIVINE": 0.27,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 59
+   },
+   {
+    "oblivionLevel": 34,
+    "MYTHIC": 12.887,
+    "ANCIENT": 2.695,
+    "DIVINE": 0.3,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 60
+   },
+   {
+    "oblivionLevel": 35,
+    "MYTHIC": 12.93,
+    "ANCIENT": 2.815,
+    "DIVINE": 0.332,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 61
+   },
+   {
+    "oblivionLevel": 36,
+    "MYTHIC": 12.973,
+    "ANCIENT": 2.937,
+    "DIVINE": 0.365,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 61
+   },
+   {
+    "oblivionLevel": 37,
+    "MYTHIC": 13.015,
+    "ANCIENT": 3.059,
+    "DIVINE": 0.4,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 62
+   },
+   {
+    "oblivionLevel": 38,
+    "MYTHIC": 13.057,
+    "ANCIENT": 3.182,
+    "DIVINE": 0.435,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 62
+   },
+   {
+    "oblivionLevel": 39,
+    "MYTHIC": 13.098,
+    "ANCIENT": 3.306,
+    "DIVINE": 0.472,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 63
+   },
+   {
+    "oblivionLevel": 40,
+    "MYTHIC": 13.138,
+    "ANCIENT": 3.431,
+    "DIVINE": 0.51,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 64
+   },
+   {
+    "oblivionLevel": 41,
+    "MYTHIC": 13.178,
+    "ANCIENT": 3.556,
+    "DIVINE": 0.548,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 64
+   },
+   {
+    "oblivionLevel": 42,
+    "MYTHIC": 13.218,
+    "ANCIENT": 3.683,
+    "DIVINE": 0.588,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 65
+   },
+   {
+    "oblivionLevel": 43,
+    "MYTHIC": 13.257,
+    "ANCIENT": 3.81,
+    "DIVINE": 0.629,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 65
+   },
+   {
+    "oblivionLevel": 44,
+    "MYTHIC": 13.295,
+    "ANCIENT": 3.938,
+    "DIVINE": 0.67,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 66
+   },
+   {
+    "oblivionLevel": 45,
+    "MYTHIC": 13.333,
+    "ANCIENT": 4.067,
+    "DIVINE": 0.713,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 67
+   },
+   {
+    "oblivionLevel": 46,
+    "MYTHIC": 13.371,
+    "ANCIENT": 4.196,
+    "DIVINE": 0.756,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 67
+   },
+   {
+    "oblivionLevel": 47,
+    "MYTHIC": 13.408,
+    "ANCIENT": 4.327,
+    "DIVINE": 0.8,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 68
+   },
+   {
+    "oblivionLevel": 48,
+    "MYTHIC": 13.445,
+    "ANCIENT": 4.458,
+    "DIVINE": 0.845,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 68
+   },
+   {
+    "oblivionLevel": 49,
+    "MYTHIC": 13.482,
+    "ANCIENT": 4.589,
+    "DIVINE": 0.891,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 69
+   },
+   {
+    "oblivionLevel": 50,
+    "MYTHIC": 13.518,
+    "ANCIENT": 4.721,
+    "DIVINE": 0.938,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 70
+   },
+   {
+    "oblivionLevel": 51,
+    "MYTHIC": 13.553,
+    "ANCIENT": 4.854,
+    "DIVINE": 0.985,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 70
+   },
+   {
+    "oblivionLevel": 52,
+    "MYTHIC": 13.589,
+    "ANCIENT": 4.988,
+    "DIVINE": 1.033,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 71
+   },
+   {
+    "oblivionLevel": 53,
+    "MYTHIC": 13.624,
+    "ANCIENT": 5.122,
+    "DIVINE": 1.082,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 72
+   },
+   {
+    "oblivionLevel": 54,
+    "MYTHIC": 13.658,
+    "ANCIENT": 5.257,
+    "DIVINE": 1.131,
+    "ETERNAL": 0,
+    "OBLIVION": 0,
+    "mobLevel": 72
+   },
+   {
+    "oblivionLevel": 55,
+    "MYTHIC": 13.693,
+    "ANCIENT": 5.393,
+    "DIVINE": 1.181,
+    "ETERNAL": 0.03,
+    "OBLIVION": 0,
+    "mobLevel": 73
+   },
+   {
+    "oblivionLevel": 56,
+    "MYTHIC": 13.727,
+    "ANCIENT": 5.529,
+    "DIVINE": 1.232,
+    "ETERNAL": 0.033,
+    "OBLIVION": 0,
+    "mobLevel": 73
+   },
+   {
+    "oblivionLevel": 57,
+    "MYTHIC": 13.761,
+    "ANCIENT": 5.666,
+    "DIVINE": 1.284,
+    "ETERNAL": 0.038,
+    "OBLIVION": 0,
+    "mobLevel": 74
+   },
+   {
+    "oblivionLevel": 58,
+    "MYTHIC": 13.794,
+    "ANCIENT": 5.803,
+    "DIVINE": 1.336,
+    "ETERNAL": 0.046,
+    "OBLIVION": 0,
+    "mobLevel": 75
+   },
+   {
+    "oblivionLevel": 59,
+    "MYTHIC": 13.827,
+    "ANCIENT": 5.941,
+    "DIVINE": 1.388,
+    "ETERNAL": 0.055,
+    "OBLIVION": 0,
+    "mobLevel": 75
+   },
+   {
+    "oblivionLevel": 60,
+    "MYTHIC": 13.86,
+    "ANCIENT": 6.079,
+    "DIVINE": 1.442,
+    "ETERNAL": 0.066,
+    "OBLIVION": 0,
+    "mobLevel": 76
+   },
+   {
+    "oblivionLevel": 61,
+    "MYTHIC": 13.892,
+    "ANCIENT": 6.218,
+    "DIVINE": 1.496,
+    "ETERNAL": 0.079,
+    "OBLIVION": 0,
+    "mobLevel": 76
+   },
+   {
+    "oblivionLevel": 62,
+    "MYTHIC": 13.925,
+    "ANCIENT": 6.358,
+    "DIVINE": 1.55,
+    "ETERNAL": 0.092,
+    "OBLIVION": 0,
+    "mobLevel": 77
+   },
+   {
+    "oblivionLevel": 63,
+    "MYTHIC": 13.957,
+    "ANCIENT": 6.498,
+    "DIVINE": 1.605,
+    "ETERNAL": 0.107,
+    "OBLIVION": 0,
+    "mobLevel": 78
+   },
+   {
+    "oblivionLevel": 64,
+    "MYTHIC": 13.989,
+    "ANCIENT": 6.638,
+    "DIVINE": 1.661,
+    "ETERNAL": 0.123,
+    "OBLIVION": 0,
+    "mobLevel": 78
+   },
+   {
+    "oblivionLevel": 65,
+    "MYTHIC": 14.02,
+    "ANCIENT": 6.779,
+    "DIVINE": 1.718,
+    "ETERNAL": 0.14,
+    "OBLIVION": 0,
+    "mobLevel": 79
+   },
+   {
+    "oblivionLevel": 66,
+    "MYTHIC": 14.051,
+    "ANCIENT": 6.921,
+    "DIVINE": 1.774,
+    "ETERNAL": 0.158,
+    "OBLIVION": 0,
+    "mobLevel": 79
+   },
+   {
+    "oblivionLevel": 67,
+    "MYTHIC": 14.082,
+    "ANCIENT": 7.063,
+    "DIVINE": 1.832,
+    "ETERNAL": 0.177,
+    "OBLIVION": 0,
+    "mobLevel": 80
+   },
+   {
+    "oblivionLevel": 68,
+    "MYTHIC": 14.113,
+    "ANCIENT": 7.206,
+    "DIVINE": 1.89,
+    "ETERNAL": 0.197,
+    "OBLIVION": 0,
+    "mobLevel": 81
+   },
+   {
+    "oblivionLevel": 69,
+    "MYTHIC": 14.144,
+    "ANCIENT": 7.349,
+    "DIVINE": 1.948,
+    "ETERNAL": 0.218,
+    "OBLIVION": 0,
+    "mobLevel": 81
+   },
+   {
+    "oblivionLevel": 70,
+    "MYTHIC": 14.174,
+    "ANCIENT": 7.492,
+    "DIVINE": 2.008,
+    "ETERNAL": 0.24,
+    "OBLIVION": 0,
+    "mobLevel": 82
+   },
+   {
+    "oblivionLevel": 71,
+    "MYTHIC": 14.204,
+    "ANCIENT": 7.637,
+    "DIVINE": 2.067,
+    "ETERNAL": 0.263,
+    "OBLIVION": 0,
+    "mobLevel": 82
+   },
+   {
+    "oblivionLevel": 72,
+    "MYTHIC": 14.234,
+    "ANCIENT": 7.781,
+    "DIVINE": 2.127,
+    "ETERNAL": 0.287,
+    "OBLIVION": 0,
+    "mobLevel": 83
+   },
+   {
+    "oblivionLevel": 73,
+    "MYTHIC": 14.264,
+    "ANCIENT": 7.926,
+    "DIVINE": 2.188,
+    "ETERNAL": 0.312,
+    "OBLIVION": 0,
+    "mobLevel": 84
+   },
+   {
+    "oblivionLevel": 74,
+    "MYTHIC": 14.294,
+    "ANCIENT": 8.072,
+    "DIVINE": 2.249,
+    "ETERNAL": 0.337,
+    "OBLIVION": 0,
+    "mobLevel": 84
+   },
+   {
+    "oblivionLevel": 75,
+    "MYTHIC": 14.323,
+    "ANCIENT": 8.218,
+    "DIVINE": 2.311,
+    "ETERNAL": 0.363,
+    "OBLIVION": 0,
+    "mobLevel": 85
+   },
+   {
+    "oblivionLevel": 76,
+    "MYTHIC": 14.352,
+    "ANCIENT": 8.364,
+    "DIVINE": 2.373,
+    "ETERNAL": 0.39,
+    "OBLIVION": 0,
+    "mobLevel": 85
+   },
+   {
+    "oblivionLevel": 77,
+    "MYTHIC": 14.381,
+    "ANCIENT": 8.511,
+    "DIVINE": 2.436,
+    "ETERNAL": 0.418,
+    "OBLIVION": 0,
+    "mobLevel": 86
+   },
+   {
+    "oblivionLevel": 78,
+    "MYTHIC": 14.41,
+    "ANCIENT": 8.658,
+    "DIVINE": 2.499,
+    "ETERNAL": 0.447,
+    "OBLIVION": 0,
+    "mobLevel": 87
+   },
+   {
+    "oblivionLevel": 79,
+    "MYTHIC": 14.438,
+    "ANCIENT": 8.806,
+    "DIVINE": 2.562,
+    "ETERNAL": 0.476,
+    "OBLIVION": 0,
+    "mobLevel": 87
+   },
+   {
+    "oblivionLevel": 80,
+    "MYTHIC": 14.466,
+    "ANCIENT": 8.954,
+    "DIVINE": 2.626,
+    "ETERNAL": 0.506,
+    "OBLIVION": 0,
+    "mobLevel": 88
+   },
+   {
+    "oblivionLevel": 81,
+    "MYTHIC": 14.495,
+    "ANCIENT": 9.102,
+    "DIVINE": 2.691,
+    "ETERNAL": 0.537,
+    "OBLIVION": 0,
+    "mobLevel": 88
+   },
+   {
+    "oblivionLevel": 82,
+    "MYTHIC": 14.523,
+    "ANCIENT": 9.251,
+    "DIVINE": 2.756,
+    "ETERNAL": 0.569,
+    "OBLIVION": 0,
+    "mobLevel": 89
+   },
+   {
+    "oblivionLevel": 83,
+    "MYTHIC": 14.551,
+    "ANCIENT": 9.401,
+    "DIVINE": 2.821,
+    "ETERNAL": 0.601,
+    "OBLIVION": 0,
+    "mobLevel": 90
+   },
+   {
+    "oblivionLevel": 84,
+    "MYTHIC": 14.578,
+    "ANCIENT": 9.551,
+    "DIVINE": 2.887,
+    "ETERNAL": 0.634,
+    "OBLIVION": 0,
+    "mobLevel": 90
+   },
+   {
+    "oblivionLevel": 85,
+    "MYTHIC": 14.606,
+    "ANCIENT": 9.701,
+    "DIVINE": 2.954,
+    "ETERNAL": 0.668,
+    "OBLIVION": 0.01,
+    "mobLevel": 91
+   },
+   {
+    "oblivionLevel": 86,
+    "MYTHIC": 14.633,
+    "ANCIENT": 9.851,
+    "DIVINE": 3.02,
+    "ETERNAL": 0.702,
+    "OBLIVION": 0.017,
+    "mobLevel": 92
+   },
+   {
+    "oblivionLevel": 87,
+    "MYTHIC": 14.66,
+    "ANCIENT": 10.003,
+    "DIVINE": 3.088,
+    "ETERNAL": 0.737,
+    "OBLIVION": 0.034,
+    "mobLevel": 92
+   },
+   {
+    "oblivionLevel": 88,
+    "MYTHIC": 14.687,
+    "ANCIENT": 10.154,
+    "DIVINE": 3.155,
+    "ETERNAL": 0.773,
+    "OBLIVION": 0.059,
+    "mobLevel": 93
+   },
+   {
+    "oblivionLevel": 89,
+    "MYTHIC": 14.714,
+    "ANCIENT": 10.306,
+    "DIVINE": 3.223,
+    "ETERNAL": 0.809,
+    "OBLIVION": 0.092,
+    "mobLevel": 93
+   },
+   {
+    "oblivionLevel": 90,
+    "MYTHIC": 14.741,
+    "ANCIENT": 10.458,
+    "DIVINE": 3.292,
+    "ETERNAL": 0.846,
+    "OBLIVION": 0.133,
+    "mobLevel": 94
+   },
+   {
+    "oblivionLevel": 91,
+    "MYTHIC": 14.767,
+    "ANCIENT": 10.61,
+    "DIVINE": 3.361,
+    "ETERNAL": 0.884,
+    "OBLIVION": 0.181,
+    "mobLevel": 95
+   },
+   {
+    "oblivionLevel": 92,
+    "MYTHIC": 14.794,
+    "ANCIENT": 10.763,
+    "DIVINE": 3.43,
+    "ETERNAL": 0.922,
+    "OBLIVION": 0.236,
+    "mobLevel": 95
+   },
+   {
+    "oblivionLevel": 93,
+    "MYTHIC": 14.82,
+    "ANCIENT": 10.917,
+    "DIVINE": 3.5,
+    "ETERNAL": 0.961,
+    "OBLIVION": 0.297,
+    "mobLevel": 96
+   },
+   {
+    "oblivionLevel": 94,
+    "MYTHIC": 14.846,
+    "ANCIENT": 11.07,
+    "DIVINE": 3.57,
+    "ETERNAL": 1.0,
+    "OBLIVION": 0.365,
+    "mobLevel": 96
+   },
+   {
+    "oblivionLevel": 95,
+    "MYTHIC": 14.872,
+    "ANCIENT": 11.224,
+    "DIVINE": 3.641,
+    "ETERNAL": 1.04,
+    "OBLIVION": 0.439,
+    "mobLevel": 97
+   },
+   {
+    "oblivionLevel": 96,
+    "MYTHIC": 14.898,
+    "ANCIENT": 11.379,
+    "DIVINE": 3.712,
+    "ETERNAL": 1.081,
+    "OBLIVION": 0.519,
+    "mobLevel": 98
+   },
+   {
+    "oblivionLevel": 97,
+    "MYTHIC": 14.924,
+    "ANCIENT": 11.534,
+    "DIVINE": 3.783,
+    "ETERNAL": 1.122,
+    "OBLIVION": 0.606,
+    "mobLevel": 98
+   },
+   {
+    "oblivionLevel": 98,
+    "MYTHIC": 14.949,
+    "ANCIENT": 11.689,
+    "DIVINE": 3.855,
+    "ETERNAL": 1.164,
+    "OBLIVION": 0.698,
+    "mobLevel": 99
+   },
+   {
+    "oblivionLevel": 99,
+    "MYTHIC": 14.975,
+    "ANCIENT": 11.844,
+    "DIVINE": 3.927,
+    "ETERNAL": 1.207,
+    "OBLIVION": 0.796,
+    "mobLevel": 99
+   },
+   {
+    "oblivionLevel": 100,
+    "MYTHIC": 15.0,
+    "ANCIENT": 12.0,
+    "DIVINE": 4.0,
+    "ETERNAL": 1.25,
+    "OBLIVION": 0.9,
+    "mobLevel": 100
+   }
+  ]
+ },
+ "oblivionDungeonFloors": {
+  "note": "[DERIVED] first 60 floors from getFloorMobStats L1706630 and getFloorInstability L1706365",
+  "floors": [
+   {
+    "floor": 1,
+    "mobHp": 20000000,
+    "mobAttack": 34000,
+    "instability": 0
+   },
+   {
+    "floor": 2,
+    "mobHp": 22600000,
+    "mobAttack": 36040,
+    "instability": 0
+   },
+   {
+    "floor": 3,
+    "mobHp": 25538000,
+    "mobAttack": 38202,
+    "instability": 0
+   },
+   {
+    "floor": 4,
+    "mobHp": 28857940,
+    "mobAttack": 40495,
+    "instability": 34
+   },
+   {
+    "floor": 5,
+    "mobHp": 32609472,
+    "mobAttack": 42924,
+    "instability": 56
+   },
+   {
+    "floor": 6,
+    "mobHp": 36848704,
+    "mobAttack": 45500,
+    "instability": 78
+   },
+   {
+    "floor": 7,
+    "mobHp": 41639035,
+    "mobAttack": 48230,
+    "instability": 100
+   },
+   {
+    "floor": 8,
+    "mobHp": 47052110,
+    "mobAttack": 51123,
+    "instability": 123
+   },
+   {
+    "floor": 9,
+    "mobHp": 53168884,
+    "mobAttack": 54191,
+    "instability": 146
+   },
+   {
+    "floor": 10,
+    "mobHp": 60080839,
+    "mobAttack": 57442,
+    "instability": 170
+   },
+   {
+    "floor": 11,
+    "mobHp": 67891348,
+    "mobAttack": 60889,
+    "instability": 195
+   },
+   {
+    "floor": 12,
+    "mobHp": 76717223,
+    "mobAttack": 64542,
+    "instability": 220
+   },
+   {
+    "floor": 13,
+    "mobHp": 86690462,
+    "mobAttack": 68415,
+    "instability": 246
+   },
+   {
+    "floor": 14,
+    "mobHp": 97960222,
+    "mobAttack": 72520,
+    "instability": 272
+   },
+   {
+    "floor": 15,
+    "mobHp": 110695051,
+    "mobAttack": 76871,
+    "instability": 298
+   },
+   {
+    "floor": 16,
+    "mobHp": 125085408,
+    "mobAttack": 81483,
+    "instability": 325
+   },
+   {
+    "floor": 17,
+    "mobHp": 141346511,
+    "mobAttack": 86372,
+    "instability": 352
+   },
+   {
+    "floor": 18,
+    "mobHp": 159721557,
+    "mobAttack": 91554,
+    "instability": 380
+   },
+   {
+    "floor": 19,
+    "mobHp": 180485359,
+    "mobAttack": 97048,
+    "instability": 409
+   },
+   {
+    "floor": 20,
+    "mobHp": 203948456,
+    "mobAttack": 102870,
+    "instability": 438
+   },
+   {
+    "floor": 21,
+    "mobHp": 230461755,
+    "mobAttack": 109043,
+    "instability": 468
+   },
+   {
+    "floor": 22,
+    "mobHp": 260421783,
+    "mobAttack": 115585,
+    "instability": 498
+   },
+   {
+    "floor": 23,
+    "mobHp": 294276615,
+    "mobAttack": 122520,
+    "instability": 528
+   },
+   {
+    "floor": 24,
+    "mobHp": 332532575,
+    "mobAttack": 129871,
+    "instability": 559
+   },
+   {
+    "floor": 25,
+    "mobHp": 375761810,
+    "mobAttack": 137664,
+    "instability": 590
+   },
+   {
+    "floor": 26,
+    "mobHp": 424610845,
+    "mobAttack": 145924,
+    "instability": 622
+   },
+   {
+    "floor": 27,
+    "mobHp": 479810255,
+    "mobAttack": 154679,
+    "instability": 655
+   },
+   {
+    "floor": 28,
+    "mobHp": 542185589,
+    "mobAttack": 163960,
+    "instability": 688
+   },
+   {
+    "floor": 29,
+    "mobHp": 612669715,
+    "mobAttack": 173797,
+    "instability": 722
+   },
+   {
+    "floor": 30,
+    "mobHp": 692316778,
+    "mobAttack": 184225,
+    "instability": 756
+   },
+   {
+    "floor": 31,
+    "mobHp": 782317959,
+    "mobAttack": 195279,
+    "instability": 790
+   },
+   {
+    "floor": 32,
+    "mobHp": 884019294,
+    "mobAttack": 206995,
+    "instability": 825
+   },
+   {
+    "floor": 33,
+    "mobHp": 998941802,
+    "mobAttack": 219415,
+    "instability": 860
+   },
+   {
+    "floor": 34,
+    "mobHp": 1128804236,
+    "mobAttack": 232580,
+    "instability": 896
+   },
+   {
+    "floor": 35,
+    "mobHp": 1275548787,
+    "mobAttack": 246535,
+    "instability": 933
+   },
+   {
+    "floor": 36,
+    "mobHp": 1441370129,
+    "mobAttack": 261327,
+    "instability": 970
+   },
+   {
+    "floor": 37,
+    "mobHp": 1628748246,
+    "mobAttack": 277007,
+    "instability": 1008
+   },
+   {
+    "floor": 38,
+    "mobHp": 1840485518,
+    "mobAttack": 293627,
+    "instability": 1046
+   },
+   {
+    "floor": 39,
+    "mobHp": 2079748636,
+    "mobAttack": 311245,
+    "instability": 1084
+   },
+   {
+    "floor": 40,
+    "mobHp": 2350115958,
+    "mobAttack": 329919,
+    "instability": 1123
+   },
+   {
+    "floor": 41,
+    "mobHp": 2655631033,
+    "mobAttack": 349714,
+    "instability": 1162
+   },
+   {
+    "floor": 42,
+    "mobHp": 3000863067,
+    "mobAttack": 370697,
+    "instability": 1202
+   },
+   {
+    "floor": 43,
+    "mobHp": 3390975266,
+    "mobAttack": 392939,
+    "instability": 1243
+   },
+   {
+    "floor": 44,
+    "mobHp": 3831802050,
+    "mobAttack": 416515,
+    "instability": 1284
+   },
+   {
+    "floor": 45,
+    "mobHp": 4329936317,
+    "mobAttack": 441506,
+    "instability": 1326
+   },
+   {
+    "floor": 46,
+    "mobHp": 4892828038,
+    "mobAttack": 467997,
+    "instability": 1368
+   },
+   {
+    "floor": 47,
+    "mobHp": 5528895683,
+    "mobAttack": 496077,
+    "instability": 1410
+   },
+   {
+    "floor": 48,
+    "mobHp": 6247652122,
+    "mobAttack": 525841,
+    "instability": 1453
+   },
+   {
+    "floor": 49,
+    "mobHp": 7059846897,
+    "mobAttack": 557392,
+    "instability": 1496
+   },
+   {
+    "floor": 50,
+    "mobHp": 7977626994,
+    "mobAttack": 590835,
+    "instability": 1540
+   },
+   {
+    "floor": 51,
+    "mobHp": 9014718503,
+    "mobAttack": 626285,
+    "instability": 1585
+   },
+   {
+    "floor": 52,
+    "mobHp": 10186631909,
+    "mobAttack": 663862,
+    "instability": 1630
+   },
+   {
+    "floor": 53,
+    "mobHp": 11510894057,
+    "mobAttack": 703694,
+    "instability": 1676
+   },
+   {
+    "floor": 54,
+    "mobHp": 13007310284,
+    "mobAttack": 745916,
+    "instability": 1722
+   },
+   {
+    "floor": 55,
+    "mobHp": 14698260621,
+    "mobAttack": 790671,
+    "instability": 1768
+   },
+   {
+    "floor": 56,
+    "mobHp": 16609034502,
+    "mobAttack": 838111,
+    "instability": 1815
+   },
+   {
+    "floor": 57,
+    "mobHp": 18768208987,
+    "mobAttack": 888398,
+    "instability": 1862
+   },
+   {
+    "floor": 58,
+    "mobHp": 21208076155,
+    "mobAttack": 941701,
+    "instability": 1910
+   },
+   {
+    "floor": 59,
+    "mobHp": 23965126055,
+    "mobAttack": 998204,
+    "instability": 1959
+   },
+   {
+    "floor": 60,
+    "mobHp": 27080592443,
+    "mobAttack": 1058096,
+    "instability": 2008
+   }
+  ]
+ },
+ "classicDungeons": {
+  "note": "hard variants derived server-side/by hardVariant L1062199; steps: 8 per dungeon; 3 mobs per step, step 8 = last three roster entries",
+  "dungeons": [
+   {
+    "id": "dungeon_1",
+    "name": "Forsaken Mines",
+    "stepMultipliers": [
+     1,
+     1.2,
+     2,
+     3.2,
+     4.4,
+     6.4,
+     7.8,
+     9.6
+    ],
+    "stepCoins": [
+     45,
+     60,
+     78,
+     86,
+     90,
+     95,
+     100,
+     105
+    ],
+    "mobRoster": [
+     {
+      "name": "Giant Rat",
+      "baseHp": 1000,
+      "baseAtk": 60,
+      "baseSpd": 1.3
+     },
+     {
+      "name": "Sewer Slime",
+      "baseHp": 1400,
+      "baseAtk": 80,
+      "baseSpd": 1
+     },
+     {
+      "name": "Sewer Crocodile",
+      "baseHp": 2000,
+      "baseAtk": 100,
+      "baseSpd": 0.8
+     },
+     {
+      "name": "Cave Troll",
+      "baseHp": 3000,
+      "baseAtk": 130,
+      "baseSpd": 0.5
+     },
+     {
+      "name": "Mine Wraith",
+      "baseHp": 5000,
+      "baseAtk": 110,
+      "baseSpd": 0.7
+     }
+    ]
+   },
+   {
+    "id": "dungeon_2",
+    "name": "Howling Ruins",
+    "stepMultipliers": [
+     4.2,
+     4.6,
+     5.2,
+     5.6,
+     6.2,
+     6.8,
+     7.2,
+     7.6
+    ],
+    "stepCoins": [
+     110,
+     120,
+     130,
+     138,
+     146,
+     155,
+     164,
+     174
+    ],
+    "mobRoster": [
+     {
+      "name": "Crypt Ghoul",
+      "baseHp": 10100,
+      "baseAtk": 430,
+      "baseSpd": 1.2
+     },
+     {
+      "name": "Skeleton",
+      "baseHp": 14200,
+      "baseAtk": 630,
+      "baseSpd": 0.9
+     },
+     {
+      "name": "Dire Wolf",
+      "baseHp": 16600,
+      "baseAtk": 860,
+      "baseSpd": 0.7
+     },
+     {
+      "name": "Stone Golem",
+      "baseHp": 22300,
+      "baseAtk": 1020,
+      "baseSpd": 0.6
+     },
+     {
+      "name": "Ruin Drake",
+      "baseHp": 28000,
+      "baseAtk": 1600,
+      "baseSpd": 0.8
+     }
+    ]
+   },
+   {
+    "id": "dungeon_3",
+    "name": "Frozen Catacombs",
+    "stepMultipliers": [
+     1.6,
+     1.8,
+     2,
+     2.8,
+     3.4,
+     4,
+     4.2,
+     4.4
+    ],
+    "stepCoins": [
+     180,
+     195,
+     210,
+     228,
+     245,
+     260,
+     276,
+     295
+    ],
+    "mobRoster": [
+     {
+      "name": "Frost Skeleton",
+      "baseHp": 53200,
+      "baseAtk": 4620,
+      "baseSpd": 1
+     },
+     {
+      "name": "Ice Witch",
+      "baseHp": 80200,
+      "baseAtk": 3400,
+      "baseSpd": 1.1
+     },
+     {
+      "name": "Frozen Revenant",
+      "baseHp": 102000,
+      "baseAtk": 5600,
+      "baseSpd": 0.8
+     },
+     {
+      "name": "Glacial Beast",
+      "baseHp": 164000,
+      "baseAtk": 7800,
+      "baseSpd": 0.5
+     },
+     {
+      "name": "Ice Lich",
+      "baseHp": 204000,
+      "baseAtk": 12300,
+      "baseSpd": 0.8
+     }
+    ]
+   },
+   {
+    "id": "dungeon_4",
+    "name": "Infernal Temple",
+    "stepMultipliers": [
+     1,
+     1.4,
+     2,
+     2.8,
+     3.8,
+     5.2,
+     5.8,
+     6.2
+    ],
+    "stepCoins": [
+     320,
+     360,
+     400,
+     450,
+     500,
+     530,
+     600,
+     620
+    ],
+    "mobRoster": [
+     {
+      "name": "Fire Drake",
+      "baseHp": 480000,
+      "baseAtk": 32000,
+      "baseSpd": 1.1
+     },
+     {
+      "name": "Infernal Demon",
+      "baseHp": 680000,
+      "baseAtk": 42000,
+      "baseSpd": 0.9
+     },
+     {
+      "name": "Obsidian Sentinel",
+      "baseHp": 900000,
+      "baseAtk": 30000,
+      "baseSpd": 0.6
+     },
+     {
+      "name": "Iron Colossus",
+      "baseHp": 1100000,
+      "baseAtk": 50000,
+      "baseSpd": 0.4
+     },
+     {
+      "name": "Elder Dragon",
+      "baseHp": 1400000,
+      "baseAtk": 63000,
+      "baseSpd": 0.7
+     }
+    ]
+   },
+   {
+    "id": "dungeon_5",
+    "name": "Abyssal Rift",
+    "stepMultipliers": [
+     1,
+     1.4,
+     1.9,
+     2.5,
+     3,
+     3.4,
+     4,
+     5.1
+    ],
+    "stepCoins": [
+     640,
+     720,
+     800,
+     900,
+     1000,
+     1100,
+     1200,
+     1300
+    ],
+    "mobRoster": [
+     {
+      "name": "Abyss Stalker",
+      "baseHp": 6000000,
+      "baseAtk": 240000,
+      "baseSpd": 1.1
+     },
+     {
+      "name": "Rift Wraith",
+      "baseHp": 7000000,
+      "baseAtk": 340000,
+      "baseSpd": 0.9
+     },
+     {
+      "name": "Rift Challenger",
+      "baseHp": 8500000,
+      "baseAtk": 280000,
+      "baseSpd": 0.6
+     },
+     {
+      "name": "Void Devourer",
+      "baseHp": 10500000,
+      "baseAtk": 400000,
+      "baseSpd": 0.4
+     },
+     {
+      "name": "Crystal Warden",
+      "baseHp": 13000000,
+      "baseAtk": 320000,
+      "baseSpd": 0.5
+     },
+     {
+      "name": "Zar'keth",
+      "baseHp": 19000000,
+      "baseAtk": 700000,
+      "baseSpd": 0.7
+     }
+    ]
+   },
+   {
+    "id": "dungeon_6",
+    "name": "Divine Gate",
+    "stepMultipliers": [
+     1,
+     1.3,
+     1.7,
+     2.2,
+     2.4,
+     3,
+     3.4,
+     4
+    ],
+    "stepCoins": [
+     1400,
+     1500,
+     1600,
+     1750,
+     1900,
+     2050,
+     2200,
+     2400
+    ],
+    "mobRoster": [
+     {
+      "name": "Sanctum Warden",
+      "baseHp": 28600000,
+      "baseAtk": 231000,
+      "baseSpd": 0.7
+     },
+     {
+      "name": "Halo Stalker",
+      "baseHp": 36400000,
+      "baseAtk": 275000,
+      "baseSpd": 1.3
+     },
+     {
+      "name": "Radiant Seer",
+      "baseHp": 45500000,
+      "baseAtk": 248000,
+      "baseSpd": 1
+     },
+     {
+      "name": "Crystal Archon",
+      "baseHp": 57200000,
+      "baseAtk": 311000,
+      "baseSpd": 0.9
+     },
+     {
+      "name": "Seraphic Devourer",
+      "baseHp": 71500000,
+      "baseAtk": 337000,
+      "baseSpd": 0.6
+     },
+     {
+      "name": "Empyrean Gatekeeper",
+      "baseHp": 97500000,
+      "baseAtk": 578000,
+      "baseSpd": 0.9
+     }
+    ]
+   },
+   {
+    "id": "dungeon_7",
+    "name": "Chrono Sanctum",
+    "stepMultipliers": [
+     1,
+     1.35,
+     1.75,
+     2.2,
+     2.7,
+     3.2,
+     3.8,
+     4.4
+    ],
+    "stepCoins": [
+     2450,
+     2530,
+     2610,
+     2690,
+     2765,
+     2845,
+     2925,
+     3000
+    ],
+    "mobRoster": [
+     {
+      "name": "Chrono Wraith",
+      "baseHp": 52000000,
+      "baseAtk": 358000,
+      "baseSpd": 1.5
+     },
+     {
+      "name": "Paradox Harbinger",
+      "baseHp": 65000000,
+      "baseAtk": 413000,
+      "baseSpd": 1.35
+     },
+     {
+      "name": "Fractured Sear",
+      "baseHp": 80600000,
+      "baseAtk": 495000,
+      "baseSpd": 1
+     },
+     {
+      "name": "Timeworn Sentinel",
+      "baseHp": 123500000,
+      "baseAtk": 715000,
+      "baseSpd": 0.5
+     },
+     {
+      "name": "Eonbound Colossus",
+      "baseHp": 156000000,
+      "baseAtk": 853000,
+      "baseSpd": 0.4
+     },
+     {
+      "name": "Kairon, the Timeless",
+      "baseHp": 208000000,
+      "baseAtk": 660000,
+      "baseSpd": 0.85
+     }
+    ]
+   }
+  ]
+ },
+ "progressChapters": [
+  {
+   "chapter": 1,
+   "displayChapter": 1,
+   "difficulty": "normal",
+   "name": "Rat Warrens",
+   "level1Mobs": [
+    {
+     "name": "Giant Rat",
+     "hp": 120,
+     "attack": 10,
+     "attackSpeed": 1.3
+    },
+    {
+     "name": "Sewer Slime",
+     "hp": 180,
+     "attack": 16,
+     "attackSpeed": 1.1
+    },
+    {
+     "name": "Sewer Crocodile",
+     "hp": 260,
+     "attack": 24,
+     "attackSpeed": 1
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Giant Rat",
+     "hp": 240,
+     "attack": 20,
+     "attackSpeed": 1.3
+    },
+    {
+     "name": "Sewer Slime",
+     "hp": 360,
+     "attack": 32,
+     "attackSpeed": 1.1
+    },
+    {
+     "name": "Sewer Crocodile",
+     "hp": 520,
+     "attack": 48,
+     "attackSpeed": 1
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 2,
+   "displayChapter": 2,
+   "difficulty": "normal",
+   "name": "Orcish Outpost",
+   "level1Mobs": [
+    {
+     "name": "Orc Wolf",
+     "hp": 840,
+     "attack": 72,
+     "attackSpeed": 1
+    },
+    {
+     "name": "Orc Warrior",
+     "hp": 1200,
+     "attack": 115,
+     "attackSpeed": 0.8
+    },
+    {
+     "name": "Orc Berserker",
+     "hp": 1800,
+     "attack": 168,
+     "attackSpeed": 0.6
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Orc Wolf",
+     "hp": 2870,
+     "attack": 246,
+     "attackSpeed": 1
+    },
+    {
+     "name": "Orc Warrior",
+     "hp": 4100,
+     "attack": 394,
+     "attackSpeed": 0.8
+    },
+    {
+     "name": "Orc Berserker",
+     "hp": 6150,
+     "attack": 574,
+     "attackSpeed": 0.6
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 3,
+   "displayChapter": 3,
+   "difficulty": "normal",
+   "name": "Warlord's Pass",
+   "level1Mobs": [
+    {
+     "name": "Orc Warrior",
+     "hp": 5000,
+     "attack": 360,
+     "attackSpeed": 0.8
+    },
+    {
+     "name": "Ogre Brute",
+     "hp": 9000,
+     "attack": 640,
+     "attackSpeed": 0.6
+    },
+    {
+     "name": "Orc Shaman",
+     "hp": 7000,
+     "attack": 500,
+     "attackSpeed": 0.7
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Orc Warrior",
+     "hp": 16000,
+     "attack": 1152,
+     "attackSpeed": 0.8
+    },
+    {
+     "name": "Ogre Brute",
+     "hp": 28800,
+     "attack": 2048,
+     "attackSpeed": 0.6
+    },
+    {
+     "name": "Orc Shaman",
+     "hp": 22400,
+     "attack": 1600,
+     "attackSpeed": 0.7
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 4,
+   "displayChapter": 4,
+   "difficulty": "normal",
+   "name": "Wraith Hollows",
+   "level1Mobs": [
+    {
+     "name": "Skeleton",
+     "hp": 16000,
+     "attack": 1100,
+     "attackSpeed": 0.7
+    },
+    {
+     "name": "Crypt Ghoul",
+     "hp": 24000,
+     "attack": 1600,
+     "attackSpeed": 0.5
+    },
+    {
+     "name": "Shadow Wraith",
+     "hp": 20000,
+     "attack": 1360,
+     "attackSpeed": 0.6
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Skeleton",
+     "hp": 57600,
+     "attack": 3960,
+     "attackSpeed": 0.7
+    },
+    {
+     "name": "Crypt Ghoul",
+     "hp": 86400,
+     "attack": 5760,
+     "attackSpeed": 0.5
+    },
+    {
+     "name": "Shadow Wraith",
+     "hp": 72000,
+     "attack": 4896,
+     "attackSpeed": 0.6
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 5,
+   "displayChapter": 5,
+   "difficulty": "normal",
+   "name": "Golem Depths",
+   "level1Mobs": [
+    {
+     "name": "Stone Golem",
+     "hp": 50000,
+     "attack": 3200,
+     "attackSpeed": 0.7
+    },
+    {
+     "name": "Iron Colossus",
+     "hp": 70000,
+     "attack": 4800,
+     "attackSpeed": 0.5
+    },
+    {
+     "name": "Runeforged Guardian",
+     "hp": 60000,
+     "attack": 2000,
+     "attackSpeed": 0.8
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Stone Golem",
+     "hp": 145000,
+     "attack": 9280,
+     "attackSpeed": 0.7
+    },
+    {
+     "name": "Iron Colossus",
+     "hp": 203000,
+     "attack": 13920,
+     "attackSpeed": 0.5
+    },
+    {
+     "name": "Runeforged Guardian",
+     "hp": 174000,
+     "attack": 5800,
+     "attackSpeed": 0.8
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 6,
+   "displayChapter": 6,
+   "difficulty": "normal",
+   "name": "Frozen Catacombs",
+   "level1Mobs": [
+    {
+     "name": "Frost Skeleton",
+     "hp": 132000,
+     "attack": 8800,
+     "attackSpeed": 0.5
+    },
+    {
+     "name": "Ice Witch",
+     "hp": 176000,
+     "attack": 12100,
+     "attackSpeed": 0.8
+    },
+    {
+     "name": "Frozen Revenant",
+     "hp": 154000,
+     "attack": 10560,
+     "attackSpeed": 0.7
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Frost Skeleton",
+     "hp": 324000,
+     "attack": 21600,
+     "attackSpeed": 0.5
+    },
+    {
+     "name": "Ice Witch",
+     "hp": 432000,
+     "attack": 29700,
+     "attackSpeed": 0.8
+    },
+    {
+     "name": "Frozen Revenant",
+     "hp": 378000,
+     "attack": 25920,
+     "attackSpeed": 0.7
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 7,
+   "displayChapter": 7,
+   "difficulty": "normal",
+   "name": "Glacial Abyss",
+   "level1Mobs": [
+    {
+     "name": "Frozen Revenant",
+     "hp": 300000,
+     "attack": 20000,
+     "attackSpeed": 0.8
+    },
+    {
+     "name": "Glacial Beast",
+     "hp": 360000,
+     "attack": 28000,
+     "attackSpeed": 0.7
+    },
+    {
+     "name": "Ice Witch",
+     "hp": 400000,
+     "attack": 36000,
+     "attackSpeed": 0.6
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Frozen Revenant",
+     "hp": 960000,
+     "attack": 64000,
+     "attackSpeed": 0.8
+    },
+    {
+     "name": "Glacial Beast",
+     "hp": 1152000,
+     "attack": 89600,
+     "attackSpeed": 0.7
+    },
+    {
+     "name": "Ice Witch",
+     "hp": 1280000,
+     "attack": 115200,
+     "attackSpeed": 0.6
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 8,
+   "displayChapter": 8,
+   "difficulty": "normal",
+   "name": "Infernal Summit",
+   "level1Mobs": [
+    {
+     "name": "Fire Drake",
+     "hp": 700000,
+     "attack": 50000,
+     "attackSpeed": 0.7
+    },
+    {
+     "name": "Infernal Demon",
+     "hp": 1000000,
+     "attack": 76000,
+     "attackSpeed": 0.6
+    },
+    {
+     "name": "Magma Hound",
+     "hp": 800000,
+     "attack": 60000,
+     "attackSpeed": 0.8
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Fire Drake",
+     "hp": 2940000,
+     "attack": 210000,
+     "attackSpeed": 0.7
+    },
+    {
+     "name": "Infernal Demon",
+     "hp": 4200000,
+     "attack": 319200,
+     "attackSpeed": 0.6
+    },
+    {
+     "name": "Magma Hound",
+     "hp": 3360000,
+     "attack": 252000,
+     "attackSpeed": 0.8
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 9,
+   "displayChapter": 9,
+   "difficulty": "normal",
+   "name": "Abyssal Rift",
+   "level1Mobs": [
+    {
+     "name": "Abyss Stalker",
+     "hp": 2600000,
+     "attack": 250000,
+     "attackSpeed": 0.7,
+     "penetration": 18
+    },
+    {
+     "name": "Rift Challenger",
+     "hp": 3800000,
+     "attack": 320000,
+     "attackSpeed": 0.6,
+     "penetration": 18
+    },
+    {
+     "name": "Void Devourer",
+     "hp": 3500000,
+     "attack": 280000,
+     "attackSpeed": 0.8,
+     "penetration": 18
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Abyss Stalker",
+     "hp": 11180000,
+     "attack": 1075000,
+     "attackSpeed": 0.7,
+     "penetration": 18
+    },
+    {
+     "name": "Rift Challenger",
+     "hp": 16340000,
+     "attack": 1376000,
+     "attackSpeed": 0.6,
+     "penetration": 18
+    },
+    {
+     "name": "Void Devourer",
+     "hp": 15050000,
+     "attack": 1204000,
+     "attackSpeed": 0.8,
+     "penetration": 18
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 10,
+   "displayChapter": 10,
+   "difficulty": "normal",
+   "name": "Divine Gate",
+   "level1Mobs": [
+    {
+     "name": "Sanctum Warden",
+     "hp": 9600000,
+     "attack": 720000,
+     "attackSpeed": 0.8,
+     "penetration": 40
+    },
+    {
+     "name": "Halo Stalker",
+     "hp": 6960000,
+     "attack": 840000,
+     "attackSpeed": 1.5,
+     "penetration": 40
+    },
+    {
+     "name": "Radiant Seer",
+     "hp": 7680000,
+     "attack": 1008000,
+     "attackSpeed": 1.1,
+     "penetration": 40
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Sanctum Warden",
+     "hp": 32800000,
+     "attack": 2460000,
+     "attackSpeed": 0.8,
+     "penetration": 40
+    },
+    {
+     "name": "Halo Stalker",
+     "hp": 23780000,
+     "attack": 2870000,
+     "attackSpeed": 1.5,
+     "penetration": 40
+    },
+    {
+     "name": "Radiant Seer",
+     "hp": 26240000,
+     "attack": 3444000,
+     "attackSpeed": 1.1,
+     "penetration": 40
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 11,
+   "displayChapter": 11,
+   "difficulty": "normal",
+   "name": "Chrono Sanctum",
+   "level1Mobs": [
+    {
+     "name": "Chrono Wraith",
+     "hp": 16000000,
+     "attack": 1536000,
+     "attackSpeed": 1.5,
+     "penetration": 48
+    },
+    {
+     "name": "Fractured Sear",
+     "hp": 20480000,
+     "attack": 2048000,
+     "attackSpeed": 1,
+     "penetration": 48
+    },
+    {
+     "name": "Eonbound Colossus",
+     "hp": 32000000,
+     "attack": 3072000,
+     "attackSpeed": 0.45,
+     "penetration": 48
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Chrono Wraith",
+     "hp": 43000000,
+     "attack": 4128000,
+     "attackSpeed": 1.5,
+     "penetration": 48
+    },
+    {
+     "name": "Fractured Sear",
+     "hp": 55040000,
+     "attack": 5504000,
+     "attackSpeed": 1,
+     "penetration": 48
+    },
+    {
+     "name": "Eonbound Colossus",
+     "hp": 86000000,
+     "attack": 8256000,
+     "attackSpeed": 0.45,
+     "penetration": 48
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 12,
+   "displayChapter": 1,
+   "difficulty": "hard",
+   "name": "Rat Warrens",
+   "level1Mobs": [
+    {
+     "name": "Giant Rat",
+     "hp": 36480000,
+     "attack": 2640000,
+     "attackSpeed": 1.3,
+     "penetration": 50
+    },
+    {
+     "name": "Sewer Slime",
+     "hp": 54720000,
+     "attack": 4224000,
+     "attackSpeed": 1.1,
+     "penetration": 50
+    },
+    {
+     "name": "Sewer Crocodile",
+     "hp": 79040000,
+     "attack": 6336000,
+     "attackSpeed": 1,
+     "penetration": 50
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Giant Rat",
+     "hp": 59097600,
+     "attack": 4276800,
+     "attackSpeed": 1.3,
+     "penetration": 50
+    },
+    {
+     "name": "Sewer Slime",
+     "hp": 88646400,
+     "attack": 6842880,
+     "attackSpeed": 1.1,
+     "penetration": 50
+    },
+    {
+     "name": "Sewer Crocodile",
+     "hp": 128044800,
+     "attack": 10264320,
+     "attackSpeed": 1,
+     "penetration": 50
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 13,
+   "displayChapter": 2,
+   "difficulty": "hard",
+   "name": "Orcish Outpost",
+   "level1Mobs": [
+    {
+     "name": "Orc Wolf",
+     "hp": 74200000,
+     "attack": 7800000,
+     "attackSpeed": 1,
+     "penetration": 52
+    },
+    {
+     "name": "Orc Warrior",
+     "hp": 106000000,
+     "attack": 12480000,
+     "attackSpeed": 0.8,
+     "penetration": 52
+    },
+    {
+     "name": "Orc Berserker",
+     "hp": 159000000,
+     "attack": 18200000,
+     "attackSpeed": 0.6,
+     "penetration": 52
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Orc Wolf",
+     "hp": 120204000,
+     "attack": 12636000,
+     "attackSpeed": 1,
+     "penetration": 52
+    },
+    {
+     "name": "Orc Warrior",
+     "hp": 171720000,
+     "attack": 20217600,
+     "attackSpeed": 0.8,
+     "penetration": 52
+    },
+    {
+     "name": "Orc Berserker",
+     "hp": 257580000,
+     "attack": 29484000,
+     "attackSpeed": 0.6,
+     "penetration": 52
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 14,
+   "displayChapter": 3,
+   "difficulty": "hard",
+   "name": "Warlord's Pass",
+   "level1Mobs": [
+    {
+     "name": "Orc Warrior",
+     "hp": 162000000,
+     "attack": 20304000,
+     "attackSpeed": 0.8,
+     "penetration": 54
+    },
+    {
+     "name": "Ogre Brute",
+     "hp": 291600000,
+     "attack": 36096000,
+     "attackSpeed": 0.6,
+     "penetration": 54
+    },
+    {
+     "name": "Orc Shaman",
+     "hp": 226800000,
+     "attack": 28200000,
+     "attackSpeed": 0.7,
+     "penetration": 54
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Orc Warrior",
+     "hp": 262440000,
+     "attack": 32892480,
+     "attackSpeed": 0.8,
+     "penetration": 54
+    },
+    {
+     "name": "Ogre Brute",
+     "hp": 472392000,
+     "attack": 58475520,
+     "attackSpeed": 0.6,
+     "penetration": 54
+    },
+    {
+     "name": "Orc Shaman",
+     "hp": 367416000,
+     "attack": 45684000,
+     "attackSpeed": 0.7,
+     "penetration": 54
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 15,
+   "displayChapter": 4,
+   "difficulty": "hard",
+   "name": "Wraith Hollows",
+   "level1Mobs": [
+    {
+     "name": "Skeleton",
+     "hp": 363200000,
+     "attack": 53130000,
+     "attackSpeed": 0.7,
+     "penetration": 56
+    },
+    {
+     "name": "Crypt Ghoul",
+     "hp": 544800000,
+     "attack": 77280000,
+     "attackSpeed": 0.5,
+     "penetration": 56
+    },
+    {
+     "name": "Shadow Wraith",
+     "hp": 454000000,
+     "attack": 65688000,
+     "attackSpeed": 0.6,
+     "penetration": 56
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Skeleton",
+     "hp": 588384000,
+     "attack": 86070600,
+     "attackSpeed": 0.7,
+     "penetration": 56
+    },
+    {
+     "name": "Crypt Ghoul",
+     "hp": 882576000,
+     "attack": 125193600,
+     "attackSpeed": 0.5,
+     "penetration": 56
+    },
+    {
+     "name": "Shadow Wraith",
+     "hp": 735480000,
+     "attack": 106414560,
+     "attackSpeed": 0.6,
+     "penetration": 56
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 16,
+   "displayChapter": 5,
+   "difficulty": "hard",
+   "name": "Golem Depths",
+   "level1Mobs": [
+    {
+     "name": "Stone Golem",
+     "hp": 1135000000,
+     "attack": 177280000,
+     "attackSpeed": 0.7,
+     "penetration": 58
+    },
+    {
+     "name": "Iron Colossus",
+     "hp": 1589000000,
+     "attack": 265920000,
+     "attackSpeed": 0.5,
+     "penetration": 58
+    },
+    {
+     "name": "Runeforged Guardian",
+     "hp": 1362000000,
+     "attack": 110800000,
+     "attackSpeed": 0.8,
+     "penetration": 58
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Stone Golem",
+     "hp": 1838700000,
+     "attack": 287193600,
+     "attackSpeed": 0.7,
+     "penetration": 58
+    },
+    {
+     "name": "Iron Colossus",
+     "hp": 2574180000,
+     "attack": 430790400,
+     "attackSpeed": 0.5,
+     "penetration": 58
+    },
+    {
+     "name": "Runeforged Guardian",
+     "hp": 2206440000,
+     "attack": 179496000,
+     "attackSpeed": 0.8,
+     "penetration": 58
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 17,
+   "displayChapter": 6,
+   "difficulty": "hard",
+   "name": "Frozen Catacombs",
+   "level1Mobs": [
+    {
+     "name": "Frost Skeleton",
+     "hp": 3492000000,
+     "attack": 424800000,
+     "attackSpeed": 0.5,
+     "penetration": 60
+    },
+    {
+     "name": "Ice Witch",
+     "hp": 4656000000,
+     "attack": 584100000,
+     "attackSpeed": 0.8,
+     "penetration": 60
+    },
+    {
+     "name": "Frozen Revenant",
+     "hp": 4074000000,
+     "attack": 509760000,
+     "attackSpeed": 0.7,
+     "penetration": 60
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Frost Skeleton",
+     "hp": 5657040000,
+     "attack": 688176000,
+     "attackSpeed": 0.5,
+     "penetration": 60
+    },
+    {
+     "name": "Ice Witch",
+     "hp": 7542720000,
+     "attack": 946242000,
+     "attackSpeed": 0.8,
+     "penetration": 60
+    },
+    {
+     "name": "Frozen Revenant",
+     "hp": 6599880000,
+     "attack": 825811200,
+     "attackSpeed": 0.7,
+     "penetration": 60
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 18,
+   "displayChapter": 7,
+   "difficulty": "hard",
+   "name": "Glacial Abyss",
+   "level1Mobs": [
+    {
+     "name": "Frozen Revenant",
+     "hp": 10380000000,
+     "attack": 1088000000,
+     "attackSpeed": 0.8,
+     "penetration": 62
+    },
+    {
+     "name": "Glacial Beast",
+     "hp": 12456000000,
+     "attack": 1523200000,
+     "attackSpeed": 0.7,
+     "penetration": 62
+    },
+    {
+     "name": "Ice Witch",
+     "hp": 13840000000,
+     "attack": 1958400000,
+     "attackSpeed": 0.6,
+     "penetration": 62
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Frozen Revenant",
+     "hp": 16815600000,
+     "attack": 1762560000,
+     "attackSpeed": 0.8,
+     "penetration": 62
+    },
+    {
+     "name": "Glacial Beast",
+     "hp": 20178720000,
+     "attack": 2467584000,
+     "attackSpeed": 0.7,
+     "penetration": 62
+    },
+    {
+     "name": "Ice Witch",
+     "hp": 22420800000,
+     "attack": 3172608000,
+     "attackSpeed": 0.6,
+     "penetration": 62
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 19,
+   "displayChapter": 8,
+   "difficulty": "hard",
+   "name": "Infernal Summit",
+   "level1Mobs": [
+    {
+     "name": "Fire Drake",
+     "hp": 30870000000,
+     "attack": 3630000000,
+     "attackSpeed": 0.7,
+     "penetration": 64
+    },
+    {
+     "name": "Infernal Demon",
+     "hp": 44100000000,
+     "attack": 5517600000,
+     "attackSpeed": 0.6,
+     "penetration": 64
+    },
+    {
+     "name": "Magma Hound",
+     "hp": 35280000000,
+     "attack": 4356000000,
+     "attackSpeed": 0.8,
+     "penetration": 64
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Fire Drake",
+     "hp": 50009400000,
+     "attack": 5880600000,
+     "attackSpeed": 0.7,
+     "penetration": 64
+    },
+    {
+     "name": "Infernal Demon",
+     "hp": 71442000000,
+     "attack": 8938512000,
+     "attackSpeed": 0.6,
+     "penetration": 64
+    },
+    {
+     "name": "Magma Hound",
+     "hp": 57153600000,
+     "attack": 7056720000,
+     "attackSpeed": 0.8,
+     "penetration": 64
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 20,
+   "displayChapter": 9,
+   "difficulty": "hard",
+   "name": "Abyssal Rift",
+   "level1Mobs": [
+    {
+     "name": "Abyss Stalker",
+     "hp": 86840000000,
+     "attack": 11850000000,
+     "attackSpeed": 0.7,
+     "penetration": 66
+    },
+    {
+     "name": "Rift Challenger",
+     "hp": 126920000000,
+     "attack": 15168000000,
+     "attackSpeed": 0.6,
+     "penetration": 66
+    },
+    {
+     "name": "Void Devourer",
+     "hp": 116900000000,
+     "attack": 13272000000,
+     "attackSpeed": 0.8,
+     "penetration": 66
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Abyss Stalker",
+     "hp": 140680800000,
+     "attack": 19197000000,
+     "attackSpeed": 0.7,
+     "penetration": 66
+    },
+    {
+     "name": "Rift Challenger",
+     "hp": 205610400000,
+     "attack": 24572160000,
+     "attackSpeed": 0.6,
+     "penetration": 66
+    },
+    {
+     "name": "Void Devourer",
+     "hp": 189378000000,
+     "attack": 21500640000,
+     "attackSpeed": 0.8,
+     "penetration": 66
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 21,
+   "displayChapter": 10,
+   "difficulty": "hard",
+   "name": "Divine Gate",
+   "level1Mobs": [
+    {
+     "name": "Sanctum Warden",
+     "hp": 392800000000,
+     "attack": 20550000000,
+     "attackSpeed": 0.8,
+     "penetration": 68
+    },
+    {
+     "name": "Halo Stalker",
+     "hp": 284780000000,
+     "attack": 23975000000,
+     "attackSpeed": 1.5,
+     "penetration": 68
+    },
+    {
+     "name": "Radiant Seer",
+     "hp": 314240000000,
+     "attack": 28770000000,
+     "attackSpeed": 1.1,
+     "penetration": 68
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Sanctum Warden",
+     "hp": 636336000000,
+     "attack": 33291000000,
+     "attackSpeed": 0.8,
+     "penetration": 68
+    },
+    {
+     "name": "Halo Stalker",
+     "hp": 461343600000,
+     "attack": 38839500000,
+     "attackSpeed": 1.5,
+     "penetration": 68
+    },
+    {
+     "name": "Radiant Seer",
+     "hp": 509068800000,
+     "attack": 46607400000,
+     "attackSpeed": 1.1,
+     "penetration": 68
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  },
+  {
+   "chapter": 22,
+   "displayChapter": 11,
+   "difficulty": "hard",
+   "name": "Chrono Sanctum",
+   "level1Mobs": [
+    {
+     "name": "Chrono Wraith",
+     "hp": 695000000000,
+     "attack": 67488000000,
+     "attackSpeed": 1.5,
+     "penetration": 70
+    },
+    {
+     "name": "Fractured Sear",
+     "hp": 889600000000,
+     "attack": 89984000000,
+     "attackSpeed": 1,
+     "penetration": 70
+    },
+    {
+     "name": "Eonbound Colossus",
+     "hp": 1390000000000,
+     "attack": 134976000000,
+     "attackSpeed": 0.45,
+     "penetration": 70
+    }
+   ],
+   "level10Mobs": [
+    {
+     "name": "Chrono Wraith",
+     "hp": 1125900000000,
+     "attack": 109330560000,
+     "attackSpeed": 1.5,
+     "penetration": 70
+    },
+    {
+     "name": "Fractured Sear",
+     "hp": 1441152000000,
+     "attack": 145774080000,
+     "attackSpeed": 1,
+     "penetration": 70
+    },
+    {
+     "name": "Eonbound Colossus",
+     "hp": 2251800000000,
+     "attack": 218661120000,
+     "attackSpeed": 0.45,
+     "penetration": 70
+    }
+   ],
+   "extraLevelKeys": [
+    "influenceReward"
+   ]
+  }
+ ]
+}
