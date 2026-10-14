@@ -243,16 +243,17 @@ describe('gameProfileToCharacter', () => {
     expect(c.pets.altar.level).toBeGreaterThan(2);
   });
 
-  it('mounts: species case, level, rolls, sockets; a glyph used on two mounts is cloned', () => {
+  it('mounts: species case, level, rolls, sockets; a glyph used on two mounts keeps its id', () => {
     expect(c.mounts.map((m) => [m.id, m.species, m.rarity, m.level, m.baseHp, m.baseAtk])).toEqual([
       ['mount-a', 'NIGHT_WOLF', 'Common', 3, 7, 8],
       ['mount-b', 'SCORPION_HOUND', 'Uncommon', 2, 16, 12],
     ]);
     const [a, b] = c.mounts;
     expect(a.glyphs).toEqual({ minor: ['gl-minor-a', 'gl-minor-b', null], major: ['gl-major', null], mythic: [null] });
-    expect(b.glyphs.minor[0]).toBe('gl-minor-a~2');
+    expect(b.glyphs.minor[0]).toBe('gl-minor-a');
     expect(b.glyphs.minor[1]).toBeNull(); // sealed glyphs cannot be socketed
-    expect(c.glyphs.find((g) => g.id === 'gl-minor-a~2')).toMatchObject({ glyphType: 'g-tough', secondary: { stat: 'blockChance', quality: 0.5 } });
+    expect(c.glyphs.some((g) => g.id.includes('~'))).toBe(false);
+    expect(c.glyphs.find((g) => g.id === 'gl-minor-a')).toMatchObject({ glyphType: 'g-tough', secondary: { stat: 'blockChance', quality: 0.5 } });
   });
 
   it('glyph inventory: Title-case rarity, secondary stat enum becomes the pool key', () => {
