@@ -10,7 +10,7 @@
    */
   import { RARITIES, secondaryPoolFor, SECONDARY_STAT_POOL, CONDUIT } from '../../lib/game/gear.js';
   import { emptyItem, maxItemLevel, secondarySlots, conduitAllowed } from '../../lib/model/equipment.js';
-  import { slotLabel, toDisplay, fromDisplay, parseFlat, formatFlat, rarityColor } from './gearFormat.js';
+  import { slotLabel, toDisplay, fromDisplay, parseFlat, flatFieldText, rarityColor } from './gearFormat.js';
 
   let { value = null, realm = 'base', slot, class: cls = null, onchange } = $props();
 
@@ -107,7 +107,7 @@
         type="text"
         inputmode="decimal"
         aria-label="Attack"
-        value={formatFlat(item.primaryStats.attack)}
+        value={flatFieldText(item.primaryStats.attack)}
         onchange={(e) => emit({ primaryStats: { ...item.primaryStats, attack: parseFlat(e.currentTarget.value) } })}
       />
     </label>
@@ -118,7 +118,7 @@
         type="text"
         inputmode="decimal"
         aria-label="Health"
-        value={formatFlat(item.primaryStats.hp)}
+        value={flatFieldText(item.primaryStats.hp)}
         onchange={(e) => emit({ primaryStats: { ...item.primaryStats, hp: parseFlat(e.currentTarget.value) } })}
       />
     </label>

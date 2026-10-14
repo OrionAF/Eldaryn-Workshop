@@ -132,7 +132,7 @@ it('details mode: edit a stat value and quality; socket / unsocket into the sele
 it('details mode for an Oblivion stone: grade select and base stats; socket target is the Oblivion set', () => {
   const id = rosterStore.addEnchantStone('oblivion', { type: 'OBLIVION', quality: 90, oblivionLevel: 2, stats: [] });
   const app = render({ realm: 'oblivion', setKey: 'oblivion', setLabel: 'Oblivion', selectedStoneId: id });
-  expect(target.textContent).toContain('10,650 Attack');
+  expect(target.textContent).toContain('10.650 Attack');
   change(q('Oblivion grade'), '4');
   expect(rosterStore.current.oblivionEnchantStones[0].oblivionLevel).toBe(4);
   button('Socket in Oblivion Helmet').click();
