@@ -187,7 +187,8 @@ user-typed sigil damage values. Class `Warrior`/`Sentinel` becomes
 - The v1 key `eldaryn_optimiser_state_v1` is **read** for migration when no v2 blob
   exists and is never deleted or overwritten by migration. The only place it is
   removed is the user-confirmed hard reset in Settings.
-- JSON export/import is routed through `normaliseRoster`; import accepts v1 and v2 JSON.
+- JSON export/import is routed through `normaliseRoster`; import accepts v1 and v2 JSON, and a
+  game profile JSON (§7), which is added to the roster as a new character instead of replacing it.
 - Every store mutator ends with an explicit `persist()`, so save timing is
   deterministic around character switches and downloads.
 
@@ -213,3 +214,33 @@ Sheet-anchored deltas (Drop Check, gear search) start from the sheet's raw value
 apply the delta, re-apply the soft cap, and split Attack/HP into flat and percent
 parts (`engine/pipeline/anchoredDelta.js`). Details and the layer map:
 `WIP/being-worked-on/rebuild-plan.md` §2 and §4.
+
+---
+
+## 7. Game profile import
+
+`model/gameProfile.js` (`isGameProfile`, `gameProfileToCharacter`) turns a captured player-profile
+response (the client's own state) into a raw v2 character; `storage.js` `importJson` adds it to the
+roster as a new, selected character (name + " (imported)" when taken). The profile itself is never
+stored or committed; only the mapped fields below survive, and `normaliseCharacter` still validates them.
+
+| Profile | v2 | Note |
+|---|---|---|
+| `player.{name,class,level}` | core | player id, clan, quests, shop, currencies are never read |
+| `equipment` / `equipment2` + `enchantSlots(2)` | `equipment.set1` / `set2` | Oblivion-only slots are not in the base sets; `qualityBonus` is dropped, `quality` stays null |
+| `oblivionPrestige.oblivion.{equipment,enchantSlots,enchantStones,level}` | `equipment.oblivion`, `oblivionEnchantStones`, `oblivion.level` | `unlocked`, `activeRealm` too |
+| `enchantStones` | `enchantStones` | `OBLIVION_POWER` rows dropped (derived) |
+| `talentState` / `talentState2`, preset `talentSet` 1\|2 | `talentSets[0\|1]`, `talentSet` 0\|1 | |
+| `presets[]` | `presets` (max 8) | none: one preset from the live loadout (active sets, equipped pet/mount/relics/sigils) |
+| `sigilState.ownedSigils`, `altarTier` | `sigils` | per-sigil `activationCondition` becomes `sigilConditions` of each preset using it; an Ancient in `sigilSpecies` moves to `ancientSigilSpecies` |
+| `petState` | `pets` | Attack Speed / Crit Damage / Minion Attack Speed secondaries x100 (pets keep percent points); altar level from `totalXp` + `tier` (Game/pets.md §6) |
+| `mountState`, `player.glyphs` | `mounts`, `glyphs` | species upper-cased; glyph rarity Title case; glyph secondary stat enum becomes the pool key |
+| `relicState.ownedRelics`, `awakeningState`, `transcendencePresets` | `relics`, `awakening`, `transcendence` | `activeTranscendencePresetId` kept |
+| `skills.<id>Level` | `skills.<id>` | `excludedDropStats` becomes `attunementBans` |
+| `fortressBuffs.ownedFortressIds` | `fortress.owned` | null means none |
+| `computedStats` | the active preset's `sheet` | the Oblivion sheet when the rift is the active realm; only finite `total*`/`raw*` numbers |
+
+**One glyph, several mounts.** The game lets one glyph id sit in the sockets of more than one mount and
+the server counts it for the ridden mount (a real profile's Block Chance only matches with it). A v2
+glyph instance fits one socket, so each further use is imported as a clone `<id>~<n>`, as in the v1
+migration. Without the clones the ridden mount loses the glyph in `reconcileMounts`.
