@@ -33,45 +33,29 @@ dependencies finish, merging their `rebuild/<id>` branches into its worktree. Th
 side by side (engine chain + Sigils; sources, pipeline, gear, relics, awakening; the other domain
 screens). Slice branches are merged into the rebuild branch with real merges.
 
-## Findings to fold back into docs
+## Doc findings
 
-Things the slices found that contradict or extend a `Reference/Game` doc. Each is resolved in the
-owning doc once confirmed.
+The slices reported 91 places where a `Reference/Game` doc was wrong, incomplete or stale. Two
+reconciliation agents (R1a: stats, combat, classes; R1b: progression and content) checked each one
+against the decompile and folded the confirmed ones into the docs and `data/*.json`. The notable
+corrections:
 
-- **`mounts-glyphs.json` `_note`** says Mystic has 9 Mage and 8 Druid major glyphs. The entries
-  themselves tag 10 MYSTIC_MAGE and 7 MYSTIC_DRUID (total 17 either way). Check the decompile's
-  `requiredSpec` assignments and correct whichever is wrong. (D3)
-- **`awakening.md` §3** says every value rounds to 1 decimal. The code rounds `attackSpeedFlat` with
-  `toFixed(2)`. Harmless today: no bundle has attack speed. (D4)
-- **`pve-content.md` §7** describes the World Boss affinity as a plain hash pick. It is a chained
-  no-repeat walk, `idx(c) = (idx(c-1) + 1 + hashInt(c) % 2) % 3`, now encoded in
-  `world-boss.json` `affinityCycle.rule` (L1152886-1152985). (D4)
-- **`stats.md` §3.2 step 7** says `rawX = round(raw)`; the code emits `parseFloat(raw.toFixed(1))`
-  (`toFixed(2)` for Attack Speed and Crit Damage), L1217495-1217870. (E3)
-- **`stats.md` §4.2 / `stats.json`** give Minion Attack Speed soft/hard caps 2/4, but
-  `calculateTotalStats` never applies them (L1217458-1217464, `toFixed(2)` only). Treated as
-  uncapped. (E3)
-- **`stats.md` §3.2 step 4** omits that the same block picks the Disruption effect: SILENCE by
-  default, STAGGER for Mystic Bear, FEAR for Mystic Wolf and Necromancer (L1216943-1216988,
-  L1217116-1217133). (E3)
-- **`sigils.json` form spells** rename the client's `passiveEffects` to `effects` and drop
-  `spellType` (client object L1070195-1070262). The pipeline accepts both. (E3)
-- **`mounts-glyphs.json` `perRarity` keys** are lower-case (`cooldownseconds`, `damagepercent`, ...)
-  while `mounts-glyphs.md` §10/§14 name them camelCase. Code must read the lower-case keys; align
-  the doc or the JSON. (B4)
-- **`transcendence.md` §2/§0**: the v1 transcription has 25 rows and no core cell; v1 `(c,r)` maps
-  to v2 `(c-14, r-26)`. All 271 cells are reachable and the full board costs 13285 Ichor, as §6
-  says. (B7)
-- **`gear.md` §1/§6**: the base-realm Ascension item-level caps (100/130/160/190/240) are only in
-  prose, not in `gear.json`. (B1)
-- **`relics.md` §8**: the v1 Sentinel id rename must apply only to v1 *Sentinel* characters; the old
-  Warrior ids are still valid Warrior relics. (B6a)
-- **`sigils.md` §1** still says the app models only Warrior and Sentinel (stale). §2 leaves open
-  whether an Ancient takes a generic slot; the app gives it its own slot. §7: a Druid
-  form-conditional sigil can change condition family by form (Withering Brand: buff in Bear,
-  debuff in Wolf). (B5)
-- **`gear.json` `slotOrder`** starts with WEAPON, while `gear.md` §1 says the slot order starts with
-  HEAD. Unused so far; check before any UI depends on it. (D2)
+- **Chrono Flux** recharge factor is 3, not 50, and the per-event conduit weights are now known
+  (`sigils.md` §9).
+- **Oblivion dungeon floors**: 14 instability values were off by one (JavaScript's `Math.round`
+  rounds .5 up); fixed in `pve-content.json` (`pve-content.md` §11).
+- **Gear slot order** is HEAD first (`EQUIPMENT_SLOT_ORDER`, L1174041-1174077); `gear.json` was
+  WEAPON first. The Ascension item-level caps are now in `gear.json`.
+- **Mystic major glyphs** split 10 Mage / 7 Druid.
+- **In PVE, damage and debuff spells ignore their activation conditions**; only PVP checks them
+  (`combat-pve.md` §10).
+- **Spell damage's `k`** is the spell-resist factor (`combat-pve.md` §10.2).
+- **Silence has no effect in PVE** (`combat-pve.md` §8.3).
+- Unit fixes: pet and stone Attack Speed / Crit Damage values are multiplier deltas.
+
+Still open (marked [UNRESOLVED] in the docs): whether an Ancient sigil takes a generic slot (the app
+gives it its own), which accumulator a relic's HP_PERCENT feeds, and how form-conditional Druid
+sigils pick their condition family.
 
 ## Left for X1 (cleanup)
 
