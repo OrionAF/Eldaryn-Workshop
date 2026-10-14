@@ -267,17 +267,14 @@ export function createBuildSpace(character, preset, { realm = 'base', residual =
     const mount = mountById(c.mountId);
     if (!mount) return [];
     const sockets = effSockets(c);
-    const elsewhere = new Set();
-    for (const m of character.mounts ?? []) {
-      if (m.id === mount.id) continue;
-      for (const ids of Object.values(m.glyphs ?? {})) for (const id of ids) if (id) elsewhere.add(id);
-    }
+    // A glyph socketed on another mount can be socketed here too (Game/mounts-glyphs.md §8);
+    // only a repeat within this mount is ruled out (the `cur.includes` check below).
     const out = [];
     for (const tier of ['minor', 'major']) {
       const seen = new Set();
       const pool = [];
       for (const g of character.glyphs ?? []) {
-        if (elsewhere.has(g.id) || !glyphSocketable(character, g, tier)) continue;
+        if (!glyphSocketable(character, g, tier)) continue;
         const sig = JSON.stringify([g.glyphType, g.rarity, g.secondary?.stat ?? null, g.secondary?.quality ?? null]);
         if (seen.has(sig)) continue;
         seen.add(sig);
