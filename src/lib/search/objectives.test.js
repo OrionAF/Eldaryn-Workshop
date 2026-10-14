@@ -40,7 +40,12 @@ describe('resolveTarget', () => {
   it('chapters and dungeon steps are three mobs fought in order; the campaign uses the live-loop rules', () => {
     const c = resolveTarget({ kind: 'chapter', chapter: 2, level: 4 });
     expect(c.enemy).toHaveLength(3);
-    expect(c.opts).toEqual({ opening: 'half', liveSpellResist: true });
+    // the engine's mode picks the tick, opening, resist rule and sequencing (fight.js PVE_MODES)
+    expect(c.opts).toEqual({ mode: 'campaign' });
+    expect(resolveTarget({ kind: 'dungeon', id: 'dungeon_1', step: 1 }).opts).toEqual({ mode: 'dungeon' });
+    expect(resolveTarget({ kind: 'raid', id: 'raid_1', step: 1 }).opts).toEqual({ mode: 'raid' });
+    expect(resolveTarget({ kind: 'oblivion', floor: 3 }).opts).toEqual({ mode: 'oblivion' });
+    expect(resolveTarget({ kind: 'worldBoss', affinity: 'ENRAGED' }).opts).toEqual({ mode: 'worldBoss' });
     expect(c.label).toBe('Chapter 2, level 4');
     expect(resolveTarget({ kind: 'chapter', chapter: 12, level: 1 }).label).toBe('Hard chapter 12, level 1');
     expect(resolveTarget({ kind: 'dungeon', id: 'dungeon_1', step: 8 }).enemy).toHaveLength(3);

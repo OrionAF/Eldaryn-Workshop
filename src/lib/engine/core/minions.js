@@ -72,9 +72,11 @@ export function elapseMinionRespawn(m, dtMs) {
   m.respawnMs = Math.max(0, m.respawnMs - dtMs);
 }
 
-// port of resummonIfDead: summons only when dead with respawnMs > 0 still pending.
+// port of resummonIfDead L1094677-1094700: summons a dead minion that has no respawn pending (a fresh
+// createMinion, or one whose countdown ran out between fights); a pending countdown is left to
+// advanceMinionRespawn.
 export function resummonIfDead(m) {
-  if (!m || m.alive || !(m.respawnMs > 0)) return false;
+  if (!m || m.alive || m.respawnMs > 0) return false;
   summonMinion(m);
   return true;
 }
@@ -88,9 +90,11 @@ export function minionSummonMeta(m, summonReadyMs) {
   return meta;
 }
 
-// port of openingSwingTimerStart: with a positive summon-ready time, min(fallback, ready - 400), else fallback.
-export function openingSwingTimerStart(summonReadyMs, windowMs, fallback = 0) {
-  return windowMs > 0 ? Math.min(fallback, summonReadyMs - OPENING_FIRST_SWING_MIN_MS) : fallback;
+// port of openingSwingTimerStart L1094757-1094789. Callers (L1087885) pass round(1000 / attackSpeed): a
+// positive summon window caps the timer at swingInterval - 400, so the first swing after the window comes
+// no sooner than 400 ms; no window returns the fallback.
+export function openingSwingTimerStart(swingIntervalMs, windowMs, fallback = 0) {
+  return windowMs > 0 ? Math.min(fallback, swingIntervalMs - OPENING_FIRST_SWING_MIN_MS) : fallback;
 }
 
 // port of openingSummonWindowMs: largest summonCastMs among the minions
@@ -224,7 +228,8 @@ export function killMinion(m) {
 export const minionDeathMeta = (m) => (m.respawnMs > 0 ? { minionRespawnMs: m.respawnMs } : {});
 
 // port of carryMinionIntoNewFight: returns the buff-restore records for a surviving minion, clears the
-// soul-link bonus, and resets hp/timer via summonMinion. [] when dead or missing.
+// soul-link bonus, and resets hp/timer via summonMinion. [] when dead or missing. The client calls it only
+// between boss phases (L1863431); no PVE mode here uses it (combat-pve.md §14).
 export function carryMinionIntoNewFight(m) {
   if (!m || !m.alive) return [];
   const out = [];

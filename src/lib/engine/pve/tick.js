@@ -57,6 +57,8 @@ export const REGEN_PULSES_PER_SEC = 10;
  * @property {{remaining:number, perMs:number, max:number}|null} [healBudget=null]  Oblivion heal cap
  * @property {boolean} [blocksShieldOverflow=false]  Oblivion: regen overflow does not refill the shield
  * @property {Object|null} [minion=null]  Necromancer minion (core/minions.js)
+ * @property {number} [attackerOutputMult=1]  not the client's: the app's optional Oblivion output cut,
+ *   applied to the player's and the minion's landed damage (pve-content.md §11)
  */
 
 /**
@@ -113,8 +115,10 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
     healBudget = null,
     blocksShieldOverflow = false,
     minion = null,
+    attackerOutputMult = 1,
   } = opts ?? {};
   const maxHp = attackerMaxHp == null ? player.maxHp : attackerMaxHp;
+  const cut = attackerOutputMult === 1 ? (d) => d : (d) => Math.round(d * attackerOutputMult);
 
   let paralyzedMs = Math.max(0, defenderParalyzedMs - dtMs);
   let silencedMs = Math.max(0, defenderSilencedMs - dtMs);
@@ -155,6 +159,26 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
   let dealt = 0;
   let attackerTimer = attackerTimerAcc;
 
+  const result = (over) => ({
+    attackerHp: atkHp,
+    defenderHp: defHp,
+    timers: { attackerTimer, defenderTimer: defenderTimerAcc, regenTimer },
+    events,
+    defenderBlinded: blinded,
+    defenderParalyzedMs: paralyzedMs,
+    defenderSilencedMs: silencedMs,
+    defenderStaggerStacks: staggerStacks,
+    defenderFearedMs: feared,
+    attackerShieldHp: atkShield,
+    defenderShieldHp: defShield,
+    attackerDamageDealt: dealt,
+    ...over,
+  });
+  const defenderDead = () => {
+    events.push({ timestamp, type: 'defender_dead', damage: 0, attackerHp: atkHp, defenderHp: 0 });
+    return result({ defenderHp: 0 });
+  };
+
   const lifestealHeal = (hpNow, damage) => {
     if (!(player.lifesteal > 0 && hpNow < maxHp)) return hpNow;
     const want = Math.min(Math.floor((damage * player.lifesteal) / 100), maxHp - hpNow);
@@ -168,8 +192,8 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
     const negated = negate > 0 ? rng() * 100 < negate : false;
     if (!negated) {
       const roll = rollAttackDamage(player, rng);
-      const d1 = applyDamageReduction(roll.damage, enemy.damageReduction);
-      const d2 = applyDamageReduction(roll.doubleHitDamage, enemy.damageReduction);
+      const d1 = cut(applyDamageReduction(roll.damage, enemy.damageReduction));
+      const d2 = cut(applyDamageReduction(roll.doubleHitDamage, enemy.damageReduction));
       const s1 = absorbWithShield(defShield, d1);
       defShield = s1.shieldHp;
       defHp = Math.max(0, defenderHp - s1.hpDamage);
@@ -232,7 +256,7 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
       if (player.penetration > 0 && enemy.missChance === 0) {
         const base = Math.round((player.attack * player.penetration) / 100);
         const mult = rollPenetrationCritMult(player, rng);
-        const d = mitigateInline(Math.round(base * mult), enemy.damageReduction);
+        const d = cut(mitigateInline(Math.round(base * mult), enemy.damageReduction));
         const s = absorbWithShield(defShield, d);
         defShield = s.shieldHp;
         defHp = Math.max(0, defenderHp - s.hpDamage);
@@ -248,35 +272,15 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
         defenderHp: defHp,
       });
     }
+    // the kill check belongs to the swing branch (L1086896); a no-swing tick goes straight to the minion
+    if (defHp <= 0) return defenderDead();
   }
-
-  const result = (over) => ({
-    attackerHp: atkHp,
-    defenderHp: defHp,
-    timers: { attackerTimer, defenderTimer: defenderTimerAcc, regenTimer },
-    events,
-    defenderBlinded: blinded,
-    defenderParalyzedMs: paralyzedMs,
-    defenderSilencedMs: silencedMs,
-    defenderStaggerStacks: staggerStacks,
-    defenderFearedMs: feared,
-    attackerShieldHp: atkShield,
-    defenderShieldHp: defShield,
-    attackerDamageDealt: dealt,
-    ...over,
-  });
-  const defenderDead = () => {
-    events.push({ timestamp, type: 'defender_dead', damage: 0, attackerHp: atkHp, defenderHp: 0 });
-    return result({ defenderHp: 0 });
-  };
-
-  if (defHp <= 0) return defenderDead();
 
   // --- minion swing (L1086910-1086950): after the player, before the enemy
   if (minion && minion.alive && defHp > 0) {
     const sw = minionSwing(minion, dtMs, rng);
     if (sw) {
-      const dmg = mitigateMinionHit(sw.damage, enemy.damageReduction);
+      const dmg = cut(mitigateMinionHit(sw.damage, enemy.damageReduction));
       const s = absorbWithShield(defShield, dmg);
       defShield = s.shieldHp;
       defHp = Math.max(0, defHp - s.hpDamage);

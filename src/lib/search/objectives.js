@@ -68,8 +68,6 @@ export function resolveTarget(raw = { kind: 'dummy' }, { character } = {}) {
     if (!mobs) throw new Error(`chapter ${raw.chapter} level ${raw.level} does not exist`);
     t.spec = { kind, chapter: raw.chapter, level: raw.level };
     t.enemy = mobs;
-    // The campaign is the one fight the client runs itself, with its live-loop rules (combat-pve.md §1).
-    t.opts = { opening: 'half', liveSpellResist: true };
     t.label = `${raw.chapter > 11 ? 'Hard chapter' : 'Chapter'} ${raw.chapter}, level ${raw.level}`;
   } else if (kind === 'dungeon') {
     const mobs = posInt(raw.step) ? dungeonMobs(raw.id, raw.step) : null;
@@ -110,6 +108,8 @@ export function resolveTarget(raw = { kind: 'dummy' }, { character } = {}) {
     t.maxMs = t.seconds * 1000;
     t.label = `Custom mob (${formatFlat(m.hp)} HP)`;
   }
+  // the engine's fight mode decides the tick, opening, resist rule, caps and mob sequencing (fight.js PVE_MODES)
+  t.opts = { mode: kind === 'chapter' ? 'campaign' : kind };
   t.key = stableStringify(t.spec);
   return t;
 }
