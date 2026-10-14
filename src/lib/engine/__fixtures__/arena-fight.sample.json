@@ -1,0 +1,8205 @@
+{
+ "_note": "Synthetic: produced by runDuel (seed 7) with the fighters of pvp/replayCheck.fixtures.js. Replace with a real /arena/fight export.",
+ "result": {
+  "ticks": [
+   {
+    "timestamp": 770,
+    "type": "defender_miss",
+    "damage": 0,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 8000
+   },
+   {
+    "timestamp": 1120,
+    "type": "attacker_block",
+    "damage": 5,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 8000
+   },
+   {
+    "timestamp": 1200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 8000
+   },
+   {
+    "timestamp": 1300,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 8000
+   },
+   {
+    "timestamp": 1540,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7982
+   },
+   {
+    "timestamp": 1600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7984
+   },
+   {
+    "timestamp": 1700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7986
+   },
+   {
+    "timestamp": 1800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7988
+   },
+   {
+    "timestamp": 1900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7990
+   },
+   {
+    "timestamp": 2000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7992
+   },
+   {
+    "timestamp": 2100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7994
+   },
+   {
+    "timestamp": 2200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7996
+   },
+   {
+    "timestamp": 2230,
+    "type": "defender_crit",
+    "damage": 35,
+    "attackerHpAfter": 7965,
+    "defenderHpAfter": 7996
+   },
+   {
+    "timestamp": 2300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7996
+   },
+   {
+    "timestamp": 2300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7998
+   },
+   {
+    "timestamp": 2310,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7980
+   },
+   {
+    "timestamp": 2400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7980
+   },
+   {
+    "timestamp": 2400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7982
+   },
+   {
+    "timestamp": 2500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7982
+   },
+   {
+    "timestamp": 2500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7984
+   },
+   {
+    "timestamp": 2600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7984
+   },
+   {
+    "timestamp": 2600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7986
+   },
+   {
+    "timestamp": 2700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7986
+   },
+   {
+    "timestamp": 2700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7988
+   },
+   {
+    "timestamp": 2800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7988
+   },
+   {
+    "timestamp": 2800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7990
+   },
+   {
+    "timestamp": 2900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7990
+   },
+   {
+    "timestamp": 2900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7992
+   },
+   {
+    "timestamp": 3000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7992
+   },
+   {
+    "timestamp": 3000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7994
+   },
+   {
+    "timestamp": 3080,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7976
+   },
+   {
+    "timestamp": 3100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7976
+   },
+   {
+    "timestamp": 3100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7978
+   },
+   {
+    "timestamp": 3200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7978
+   },
+   {
+    "timestamp": 3200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7980
+   },
+   {
+    "timestamp": 3300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7980
+   },
+   {
+    "timestamp": 3300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7982
+   },
+   {
+    "timestamp": 3340,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7975,
+    "defenderHpAfter": 7982
+   },
+   {
+    "timestamp": 3400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7982
+   },
+   {
+    "timestamp": 3400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7984
+   },
+   {
+    "timestamp": 3500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7981,
+    "defenderHpAfter": 7984
+   },
+   {
+    "timestamp": 3500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7981,
+    "defenderHpAfter": 7986
+   },
+   {
+    "timestamp": 3600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7986
+   },
+   {
+    "timestamp": 3600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7988
+   },
+   {
+    "timestamp": 3700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7987,
+    "defenderHpAfter": 7988
+   },
+   {
+    "timestamp": 3700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7987,
+    "defenderHpAfter": 7990
+   },
+   {
+    "timestamp": 3800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7990,
+    "defenderHpAfter": 7990
+   },
+   {
+    "timestamp": 3800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7990,
+    "defenderHpAfter": 7992
+   },
+   {
+    "timestamp": 3850,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7990,
+    "defenderHpAfter": 7974
+   },
+   {
+    "timestamp": 3900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7993,
+    "defenderHpAfter": 7974
+   },
+   {
+    "timestamp": 3900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7993,
+    "defenderHpAfter": 7976
+   },
+   {
+    "timestamp": 4000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7996,
+    "defenderHpAfter": 7976
+   },
+   {
+    "timestamp": 4000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7996,
+    "defenderHpAfter": 7978
+   },
+   {
+    "timestamp": 4100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7999,
+    "defenderHpAfter": 7978
+   },
+   {
+    "timestamp": 4100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7999,
+    "defenderHpAfter": 7980
+   },
+   {
+    "timestamp": 4200,
+    "type": "attacker_regen",
+    "damage": 1,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7980
+   },
+   {
+    "timestamp": 4200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7982
+   },
+   {
+    "timestamp": 4300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7984
+   },
+   {
+    "timestamp": 4400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7986
+   },
+   {
+    "timestamp": 4450,
+    "type": "defender_crit",
+    "damage": 35,
+    "attackerHpAfter": 7965,
+    "defenderHpAfter": 7986
+   },
+   {
+    "timestamp": 4500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7986
+   },
+   {
+    "timestamp": 4500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7988
+   },
+   {
+    "timestamp": 4600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7988
+   },
+   {
+    "timestamp": 4600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7990
+   },
+   {
+    "timestamp": 4620,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7942
+   },
+   {
+    "timestamp": 4620,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7942,
+    "doubleHit": true
+   },
+   {
+    "timestamp": 4700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7942
+   },
+   {
+    "timestamp": 4700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7944
+   },
+   {
+    "timestamp": 4800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7944
+   },
+   {
+    "timestamp": 4800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7946
+   },
+   {
+    "timestamp": 4900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7946
+   },
+   {
+    "timestamp": 4900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7948
+   },
+   {
+    "timestamp": 5000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7948
+   },
+   {
+    "timestamp": 5000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7950
+   },
+   {
+    "timestamp": 5100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7950
+   },
+   {
+    "timestamp": 5100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7952
+   },
+   {
+    "timestamp": 5200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7952
+   },
+   {
+    "timestamp": 5200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7954
+   },
+   {
+    "timestamp": 5300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7954
+   },
+   {
+    "timestamp": 5300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7956
+   },
+   {
+    "timestamp": 5390,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7926
+   },
+   {
+    "timestamp": 5400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7926
+   },
+   {
+    "timestamp": 5400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7928
+   },
+   {
+    "timestamp": 5500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7928
+   },
+   {
+    "timestamp": 5500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7930
+   },
+   {
+    "timestamp": 5560,
+    "type": "defender_crit",
+    "damage": 35,
+    "attackerHpAfter": 7963,
+    "defenderHpAfter": 7930
+   },
+   {
+    "timestamp": 5600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7966,
+    "defenderHpAfter": 7930
+   },
+   {
+    "timestamp": 5600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7966,
+    "defenderHpAfter": 7932
+   },
+   {
+    "timestamp": 5700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7969,
+    "defenderHpAfter": 7932
+   },
+   {
+    "timestamp": 5700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7969,
+    "defenderHpAfter": 7934
+   },
+   {
+    "timestamp": 5800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7972,
+    "defenderHpAfter": 7934
+   },
+   {
+    "timestamp": 5800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7972,
+    "defenderHpAfter": 7936
+   },
+   {
+    "timestamp": 5900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7975,
+    "defenderHpAfter": 7936
+   },
+   {
+    "timestamp": 5900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7975,
+    "defenderHpAfter": 7938
+   },
+   {
+    "timestamp": 6000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7938
+   },
+   {
+    "timestamp": 6000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7940
+   },
+   {
+    "timestamp": 6100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7981,
+    "defenderHpAfter": 7940
+   },
+   {
+    "timestamp": 6100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7981,
+    "defenderHpAfter": 7942
+   },
+   {
+    "timestamp": 6160,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7981,
+    "defenderHpAfter": 7924
+   },
+   {
+    "timestamp": 6200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7924
+   },
+   {
+    "timestamp": 6200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7926
+   },
+   {
+    "timestamp": 6300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7987,
+    "defenderHpAfter": 7926
+   },
+   {
+    "timestamp": 6300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7987,
+    "defenderHpAfter": 7928
+   },
+   {
+    "timestamp": 6400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7990,
+    "defenderHpAfter": 7928
+   },
+   {
+    "timestamp": 6400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7990,
+    "defenderHpAfter": 7930
+   },
+   {
+    "timestamp": 6500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7993,
+    "defenderHpAfter": 7930
+   },
+   {
+    "timestamp": 6500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7993,
+    "defenderHpAfter": 7932
+   },
+   {
+    "timestamp": 6600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7996,
+    "defenderHpAfter": 7932
+   },
+   {
+    "timestamp": 6600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7996,
+    "defenderHpAfter": 7934
+   },
+   {
+    "timestamp": 6670,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7973,
+    "defenderHpAfter": 7934
+   },
+   {
+    "timestamp": 6700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7976,
+    "defenderHpAfter": 7934
+   },
+   {
+    "timestamp": 6700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7976,
+    "defenderHpAfter": 7936
+   },
+   {
+    "timestamp": 6800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7979,
+    "defenderHpAfter": 7936
+   },
+   {
+    "timestamp": 6800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7979,
+    "defenderHpAfter": 7938
+   },
+   {
+    "timestamp": 6900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7982,
+    "defenderHpAfter": 7938
+   },
+   {
+    "timestamp": 6900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7982,
+    "defenderHpAfter": 7940
+   },
+   {
+    "timestamp": 6930,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7982,
+    "defenderHpAfter": 7922
+   },
+   {
+    "timestamp": 7000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7985,
+    "defenderHpAfter": 7922
+   },
+   {
+    "timestamp": 7000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7985,
+    "defenderHpAfter": 7924
+   },
+   {
+    "timestamp": 7100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7988,
+    "defenderHpAfter": 7924
+   },
+   {
+    "timestamp": 7100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7988,
+    "defenderHpAfter": 7926
+   },
+   {
+    "timestamp": 7200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7991,
+    "defenderHpAfter": 7926
+   },
+   {
+    "timestamp": 7200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7991,
+    "defenderHpAfter": 7928
+   },
+   {
+    "timestamp": 7300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7994,
+    "defenderHpAfter": 7928
+   },
+   {
+    "timestamp": 7300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7994,
+    "defenderHpAfter": 7930
+   },
+   {
+    "timestamp": 7400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7997,
+    "defenderHpAfter": 7930
+   },
+   {
+    "timestamp": 7400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7997,
+    "defenderHpAfter": 7932
+   },
+   {
+    "timestamp": 7500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7932
+   },
+   {
+    "timestamp": 7500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7934
+   },
+   {
+    "timestamp": 7600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7936
+   },
+   {
+    "timestamp": 7690,
+    "type": "defender_miss",
+    "damage": 0,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7936
+   },
+   {
+    "timestamp": 7700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7938
+   },
+   {
+    "timestamp": 7780,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7938
+   },
+   {
+    "timestamp": 7800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7938
+   },
+   {
+    "timestamp": 7800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7940
+   },
+   {
+    "timestamp": 7900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7940
+   },
+   {
+    "timestamp": 7900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7942
+   },
+   {
+    "timestamp": 8000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7942
+   },
+   {
+    "timestamp": 8000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7944
+   },
+   {
+    "timestamp": 8100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7944
+   },
+   {
+    "timestamp": 8100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7946
+   },
+   {
+    "timestamp": 8200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7946
+   },
+   {
+    "timestamp": 8200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7948
+   },
+   {
+    "timestamp": 8300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7948
+   },
+   {
+    "timestamp": 8300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7950
+   },
+   {
+    "timestamp": 8400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7950
+   },
+   {
+    "timestamp": 8400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7952
+   },
+   {
+    "timestamp": 8460,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7904
+   },
+   {
+    "timestamp": 8460,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7904,
+    "doubleHit": true
+   },
+   {
+    "timestamp": 8500,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7904
+   },
+   {
+    "timestamp": 8500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7906
+   },
+   {
+    "timestamp": 8600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7908
+   },
+   {
+    "timestamp": 8700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7910
+   },
+   {
+    "timestamp": 8800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7912
+   },
+   {
+    "timestamp": 8890,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7912
+   },
+   {
+    "timestamp": 8900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7912
+   },
+   {
+    "timestamp": 8900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7914
+   },
+   {
+    "timestamp": 9000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7914
+   },
+   {
+    "timestamp": 9000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7916
+   },
+   {
+    "timestamp": 9100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7916
+   },
+   {
+    "timestamp": 9100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7918
+   },
+   {
+    "timestamp": 9200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7918
+   },
+   {
+    "timestamp": 9200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7920
+   },
+   {
+    "timestamp": 9230,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7902
+   },
+   {
+    "timestamp": 9300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7902
+   },
+   {
+    "timestamp": 9300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7904
+   },
+   {
+    "timestamp": 9400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7904
+   },
+   {
+    "timestamp": 9400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7906
+   },
+   {
+    "timestamp": 9500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7906
+   },
+   {
+    "timestamp": 9500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7908
+   },
+   {
+    "timestamp": 9600,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7908
+   },
+   {
+    "timestamp": 9600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7910
+   },
+   {
+    "timestamp": 9700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7912
+   },
+   {
+    "timestamp": 9800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7914
+   },
+   {
+    "timestamp": 9900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7916
+   },
+   {
+    "timestamp": 10000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7918
+   },
+   {
+    "timestamp": 10000,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7900
+   },
+   {
+    "timestamp": 10000,
+    "type": "defender_crit",
+    "damage": 35,
+    "attackerHpAfter": 7965,
+    "defenderHpAfter": 7900
+   },
+   {
+    "timestamp": 10100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7900
+   },
+   {
+    "timestamp": 10100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7902
+   },
+   {
+    "timestamp": 10200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7902
+   },
+   {
+    "timestamp": 10200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7904
+   },
+   {
+    "timestamp": 10300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7904
+   },
+   {
+    "timestamp": 10300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7906
+   },
+   {
+    "timestamp": 10400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7906
+   },
+   {
+    "timestamp": 10400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7908
+   },
+   {
+    "timestamp": 10500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7908
+   },
+   {
+    "timestamp": 10500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7910
+   },
+   {
+    "timestamp": 10600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7910
+   },
+   {
+    "timestamp": 10600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7912
+   },
+   {
+    "timestamp": 10700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7912
+   },
+   {
+    "timestamp": 10700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7914
+   },
+   {
+    "timestamp": 10770,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7896
+   },
+   {
+    "timestamp": 10800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7896
+   },
+   {
+    "timestamp": 10800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7898
+   },
+   {
+    "timestamp": 10900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7898
+   },
+   {
+    "timestamp": 10900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7900
+   },
+   {
+    "timestamp": 11000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7900
+   },
+   {
+    "timestamp": 11000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7902
+   },
+   {
+    "timestamp": 11100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7902
+   },
+   {
+    "timestamp": 11100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7904
+   },
+   {
+    "timestamp": 11110,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7975,
+    "defenderHpAfter": 7904
+   },
+   {
+    "timestamp": 11200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7904
+   },
+   {
+    "timestamp": 11200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7906
+   },
+   {
+    "timestamp": 11300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7981,
+    "defenderHpAfter": 7906
+   },
+   {
+    "timestamp": 11300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7981,
+    "defenderHpAfter": 7908
+   },
+   {
+    "timestamp": 11400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7908
+   },
+   {
+    "timestamp": 11400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7910
+   },
+   {
+    "timestamp": 11500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7987,
+    "defenderHpAfter": 7910
+   },
+   {
+    "timestamp": 11500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7987,
+    "defenderHpAfter": 7912
+   },
+   {
+    "timestamp": 11540,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 7987,
+    "defenderHpAfter": 7882
+   },
+   {
+    "timestamp": 11600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7990,
+    "defenderHpAfter": 7882
+   },
+   {
+    "timestamp": 11600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7990,
+    "defenderHpAfter": 7884
+   },
+   {
+    "timestamp": 11700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7993,
+    "defenderHpAfter": 7884
+   },
+   {
+    "timestamp": 11700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7993,
+    "defenderHpAfter": 7886
+   },
+   {
+    "timestamp": 11800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7996,
+    "defenderHpAfter": 7886
+   },
+   {
+    "timestamp": 11800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7996,
+    "defenderHpAfter": 7888
+   },
+   {
+    "timestamp": 11900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7999,
+    "defenderHpAfter": 7888
+   },
+   {
+    "timestamp": 11900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7999,
+    "defenderHpAfter": 7890
+   },
+   {
+    "timestamp": 12000,
+    "type": "attacker_regen",
+    "damage": 1,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7890
+   },
+   {
+    "timestamp": 12000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7892
+   },
+   {
+    "timestamp": 12100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7894
+   },
+   {
+    "timestamp": 12200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7896
+   },
+   {
+    "timestamp": 12230,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7896
+   },
+   {
+    "timestamp": 12300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7896
+   },
+   {
+    "timestamp": 12300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7898
+   },
+   {
+    "timestamp": 12310,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7880
+   },
+   {
+    "timestamp": 12400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7880
+   },
+   {
+    "timestamp": 12400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7882
+   },
+   {
+    "timestamp": 12500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7882
+   },
+   {
+    "timestamp": 12500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7884
+   },
+   {
+    "timestamp": 12600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7884
+   },
+   {
+    "timestamp": 12600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7886
+   },
+   {
+    "timestamp": 12700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7886
+   },
+   {
+    "timestamp": 12700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7888
+   },
+   {
+    "timestamp": 12800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7888
+   },
+   {
+    "timestamp": 12800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7890
+   },
+   {
+    "timestamp": 12900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7890
+   },
+   {
+    "timestamp": 12900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7892
+   },
+   {
+    "timestamp": 13000,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7892
+   },
+   {
+    "timestamp": 13000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7894
+   },
+   {
+    "timestamp": 13080,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7876
+   },
+   {
+    "timestamp": 13100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7878
+   },
+   {
+    "timestamp": 13200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7880
+   },
+   {
+    "timestamp": 13300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7882
+   },
+   {
+    "timestamp": 13340,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7882
+   },
+   {
+    "timestamp": 13400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7882
+   },
+   {
+    "timestamp": 13400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7884
+   },
+   {
+    "timestamp": 13500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7884
+   },
+   {
+    "timestamp": 13500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7886
+   },
+   {
+    "timestamp": 13600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7886
+   },
+   {
+    "timestamp": 13600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7888
+   },
+   {
+    "timestamp": 13700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7888
+   },
+   {
+    "timestamp": 13700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7890
+   },
+   {
+    "timestamp": 13800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7890
+   },
+   {
+    "timestamp": 13800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7892
+   },
+   {
+    "timestamp": 13850,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7874
+   },
+   {
+    "timestamp": 13900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7874
+   },
+   {
+    "timestamp": 13900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7876
+   },
+   {
+    "timestamp": 14000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7876
+   },
+   {
+    "timestamp": 14000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7878
+   },
+   {
+    "timestamp": 14100,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7878
+   },
+   {
+    "timestamp": 14100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7880
+   },
+   {
+    "timestamp": 14200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7882
+   },
+   {
+    "timestamp": 14300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7884
+   },
+   {
+    "timestamp": 14400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7886
+   },
+   {
+    "timestamp": 14450,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7886
+   },
+   {
+    "timestamp": 14500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7886
+   },
+   {
+    "timestamp": 14500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7888
+   },
+   {
+    "timestamp": 14600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7888
+   },
+   {
+    "timestamp": 14600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7890
+   },
+   {
+    "timestamp": 14620,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7860
+   },
+   {
+    "timestamp": 14700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7860
+   },
+   {
+    "timestamp": 14700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7862
+   },
+   {
+    "timestamp": 14800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7862
+   },
+   {
+    "timestamp": 14800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7864
+   },
+   {
+    "timestamp": 14900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7864
+   },
+   {
+    "timestamp": 14900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7866
+   },
+   {
+    "timestamp": 15000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7866
+   },
+   {
+    "timestamp": 15000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7868
+   },
+   {
+    "timestamp": 15100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7868
+   },
+   {
+    "timestamp": 15100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7870
+   },
+   {
+    "timestamp": 15200,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7870
+   },
+   {
+    "timestamp": 15200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7872
+   },
+   {
+    "timestamp": 15300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7874
+   },
+   {
+    "timestamp": 15380,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7856
+   },
+   {
+    "timestamp": 15400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7858
+   },
+   {
+    "timestamp": 15500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7860
+   },
+   {
+    "timestamp": 15560,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7860
+   },
+   {
+    "timestamp": 15600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7860
+   },
+   {
+    "timestamp": 15600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7862
+   },
+   {
+    "timestamp": 15700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7862
+   },
+   {
+    "timestamp": 15700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7864
+   },
+   {
+    "timestamp": 15800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7864
+   },
+   {
+    "timestamp": 15800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7866
+   },
+   {
+    "timestamp": 15900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7866
+   },
+   {
+    "timestamp": 15900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7868
+   },
+   {
+    "timestamp": 16000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7868
+   },
+   {
+    "timestamp": 16000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7870
+   },
+   {
+    "timestamp": 16100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7870
+   },
+   {
+    "timestamp": 16100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7872
+   },
+   {
+    "timestamp": 16150,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7854
+   },
+   {
+    "timestamp": 16200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7854
+   },
+   {
+    "timestamp": 16200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7856
+   },
+   {
+    "timestamp": 16300,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7856
+   },
+   {
+    "timestamp": 16300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7858
+   },
+   {
+    "timestamp": 16400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7860
+   },
+   {
+    "timestamp": 16500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7862
+   },
+   {
+    "timestamp": 16600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7864
+   },
+   {
+    "timestamp": 16670,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7864
+   },
+   {
+    "timestamp": 16700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7864
+   },
+   {
+    "timestamp": 16700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7866
+   },
+   {
+    "timestamp": 16800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7866
+   },
+   {
+    "timestamp": 16800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7868
+   },
+   {
+    "timestamp": 16900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7868
+   },
+   {
+    "timestamp": 16900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7870
+   },
+   {
+    "timestamp": 16920,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7852
+   },
+   {
+    "timestamp": 17000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7852
+   },
+   {
+    "timestamp": 17000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7854
+   },
+   {
+    "timestamp": 17100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7854
+   },
+   {
+    "timestamp": 17100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7856
+   },
+   {
+    "timestamp": 17200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7856
+   },
+   {
+    "timestamp": 17200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7858
+   },
+   {
+    "timestamp": 17300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7858
+   },
+   {
+    "timestamp": 17300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7860
+   },
+   {
+    "timestamp": 17400,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7860
+   },
+   {
+    "timestamp": 17400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7862
+   },
+   {
+    "timestamp": 17500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7864
+   },
+   {
+    "timestamp": 17600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7866
+   },
+   {
+    "timestamp": 17690,
+    "type": "defender_miss",
+    "damage": 0,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7866
+   },
+   {
+    "timestamp": 17700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7868
+   },
+   {
+    "timestamp": 17780,
+    "type": "attacker_block",
+    "damage": 5,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7868
+   },
+   {
+    "timestamp": 17800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7868
+   },
+   {
+    "timestamp": 17800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7870
+   },
+   {
+    "timestamp": 17900,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7870
+   },
+   {
+    "timestamp": 17900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7872
+   },
+   {
+    "timestamp": 18000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7874
+   },
+   {
+    "timestamp": 18100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7876
+   },
+   {
+    "timestamp": 18200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7878
+   },
+   {
+    "timestamp": 18300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7880
+   },
+   {
+    "timestamp": 18400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7882
+   },
+   {
+    "timestamp": 18460,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7846
+   },
+   {
+    "timestamp": 18460,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7846,
+    "doubleHit": true
+   },
+   {
+    "timestamp": 18500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7848
+   },
+   {
+    "timestamp": 18600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7850
+   },
+   {
+    "timestamp": 18700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7852
+   },
+   {
+    "timestamp": 18800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7854
+   },
+   {
+    "timestamp": 18890,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7854
+   },
+   {
+    "timestamp": 18900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7854
+   },
+   {
+    "timestamp": 18900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7856
+   },
+   {
+    "timestamp": 19000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7856
+   },
+   {
+    "timestamp": 19000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7858
+   },
+   {
+    "timestamp": 19100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7858
+   },
+   {
+    "timestamp": 19100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7860
+   },
+   {
+    "timestamp": 19200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7860
+   },
+   {
+    "timestamp": 19200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7862
+   },
+   {
+    "timestamp": 19230,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7844
+   },
+   {
+    "timestamp": 19300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7844
+   },
+   {
+    "timestamp": 19300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7846
+   },
+   {
+    "timestamp": 19400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7846
+   },
+   {
+    "timestamp": 19400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7848
+   },
+   {
+    "timestamp": 19500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7848
+   },
+   {
+    "timestamp": 19500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7850
+   },
+   {
+    "timestamp": 19600,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7850
+   },
+   {
+    "timestamp": 19600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7852
+   },
+   {
+    "timestamp": 19700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7854
+   },
+   {
+    "timestamp": 19800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7856
+   },
+   {
+    "timestamp": 19900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7858
+   },
+   {
+    "timestamp": 20000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7860
+   },
+   {
+    "timestamp": 20000,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7842
+   },
+   {
+    "timestamp": 20000,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7842
+   },
+   {
+    "timestamp": 20100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7842
+   },
+   {
+    "timestamp": 20100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7844
+   },
+   {
+    "timestamp": 20200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7844
+   },
+   {
+    "timestamp": 20200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7846
+   },
+   {
+    "timestamp": 20300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7846
+   },
+   {
+    "timestamp": 20300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7848
+   },
+   {
+    "timestamp": 20400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7848
+   },
+   {
+    "timestamp": 20400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7850
+   },
+   {
+    "timestamp": 20500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7850
+   },
+   {
+    "timestamp": 20500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7852
+   },
+   {
+    "timestamp": 20600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7852
+   },
+   {
+    "timestamp": 20600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7854
+   },
+   {
+    "timestamp": 20700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7854
+   },
+   {
+    "timestamp": 20700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7856
+   },
+   {
+    "timestamp": 20770,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7838
+   },
+   {
+    "timestamp": 20800,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7838
+   },
+   {
+    "timestamp": 20800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7840
+   },
+   {
+    "timestamp": 20900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7842
+   },
+   {
+    "timestamp": 21000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7844
+   },
+   {
+    "timestamp": 21100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7846
+   },
+   {
+    "timestamp": 21110,
+    "type": "defender_crit",
+    "damage": 35,
+    "attackerHpAfter": 7965,
+    "defenderHpAfter": 7846
+   },
+   {
+    "timestamp": 21200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7846
+   },
+   {
+    "timestamp": 21200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7848
+   },
+   {
+    "timestamp": 21300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7848
+   },
+   {
+    "timestamp": 21300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7850
+   },
+   {
+    "timestamp": 21400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7850
+   },
+   {
+    "timestamp": 21400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7852
+   },
+   {
+    "timestamp": 21500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7852
+   },
+   {
+    "timestamp": 21500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7854
+   },
+   {
+    "timestamp": 21540,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7824
+   },
+   {
+    "timestamp": 21600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7824
+   },
+   {
+    "timestamp": 21600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7826
+   },
+   {
+    "timestamp": 21700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7826
+   },
+   {
+    "timestamp": 21700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7828
+   },
+   {
+    "timestamp": 21800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7828
+   },
+   {
+    "timestamp": 21800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7830
+   },
+   {
+    "timestamp": 21900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7830
+   },
+   {
+    "timestamp": 21900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7832
+   },
+   {
+    "timestamp": 22000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7832
+   },
+   {
+    "timestamp": 22000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7834
+   },
+   {
+    "timestamp": 22100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7834
+   },
+   {
+    "timestamp": 22100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7836
+   },
+   {
+    "timestamp": 22200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7836
+   },
+   {
+    "timestamp": 22200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7838
+   },
+   {
+    "timestamp": 22220,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7975,
+    "defenderHpAfter": 7838
+   },
+   {
+    "timestamp": 22300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7838
+   },
+   {
+    "timestamp": 22300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7840
+   },
+   {
+    "timestamp": 22310,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7822
+   },
+   {
+    "timestamp": 22400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7981,
+    "defenderHpAfter": 7822
+   },
+   {
+    "timestamp": 22400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7981,
+    "defenderHpAfter": 7824
+   },
+   {
+    "timestamp": 22500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7824
+   },
+   {
+    "timestamp": 22500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7826
+   },
+   {
+    "timestamp": 22600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7987,
+    "defenderHpAfter": 7826
+   },
+   {
+    "timestamp": 22600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7987,
+    "defenderHpAfter": 7828
+   },
+   {
+    "timestamp": 22700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7990,
+    "defenderHpAfter": 7828
+   },
+   {
+    "timestamp": 22700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7990,
+    "defenderHpAfter": 7830
+   },
+   {
+    "timestamp": 22800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7993,
+    "defenderHpAfter": 7830
+   },
+   {
+    "timestamp": 22800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7993,
+    "defenderHpAfter": 7832
+   },
+   {
+    "timestamp": 22900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7996,
+    "defenderHpAfter": 7832
+   },
+   {
+    "timestamp": 22900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7996,
+    "defenderHpAfter": 7834
+   },
+   {
+    "timestamp": 23000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7999,
+    "defenderHpAfter": 7834
+   },
+   {
+    "timestamp": 23000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7999,
+    "defenderHpAfter": 7836
+   },
+   {
+    "timestamp": 23070,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7999,
+    "defenderHpAfter": 7818
+   },
+   {
+    "timestamp": 23100,
+    "type": "attacker_regen",
+    "damage": 1,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7818
+   },
+   {
+    "timestamp": 23100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7820
+   },
+   {
+    "timestamp": 23200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7822
+   },
+   {
+    "timestamp": 23300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7824
+   },
+   {
+    "timestamp": 23340,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7824
+   },
+   {
+    "timestamp": 23400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7824
+   },
+   {
+    "timestamp": 23400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7826
+   },
+   {
+    "timestamp": 23500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7826
+   },
+   {
+    "timestamp": 23500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7828
+   },
+   {
+    "timestamp": 23600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7828
+   },
+   {
+    "timestamp": 23600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7830
+   },
+   {
+    "timestamp": 23700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7830
+   },
+   {
+    "timestamp": 23700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7832
+   },
+   {
+    "timestamp": 23800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7832
+   },
+   {
+    "timestamp": 23800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7834
+   },
+   {
+    "timestamp": 23840,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7816
+   },
+   {
+    "timestamp": 23900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7816
+   },
+   {
+    "timestamp": 23900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7818
+   },
+   {
+    "timestamp": 24000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7818
+   },
+   {
+    "timestamp": 24000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7820
+   },
+   {
+    "timestamp": 24100,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7820
+   },
+   {
+    "timestamp": 24100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7822
+   },
+   {
+    "timestamp": 24200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7824
+   },
+   {
+    "timestamp": 24300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7826
+   },
+   {
+    "timestamp": 24400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7828
+   },
+   {
+    "timestamp": 24450,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7828
+   },
+   {
+    "timestamp": 24500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7828
+   },
+   {
+    "timestamp": 24500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7830
+   },
+   {
+    "timestamp": 24600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7830
+   },
+   {
+    "timestamp": 24600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7832
+   },
+   {
+    "timestamp": 24610,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7802
+   },
+   {
+    "timestamp": 24700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7802
+   },
+   {
+    "timestamp": 24700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7804
+   },
+   {
+    "timestamp": 24800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7804
+   },
+   {
+    "timestamp": 24800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7806
+   },
+   {
+    "timestamp": 24900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7806
+   },
+   {
+    "timestamp": 24900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7808
+   },
+   {
+    "timestamp": 25000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7808
+   },
+   {
+    "timestamp": 25000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7810
+   },
+   {
+    "timestamp": 25100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7810
+   },
+   {
+    "timestamp": 25100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7812
+   },
+   {
+    "timestamp": 25200,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7812
+   },
+   {
+    "timestamp": 25200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7814
+   },
+   {
+    "timestamp": 25300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7816
+   },
+   {
+    "timestamp": 25380,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7798
+   },
+   {
+    "timestamp": 25400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7800
+   },
+   {
+    "timestamp": 25500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7802
+   },
+   {
+    "timestamp": 25560,
+    "type": "attacker_block",
+    "damage": 9,
+    "attackerHpAfter": 7991,
+    "defenderHpAfter": 7802
+   },
+   {
+    "timestamp": 25600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7994,
+    "defenderHpAfter": 7802
+   },
+   {
+    "timestamp": 25600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7994,
+    "defenderHpAfter": 7804
+   },
+   {
+    "timestamp": 25700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7997,
+    "defenderHpAfter": 7804
+   },
+   {
+    "timestamp": 25700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7997,
+    "defenderHpAfter": 7806
+   },
+   {
+    "timestamp": 25800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7806
+   },
+   {
+    "timestamp": 25800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7808
+   },
+   {
+    "timestamp": 25900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7810
+   },
+   {
+    "timestamp": 26000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7812
+   },
+   {
+    "timestamp": 26100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7814
+   },
+   {
+    "timestamp": 26150,
+    "type": "defender_miss",
+    "damage": 0,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7814
+   },
+   {
+    "timestamp": 26200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7816
+   },
+   {
+    "timestamp": 26300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7818
+   },
+   {
+    "timestamp": 26400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7820
+   },
+   {
+    "timestamp": 26500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7822
+   },
+   {
+    "timestamp": 26600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7824
+   },
+   {
+    "timestamp": 26670,
+    "type": "attacker_block",
+    "damage": 5,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7824
+   },
+   {
+    "timestamp": 26700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7824
+   },
+   {
+    "timestamp": 26700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7826
+   },
+   {
+    "timestamp": 26800,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7826
+   },
+   {
+    "timestamp": 26800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7828
+   },
+   {
+    "timestamp": 26900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7830
+   },
+   {
+    "timestamp": 26920,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7800
+   },
+   {
+    "timestamp": 27000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7802
+   },
+   {
+    "timestamp": 27100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7804
+   },
+   {
+    "timestamp": 27200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7806
+   },
+   {
+    "timestamp": 27300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7808
+   },
+   {
+    "timestamp": 27400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7810
+   },
+   {
+    "timestamp": 27500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7812
+   },
+   {
+    "timestamp": 27600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7814
+   },
+   {
+    "timestamp": 27690,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7796
+   },
+   {
+    "timestamp": 27700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7798
+   },
+   {
+    "timestamp": 27780,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7798
+   },
+   {
+    "timestamp": 27800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7798
+   },
+   {
+    "timestamp": 27800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7800
+   },
+   {
+    "timestamp": 27900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7800
+   },
+   {
+    "timestamp": 27900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7802
+   },
+   {
+    "timestamp": 28000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7802
+   },
+   {
+    "timestamp": 28000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7804
+   },
+   {
+    "timestamp": 28100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7804
+   },
+   {
+    "timestamp": 28100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7806
+   },
+   {
+    "timestamp": 28200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7806
+   },
+   {
+    "timestamp": 28200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7808
+   },
+   {
+    "timestamp": 28300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7808
+   },
+   {
+    "timestamp": 28300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7810
+   },
+   {
+    "timestamp": 28400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7810
+   },
+   {
+    "timestamp": 28400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7812
+   },
+   {
+    "timestamp": 28460,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7794
+   },
+   {
+    "timestamp": 28500,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7794
+   },
+   {
+    "timestamp": 28500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7796
+   },
+   {
+    "timestamp": 28600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7798
+   },
+   {
+    "timestamp": 28700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7800
+   },
+   {
+    "timestamp": 28800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7802
+   },
+   {
+    "timestamp": 28890,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7802
+   },
+   {
+    "timestamp": 28900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7802
+   },
+   {
+    "timestamp": 28900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7804
+   },
+   {
+    "timestamp": 29000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7804
+   },
+   {
+    "timestamp": 29000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7806
+   },
+   {
+    "timestamp": 29100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7806
+   },
+   {
+    "timestamp": 29100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7808
+   },
+   {
+    "timestamp": 29200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7808
+   },
+   {
+    "timestamp": 29200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7810
+   },
+   {
+    "timestamp": 29230,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7792
+   },
+   {
+    "timestamp": 29300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7792
+   },
+   {
+    "timestamp": 29300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7794
+   },
+   {
+    "timestamp": 29400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7794
+   },
+   {
+    "timestamp": 29400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7796
+   },
+   {
+    "timestamp": 29500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7796
+   },
+   {
+    "timestamp": 29500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7798
+   },
+   {
+    "timestamp": 29600,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7798
+   },
+   {
+    "timestamp": 29600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7800
+   },
+   {
+    "timestamp": 29700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7802
+   },
+   {
+    "timestamp": 29800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7804
+   },
+   {
+    "timestamp": 29900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7806
+   },
+   {
+    "timestamp": 30000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7808
+   },
+   {
+    "timestamp": 30000,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7772
+   },
+   {
+    "timestamp": 30000,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7772,
+    "doubleHit": true
+   },
+   {
+    "timestamp": 30000,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7772
+   },
+   {
+    "timestamp": 30100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7772
+   },
+   {
+    "timestamp": 30100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7774
+   },
+   {
+    "timestamp": 30200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7774
+   },
+   {
+    "timestamp": 30200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7776
+   },
+   {
+    "timestamp": 30300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7776
+   },
+   {
+    "timestamp": 30300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7778
+   },
+   {
+    "timestamp": 30400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7778
+   },
+   {
+    "timestamp": 30400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7780
+   },
+   {
+    "timestamp": 30500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7780
+   },
+   {
+    "timestamp": 30500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7782
+   },
+   {
+    "timestamp": 30600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7782
+   },
+   {
+    "timestamp": 30600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7784
+   },
+   {
+    "timestamp": 30700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7784
+   },
+   {
+    "timestamp": 30700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7786
+   },
+   {
+    "timestamp": 30760,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7768
+   },
+   {
+    "timestamp": 30800,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7768
+   },
+   {
+    "timestamp": 30800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7770
+   },
+   {
+    "timestamp": 30900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7772
+   },
+   {
+    "timestamp": 31000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7774
+   },
+   {
+    "timestamp": 31100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7776
+   },
+   {
+    "timestamp": 31110,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7776
+   },
+   {
+    "timestamp": 31200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7776
+   },
+   {
+    "timestamp": 31200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7778
+   },
+   {
+    "timestamp": 31300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7778
+   },
+   {
+    "timestamp": 31300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7780
+   },
+   {
+    "timestamp": 31400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7780
+   },
+   {
+    "timestamp": 31400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7782
+   },
+   {
+    "timestamp": 31500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7782
+   },
+   {
+    "timestamp": 31500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7784
+   },
+   {
+    "timestamp": 31530,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7766
+   },
+   {
+    "timestamp": 31600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7766
+   },
+   {
+    "timestamp": 31600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7768
+   },
+   {
+    "timestamp": 31700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7768
+   },
+   {
+    "timestamp": 31700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7770
+   },
+   {
+    "timestamp": 31800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7770
+   },
+   {
+    "timestamp": 31800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7772
+   },
+   {
+    "timestamp": 31900,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7772
+   },
+   {
+    "timestamp": 31900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7774
+   },
+   {
+    "timestamp": 32000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7776
+   },
+   {
+    "timestamp": 32100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7778
+   },
+   {
+    "timestamp": 32200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7780
+   },
+   {
+    "timestamp": 32220,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7780
+   },
+   {
+    "timestamp": 32300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7780
+   },
+   {
+    "timestamp": 32300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7782
+   },
+   {
+    "timestamp": 32300,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7764
+   },
+   {
+    "timestamp": 32400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7764
+   },
+   {
+    "timestamp": 32400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7766
+   },
+   {
+    "timestamp": 32500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7766
+   },
+   {
+    "timestamp": 32500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7768
+   },
+   {
+    "timestamp": 32600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7768
+   },
+   {
+    "timestamp": 32600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7770
+   },
+   {
+    "timestamp": 32700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7770
+   },
+   {
+    "timestamp": 32700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7772
+   },
+   {
+    "timestamp": 32800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7772
+   },
+   {
+    "timestamp": 32800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7774
+   },
+   {
+    "timestamp": 32900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7774
+   },
+   {
+    "timestamp": 32900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7776
+   },
+   {
+    "timestamp": 33000,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7776
+   },
+   {
+    "timestamp": 33000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7778
+   },
+   {
+    "timestamp": 33070,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7760
+   },
+   {
+    "timestamp": 33100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7762
+   },
+   {
+    "timestamp": 33200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7764
+   },
+   {
+    "timestamp": 33300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7766
+   },
+   {
+    "timestamp": 33330,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7766
+   },
+   {
+    "timestamp": 33400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7766
+   },
+   {
+    "timestamp": 33400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7768
+   },
+   {
+    "timestamp": 33500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7768
+   },
+   {
+    "timestamp": 33500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7770
+   },
+   {
+    "timestamp": 33600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7770
+   },
+   {
+    "timestamp": 33600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7772
+   },
+   {
+    "timestamp": 33700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7772
+   },
+   {
+    "timestamp": 33700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7774
+   },
+   {
+    "timestamp": 33800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7774
+   },
+   {
+    "timestamp": 33800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7776
+   },
+   {
+    "timestamp": 33840,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7758
+   },
+   {
+    "timestamp": 33900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7758
+   },
+   {
+    "timestamp": 33900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7760
+   },
+   {
+    "timestamp": 34000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7760
+   },
+   {
+    "timestamp": 34000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7762
+   },
+   {
+    "timestamp": 34100,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7762
+   },
+   {
+    "timestamp": 34100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7764
+   },
+   {
+    "timestamp": 34200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7766
+   },
+   {
+    "timestamp": 34300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7768
+   },
+   {
+    "timestamp": 34400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7770
+   },
+   {
+    "timestamp": 34450,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7770
+   },
+   {
+    "timestamp": 34500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7770
+   },
+   {
+    "timestamp": 34500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7772
+   },
+   {
+    "timestamp": 34600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7772
+   },
+   {
+    "timestamp": 34600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7774
+   },
+   {
+    "timestamp": 34610,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7756
+   },
+   {
+    "timestamp": 34700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7756
+   },
+   {
+    "timestamp": 34700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7758
+   },
+   {
+    "timestamp": 34800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7758
+   },
+   {
+    "timestamp": 34800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7760
+   },
+   {
+    "timestamp": 34900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7760
+   },
+   {
+    "timestamp": 34900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7762
+   },
+   {
+    "timestamp": 35000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7762
+   },
+   {
+    "timestamp": 35000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7764
+   },
+   {
+    "timestamp": 35100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7764
+   },
+   {
+    "timestamp": 35100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7766
+   },
+   {
+    "timestamp": 35200,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7766
+   },
+   {
+    "timestamp": 35200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7768
+   },
+   {
+    "timestamp": 35300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7770
+   },
+   {
+    "timestamp": 35380,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7752
+   },
+   {
+    "timestamp": 35400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7754
+   },
+   {
+    "timestamp": 35500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7756
+   },
+   {
+    "timestamp": 35560,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7756
+   },
+   {
+    "timestamp": 35600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7756
+   },
+   {
+    "timestamp": 35600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7758
+   },
+   {
+    "timestamp": 35700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7758
+   },
+   {
+    "timestamp": 35700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7760
+   },
+   {
+    "timestamp": 35800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7760
+   },
+   {
+    "timestamp": 35800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7762
+   },
+   {
+    "timestamp": 35900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7762
+   },
+   {
+    "timestamp": 35900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7764
+   },
+   {
+    "timestamp": 36000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7764
+   },
+   {
+    "timestamp": 36000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7766
+   },
+   {
+    "timestamp": 36100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7766
+   },
+   {
+    "timestamp": 36100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7768
+   },
+   {
+    "timestamp": 36150,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7720
+   },
+   {
+    "timestamp": 36150,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7720,
+    "doubleHit": true
+   },
+   {
+    "timestamp": 36200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7720
+   },
+   {
+    "timestamp": 36200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7722
+   },
+   {
+    "timestamp": 36300,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7722
+   },
+   {
+    "timestamp": 36300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7724
+   },
+   {
+    "timestamp": 36400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7726
+   },
+   {
+    "timestamp": 36500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7728
+   },
+   {
+    "timestamp": 36600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7730
+   },
+   {
+    "timestamp": 36670,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7730
+   },
+   {
+    "timestamp": 36700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7730
+   },
+   {
+    "timestamp": 36700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7732
+   },
+   {
+    "timestamp": 36800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7732
+   },
+   {
+    "timestamp": 36800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7734
+   },
+   {
+    "timestamp": 36900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7734
+   },
+   {
+    "timestamp": 36900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7736
+   },
+   {
+    "timestamp": 36920,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7718
+   },
+   {
+    "timestamp": 37000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7718
+   },
+   {
+    "timestamp": 37000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7720
+   },
+   {
+    "timestamp": 37100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7720
+   },
+   {
+    "timestamp": 37100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7722
+   },
+   {
+    "timestamp": 37200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7722
+   },
+   {
+    "timestamp": 37200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7724
+   },
+   {
+    "timestamp": 37300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7724
+   },
+   {
+    "timestamp": 37300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7726
+   },
+   {
+    "timestamp": 37400,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7726
+   },
+   {
+    "timestamp": 37400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7728
+   },
+   {
+    "timestamp": 37500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7730
+   },
+   {
+    "timestamp": 37600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7732
+   },
+   {
+    "timestamp": 37690,
+    "type": "defender_miss",
+    "damage": 0,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7732
+   },
+   {
+    "timestamp": 37700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7734
+   },
+   {
+    "timestamp": 37780,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7734
+   },
+   {
+    "timestamp": 37800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7734
+   },
+   {
+    "timestamp": 37800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7736
+   },
+   {
+    "timestamp": 37900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7736
+   },
+   {
+    "timestamp": 37900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7738
+   },
+   {
+    "timestamp": 38000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7738
+   },
+   {
+    "timestamp": 38000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7740
+   },
+   {
+    "timestamp": 38100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7740
+   },
+   {
+    "timestamp": 38100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7742
+   },
+   {
+    "timestamp": 38200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7742
+   },
+   {
+    "timestamp": 38200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7744
+   },
+   {
+    "timestamp": 38300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7744
+   },
+   {
+    "timestamp": 38300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7746
+   },
+   {
+    "timestamp": 38400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7746
+   },
+   {
+    "timestamp": 38400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7748
+   },
+   {
+    "timestamp": 38450,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7730
+   },
+   {
+    "timestamp": 38500,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7730
+   },
+   {
+    "timestamp": 38500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7732
+   },
+   {
+    "timestamp": 38600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7734
+   },
+   {
+    "timestamp": 38700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7736
+   },
+   {
+    "timestamp": 38800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7738
+   },
+   {
+    "timestamp": 38890,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7738
+   },
+   {
+    "timestamp": 38900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7738
+   },
+   {
+    "timestamp": 38900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7740
+   },
+   {
+    "timestamp": 39000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7740
+   },
+   {
+    "timestamp": 39000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7742
+   },
+   {
+    "timestamp": 39100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7742
+   },
+   {
+    "timestamp": 39100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7744
+   },
+   {
+    "timestamp": 39200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7744
+   },
+   {
+    "timestamp": 39200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7746
+   },
+   {
+    "timestamp": 39220,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7728
+   },
+   {
+    "timestamp": 39300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7728
+   },
+   {
+    "timestamp": 39300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7730
+   },
+   {
+    "timestamp": 39400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7730
+   },
+   {
+    "timestamp": 39400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7732
+   },
+   {
+    "timestamp": 39500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7732
+   },
+   {
+    "timestamp": 39500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7734
+   },
+   {
+    "timestamp": 39600,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7734
+   },
+   {
+    "timestamp": 39600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7736
+   },
+   {
+    "timestamp": 39700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7738
+   },
+   {
+    "timestamp": 39800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7740
+   },
+   {
+    "timestamp": 39900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7742
+   },
+   {
+    "timestamp": 39990,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7724
+   },
+   {
+    "timestamp": 40000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7726
+   },
+   {
+    "timestamp": 40000,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7726
+   },
+   {
+    "timestamp": 40100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7726
+   },
+   {
+    "timestamp": 40100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7728
+   },
+   {
+    "timestamp": 40200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7728
+   },
+   {
+    "timestamp": 40200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7730
+   },
+   {
+    "timestamp": 40300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7730
+   },
+   {
+    "timestamp": 40300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7732
+   },
+   {
+    "timestamp": 40400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7732
+   },
+   {
+    "timestamp": 40400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7734
+   },
+   {
+    "timestamp": 40500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7734
+   },
+   {
+    "timestamp": 40500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7736
+   },
+   {
+    "timestamp": 40600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7736
+   },
+   {
+    "timestamp": 40600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7738
+   },
+   {
+    "timestamp": 40700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7738
+   },
+   {
+    "timestamp": 40700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7740
+   },
+   {
+    "timestamp": 40760,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7710
+   },
+   {
+    "timestamp": 40800,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7710
+   },
+   {
+    "timestamp": 40800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7712
+   },
+   {
+    "timestamp": 40900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7714
+   },
+   {
+    "timestamp": 41000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7716
+   },
+   {
+    "timestamp": 41100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7718
+   },
+   {
+    "timestamp": 41110,
+    "type": "defender_crit",
+    "damage": 35,
+    "attackerHpAfter": 7965,
+    "defenderHpAfter": 7718
+   },
+   {
+    "timestamp": 41200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7718
+   },
+   {
+    "timestamp": 41200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7720
+   },
+   {
+    "timestamp": 41300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7720
+   },
+   {
+    "timestamp": 41300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7722
+   },
+   {
+    "timestamp": 41400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7722
+   },
+   {
+    "timestamp": 41400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7724
+   },
+   {
+    "timestamp": 41500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7724
+   },
+   {
+    "timestamp": 41500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7726
+   },
+   {
+    "timestamp": 41530,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7708
+   },
+   {
+    "timestamp": 41600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7708
+   },
+   {
+    "timestamp": 41600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7710
+   },
+   {
+    "timestamp": 41700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7710
+   },
+   {
+    "timestamp": 41700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7712
+   },
+   {
+    "timestamp": 41800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7712
+   },
+   {
+    "timestamp": 41800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7714
+   },
+   {
+    "timestamp": 41900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7714
+   },
+   {
+    "timestamp": 41900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7716
+   },
+   {
+    "timestamp": 42000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7716
+   },
+   {
+    "timestamp": 42000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7718
+   },
+   {
+    "timestamp": 42100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7718
+   },
+   {
+    "timestamp": 42100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7720
+   },
+   {
+    "timestamp": 42200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7720
+   },
+   {
+    "timestamp": 42200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7722
+   },
+   {
+    "timestamp": 42220,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7975,
+    "defenderHpAfter": 7722
+   },
+   {
+    "timestamp": 42300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7722
+   },
+   {
+    "timestamp": 42300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7724
+   },
+   {
+    "timestamp": 42300,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7676
+   },
+   {
+    "timestamp": 42300,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7676,
+    "doubleHit": true
+   },
+   {
+    "timestamp": 42400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7981,
+    "defenderHpAfter": 7676
+   },
+   {
+    "timestamp": 42400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7981,
+    "defenderHpAfter": 7678
+   },
+   {
+    "timestamp": 42500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7678
+   },
+   {
+    "timestamp": 42500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7680
+   },
+   {
+    "timestamp": 42600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7987,
+    "defenderHpAfter": 7680
+   },
+   {
+    "timestamp": 42600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7987,
+    "defenderHpAfter": 7682
+   },
+   {
+    "timestamp": 42700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7990,
+    "defenderHpAfter": 7682
+   },
+   {
+    "timestamp": 42700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7990,
+    "defenderHpAfter": 7684
+   },
+   {
+    "timestamp": 42800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7993,
+    "defenderHpAfter": 7684
+   },
+   {
+    "timestamp": 42800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7993,
+    "defenderHpAfter": 7686
+   },
+   {
+    "timestamp": 42900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7996,
+    "defenderHpAfter": 7686
+   },
+   {
+    "timestamp": 42900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7996,
+    "defenderHpAfter": 7688
+   },
+   {
+    "timestamp": 43000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7999,
+    "defenderHpAfter": 7688
+   },
+   {
+    "timestamp": 43000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7999,
+    "defenderHpAfter": 7690
+   },
+   {
+    "timestamp": 43070,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7999,
+    "defenderHpAfter": 7672
+   },
+   {
+    "timestamp": 43100,
+    "type": "attacker_regen",
+    "damage": 1,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7672
+   },
+   {
+    "timestamp": 43100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7674
+   },
+   {
+    "timestamp": 43200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7676
+   },
+   {
+    "timestamp": 43300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7678
+   },
+   {
+    "timestamp": 43330,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7678
+   },
+   {
+    "timestamp": 43400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7678
+   },
+   {
+    "timestamp": 43400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7680
+   },
+   {
+    "timestamp": 43500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7680
+   },
+   {
+    "timestamp": 43500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7682
+   },
+   {
+    "timestamp": 43600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7682
+   },
+   {
+    "timestamp": 43600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7684
+   },
+   {
+    "timestamp": 43700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7684
+   },
+   {
+    "timestamp": 43700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7686
+   },
+   {
+    "timestamp": 43800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7686
+   },
+   {
+    "timestamp": 43800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7688
+   },
+   {
+    "timestamp": 43840,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7670
+   },
+   {
+    "timestamp": 43900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7670
+   },
+   {
+    "timestamp": 43900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7672
+   },
+   {
+    "timestamp": 44000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7672
+   },
+   {
+    "timestamp": 44000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7674
+   },
+   {
+    "timestamp": 44100,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7674
+   },
+   {
+    "timestamp": 44100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7676
+   },
+   {
+    "timestamp": 44200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7678
+   },
+   {
+    "timestamp": 44300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7680
+   },
+   {
+    "timestamp": 44400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7682
+   },
+   {
+    "timestamp": 44440,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7682
+   },
+   {
+    "timestamp": 44500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7682
+   },
+   {
+    "timestamp": 44500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7684
+   },
+   {
+    "timestamp": 44600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7684
+   },
+   {
+    "timestamp": 44600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7686
+   },
+   {
+    "timestamp": 44610,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7668
+   },
+   {
+    "timestamp": 44700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7668
+   },
+   {
+    "timestamp": 44700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7670
+   },
+   {
+    "timestamp": 44800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7670
+   },
+   {
+    "timestamp": 44800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7672
+   },
+   {
+    "timestamp": 44900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7672
+   },
+   {
+    "timestamp": 44900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7674
+   },
+   {
+    "timestamp": 45000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7674
+   },
+   {
+    "timestamp": 45000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7676
+   },
+   {
+    "timestamp": 45100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7676
+   },
+   {
+    "timestamp": 45100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7678
+   },
+   {
+    "timestamp": 45200,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7678
+   },
+   {
+    "timestamp": 45200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7680
+   },
+   {
+    "timestamp": 45300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7682
+   },
+   {
+    "timestamp": 45380,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7664
+   },
+   {
+    "timestamp": 45400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7666
+   },
+   {
+    "timestamp": 45500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7668
+   },
+   {
+    "timestamp": 45560,
+    "type": "attacker_block",
+    "damage": 9,
+    "attackerHpAfter": 7991,
+    "defenderHpAfter": 7668
+   },
+   {
+    "timestamp": 45600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7994,
+    "defenderHpAfter": 7668
+   },
+   {
+    "timestamp": 45600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7994,
+    "defenderHpAfter": 7670
+   },
+   {
+    "timestamp": 45700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7997,
+    "defenderHpAfter": 7670
+   },
+   {
+    "timestamp": 45700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7997,
+    "defenderHpAfter": 7672
+   },
+   {
+    "timestamp": 45800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7672
+   },
+   {
+    "timestamp": 45800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7674
+   },
+   {
+    "timestamp": 45900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7676
+   },
+   {
+    "timestamp": 46000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7678
+   },
+   {
+    "timestamp": 46100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7680
+   },
+   {
+    "timestamp": 46140,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7632
+   },
+   {
+    "timestamp": 46140,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7632,
+    "doubleHit": true
+   },
+   {
+    "timestamp": 46200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7634
+   },
+   {
+    "timestamp": 46300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7636
+   },
+   {
+    "timestamp": 46400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7638
+   },
+   {
+    "timestamp": 46500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7640
+   },
+   {
+    "timestamp": 46600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7642
+   },
+   {
+    "timestamp": 46670,
+    "type": "defender_crit",
+    "damage": 35,
+    "attackerHpAfter": 7965,
+    "defenderHpAfter": 7642
+   },
+   {
+    "timestamp": 46700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7642
+   },
+   {
+    "timestamp": 46700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7644
+   },
+   {
+    "timestamp": 46800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7644
+   },
+   {
+    "timestamp": 46800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7646
+   },
+   {
+    "timestamp": 46900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7646
+   },
+   {
+    "timestamp": 46900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7648
+   },
+   {
+    "timestamp": 46910,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7618
+   },
+   {
+    "timestamp": 47000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7618
+   },
+   {
+    "timestamp": 47000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7620
+   },
+   {
+    "timestamp": 47100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7620
+   },
+   {
+    "timestamp": 47100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7622
+   },
+   {
+    "timestamp": 47200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7622
+   },
+   {
+    "timestamp": 47200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7624
+   },
+   {
+    "timestamp": 47300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7624
+   },
+   {
+    "timestamp": 47300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7626
+   },
+   {
+    "timestamp": 47400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7626
+   },
+   {
+    "timestamp": 47400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7628
+   },
+   {
+    "timestamp": 47500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7628
+   },
+   {
+    "timestamp": 47500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7630
+   },
+   {
+    "timestamp": 47600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7630
+   },
+   {
+    "timestamp": 47600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7632
+   },
+   {
+    "timestamp": 47680,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7602
+   },
+   {
+    "timestamp": 47700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7602
+   },
+   {
+    "timestamp": 47700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7604
+   },
+   {
+    "timestamp": 47780,
+    "type": "defender_crit",
+    "damage": 35,
+    "attackerHpAfter": 7963,
+    "defenderHpAfter": 7604
+   },
+   {
+    "timestamp": 47800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7966,
+    "defenderHpAfter": 7604
+   },
+   {
+    "timestamp": 47800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7966,
+    "defenderHpAfter": 7606
+   },
+   {
+    "timestamp": 47900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7969,
+    "defenderHpAfter": 7606
+   },
+   {
+    "timestamp": 47900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7969,
+    "defenderHpAfter": 7608
+   },
+   {
+    "timestamp": 48000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7972,
+    "defenderHpAfter": 7608
+   },
+   {
+    "timestamp": 48000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7972,
+    "defenderHpAfter": 7610
+   },
+   {
+    "timestamp": 48100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7975,
+    "defenderHpAfter": 7610
+   },
+   {
+    "timestamp": 48100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7975,
+    "defenderHpAfter": 7612
+   },
+   {
+    "timestamp": 48200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7612
+   },
+   {
+    "timestamp": 48200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7614
+   },
+   {
+    "timestamp": 48300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7981,
+    "defenderHpAfter": 7614
+   },
+   {
+    "timestamp": 48300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7981,
+    "defenderHpAfter": 7616
+   },
+   {
+    "timestamp": 48400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7616
+   },
+   {
+    "timestamp": 48400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7618
+   },
+   {
+    "timestamp": 48450,
+    "type": "defender_miss",
+    "damage": 0,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7618
+   },
+   {
+    "timestamp": 48500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7987,
+    "defenderHpAfter": 7618
+   },
+   {
+    "timestamp": 48500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7987,
+    "defenderHpAfter": 7620
+   },
+   {
+    "timestamp": 48600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7990,
+    "defenderHpAfter": 7620
+   },
+   {
+    "timestamp": 48600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7990,
+    "defenderHpAfter": 7622
+   },
+   {
+    "timestamp": 48700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7993,
+    "defenderHpAfter": 7622
+   },
+   {
+    "timestamp": 48700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7993,
+    "defenderHpAfter": 7624
+   },
+   {
+    "timestamp": 48800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7996,
+    "defenderHpAfter": 7624
+   },
+   {
+    "timestamp": 48800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7996,
+    "defenderHpAfter": 7626
+   },
+   {
+    "timestamp": 48890,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7973,
+    "defenderHpAfter": 7626
+   },
+   {
+    "timestamp": 48900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7976,
+    "defenderHpAfter": 7626
+   },
+   {
+    "timestamp": 48900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7976,
+    "defenderHpAfter": 7628
+   },
+   {
+    "timestamp": 49000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7979,
+    "defenderHpAfter": 7628
+   },
+   {
+    "timestamp": 49000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7979,
+    "defenderHpAfter": 7630
+   },
+   {
+    "timestamp": 49100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7982,
+    "defenderHpAfter": 7630
+   },
+   {
+    "timestamp": 49100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7982,
+    "defenderHpAfter": 7632
+   },
+   {
+    "timestamp": 49200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7985,
+    "defenderHpAfter": 7632
+   },
+   {
+    "timestamp": 49200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7985,
+    "defenderHpAfter": 7634
+   },
+   {
+    "timestamp": 49220,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 7985,
+    "defenderHpAfter": 7604
+   },
+   {
+    "timestamp": 49300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7988,
+    "defenderHpAfter": 7604
+   },
+   {
+    "timestamp": 49300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7988,
+    "defenderHpAfter": 7606
+   },
+   {
+    "timestamp": 49400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7991,
+    "defenderHpAfter": 7606
+   },
+   {
+    "timestamp": 49400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7991,
+    "defenderHpAfter": 7608
+   },
+   {
+    "timestamp": 49500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7994,
+    "defenderHpAfter": 7608
+   },
+   {
+    "timestamp": 49500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7994,
+    "defenderHpAfter": 7610
+   },
+   {
+    "timestamp": 49600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7997,
+    "defenderHpAfter": 7610
+   },
+   {
+    "timestamp": 49600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7997,
+    "defenderHpAfter": 7612
+   },
+   {
+    "timestamp": 49700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7612
+   },
+   {
+    "timestamp": 49700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7614
+   },
+   {
+    "timestamp": 49800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7616
+   },
+   {
+    "timestamp": 49900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7618
+   },
+   {
+    "timestamp": 49990,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7600
+   },
+   {
+    "timestamp": 50000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7602
+   },
+   {
+    "timestamp": 50000,
+    "type": "defender_crit",
+    "damage": 35,
+    "attackerHpAfter": 7965,
+    "defenderHpAfter": 7602
+   },
+   {
+    "timestamp": 50100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7602
+   },
+   {
+    "timestamp": 50100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7604
+   },
+   {
+    "timestamp": 50200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7604
+   },
+   {
+    "timestamp": 50200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7606
+   },
+   {
+    "timestamp": 50300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7606
+   },
+   {
+    "timestamp": 50300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7608
+   },
+   {
+    "timestamp": 50400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7608
+   },
+   {
+    "timestamp": 50400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7610
+   },
+   {
+    "timestamp": 50500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7610
+   },
+   {
+    "timestamp": 50500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7612
+   },
+   {
+    "timestamp": 50600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7612
+   },
+   {
+    "timestamp": 50600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7614
+   },
+   {
+    "timestamp": 50700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7614
+   },
+   {
+    "timestamp": 50700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7616
+   },
+   {
+    "timestamp": 50760,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7598
+   },
+   {
+    "timestamp": 50800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7598
+   },
+   {
+    "timestamp": 50800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7600
+   },
+   {
+    "timestamp": 50900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7600
+   },
+   {
+    "timestamp": 50900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7602
+   },
+   {
+    "timestamp": 51000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7602
+   },
+   {
+    "timestamp": 51000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7604
+   },
+   {
+    "timestamp": 51100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7604
+   },
+   {
+    "timestamp": 51100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7606
+   },
+   {
+    "timestamp": 51110,
+    "type": "defender_crit",
+    "damage": 35,
+    "attackerHpAfter": 7963,
+    "defenderHpAfter": 7606
+   },
+   {
+    "timestamp": 51200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7966,
+    "defenderHpAfter": 7606
+   },
+   {
+    "timestamp": 51200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7966,
+    "defenderHpAfter": 7608
+   },
+   {
+    "timestamp": 51300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7969,
+    "defenderHpAfter": 7608
+   },
+   {
+    "timestamp": 51300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7969,
+    "defenderHpAfter": 7610
+   },
+   {
+    "timestamp": 51400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7972,
+    "defenderHpAfter": 7610
+   },
+   {
+    "timestamp": 51400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7972,
+    "defenderHpAfter": 7612
+   },
+   {
+    "timestamp": 51500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7975,
+    "defenderHpAfter": 7612
+   },
+   {
+    "timestamp": 51500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7975,
+    "defenderHpAfter": 7614
+   },
+   {
+    "timestamp": 51530,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7975,
+    "defenderHpAfter": 7596
+   },
+   {
+    "timestamp": 51600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7596
+   },
+   {
+    "timestamp": 51600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7598
+   },
+   {
+    "timestamp": 51700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7981,
+    "defenderHpAfter": 7598
+   },
+   {
+    "timestamp": 51700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7981,
+    "defenderHpAfter": 7600
+   },
+   {
+    "timestamp": 51800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7600
+   },
+   {
+    "timestamp": 51800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7602
+   },
+   {
+    "timestamp": 51900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7987,
+    "defenderHpAfter": 7602
+   },
+   {
+    "timestamp": 51900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7987,
+    "defenderHpAfter": 7604
+   },
+   {
+    "timestamp": 52000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7990,
+    "defenderHpAfter": 7604
+   },
+   {
+    "timestamp": 52000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7990,
+    "defenderHpAfter": 7606
+   },
+   {
+    "timestamp": 52100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7993,
+    "defenderHpAfter": 7606
+   },
+   {
+    "timestamp": 52100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7993,
+    "defenderHpAfter": 7608
+   },
+   {
+    "timestamp": 52200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7996,
+    "defenderHpAfter": 7608
+   },
+   {
+    "timestamp": 52200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7996,
+    "defenderHpAfter": 7610
+   },
+   {
+    "timestamp": 52220,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7973,
+    "defenderHpAfter": 7610
+   },
+   {
+    "timestamp": 52300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7976,
+    "defenderHpAfter": 7610
+   },
+   {
+    "timestamp": 52300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7976,
+    "defenderHpAfter": 7612
+   },
+   {
+    "timestamp": 52300,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7976,
+    "defenderHpAfter": 7576
+   },
+   {
+    "timestamp": 52300,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7976,
+    "defenderHpAfter": 7576,
+    "doubleHit": true
+   },
+   {
+    "timestamp": 52400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7979,
+    "defenderHpAfter": 7576
+   },
+   {
+    "timestamp": 52400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7979,
+    "defenderHpAfter": 7578
+   },
+   {
+    "timestamp": 52500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7982,
+    "defenderHpAfter": 7578
+   },
+   {
+    "timestamp": 52500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7982,
+    "defenderHpAfter": 7580
+   },
+   {
+    "timestamp": 52600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7985,
+    "defenderHpAfter": 7580
+   },
+   {
+    "timestamp": 52600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7985,
+    "defenderHpAfter": 7582
+   },
+   {
+    "timestamp": 52700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7988,
+    "defenderHpAfter": 7582
+   },
+   {
+    "timestamp": 52700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7988,
+    "defenderHpAfter": 7584
+   },
+   {
+    "timestamp": 52800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7991,
+    "defenderHpAfter": 7584
+   },
+   {
+    "timestamp": 52800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7991,
+    "defenderHpAfter": 7586
+   },
+   {
+    "timestamp": 52900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7994,
+    "defenderHpAfter": 7586
+   },
+   {
+    "timestamp": 52900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7994,
+    "defenderHpAfter": 7588
+   },
+   {
+    "timestamp": 53000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7997,
+    "defenderHpAfter": 7588
+   },
+   {
+    "timestamp": 53000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7997,
+    "defenderHpAfter": 7590
+   },
+   {
+    "timestamp": 53070,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7997,
+    "defenderHpAfter": 7572
+   },
+   {
+    "timestamp": 53100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7572
+   },
+   {
+    "timestamp": 53100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7574
+   },
+   {
+    "timestamp": 53200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7576
+   },
+   {
+    "timestamp": 53300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7578
+   },
+   {
+    "timestamp": 53330,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7578
+   },
+   {
+    "timestamp": 53400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7578
+   },
+   {
+    "timestamp": 53400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7580
+   },
+   {
+    "timestamp": 53500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7580
+   },
+   {
+    "timestamp": 53500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7582
+   },
+   {
+    "timestamp": 53600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7582
+   },
+   {
+    "timestamp": 53600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7584
+   },
+   {
+    "timestamp": 53700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7584
+   },
+   {
+    "timestamp": 53700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7586
+   },
+   {
+    "timestamp": 53800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7586
+   },
+   {
+    "timestamp": 53800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7588
+   },
+   {
+    "timestamp": 53830,
+    "type": "defender_miss",
+    "damage": 0,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7588
+   },
+   {
+    "timestamp": 53900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7588
+   },
+   {
+    "timestamp": 53900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7590
+   },
+   {
+    "timestamp": 54000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7590
+   },
+   {
+    "timestamp": 54000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7592
+   },
+   {
+    "timestamp": 54100,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7592
+   },
+   {
+    "timestamp": 54100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7594
+   },
+   {
+    "timestamp": 54200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7596
+   },
+   {
+    "timestamp": 54300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7598
+   },
+   {
+    "timestamp": 54400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7600
+   },
+   {
+    "timestamp": 54440,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7600
+   },
+   {
+    "timestamp": 54500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7600
+   },
+   {
+    "timestamp": 54500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7602
+   },
+   {
+    "timestamp": 54600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7602
+   },
+   {
+    "timestamp": 54600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7604
+   },
+   {
+    "timestamp": 54600,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7574
+   },
+   {
+    "timestamp": 54700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7574
+   },
+   {
+    "timestamp": 54700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7576
+   },
+   {
+    "timestamp": 54800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7576
+   },
+   {
+    "timestamp": 54800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7578
+   },
+   {
+    "timestamp": 54900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7578
+   },
+   {
+    "timestamp": 54900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7580
+   },
+   {
+    "timestamp": 55000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7580
+   },
+   {
+    "timestamp": 55000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7582
+   },
+   {
+    "timestamp": 55100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7582
+   },
+   {
+    "timestamp": 55100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7584
+   },
+   {
+    "timestamp": 55200,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7584
+   },
+   {
+    "timestamp": 55200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7586
+   },
+   {
+    "timestamp": 55300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7588
+   },
+   {
+    "timestamp": 55370,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7558
+   },
+   {
+    "timestamp": 55400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7560
+   },
+   {
+    "timestamp": 55500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7562
+   },
+   {
+    "timestamp": 55550,
+    "type": "defender_crit",
+    "damage": 35,
+    "attackerHpAfter": 7965,
+    "defenderHpAfter": 7562
+   },
+   {
+    "timestamp": 55600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7562
+   },
+   {
+    "timestamp": 55600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7564
+   },
+   {
+    "timestamp": 55700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7564
+   },
+   {
+    "timestamp": 55700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7566
+   },
+   {
+    "timestamp": 55800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7566
+   },
+   {
+    "timestamp": 55800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7568
+   },
+   {
+    "timestamp": 55900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7568
+   },
+   {
+    "timestamp": 55900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7570
+   },
+   {
+    "timestamp": 56000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7570
+   },
+   {
+    "timestamp": 56000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7572
+   },
+   {
+    "timestamp": 56100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7572
+   },
+   {
+    "timestamp": 56100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7574
+   },
+   {
+    "timestamp": 56140,
+    "type": "defender_miss",
+    "damage": 0,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7574
+   },
+   {
+    "timestamp": 56200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7574
+   },
+   {
+    "timestamp": 56200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7576
+   },
+   {
+    "timestamp": 56300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7576
+   },
+   {
+    "timestamp": 56300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7578
+   },
+   {
+    "timestamp": 56400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7578
+   },
+   {
+    "timestamp": 56400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7580
+   },
+   {
+    "timestamp": 56500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7580
+   },
+   {
+    "timestamp": 56500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7582
+   },
+   {
+    "timestamp": 56600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7582
+   },
+   {
+    "timestamp": 56600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7584
+   },
+   {
+    "timestamp": 56670,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7975,
+    "defenderHpAfter": 7584
+   },
+   {
+    "timestamp": 56700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7584
+   },
+   {
+    "timestamp": 56700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7978,
+    "defenderHpAfter": 7586
+   },
+   {
+    "timestamp": 56800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7981,
+    "defenderHpAfter": 7586
+   },
+   {
+    "timestamp": 56800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7981,
+    "defenderHpAfter": 7588
+   },
+   {
+    "timestamp": 56900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7588
+   },
+   {
+    "timestamp": 56900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7590
+   },
+   {
+    "timestamp": 56910,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7984,
+    "defenderHpAfter": 7572
+   },
+   {
+    "timestamp": 57000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7987,
+    "defenderHpAfter": 7572
+   },
+   {
+    "timestamp": 57000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7987,
+    "defenderHpAfter": 7574
+   },
+   {
+    "timestamp": 57100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7990,
+    "defenderHpAfter": 7574
+   },
+   {
+    "timestamp": 57100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7990,
+    "defenderHpAfter": 7576
+   },
+   {
+    "timestamp": 57200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7993,
+    "defenderHpAfter": 7576
+   },
+   {
+    "timestamp": 57200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7993,
+    "defenderHpAfter": 7578
+   },
+   {
+    "timestamp": 57300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7996,
+    "defenderHpAfter": 7578
+   },
+   {
+    "timestamp": 57300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7996,
+    "defenderHpAfter": 7580
+   },
+   {
+    "timestamp": 57400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7999,
+    "defenderHpAfter": 7580
+   },
+   {
+    "timestamp": 57400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7999,
+    "defenderHpAfter": 7582
+   },
+   {
+    "timestamp": 57500,
+    "type": "attacker_regen",
+    "damage": 1,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7582
+   },
+   {
+    "timestamp": 57500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7584
+   },
+   {
+    "timestamp": 57600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7586
+   },
+   {
+    "timestamp": 57680,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7550
+   },
+   {
+    "timestamp": 57680,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7550,
+    "doubleHit": true
+   },
+   {
+    "timestamp": 57700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7552
+   },
+   {
+    "timestamp": 57780,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7552
+   },
+   {
+    "timestamp": 57800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7552
+   },
+   {
+    "timestamp": 57800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7554
+   },
+   {
+    "timestamp": 57900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7554
+   },
+   {
+    "timestamp": 57900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7556
+   },
+   {
+    "timestamp": 58000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7556
+   },
+   {
+    "timestamp": 58000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7558
+   },
+   {
+    "timestamp": 58100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7558
+   },
+   {
+    "timestamp": 58100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7560
+   },
+   {
+    "timestamp": 58200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7560
+   },
+   {
+    "timestamp": 58200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7562
+   },
+   {
+    "timestamp": 58300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7562
+   },
+   {
+    "timestamp": 58300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7564
+   },
+   {
+    "timestamp": 58400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7564
+   },
+   {
+    "timestamp": 58400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7566
+   },
+   {
+    "timestamp": 58450,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7536
+   },
+   {
+    "timestamp": 58500,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7536
+   },
+   {
+    "timestamp": 58500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7538
+   },
+   {
+    "timestamp": 58600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7540
+   },
+   {
+    "timestamp": 58700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7542
+   },
+   {
+    "timestamp": 58800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7544
+   },
+   {
+    "timestamp": 58890,
+    "type": "defender_crit",
+    "damage": 35,
+    "attackerHpAfter": 7965,
+    "defenderHpAfter": 7544
+   },
+   {
+    "timestamp": 58900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7544
+   },
+   {
+    "timestamp": 58900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7968,
+    "defenderHpAfter": 7546
+   },
+   {
+    "timestamp": 59000,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7546
+   },
+   {
+    "timestamp": 59000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7971,
+    "defenderHpAfter": 7548
+   },
+   {
+    "timestamp": 59100,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7548
+   },
+   {
+    "timestamp": 59100,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7974,
+    "defenderHpAfter": 7550
+   },
+   {
+    "timestamp": 59200,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7550
+   },
+   {
+    "timestamp": 59200,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7552
+   },
+   {
+    "timestamp": 59220,
+    "type": "attacker_crit",
+    "damage": 30,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7522
+   },
+   {
+    "timestamp": 59300,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7522
+   },
+   {
+    "timestamp": 59300,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7980,
+    "defenderHpAfter": 7524
+   },
+   {
+    "timestamp": 59400,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7524
+   },
+   {
+    "timestamp": 59400,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7983,
+    "defenderHpAfter": 7526
+   },
+   {
+    "timestamp": 59500,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7526
+   },
+   {
+    "timestamp": 59500,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7986,
+    "defenderHpAfter": 7528
+   },
+   {
+    "timestamp": 59600,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7528
+   },
+   {
+    "timestamp": 59600,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7989,
+    "defenderHpAfter": 7530
+   },
+   {
+    "timestamp": 59700,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7530
+   },
+   {
+    "timestamp": 59700,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7992,
+    "defenderHpAfter": 7532
+   },
+   {
+    "timestamp": 59800,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7532
+   },
+   {
+    "timestamp": 59800,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7995,
+    "defenderHpAfter": 7534
+   },
+   {
+    "timestamp": 59900,
+    "type": "attacker_regen",
+    "damage": 3,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7534
+   },
+   {
+    "timestamp": 59900,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7536
+   },
+   {
+    "timestamp": 59990,
+    "type": "attacker_hit",
+    "damage": 18,
+    "attackerHpAfter": 7998,
+    "defenderHpAfter": 7518
+   },
+   {
+    "timestamp": 60000,
+    "type": "attacker_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7518
+   },
+   {
+    "timestamp": 60000,
+    "type": "defender_regen",
+    "damage": 2,
+    "attackerHpAfter": 8000,
+    "defenderHpAfter": 7520
+   },
+   {
+    "timestamp": 60000,
+    "type": "defender_hit",
+    "damage": 23,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7520
+   },
+   {
+    "timestamp": 60000,
+    "type": "time_up",
+    "damage": 0,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7520
+   },
+   {
+    "timestamp": 60000,
+    "type": "defender_dead",
+    "damage": 0,
+    "attackerHpAfter": 7977,
+    "defenderHpAfter": 7520
+   }
+  ],
+  "totalDuration": 60000,
+  "attackerWon": true,
+  "attackerMaxHp": 8000,
+  "defenderMaxHp": 8000,
+  "attackerHpRemaining": 7977,
+  "defenderHpRemaining": 7520
+ }
+}
