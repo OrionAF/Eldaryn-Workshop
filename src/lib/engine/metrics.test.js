@@ -25,6 +25,14 @@ describe('statistics', () => {
   it('wilson keeps 0/n and n/n inside [0, 1]', () => {
     expect(wilson(0, 20).lo).toBe(0);
     expect(wilson(20, 20).hi).toBe(1);
+    // float error must never put a bound on the wrong side of p (seen at k = 0 in a cancelled duel run)
+    for (let n = 1; n <= 400; n++) {
+      for (const k of [0, n]) {
+        const w2 = wilson(k, n);
+        expect(w2.lo).toBeLessThanOrEqual(w2.p);
+        expect(w2.hi).toBeGreaterThanOrEqual(w2.p);
+      }
+    }
     expect(wilson(0, 0).p).toBeNull();
   });
   it('meanCI uses the t interval: [1,2,3] -> 2 +/- 4.303 * 1 / sqrt(3)', () => {

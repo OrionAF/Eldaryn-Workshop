@@ -45,7 +45,8 @@ export function wilson(k, n, z = 1.96) {
   const d = 1 + z2 / n;
   const c = (p + z2 / (2 * n)) / d;
   const h = (z * Math.sqrt((p * (1 - p)) / n + z2 / (4 * n * n))) / d;
-  return { p, lo: Math.max(0, c - h), hi: Math.min(1, c + h), n };
+  // Clamp to [0, p] / [p, 1]: at k = 0 or k = n, float error can put a bound a hair past p.
+  return { p, lo: Math.min(p, Math.max(0, c - h)), hi: Math.max(p, Math.min(1, c + h)), n };
 }
 
 /** Linear-interpolated quantile of an unsorted array (null when empty). */
