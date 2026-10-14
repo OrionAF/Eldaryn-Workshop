@@ -267,7 +267,7 @@ describe('dimensions', () => {
     expect(dim('talents', sp).neighbours(sp.start)).toEqual([]);
   });
 
-  it('glyph moves use only unsealed, socketable glyphs not on another mount, one representative per kind', () => {
+  it('glyph moves use only unsealed, socketable glyphs (shared with other mounts allowed), one representative per kind', () => {
     const moves = dim('glyphs').neighbours(s);
     expect(moves.length).toBeGreaterThan(0);
     for (const m of moves) {
@@ -279,12 +279,13 @@ describe('dimensions', () => {
     const offered = new Set(moves.flatMap((m) => m.mountGlyphs.minor).filter(Boolean));
     expect(offered.has('gl-4')).toBe(true);
     expect(offered.has('gl-5')).toBe(true);
-    // a glyph socketed on the other mount is not offered here
+    // a glyph socketed on the other mount is still offered here: one instance may sit on several
+    // mounts (Game/mounts-glyphs.md §8), only a repeat within one mount is ruled out
     const other = c.mounts.map((m) => (m.id === 'mount-b' ? { ...m, glyphs: { ...m.glyphs, minor: ['gl-4', null, null] } } : m));
     const c2 = normaliseCharacter({ ...JSON.parse(JSON.stringify(c)), mounts: other });
     const sp2 = createBuildSpace(c2, c2.presets[0]);
     const offered2 = new Set(dim('glyphs', sp2).neighbours(sp2.start).flatMap((m) => m.mountGlyphs.minor));
-    expect(offered2.has('gl-4')).toBe(false);
+    expect(offered2.has('gl-4')).toBe(true);
     // no mount, no glyph moves
     expect(dim('glyphs').neighbours({ ...s, mountId: null })).toEqual([]);
   });
