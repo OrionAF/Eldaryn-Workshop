@@ -42,7 +42,7 @@ Character = {
                secondaryStats: [{type, value}],
                conduit: {type: 'FLAME'|'EARTHEN'|'DARK', value} | null }
   enchantStones: Stone[],  oblivionEnchantStones: Stone[],        // separate pools
-     Stone = { id, type, quality, amplifyLevel: 0..10, oblivionLevel: 1..5 | null,
+     Stone = { id, type, activated, quality, amplifyLevel: 0..10, oblivionLevel: 1..5 | null,
                stats: [{type, value}] }                          // value = rolled, pre-amplify
   talentSets: [TalentSet, TalentSet],
      TalentSet = { spec: SpecKey | null, allocation: Record<talentId, rank> }
@@ -96,7 +96,19 @@ search time. Dominion is derived (`totalDominion` from talents + transcendence +
   behaviour) and nulls every `preset.petId`; confirm with the user first.
 - **Stone pools are separate** (`enchantStones` vs `oblivionEnchantStones`);
   `enchantSlots` values must name a stone in the matching pool (reconcile
-  enforces it).
+  enforces it). An OBLIVION-type stone lives only in the Oblivion pool and no other type
+  there. Normalisation keeps a stone's stats to its type's pool (guaranteed stats first,
+  then the Azure PvP draw, then free stats), clamps values to the stat's `[min, max]`
+  and decimals and caps the count at `statCount`. `activated` (default true for old
+  saves) is persisted and the engine skips a falsy one (`Game/stones.md` §1).
+- **Item legality** (`model/equipment.js`): secondary values are clamped to the item-level
+  ceiling `secondaryStatMaxValue` (`Game/gear.md` §4); a conduit must match
+  `conduitTypesFor(rarity, realm)` (`Game/gear.md` §7, so an Oblivion-realm Divine+ item
+  carries DARK only) or it is dropped. Both push an entry to the normalisation `report`.
+  The stored item level may reach the top Ascension step; an owned item above the
+  character's own step only warns (`itemWarnings`). Minor-glyph secondary quality is
+  clamped to `GLYPH_QUALITY_BANDS[rarity]`; pet secondary values are only validated
+  (finite, >= 0, 3 dp), the observed envelope being a UI hint and manual-entry clamp.
 - **Fortress is character-wide** (clan state), not per preset as in v1.
 - **Value units:** Attack Speed and Crit Damage are multiplier deltas, other
   percent stats are percentage points; flat stats print with "." as a thousands

@@ -102,6 +102,12 @@ export function clampSecondaryValue(type, value) {
   return round3(r.min + Math.round((c - r.min) / r.step) * r.step);
 }
 
+/** Stored value of a secondary: finite, >= 0, 3 dp. The envelope is a UI hint only, so real rolls survive. */
+export function normaliseSecondaryValue(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? round3(n) : 0;
+}
+
 /** A fresh owned pet of `speciesId` (null for an unknown species). */
 export function newPet(speciesId, id = newId('pet')) {
   const s = petSpeciesById(speciesId);
@@ -117,7 +123,7 @@ function normaliseSecondaries(raw, species, cls) {
     if (!PET_SECONDARY_RANGES[type] || seen.has(type)) continue;
     if (cls && !available(type, cls)) continue;
     seen.add(type);
-    out.push({ type, value: clampSecondaryValue(type, s.value) });
+    out.push({ type, value: normaliseSecondaryValue(s.value) });
   }
   return out;
 }

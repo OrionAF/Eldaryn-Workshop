@@ -2,7 +2,7 @@
 // lists, as in the client: stones.md §4). Persisted character fields: enchantStones,
 // oblivionEnchantStones. Shape: rebuild-plan §3 Stone.
 //
-//   Stone = { id, type: EnchantStoneType, quality: 1..100|null, amplifyLevel: 0..10,
+//   Stone = { id, type: EnchantStoneType, activated: bool, quality: 1..100|null, amplifyLevel: 0..10,
 //             oblivionLevel: 1..5|null (OBLIVION type only), stats: [{type, value}] }
 //
 // `stats[].value` is the rolled value BEFORE amplify (stones.md §5 applies 1+0.06*L at calculation
@@ -54,6 +54,42 @@ function clampInt(v, lo, hi, fallback) {
   return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : fallback;
 }
 
+/** The pool a stone type lives in: Oblivion stones only in the Oblivion realm, the rest only in the base realm (stones.md §1, §4). */
+export const stonePoolOf = (typeEnum) => (typeEnum === 'OBLIVION' ? 'oblivion' : 'base');
+
+/** Round to a stat's decimals and clamp to its [min, max] (stones.md §2). */
+export function clampStoneValue(typeEnum, value) {
+  const def = STONE_STAT_DEFS.get(typeEnum);
+  const n = Number(value);
+  if (!def || !Number.isFinite(n)) return null;
+  return parseFloat(Math.min(def.max, Math.max(def.min, n)).toFixed(def.decimals));
+}
+
+/** Stat rows of a stone checked against its type's pools: guaranteed first, then the PvP draw, then free stats; each value clamped. */
+function normaliseStoneStats(rawStats, typeEnum, statCount) {
+  const recipe = stoneRecipe(typeEnum);
+  const seen = new Set();
+  const rows = (Array.isArray(rawStats) ? rawStats : []).filter((s) => s && Number(s.value) >= 0);
+  // `order` fixes the output order (guaranteed in recipe order); `null` keeps the input order.
+  const take = (allowed, order = null) => {
+    const out = [];
+    for (const s of order ? order.map((t) => rows.find((r) => r.type === t)) : rows) {
+      if (!s || !allowed.has(s.type) || seen.has(s.type)) continue;
+      const value = clampStoneValue(s.type, s.value);
+      if (value == null) continue;
+      seen.add(s.type);
+      out.push({ type: s.type, value });
+    }
+    return out;
+  };
+  const stats = [
+    ...take(new Set(recipe.guaranteed), recipe.guaranteed),
+    ...take(new Set(recipe.choice ?? [])).slice(0, 1),
+    ...take(new Set(recipe.freePool)),
+  ];
+  return stats.slice(0, statCount);
+}
+
 /** Any value -> a valid Stone or null (unknown type). `used` is the set of ids already taken in this pool. */
 export function normaliseStone(raw, used = new Set()) {
   if (!raw || typeof raw !== 'object' || !TYPE_ENUMS.includes(raw.type)) return null;
@@ -61,35 +97,30 @@ export function normaliseStone(raw, used = new Set()) {
   while (used.has(id)) id = newId('s');
   used.add(id);
   const def = stoneTypeByEnum(raw.type);
-  const seen = new Set();
-  const stats = [];
-  for (const s of Array.isArray(raw.stats) ? raw.stats : []) {
-    if (!s || !STONE_STAT_DEFS.has(s.type) || seen.has(s.type)) continue;
-    const value = Number(s.value);
-    if (!Number.isFinite(value) || value < 0) continue;
-    seen.add(s.type);
-    stats.push({ type: s.type, value });
-  }
-  stats.length = Math.min(stats.length, def.statCount);
   return {
     id,
     type: raw.type,
+    // Only an activated stone contributes (stones.md §1, L1205747); old saves had no flag, so default on.
+    activated: raw.activated !== false,
     quality: raw.quality == null || raw.quality === '' ? null : clampInt(raw.quality, 1, 100, null),
     amplifyLevel: clampInt(raw.amplifyLevel, 0, MAX_AMPLIFY_LEVEL, 0),
     oblivionLevel: raw.type === 'OBLIVION' ? clampInt(raw.oblivionLevel, 1, MAX_OBLIVION_GRADE, 1) : null,
-    stats,
+    stats: normaliseStoneStats(raw.stats, raw.type, def.statCount),
   };
 }
 
-function normalisePool(raw) {
+function normalisePool(raw, pool) {
   const used = new Set();
-  return (Array.isArray(raw) ? raw : []).map((s) => normaliseStone(s, used)).filter(Boolean);
+  return (Array.isArray(raw) ? raw : [])
+    .filter((s) => s && stonePoolOf(s.type) === pool)
+    .map((s) => normaliseStone(s, used))
+    .filter(Boolean);
 }
 
 export function normaliseStones(rawCharacter) {
   return {
-    enchantStones: normalisePool(rawCharacter?.enchantStones),
-    oblivionEnchantStones: normalisePool(rawCharacter?.oblivionEnchantStones),
+    enchantStones: normalisePool(rawCharacter?.enchantStones, 'base'),
+    oblivionEnchantStones: normalisePool(rawCharacter?.oblivionEnchantStones, 'oblivion'),
   };
 }
 
@@ -132,7 +163,7 @@ export function migrateStonesFromV1(v1Character) {
       if (!enumName || !(v > 0)) continue;
       stats.push({ type: enumName, value: V1_MULTIPLIER.has(k) ? v / 100 : v });
     }
-    enchantStones.push({ id: s.id, type, quality: s.quality > 0 ? s.quality : null, amplifyLevel: 0, oblivionLevel: null, stats });
+    enchantStones.push({ id: s.id, type, activated: true, quality: s.quality > 0 ? s.quality : null, amplifyLevel: 0, oblivionLevel: null, stats });
   }
   return { value: { enchantStones, oblivionEnchantStones: [] }, idMap: {} };
 }
