@@ -92,7 +92,8 @@ getEnchantStoneStatMultiplier(stone, statType, amplifyLevel):
 - Amplify multiplies **every** stat on the stone, including guaranteed PvP stats and (for Oblivion) the non-Power rolled stats **[CODE]**.
 - Quality, `qualityBonus`, rarity and slot do not enter this function for any non-Oblivion stone: `stat.value` is used as stored **[CODE]**. So whatever the stored `value` is already reflects quality server-side (§6).
 - Caller supplies the list: `useSocketedStoneIds` unions the ids of both sets and the Oblivion map (L1173834-1173885). Which exact list each combat/stat screen passes to `calculateEnchantStoneBonuses` was not traced **[UNRESOLVED]**.
-- Mapping of keys to the app's stat model (`pvpAttack`, `critDamage`, ...) is 1:1 by name. Note `critDamage` ranges 0.05-0.16 and `attackSpeed` 0.01-0.1 (two decimals), far smaller than other percents; unit semantics see `stats.md` **[UNRESOLVED]**.
+- Mapping of keys to the app's stat model (`pvpAttack`, `critDamage`, ...) is 1:1 by name. `critDamage` ranges 0.05-0.16 and `attackSpeed` 0.01-0.1 (two decimals), far smaller than other percents: these are **multiplier deltas** (0.05 = +5% Crit Damage), the convention `stats.md` §1.3 gives for Attack Speed, Crit Damage and Minion Attack Speed; every other stone stat is in percent points **[DERIVED]** from the ranges against that convention.
+- Oblivion Power is derived only for a stat row of type `OBLIVION_POWER` (the `getEnchantStoneStatValue` branch above); the row's stored `value` is ignored. An Oblivion stone represented without that row therefore yields `oblivionPower` 0. Golden check: quality 80, grade 3 gives `round(8 + 22*79/99) * 2.25` = 26 * 2.25 = 58.5 (unrounded) **[DERIVED]**; apply any rounding the consumer does.
 
 ## §6 Quality, Tempering/Attunement
 

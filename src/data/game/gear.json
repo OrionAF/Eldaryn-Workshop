@@ -466,13 +466,13 @@
   }
  ],
  "slotOrder": [
-  "WEAPON",
-  "OFFHAND",
   "HEAD",
   "SHOULDERS",
   "CHEST",
   "LEGGINGS",
   "BOOTS",
+  "WEAPON",
+  "OFFHAND",
   "RING",
   "TRINKET",
   "BELT",
@@ -771,6 +771,10 @@
   "NEW_SLOT_COUNT": 3
  },
  "ascensionAboveHundredStatRate": 0.4,
+ "maxItemLevelByAscension": {
+  "regular": [100, 130, 160, 190, 240],
+  "oblivion": [200, 260, 320, 380, 480]
+ },
  "totalPowerEquip": {
   "EQUIP_ILVL_WEIGHT": 0.6,
   "EQUIP_QUALITY_WEIGHT": 0.35

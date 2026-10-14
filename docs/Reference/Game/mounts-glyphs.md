@@ -131,7 +131,7 @@ value = parseFloat( (minValue + (maxValue-minValue)*quality).toFixed(decimals) )
 ```
 Quality bands [CODE L1225980-1226017]: Common [0.1,0.2], Uncommon [0.2,0.35], Rare [0.35,0.6], Epic [0.6,0.8], Legendary [0.8,1], Mythic and above [1,1] (always max).
 
-Only MINOR glyphs roll a secondary (`glyphRollsSecondary(tier) = tier === MINOR`). [CODE L1225050-1225060] Applied to the active mount bundle by adding `value` to the stat's key (`applyGlyphSecondary`, 27 keys: attackSpeed, doubleHit, critChance, critDamage, hpRegen, lifesteal, healthPercent, attackPercent, damageReduction, blockChance, missChance, blindChance, paralyzeChance, penetration, spellDamage, spellResist, spellCritChance, spellVamp, disruptionChance, fearChance, minionAttack, minionHealth, minionCritChance, minionLifesteal, soulLink, minionAttackSpeed). [CODE L1224588-1224875] Note `ATTACK_PERCENT`/`HEALTH_PERCENT` secondary go into `attackPercent`/`healthPercent`; mount base goes into `attackPercent`/`hpPercent` (both reach the same totals, §5).
+Only MINOR glyphs roll a secondary (`glyphRollsSecondary(tier) = tier === MINOR`). [CODE L1225050-1225060] The lookup matches `SECONDARY_STAT_POOL` entries on the `SecondaryStatType` enum name (`type === secondary.stat`, L1225432-1225546). Applied to the active mount bundle by adding `value` to the stat's key (`applyGlyphSecondary`, 27 keys: attackSpeed, doubleHit, critChance, critDamage, hpRegen, lifesteal, healthPercent, attackPercent, damageReduction, blockChance, missChance, blindChance, paralyzeChance, penetration, spellDamage, spellResist, spellCritChance, spellVamp, disruptionChance, fearChance, minionAttack, minionHealth, minionCritChance, minionLifesteal, soulLink, minionAttackSpeed). [CODE L1224588-1224875] Note `ATTACK_PERCENT`/`HEALTH_PERCENT` secondary go into `attackPercent`/`healthPercent`; mount base goes into `attackPercent`/`hpPercent` (both reach the same totals, §5).
 
 Which glyph counts: ids from `getSocketedGlyphIds(normalizeMountSockets(mount.glyphs))` of the **active** mount (mythic + major + minor), glyph found in inventory, `!sealed`, has `secondary`. [CODE L1224960-1225023]
 
@@ -141,7 +141,7 @@ Secondary pool ranges (`minValue`-`maxValue`, decimals) are in the JSON `glyphSe
 
 Each major type is a `SigilGlyphModifier`: `{id sg-*, name, playerClass, requiredSpec?, sigil (SigilSpecies), effect:{kind, <field>:[5 values]}}`. The 5-value arrays are indexed by the glyph's rarity index (Common 0 .. Legendary 4); values are **deltas/absolutes as per kind**, not absolute totals. [CODE L1083900-1084786]
 
-Counts: Warrior 12, Sentinel 13, Mystic 17 (9 `MYSTIC_MAGE`, 8 `MYSTIC_DRUID`, gated by `requiredSpec`), Necromancer 0. Full list in the JSON (`majorGlyphModifiers`). [CODE L1084092-1084733; Necromancer array empty L1084751]
+Counts: Warrior 12, Sentinel 13, Mystic 17 (10 `MYSTIC_MAGE`, 7 `MYSTIC_DRUID`, gated by `requiredSpec`; the `requiredSpec` assignments are at L1084461-1084738), Necromancer 0. Full list in the JSON (`majorGlyphModifiers`). [CODE L1084092-1084733; Necromancer array empty L1084751]
 
 Effect kinds and application (`applySigilGlyphMods`, mods applied per equipped sigil spell via `spell.species`; sigil not equipped => no effect): [CODE L1080871-1081190]
 
@@ -151,14 +151,14 @@ Effect kinds and application (`applySigilGlyphMods`, mods applied per equipped s
 | DAMAGE | damagePercent | on damage spells: attackPercent, maxAttackPercent, baseDamage, damagePerTick each x(1 + p/100), rounded |
 | THORNS | thornsPercent | Iron Bastion thorns % (read via `ironBastionThornsPercent`) |
 | PARALYZE | paralyzeSeconds | adds ms to `paralyzeMs` on DEBUFF/DAMAGE spells |
-| PARALYZE_EXTEND | paralyzeSeconds | Thunderbind paralyze duration extension |
+| PARALYZE_EXTEND | paralyzeSeconds | Thunderbind paralyze duration extension; accumulates into the same `paralyzeMs` field as PARALYZE |
 | BLEED_BOOST | maxStacksBonus, stackDamagePercent | debuff `maxStacks = (maxStacks ?? 1) + bonus`; `damagePerTickPercent` and `maxDamagePerTickPercent` x(1 + p/100), rounded |
 | BULWARK_THORNS | thornsPerStackPercent, maxStacksBonus | Bulwark of Thorns thorns per stack and stack cap |
 | SUNDER_DECAY | decayPerSecond | **absolute** new decay rate (Sunder Mark, Siegebreaker Mark); min is taken |
 | ATTACK_SPEED_BUFF | attackSpeedPercent | adds an ATTACK_SPEED effect (+p/100) to BUFF spells |
 | POISON_STACK | maxStacks | **absolute** permanent poison stack ceiling (Venom Wound); max is taken |
 | ELUSIVE_BUFF | attackSpeedPerStackPercent, attackPerStackPercent, burnPerHitOverride | Elusive Supremacy per-stack bonuses; stack loss per hit forced to 1 at Epic and Legendary |
-| SHIELD_POWER | shieldPowerPercent | shield power bonus (Void Aegis) |
+| SHIELD_POWER | shieldPowerPercent | shield power bonus (Void Aegis); `applySigilGlyphMods` only accumulates it as `shieldPowerPercent`, the shield builder consumes it (§6 of sigils.md) |
 | CC_EXTEND | ccSeconds | adds ms to existing `paralyzeMs` and `fearMs` (only if already > 0) |
 
 Resolution (`resolveSigilGlyphMods`, `getActiveMajorGlyphs`) [CODE L1083530-1084000, L1080717-1080838]:
@@ -197,7 +197,7 @@ See the discrepancy list returned with this extraction. Short form: mount "star"
 - `mountRarityStatRange`, `altarTiers`: tables from §3/§7.
 - `minorGlyphTypes[]`, `mythicGlyphTypes[]`: §8/§11.
 - `glyphQualityBands`, `glyphSecondaryPool[]` (`stat` camelCase, `statEnum`, `minValue`, `maxValue`, `decimals`, `line`): §9.
-- `majorGlyphModifiers[]`: `{id, name, playerClass, requiredSpec|null, sigilSpecies, sigilName, effectKind, perRarity:{field:[Common..Legendary]}, line}` (42 entries).
+- `majorGlyphModifiers[]`: `{id, name, playerClass, requiredSpec|null, sigilSpecies, sigilName, effectKind, perRarity:{field:[Common..Legendary]}, line}` (42 entries). The `perRarity` keys are the client's camelCase effect field names (§10) **lower-cased** (`cooldownseconds`, `damagepercent`, `maxstacksbonus`, `thornsperstackpercent`, `attackspeedperstackpercent`, `burnperhitoverride`, `shieldpowerpercent`, `ccseconds`, ...); readers must use the lower-case keys.
 
 ## §15 Unresolved
 

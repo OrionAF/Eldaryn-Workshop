@@ -80,7 +80,7 @@ The in-game text confirms these (L910370):
 - CORE: "+25 PvP Attack, +25 PvP Defense, +10% XP, +1 Crusade Seal/day, +1 Raid Key/day".
 
 ### §2.2 Class remap
-`getFortressBuffCombatForClass(combat, playerClass)` (L1222835-1222947). It runs before summing. For each source key the value is added to the destination key and the source key is deleted. [CODE]
+`getFortressBuffCombatForClass(combat, playerClass)` (L1222835-1222947). It runs before summing. For each source key the value is added to the destination key and the source key is deleted, but only when the source value is present and non-zero (L1222918-1222921); a zero source key is left in place. [CODE]
 
 | class | damageReduction goes to | blockChance goes to |
 |---|---|---|

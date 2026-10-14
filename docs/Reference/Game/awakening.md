@@ -35,11 +35,12 @@ Validation (path choice only once, point availability, level gating) is **[SERVE
 if !state.path or state.level <= 0: return zeroed bundle (17 keys, all 0)
 per = getAwakeningBonusPerLevel(path, class, spec)
 bonus[k] = parseFloat((per[k] * level).toFixed(d))   d = 2 for attackSpeedFlat, else 1
-spellResist/spellDamage/spellCritChance/spellVamp: per[k] ?? 0
+spellResistFlat/spellDamageFlat/spellCritChanceFlat/spellVampFlat: per[k] ?? 0
+   the other 13 keys read per[k] directly (no default), so a bundle missing one would give NaN; every client bundle carries all 13
 ```
 Keys: attackPercent, hpPercent, attackSpeedFlat, critChanceFlat, critDamageFlat, hpRegenFlat, lifestealFlat, damageReductionFlat, blockChanceFlat, penetrationFlat, missChanceFlat, blindChanceFlat, paralyzeChanceFlat, spellResistFlat, spellDamageFlat, spellCritChanceFlat, spellVampFlat. **[CODE]** L1221997
 
-Rounding: result is rounded to 1 decimal (0.01 for attack speed) after multiplying. With the current values this only matters for 0.6/pt Penetration (0.6x15=9.0, exact) and 0.7 Regen. **[DERIVED]**
+Rounding: result is rounded with `toFixed(2)` for `attackSpeedFlat` and `toFixed(1)` for every other key, after multiplying (L1221780-1221985); it is not 1 decimal everywhere. With the current values this only matters for 0.6/pt Penetration (0.6x15=9.0, exact) and 0.7 Regen. **[DERIVED]**
 
 Per-level lookup `getAwakeningBonusPerLevel` **[CODE]** L1222046-1222121, precedence:
 ```
@@ -90,7 +91,7 @@ Unit meaning of the `...Flat` keys (percentage points of the named stat vs raw v
 
 ## §6 Static data
 
-Small enough to live here; no JSON file.
+The per-path, per-class and per-spec bundles are in `data/awakening.json` (copied verbatim from the client literals); the tables in §4 are the readable form.
 
 ## Appendix: modules
 3851 (service), 4301 (bonus calc), 4302 (paths, constants, point calc), 3136 (spec enum), plus the AwakeningView component (~L2194110+). Modules 4644, 5420, 6520 are image/animation assets only.
