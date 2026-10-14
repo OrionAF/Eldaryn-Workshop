@@ -48,7 +48,7 @@ it('clicking a nav item swaps the visible screen', () => {
   navButtons.find((b) => b.textContent.trim() === 'Transcendence').click();
   flushSync();
 
-  expect(target.querySelector('.pending-screen h2').textContent).toBe('Transcendence');
+  expect(target.querySelector('.header-row h2').textContent).toBe('Transcendence');
   cleanup();
 });
 
