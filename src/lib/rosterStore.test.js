@@ -100,6 +100,21 @@ describe('characters', () => {
   });
 });
 
+describe('game profile import', () => {
+  beforeEach(reset);
+
+  it('importFromJson adds a game profile as a new selected character, keeping the others', () => {
+    const before = store.roster.characters.map((c) => c.id);
+    const profile = JSON.stringify({ player: { name: 'Test', class: 'SENTINEL', level: 61 }, equipment: {} });
+    expect(store.importFromJson(profile)).toEqual({ kind: 'profile', name: 'Test (imported)' });
+    expect(store.roster.characters).toHaveLength(before.length + 1);
+    expect(store.roster.characters.slice(0, before.length).map((c) => c.id)).toEqual(before);
+    expect(store.current).toMatchObject({ name: 'Test (imported)', class: 'SENTINEL', level: 61 });
+    expect(saved().currentId).toBe(store.current.id);
+    expect(store.importFromJson(JSON.stringify({ schemaVersion: 2, characters: [{ id: 'z', name: 'Z' }], currentId: 'z' }))).toEqual({ kind: 'roster', name: null });
+  });
+});
+
 describe('presets', () => {
   beforeEach(reset);
 

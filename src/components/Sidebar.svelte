@@ -106,10 +106,11 @@
     if (!file) return;
     try {
       const text = await readFileAsText(file);
-      rosterStore.importFromJson(text);
+      const result = rosterStore.importFromJson(text);
       importError = '';
+      if (result.kind === 'profile') onStatus?.(`Imported ${result.name} from a game profile`);
     } catch {
-      importError = 'Import failed: not a valid roster file.';
+      importError = 'Import failed: not a valid roster file or game profile.';
     }
   }
 
@@ -193,7 +194,7 @@
 
   <div class="io-row">
     <button type="button" onclick={onExport}>Export</button>
-    <button type="button" onclick={onImportClick}>Import</button>
+    <button type="button" onclick={onImportClick} title="Import a roster file, or a game profile JSON as a new character">Import</button>
     <input type="file" accept="application/json" bind:this={fileInput} onchange={onImportFile} hidden />
   </div>
   {#if importError}
