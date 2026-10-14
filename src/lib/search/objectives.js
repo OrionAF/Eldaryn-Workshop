@@ -7,6 +7,7 @@
 //   {kind: 'oblivion', floor: n}                      forces the Oblivion realm; power comes from the fighter
 //   {kind: 'worldBoss', affinity?: 'NONE'|'FORTIFIED'|'ENRAGED'}
 //   {kind: 'custom', mob: MobSpec, seconds?: 60}      a user-entered mob
+//   {kind: 'pvp', opponentIds: string[], seats}       saved opponents (F5); resolveTarget needs `{character}`
 // An OBJECTIVE is what "better" means: {kind: 'dps'|'ttk-median'|'ttk-p90'|'survival', seconds?: 60}.
 // Which pairs make sense is `objectiveKindsFor(targetKind)`; makeObjective throws on the others.
 //
@@ -21,7 +22,10 @@ import { preparePveFighter, simulatePve, trainingDummy, FIGHT_CAP_MS } from '../
 import { chapterMobs, dungeonMobs, oblivionFloorMob, worldBossMob } from '../engine/pve/enemies.js';
 import { WORLD_BOSS_AFFINITIES } from '../game/worldBoss.js';
 import { formatFlat } from '../format.js';
+import { resolvePvpTarget, makePvpObjective, PVP_TARGET_KIND, PVP_OBJECTIVE_KIND } from './pvpObjective.js';
 
+// The PVE kinds. The PVP pair (F5) is kept apart: it is only valid together and needs the character's
+// opponents, so the PVE lists (and anything iterating them) stay as they were.
 export const OBJECTIVE_KINDS = ['dps', 'ttk-median', 'ttk-p90', 'survival'];
 export const TARGET_KINDS = ['dummy', 'chapter', 'dungeon', 'oblivion', 'worldBoss', 'custom'];
 
@@ -32,6 +36,7 @@ const COMPAT = {
   oblivion: ['ttk-median', 'ttk-p90', 'survival'],
   worldBoss: ['dps', 'survival'],
   custom: ['dps', 'ttk-median', 'ttk-p90', 'survival'],
+  [PVP_TARGET_KIND]: [PVP_OBJECTIVE_KIND],
 };
 
 /** Objective kinds that can score a target kind (the UI's picker uses this). */
@@ -45,8 +50,9 @@ const posInt = (v) => Number.isInteger(v) && v >= 1;
  *   enemy: Object|Object[], maxMs: number|undefined, seconds: number, opts: Object}}
  *   `opts` is passed to simulatePve through the metrics; the fields are listed in engine/pve/fight.js.
  */
-export function resolveTarget(raw = { kind: 'dummy' }) {
+export function resolveTarget(raw = { kind: 'dummy' }, { character } = {}) {
   const kind = raw?.kind;
+  if (kind === PVP_TARGET_KIND) return resolvePvpTarget(raw, character);
   if (!TARGET_KINDS.includes(kind)) throw new Error(`unknown target kind '${kind}'`);
   const t = { kind, spec: null, label: '', realm: null, enemy: null, maxMs: undefined, seconds: 60, opts: {} };
   if (kind === 'dummy') {
@@ -185,8 +191,9 @@ function damageWindow(fighter, target, { n, seed, keepSamples, signal }) {
  */
 export function makeObjective(raw = { kind: 'dps' }, target = resolveTarget({ kind: 'dummy' })) {
   const kind = raw?.kind;
-  if (!OBJECTIVE_KINDS.includes(kind)) throw new Error(`unknown objective kind '${kind}'`);
+  if (kind !== PVP_OBJECTIVE_KIND && !OBJECTIVE_KINDS.includes(kind)) throw new Error(`unknown objective kind '${kind}'`);
   if (!COMPAT[target.kind].includes(kind)) throw new Error(`objective '${kind}' cannot score a '${target.kind}' target`);
+  if (kind === PVP_OBJECTIVE_KIND) return makePvpObjective(raw, target, { closedFormDps, ehpProxy });
   const seconds = isNum(raw.seconds) && raw.seconds > 0 ? raw.seconds : 60;
   const enemyView = Array.isArray(target.enemy) ? target.enemy[0] : target.enemy;
   const cap = target.maxMs ?? FIGHT_CAP_MS;
