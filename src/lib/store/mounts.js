@@ -41,8 +41,9 @@ export function createMountsStore(ctx) {
   }
 
   /**
-   * Put a glyph in (or, with glyphId null, take it out of) socket `index` of `tier`. A glyph instance fits one
-   * socket, so socketing one that sits elsewhere moves it. Refused (nothing changes) for a sealed glyph, a glyph of
+   * Put a glyph in (or, with glyphId null, take it out of) socket `index` of `tier`. The same glyph may also sit on other
+   * mounts (Game/mounts-glyphs.md §8), so nothing is moved; only a repeat on the same mount takes it out of its old
+   * socket there. Refused (nothing changes) for a sealed glyph, a glyph of
    * another tier, a major that is not usable by the class/talent specs, or a bad index.
    * @returns {{ok: true} | {ok: false, reason: string}}
    */
@@ -61,7 +62,7 @@ export function createMountsStore(ctx) {
       if (glyph.sealed) return fail('sealed glyphs cannot be socketed');
       if (glyphTier(glyph.glyphType) !== tier) return fail('wrong socket tier');
       if (!glyphSocketable(c, glyph, tier)) return fail('this major glyph is not usable by your class or spec');
-      for (const m of c.mounts) for (const t of Object.keys(m.glyphs)) m.glyphs[t] = m.glyphs[t].map((id) => (id === glyphId ? null : id));
+      for (const t of Object.keys(mount.glyphs)) mount.glyphs[t] = mount.glyphs[t].map((id) => (id === glyphId ? null : id));
       mount.glyphs[tier][index] = glyphId;
       return { ok: true };
     });
