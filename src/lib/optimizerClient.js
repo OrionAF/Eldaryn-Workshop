@@ -17,6 +17,7 @@
 import { optimize, simulateCandidate } from './optimizer.js';
 import { suggestRelics } from './relicSuggester.js';
 import { objectivesFromSpec, specIsSampled } from './optimizerObjectives.js';
+import { isTaskRequest, runTask } from './tasks/index.js';
 
 /**
  * @param {{ character, preset, ichorBudget?, searchDimensions?, objectiveSpec?,
@@ -26,6 +27,7 @@ import { objectivesFromSpec, specIsSampled } from './optimizerObjectives.js';
  * @returns {{ promise: Promise<result>, cancel: () => void }}
  */
 export function runOptimizerTask(request, { onProgress } = {}) {
+  if (isTaskRequest(request)) return runRegistryTask(request, { onProgress });
   const plain = JSON.parse(JSON.stringify({
     mode: request.mode ?? 'optimize',
     character: request.character,
@@ -63,6 +65,24 @@ export function runOptimizerTask(request, { onProgress } = {}) {
     return { promise, cancel: () => controller.abort() };
   }
 
+  return runInWorker(plain, { onProgress });
+}
+
+/**
+ * Registry tasks ('duel', 'dropCheck', 'oblivionFloors', 'optimize' + v2): same worker/inline split.
+ * cancel() resolves with the task's best-so-far (`aborted: true`).
+ */
+function runRegistryTask(request, { onProgress } = {}) {
+  const plain = JSON.parse(JSON.stringify(request));
+  if (typeof Worker === 'undefined') {
+    const controller = new AbortController();
+    const promise = runTask(plain.mode, plain, { signal: controller.signal, onProgress });
+    return { promise, cancel: () => controller.abort() };
+  }
+  return runInWorker(plain, { onProgress });
+}
+
+function runInWorker(plain, { onProgress }) {
   const worker = new Worker(new URL('./optimizerWorker.js', import.meta.url), { type: 'module' });
   let settled = false;
   const promise = new Promise((resolve, reject) => {
