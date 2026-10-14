@@ -12,6 +12,8 @@
    * `owned` checkbox is gone, and it works from any star, not just the first
    * (clicking the lit 2nd star of a 2-star mount is the natural way to do it).
    *
+   * `clearable` adds a visible "Clear" button for ratings where 0 is meaningful (not mounts).
+   *
    * Accessibility: this is a radiogroup, not a row of clickable divs. Arrow
    * keys move between levels, Home/End jump to the ends, and roving tabindex
    * keeps the group a single tab stop. Each star carries a 44x44 hit area via
@@ -23,6 +25,7 @@
     available = total,
     label = 'Star level',
     disabled = false,
+    clearable = false,
     onchange = () => {},
   } = $props();
 
@@ -92,6 +95,9 @@
     </button>
   {/each}
 </div>
+{#if clearable && value > 0}
+  <button type="button" class="clear" {disabled} onclick={() => onchange(0)}>Clear</button>
+{/if}
 
 <style>
   .stars {
@@ -121,7 +127,7 @@
     background: none;
     cursor: pointer;
     /* Unfilled stars read as "available but unset", not as the rarity colour. */
-    color: var(--color-dim);
+    color: var(--line-control);
     transition: color 120ms ease-out, transform 120ms ease-out;
   }
 
@@ -140,19 +146,31 @@
 
   /* The rarity hue is the fill signal - large-glyph use, so plain --rarity-fg. */
   .star.filled {
-    color: var(--rarity-fg, var(--color-gold));
+    color: var(--rarity-fg, var(--brass-400));
   }
 
   .star:not(:disabled):hover {
-    color: var(--rarity-fg, var(--color-gold));
+    color: var(--rarity-fg, var(--brass-400));
   }
 
   .star:active:not(:disabled) {
     transform: scale(0.92);
   }
 
+  .clear {
+    margin-left: var(--sp-2);
+    padding: 0 var(--sp-2);
+    height: 28px;
+    background: none;
+    border: 0;
+    color: var(--text-soft);
+    font-size: var(--fs-12);
+    cursor: pointer;
+  }
+  .clear:hover { color: var(--text-ink); text-decoration: underline; }
+
   .star.locked {
-    color: var(--color-border-strong);
+    color: var(--line-rule);
     cursor: default;
   }
 

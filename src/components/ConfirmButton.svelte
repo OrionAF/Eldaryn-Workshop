@@ -6,23 +6,45 @@
    * bar for wiping the whole app's data), this is for narrower, single-item
    * destructive actions (removing one Pet/Mount/Glyph, resetting one build).
    */
+  import { onDestroy } from 'svelte';
+
+  /** A confirm that nobody answers reverts after this long (design-system §4.10). */
+  const REVERT_MS = 4000;
+
   let { label, confirmLabel = 'Confirm', prompt = '', onConfirm, disabled = false, class: className = '' } = $props();
 
   let confirming = $state(false);
+  let row = $state(null);
+  let timer = null;
 
-  function confirm() {
+  function arm() {
+    confirming = true;
+    clearTimeout(timer);
+    timer = setTimeout(disarm, REVERT_MS);
+  }
+  function disarm() {
+    clearTimeout(timer);
     confirming = false;
+  }
+  function confirm() {
+    disarm();
     onConfirm();
   }
+
+  // Moving to Confirm keeps the keyboard user where the action is (ia.md §5.5).
+  $effect(() => {
+    if (confirming) row?.querySelector('.confirm-yes')?.focus();
+  });
+  onDestroy(() => clearTimeout(timer));
 </script>
 
 {#if !confirming}
-  <button type="button" class={className} {disabled} onclick={() => (confirming = true)}>{label}</button>
+  <button type="button" class={className} {disabled} onclick={arm}>{label}</button>
 {:else}
-  <span class="confirm-row">
+  <span class="confirm-row" bind:this={row} role="group" aria-label={label}>
     {#if prompt}<span class="confirm-prompt">{prompt}</span>{/if}
     <button type="button" class="confirm-yes" onclick={confirm}>{confirmLabel}</button>
-    <button type="button" onclick={() => (confirming = false)}>Cancel</button>
+    <button type="button" onclick={disarm}>Cancel</button>
   </span>
 {/if}
 
@@ -30,15 +52,15 @@
   .confirm-row {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2, 0.5rem);
+    gap: var(--sp-2);
     flex-wrap: wrap;
   }
   .confirm-prompt {
-    color: var(--color-muted, #999);
-    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-size: var(--fs-12);
   }
   .confirm-yes {
-    border-color: var(--color-danger, #c1594f);
-    color: var(--color-danger, #c1594f);
+    border-color: var(--verdict-down);
+    color: var(--verdict-down);
   }
 </style>
