@@ -431,7 +431,8 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
 export function fighterDuelArgs(f) {
   const playerClass = f.class;
   const spec = f.spec ?? null;
-  const form = f.form ?? null;
+  // buildFighter emits formKind (and formConfig.form); accept those as well as an explicit `form`.
+  const form = f.form ?? f.formKind ?? f.formConfig?.form ?? null;
   const druid = playerClass === 'MYSTIC' && spec === 'MYSTIC_DRUID';
   const sigils = f.sigils ?? [];
   const generic = sigils.map((x) => x.species);
