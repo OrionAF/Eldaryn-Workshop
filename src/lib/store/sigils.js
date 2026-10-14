@@ -15,7 +15,7 @@ export function createSigilsStore(ctx) {
       if (!sigilForClass(species, c.class)) return;
       const n = Number(level);
       if (!Number.isFinite(n) || n < 1) delete c.sigils.owned[species];
-      else c.sigils.owned[species] = { level: clampSigilLevel(species, n) };
+      else c.sigils.owned[species] = { ...c.sigils.owned[species], level: clampSigilLevel(species, n) }; // keeps the character-wide condition
       ctx.reconcile(c);
     });
   }
