@@ -4,14 +4,15 @@
 
 | Order | Item | Size | Status |
 |---|---|---|---|
-| 1 | §16 Exact dominance pruning for talents, relics, pets and sigil slots | M | Queued (wave 3, first) |
-| 2 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Queued (wave 3, after §16: it builds on §16's dominance rules) |
+| 1 | §16 Exact dominance pruning for talents, relics, pets and sigil slots | M | In progress (rebuild2/PRUNE, continued from WIP e041d99) |
+| 2 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Queued (after §16: it builds on §16's dominance rules) |
 | 3 | §10 Arena reward weighting | S | Not started (§2 is merged) |
-| 4 | §7 PVE replay check | L | Queued (wave 3); fixtures committed (dungeon log and its Mystic) |
-| 5 | §10 Crusade (solo) | L | Queued (wave 3); a client port labelled unverified (no solo Crusade log) |
+| 4 | §10 Crusade (solo) | L | Paused by the user (WIP 08c51c3 on rebuild2/CRUSADE, not reviewed); a client port labelled unverified |
+| 5 | §10 Crusade (group) | M | Not started; needs the solo port. Hell Crusade: Normal needs 1 player, Hard 2, Mythic and Mythic+ 3 (client `minPlayers`); partners as on the Celestial target; the boss always hits the Tank holder (else Control), a lethal hit goes to the healthiest other player, no holder means highest HP (client `BOSS_TARGETING` and `resolveCrusadeFocus`, unconfirmed against the server) |
+| 6 | §10 Crusade replay check against the user's solo Crusade log | S | Last. Log outside the repo (soloCrusade.json: 3 bosses, 2,770 ms, 510 ms from a boss's death to the next boss's first tick); strip and commit it with the user's OK |
 | - | §12 open item: the finalist count and the repeated baseline test | S | Not started (see §12) |
 | - | §11 Celestial open questions | - | Waits for more server logs |
-| Done | §9 stat weights chart; §2 Rankings profiles as opponents and Celestial partners; §12 progress tolerance; §11 Push on the Celestial Trial; §6 results name owned items (and the Loot bag stats, the interaction badge); §15 Fortress boss on the duel engine; §11 Celestial engine and Optimiser target; §1 Optimiser step list; §3 setup estimates; §10 Push, Fortress shield fix; §12 highest chance to win; §13 glyph pruning; §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target | - | Merged |
+| Done | §7 PVE replay check (the engine agrees with the real dungeon log on every rule); §9 stat weights chart; §2 Rankings profiles as opponents and Celestial partners; §12 progress tolerance; §11 Push on the Celestial Trial; §6 results name owned items (and the Loot bag stats, the interaction badge); §15 Fortress boss on the duel engine; §11 Celestial engine and Optimiser target; §1 Optimiser step list; §3 setup estimates; §10 Push, Fortress shield fix; §12 highest chance to win; §13 glyph pruning; §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target | - | Merged |
 
 ## 16. Optimiser: exact dominance pruning for talents, relics, pets and sigil slots
 
@@ -328,7 +329,7 @@ runs.
 - Commit the log as a fixture next to `arena-fight-warrior.json`. It holds fight values only, no
   player identifiers; check before committing.
 
-**Status: done on `rebuild2/PVEREPLAY` (2026-10-15), not merged.** `engine/pve/dungeonReplay.js` checks a
+**Status: merged (2026-10-15).** `engine/pve/dungeonReplay.js` checks a
 dungeon step log rule by rule (16 rules: grid, outcome, mobs, transitions, both swing clocks, the DAMAGE
 spell schedule, spell sizes and vamp heals, hit sizes, mob HP, regen, and the HP and shield chains rebuilt
 between attack rows, plus the shield cap). Every rule passes on the real log with the imported Mystic and
