@@ -4,8 +4,8 @@
 // fields of one explicit duel-state object, so the closures become a factory over that object.
 // The 14-argument mapping of simulateArenaPvP (L1454718-1456045) is documented on createDuelState.
 //
-// Event semantics are the client's: for miss/block/blind events the event type names the EVADING
-// side (see reactToAttack), and damage-carrying events are sorted into "attacker dealt" / "defender
+// Event semantics are the client's: for miss/block events the event type names the EVADING
+// side, and blind events name the BLINDED swinger (see reactToAttack, Game/combat-pvp.md §9), and damage-carrying events are sorted into "attacker dealt" / "defender
 // dealt" by the two type sets below (soul-link input).
 import { ARENA_CONSTANTS } from '../../game/combatPvp.js';
 import { createPlayerEntity } from '../core/entity.js';

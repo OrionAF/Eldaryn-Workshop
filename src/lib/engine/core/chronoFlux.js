@@ -1,7 +1,7 @@
 // Chrono Flux: the bar Eternal-gear conduits charge to fire an Ancient sigil's transform.
 // Module 3967, L1094004-1094190. Game facts: Game/sigils.md §9, Game/gear.md §7.
 //
-// Units (resolves the sigils.md §9 [UNRESOLVED] note): flux is gained PER EVENT, not per damage.
+// Units (sigils.md §9): flux is gained PER EVENT, not per damage.
 // Each combat event adds `conduitValue * weight`, divided by 3^(times the transform has already
 // fired this fight). The bar is clamped to 0..7000. CHRONO_FLUX_RECHARGE_FACTOR is 3, not 50.
 
