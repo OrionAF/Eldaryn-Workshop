@@ -201,3 +201,41 @@ it('ResultRank: baseline has no verdict; provisional rows are never up/down; Run
   expect(onrunmore).toHaveBeenCalledTimes(1);
   r.done();
 });
+
+it('ScopeChip: the comma follows the target in its own run, never trailing inside it', () => {
+  const t = setup(ScopeChip, { scope: 'character', target: 'Talents', sideEffects: ['PVP'] });
+  expect(t.q('.tg').textContent).toBe('Talents');
+  expect(t.q('.sep').textContent).toBe(',');
+  expect(t.q('em').textContent).toBe('also PVP');
+  t.done();
+  const noTarget = setup(ScopeChip, { scope: 'preset', target: '', sideEffects: ['PVP'] });
+  expect(noTarget.q('.sep')).toBeNull();
+  noTarget.done();
+  const g = setup(ScopeChip, { scope: 'global', target: 'This device' });
+  expect(g.q('b').textContent).toBe('Global');
+  expect(g.q('.scope-chip').getAttribute('style')).toContain('--scope-global');
+  g.done();
+});
+
+it('ResultRank: the summary, scope chip and Comes with name things; no internal id or key shows', () => {
+  const gl = (i) => ({
+    id: `glyph:bb55b082-1082-43da-ba9d-bd6b1633c75d:minor:${i}`, dimension: 'minorGlyphs', label: `Wolf minor socket ${i + 1}`, from: 'Empty', to: 'Riven Fang (Rare, Attack Speed)',
+    scope: 'mount', owner: {}, sideEffects: [], bundle: [], own: null, needed: null, keptBecause: null,
+  });
+  const r = row({
+    changes: [
+      { id: 'talents:0', dimension: 'talents', label: 'Talents (Set A)', from: 'None', to: 'Rage 3', scope: 'character', owner: {}, sideEffects: [{ presetId: 'p2', name: 'PVP', reason: 'x' }], bundle: [gl(0).id, gl(1).id, gl(2).id], own: null, needed: null, keptBecause: null },
+      gl(0), gl(1), gl(2),
+    ],
+  });
+  const t = setup(ResultRank, { row: r, unit: 'dps', domain, presetName: 'Farm build' });
+  expect(t.q('.meta').textContent).toBe('4 changes · Talents, 3 glyph sockets');
+  click(t.q('button[aria-expanded]'));
+  const body = t.q('[role="region"]').textContent;
+  expect(body).toContain('Comes with: 3 glyph sockets');
+  expect(body).not.toMatch(/glyph:|talents:\d|minorGlyphs|[0-9a-f]{8}-[0-9a-f]{4}/);
+  const chip = t.q('.scope-chip');
+  expect(chip.querySelector('.tg').textContent).toBe('Talents');
+  expect(chip.querySelector('.sep').textContent).toBe(',');
+  t.done();
+});

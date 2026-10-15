@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   orientContrast, orientRow, viewResult, viewRun, legacyRows, progressSegments, progressLine, effortPlan,
+  changeSummary, changeIdLabel, bundleText, dimensionLabel,
   setGroup, enabledCount, toggleTotal, SPACE_GROUPS, applyPlan, sideEffectsOf, fmtDuration, optimiserJobChips,
 } from './optimiserView.js';
 import { runFromResult } from '../model/runs.js';
@@ -176,5 +177,39 @@ describe('text helpers', () => {
     expect(optimiserJobChips(richResult())).toEqual([{ tone: 'up', text: '2 better' }, { tone: 'warn', text: '1 too close to call' }]);
     expect(optimiserJobChips({ status: 'failed' })).toEqual([{ tone: 'warn', text: 'Could not run' }]);
     expect(optimiserJobChips({ status: 'done', headline: { better: 0, unresolved: 0 } })).toEqual([{ text: 'Nothing beat the current build' }]);
+  });
+});
+
+describe('change labels (no internal id reaches the UI)', () => {
+  const glyph = (i) => ({ id: `glyph:bb55b082-1082-43da-ba9d-bd6b1633c75d:minor:${i}`, dimension: 'minorGlyphs', label: `Wolf minor socket ${i + 1}` });
+  const changes = [
+    { id: 'spec', dimension: 'spec', label: 'Talent set' },
+    { id: 'talents:0', dimension: 'talents', label: 'Talents (Set A)' },
+    { id: 'mount', dimension: 'mount', label: 'Mount' },
+    glyph(0), glyph(1), glyph(2),
+  ];
+
+  it('summarises each dimension once, with the glyph sockets counted together', () => {
+    expect(changeSummary(changes)).toBe('6 changes · Talent set, Talents, Mount, 3 glyph sockets');
+    expect(changeSummary([glyph(0)])).toBe('1 change · 1 glyph socket');
+    expect(changeSummary(changes)).not.toMatch(/minorGlyphs/);
+  });
+  it('names a dimension, never its key', () => {
+    expect(dimensionLabel('minorGlyphs')).toBe('Minor glyphs');
+    expect(dimensionLabel('talents')).toBe('Talents');
+    expect(dimensionLabel('somethingNew')).toBe('Other');
+  });
+  it('maps a change id to its label, from the row or from the id shape', () => {
+    expect(changeIdLabel('talents:0', changes)).toBe('Talents (Set A)');
+    expect(changeIdLabel('talents:1')).toBe('Talents (Set B)');
+    expect(changeIdLabel('glyph:abc:minor:2')).toBe('Minor glyph socket 3');
+    expect(changeIdLabel('condition:BERSERK_STANCE')).toBe('Sigil condition');
+    expect(changeIdLabel('relics')).toBe('Relics');
+    expect(changeIdLabel('zzz:9')).toBe('Another change');
+  });
+  it('writes the Comes with text from labels, counting sockets', () => {
+    const t = bundleText(['talents:0', glyph(0).id, glyph(1).id, glyph(2).id], changes);
+    expect(t).toBe('Talents (Set A), 3 glyph sockets');
+    expect(t).not.toMatch(/glyph:|talents:\d|[0-9a-f]{8}-/);
   });
 });

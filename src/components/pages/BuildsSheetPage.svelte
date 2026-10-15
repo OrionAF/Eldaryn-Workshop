@@ -30,7 +30,7 @@
   const realm = $derived(unlocked && (chosen ?? (character.oblivion.activeRealm === 'oblivion' ? 'oblivion' : 'base')) === 'oblivion' ? 'oblivion' : 'base');
   const tabItems = $derived([
     { id: 'base', label: `Base realm: ${preset.name}` },
-    { id: 'oblivion', label: 'Oblivion realm: shared', disabled: !unlocked, reason: 'Unlock Oblivion in Overview first.' },
+    { id: 'oblivion', label: 'Oblivion realm: shared', disabled: !unlocked, reason: 'Unlock Oblivion on Overview first.' },
   ]);
 
   const stats = $derived(computePresetStats(character, preset.id, { realm }));

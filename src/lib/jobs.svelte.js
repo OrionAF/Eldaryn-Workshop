@@ -19,6 +19,7 @@
  */
 import { runOptimizerTask } from './optimizerClient.js';
 import { go } from './router.svelte.js';
+import { notify, dismissKey } from './notify.svelte.js';
 import { createCheckpointDb, readFlag, writeFlag } from './jobCheckpoints.js';
 
 export const MAX_RUNNING = 2;
@@ -85,6 +86,7 @@ function settle(id, status, { result, error } = {}) {
   handles.delete(id);
   const job = find(id);
   if (!job || job.status !== 'running') return;
+  dismissKey(id);
   job.status = status;
   job.endedAt = Date.now();
   if (result !== undefined) job.result = result;
@@ -114,7 +116,7 @@ function saveCheckpoint(job) {
 
 /**
  * @param {{ tool: string, title: string, context?: string, request: object, signature?: string,
- *   currentSignature?: () => string, openRoute?: string,
+ *   currentSignature?: () => string, openRoute?: string, notice?: string,
  *   summarize?: (result) => Array<{tone?: string, text: string}> }} spec
  * @returns {string} the job id
  */
@@ -142,6 +144,8 @@ export function startJob(spec) {
     endedAt: null,
   };
   jobs.push(job);
+  // The "started" note belongs to the job: it goes when the job settles.
+  if (spec.notice) notify(spec.notice, { kind: 'info', key: job.id });
   pump();
   return job.id;
 }

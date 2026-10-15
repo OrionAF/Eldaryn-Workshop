@@ -5,7 +5,8 @@
    * groups ("2="), verdicts, per-change `own`/`needed`/scope, the interaction remainder and, for a PVP run,
    * the opponent x seat table. `view` is lib/ui/optimiserView.js viewResult/viewRun.
    *
-   * `onapply` / `onrunmore` are null for a saved run (read-only). `unmeasured(row)` marks rows whose
+   * `onapply` / `onrunmore` are null when the table cannot act on a row. A saved run offers Apply (its stored write
+   * groups) but never Run more. `unmeasured(row)` marks rows whose
    * per-change effects were not measured (provisional rows, runs saved before the attribution pass).
    */
   import ResultRank from '../ui/ResultRank.svelte';
@@ -19,6 +20,7 @@
     presetName = 'this build',
     onapply = null,
     applyBlocked = '',
+    missingWritesReason = 'Nothing to write.',
     onrunmore = null,
     unmeasured = () => false,
     busy = false,
@@ -95,7 +97,7 @@
                 variant="primary"
                 size="small"
                 disabled={!!applyBlocked || r.provisional || !(r.writes?.length)}
-                reason={applyBlocked || (r.provisional ? 'Not confirmed yet.' : !(r.writes?.length) ? 'Nothing to write.' : '')}
+                reason={applyBlocked || (r.provisional ? 'Not confirmed yet.' : !(r.writes?.length) ? missingWritesReason : '')}
                 onclick={() => onapply(r)}>Apply to {presetName}…</Button
               >
             {/if}

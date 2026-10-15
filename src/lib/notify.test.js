@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { notify, statusMessage, dismiss, pauseDismiss, resumeDismiss, markAllRead, notifications, resetNotifications, INFO_MS, MAX_VISIBLE } from './notify.svelte.js';
+import { notify, statusMessage, dismissKey, dismissStale, dismiss, pauseDismiss, resumeDismiss, markAllRead, notifications, resetNotifications, INFO_MS, MAX_VISIBLE } from './notify.svelte.js';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -72,5 +72,25 @@ describe('statusMessage (the old setStatus)', () => {
     expect(notifications.log.map((e) => e.kind)).toEqual(['error', 'info']);
     vi.advanceTimersByTime(7000);
     expect(notifications.toasts.map((t) => t.message)).toEqual(['Duel failed: boom']);
+  });
+});
+
+describe('toasts that belong to something', () => {
+  it('dismissKey removes the toasts raised for that key and keeps the log', () => {
+    notify('Floor scan started', { key: 'job-1' });
+    notify('Other');
+    dismissKey('job-1');
+    expect(notifications.toasts.map((t) => t.message)).toEqual(['Other']);
+    expect(notifications.log.map((e) => e.message)).toEqual(['Floor scan started', 'Other']);
+  });
+
+  it('dismissStale drops old info and success toasts, keeps young ones and every warning and error', () => {
+    notify('Old info');
+    notify('Old success', { kind: 'success' });
+    notify('Old warning', { kind: 'warn' });
+    vi.advanceTimersByTime(2000);
+    notify('Fresh success', { kind: 'success' });
+    dismissStale(1500);
+    expect(notifications.toasts.map((t) => t.message)).toEqual(['Old warning', 'Fresh success']);
   });
 });

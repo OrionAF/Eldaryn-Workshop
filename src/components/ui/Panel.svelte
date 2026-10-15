@@ -16,6 +16,7 @@
     mount: 'Mount',
     oblivion: 'Oblivion',
     tool: 'Tool',
+    global: 'Global',
   };
 
   let {

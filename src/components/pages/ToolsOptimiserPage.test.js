@@ -8,6 +8,8 @@ import { loadRoster } from '../../lib/storage.js';
 import { fixtureCharacter } from '../../lib/build/fixtures.js';
 import { cloneAsOpponent } from '../../lib/features/duel.js';
 import { SCHEMA_VERSION } from '../../lib/model/index.js';
+import { metricKey } from '../../lib/engine/metrics.js';
+import { searchCharacter } from '../../lib/ui/optimiserSetup.js';
 import { notifications } from '../../lib/notify.svelte.js';
 import { setup, click } from '../ui/testkit.js';
 import { richResult, dpsResult, legacyRun } from '../../lib/__fixtures__/optimiser/index.js';
@@ -342,7 +344,7 @@ it('runs a real quick search over the relics, with every row listing a change, a
   expect(text()).not.toMatch(/Setup changed since this run/);
 }, 100000);
 
-it('a history row opens its stored result in Setup & results, read-only', () => {
+it('a history row opens its stored result in Setup & results, with Apply but not Run more', () => {
   rosterStore.addRun(richResult(), { presetName: 'Main', name: 'Pinned find' });
   flushSync();
   mountPage({ tab: 'history' });
@@ -351,9 +353,9 @@ it('a history row opens its stored result in Setup & results, read-only', () => 
   expect(view.q('[data-testid="optimiser-results"]')).not.toBeNull();
   expect(text()).toMatch(/Saved run/);
   expect(view.qa('[data-testid="result-row"]').length).toBeGreaterThan(0);
-  // read-only: no Apply, no Run more
+  // Apply is offered (off here: the fixture run was measured on another character); Run more never is
   click(view.q('[data-testid="result-row"] button[aria-expanded]'));
-  expect(btn(/^Apply to /)).toBeUndefined();
+  expect(btn(/^Apply to Main/)).toBeDefined();
   expect(btn(/^Run more$/)).toBeUndefined();
   click(btn(/^Close$/));
   expect(view.q('[data-testid="optimiser-results"]')).toBeNull();
@@ -397,4 +399,72 @@ it('a blank survival window means the whole fight, not 5 s', () => {
   flushSync();
   click(btn(/^Optimise Main/));
   expect(requests[0].objective).toEqual({ kind: 'survival' });
+});
+
+// ---- saved runs can be applied -------------------------------------------------------------------
+
+/** A fixture result measured on the character as it is now (so the saved run is not stale). */
+const keyed = (r) => {
+  r.request.characterKey = metricKey('character', searchCharacter(rosterStore.current));
+  return r;
+};
+const expandFirst = () => click(view.qa('[data-testid="result-row"] button[aria-expanded]')[0]);
+
+it('after a reload (no job) the newest saved run shows in Setup & results with Apply, not "No run yet"', () => {
+  rosterStore.addRun(keyed(dpsResult()), { presetName: 'Main' });
+  flushSync();
+  mountPage();
+  expect(text()).not.toMatch(/No run yet/);
+  expect(text()).toMatch(/Saved/);
+  expandFirst();
+  const apply = btn(/^Apply to Main/);
+  expect(apply).toBeDefined();
+  expect(apply.getAttribute('aria-disabled')).not.toBe('true');
+});
+
+it('Apply from the saved run writes through the store, marks that run applied and then goes stale', () => {
+  rosterStore.addRun(keyed(dpsResult()), { presetName: 'Main' });
+  flushSync();
+  mountPage();
+  expandFirst();
+  expect(rosterStore.current.presets[0].relicIds).toEqual([]);
+  click(btn(/^Apply to Main/));
+  expect(view.q('[data-testid="apply-review"]')).not.toBeNull();
+  click(btn(/^Apply \d groups?/));
+  expect(rosterStore.current.presets[0].relicIds.length).toBeGreaterThan(0);
+  expect(rosterStore.current.runs[0].applied).toMatchObject({ rank: 1 });
+  expect(notifications.log.at(-1).message).toMatch(/Applied rank 1 to Main/);
+  // the character moved on: the same run cannot be applied twice from stale numbers
+  expect(btn(/^Apply to Main/).getAttribute('aria-disabled')).toBe('true');
+});
+
+it('Run history Details offers Apply on the row, with the reason when the character has changed', () => {
+  rosterStore.addRun(keyed(dpsResult()), { presetName: 'Main' });
+  flushSync();
+  mountPage({ tab: 'history' });
+  click(btn(/^Details$/));
+  expandFirst();
+  expect(btn(/^Apply to Main/).getAttribute('aria-disabled')).not.toBe('true');
+  rosterStore.renamePreset('p1', 'Renamed');
+  flushSync();
+  expect(btn(/^Apply to Main/).getAttribute('aria-disabled')).toBe('true');
+  expect(btn(/^Apply to Main/).title).toMatch(/character changed/);
+});
+
+it('Closing the opened saved run leaves the empty state, not the run again', () => {
+  rosterStore.addRun(keyed(dpsResult()), { presetName: 'Main' });
+  flushSync();
+  mountPage();
+  click(btn(/^Close$/));
+  expect(view.q('[data-testid="optimiser-results"]')).toBeNull();
+  expect(text()).toMatch(/No run yet/);
+});
+
+it('a run saved without write groups says to re-run, not "Nothing to write"', () => {
+  rosterStore.addRun(keyed(dpsResult()), { presetName: 'Main' });
+  for (const row of rosterStore.current.runs[0].detail.rows) row.writes = [];
+  flushSync();
+  mountPage();
+  expandFirst();
+  expect(btn(/^Apply to Main/).title).toMatch(/saved before it could be applied/);
 });
