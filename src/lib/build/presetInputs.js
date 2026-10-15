@@ -100,7 +100,7 @@ function transcendenceBoardFor(character, spec) {
   return key ? transcendenceBoard(key) : null;
 }
 
-/** The transcendence preset a build preset uses: its own link, else 'default', else the first. */
+/** The transcendence preset a build preset uses: its link, else the active board, else 'default', else the first. */
 export const transcendencePreset = resolveTranscendencePreset;
 
 /** Sum two StoneBonuses-shaped bundles key by key (relics ride in the stones argument). */

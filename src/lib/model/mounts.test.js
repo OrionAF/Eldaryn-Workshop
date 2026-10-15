@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { fixtureCharacter } from '../build/fixtures.js';
 import { newCharacter, normaliseCharacter, normaliseRoster, migrateCharacterFromV1, newRoster, reconcileCharacter } from './index.js';
 import {
   defaultMounts,
@@ -8,6 +9,7 @@ import {
   mountEffectiveStats,
   mountRollBounds,
   mountGlyphLoadout,
+  activeMajorGlyphs,
   emptyMountSockets,
   MOUNT_GLYPH_SOCKETS,
 } from './mounts.js';
@@ -140,7 +142,7 @@ describe('mountGlyphLoadout', () => {
     ];
     const mount = { id: 'm', species: 'NIGHT_WOLF', baseHp: 6, baseAtk: 6, level: 1, glyphs: { minor: ['d', 'e', null], major: ['a', 'b'], mythic: [null] } };
     const out = mountGlyphLoadout(c, mount, 'MYSTIC_MAGE');
-    expect(out.minors).toEqual([{ stat: 'critChance', value: 5 }]);
+    expect(out.minors).toEqual([{ stat: 'critChance', value: 5, glyphType: 'g-swift', rarity: 'Common' }]);
     expect(out.majors).toHaveLength(1);
     expect(out.majors[0]).toMatchObject({ glyphType: 'sg-m-runic-dmg', rarity: 'Legendary', sigilSpecies: 'RUNIC_AFFLICTION' });
     expect(out.majors[0].values.damagepercent).toBeGreaterThan(0);
@@ -220,5 +222,20 @@ describe('newGlyph helper used by sockets', () => {
   it('is covered in glyphs.test.js', () => {
     expect(newGlyph({ glyphType: 'g-swift', rarity: 'Common' }).sealed).toBe(false);
     expect(withGlyphs().glyphs).toEqual([]);
+  });
+});
+
+describe('activeMajorGlyphs (B1)', () => {
+  it('splits the majors by whether their sigil is equipped', () => {
+    const c = fixtureCharacter('WARRIOR');
+    const mount = c.mounts[0];
+    const all = mountGlyphLoadout(c, mount, 'WARRIOR_ARMS').majors;
+    expect(all.length).toBeGreaterThan(0);
+    const sp = all[0].sigilSpecies;
+    expect(activeMajorGlyphs(c, mount, 'WARRIOR_ARMS', [sp]).active.map((g) => g.glyphType)).toEqual(all.map((g) => g.glyphType));
+    const off = activeMajorGlyphs(c, mount, 'WARRIOR_ARMS', []);
+    expect(off.active).toEqual([]);
+    expect(off.inert.length).toBe(all.length);
+    expect(activeMajorGlyphs(c, null, null, [sp])).toEqual({ active: [], inert: [] });
   });
 });

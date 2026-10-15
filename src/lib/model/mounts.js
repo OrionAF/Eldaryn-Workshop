@@ -156,7 +156,7 @@ export function mountGlyphLoadout(character, mount, spec = null) {
   const at = (tier) => mount.glyphs[tier].map((id) => byId.get(id)).filter((g) => g && !g.sealed);
   const minors = at('minor')
     .filter((g) => g.secondary)
-    .map((g) => ({ stat: g.secondary.stat, value: glyphSecondaryValue(g.secondary) }));
+    .map((g) => ({ stat: g.secondary.stat, value: glyphSecondaryValue(g.secondary), glyphType: g.glyphType, rarity: g.rarity }));
   const best = new Map();
   for (const g of at('major')) {
     const def = glyphTypeInfo(g.glyphType)?.def;
@@ -174,6 +174,20 @@ export function mountGlyphLoadout(character, mount, spec = null) {
   return { minors, majors, mythics };
 }
 const rank = (r) => FREE_GLYPH_RARITIES.indexOf(r);
+
+/**
+ * Split a mount's major glyphs (mountGlyphLoadout) into those that act and those that do not.
+ * A major glyph is inert unless its sigil is equipped (Game/mounts-glyphs.md §10); `equipped` is the
+ * species list the Fighter actually runs. Shared by build/fighter.js and build/describe.js.
+ * @returns {{active: object[], inert: object[]}}  mountGlyphLoadout major entries
+ */
+export function activeMajorGlyphs(character, mount, spec, equipped) {
+  const out = { active: [], inert: [] };
+  if (!mount) return out;
+  const on = new Set(equipped ?? []);
+  for (const g of mountGlyphLoadout(character, mount, spec).majors) (on.has(g.sigilSpecies) ? out.active : out.inert).push(g);
+  return out;
+}
 
 // --- v1 migration ---
 

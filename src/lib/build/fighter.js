@@ -1,7 +1,7 @@
 // build/fighter.js (C1a): Character + preset + realm -> the engine's Fighter (engine/types.js).
 // A Fighter is plain data (structured-cloneable, so it crosses the worker boundary unchanged).
 import { sigilBySpecies } from '../game/sigils.js';
-import { mountGlyphLoadout } from '../model/mounts.js';
+import { activeMajorGlyphs } from '../model/mounts.js';
 import { DEFAULT_CONDITION, SIGIL_CONDITIONS_LEVEL } from '../model/sigils.js';
 import { computePresetStats } from './stats.js';
 
@@ -25,16 +25,12 @@ function conditionsFor(character, species) {
 }
 
 /**
- * Major glyphs on the ridden mount that act: a major glyph is inert unless its sigil is equipped
- * (CLAUDE.md BigReworkV1). Duplicates and class/spec filtering come from mountGlyphLoadout.
+ * Major glyphs on the ridden mount that act (model/mounts.js activeMajorGlyphs, shared with describe).
  */
 function glyphModsFor(character, preset, spec, equipped) {
   const mount = preset.mountId ? (character.mounts ?? []).find((m) => m.id === preset.mountId) : null;
   if (!mount) return [];
-  const on = new Set(equipped);
-  return mountGlyphLoadout(character, mount, spec)
-    .majors.filter((g) => on.has(g.sigilSpecies))
-    .map((g) => ({ glyphType: g.glyphType, rarity: g.rarity }));
+  return activeMajorGlyphs(character, mount, spec, equipped).active.map((g) => ({ glyphType: g.glyphType, rarity: g.rarity }));
 }
 
 /**
