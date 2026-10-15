@@ -40,7 +40,7 @@
           <li>
             <button
               type="button"
-              class="option {rarityClass(glyph.rarity)}"
+              class="option rarity-card {rarityClass(glyph.rarity)}"
               class:on={glyph.id === current}
               disabled={glyph.sealed}
               aria-pressed={glyph.id === current}
@@ -83,9 +83,6 @@
     gap: var(--sp-2);
     width: 100%;
     padding: var(--sp-2);
-    border: 1px solid var(--rarity-border, var(--line-rule));
-    background: var(--rarity-bg, var(--surface-2));
-    border-radius: var(--r-2);
     cursor: pointer;
     text-align: left;
     color: var(--text-ink);
@@ -114,7 +111,7 @@
     font-size: var(--fs-11);
     letter-spacing: var(--track-label);
     text-transform: uppercase;
-    color: var(--rarity-fg-strong, var(--text-muted));
+    color: var(--r-up, var(--text-muted));
   }
   .option-label {
     font-size: var(--fs-12);

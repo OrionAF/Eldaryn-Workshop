@@ -40,7 +40,7 @@ const own = (species, level) => {
 describe('collection', () => {
   it('lists every sigil the class can own, grouped Common first and Ancient last', () => {
     expect(target.querySelectorAll('.sigil-card').length).toBe(ownableSigils('WARRIOR').length);
-    const headings = [...target.querySelectorAll('.rarity-section .subheading')].map((h) => h.textContent);
+    const headings = [...target.querySelectorAll('.rarity-section .rarity-head')].map((h) => h.textContent);
     expect(headings).toEqual(['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Ancient']);
   });
 
@@ -190,7 +190,7 @@ describe('Equip in menu', () => {
 
 describe('equip panel moved to Builds', () => {
   it('the Sigils page no longer edits a preset: no slot selects, a read-only summary instead', () => {
-    expect(target.querySelector('select[aria-label^="Sigil slot"]')).toBeNull();
+    expect([...target.querySelectorAll('label')].filter((l) => /^Sigil [123]$/.test(l.textContent.trim()))).toEqual([]);
     expect(target.querySelector('[data-testid="equipped-summary"]')).not.toBeNull();
     expect(target.querySelector('a[href="#/builds/loadout"]')).not.toBeNull();
   });

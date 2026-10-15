@@ -26,13 +26,13 @@
   const barH = (amount) => 3 + Math.sqrt((amount || 0) / maxAmount) * (MAX_BAR - 3);
 
   const COLORS = {
-    damage: 'var(--nav-pvp)',
+    damage: 'var(--ember-500)',
     heal: 'var(--verdict-up)',
-    spell: 'var(--nav-sigils)',
+    spell: 'var(--scope-oblivion)',
     avoid: 'var(--status-info)',
     status: 'var(--status-warn)',
     lost: 'var(--text-muted)',
-    minion: 'var(--nav-pets)',
+    minion: 'var(--scope-mount)',
     death: 'var(--verdict-down)',
     other: 'var(--text-muted)',
   };

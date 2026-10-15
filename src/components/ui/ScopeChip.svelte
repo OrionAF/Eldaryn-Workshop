@@ -11,7 +11,9 @@
 
 <span class="scope-chip" style="--scope-c: var(--scope-{scope})">
   <b>{LABEL[scope] ?? scope}</b>
-  <span class="t">{target}{#if names.length}{target ? ', ' : ''}<em>also {names.join(', ')}</em>{/if}</span>
+  {#if target || names.length}
+    <span class="t">{target}{#if names.length}{target ? ', ' : ''}<em>also {names.join(', ')}</em>{/if}</span>
+  {/if}
 </span>
 
 <style>
@@ -24,6 +26,9 @@
     line-height: 1;
     white-space: nowrap;
     max-width: 100%;
+    width: fit-content;
+    align-self: flex-start;
+    justify-self: start;
   }
   b {
     display: inline-flex;
@@ -35,13 +40,15 @@
     text-transform: uppercase;
     background: color-mix(in srgb, var(--scope-c) 10%, transparent);
   }
+  /* A block, not a flex box: inside a flex box the space after the comma before <em> is collapsed away. */
   .t {
-    display: inline-flex;
-    align-items: center;
+    display: block;
+    min-width: 0;
     padding: 3px 7px;
     color: var(--text-soft);
     border-left: 1px solid color-mix(in srgb, var(--scope-c) 45%, transparent);
     font-size: var(--fs-12);
+    line-height: 1.25;
     overflow: hidden;
     text-overflow: ellipsis;
   }
