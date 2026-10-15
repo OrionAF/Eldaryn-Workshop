@@ -205,3 +205,71 @@ formula, not from fights.
 - Each bar shows its interval. A stat whose interval spans 0 reads "no measurable effect", never a
   rank.
 - It runs as a job, on the Character Stats page or in Tools, for the selected preset.
+
+## 10. Optimiser objectives: trim, fix the target range, add Push, a Power guard and Crusade
+
+**Ask** (2026-10-15): the user agreed to this review of the objectives.
+
+**Remove** (after W2 merges, since W2 is editing the Optimiser page):
+- **Kill time (median and p90).** No content the app simulates pays for kill speed. Dungeon, raid
+  and Oblivion mobs each have a 20-minute cap that never runs out, chapters have no timer, and
+  hunting is a server roll with no fight (`combat-pve.md` §1, §14). Kill time also moves in steps of
+  about 3% (one swing), so races between near-equal builds run long. Win rate already rewards speed
+  where it matters, because a faster kill means less damage taken.
+- **Survival** on chapter, dungeon, raid, Oblivion and World Boss targets. With caps that never run
+  out, it equals win rate, and World Boss pays for damage, not for staying alive. Keep it for
+  custom mobs only.
+
+**Change.** Let the win-rate target go down to 10% and show "about N tries per clear" (1 / p) next to
+the rate. A loss costs no key or reward on most content: a failed chapter level restarts
+(`combat-pve.md` §14), an Oblivion floor keeps its key on defeat, and the dungeon text says only a
+clear spends a key (`pve-content.md` §4, §11). The default stays 95%.
+
+**Add, in this order:**
+1. **Push.** Finds the deepest dungeon step, Oblivion floor, raid step or chapter level the build
+   clears at τ or better, and the build that does it. Difficulty only goes up with depth, so: start
+   at the current step, climb while the target is met, then bisect. Reuse each step's runs.
+2. **Combat Power guard.** Power has an exact client formula (`stats.md` §8). Crusade Hard, Mythic
+   and Mythic+ entry is gated on it: Mythic+N needs `round(13000 * 1.18^N)` (`pve-content.md` §5).
+   Show the Power change on every result row, and add an optional "keep Power ≥ X" whose default is
+   the user's current Mythic+ gate. It needs no simulation.
+3. **Crusade, solo.** The only content where kill speed decides the result: 300 s for the whole
+   run of 3 bosses, and a Mythic+ full clear guarantees 3 enchant stones, while a partial clear
+   rolls a smaller table (`pve-content.md` §5). The client ships `simulateCrusadeFight` (L1868835,
+   never called), so this is a port like the dungeon fight, labelled server-run. Objectives: full
+   clear rate, and expected stones per run.
+4. **Fortress boss** (clan war). A 60 s damage race like World Boss, with its stats in the client
+   (`clan-fortress.md` §1.4). The boss shield (alive defenders) is an input.
+5. **Arena reward weighting**, after the Rankings import (§2). Beating someone 3 places above pays
+   30 influence, 3 places below pays 5 (`combat-pvp.md` §13).
+
+**Spec and role.** The `spec` block only switches to the character's other talent set, and only
+when "Spec" is on under Allowed to change. It never respecs, which costs 10 gems. For solo content,
+picking Fury over Protection is a valid answer when it clears more often, because solo fights have
+no roles. Party content is different (the boss hits the tank holder), and the solo objectives cannot
+express that. See §11.
+
+## 11. Celestial Trial (party of 2), and party roles
+
+**Ask** (2026-10-15): can the Celestial Trial be simulated? The user supplied one server fight log
+(Hard, level 85, the user plus a tank partner). It stays outside the repo because it names another
+player. Facts and the log check are in `Game/pve-content.md` §6.
+
+**What we have.** The full client config per difficulty: boss tables, level bands, time limits,
+spell resist, and the four spells with their Hard overrides. The log matches it exactly on boss HP,
+add HP and timing, the Judgment Strike rhythm and the time limit. The log also has every tick, so a
+port can be checked tick by tick, like §7.
+
+**What's missing.**
+- There is no Celestial simulator in the client. The fight would be built from the config plus
+  the shared engine, then fitted to logs, so it carries a "built from logs" label and is less certain
+  than the client ports.
+- We need several more logs: other levels, Normal, and other partners.
+- The partner's build. The Rankings import (§2) gives their loadout and server sheet, so the pair
+  can be simulated.
+- Mythic's party-power HP scaling is server-side.
+
+**Objective.** Party clear rate within 360 s, with the user's build as the variable and the
+partner fixed. This is where tank versus damage spec gets judged properly. If the user is the
+tank, the boss and Judgment Strike hit them, and Block Fury matters. Crusade groups would use the
+same party machinery later.
