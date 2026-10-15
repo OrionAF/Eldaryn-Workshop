@@ -31,6 +31,7 @@
     <li>saved opponents and run history</li>
     <li>the version 1 backup copy of your data and the legacy settings key</li>
   </ul>
+  <p class="lead">Preferences and the remembered page on this device are kept.</p>
   <div class="row">
     <Button variant="ghost" disabled={rosterStore.roster.characters.length === 0} onclick={() => rosterStore.exportDownload()}>Export first</Button>
   </div>

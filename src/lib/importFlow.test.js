@@ -6,6 +6,7 @@ import {
   loadImportText,
   confirmImport,
   closeImport,
+  openImport,
   setImportMode,
   undoLastUpdate,
   takeHandoff,
@@ -130,6 +131,24 @@ describe('loot bag and fight log', () => {
     expect(text(rosterStore.roster)).toBe(before);
     expect(takeHandoff('fightLog')).toBeNull();
     expect(takeHandoff('lootBag')).toContain('pendingItems');
+    expect(takeHandoff('lootBag')).toBeNull();
+  });
+
+  it('signals an already-open tool page through handoffSeq', () => {
+    const seq = importFlow.handoffSeq;
+    loadImportText(text(lootBag));
+    confirmImport();
+    expect(importFlow.handoffSeq).toBe(seq + 1);
+    takeHandoff('lootBag');
+    loadImportText(text(lootBag));
+    confirmImport();
+    expect(importFlow.handoffSeq).toBe(seq + 2);
+  });
+
+  it('drops an uncollected handoff when the dialog opens again', () => {
+    loadImportText(text(lootBag));
+    confirmImport();
+    openImport();
     expect(takeHandoff('lootBag')).toBeNull();
   });
 });
