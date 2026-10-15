@@ -11,11 +11,11 @@ import { preparePveFighter } from '../engine/pve/fight.js';
 import { fighterDuelArgs } from '../engine/pvp/resolver.js';
 import { fortressPlayerDuelArgs } from '../engine/pve/fortressBoss.js';
 import { sigilBySpecies } from '../game/sigils.js';
-import { petDisplayName } from '../game/pets.js';
+import { petText, mountText } from '../build/statText.js';
 import { mountBySpecies } from '../game/mountsGlyphs.js';
 import { specsForClass } from '../game/classes.js';
 import { talentById } from '../game/talents.js';
-import { DEFAULT_CONDITION } from '../model/sigils.js';
+import { DEFAULT_CONDITION, conditionLabel } from '../model/sigils.js';
 import { GLYPH_TIERS, MOUNT_GLYPH_SOCKETS } from '../model/glyphs.js';
 import { EngineInputError } from '../engine/validate.js';
 import { savedSockets, conditionOf, relicName, glyphLabel, sameAlloc } from './space.js';
@@ -71,14 +71,22 @@ function allocLabel(alloc) {
   const parts = Object.entries(alloc ?? {}).filter(([, r]) => r > 0).map(([id, r]) => `${talentById(id)?.name ?? id} ${r}`);
   return parts.length ? parts.join(', ') : NONE;
 }
-const petLabel = (character, id) => {
-  const pet = (character.pets?.owned ?? []).find((p) => p.id === id);
-  return pet ? petDisplayName(pet.species, (character.pets?.altar?.tier ?? 1) >= 2) ?? pet.species : NONE;
-};
+// An owned pet or mount is named with what tells copies apart (build/statText.js, backlog §6).
+const petLabel = (character, id) => petText(character, (character.pets?.owned ?? []).find((p) => p.id === id) ?? null);
+const mountChoiceLabel = (character, id) => mountText(character, (character.mounts ?? []).find((x) => x.id === id) ?? null);
+/** The mount's bare name, for socket labels ("Night Wolf minor socket 2"). */
 const mountLabel = (character, id) => {
   const m = (character.mounts ?? []).find((x) => x.id === id);
   return m ? mountBySpecies(m.species)?.name ?? m.species : NONE;
 };
+/** Only the talents whose points moved: "Essence Siphon 2 → 0, Focused Casting 0 → 3". */
+function movedTalents(from, to) {
+  const ids = [...new Set([...Object.keys(from ?? {}), ...Object.keys(to ?? {})])];
+  return ids
+    .filter((id) => (from?.[id] ?? 0) !== (to?.[id] ?? 0))
+    .map((id) => `${talentById(id)?.name ?? id} ${from?.[id] ?? 0} → ${to?.[id] ?? 0}`)
+    .join(', ');
+}
 const boardLabel = (character, id) => (character.transcendence?.presets ?? []).find((p) => p.id === id)?.name ?? NONE;
 
 // --- changes ------------------------------------------------------------------------------------
@@ -104,8 +112,8 @@ export function changesOf(space, B0, X0, { bundles = true } = {}) {
   const B = space.canonical(B0);
   const X = space.canonical(X0);
   const out = [];
-  const push = (id, dimension, label, from, to, scope, owner, sideEffects = []) => {
-    out.push({ id, dimension, label, from, to, scope, owner, sideEffects, bundle: [] });
+  const push = (id, dimension, label, from, to, scope, owner, sideEffects = [], extra = {}) => {
+    out.push({ id, dimension, label, from, to, scope, owner, sideEffects, bundle: [], ...extra });
   };
   const presetOwner = { presetId: space.presetId };
   if (space.realm !== 'oblivion' && X.equipmentSet !== B.equipmentSet) {
@@ -120,10 +128,10 @@ export function changesOf(space, B0, X0, { bundles = true } = {}) {
     const to = allocFor(character, X, set);
     if (sameAlloc(from, to)) continue;
     push(`talents:${set}`, 'talents', `Talents (${setLetter(set)})`, allocLabel(from), allocLabel(to), 'character', { talentSet: set },
-      otherPresets(space, (p) => (p.talentSet === 1 ? 1 : 0) === set, `also uses Talent ${setLetter(set)}`));
+      otherPresets(space, (p) => (p.talentSet === 1 ? 1 : 0) === set, `also uses Talent ${setLetter(set)}`), { moved: movedTalents(from, to) });
   }
   if (X.petId !== B.petId) push('pet', 'pet', 'Pet', petLabel(character, B.petId), petLabel(character, X.petId), 'preset', presetOwner);
-  if (X.mountId !== B.mountId) push('mount', 'mount', 'Mount', mountLabel(character, B.mountId), mountLabel(character, X.mountId), 'preset', presetOwner);
+  if (X.mountId !== B.mountId) push('mount', 'mount', 'Mount', mountChoiceLabel(character, B.mountId), mountChoiceLabel(character, X.mountId), 'preset', presetOwner);
   if (!setEq(X.relicIds, B.relicIds)) {
     push('relics', 'relics', 'Relics', listLabel(B.relicIds, relicName), listLabel(X.relicIds, relicName), 'preset', presetOwner);
   }
@@ -145,7 +153,7 @@ export function changesOf(space, B0, X0, { bundles = true } = {}) {
     const from = conditionOf(character, B, sp);
     const to = conditionOf(character, X, sp);
     if (from === to) continue;
-    push(`condition:${sp}`, 'conditions', `${sigilName(sp)} condition`, from, to, 'character', { species: sp },
+    push(`condition:${sp}`, 'conditions', `${sigilName(sp)} condition`, conditionLabel(from), conditionLabel(to), 'character', { species: sp },
       otherPresets(space, (p) => [...(p.sigilSpecies ?? []), p.utilitySigilSpecies, p.ancientSigilSpecies].includes(sp), `also equips ${sigilName(sp)}`));
   }
   // Sockets are per mount: every other preset riding the mount changes too.

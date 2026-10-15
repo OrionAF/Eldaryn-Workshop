@@ -6,7 +6,7 @@
 |---|---|---|---|
 | 1 | §15 Fortress boss fight from the server log | M | Built on rebuild2/F2, not merged |
 | 2 | §11 Celestial Trial Optimiser target | S | Queued |
-| 3 | §6 Results say which pet, mount or glyph | S | Queued |
+| 3 | §6 Results say which pet, mount or glyph | S | Built 2026-10-15, uncommitted (see §6) |
 | 4 | §1 Optimiser step list | S | Queued |
 | 5 | §3 Setup estimates | M | Not started |
 | 6 | §9 Stat weights chart | M | Not started |
@@ -180,6 +180,14 @@ Iron Golem to equip. Show the suggested pet's secondary stats.
   rarely wins, and the axis then reads "−0.00 s … 0.00 s". Say why instead: "Rarely clears: 18% win
   rate; compared by win rate". Draw the axis on the basis actually used. Backlog §4 (Win rate)
   removes most of these cases.
+
+**Built (2026-10-15).** `src/lib/build/statText.js` is the one stat-line and owned-item formatter
+(`statLine`, `petText`, `mountText`, `glyphText`, with "either of your N identical copies"); gear, Drop Check,
+`effect.changesOf`, `space.glyphLabel` and `describeBuild` use it. Talent changes carry `moved`. A baseline
+with no value says why (`optimiserView.valueNoteOf`), and an all-win-rate fallback draws the axis in points.
+Not done: pets have no per-pet level in the model (the altar level is character-wide), so a pet is told
+apart by rarity and secondaries only; stones are not in the optimiser's build space, so nothing names them.
+Since W3 retired kill time as a goal, the n/a case only appears in saved kill-time runs.
 
 ## 1. Optimiser: list the search steps
 

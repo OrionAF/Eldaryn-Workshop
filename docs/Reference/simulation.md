@@ -792,11 +792,18 @@ in 7 s. A flat 0 % rung stops at the screen after about z² / δ fights per scre
   bestKey, text}`. The highest chance has no `meetsTarget` and `goal: {mode: 'max', target: null,
   status: 'already'|'best'|'no-wins', baseline: {winRate, check}, bestKey, progress?, text}`; `headline.text` is `goal.text`. Run more re-derives `goal` from the re-measured rows (the baseline check stays the run's).
 - **Change**: `effect.changesOf`'s `{id, dimension, label, from, to, scope, owner, sideEffects,
-  bundle}` plus `own: Contrast|null`, `needed: Contrast|null` (null only for a change that cannot be
-  dropped alone) and `keptBecause` (`'own-effect'`, `'interaction'` or `'power-floor'`). **WriteGroup** (`writes`): `effect.writesOf`.
+  bundle}` (a talent change also has `moved`, only the talents whose points changed, "Essence Siphon 2 → 0,
+  Focused Casting 0 → 3", which every change list shows instead of `from → to`; saved runs keep it) plus `own: Contrast|null`, `needed: Contrast|null` (null only for a change that cannot be
+  dropped alone) and `keptBecause` (`'own-effect'`, `'interaction'` or `'power-floor'`). Display rule
+  (`optimiserView.changeEffect`): a change kept for its interaction, or "Only with" another change (`own`
+  exactly 0), leads with `needed` ("Without it") in the value, the axis mark and the badge "Helps with the
+  other changes", which is never red; its `own` is secondary text ("Alone on the current build"). Every
+  other change leads with `own`. **WriteGroup** (`writes`): `effect.writesOf`.
 - **Estimate** `{est, lo, hi, n, seed, level: 0.95, alphaAdj, method}`; **Contrast** `{delta, lo, hi,
   pct, n, seed, alphaAdj, method, verdict, significant, nNeeded, basis, higherIsBetter}` (`basis`
-  `'winRate'` when a TTK contrast fell back to win rate; `'win-rate'` or `'margin'` for the win-rate
+  `'winRate'` when a TTK contrast fell back to win rate; when every row fell back, `viewResult` draws the
+  axis in win-rate points and a baseline without a value reads "Rarely clears: 18% win rate; compared by
+  win rate" (`valueNoteOf`); `'win-rate'` or `'margin'` for the win-rate
   objective, which also adds `winRate: {delta, lo, hi}`, the uncapped paired difference in win-rate
   points, on every contrast including a change's `own`; `n` per lane).
 - `search: {strategy, jointSize, blocks: [{id, enabled, domain, status: 'converged'|'unresolved'|

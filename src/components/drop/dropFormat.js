@@ -1,5 +1,6 @@
 // dropFormat.js (F1): display helpers for the Drop Check components. Pure; no store.
 import { statLabel, toDisplay, rarityColor } from '../gear/gearFormat.js';
+import { statParts } from '../../lib/build/statText.js';
 import { rarityById } from '../../lib/game/gear.js';
 import { formatFlat } from '../../lib/format.js';
 import { pctInterval } from '../../lib/features/dropView.js';
@@ -130,4 +131,19 @@ export function dropStatRows(item) {
     rows.push({ key: sheetKeyMeta(key) ? key : `secondary:${s.type}`, label: statLabel(s.type), value: Number(toDisplay(s.type, s.value)) });
   }
   return rows;
+}
+
+/**
+ * A drop's stats as read-only lines (backlog §6: labels, never raw keys): Attack and Health as flat figures
+ * ("." thousands), then every secondary as the gear components print it ("Health +4.5%").
+ * @returns {{primary: Array<{label: string, text: string}>, secondary: Array<{label: string, text: string}>}}
+ */
+export function dropStatLines(item) {
+  if (!item) return { primary: [], secondary: [] };
+  const primary = [
+    { label: 'Attack', text: formatFlat(item.primaryStats?.attack ?? 0) },
+    { label: 'Health', text: formatFlat(item.primaryStats?.hp ?? 0) },
+  ];
+  const secondary = (item.secondaryStats ?? []).map((s) => statParts(s.type, s.value));
+  return { primary, secondary };
 }

@@ -14,14 +14,20 @@ describe('describeBuild', () => {
     const lines = describeBuild(c, 'p1');
     expect(line(lines, 'Gear set')).toBe('Set 1');
     expect(line(lines, 'Talents')).toMatch(/^Arms - Sharpened Blade 5\/5/);
-    expect(line(lines, 'Pet')).toBe(petDisplayName('INFERNAL_DRAKE', true)); // altar tier 2: evolved name
+    expect(line(lines, 'Pet').startsWith(`${petDisplayName('INFERNAL_DRAKE', true)} (Legendary`)).toBe(true); // altar tier 2: evolved name
     expect(line(lines, 'Relics')).toContain('Iron Heart');
     expect(line(lines, 'Sigils')).toContain('Berserk Stance');
     expect(line(lines, 'Ancient sigil')).toBe('Flameborn');
-    expect(line(lines, 'Mount')).toBe('Night Wolf (level 3)');
+    expect(line(lines, 'Mount')).toMatch(/^Night Wolf \(level 3 · HP 7, Attack 7\)$/);
     expect(line(lines, 'Major glyphs')).toContain('Warhaste Emblem (Rare)');
     expect(line(lines, 'Transcendence')).toBe('Default (77 nodes)');
     expect(lines.every((l) => typeof l.label === 'string' && typeof l.value === 'string')).toBe(true);
+  });
+
+  it('the full build never shows a raw stat key (backlog §6)', () => {
+    const lines = describeBuild(c, 'p1');
+    expect(line(lines, 'Minor glyphs')).toMatch(/\(Common · Crit Chance \+[\d.]+%\)/);
+    for (const l of lines) expect(l.value).not.toMatch(/(critChance|attackPercent|healthPercent|critDamage)|[A-Z]+_[A-Z]+/);
   });
 
   it('an empty preset reads None and the Oblivion realm names its set', () => {
@@ -101,7 +107,7 @@ describe('describeBuild', () => {
     const e = JSON.parse(JSON.stringify(c));
     const sp = e.presets[0].sigilSpecies[0];
     e.sigils.owned[sp].condition = 'MY_HP_BELOW_40';
-    expect(line(describeBuild(e, 'p1'), 'Conditions')).toContain('MY_HP_BELOW_40');
+    expect(line(describeBuild(e, 'p1'), 'Conditions')).toContain('My HP at or below 40%');
     e.level = 40;
     expect(line(describeBuild(e, 'p1'), 'Conditions')).toBe('None');
   });

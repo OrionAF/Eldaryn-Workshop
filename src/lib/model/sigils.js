@@ -30,6 +30,14 @@ export const SIGIL_CONDITIONS_LEVEL = SIGIL_CONDITIONS_UNLOCK_LEVEL;
 export const DEFAULT_CONDITION = 'ON_COOLDOWN';
 export const ENEMY_CONDITIONS = ['ENEMY_HP_BELOW_80', 'ENEMY_HP_BELOW_60', 'ENEMY_HP_BELOW_40', 'ENEMY_HP_BELOW_20'];
 export const SELF_CONDITIONS = ['MY_HP_BELOW_80', 'MY_HP_BELOW_60', 'MY_HP_BELOW_40', 'MY_HP_BELOW_20'];
+
+/** Display text for an activation condition id (Game/sigils.md §7): "My HP at or below 40%", "On cooldown". */
+export function conditionLabel(id) {
+  if (!id || id === DEFAULT_CONDITION) return 'On cooldown';
+  const m = /^(ENEMY|MY)_HP_BELOW_(\d+)$/.exec(id);
+  if (!m) return id;
+  return `${m[1] === 'ENEMY' ? 'Enemy' : 'My'} HP at or below ${m[2]}%`;
+}
 const KNOWN_CONDITIONS = new Set([...ENEMY_CONDITIONS, ...SELF_CONDITIONS]);
 
 export function defaultSigils() {

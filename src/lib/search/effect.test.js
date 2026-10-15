@@ -55,7 +55,7 @@ describe('changesOf', () => {
     const space = createBuildSpace(c, 'p1');
     const X = { ...space.start, sigilConditions: { WARBORN_FURY: 'MY_HP_BELOW_40' } };
     const [ch] = changesOf(space, space.start, X);
-    expect(ch).toMatchObject({ id: 'condition:WARBORN_FURY', scope: 'character', owner: { species: 'WARBORN_FURY' }, from: 'ON_COOLDOWN', to: 'MY_HP_BELOW_40' });
+    expect(ch).toMatchObject({ id: 'condition:WARBORN_FURY', scope: 'character', owner: { species: 'WARBORN_FURY' }, from: 'On cooldown', to: 'My HP at or below 40%' });
     expect(ch.sideEffects).toEqual([{ presetId: 'p2', name: 'Alt', reason: expect.stringMatching(/equips/) }]);
   });
 
@@ -69,6 +69,32 @@ describe('changesOf', () => {
     for (const ch of changes) expect(ch.sideEffects.map((s) => s.presetId)).toEqual(['p2']);
     const groups = writesOf(space, space.start, X);
     expect(groups.map((w) => [w.scope, w.changeIds])).toEqual([['character', ['talents:0']], ['mount', ['glyph:mount-a:minor:1']]]);
+  });
+
+  it('a talent change lists only the points that moved (backlog §6)', () => {
+    const c = fixtureCharacter('WARRIOR');
+    const space = createBuildSpace(c, 'p1');
+    const alloc = { ...c.talentSets[0].allocation };
+    const [moveOut] = Object.keys(alloc).filter((id) => alloc[id] > 0);
+    const before = alloc[moveOut];
+    delete alloc[moveOut];
+    const [talents] = changesOf(space, space.start, { ...space.start, talentAllocation: alloc });
+    expect(talents.moved).toMatch(new RegExp(`^[A-Za-z' -]+ ${before} → 0$`));
+  });
+
+  it('a pet or glyph change names the owned copy: rarity and stats, never raw keys (backlog §6)', () => {
+    const c = fixture('WARRIOR', (r) => {
+      r.pets.owned.push({ ...r.pets.owned[0], id: 'pet-b', secondaries: r.pets.owned[0].secondaries.slice(0, 1) });
+      r.glyphs.push({ id: 'gl-9', glyphType: r.glyphs[0].glyphType, rarity: 'Common', secondary: { stat: 'critDamage', quality: 0.5 } });
+    });
+    const space = createBuildSpace(c, 'p1');
+    const pet = changesOf(space, space.start, { ...space.start, petId: 'pet-b' }).find((ch) => ch.id === 'pet');
+    expect(pet.from).not.toBe(pet.to);
+    expect(pet.to).toContain('Legendary');
+    const sockets = { ...space.start.mountGlyphs ?? c.mounts[0].glyphs, minor: ['gl-9', 'gl-2', null] };
+    const glyph = changesOf(space, space.start, { ...space.start, mountGlyphs: sockets }).find((ch) => ch.id.startsWith('glyph:'));
+    expect(glyph.to).toMatch(/Crit Damage \+[\d.]+%/);
+    expect(glyph.to).not.toMatch(/critDamage/);
   });
 
   it('names talent sets "Set A" / "Set B" like the Presets page', () => {

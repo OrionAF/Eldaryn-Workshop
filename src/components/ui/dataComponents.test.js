@@ -214,7 +214,7 @@ it('ResultRank: toggle controls the body; expanded lists changes, scope, remaind
   t.done();
 });
 
-it('ResultRank: a change with an exactly zero own effect reads "Only with: <driver>", Without it as the number, no verdict chip', () => {
+it('ResultRank: a change with an exactly zero own effect reads "Only with: <driver>", Without it as the number, the helps-with badge', () => {
   const zero = contrast({ delta: 0, lo: 0, hi: 0, verdict: 'equivalent', significant: true });
   const r = row({
     changes: [
@@ -234,7 +234,8 @@ it('ResultRank: a change with an exactly zero own effect reads "Only with: <driv
   expect(dep.textContent).toContain('Only with: Talent set');
   expect(dep.textContent).toContain('700');
   expect(dep.textContent).not.toContain('Equivalent');
-  expect(dep.querySelector('.vchip')).toBeNull();
+  expect(dep.querySelector('.vchip').textContent).toContain('Helps with the other changes');
+  expect(dep.querySelector('.vchip.down')).toBeNull();
   expect(t.qa('.abl')[0].querySelector('.vchip')).not.toBeNull();
   t.done();
 });

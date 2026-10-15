@@ -52,6 +52,30 @@ describe('viewResult', () => {
     delete r.baseline.changes;
     expect(viewResult(r).baseline.changes).toEqual([]);
   });
+  it('a baseline with no value says why, and an all-win-rate fallback draws the axis in win-rate points (backlog §6)', () => {
+    const r = ttkResult();
+    r.baseline.value = { ...r.baseline.value, est: null, lo: null, hi: null };
+    r.baseline.aux = { ...(r.baseline.aux ?? {}), winRate: { est: 0.18, lo: 0.1, hi: 0.28, n: 64 } };
+    r.rows.forEach((row, i) => {
+      row.aux = { ...(row.aux ?? {}), winRate: { est: 0.4 + i / 100, lo: 0.3, hi: 0.5, n: 64 } };
+      row.vsBaseline = { ...row.vsBaseline, basis: 'winRate', delta: 0.2, lo: 0.1, hi: 0.3 };
+    });
+    const v = viewResult(r);
+    expect(v.baseline.valueNote).toBe('Rarely clears: 18% win rate; compared by win rate');
+    expect(v.unit).toBe('p');
+    expect(v.rows[0].vsBaseline).toMatchObject({ delta: 0.2, lo: 0.1, hi: 0.3 });
+    expect(v.rows[0].value.est).toBeCloseTo(0.4);
+    expect(v.baseline.value.est).toBeCloseTo(0.18);
+    expect(v.domain.max).toBeGreaterThanOrEqual(0.3);
+  });
+  it('a baseline with no value and rows still on time keeps the time axis but says why', () => {
+    const r = ttkResult();
+    r.baseline.value = { ...r.baseline.value, est: null, lo: null, hi: null };
+    r.baseline.aux = { ...(r.baseline.aux ?? {}), winRate: { est: 0.18, lo: 0.1, hi: 0.28, n: 64 } };
+    const v = viewResult(r);
+    expect(v.unit).toBe('ms');
+    expect(v.baseline.valueNote).toMatch(/^Rarely clears: 18% win rate/);
+  });
   it('a failed result has no rows', () => {
     expect(viewResult({ status: 'failed', objective: { unit: 'dps' }, rows: [], baseline: null }).rows).toEqual([]);
   });

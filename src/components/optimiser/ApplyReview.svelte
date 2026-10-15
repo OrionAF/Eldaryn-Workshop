@@ -38,7 +38,7 @@
             <ScopeChip scope={g.scope} target={g.title} sideEffects={g.sideEffects.map((s) => s.name)} />
             <ul class="changes">
               {#each changesOfGroup(row, g) as c (c.id)}
-                <li>{c.label}: {c.from} <span class="arrow">→</span> <b>{c.to}</b></li>
+                <li>{#if c.moved}{c.label}: {c.moved}{:else}{c.label}: {c.from} <span class="arrow">→</span> <b>{c.to}</b>{/if}</li>
               {/each}
             </ul>
             {#each g.sideEffects as s (s.presetId + s.reason)}

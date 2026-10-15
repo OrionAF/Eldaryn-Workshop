@@ -547,6 +547,9 @@ drop Measure panel (base realm only) and the Loot bag panel; `Set 1 only` hides 
 Presets entries wearing Set 2, and a finished run whose mode differs reads Stale. A Loot bag item applied to
 a set leaves the list (tab count and summary follow, a hint counts the removed items); Check again judges
 only the items left.
+An expanded Loot bag row first lists the drop's stats (`dropFormat.js dropStatLines`): Attack and Health as
+flat figures, then every secondary as the gear components label it ("Health +4.5%"), values in `.stat-value`;
+an item without secondaries says "No secondary stats."
 
 ### 4.29 BoardGrid and Node (Transcendence)
 

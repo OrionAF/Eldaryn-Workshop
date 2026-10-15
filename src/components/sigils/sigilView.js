@@ -3,7 +3,7 @@
 // Field meanings: Game/sigils.md §5-§6.
 import { scaledSigilSpell, spellTypeOf } from '../../lib/engine/sources/sigilScale.js';
 import { sigilBySpecies } from '../../lib/game/sigils.js';
-import { DEFAULT_CONDITION, ancientSigils, utilitySigils, genericSigils, maxSigilSlots, slotUnlockLevel } from '../../lib/model/sigils.js';
+import { conditionLabel, ancientSigils, utilitySigils, genericSigils, maxSigilSlots, slotUnlockLevel } from '../../lib/model/sigils.js';
 
 const STAT_LABELS = {
   ATTACK_PERCENT: 'Attack',
@@ -120,13 +120,8 @@ export function sigilSpellBlocks(species, level, spec = null) {
   return [{ title: dv?.name ?? null, form: null, type, rows: spellRows(spell, type) }];
 }
 
-/** Display text for an activation condition id (sigils.md §7). */
-export function conditionLabel(id) {
-  if (!id || id === DEFAULT_CONDITION) return 'On cooldown';
-  const m = /^(ENEMY|MY)_HP_BELOW_(\d+)$/.exec(id);
-  if (!m) return id;
-  return `${m[1] === 'ENEMY' ? 'Enemy' : 'My'} HP at or below ${m[2]}%`;
-}
+/** Display text for an activation condition id (model/sigils.js, shared with the optimiser). */
+export { conditionLabel };
 
 /**
  * Which slot of `preset` a sigil would take: 'ancient', 'utility' or 'generic', or null when the preset's

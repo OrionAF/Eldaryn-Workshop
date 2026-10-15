@@ -266,7 +266,7 @@ describe('legality of every arm (light; the deep run is H3)', () => {
 describe('glyphLabel', () => {
   it('prints the secondary stat as words, not its camelCase key', () => {
     const c = { glyphs: [{ id: 'g1', glyphType: 'NO_SUCH_TYPE', rarity: 'Rare', secondary: { stat: 'attackSpeed' } }, { id: 'g2', glyphType: 'NO_SUCH_TYPE', rarity: 'Rare', secondary: null }] };
-    expect(glyphLabel(c, 'g1')).toBe('NO_SUCH_TYPE (Rare, Attack Speed)');
+    expect(glyphLabel(c, 'g1')).toBe('NO_SUCH_TYPE (Rare · Attack Speed +3%)');
     expect(glyphLabel(c, 'g2')).toBe('NO_SUCH_TYPE (Rare)');
     expect(glyphLabel(c, null)).toBe('Empty');
   });

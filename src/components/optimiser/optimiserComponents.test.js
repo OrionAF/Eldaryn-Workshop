@@ -264,3 +264,71 @@ it('two runs of the same question compare without the warning', () => {
   expect(mounted.q('[data-testid="run-compare"]').textContent).not.toMatch(/Different questions/);
   flushSync();
 });
+
+// backlog §6: a talent change shows only the points that moved, everywhere a change is listed.
+const movedRow = () => {
+  const r = richResult();
+  const t = r.rows[0].changes.find((c) => c.dimension === 'talents');
+  t.moved = 'Essence Siphon 2 → 0, Focused Casting 0 → 3';
+  return { r, t };
+};
+
+it('a talent change lists only the moved points in the row, the Apply review and a saved-run compare', () => {
+  const { r, t } = movedRow();
+  const ui = mountResults(r);
+  toggle(ui, 0);
+  const body = ui.q('[data-testid="result-row"]').textContent;
+  expect(body).toContain('Essence Siphon 2 → 0, Focused Casting 0 → 3');
+  expect(body).not.toContain(t.from);
+  mounted.done();
+  const { ui: review } = mountReview(r.rows[0]);
+  expect(review.q('[data-testid="apply-review"]').textContent).toContain('Focused Casting 0 → 3');
+  expect(review.q('[data-testid="apply-review"]').textContent).not.toContain(t.from);
+  mounted.done();
+  const a = runFromResult(r, { id: 'a', name: 'First', presetName: 'Main' });
+  mounted = setup(RunCompare, { a, b: runFromResult(dpsResult(), { id: 'b', name: 'Second', presetName: 'Main' }) });
+  expect(mounted.q('[data-testid="run-compare"]').textContent).toContain('Essence Siphon 2 → 0');
+});
+
+it('a baseline with no value says why instead of "n/a" (backlog §6)', () => {
+  const r = ttkResult();
+  r.baseline.value = { ...r.baseline.value, est: null, lo: null, hi: null };
+  r.baseline.aux = { ...(r.baseline.aux ?? {}), winRate: { est: 0.18, lo: 0.1, hi: 0.28, n: 64 } };
+  const ui = mountResults(r);
+  const base = ui.q('[data-testid="baseline-row"]').textContent;
+  expect(base).toContain('Rarely clears: 18% win rate');
+  expect(base).not.toContain('n/a');
+});
+
+// A change kept for its interaction leads with its in-context value (Without it) and is never a red
+// Downgrade: alone on the current build it may lose, which is why it was kept for the interaction.
+it('a change kept for its interaction leads with Without it, says it helps only with the others, and is never red', () => {
+  const r = richResult();
+  const c = r.rows[0].changes[1];
+  c.own = { ...c.own, delta: -800, lo: -1200, hi: -400, pct: -0.0112, verdict: 'worse', significant: true };
+  c.needed = { ...c.needed, delta: 600, lo: 100, hi: 1100, pct: 0.008, verdict: 'better', significant: true };
+  c.keptBecause = 'interaction';
+  const ui = mountResults(r);
+  toggle(ui, 0);
+  const abl = ui.qa('[data-testid="result-row"]')[0].querySelectorAll('.abl')[1];
+  expect(abl.querySelector('.vchip.down')).toBeNull();
+  expect(abl.querySelector('.verdict').textContent).toContain('Helps with the other changes');
+  expect(abl.querySelector('.delta .v').textContent).toContain('+0.80%');
+  expect(abl.querySelector('.delta .v').className).not.toMatch(/down/);
+  expect(abl.textContent).toMatch(/Alone on the current build: [−-]1\.12%/);
+  expect(abl.textContent).not.toMatch(/Without it: \+/);
+});
+
+it('an "Only with" change also shows the helps-with badge', () => {
+  const r = richResult();
+  const [a, b] = r.rows[0].changes;
+  b.own = { ...b.own, delta: 0, lo: 0, hi: 0, pct: 0, verdict: 'equivalent', significant: false };
+  b.needed = { ...b.needed, delta: 500, lo: 100, hi: 900, verdict: 'better', significant: true };
+  b.keptBecause = 'interaction';
+  a.bundle = [...(a.bundle ?? []), b.id];
+  const ui = mountResults(r);
+  toggle(ui, 0);
+  const abl = ui.qa('[data-testid="result-row"]')[0].querySelectorAll('.abl')[1];
+  expect(abl.querySelector('.verdict').textContent).toContain('Helps with the other changes');
+  expect(abl.textContent).toContain(`Only with: ${a.label}`);
+});

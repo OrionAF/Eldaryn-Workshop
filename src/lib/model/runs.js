@@ -103,6 +103,7 @@ function normaliseChange(c) {
     bundle: (Array.isArray(c.bundle) ? c.bundle : []).filter((b) => typeof b === 'string'),
     own: normaliseContrast(c.own), needed: normaliseContrast(c.needed),
     keptBecause: KEPT_BECAUSE.includes(c.keptBecause) ? c.keptBecause : null,
+    ...(typeof c.moved === 'string' && c.moved ? { moved: c.moved } : {}),
   };
 }
 

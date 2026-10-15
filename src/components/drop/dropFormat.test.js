@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { flat, signedFlat, ciFlat, metricTables, dropStatRows } from './dropFormat.js';
+import { flat, signedFlat, ciFlat, metricTables, dropStatRows, dropStatLines } from './dropFormat.js';
 import { formatFlat } from '../../lib/format.js';
 
 it('flat numbers group thousands with "." like every other screen (lib/format.js)', () => {
@@ -35,4 +35,15 @@ it('dropStatRows: attack and HP as flat sheet keys, secondaries as displayed', (
   expect(rows.map((r) => r.label)).toEqual(['Attack', 'Crit Chance']);
   expect(rows[0]).toMatchObject({ key: 'totalAttack', value: 9000 });
   expect(dropStatRows(null)).toEqual([]);
+});
+
+it('dropStatLines: Attack and Health as flat figures, each secondary as a labelled signed line', () => {
+  const lines = dropStatLines({
+    primaryStats: { attack: 10344, hp: 43509 },
+    secondaryStats: [{ type: 'HEALTH_PERCENT', value: 4.5 }, { type: 'CRIT_DAMAGE', value: 0.09 }],
+  });
+  expect(lines.primary).toEqual([{ label: 'Attack', text: '10.344' }, { label: 'Health', text: '43.509' }]);
+  expect(lines.secondary.map((l) => `${l.label} ${l.text}`)).toEqual(['Health +4.5%', 'Crit Damage +9%']);
+  expect(dropStatLines({ primaryStats: { attack: 5, hp: 0 }, secondaryStats: [] }).secondary).toEqual([]);
+  expect(dropStatLines(null)).toEqual({ primary: [], secondary: [] });
 });

@@ -1,18 +1,11 @@
 // gearFormat.js (B1): display and parse helpers shared by the gear components. Pure; no store.
-import { SECONDARY_STAT_POOL, slotDisplayName, weaponOffhandName } from '../../lib/game/gear.js';
+import { slotDisplayName, weaponOffhandName } from '../../lib/game/gear.js';
 import { isMultiplierStat } from '../../lib/model/equipment.js';
 import { formatFlat } from '../../lib/format.js';
+import { statLabel, statValueText } from '../../lib/build/statText.js';
 
-const POOL_LABEL = new Map(SECONDARY_STAT_POOL.map((s) => [s.type, s.label]));
-
-/** "CRIT_CHANCE" -> "Crit Chance"; PVP stays upper-case. Pool labels win where they exist. */
-export function statLabel(type) {
-  if (POOL_LABEL.has(type)) return POOL_LABEL.get(type);
-  return String(type)
-    .split('_')
-    .map((w) => (w === 'PVP' ? w : w.charAt(0) + w.slice(1).toLowerCase()))
-    .join(' ');
-}
+/** "CRIT_CHANCE" -> "Crit Chance" (build/statText.js, shared with the optimiser and Drop Check). */
+export { statLabel };
 
 /** Slot name for display: class weapon/off-hand names, else the catalogue display name. */
 export function slotLabel(cls, slot) {
@@ -34,11 +27,8 @@ export function fromDisplay(type, text) {
   return isMultiplierStat(type) ? +(n / 100).toFixed(6) : n;
 }
 
-/** Signed value with unit for a read-only line: "+3.2%", PvP ratings plain. */
-export function formatStatValue(type, value) {
-  const shown = toDisplay(type, value);
-  return type === 'PVP_ATTACK' || type === 'PVP_DEFENSE' ? `+${shown}` : `+${shown}%`;
-}
+/** Signed value with unit for a read-only line: "+3.2%", PvP ratings plain (build/statText.js). */
+export const formatStatValue = (type, value) => statValueText(type, value);
 
 /**
  * Flat stat text -> number. The game's own UI groups thousands with "." or "," (device locale,
