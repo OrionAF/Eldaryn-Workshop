@@ -104,4 +104,42 @@ describe('comparisons over the store', () => {
     expect(c.method).toBe('tango');
     expect(c.nNeeded).toBeGreaterThan(8);
   });
+
+  describe('futility (A5): a challenger that cannot beat the incumbent by δ stops early', () => {
+    // synthetic paired sets: y_i = 1000 + noise, x_i = y_i + shift + small noise (δ = 0.5 % of 1000 = 5)
+    const meanObj = (higherIsBetter) => ({
+      higherIsBetter, deltaKind: 'relative',
+      contrast: (x, y, { alpha }) => {
+        const d = x.main[0].map((v, i) => v - y.main[0][i]);
+        const m = d.reduce((a, b) => a + b, 0) / d.length;
+        const sd = Math.sqrt(d.reduce((a, b) => a + (b - m) ** 2, 0) / (d.length - 1));
+        const w = (alpha < 0.01 ? 3.5 : 2.5) * sd / Math.sqrt(d.length);
+        return { delta: m, lo: m - w, hi: m + w, sd, method: 'paired-t', ref: 1000 };
+      },
+    });
+    const wave = (i) => Math.sin(i * 12.9898) * 20;
+    const sets = (shift) => ({
+      getX: (n) => setOf([Array.from({ length: n }, (_, i) => 1000 + wave(i) + shift + Math.cos(i * 7.1) * 20)]),
+      getY: (n) => setOf([Array.from({ length: n }, (_, i) => 1000 + wave(i))]),
+    });
+    const o = { delta: 0.005, n0: 8, maxN: 4096, alpha: 0.05 };
+
+    it('higher is better: X 2 below Y resolves futile, long before the old rule resolves it', async () => {
+      const { getX, getY } = sets(-2);
+      const f = await compareSets(meanObj(true), getX, getY, { ...o, futility: true });
+      const old = await compareSets(meanObj(true), getX, getY, o);
+      expect(f.verdict).toBe('futile');
+      expect(f).toMatchObject({ futile: true, significant: false, nNeeded: null });
+      expect(f.hi).toBeLessThan(f.zone);
+      expect(old.verdict).not.toBe('futile');
+      expect(f.n).toBeLessThan(old.n);
+    });
+
+    it('lower is better: X 2 above Y (slower) resolves futile; a clearly better X still resolves better', async () => {
+      const slow = sets(2);
+      expect((await compareSets(meanObj(false), slow.getX, slow.getY, { ...o, futility: true })).verdict).toBe('futile');
+      const fast = sets(-30);
+      expect((await compareSets(meanObj(false), fast.getX, fast.getY, { ...o, futility: true })).verdict).toBe('better');
+    });
+  });
 });

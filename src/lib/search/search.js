@@ -59,7 +59,8 @@ export function resolveEffort(raw, objective) {
   const maxN = posInt(o.maxN) && o.maxN >= n0 ? o.maxN : Math.max(n0, p.maxN);
   const delta = typeof o.delta === 'number' && o.delta >= 0 ? o.delta : deltaKind === 'relative' ? p.rel : p.prob;
   const randomStarts = Number.isInteger(o.randomStarts) && o.randomStarts >= 0 ? o.randomStarts : RANDOM_STARTS;
-  return { level, delta, deltaKind, alpha: ALPHA, n0, maxN, randomStarts };
+  // futility: false restores the pre-A5 race and accept rule (benchmarks; not an Effort control)
+  return { level, delta, deltaKind, alpha: ALPHA, n0, maxN, randomStarts, futility: o.futility !== false };
 }
 
 /** Phase seeds (I4: the data that decides is never the data reported). */
@@ -113,7 +114,7 @@ export function prepare(request) {
     presetId: preset.id, realm, mode, target: target.spec, objective: objective.spec, space: space.toggles,
     seed, seeds, effort: { level: effort.level, delta: effort.delta, deltaKind: effort.deltaKind, alpha: effort.alpha, n0: effort.n0, maxN: effort.maxN }, characterKey,
   };
-  const requestKey = metricKey('optimise-request', { ...requestEcho, characterKey: undefined, randomStarts: effort.randomStarts });
+  const requestKey = metricKey('optimise-request', { ...requestEcho, characterKey: undefined, randomStarts: effort.randomStarts, ...(effort.futility ? {} : { futility: false }) });
   return { character, preset, target, realm, mode, objective, effort, seed, seeds, warnings, space, characterKey, requestEcho, requestKey };
 }
 
@@ -299,10 +300,14 @@ function createRun(prep, hooks) {
     return true;
   });
 
-  /** Sequential paired comparison of X against Y on a stage (logged). */
-  function compare(X, Y, stage, alpha) {
-    return step('compare', [stage.id, X.key, Y.key, alpha], async () => {
-      const c = await compareSets(objective, (n) => getSet(X, stage, n), (n) => getSet(Y, stage, n), { ...effortFor(alpha), seed: stage.seed });
+  /**
+   * Sequential paired comparison of X against Y on a stage (logged). `futile` (a challenger against
+   * the incumbent) also stops once X cannot beat Y by δ (simulation.md §Search, racing).
+   */
+  function compare(X, Y, stage, alpha, { futile = false } = {}) {
+    const futility = futile && effort.futility;
+    return step('compare', [stage.id, X.key, Y.key, alpha, ...(futility ? ['futile'] : [])], async () => {
+      const c = await compareSets(objective, (n) => getSet(X, stage, n), (n) => getSet(Y, stage, n), { ...effortFor(alpha), futility, seed: stage.seed });
       const [x, y] = [await getSet(X, stage, c.n), await getSet(Y, stage, c.n)];
       return { ...c, identical: identical(x, y, c.n) };
     });
@@ -316,16 +321,16 @@ function createRun(prep, hooks) {
     });
   }
 
-  /** A race on a stage (logged; the eliminated arms are kept as a count so checkpoints stay small). */
+  /** A race on a stage (logged; eliminated and futile arms are kept as counts so checkpoints stay small). */
   function raceArms(list, stage) {
     for (const a of list) st.evaluated.add(a.key);
     return step('race', [stage.id, ...list.map((a) => a.key)], async () => {
       const r = await race(list, {
-        objective, effort: effortFor(effort.alpha), seed: stage.seed,
+        objective, effort: { ...effortFor(effort.alpha), futility: effort.futility }, seed: stage.seed,
         getSet: (a, n) => getSet(a, stage, n),
         onLook: () => progress(),
       });
-      return { ...r, eliminated: r.eliminated.length };
+      return { ...r, eliminated: r.eliminated.length + r.futile.length, futile: r.futile.length };
     });
   }
 
@@ -519,7 +524,7 @@ async function searchPhase(prep, run) {
   async function acceptable(arms, r, visited) {
     const picks = [r.winner, r.leader].filter((v, i, a) => a.indexOf(v) === i && v !== 0);
     for (const w of picks) {
-      const c = await run.compare(arms[w], arms[0], S1, effort.alpha / arms.length);
+      const c = await run.compare(arms[w], arms[0], S1, effort.alpha / arms.length, { futile: true });
       if (c.verdict !== 'better') continue;
       const W = canonArm(arms[w]);
       if (!visited.has(W.key)) return W;
