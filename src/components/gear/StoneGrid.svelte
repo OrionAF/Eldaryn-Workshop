@@ -45,7 +45,7 @@
 
 <div class="stone-grid">
   {#if stones.length === 0}
-    <p class="empty-hint">No stones added yet.</p>
+    <p class="empty-note">No stones added yet.</p>
   {:else}
     {#each sorted as stone (stone.id)}
       {@const sc = STONE_COLOR[stone.type]}
@@ -85,7 +85,7 @@
   .stone-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(172px, 1fr));
-    gap: var(--space-2);
+    gap: var(--sp-2);
   }
   .stone-tile {
     position: relative;
@@ -93,36 +93,36 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 2px;
-    padding: var(--space-2);
-    background: var(--color-inset);
-    border: 1px solid var(--tile-color, var(--color-border));
-    border-radius: 7px;
+    padding: var(--sp-2);
+    background: var(--surface-1);
+    border: 1px solid var(--tile-color, var(--line-rule));
+    border-radius: var(--r-2);
     text-align: left;
-    color: var(--color-soft);
+    color: var(--text-soft);
     min-width: 0;
   }
   .stone-tile:hover,
   .stone-tile.selected {
-    background: var(--tile-tint, var(--color-field));
+    background: var(--tile-tint, var(--surface-3));
   }
   .stone-tile.selected {
-    box-shadow: 0 0 0 1px var(--tile-color, var(--color-gold));
+    box-shadow: 0 0 0 1px var(--tile-color, var(--brass-400));
   }
   .stone-tile.equipped {
-    border-color: var(--color-gold);
-    box-shadow: 0 0 0 1px var(--color-gold);
+    border-color: var(--brass-400);
+    box-shadow: 0 0 0 1px var(--brass-400);
   }
   .stone-head {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    gap: var(--space-2);
+    gap: var(--sp-2);
     width: 100%;
   }
   .stone-type {
     font-weight: 600;
-    font-size: 11.5px;
-    color: var(--tile-color, var(--color-soft));
+    font-size: var(--fs-12);
+    color: var(--tile-color, var(--text-soft));
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -130,37 +130,37 @@
   }
   .stone-quality {
     font-size: 11px;
-    color: var(--color-muted);
+    color: var(--text-muted);
     white-space: nowrap;
   }
   .stone-tags {
     display: flex;
-    gap: var(--space-2);
-    font-size: 10.5px;
-    color: var(--color-gold-light);
+    gap: var(--sp-2);
+    font-size: var(--fs-11);
+    color: var(--brass-200);
   }
   .stone-stat {
     display: flex;
     justify-content: space-between;
-    gap: var(--space-2);
+    gap: var(--sp-2);
     width: 100%;
-    font-size: 10.5px;
+    font-size: var(--fs-11);
   }
   .stat-label {
-    color: var(--color-dim);
+    color: var(--text-muted);
   }
   .stat-value {
     font-family: var(--font-data);
     font-variant-numeric: tabular-nums;
-    color: var(--color-soft);
+    color: var(--text-soft);
     white-space: nowrap;
   }
   .stone-socketed {
     font-weight: 700;
-    font-size: 10px;
-    color: var(--color-ink);
+    font-size: var(--fs-11);
+    color: var(--text-ink);
   }
-  .empty-hint {
-    color: var(--color-muted);
+  .empty-note {
+    color: var(--text-muted);
   }
 </style>

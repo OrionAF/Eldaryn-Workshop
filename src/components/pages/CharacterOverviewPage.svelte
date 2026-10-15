@@ -57,6 +57,7 @@
     }
     if (p.relicsDropped > 0) lines.push(`${p.relicsDropped} equipped relic${p.relicsDropped === 1 ? '' : 's'} (slots unlock with level)`);
     if (p.awakeningPointsLost > 0) lines.push(`${p.awakeningPointsLost} Awakening level${p.awakeningPointsLost === 1 ? '' : 's'}`);
+    for (const name of p.inert ?? []) lines.push(`${name} stops counting (kept, but inert below its unlock level)`);
     return lines;
   }
   function applyLevel(n) {
@@ -151,7 +152,7 @@
   <Modal bind:open={confirmOpen} title="Lower level to {pending?.level ?? ''}?" onclose={cancelLevel}>
     {#snippet children()}
       {#if pending}
-        <p>This level does not unlock everything the character has set up. Changing it will drop:</p>
+        <p>This level does not unlock everything the character has set up. Changing it will drop or switch off:</p>
         <ul class="drops">
           {#each previewLines(pending.preview) as line (line)}<li>{line}</li>{/each}
         </ul>
@@ -171,7 +172,7 @@
   .level-label { font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }
   .tick { font-size: var(--fs-12); color: var(--text-muted); min-height: 1em; }
   .note { margin: 0 0 var(--sp-3); color: var(--text-soft); font-size: var(--fs-13); }
-  .residual { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr)); gap: var(--sp-3); }
+  .residual { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr)); gap: var(--sp-3); }
   .actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
   .drops { margin: 0; padding-left: var(--sp-5); display: grid; gap: var(--sp-1); }
 </style>

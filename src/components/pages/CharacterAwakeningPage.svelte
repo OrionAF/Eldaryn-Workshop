@@ -43,7 +43,6 @@
   const keys = $derived(
     [...new Set([...Object.keys(info?.bundle ?? {}), ...Object.keys(otherInfo?.bundle ?? {})])].filter((k) => info?.bundle[k] || otherInfo?.bundle[k]),
   );
-  let points = $derived(awakening.level);
 </script>
 
 <Panel title="Awakening" scope="character">
@@ -62,26 +61,24 @@
   {/if}
 
   {#if !awakening.path}
-    <p class="empty-hint">Choose a path above to begin allocating Awakening points.</p>
+    <p class="note">Choose a path above to begin allocating Awakening points.</p>
   {:else}
     <div class="points-row">
-      <NumberField
-        label="Awakening points"
-        bind:value={points}
-        min={0}
-        max={cap}
-        disabled={cap === 0}
-        unit="/ {cap}"
-        onchange={(v) => rosterStore.setAwakeningLevel(v)}
-      />
-      <span class="points-readout num">{awakening.level} / {cap} points</span>
-      <div class="rank-controls">
-        <button type="button" aria-label="Fewer points" disabled={awakening.level <= 0} onclick={() => rosterStore.setAwakeningLevel(awakening.level - 1)}>&minus;</button>
-        <button type="button" aria-label="More points" disabled={awakening.level >= cap} onclick={() => rosterStore.setAwakeningLevel(awakening.level + 1)}>+</button>
-        <Button size="small" disabled={awakening.level >= cap} onclick={() => rosterStore.setAwakeningLevel(cap)}>Max</Button>
+      <div class="points-field">
+        <NumberField
+          label="Awakening points"
+          value={awakening.level}
+          min={0}
+          max={cap}
+          disabled={cap === 0}
+          onchange={(v) => rosterStore.setAwakeningLevel(v)}
+        />
+        <span class="of num" data-testid="points-cap">/ {cap} points</span>
       </div>
+      <Button variant="ghost" disabled={awakening.level >= cap} onclick={() => rosterStore.setAwakeningLevel(cap)}>Max</Button>
       <ConfirmButton
-        class="reset-btn btn-danger"
+        class="reset-btn"
+        variant="danger"
         label="Reset path and points"
         confirmLabel="Confirm reset"
         prompt="Reset your path choice and all invested points?"
@@ -130,14 +127,15 @@
     background: var(--surface-3);
     color: var(--text-soft);
   }
-  .path-name { font-weight: var(--fw-bold); letter-spacing: 0.06em; text-transform: uppercase; font-size: var(--fs-12); }
+  .path-name { font-weight: var(--fw-bold); letter-spacing: var(--track-label); text-transform: uppercase; font-size: var(--fs-12); }
   .path-desc { font-size: var(--fs-13); color: var(--text-muted); }
   .path-card.active { background: var(--brass-tint); border-color: var(--brass-400); color: var(--brass-200); }
-  .empty-hint { color: var(--text-muted); }
+  .note { color: var(--text-muted); }
   .points-row { display: flex; align-items: flex-end; flex-wrap: wrap; gap: var(--sp-3); margin-bottom: var(--sp-3); }
-  .points-row :global(.field) { width: 10rem; }
-  .points-readout { font-size: var(--fs-13); color: var(--text-soft); }
-  .rank-controls { display: flex; gap: var(--sp-1); }
+  /* The cap sits beside the field, not inside it: a unit drawn in the input overlapped the value. */
+  .points-field { display: flex; align-items: flex-end; gap: var(--sp-2); }
+  .points-field :global(.field) { width: 8rem; }
+  .of { font-size: var(--fs-13); color: var(--text-soft); padding-bottom: var(--sp-2); white-space: nowrap; }
   :global(.reset-btn) { margin-left: auto; }
   .bonus-table { border-collapse: collapse; width: 100%; max-width: 640px; font-size: var(--fs-13); }
   .bonus-table th, .bonus-table td { padding: var(--sp-2); border-bottom: 1px solid var(--line-hairline); text-align: left; font-weight: normal; }

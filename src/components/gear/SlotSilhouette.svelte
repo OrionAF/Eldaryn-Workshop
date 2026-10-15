@@ -50,7 +50,7 @@
       'weapon chest     offhand'
       'ring   leggings  trinket'
       '.      boots     .';
-    gap: var(--space-2);
+    gap: var(--sp-2);
     max-width: 16rem;
   }
   .silhouette.oblivion {
@@ -69,26 +69,26 @@
     align-items: center;
     gap: 2px;
     padding: 10px 4px;
-    border: 1px solid var(--color-border);
-    background: var(--color-inset);
+    border: 1px solid var(--line-rule);
+    background: var(--surface-1);
     cursor: pointer;
     font-size: 11px;
-    color: var(--color-dim);
-    border-radius: 7px;
+    color: var(--text-muted);
+    border-radius: var(--r-2);
   }
   .slot.filled {
-    background: var(--color-field);
-    color: var(--color-soft);
+    background: var(--surface-3);
+    color: var(--text-soft);
     border-color: var(--slot-rarity);
   }
   .slot-level {
     font-size: 10px;
-    color: var(--color-muted);
+    color: var(--text-muted);
   }
   /* The selected slot "sockets" a gold dot, like a gem set into the gear. */
   .slot.selected {
-    border-color: var(--color-gold);
-    color: var(--color-gold-light);
+    border-color: var(--brass-400);
+    color: var(--brass-200);
   }
   .slot.selected::after {
     content: '';
@@ -98,7 +98,7 @@
     width: 0.4rem;
     height: 0.4rem;
     border-radius: 50%;
-    background: var(--color-gold);
+    background: var(--brass-400);
   }
   .stone-dot {
     position: absolute;

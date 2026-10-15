@@ -1,8 +1,10 @@
 import { it, expect, beforeEach, afterEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import MountsScreen from './CharacterMountsPage.svelte';
+import pageSource from './CharacterMountsPage.svelte?raw';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
 import { MOUNT_SPECIES } from '../../lib/game/mountsGlyphs.js';
+import { field } from '../gear/fieldKit.js';
 
 let target, app;
 beforeEach(() => {
@@ -41,9 +43,9 @@ function addMountUi(species) {
 }
 function addGlyphUi({ tier, glyphType, rarity, sealed = false }) {
   showTab('Glyph inventory');
-  pick(target.querySelector('select[aria-label="Glyph tier"]'), tier);
-  pick(target.querySelector('select[aria-label="Glyph type"]'), glyphType);
-  if (rarity) pick(target.querySelector('select[aria-label="Glyph rarity"]'), rarity);
+  pick(field(target, 'Tier'), tier);
+  pick(field(target, 'Glyph'), glyphType);
+  if (rarity) pick(field(target, 'Rarity'), rarity);
   const box = target.querySelector('.add-form input[type="checkbox"]');
   box.checked = sealed;
   box.dispatchEvent(new Event('change', { bubbles: true }));
@@ -91,10 +93,10 @@ it('Ridden in toggles a named preset on the mount', () => {
 
 it('major glyph choices are limited to the class', () => {
   showTab('Glyph inventory');
-  const options = [...target.querySelectorAll('select[aria-label="Glyph type"] option')].map((o) => o.value);
+  const options = [...field(target, 'Glyph').querySelectorAll('option')].map((o) => o.value);
   expect(options).toContain('g-swift');
-  pick(target.querySelector('select[aria-label="Glyph tier"]'), 'major');
-  const majors = [...target.querySelectorAll('select[aria-label="Glyph type"] option')].map((o) => o.value);
+  pick(field(target, 'Tier'), 'major');
+  const majors = [...field(target, 'Glyph').querySelectorAll('option')].map((o) => o.value);
   expect(majors).toHaveLength(12); // Warrior has 12 majors
   expect(majors).toContain('sg-warborn-cd');
   expect(majors).not.toContain('sg-phantom-cd');
@@ -133,8 +135,12 @@ it('adds glyphs, unlocks a sealed one, and sockets it through the picker', () =>
 
 it('a minor glyph secondary is entered as stat + value', () => {
   addGlyphUi({ tier: 'minor', glyphType: 'g-keen' });
-  pick(target.querySelector('select[aria-label="Secondary stat"]'), 'critChance');
-  pick(target.querySelector('input[aria-label="Secondary value"]'), '1.9');
+  pick(field(target, 'Secondary stat'), 'critChance');
+  const v = field(target, 'Secondary value');
+  v.value = '1.9';
+  v.dispatchEvent(new Event('input', { bubbles: true }));
+  v.dispatchEvent(new Event('blur'));
+  flushSync();
   expect(rosterStore.current.glyphs[0].secondary.stat).toBe('critChance');
   expect(rosterStore.current.glyphs[0].secondary.quality).toBeCloseTo(0.3, 1);
   expect(target.textContent).toContain('0.6-5');
@@ -144,8 +150,8 @@ it('a character with a different class sees that class\'s majors after switching
   showTab('Glyph inventory');
   rosterStore.setCharacterClass(rosterStore.current.id, 'MYSTIC');
   flushSync();
-  pick(target.querySelector('select[aria-label="Glyph tier"]'), 'major');
-  const majors = [...target.querySelectorAll('select[aria-label="Glyph type"] option')].map((o) => o.value);
+  pick(field(target, 'Tier'), 'major');
+  const majors = [...field(target, 'Glyph').querySelectorAll('option')].map((o) => o.value);
   expect(majors).toHaveLength(17);
   expect(majors).toContain('sg-m-runic-dmg');
 });
@@ -181,4 +187,26 @@ it('Ridden in names every preset, checks the riders, and rides from the menu', (
 
 it('shows glyphs in tabs: Mounts and Glyph inventory', () => {
   expect([...target.querySelectorAll('[role="tab"]')].map((t) => t.textContent.trim())).toEqual(expect.arrayContaining([expect.stringContaining('Mounts'), expect.stringContaining('Glyph inventory')]));
+});
+
+it('opens on the glyph inventory when the hash tab says so', () => {
+  unmount(app);
+  app = mount(MountsScreen, { target, props: { tab: 'glyphs' } });
+  flushSync();
+  expect(target.querySelector('#mg-panel-glyphs')).not.toBeNull();
+  expect(target.querySelector('#mg-panel-mounts')).toBeNull();
+});
+
+// jsdom applies no layout and loads no component CSS, so the 1440 overflow fix (scrollWidth 1483) is
+// guarded at the source: an auto-fill grid may not carry a fixed max-width, and its wrappers must shrink.
+const rule = (css, selector) => css.match(new RegExp(`${selector.replace(/[.[\]]/g, '\\$&')}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+
+it('the grids cannot widen their panel: no fixed cap, and the wrappers above them may shrink', () => {
+  const css = pageSource.split('<style>')[1];
+  for (const grid of ['.mount-grid', '.glyph-grid']) {
+    expect(rule(css, grid), grid).toContain('min-width: 0');
+    expect(rule(css, grid), grid).not.toContain('max-width');
+  }
+  expect(rule(css, '.page')).toMatch(/min-width: 0/);
+  expect(rule(css, '.page')).toMatch(/overflow-x: auto/);
 });

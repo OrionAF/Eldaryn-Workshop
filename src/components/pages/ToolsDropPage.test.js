@@ -5,6 +5,7 @@ import { rosterStore } from '../../lib/rosterStore.svelte.js';
 import { jobsStore, __resetJobs } from '../../lib/jobs.svelte.js';
 import { loadImportText, confirmImport, resetImportFlow } from '../../lib/importFlow.svelte.js';
 import { setPrefs, applyPrefs } from '../../lib/prefs.svelte.js';
+import { field, setField } from '../gear/fieldKit.js';
 import lootBag from '../../lib/__fixtures__/real/drop-batch.json';
 
 const gear = (attack) => ({
@@ -56,13 +57,9 @@ function open(props = {}) {
   app = mount(ToolsDropPage, { target, props: { setStatus: () => {}, ...props } });
   flushSync();
 }
-const q = (label) => target.querySelector(`[aria-label="${label}"]`);
+const q = (label) => field(target, label);
 const btn = (text) => [...target.querySelectorAll('button')].find((b) => b.textContent.includes(text));
-function change(el, value) {
-  el.value = value;
-  el.dispatchEvent(new Event('change', { bubbles: true }));
-  flushSync();
-}
+const change = setField;
 const settle = () => vi.waitFor(() => { flushSync(); expect(jobsStore.running).toBe(0); expect(jobsStore.list.length).toBeGreaterThan(0); });
 const card = (setKey) => target.querySelector(`[data-set="${setKey}"]`);
 
