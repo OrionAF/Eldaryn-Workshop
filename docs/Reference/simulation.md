@@ -162,7 +162,11 @@ value of the block given the rest of `c` (legalised, canonical, without `c` itse
   (`glyphSecondaryValue`; Game/mounts-glyphs.md §9) to the ridden mount's bonuses, and every stat of the 26-stat
   pool enters the totals as a sum that only flattens at a cap (Game/stats.md caps), none of them lowers any
   objective (the control stats act on the enemy; miss/blind/DR/block only help the holder). So more of a stat
-  is never worse, and the pruning is exact:
+  is never worse, and the pruning is exact for survival and for dps without a thorns source. One exception:
+  the dps objective counts thorns (Iron Bastion, rebound), which grow with the hits the holder takes, so
+  damage reduction, miss, block, blind, paralyze, disruption and fear can lower dps there. In that case the
+  pruning is a heuristic (the same holds for the mount rule above). No test pins this against the engine:
+  the 26-stat claim rests on the code reading in Game/stats.md;
   1. within one stat a row that uses m glyphs of it uses that stat's top-m by value (an 11% / 10% / 10% / 5%
      attack-speed set never races the 5%). `minorGlyphs` therefore enumerates per-stat counts m_s, each stat
      contributing its top-m_s glyphs, not every subset (`space.minorRowsFor`);
