@@ -26,9 +26,10 @@
 
 **Measured** per visit, at the active preset (scratch measurement 2026-10-15): talents Sentinel 146 to 51 (13 on attack stats only), Warrior 162 to 78 (8); relics Warrior 163 to 36 (2), Sentinel 16 to 1; minor glyphs on attack stats only 78 to 36 and 61 to 11; sigils 299 to 220 with full slots.
 
-**Status: done (slice PRUNE, branch `rebuild2/PRUNE`).** The rules are in simulation.md §Build space (relics, pet, stat dominance items 1-4); the filter is `search/dominance.js`, used by `space.js` for `sigils`, `utility`, `conditions`, `relics`, `pet` and `talents`. Differences from the ask:
+**Status: done (slice PRUNE, branch `rebuild2/PRUNE2`).** The rules are in simulation.md §Build space (relics, pet, stat dominance items 1-4); the filter is `search/dominance.js`, used by `space.js` for `sigils`, `utility`, `conditions`, `relics`, `pet` and `talents`. Differences from the ask:
 - Sigil slots are not filled by rule: one sigil can weaken another (debuffs of one type share one instance, so a weaker POISON or BLEED overwrites a stronger stack; Sunder Mark replaces Siegebreaker; a Form changes the stat pipeline). Sigils still get the exact stat filter and the damage-only rule, which makes heal and shield sigils interchangeable.
-- Thorns: no heuristic. While a thorns source runs (the player's or the Celestial partner's) the hit-taken stats must be equal; while a PVP opponent has one every stat must be equal. The pruning stays exact.
+- Thorns: skipped, not the heuristic. While a thorns source runs (the player's or the Celestial partner's) the hit-taken stats must be equal; while a PVP opponent has one every stat must be equal. The pruning stays exact.
+- Dominance compares the engine's inputs built from each candidate's computed totals, not the totals alone: a stat the mode ignores never blocks a prune, and anything else the engine reads (spells, shield, minion, glyph effects) must be equal.
 - The Fortress bound is 61 boss swings (one more than the 60 s window holds) at attack x 1.15, and also needs no minion, no hit-charged Chrono Flux transform and no damage spell gated on the player's HP.
 - Not built: vs a harmless target an HP-gated BUFF never casts, so its condition variants could merge (the Warrior's 25 condition combos stay 25).
 
@@ -48,7 +49,9 @@ Per-visit domain sizes (values tried plus the current one) at the active preset,
 
 The Sentinel passes the Fortress damage-only test, the Warrior's active preset does not (every stat counts there). The Sentinel's dummy sigils stay 299 because its stack sigils differ in the PVE inputs; in the Fortress stack sigils never stack, so sets that differ only in them compare on stats.
 
-CELESTIAL_TABLE
+A short optimise (Warrior fixture, dummy, talents + relics + pet, seed 1; `statDominance.test.js`) reaches the same best build (dps 929,151 over 400 fights) with 4,656 search fights instead of 17,720.
+
+Follow-up, deferred by the user: the Celestial before/after fight count (the run that prompted this ask) was not measured.
 
 ## 10. Optimiser objectives: trim, fix the target range, add Push, a Power guard and Crusade
 

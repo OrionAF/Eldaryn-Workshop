@@ -214,8 +214,8 @@ value of the block given the rest of `c` (legalised, canonical, without `c` itse
      minion HP read max HP), so no defensive stat joins the attacking set;
   2. thorns: while the value fights with a thorns source (Iron Bastion's glyph or buff thorns, Bulwark of Thorns,
      Primal Instinct, Primal Retribution) or the Celestial partner does, the hit-taken stats (DR, Block, Miss, Blind,
-     Paralyze, Disruption, Spell Resist, PVP Defense) are compared for equality, not as "more is better", so the
-     pruning stays exact instead of becoming the glyph rule's heuristic. While a PVP opponent has a thorns source
+     Paralyze, Disruption, Spell Resist, PVP Defense) are compared for equality, not as "more is better": the rule
+     is skipped for them rather than run as the glyph rule's heuristic, so the pruning stays exact. While a PVP opponent has a thorns source
      every stat is compared for equality (more attack also means more reflected damage);
   3. sigil slots are not filled by rule: an extra sigil can weaken another. Debuffs of one type share one instance
      (`applyDebuff`, Game/combat-pve.md §9.2): a second POISON or BLEED source pushes its own, possibly weaker, stack
