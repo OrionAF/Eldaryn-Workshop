@@ -20,7 +20,13 @@ export const MULTIPLICITY = Object.freeze({ vsBaseline: 'holm', perChange: 'holm
 // Provenance of each target assumption (app labels for the assumption ids of objectives.js targets):
 // SERVER = the server decides and the client holds the value; UNRESOLVED = whether the server runs
 // it is unknown; APP = a value the app assumes or the user chose.
-const ASSUMPTION_TAG = { 'server-fight': 'UNRESOLVED', 'pvp-server': 'SERVER', 'world-boss-model': 'SERVER', 'fortress-boss-model': 'SERVER' };
+const ASSUMPTION_TAG = {
+  'server-fight': 'UNRESOLVED', 'pvp-server': 'SERVER', 'world-boss-model': 'SERVER', 'fortress-boss-model': 'SERVER',
+  // Celestial (combat-pve.md §20): fitted to the server logs, or never seen in one
+  'celestial-server': 'SERVER', 'celestial-add-phase': 'SERVER', 'celestial-stack-player': 'SERVER',
+  'celestial-overload-end': 'UNRESOLVED', 'celestial-overload-judgment': 'UNRESOLVED', 'celestial-time-limit': 'UNRESOLVED',
+  'celestial-max-alive': 'UNRESOLVED', 'celestial-fury-stacking': 'UNRESOLVED',
+};
 
 const fin = (x) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
 

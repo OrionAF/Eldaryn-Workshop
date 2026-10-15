@@ -20,7 +20,7 @@ const range = (from, to, f) => {
 export const KERNELS = {
   /** The optimiser's objective (search/objectives.js `sample`). args: {fighter, seed}. */
   objective: {
-    prepare: ({ target, objective, character }) => makeObjective(objective, resolveTarget(target, { character })),
+    prepare: ({ target, objective, character, partner }) => makeObjective(objective, resolveTarget(target, { character, partner })),
     async run(o, { fighter, seed }, from, to) {
       const c = await o.sample(fighter, { seed, from, to });
       return { main: c.main, side: c.side ?? {} };

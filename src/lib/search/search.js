@@ -95,7 +95,9 @@ export function prepare(request) {
   if (!character || typeof character !== 'object') throw new Error('optimize: request.character is required');
   const preset = resolvePreset(character, request.presetId);
   if (!preset) throw new Error('optimize: the character has no preset to optimise');
-  const target = resolveTarget(request.target ?? { kind: 'dummy' }, { character });
+  // `partner`: a Celestial roster partner, resolved where the request was built (celestialObjective.js)
+  const partner = request.partner ?? null;
+  const target = resolveTarget(request.target ?? { kind: 'dummy' }, { character, partner });
   const realm = target.realm ?? (request.realm === 'oblivion' ? 'oblivion' : 'base');
   // the engine the target runs on: the Fortress boss is the duel engine under its own rules (effect.js engineKey)
   const mode = target.mode === 'pvp' ? 'pvp' : target.kind === 'fortressBoss' ? 'fortress' : 'pve';
@@ -117,10 +119,12 @@ export function prepare(request) {
   const requestEcho = {
     presetId: preset.id, realm, mode, target: target.spec, objective: objective.spec, space: space.toggles,
     ...(powerFloor != null ? { powerFloor } : {}),
+    // the partner's build is an input of every fight: a changed partner is a different run
+    ...(target.partner ? { partnerKey: target.partner.key } : {}),
     seed, seeds, effort: { level: effort.level, delta: effort.delta, deltaKind: effort.deltaKind, alpha: effort.alpha, n0: effort.n0, maxN: effort.maxN }, characterKey,
   };
   const requestKey = metricKey('optimise-request', { ...requestEcho, characterKey: undefined, randomStarts: effort.randomStarts, ...(effort.futility ? {} : { futility: false }) });
-  return { character, preset, target, realm, mode, objective, effort, seed, seeds, warnings, space, characterKey, requestEcho, requestKey };
+  return { character, partner, preset, target, realm, mode, objective, effort, seed, seeds, warnings, space, characterKey, requestEcho, requestKey };
 }
 
 const symdiff = (a, b) => a.filter((x) => !b.includes(x)).length + b.filter((x) => !a.includes(x)).length;
@@ -150,7 +154,10 @@ export function distanceOf(space, B, X) {
 
 /** What a pool worker needs to rebuild this run's target and objective (KERNELS.objective). */
 function poolSetup(prep) {
-  return { target: prep.target.spec, objective: prep.objective.spec, character: { opponents: prep.character.opponents ?? [] } };
+  return {
+    target: prep.target.spec, objective: prep.objective.spec,
+    character: { opponents: prep.character.opponents ?? [], level: prep.character.level }, partner: prep.partner,
+  };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1225,8 +1232,9 @@ export async function optimizeMore(request, hooks = {}) {
   const { character, result } = request ?? {};
   if (!result || result.schema !== RESULT_SCHEMA || result.status !== 'done') throw new Error('optimizeMore: needs a finished optimiser result');
   const r = result.request;
-  const prep = prepare({ character, presetId: r.presetId, realm: r.realm, target: r.target, objective: r.objective, space: r.space, powerFloor: r.powerFloor, effort: r.effort, seed: r.seed });
+  const prep = prepare({ character, partner: request.partner, presetId: r.presetId, realm: r.realm, target: r.target, objective: r.objective, space: r.space, powerFloor: r.powerFloor, effort: r.effort, seed: r.seed });
   if (prep.characterKey !== r.characterKey) throw new Error('optimizeMore: the character has changed since this run; run the optimiser again');
+  if ((prep.target.partner?.key ?? null) !== (r.partnerKey ?? null)) throw new Error('optimizeMore: the Celestial partner has changed since this run; run the optimiser again');
   const targetN = Number.isInteger(request.targetN) && request.targetN >= 2 ? request.targetN : null;
   if (!targetN) throw new Error('optimizeMore: targetN must be an integer >= 2');
   const round = Number.isInteger(request.round) && request.round >= 1 ? request.round : (result.more?.round ?? 0) + 1;
