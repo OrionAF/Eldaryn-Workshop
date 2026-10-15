@@ -1,7 +1,7 @@
 // ui/optimiserSetup.js - the Optimiser page's setup (preset, fight, objective, allowed-to-change toggles,
 // effort, seed): defaults, validation of a stored or re-run setup against the live character, and the
 // worker request it stands for. Pure. The setup is kept per character in the UI key (uiState.js).
-import { resolveTarget, objectiveKindsFor, WIN_RATE_TARGET } from '../search/objectives.js';
+import { resolveTarget, objectiveKindsFor, goalRetired, WIN_RATE_TARGET } from '../search/objectives.js';
 import { SPACE_DEFAULTS } from '../search/space.js';
 import { EFFORT_LEVELS } from '../search/search.js';
 import { PVP_MAX_OPPONENTS, PVP_SEATS } from '../search/pvpObjective.js';
@@ -64,6 +64,20 @@ export function normaliseSetup(raw, character, defaultEffort = 'standard') {
   if (EFFORT_LEVELS.includes(r.effort)) out.effort = r.effort;
   if (Number.isInteger(r.seed) && r.seed >= 1) out.seed = r.seed;
   return out;
+}
+
+/** Why a retired goal cannot be run again. */
+export const RETIRED_GOAL_REASON = 'This goal was retired.';
+
+/**
+ * '' when the goal of a saved run or of a job request ({target, objective}) can still be run, else
+ * RETIRED_GOAL_REASON. Drives the disabled state of Re-run with settings, Run more and Resume; the
+ * saved run itself stays viewable.
+ */
+export function retiredGoalBlock(spec) {
+  const t = spec?.target?.kind;
+  const o = spec?.objective?.kind;
+  return t && o && goalRetired(t, o) ? RETIRED_GOAL_REASON : '';
 }
 
 /** The setup a saved run was made with ("Re-run with settings"), validated against today's character. */

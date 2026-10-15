@@ -37,7 +37,7 @@ it('lists the target kinds, with Oblivion only when unlocked and PVP disabled wi
 });
 
 it('the dungeon list has every classic dungeon and its hard version', () => {
-  const { ui } = mountPicker({ target: { kind: 'dungeon', id: 'dungeon_1', step: 1 }, objective: { kind: 'ttk-median' } });
+  const { ui } = mountPicker({ target: { kind: 'dungeon', id: 'dungeon_1', step: 1 }, objective: { kind: 'win-rate' } });
   const names = optionsOf(ui, 'Dungeon');
   expect(names).toHaveLength(14);
   expect(names[0]).toBe('Forsaken Mines');
@@ -45,13 +45,13 @@ it('the dungeon list has every classic dungeon and its hard version', () => {
 });
 
 it('choosing a hard dungeon writes the _hard id', () => {
-  const { ui, state } = mountPicker({ target: { kind: 'dungeon', id: 'dungeon_1', step: 1 }, objective: { kind: 'ttk-median' } });
+  const { ui, state } = mountPicker({ target: { kind: 'dungeon', id: 'dungeon_1', step: 1 }, objective: { kind: 'win-rate' } });
   pick(ui, 'Dungeon', 'dungeon_3_hard');
   expect(state.target).toEqual({ kind: 'dungeon', id: 'dungeon_3_hard', step: 1 });
 });
 
 it('a server-run fight is labelled as a model with its assumptions tagged, never as exact', () => {
-  const { ui } = mountPicker({ target: { kind: 'raid', id: 'raid_1', step: 1 }, objective: { kind: 'ttk-median' } });
+  const { ui } = mountPicker({ target: { kind: 'raid', id: 'raid_1', step: 1 }, objective: { kind: 'win-rate' } });
   const box = ui.q('[data-testid="fidelity"]');
   expect(box.dataset.fidelity).toBe('server-model');
   expect(box.textContent).toMatch(/server runs this fight/i);
@@ -59,18 +59,18 @@ it('a server-run fight is labelled as a model with its assumptions tagged, never
 });
 
 it('a client-rules fight says so and carries no server assumption', () => {
-  const { ui } = mountPicker({ target: { kind: 'chapter', chapter: 3, level: 2 }, objective: { kind: 'ttk-median' } });
+  const { ui } = mountPicker({ target: { kind: 'chapter', chapter: 3, level: 2 }, objective: { kind: 'win-rate' } });
   expect(ui.q('[data-testid="fidelity"]').dataset.fidelity).toBe('client');
   expect(ui.q('[data-testid="chapter-name"]').textContent).not.toBe('');
 });
 
 it('the raid list names the five raids and flags the level a raid needs', () => {
-  const { ui } = mountPicker({ target: { kind: 'raid', id: 'raid_1', step: 1 }, objective: { kind: 'ttk-median' } }, { playerLevel: 1 });
+  const { ui } = mountPicker({ target: { kind: 'raid', id: 'raid_1', step: 1 }, objective: { kind: 'win-rate' } }, { playerLevel: 1 });
   const names = optionsOf(ui, 'Village raid');
   expect(names).toHaveLength(5);
   expect(names[0]).toBe('Bandit Village (needs level 10)');
   expect(names.every((n) => /needs level/.test(n))).toBe(true);
-  expect(optionsOf(mountPicker({ target: { kind: 'raid', id: 'raid_1', step: 1 }, objective: { kind: 'ttk-median' } }, { playerLevel: 99 }).ui, 'Village raid')[0]).toBe('Bandit Village');
+  expect(optionsOf(mountPicker({ target: { kind: 'raid', id: 'raid_1', step: 1 }, objective: { kind: 'win-rate' } }, { playerLevel: 99 }).ui, 'Village raid')[0]).toBe('Bandit Village');
 });
 
 it('switching the fight moves an objective it cannot score to one it can', () => {
@@ -81,7 +81,7 @@ it('switching the fight moves an objective it cannot score to one it can', () =>
 });
 
 it('Oblivion offers the instability output cut as an off-by-default assumption', () => {
-  const { ui, state } = mountPicker({ target: { kind: 'oblivion', floor: 3 }, objective: { kind: 'ttk-median' } }, { oblivionUnlocked: true });
+  const { ui, state } = mountPicker({ target: { kind: 'oblivion', floor: 3 }, objective: { kind: 'win-rate' } }, { oblivionUnlocked: true });
   const box = ui.q('input[type="checkbox"]');
   expect(box.checked).toBe(false);
   box.click();

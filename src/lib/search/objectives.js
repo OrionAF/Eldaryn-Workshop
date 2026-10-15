@@ -11,12 +11,11 @@
 //   {kind: 'worldBoss', affinity?: 'NONE'|'FORTIFIED'|'ENRAGED'}
 //   {kind: 'custom', mob: MobSpec, seconds?: 60}      a user-entered mob
 //   {kind: 'pvp', opponentIds: string[], seats}       saved opponents (pvpObjective.js); needs `{character}`
-// An OBJECTIVE is what "better" means: {kind: 'dps'|'ttk-median'|'ttk-p90'|'survival', seconds?} or
-// {kind: 'win-rate', target?: 0.5..1} (clear the step before dying or the time cap; default target 0.95).
+// An OBJECTIVE is what "better" means: {kind: 'dps'|'survival', seconds?} (survival: custom mobs only) or
+// {kind: 'win-rate', target?: 0.1..1} (clear the step before dying or the time cap; default target 0.95).
 import { fightRng } from '../engine/rng.js';
 import {
-  stableStringify, meanInterval, wilsonInterval, quantileInterval, censoredQuantile, pairedT, pairedProportion,
-  pairedQuantileDiff,
+  stableStringify, meanInterval, wilsonInterval, pairedT, pairedProportion,
 } from '../engine/metrics.js';
 import { preparePveFighter, simulatePve, trainingDummy, PVE_MODES } from '../engine/pve/fight.js';
 import { chapterMobs, dungeonMobs, raidMobs, oblivionFloorMob, worldBossMob } from '../engine/pve/enemies.js';
@@ -28,18 +27,18 @@ import { setOf } from './sampler.js';
 import { resolvePvpTarget, makePvpObjective, PVP_TARGET_KIND, PVP_OBJECTIVE_KIND } from './pvpObjective.js';
 
 // The PVE kinds. The PVP pair is kept apart: it is only valid together and needs the character's opponents.
-export const OBJECTIVE_KINDS = ['dps', 'ttk-median', 'ttk-p90', 'survival', 'win-rate'];
+export const OBJECTIVE_KINDS = ['dps', 'survival', 'win-rate'];
 export const TARGET_KINDS = ['dummy', 'chapter', 'dungeon', 'raid', 'oblivion', 'worldBoss', 'custom'];
 
 // The first kind is the target's default (the Optimiser picks it): win rate for content you clear.
 const COMPAT = {
   dummy: ['dps'],
-  chapter: ['win-rate', 'ttk-median', 'ttk-p90', 'survival'],
-  dungeon: ['win-rate', 'ttk-median', 'ttk-p90', 'survival'],
-  raid: ['win-rate', 'ttk-median', 'ttk-p90', 'survival'],
-  oblivion: ['win-rate', 'ttk-median', 'ttk-p90', 'survival'],
-  worldBoss: ['dps', 'survival'],
-  custom: ['dps', 'win-rate', 'ttk-median', 'ttk-p90', 'survival'],
+  chapter: ['win-rate'],
+  dungeon: ['win-rate'],
+  raid: ['win-rate'],
+  oblivion: ['win-rate'],
+  worldBoss: ['dps'],
+  custom: ['dps', 'win-rate', 'survival'],
   [PVP_TARGET_KIND]: [PVP_OBJECTIVE_KIND],
 };
 
@@ -71,6 +70,15 @@ export function objectiveKindsFor(targetKind, rawTarget = null) {
   } catch {
     return kinds;
   }
+}
+
+/**
+ * Whether a saved goal (target kind + objective kind) can no longer be run: kill time was retired for
+ * every target, and survival stays only for custom mobs (simulation.md §Objectives). Saved runs that carry
+ * such a goal stay viewable; only re-running them is off.
+ */
+export function goalRetired(targetKind, objectiveKind) {
+  return !(COMPAT[targetKind] ?? []).includes(objectiveKind);
 }
 
 const dungeonLabel = (id) => {
@@ -269,18 +277,15 @@ function proportionEstimate(xs, alpha) {
   return { est: w.est, lo: w.lo, hi: w.hi, n: xs.length, level: level(alpha), alphaAdj: alpha, method: 'wilson' };
 }
 
-/** `score` of a TTK set (higher is better; picks a race's leader): ∞ ranks below every finite time, by win rate. */
-const UNREACHED_MS = 1e12;
-
 // ---------------------------------------------------------------------------------------------
 // Win rate (simulation.md §Win rate): clear the whole step before dying or the time cap. One fight
 // scores 1 + (HP left / max HP) when won, else the share of the step's enemy HP removed (< 1), so the
 // win bit is `score >= 1` and the same vector carries the safety margin.
 
 /** The default and the allowed range of a win-rate target. */
-export const WIN_RATE_TARGET = Object.freeze({ default: 0.95, min: 0.5, max: 1 });
+export const WIN_RATE_TARGET = Object.freeze({ default: 0.95, min: 0.1, max: 1 });
 
-/** A win-rate objective's target rate: the default when absent; throws outside [0.5, 1]. */
+/** A win-rate objective's target rate: the default when absent; throws outside [0.1, 1]. */
 export function winRateTarget(v) {
   if (v == null) return WIN_RATE_TARGET.default;
   if (!isNum(v) || v < WIN_RATE_TARGET.min || v > WIN_RATE_TARGET.max) {
@@ -434,40 +439,6 @@ export function makeObjective(raw = { kind: 'dps' }, target = resolveTarget({ ki
       score: (s) => Math.min(rateOf(s), tau) * SCORE_SCALE + (meanInterval(s.main[0]).est ?? 0),
     });
   }
-
-  // ttk-median / ttk-p90: time if won, else +∞; θ = the q-quantile over ALL fights (simulation.md §Objectives)
-  const q = kind === 'ttk-median' ? 0.5 : 0.9;
-  const won = (xs) => xs.map((t) => (Number.isFinite(t) ? 1 : 0));
-  return withLegacy({
-    ...common, key: stableStringify({ kind }), spec: { kind },
-    label: kind === 'ttk-median' ? 'Median time to kill' : 'P90 time to kill', unit: 'ms', higherIsBetter: false,
-    statistic: 'censored-quantile', q, deltaKind: 'relative', window: target.seconds || null,
-    sample: pveSampler(target, { enemy: target.enemy, maxMs: target.maxMs }, (r) => (r.won ? r.timeMs : Infinity)),
-    estimate(s, { alpha = 0.05 } = {}) {
-      const xs = s.main[0];
-      const qi = quantileInterval(xs, q, { alpha });
-      const wins = xs.filter(Number.isFinite);
-      return {
-        value: { est: qi.est, lo: qi.lo, hi: qi.hi, n: s.n, level: level(alpha), alphaAdj: alpha, method: 'order-stat' },
-        aux: { winRate: proportionEstimate(won(xs), alpha), meanMs: wins.length ? sumOf(wins) / wins.length : null },
-      };
-    },
-    contrast(x, y, { alpha = 0.05, seed = 1, B = 2000 } = {}) {
-      const tx = censoredQuantile(x.main[0], q);
-      const ty = censoredQuantile(y.main[0], q);
-      // neither build reaches the quantile: the quantiles cannot differ, so the contrast is on win rate
-      if (!Number.isFinite(tx) && !Number.isFinite(ty)) {
-        const wx = won(x.main[0]);
-        const wy = won(y.main[0]);
-        return { ...pairedProportion(wx, wy, { alpha }), basis: 'winRate', higherIsBetter: true, ref: sumOf(wy) / wy.length };
-      }
-      return { ...pairedQuantileDiff(x.main[0], y.main[0], q, { alpha, seed, B }), basis: 'quantile', ref: ty };
-    },
-    score(s) {
-      const t = censoredQuantile(s.main[0], q);
-      return Number.isFinite(t) ? -t : -UNREACHED_MS * (2 - sumOf(won(s.main[0])) / Math.max(1, s.n));
-    },
-  });
 }
 
 // ---------------------------------------------------------------------------------------------
