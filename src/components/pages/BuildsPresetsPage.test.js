@@ -89,3 +89,9 @@ it('Differences only hides rows where every preset agrees', () => {
   click(check);
   expect(t.qa('tbody tr').length).toBeLessThan(before);
 });
+
+it('the compare table scrolls sideways with a visible hint and a sticky property column', () => {
+  expect(t.q('.scroll-hint')).not.toBeNull();
+  expect(t.q('.scroll-hint').textContent).toMatch(/scroll/i);
+  expect(t.q('tbody th.lbl').classList.contains('sticky')).toBe(true);
+});
