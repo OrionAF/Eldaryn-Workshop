@@ -129,8 +129,10 @@ function syncStatus(to, from) {
  * @param {Object|null} a11 defender stack context
  * @param {Object|null} a12 attacker summon config (getEquippedSummonConfig)
  * @param {Object|null} a13 defender summon config
- * @param {{rng: () => number, log?: boolean}} opts  `log=false` is the event-free mode: same draws and
- *   state, `ticks` is []
+ * @param {{rng: () => number, log?: boolean, defenderDamageVariance?: number}} opts  `log=false` is the
+ *   event-free mode: same draws and state, `ticks` is []. `defenderDamageVariance` (default 0, the arena)
+ *   is not a client rule: v > 0 scales the defender's attack on each swing by a uniform draw in [1 - v, 1 + v],
+ *   rounded, from its own 'defender-variance' lane. Only the Fortress boss port sets it (clan-fortress.md §1.4).
  * @returns {ArenaPvpResult}
  */
 export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, opts) {
@@ -222,6 +224,10 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
   // the casters' rng lanes, looked up once (a lane is created once per name and never changes)
   const aLane = lane(rng, 'attacker');
   const dLane = lane(rng, 'defender');
+  // The Fortress boss port's option (engine/pve/fortressBoss.js); 0 for every arena caller, which then
+  // draws nothing from this lane.
+  const dVariance = opts.defenderDamageVariance > 0 ? opts.defenderDamageVariance : 0;
+  const varianceLane = dVariance > 0 ? lane(rng, 'defender-variance') : null;
 
   // L1456488-1456788: one side's debuffs tick; the damage goes through the victim's PVP Defense
   // once, then its shield. Rows are named after the CASTER's side.
@@ -418,7 +424,15 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     const intervalD = Math.round(1000 / slowedAttackSpeed(dE.attackSpeed, dDebuffs));
     if (swingD >= intervalD) {
       swingD -= intervalD;
-      swing(dE, aE, D, A, t, false, dMaxHp, aMin, dDebuffs, aStack, dStack);
+      if (dVariance > 0) {
+        // not the client's arena: the Fortress boss port's per-swing spread (see opts.defenderDamageVariance)
+        const base = dE.attack;
+        dE.attack = Math.round(base * (1 + dVariance * (2 * varianceLane() - 1)));
+        swing(dE, aE, D, A, t, false, dMaxHp, aMin, dDebuffs, aStack, dStack);
+        dE.attack = base;
+      } else {
+        swing(dE, aE, D, A, t, false, dMaxHp, aMin, dDebuffs, aStack, dStack);
+      }
     }
     undoElusiveD();
     if (dMin) R.minionStrike(dMin, 'defender', A, aE, aStack, dStack);
