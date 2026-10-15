@@ -5,6 +5,8 @@
   "preparationDurationMs": 43200000,
   "activeDurationMs": 39600000,
   "bossFightDurationMs": 60000,
+  "bossTickIntervalMs": 10,
+  "maxMembersDefault": 50,
   "requiredPlayerLevel": 22,
   "conquestThresholdMultiplier": 3,
   "coreConquestThresholdMultiplier": 2,

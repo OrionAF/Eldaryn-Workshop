@@ -15,7 +15,7 @@
   import Banner from '../ui/Banner.svelte';
   import Drawer from '../ui/Drawer.svelte';
   import { triesPerClear } from '../../lib/ui/winRateFormat.js';
-  import { goalWinRate } from '../../lib/ui/optimiserView.js';
+  import { goalWinRate, fortressDamage } from '../../lib/ui/optimiserView.js';
   import { fmtSigned, fmtEstimate, fmtContrast, fmtContrastCi } from '../../lib/ui/statsFormat.js';
 
   let {
@@ -44,6 +44,8 @@
     buildRow = row;
     drawer = true;
   };
+  const credit = (row) => fortressDamage(view.fortress, row?.value?.est);
+  const fmtInt = (n) => n.toLocaleString('en-US');
   const SEAT = { attacker: 'I attack', defender: 'I defend' };
 </script>
 
@@ -64,6 +66,12 @@
     <div class="goal" data-testid="goal-not-reached">
       <Banner variant="warn" lead="No build reached {pct(view.goal.target)}.">No change moved the win rate; the current build is the closest{goalTries ? ` (${goalTries})` : ''}.</Banner>
     </div>
+  {/if}
+  {#if view.fortress && view.baseline && credit(view.baseline)}
+    <p class="note" data-testid="fortress-credit-baseline">
+      Current build: raw damage in 60 s {fmtInt(credit(view.baseline).raw)}, credited to the clan {fmtInt(credit(view.baseline).effective)} (x {view.fortress.total.toFixed(2)}).
+      The multipliers are the same for every build, so they never change the ranking.
+    </p>
   {/if}
   <div class="sticky">
     <div class="head" role="presentation">
@@ -102,6 +110,12 @@
           {/each}
           {#if r.vsBaseline?.basis === 'winRate'}
             <p class="note" data-testid="winrate-note">Both builds rarely win, so the verdict compares win rate ({fmtSigned('p', r.vsBaseline.winRate.delta)}), not time.</p>
+          {/if}
+          {#if view.fortress && credit(r)}
+            <p class="note" data-testid="fortress-credit">
+              Raw damage in 60 s {fmtInt(credit(r).raw)}. Credited to the clan {fmtInt(credit(r).effective)}
+              (x {view.fortress.total.toFixed(2)}: shield {view.fortress.shieldPercent}%, contribution x {view.fortress.contributionBonus.toFixed(2)}, stars x {view.fortress.starVulnerability.toFixed(2)}).
+            </p>
           {/if}
           {#if r.aux?.matchups?.length}
             <table class="matchups" data-testid="matchups">

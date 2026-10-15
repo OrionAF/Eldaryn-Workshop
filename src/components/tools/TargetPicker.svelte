@@ -12,6 +12,7 @@
   import { PVP_MAX_OPPONENTS, PVP_SEATS } from '../../lib/search/pvpObjective.js';
   import { chapterLabel } from '../../lib/game/combatPve.js';
   import { RAIDS } from '../../lib/game/fortress.js';
+  import { FORTRESS_BOSS_GROUPS } from '../../lib/engine/pve/fortressBoss.js';
   import { CLASSIC_DUNGEONS } from '../../lib/game/pveContent.js';
   import { WORLD_BOSS_AFFINITIES } from '../../lib/game/worldBoss.js';
   import { classLabel } from '../../lib/game/classes.js';
@@ -40,6 +41,7 @@
     raid: { kind: 'raid', id: 'raid_1', step: 1 },
     oblivion: { kind: 'oblivion', floor: 1 },
     worldBoss: { kind: 'worldBoss', affinity: 'NONE' },
+    fortressBoss: { kind: 'fortressBoss', group: 'TOP', stars: 1, aliveDefenders: 0, maxClanSize: 50, kills: 0 },
     custom: { kind: 'custom', mob: { hp: 1000000, attack: 10000, attackSpeed: 1 }, seconds: 60 },
   };
   const pvpDefault = () => ({ kind: 'pvp', opponentIds: opponents.slice(0, 1).map((o) => o.id), seats: 'attacker' });
@@ -65,6 +67,8 @@
     })),
   );
   const affinityOptions = Object.keys(WORLD_BOSS_AFFINITIES).map((k) => ({ value: k, label: AFFINITY_LABEL[k] ?? k }));
+  const GROUP_LABEL = { TOP: 'Top fortress (Fortress Guardian)', BOTTOM: 'Bottom fortress (Fortress Warden)', CORE: 'Core (Core Overlord)' };
+  const groupOptions = FORTRESS_BOSS_GROUPS.map((g) => ({ value: g, label: GROUP_LABEL[g] ?? g }));
   const seatOptions = PVP_SEATS.map((s) => ({ value: s, label: SEAT_LABEL[s] }));
   const chosenIds = $derived(target.kind === 'pvp' ? target.opponentIds : []);
 
@@ -81,7 +85,14 @@
     target = { ...target, opponentIds: has ? chosenIds.filter((x) => x !== id) : [...chosenIds, id] };
   }
 
+  function pickGroup(group) {
+    const { stars, ...rest } = target;
+    target = group === 'CORE' ? { ...rest, group } : { ...rest, group, stars: stars ?? 1 };
+  }
+
   const patch = (p) => (target = { ...target, ...p });
+  /** An emptied or invalid number field leaves the target as it was (resolveTarget would throw on NaN). */
+  const patchInt = (key, v) => { if (Number.isFinite(v)) patch({ [key]: Math.round(v) }); };
   const patchMob = (p) => (target = { ...target, mob: { ...target.mob, ...p } });
 
   /** The target as the result will echo it: fidelity and tagged assumptions. Null while the fields are invalid. */
@@ -138,6 +149,21 @@
     />
   {:else if target.kind === 'worldBoss'}
     <Select label="Affinity" options={affinityOptions} value={target.affinity} onchange={(v) => patch({ affinity: v })} />
+  {:else if target.kind === 'fortressBoss'}
+    <Select label="Fortress" options={groupOptions} value={target.group} onchange={pickGroup} />
+    {#if target.group !== 'CORE'}
+      <NumberField label="Stars" min={1} max={5} value={target.stars} onchange={(v) => patchInt('stars', v)} />
+    {/if}
+    <div class="two">
+      <NumberField label="Alive defenders" min={0} value={target.aliveDefenders} onchange={(v) => patchInt('aliveDefenders', v)} />
+      <NumberField label="Clan size" min={1} value={target.maxClanSize} onchange={(v) => patchInt('maxClanSize', v)} />
+    </div>
+    <NumberField label="Defender kills" min={0} value={target.kills} onchange={(v) => patchInt('kills', v)} />
+    {#if resolved?.fortress}
+      <span class="hint" data-testid="fortress-shield">
+        Boss shield {resolved.fortress.shieldPercent}%. Credited damage is raw x {resolved.fortress.total.toFixed(2)}; the credit never changes which build is best.
+      </span>
+    {/if}
   {:else if target.kind === 'custom'}
     <NumberField label="Mob HP" min={1} value={target.mob.hp} onchange={(v) => patchMob({ hp: v })} />
     <div class="two">

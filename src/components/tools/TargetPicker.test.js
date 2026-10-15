@@ -31,7 +31,7 @@ const optionsOf = (ui, label) =>
 it('lists the target kinds, with Oblivion only when unlocked and PVP disabled without opponents', () => {
   const { ui } = mountPicker();
   const kinds = [...ui.target.querySelectorAll('option')].map((o) => [o.value, o.disabled]);
-  expect(kinds.map(([v]) => v)).toEqual(['dummy', 'chapter', 'dungeon', 'raid', 'worldBoss', 'custom', 'pvp']);
+  expect(kinds.map(([v]) => v)).toEqual(['dummy', 'chapter', 'dungeon', 'raid', 'worldBoss', 'fortressBoss', 'custom', 'pvp']);
   expect(kinds.find(([v]) => v === 'pvp')[1]).toBe(true);
   expect(ui.q('[data-testid="pvp-hint"]').textContent).toMatch(/saved opponent/);
 });
@@ -101,4 +101,39 @@ it('the PVP branch picks opponents and a seat', () => {
   both.click();
   flushSync();
   expect(state.target.seats).toBe('both');
+});
+
+const numberField = (ui, label) => [...ui.target.querySelectorAll('.field')].find((f) => f.querySelector('label')?.textContent.trim() === label)?.querySelector('input');
+const setNumber = (input, v) => {
+  input.value = String(v);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+  input.dispatchEvent(new Event('blur'));
+  flushSync();
+};
+
+it('the Fortress boss fields show the shield, drop Stars for the Core and restore them for the Top', () => {
+  // The accessor props are not reactive, so each step remounts with what the previous step wrote.
+  const first = mountPicker();
+  pick(first.ui, 'Fight', 'fortressBoss');
+  expect(first.state.target).toMatchObject({ kind: 'fortressBoss', group: 'TOP', stars: 1 });
+  expect(first.state.objective.kind).toBe('dps');
+
+  const top = mountPicker({ target: { ...first.state.target, aliveDefenders: 25, maxClanSize: 50 } });
+  expect(numberField(top.ui, 'Stars')).toBeTruthy();
+  expect(numberField(top.ui, 'Alive defenders').value).toMatch(/25/);
+  expect(top.ui.q('[data-testid="fortress-shield"]').textContent).toMatch(/shield 30%/);
+  expect(top.ui.q('[data-testid="fidelity"]').dataset.fidelity).toBe('server-model');
+  setNumber(numberField(top.ui, 'Alive defenders'), 50);
+  expect(top.state.target.aliveDefenders).toBe(50);
+  pick(top.ui, 'Fortress', 'CORE');
+  expect(top.state.target.group).toBe('CORE');
+  expect('stars' in top.state.target).toBe(false);
+
+  const core = mountPicker({ target: top.state.target });
+  expect(numberField(core.ui, 'Stars')).toBeFalsy();
+  expect(core.ui.q('[data-testid="fortress-shield"]')).toBeTruthy();
+  pick(core.ui, 'Fortress', 'TOP');
+  expect(core.state.target.stars).toBe(1);
+  expect(numberField(mountPicker({ target: core.state.target }).ui, 'Stars')).toBeTruthy();
 });
