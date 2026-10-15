@@ -83,7 +83,7 @@ describe('resolveTarget', () => {
 describe('objective / target compatibility', () => {
   it('lists the sensible objectives per target kind', () => {
     expect(objectiveKindsFor('dummy')).toEqual(['dps']);
-    for (const k of ['chapter', 'dungeon', 'raid', 'oblivion']) expect(objectiveKindsFor(k)).toEqual(['win-rate']);
+    for (const k of ['chapter', 'dungeon', 'raid', 'oblivion']) expect(objectiveKindsFor(k)).toEqual(['win-rate', 'push']);
     expect(objectiveKindsFor('worldBoss')).toEqual(['dps']);
     // with the target itself: survival only where something can hurt the player (#61)
     expect(objectiveKindsFor('worldBoss', { kind: 'worldBoss', affinity: 'NONE' })).toEqual(['dps']);

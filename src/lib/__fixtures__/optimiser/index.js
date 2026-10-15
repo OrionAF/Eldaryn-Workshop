@@ -133,3 +133,37 @@ export function winRateResult(status = 'reached') {
   r.headline = { better: 2, equivalent: 0, unresolved: 0, worseHidden: 0, text: r.goal.text };
   return r;
 }
+
+/**
+ * A Push result (simulation.md §Push): from dungeon step 3 the current build clears steps 3-4, the suggested
+ * build (found on step 5) clears steps 3-6, step 7 is not reached at this effort.
+ */
+export function pushResult() {
+  const r = winRateResult('reached');
+  delete r.goal;
+  r.objective = { kind: 'push', target: 0.95, label: 'Push: deepest step at 95%', unit: 'p', higherIsBetter: true, statistic: 'proportion', q: null };
+  r.request = { ...r.request, target: { kind: 'dungeon', id: 'dungeon_1', step: 3 }, objective: { kind: 'push', target: 0.95 } };
+  r.target = { ...r.target, kind: 'dungeon', id: 'dungeon_1', step: 3, label: 'Dungeon Forsaken Mines, step 3' };
+  r.rows = r.rows.slice(0, 1);
+  r.search = null;
+  r.phases = [
+    { id: 'climb', label: 'Climb', state: 'done', fights: 900, ms: 10 },
+    { id: 'screen', label: 'Screen', state: 'done', fights: 300, ms: 10 },
+    { id: 'optimise', label: 'Optimise', state: 'done', fights: 40000, ms: 10 },
+    { id: 'confirm', label: 'Confirm', state: 'done', fights: 1200, ms: 10 },
+  ];
+  const rung = (i, current, build) => ({ index: i, label: `step ${i + 1}`, key: `{"id":"dungeon_1","kind":"dungeon","step":${i + 1}}`, current, build });
+  r.push = {
+    target: 0.95, status: 'pushed',
+    ladder: { kind: 'dungeon', label: 'Dungeon Forsaken Mines', size: 8 },
+    start: { index: 2, label: 'step 3' },
+    baseline: { deepest: 3, label: 'step 4', searched: 3 },
+    reached: { deepest: 5, label: 'step 6', key: r.rows[0].key, foundAt: 4, foundLabel: 'step 5', searched: 5 },
+    stop: { index: 6, label: 'step 7', reason: 'screen', best: { est: 0.4, lo: 0.2, hi: 0.6, n: 64, seed: null, level: 0.95, alphaAdj: 0.001, method: 'wilson' } },
+    rungs: [rung(2, 'clears', 'clears'), rung(3, 'clears', 'clears'), rung(4, 'fails', 'clears'), rung(5, null, 'clears'), rung(6, null, null)],
+    contradictions: [],
+    text: 'Reaches step 6 (now: step 4) at 95%. Step 7 is not reached at this effort: no build one change away comes plausibly near 95% and no single change raises the rate (best seen 40%).',
+  };
+  r.headline = { better: 1, equivalent: 0, unresolved: 0, worseHidden: 0, text: r.push.text };
+  return r;
+}
