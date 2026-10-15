@@ -3,7 +3,7 @@
    * SigilEquipPanel.svelte - one preset's sigil loadout: up to 3 generic slots (unlocked by character
    * level), the class's utility slot (Summon / Shield / Form by spec; none for Warrior and Sentinel),
    * one Ancient, and per-sigil activation conditions (character level 54+).
-   * The store (setPresetSigils / setPresetSigilCondition) writes the picks and model/sigils.js
+   * The store (setPresetSigils / setSigilCondition) writes the picks and model/sigils.js
    * reconcile enforces legality, so this panel only offers legal choices.
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
@@ -150,7 +150,7 @@
             <select
               value={rosterStore.current.sigils.owned[sp]?.condition ?? 'ON_COOLDOWN'}
               aria-label="{sigilBySpecies(sp).name} activation condition"
-              onchange={(e) => rosterStore.setPresetSigilCondition(preset.id, sp, e.currentTarget.value === 'ON_COOLDOWN' ? null : e.currentTarget.value)}
+              onchange={(e) => rosterStore.setSigilCondition(sp, e.currentTarget.value === 'ON_COOLDOWN' ? null : e.currentTarget.value)}
             >
               {#each options as id (id)}
                 <option value={id}>{conditionLabel(id)}</option>

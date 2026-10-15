@@ -97,21 +97,6 @@ export function createPresetsStore(ctx) {
     });
   }
 
-  /**
-   * @deprecated Conditions are character-wide (M1): this writes the same value for every preset and
-   * ignores `presetId`. Use setSigilCondition. Removed with the old screens (U12). conditionId null clears it.
-   */
-  // eslint-disable-next-line no-unused-vars
-  function setPresetSigilCondition(presetId, species, conditionId) {
-    ctx.edit((c) => {
-      const own = c.sigils.owned[species];
-      if (!own) return;
-      if (conditionId && conditionId !== 'ON_COOLDOWN') own.condition = conditionId;
-      else delete own.condition;
-      ctx.reconcile(c);
-    });
-  }
-
   function setPresetTranscendence(presetId, transcendencePresetId) {
     ctx.editPreset(presetId, (p) => {
       p.transcendencePresetId = transcendencePresetId || null;
@@ -130,7 +115,6 @@ export function createPresetsStore(ctx) {
     setPresetMount,
     setPresetRelics,
     setPresetSigils,
-    setPresetSigilCondition,
     setPresetTranscendence,
   };
 }

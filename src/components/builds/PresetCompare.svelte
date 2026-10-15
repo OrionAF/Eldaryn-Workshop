@@ -15,7 +15,7 @@
   import Checkbox from '../ui/Checkbox.svelte';
   import ProvenanceTag from '../ui/ProvenanceTag.svelte';
   import ConfirmButton from '../ConfirmButton.svelte';
-  import { SET_LABELS, petLabel, mountLabel, talentSetLabel, transcendenceLabel, filledSlots } from '../presets/presetLabels.js';
+  import { SET_LABELS, petLabel, mountLabel, talentSetLabel, transcendenceLabel, filledSlots } from './presetLabels.js';
   import { resolveTranscendencePreset } from '../../lib/model/legality.js';
   import { statText } from './statText.js';
 
