@@ -13,13 +13,13 @@
 // Every tier uses ONE seed for all candidates (common random numbers, engine/metrics.js), and the
 // current build is always evaluated at every tier, so the top result can never rank below it.
 import { hashSeed } from '../engine/rng.js';
-import { pairedDelta, stableStringify, metricKey } from '../engine/metrics.js';
+import { stableStringify, metricKey } from '../engine/metrics.js';
 import { computePresetStats } from '../build/stats.js';
 import { resolvePreset } from '../build/presetInputs.js';
 import { describeBuild } from '../build/describe.js';
 import { createBuildSpace } from './candidates.js';
 import { subsetsUpTo, combinations, subsetCount, choose } from './combinatorics.js';
-import { resolveTarget, makeObjective } from './objectives.js';
+import { resolveTarget, makeObjective, residualFor, legacyVs } from './objectives.js';
 
 // ---------------------------------------------------------------------------------------------
 // Part 1: generic machinery
@@ -300,6 +300,7 @@ export async function optimizeBuild(req) {
   const target = resolveTarget(req.target ?? { kind: 'dummy' }, { character });
   const realm = target.realm ?? (req.realm === 'oblivion' ? 'oblivion' : 'base');
   const objective = makeObjective(req.objective ?? { kind: 'dps' }, target);
+  const targetEcho = { ...target.spec, label: target.label, key: target.key, mode: target.mode, fidelity: target.fidelity, assumptions: target.assumptions };
   const wanted = { ...objective.defaultBudget, ...req.budget }; // F5: PVP brings its own defaults
   // F5: `finalMs` (outside DEFAULT_BUDGET) caps the tier-2 wall clock by shrinking n2 to what fits, never below 2 * n1.
   const finalMs = typeof wanted.finalMs === 'number' && Number.isFinite(wanted.finalMs) && wanted.finalMs > 0 ? wanted.finalMs : null;
@@ -309,8 +310,9 @@ export async function optimizeBuild(req) {
   const seed2 = hashSeed('tier2', seed, target.key);
 
   // Tier 1 carries the current preset's residual (rebuild-plan §4 "Residual carry").
-  const current = computePresetStats(character, preset.id, { realm });
-  const space = createBuildSpace(character, preset, { realm, residual: current.residual, space: req.space });
+  // A3: only a sheet confirmed for this build carries its residual (objectives.js residualFor).
+  const { residual, warnings } = residualFor(computePresetStats(character, preset.id, { realm }));
+  const space = createBuildSpace(character, preset, { realm, residual, space: req.space });
   const start = space.start;
   const cache = req.cache ?? createEvalCache();
   const ctxKey = metricKey('optctx', character, preset.id, realm, target.key, objective.key, seed);
@@ -321,7 +323,7 @@ export async function optimizeBuild(req) {
   const pacer = createPacer({ signal });
 
   const measureCached = async (cand, tier) => {
-    const ck = `${ctxKey}|t${tier}|${space.key(cand)}`;
+    const ck = `${ctxKey}|t${tier}|n${tier === 1 ? budget.n1 : budget.n2}|${space.key(cand)}`;
     const hit = cache.get(ck);
     if (hit) { cacheHits++; return hit; }
     const fighter = space.fighterOf(cand);
@@ -329,7 +331,6 @@ export async function optimizeBuild(req) {
     const m = await objective.measure(fighter, { // F5: the PVP measure is async (it yields so abort lands)
       n: tier === 1 ? budget.n1 : budget.n2,
       seed: tier === 1 ? seed1 : seed2,
-      keepSamples: tier === 2,
       signal,
     });
     if (m.aborted) return null;
@@ -364,10 +365,10 @@ export async function optimizeBuild(req) {
   if (!search.records.has(startKey)) {
     // Aborted before the current build was even measured: nothing to rank.
     return {
-      aborted: true, truncated: search.truncated, tier: 1, target: { ...target.spec, label: target.label, key: target.key },
+      aborted: true, truncated: search.truncated, tier: 1, target: targetEcho, warnings,
       objective: { ...objective.spec, label: objective.label, unit: objective.unit, higherIsBetter: objective.higherIsBetter },
       realm, presetId: preset.id, seed, space: space.toggles, budget, baseline: null, results: [],
-      stats: { tier0: 0, tier1: search.evals, tier2: 0, passes: 0, cacheHits, ms: Date.now() - t0, residualKeys: Object.keys(current.residual).length },
+      stats: { tier0: 0, tier1: search.evals, tier2: 0, passes: 0, cacheHits, ms: Date.now() - t0, residualKeys: Object.keys(residual).length },
     };
   }
   const ranked = dedupeEquivalent(
@@ -408,12 +409,9 @@ export async function optimizeBuild(req) {
     const m = measureOf(k);
     const isBaseline = k === startKey;
     let vs = null;
-    if (!isBaseline && tierDone === 2 && m.scoreSamples && baseM.scoreSamples) {
-      const d = pairedDelta(baseM.scoreSamples, m.scoreSamples);
-      vs = {
-        delta: finite(d.delta), lo: finite(d.lo), hi: finite(d.hi), significant: d.significant,
-        pct: objective.higherIsBetter && objective.kind === 'dps' && baseM.value ? finite(d.delta / baseM.value) : null,
-      };
+    if (!isBaseline && tierDone === 2 && m.samples && baseM.samples) {
+      // A3: the objective's own paired contrast of the ranked statistic (plan §A.1 I6)
+      vs = legacyVs(objective, m.samples, baseM.samples, { seed: seed2 });
     } else if (!isBaseline) {
       vs = { delta: finite(m.score - baseM.score), lo: null, hi: null, significant: false, pct: null };
     }
@@ -434,9 +432,10 @@ export async function optimizeBuild(req) {
 
   return {
     aborted,
+    warnings,
     truncated: search.truncated,
     tier: tierDone,
-    target: { ...target.spec, label: target.label, key: target.key },
+    target: targetEcho,
     objective: { ...objective.spec, label: objective.label, unit: objective.unit, higherIsBetter: objective.higherIsBetter },
     realm,
     presetId: preset.id,
@@ -447,7 +446,7 @@ export async function optimizeBuild(req) {
     results,
     stats: {
       tier0: search.screened, tier1: search.evals, tier2: tier2Evals, passes: search.passes, cacheHits,
-      ms: Date.now() - t0, residualKeys: Object.keys(current.residual).length,
+      ms: Date.now() - t0, residualKeys: Object.keys(residual).length,
     },
   };
 }
