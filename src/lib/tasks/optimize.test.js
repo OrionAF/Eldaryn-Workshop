@@ -4,6 +4,7 @@ import { runOptimizerTask } from '../optimizerClient.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { normaliseCharacter } from '../model/index.js';
 import { BLOCKS } from '../search/space.js';
+import { presetPower } from '../build/power.js';
 
 const EFFORT = { level: 'quick', n0: 8, maxN: 16, randomStarts: 0 };
 const RELICS_ONLY = Object.fromEntries(BLOCKS.map((b) => [b, b === 'relics']));
@@ -33,6 +34,17 @@ describe("task 'optimize'", { timeout: 120000 }, () => {
     expect(seen[0]).toBe('screen');
     expect(seen).toContain('confirm');
     expect(cps).toEqual(['search', 'minimise']);
+  });
+
+  it('forwards the Combat Power guard: a floor above the baseline fails, one at it is echoed', async () => {
+    const req = request();
+    const p0 = presetPower(req.character, 'p1').power;
+    const above = await runTask('optimize', { ...req, powerFloor: p0 + 1000 });
+    expect(above.status).toBe('failed');
+    expect(above.baselineViolations.map((v) => v.gate)).toEqual(['powerFloor']);
+    const at = await runTask('optimize', { ...req, powerFloor: p0 });
+    expect(at.status).toBe('done');
+    expect(at.request.powerFloor).toBe(p0);
   });
 
   it('validates its request', async () => {

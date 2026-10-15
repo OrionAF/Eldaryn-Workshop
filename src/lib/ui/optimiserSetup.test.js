@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { defaultSetup, normaliseSetup, setupFromRun, requestOf, searchCharacter, signatureOf, runIsStale, runApplyBlock } from './optimiserSetup.js';
+import { defaultSetup, normaliseSetup, setupFromRun, requestOf, searchCharacter, signatureOf, runIsStale, runApplyBlock, powerFloorPicks, currentCrusadeGate } from './optimiserSetup.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { normaliseCharacter } from '../model/index.js';
 import { cloneAsOpponent } from '../features/duel.js';
@@ -117,5 +117,43 @@ describe('a saved run against the character as it is now', () => {
     expect(runApplyBlock(runFor(c, { presetId: 'gone' }), c)).toMatch(/no longer exists/);
     expect(runApplyBlock(runFor(c, { schema: 1 }), c)).toMatch(/saved before/);
     expect(runApplyBlock(runFor(c), character((raw) => { raw.presets[0].relicIds = []; }))).toMatch(/character changed/);
+  });
+});
+
+describe('Combat Power floor in the setup', () => {
+  it('defaults to none; a positive number is kept (whole), anything else is dropped', () => {
+    expect(defaultSetup().powerFloor).toBeNull();
+    expect(normaliseSetup({ powerFloor: 13000.6 }, character()).powerFloor).toBe(13000);
+    for (const bad of [0, -1, '13000', NaN, {}, null]) expect(normaliseSetup({ powerFloor: bad }, character()).powerFloor).toBeNull();
+  });
+  it('goes into the request only when set, and comes back from a saved run', () => {
+    const s = normaliseSetup({ powerFloor: 15340 }, character());
+    expect(requestOf(s, character()).powerFloor).toBe(15340);
+    expect('powerFloor' in requestOf(normaliseSetup({}, character()), character())).toBe(false);
+    const run = runFromResult({ ...richResult(), request: { ...richResult().request, powerFloor: 15340 } }, { id: 'r', at: '2026-10-01T00:00:00.000Z' });
+    expect(run.powerFloor).toBe(15340);
+    expect(setupFromRun(run, character()).powerFloor).toBe(15340);
+  });
+  it('the current Crusade gate: the highest of Hard, Mythic and Mythic+N the Power meets', () => {
+    expect(currentCrusadeGate(10999)).toBeNull();
+    expect(currentCrusadeGate(12000)).toEqual({ value: 11000, label: 'Crusade Hard (11.000)' });
+    expect(currentCrusadeGate(15339)).toEqual({ value: 13000, label: 'Crusade Mythic (13.000)' });
+    expect(currentCrusadeGate(15340)).toEqual({ value: 15340, label: 'Crusade Mythic+1 (15.340)' });
+    // round(13000 * 1.18^17) = 216 739 <= 250 969 < 255 752 = round(13000 * 1.18^18)
+    expect(currentCrusadeGate(250969).label).toMatch(/^Crusade Mythic\+17 /);
+  });
+  it('quick picks: the current Power, its gate above Mythic+10, Crusade Hard, Mythic and Mythic+1..10', () => {
+    expect(powerFloorPicks(20000)).toHaveLength(13);
+    const picks = powerFloorPicks(250969);
+    expect(picks).toHaveLength(14);
+    expect(picks[0]).toEqual({ value: 250969, label: 'Current Power (250.969)' });
+    expect(picks[1].label).toMatch(/^Crusade Mythic\+17 /);
+    expect(picks.slice(2, 5)).toEqual([
+      { value: 11000, label: 'Crusade Hard (11.000)' },
+      { value: 13000, label: 'Crusade Mythic (13.000)' },
+      { value: 15340, label: 'Crusade Mythic+1 (15.340)' },
+    ]);
+    expect(picks.at(-1).label).toMatch(/^Crusade Mythic\+10 /);
+    expect(powerFloorPicks(null)).toHaveLength(12);
   });
 });

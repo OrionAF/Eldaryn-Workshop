@@ -17,7 +17,8 @@ import { talentSpec } from '../game/talents.js';
 import { pointsSpent, sanitiseAllocation } from '../model/talents.js';
 import { talentPointsForLevel } from '../model/legality.js';
 import { DROP_PRECISION } from '../features/swap.js';
-import { BLOCKS, createBuildSpace } from './space.js';
+import { formatFlat } from '../format.js';
+import { BLOCKS, createBuildSpace, normalisePowerFloor } from './space.js';
 import { candidateEngineKey, changesOf, canonicalise, mergeByEngine, writesOf } from './effect.js';
 import { legalityOf } from './legality.js';
 import { resolveTarget, makeObjective, residualFor, meetsTarget } from './objectives.js';
@@ -109,10 +110,12 @@ export function prepare(request) {
       }
     }
   }
-  const space = createBuildSpace(character, preset, { realm, mode, residual, toggles: togglesOf(request.space) });
+  const powerFloor = normalisePowerFloor(request.powerFloor);
+  const space = createBuildSpace(character, preset, { realm, mode, residual, toggles: togglesOf(request.space), powerFloor });
   const characterKey = metricKey('character', character);
   const requestEcho = {
     presetId: preset.id, realm, mode, target: target.spec, objective: objective.spec, space: space.toggles,
+    ...(powerFloor != null ? { powerFloor } : {}),
     seed, seeds, effort: { level: effort.level, delta: effort.delta, deltaKind: effort.deltaKind, alpha: effort.alpha, n0: effort.n0, maxN: effort.maxN }, characterKey,
   };
   const requestKey = metricKey('optimise-request', { ...requestEcho, characterKey: undefined, randomStarts: effort.randomStarts, ...(effort.futility ? {} : { futility: false }) });
@@ -181,6 +184,7 @@ function createRun(prep, hooks) {
     lastYield: Date.now(),
     provisional: null,
     notSimulable: 0,
+    belowFloor: new Set(),
   };
   const arms = new Map();
   const base = space.canonical(space.start);
@@ -418,7 +422,14 @@ async function searchPhase(prep, run) {
   const sizes = space.domainSizes(B.cand);
   const status = new Map(); // block id -> 'converged' | 'unresolved'
   const unresolvedOut = [];
-  const simulable = (a) => ekOf(a) != null;
+  // the Combat Power guard is a legality rule: an arm below the floor is never raced (simulation.md §Build space)
+  const simulable = (a) => {
+    if (!space.admissible(a.cand)) {
+      st.belowFloor.add(a.key);
+      return false;
+    }
+    return ekOf(a) != null;
+  };
 
   let jointSize = 1;
   for (const id of enabled) jointSize *= sizes[id] ?? 1;
@@ -753,7 +764,7 @@ async function provisionalRow(prep, run, arm, B, stages) {
   const changes = arm.key === B.key ? [] : changesOf(space, B.cand, arm.cand).map((c) => ({ ...c, own: null, needed: null, keptBecause: null }));
   return {
     rank: 0, tieGroup: null, isBaseline: arm.key === B.key, provisional: true, key: arm.key, engineKey: run.ekOf(arm),
-    candidate: arm.cand, value, aux: {}, vsBaseline: null, changes, remainder: null,
+    candidate: arm.cand, value, aux: {}, vsBaseline: null, changes, power: space.powerOf(arm.cand), remainder: null,
     writes: arm.key === B.key ? [] : writesOf(space, B.cand, arm.cand, changes), runMore: null, lines: lineOf(space, arm.cand),
   };
 }
@@ -811,6 +822,10 @@ export async function optimize(request, hooks = {}) {
 
   const legal = legalityOf(space.character, space.presetId, space.start);
   if (!legal.ok) return failedResult({ ...echo, warnings, baselineViolations: legal.violations });
+  if (!space.admissible(space.start)) {
+    const detail = powerFloorText(space.powerOf(space.start), space.powerFloor);
+    return failedResult({ ...echo, warnings, error: detail, baselineViolations: [{ gate: 'powerFloor', field: 'powerFloor', detail }] });
+  }
 
   const cp = request.resumeFrom;
   const resumable = cp?.schema === CHECKPOINT_SCHEMA && cp.requestKey === prep.requestKey && cp.characterKey === prep.characterKey && Array.isArray(cp.log);
@@ -899,7 +914,7 @@ export async function optimize(request, hooks = {}) {
       rows.push({
         rank: 0, tieGroup: null, isBaseline: false, provisional: false, key: r.arm.key, engineKey: run.ekOf(r.arm), candidate: r.arm.cand,
         value: estimateOut({ ...est.value, seed: S3.seed }), aux: auxOf(prep, est, set, await run.getSet(B, S3, r.vs.n)),
-        vsBaseline: contrastOut(r.vs), changes,
+        vsBaseline: contrastOut(r.vs), changes, power: space.powerOf(r.arm.cand),
         remainder: r.attr.remainder, writes: writesOf(space, B.cand, r.arm.cand, changes),
         runMore: r.vs.verdict === 'unresolved' ? { targetN: nextLook(r.vs.n, r.vs.nNeeded), reason: 'unresolved' } : null,
         lines: lineOf(space, r.arm.cand),
@@ -919,7 +934,7 @@ export async function optimize(request, hooks = {}) {
     const baseEst = objective.estimate(baseSet, { alpha: ALPHA });
     const baseline = {
       rank: 0, tieGroup: null, isBaseline: true, provisional: false, key: B.key, engineKey: run.ekOf(B), candidate: B.cand,
-      value: estimateOut({ ...baseEst.value, seed: S3.seed }), aux: auxOf(prep, baseEst, null, null), vsBaseline: null, changes: [],
+      value: estimateOut({ ...baseEst.value, seed: S3.seed }), aux: auxOf(prep, baseEst, null, null), vsBaseline: null, changes: [], power: space.powerOf(B.cand),
       remainder: null, writes: [], runMore: null, lines: lineOf(space, B.cand),
     };
     const rowsOut = ranked.map(({ _score, _primary, _decided, _sig, _dist, ...r }) => r);
@@ -976,6 +991,12 @@ export async function optimize(request, hooks = {}) {
       stats: { ms: Date.now() - t0, workers: run.workers },
     };
   }
+}
+
+/** Why a baseline below the Combat Power guard cannot be optimised (also the setup's blocker text). */
+export function powerFloorText(power, floor) {
+  const n = (v) => formatFlat(v);
+  return `The current build's Combat Power (${n(power)}) is below the floor of ${n(floor)}; lower the floor or improve the build first.`;
 }
 
 const pctText = (p) => `${Math.round(p * 1000) / 10}%`;
@@ -1074,6 +1095,7 @@ function searchSummary(s, st) {
     optima: s.optimaCount,
     evaluated: st.evaluated.size,
     merged: { ...st.merged },
+    belowFloor: st.belowFloor.size,
     fights: { search, minimise: f.minimise, confirm, total: search + f.minimise + confirm },
     unresolved: s.unresolved,
   };
@@ -1092,7 +1114,7 @@ export async function optimizeMore(request, hooks = {}) {
   const { character, result } = request ?? {};
   if (!result || result.schema !== RESULT_SCHEMA || result.status !== 'done') throw new Error('optimizeMore: needs a finished optimiser result');
   const r = result.request;
-  const prep = prepare({ character, presetId: r.presetId, realm: r.realm, target: r.target, objective: r.objective, space: r.space, effort: r.effort, seed: r.seed });
+  const prep = prepare({ character, presetId: r.presetId, realm: r.realm, target: r.target, objective: r.objective, space: r.space, powerFloor: r.powerFloor, effort: r.effort, seed: r.seed });
   if (prep.characterKey !== r.characterKey) throw new Error('optimizeMore: the character has changed since this run; run the optimiser again');
   const targetN = Number.isInteger(request.targetN) && request.targetN >= 2 ? request.targetN : null;
   if (!targetN) throw new Error('optimizeMore: targetN must be an integer >= 2');

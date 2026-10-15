@@ -29,7 +29,8 @@
 // `text` and the verdict counts, and `detail` is {baseline: Row, rows: Row[]} with Row = {rank, tieGroup,
 // isBaseline, key, candidate, value: Estimate, aux, vsBaseline: Contrast|null, changes (each with own, needed,
 // keptBecause, sideEffects), remainder, lines}. Schema 1 runs (no `schema`) keep the RunEntry detail above and
-// show per-change effects as "not measured". A PVE win-rate run also keeps `headline.goal` {status, target}, each
+// show per-change effects as "not measured". `powerFloor` is the run's Combat Power guard (absent: none) and each
+// schema 2 Row keeps its Combat Power as `power` (absent on older runs). A PVE win-rate run also keeps `headline.goal` {status, target}, each
 // Row's `aux.meetsTarget` / `aux.target` and each Contrast's `winRate` {delta, lo, hi}. `applied` is {at, rank} once a row was written to the preset.
 //
 // Budget (single localStorage key, so overflow is prevented up front; storage.js also reports a failed save):
@@ -69,6 +70,9 @@ function normaliseEntry(e) {
 }
 
 const VERDICTS = ['better', 'worse', 'equivalent', 'unresolved'];
+const KEPT_BECAUSE = ['own-effect', 'interaction', 'power-floor'];
+/** The Combat Power guard of a run (simulation.md §Build space): a positive whole number, else null. */
+const powerFloorOf = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= 1 ? Math.floor(v) : null);
 const SCOPES = ['preset', 'character', 'mount'];
 
 function normaliseEstimate(e) {
@@ -96,7 +100,7 @@ function normaliseChange(c) {
     sideEffects: (Array.isArray(c.sideEffects) ? c.sideEffects : []).filter(isObj).map((s) => ({ presetId: str(s.presetId), name: str(s.name), reason: str(s.reason) })),
     bundle: (Array.isArray(c.bundle) ? c.bundle : []).filter((b) => typeof b === 'string'),
     own: normaliseContrast(c.own), needed: normaliseContrast(c.needed),
-    keptBecause: c.keptBecause === 'interaction' ? 'interaction' : c.keptBecause === 'own-effect' ? 'own-effect' : null,
+    keptBecause: KEPT_BECAUSE.includes(c.keptBecause) ? c.keptBecause : null,
   };
 }
 
@@ -138,6 +142,7 @@ function normaliseRow(r) {
     },
     vsBaseline: normaliseContrast(r.vsBaseline),
     changes: (Array.isArray(r.changes) ? r.changes : []).map(normaliseChange).filter(Boolean),
+    ...(num(r.power) != null ? { power: num(r.power) } : {}),
     remainder: rem ? { delta: num(rem.delta), lo: num(rem.lo), hi: num(rem.hi), method: str(rem.method) } : null,
     lines: (Array.isArray(r.lines) ? r.lines : []).filter(isObj).map((l) => ({ label: str(l.label), value: str(l.value) })),
   };
@@ -194,6 +199,7 @@ export function normaliseRun(raw) {
     objective: plain(raw.objective),
     seed: num(raw.seed) ?? 1,
     space: plain(raw.space),
+    ...(powerFloorOf(raw.powerFloor) != null ? { powerFloor: powerFloorOf(raw.powerFloor) } : {}),
     budget: plain(raw.budget),
     characterKey: str(raw.characterKey) || null,
     applied,
@@ -263,6 +269,7 @@ function runFromResultV2(result, fields) {
     objective: result.objective,
     seed: req.seed,
     space: req.space,
+    powerFloor: req.powerFloor ?? null,
     budget: req.effort,
     characterKey: req.characterKey,
     applied: fields.applied ?? null,

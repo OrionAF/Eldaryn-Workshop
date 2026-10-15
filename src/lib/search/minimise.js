@@ -38,12 +38,24 @@ export const gainOf = (c) => (c?.delta == null || !Number.isFinite(c.delta) ? nu
 
 const disruption = (c) => c.sideEffects.length + c.bundle.length + (c.scope === 'preset' ? 0 : 1);
 
-/** F with change c taken out, legalised and canonical; null when legality puts it straight back. */
-export function without(ctx, F, c) {
+/** F with change c taken out, legalised and canonical, before the Combat Power guard is applied. */
+function reverted(ctx, F, c) {
   const { space, B } = ctx;
-  const Y = canonicalise(space, B.cand, space.legalise(revert(space, B.cand, F.cand, c))).candidate;
+  return canonicalise(space, B.cand, space.legalise(revert(space, B.cand, F.cand, c))).candidate;
+}
+
+/** Is change c held by the Combat Power guard (taking it out drops the build below the floor)? */
+export function heldByFloor(ctx, F, c) {
+  const Y = reverted(ctx, F, c);
+  return !!ctx.space.admissible && ctx.armOf(Y).key !== F.key && !ctx.space.admissible(Y);
+}
+
+/** F with change c taken out; null when legality puts it straight back or the build would fall below the Power floor. */
+export function without(ctx, F, c) {
+  const Y = reverted(ctx, F, c);
   const arm = ctx.armOf(Y);
-  return arm.key === F.key ? null : arm;
+  if (arm.key === F.key) return null;
+  return ctx.space.admissible && !ctx.space.admissible(Y) ? null : arm;
 }
 
 /**
@@ -157,9 +169,14 @@ export async function attribute(ctx, F, n, { alpha, seed }) {
   const { space, B, objective } = ctx;
   const C = changesOf(space, B.cand, F.cand);
   const withOnly = C.map((c) => ctx.armOf(canonicalise(space, B.cand, space.legalise(addChange(space, B.cand, F.cand, c))).candidate));
+  // a change added alone may fall below the Combat Power floor: that build is never measured (own effect null)
+  const soloOk = withOnly.map((X) => !space.admissible || space.admissible(X.cand));
   const minus = C.map((c) => without(ctx, F, c));
-  await ctx.prefetch?.([F, B, ...withOnly, ...minus.filter(Boolean)], n);
-  const own = await holmFixed(withOnly.map((X) => [X, B]), alpha, ctx.contrastAt, n);
+  await ctx.prefetch?.([F, B, ...withOnly.filter((_, i) => soloOk[i]), ...minus.filter(Boolean)], n);
+  const solo = withOnly.map((X, i) => [X, i]).filter(([, i]) => soloOk[i]);
+  const ownT = await holmFixed(solo.map(([X]) => [X, B]), alpha, ctx.contrastAt, n);
+  const own = new Array(C.length).fill(null);
+  solo.forEach(([, i], j) => { own[i] = ownT[j]; });
   const testable = minus.map((Y, i) => [Y, i]).filter(([Y]) => Y);
   const neededT = await holmFixed(testable.map(([Y]) => [F, Y]), alpha, ctx.contrastAt, n);
   const needed = new Array(C.length).fill(null);
@@ -168,10 +185,10 @@ export async function attribute(ctx, F, n, { alpha, seed }) {
     ...c,
     own: own[i],
     needed: needed[i],
-    keptBecause: own[i]?.significant && gainOf(own[i]) > 0 ? 'own-effect' : 'interaction',
+    keptBecause: own[i]?.significant && gainOf(own[i]) > 0 ? 'own-effect' : heldByFloor(ctx, F, c) ? 'power-floor' : 'interaction',
   }));
   let remainder = null;
-  if (C.length >= 2) {
+  if (C.length >= 2 && soloOk.every(Boolean)) {
     const sets = [];
     for (const X of [F, B, ...withOnly]) sets.push(await ctx.getSet(X, n));
     const [fs, bs, ...os] = sets;
