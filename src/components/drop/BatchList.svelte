@@ -11,10 +11,13 @@
   import { rarityById } from '../../lib/game/gear.js';
   import { VERDICT_LABEL, VERDICT_GLYPH, flat, signedFlat, signedPct, ciFlat, rarityColor } from './dropFormat.js';
   import { slotLabel, statLabel, formatStatValue } from '../gear/gearFormat.js';
+  import { EQUIP_SETS } from '../../lib/model/equipment.js';
+  import { statKeyLabel } from '../../lib/features/swap.js';
 
   let { ranked, cls, status = 'done', progress = null, stale = false, skipped = [], selectedKey = null, onselect, oncancel, onrerun } = $props();
 
   const running = $derived(status === 'running');
+  const setName = (key) => EQUIP_SETS.find((s) => s.key === key)?.label ?? key;
 
   function secondaries(item) {
     return (item.secondaryStats ?? []).map((s) => `${statLabel(s.type)} ${formatStatValue(s.type, s.value)}`);
@@ -29,7 +32,7 @@
       <button type="button" class="btn-ghost" onclick={oncancel}>Cancel</button>
     {:else}
       <span class="status" role="status">
-        {status === 'cancelled' ? 'Cancelled: unfinished items show the closed-form estimate.' : status === 'error' ? 'The check failed.' : 'Best verdict across all presets, simulated DPS.'}
+        {status === 'cancelled' ? 'Cancelled: unfinished items show the closed-form estimate.' : status === 'error' ? 'The check failed.' : 'Best verdict per equipment set, all presets wearing it judged together. Simulated DPS only: defence not measured.'}
       </span>
       <button type="button" class="btn-ghost" onclick={onrerun}>Check again</button>
     {/if}
@@ -70,7 +73,7 @@
               <span class="delta">
                 <span class="badge"><span aria-hidden="true">{VERDICT_GLYPH[b.verdict]}</span> {VERDICT_LABEL[b.verdict]}</span>
                 <span class="where">
-                  {b.presetCount > 1 ? `best of ${b.presetCount} presets: ` : ''}{b.row.name}
+                  {b.presetCount > 1 ? `${setName(b.setKey)}, ${b.presetCount} presets` : b.row.name}
                 </span>
                 {#if b.sim}
                   <span class="mono num" data-metric="sim">
@@ -82,6 +85,9 @@
                     Auto-attack {flat(b.row.closed.before)} → {flat(b.row.closed.after)} ({signedPct(b.row.closed.pct, 2)})
                     <span class="ci">{running ? 'simulating…' : 'closed form, no interval'}</span>
                   </span>
+                {/if}
+                {#if b.notJudged.length}
+                  <span class="ci" data-not-judged>Not judged: {b.notJudged.map(statKeyLabel).join(', ')}</span>
                 {/if}
               </span>
             {/if}

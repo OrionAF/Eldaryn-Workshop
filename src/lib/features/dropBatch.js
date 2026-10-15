@@ -7,19 +7,19 @@
 //   parseDropBatch(input, character)   JSON text or object -> {entries, skipped, source, error}
 //   prepareBatch(character, entries)   -> {request, rows, offsets}: the dropCheck request for all of them
 //   entryResults(offsets, rows, i, results)  the slice of the task's results belonging to entry i
-//   judgeEntry(rows, results)          best verdict across that item's presets/sets, with its key delta
+//   judgeEntry(rows, results)          per equipment set (all presets wearing it), the best set's verdict
 //   rankEntries(...)                   best verdict first
 import { isGameProfile, mapItem } from '../model/gameProfile.js';
 import { normaliseItem } from '../model/equipment.js';
 import { dropAscension } from '../model/drop.js';
 import { dropHasStats } from '../model/drop.js';
 import { slotsForRealm } from '../game/gear.js';
-import { prepareSwap, verdictFor } from './swap.js';
+import { prepareSwap, verdictFor, aggregateVerdict } from './swap.js';
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
 /** Mirrors the Drop Check screen's simulated line (N, seconds), so a batch verdict matches the single view. */
-export const BATCH_SIM = { seconds: 60, nSim: 32, seed: 1 };
+export const BATCH_SIM = { seconds: 60, nSim: 32, seed: 1, precision: 'standard' };
 
 /**
  * @typedef {Object} BatchEntry
@@ -112,7 +112,7 @@ export function entryResults(offsets, rows, i, results) {
   });
 }
 
-const VERDICT_RANK = { upgrade: 3, mixed: 2, sidegrade: 1, downgrade: 0 };
+const VERDICT_RANK = { upgrade: 4, mixed: 3, inconclusive: 2, sidegrade: 1, downgrade: 0 };
 
 /** Percent change of a row: the simulated DPS delta over its starting DPS, else the closed form. */
 function scoreOf(row, res) {
@@ -124,26 +124,57 @@ function scoreOf(row, res) {
 }
 
 /**
- * The best verdict across an item's presets (and so sets): upgrade over mixed over sidegrade over
- * downgrade, ties broken by the size of the DPS change. Rows without a finished simulation are judged
- * on the closed form (`basis: 'closed'`), exactly as the single-drop view does while it waits.
+ * The best verdict across the equipment sets an item could go into. Applying a drop writes to a whole
+ * set, so every preset wearing that set is judged together (aggregateVerdict, as the single view does):
+ * an item that helps one preset and hurts another on the same set is `mixed` (#97). Sets rank
+ * upgrade, mixed, inconclusive, sidegrade, downgrade; ties go to the larger mean DPS change. Rows without
+ * a finished simulation are judged on the closed form (`basis: 'closed'`, an estimate).
+ *
  * @param {Array<object>} rows  the item's prepareSwap rows
  * @param {Array<object|null>} results  per row, its runSwapMetrics result or null
  * @returns {{verdict: string, basis: 'sim'|'closed', score: number, row: object, sim: object|null,
- *   presetCount: number, upgrades: number}|null}
+ *   setKey: string, presetCount: number, upgrades: number, coverage: string[], coverageLabel: string,
+ *   notJudged: string[], sets: Array<{setKey: string, verdict: string, score: number, presetCount: number}>}|null}
+ *   `row` is the set's row with the largest change (what the list shows); `score` the set's mean change in percent
  */
 export function judgeEntry(rows, results = []) {
-  let best = null;
-  let upgrades = 0;
+  const bySet = new Map();
   rows.forEach((row, k) => {
+    if (!bySet.has(row.setKey)) bySet.set(row.setKey, []);
     const res = results[k] ?? null;
-    const v = verdictFor(row, res);
-    if (v.verdict === 'upgrade') upgrades += 1;
-    const cand = { verdict: v.verdict, basis: v.basis, score: scoreOf(row, res), row, sim: res?.sim ?? null };
-    if (!best || VERDICT_RANK[cand.verdict] > VERDICT_RANK[best.verdict]
-      || (VERDICT_RANK[cand.verdict] === VERDICT_RANK[best.verdict] && cand.score > best.score)) best = cand;
+    bySet.get(row.setKey).push({ row, res, v: verdictFor(row, res), score: scoreOf(row, res) });
   });
-  return best ? { ...best, presetCount: rows.length, upgrades } : null;
+  const sets = [...bySet.entries()].map(([setKey, members]) => {
+    const verdict = aggregateVerdict(members.map((m) => m.v.verdict));
+    const score = members.reduce((a, m) => a + m.score, 0) / members.length;
+    const lead = members.reduce((a, m) => (m.score > a.score ? m : a), members[0]);
+    const coverage = [...new Set(members.flatMap((m) => m.v.coverage))];
+    return {
+      setKey, verdict, score, lead, members, coverage,
+      basis: members.every((m) => m.v.basis === 'sim') ? 'sim' : 'closed',
+    };
+  });
+  let best = null;
+  for (const s of sets) {
+    if (!best || VERDICT_RANK[s.verdict] > VERDICT_RANK[best.verdict]
+      || (VERDICT_RANK[s.verdict] === VERDICT_RANK[best.verdict] && s.score > best.score)) best = s;
+  }
+  if (!best) return null;
+  const notJudged = [...new Set(best.members.flatMap((m) => m.v.notJudged))];
+  return {
+    verdict: best.verdict,
+    basis: best.basis,
+    score: best.score,
+    row: best.lead.row,
+    sim: best.lead.res?.sim ?? null,
+    setKey: best.setKey,
+    presetCount: best.members.length,
+    upgrades: best.members.filter((m) => m.v.verdict === 'upgrade').length,
+    coverage: best.coverage,
+    coverageLabel: best.members[0].v.coverageLabel,
+    notJudged,
+    sets: sets.map((s) => ({ setKey: s.setKey, verdict: s.verdict, score: s.score, presetCount: s.members.length })),
+  };
 }
 
 /** Entries with their judgement, best first (verdict, then DPS change; import order breaks ties). */

@@ -10,7 +10,7 @@
    * (presetId -> runSwapMetrics result), status ('idle'|'waiting'|'running'|'done'|'cancelled'|
    * 'error'), onApply(setKey).
    */
-  import { verdictFor, aggregateVerdict, statDeltas } from '../../lib/features/swap.js';
+  import { verdictFor, aggregateVerdict, statDeltas, statKeyLabel } from '../../lib/features/swap.js';
   import ConfirmButton from '../ConfirmButton.svelte';
   import { VERDICT_LABEL, VERDICT_GLYPH, flat, signedFlat, signedPct, prob, signedPts, ciFlat, ciPts } from './dropFormat.js';
 
@@ -63,8 +63,11 @@
           <span class="glyph" aria-hidden="true">{VERDICT_GLYPH[v.verdict]}</span>
           <span class="preset-name">{row.name}</span>
           <span class="verdict-badge">{VERDICT_LABEL[v.verdict]}</span>
-          <span class="basis">{row.method === 'anchored' ? 'anchored on your sheet' : 'recomputed from gear'}</span>
+          <span class="basis">{row.method === 'anchored' ? (row.approx ? 'anchored on your sheet, approximate' : 'anchored on your sheet') : 'recomputed from gear'}</span>
         </div>
+        <p class="coverage" data-coverage={v.coverage.join(',')}>
+          {v.coverageLabel}{v.notJudged.length ? `. Not judged: ${v.notJudged.map(statKeyLabel).join(', ')}` : ''}{v.unresolved.length ? '. Too close to call at the largest run size.' : ''}
+        </p>
 
         <div class="line metric-line">
           <span class="metric">Auto-attack DPS</span>
@@ -237,6 +240,11 @@
     font-size: 10.5px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+    color: var(--color-muted);
+  }
+  .coverage {
+    margin: 0;
+    font-size: 10.5px;
     color: var(--color-muted);
   }
   .basis {
