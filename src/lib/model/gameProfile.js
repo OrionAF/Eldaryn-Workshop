@@ -212,7 +212,7 @@ function sheetValues(computedStats) {
   return values;
 }
 
-const LIVE_NAME = 'Live loadout';
+const LIVE_NAME = 'Live loadout'; // only the fallback preset when the profile's selected preset is missing
 
 /** Druid sigils live in their own client lists, so the live loadout reads them when the active talent set is Druid. */
 function isDruid(profile) {
@@ -246,7 +246,7 @@ function livePreset(profile, id, name) {
     relicIds: profile.relicState?.equippedRelicIds,
     sigilSpecies: sigils.species,
     utilitySigilSpecies: sigils.utility,
-    transcendencePresetId: null,
+    transcendencePresetId: profile.activeTranscendencePresetId,
   };
 }
 
@@ -256,18 +256,23 @@ const sameSet = (a, b) => {
   return x.size === y.size && [...x].every((v) => y.has(v));
 };
 
-/** True when a live field the profile carries differs from the preset's; a field the profile omits never counts. */
-function liveDiffers(profile, preset) {
+/**
+ * The preset fields whose live value differs from the preset's; a field the profile omits never counts.
+ * Names are the raw preset field names (the report entry carries them).
+ */
+function liveChanges(profile, preset) {
   const live = livePreset(profile, null, null);
   const setOf = (n) => (n === 2 ? 2 : 1);
-  if (live.equipmentSet !== undefined && setOf(live.equipmentSet) !== setOf(preset.equipmentSet)) return true;
-  if (live.talentSet !== undefined && setOf(live.talentSet) !== setOf(preset.talentSet)) return true;
-  if (live.petId !== undefined && str(live.petId) !== str(preset.petId)) return true;
-  if (live.mountId !== undefined && str(live.mountId) !== str(preset.mountId)) return true;
-  if (Array.isArray(live.relicIds) && !sameSet(live.relicIds.filter((x) => typeof x === 'string'), arr(preset.relicIds))) return true;
-  if (Array.isArray(live.sigilSpecies) && !sameSet(live.sigilSpecies.filter((x) => typeof x === 'string'), arr(preset.sigilSpecies))) return true;
-  if (live.utilitySigilSpecies !== undefined && str(live.utilitySigilSpecies) !== str(preset.utilitySigilSpecies)) return true;
-  return false;
+  const out = [];
+  if (live.equipmentSet !== undefined && setOf(live.equipmentSet) !== setOf(preset.equipmentSet)) out.push('equipmentSet');
+  if (live.talentSet !== undefined && setOf(live.talentSet) !== setOf(preset.talentSet)) out.push('talentSet');
+  if (live.petId !== undefined && str(live.petId) !== str(preset.petId)) out.push('petId');
+  if (live.mountId !== undefined && str(live.mountId) !== str(preset.mountId)) out.push('mountId');
+  if (Array.isArray(live.relicIds) && !sameSet(live.relicIds.filter((x) => typeof x === 'string'), arr(preset.relicIds))) out.push('relicIds');
+  if (Array.isArray(live.sigilSpecies) && !sameSet(live.sigilSpecies.filter((x) => typeof x === 'string'), arr(preset.sigilSpecies))) out.push('sigilSpecies');
+  if (live.utilitySigilSpecies !== undefined && str(live.utilitySigilSpecies) !== str(preset.utilitySigilSpecies)) out.push('utilitySigilSpecies');
+  if (live.transcendencePresetId !== undefined && str(live.transcendencePresetId) !== str(preset.transcendencePresetId)) out.push('transcendencePresetId');
+  return out;
 }
 
 function mapPreset(p, sheet) {
@@ -287,25 +292,36 @@ function mapPreset(p, sheet) {
 
 /**
  * -> {presets, activePresetId, liveId}. `liveId` is the preset that holds the live loadout (and so the
- * server's computedStats sheet): the active preset when the loadout matches it, else an appended "Live
- * loadout" preset, or null when the cap of 8 leaves no room (the sheet is then dropped, with a report entry).
+ * server's computedStats sheet). When the worn loadout differs from the game's selected preset
+ * (`activePresetId`), that preset is UPDATED with it (name, icon and id kept) and reported as
+ * `liveLoadoutApplied`. Fallback when the profile has no such preset: the live loadout is appended as a
+ * single "Live loadout" preset (nothing is lost); at the cap of 8 the sheet has no owner.
  */
 function mapPresets(profile, sheet, report) {
   let list = arr(profile.presets).filter(isObj).slice(0, MAX_PRESETS);
   const implicit = list.length === 0;
   if (implicit) list = [livePreset(profile, 'default', 'Default')];
-  const activeId = list.some((p) => p.id === profile.activePresetId) ? profile.activePresetId : list[0]?.id;
+  const selected = list.find((p) => p.id === profile.activePresetId);
+  const activeId = selected ? selected.id : list[0]?.id;
   const presets = list.map((p) => mapPreset(p, null));
   let liveId = str(activeId);
-  if (!implicit && liveDiffers(profile, list.find((p) => p.id === activeId) ?? list[0])) {
-    if (list.length < MAX_PRESETS) {
-      liveId = 'live-loadout';
-      while (list.some((p) => p.id === liveId)) liveId += '_';
-      presets.push(mapPreset(livePreset(profile, liveId, LIVE_NAME), null));
-      report?.push({ kind: 'liveLoadout', presetId: liveId });
-    } else {
-      liveId = null;
-      if (sheet) report?.push({ kind: 'liveLoadoutSheetDropped' });
+  if (!implicit) {
+    const fields = liveChanges(profile, selected ?? list[0]);
+    if (fields.length && selected) {
+      const live = livePreset(profile, selected.id, selected.name);
+      // a field the profile omits keeps the preset's value
+      const merged = { ...selected };
+      for (const k of fields) merged[k] = live[k];
+      presets[list.indexOf(selected)] = mapPreset(merged, null);
+      report?.push({ kind: 'liveLoadoutApplied', presetId: str(selected.id), presetName: str(selected.name), fields });
+    } else if (fields.length) {
+      if (list.length < MAX_PRESETS) {
+        liveId = 'live-loadout';
+        while (list.some((p) => p.id === liveId)) liveId += '_';
+        presets.push(mapPreset(livePreset(profile, liveId, LIVE_NAME), null));
+      } else {
+        liveId = null;
+      }
     }
   }
   const owner = presets.find((p) => p.id === liveId);
@@ -352,7 +368,7 @@ function mapFortress(fortressBuffs) {
  * validate: normaliseCharacter drops whatever no longer resolves against the catalogues.
  * @param {object} profile  a value for which isGameProfile() holds
  * @param {{now?: string, report?: object[]}} [opts]  `now` stamps the sheet's enteredAt (default: current time);
- *   `report` receives {kind: 'liveLoadout'|'liveLoadoutSheetDropped'} entries (data-model.md §7)
+ *   `report` receives {kind: 'liveLoadoutApplied', presetId, presetName, fields} entries (data-model.md §7)
  */
 export function gameProfileToCharacter(profile, { now = new Date().toISOString(), report } = {}) {
   const player = profile.player;
