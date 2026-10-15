@@ -24,7 +24,7 @@
 
   const plan = $derived(importFlow.plan);
   const title = $derived(
-    !plan ? 'Import' : { profile: 'Import a game profile', roster: 'Restore a backup', lootBag: 'Loot bag', fightLog: 'Fight log' }[plan.kind],
+    !plan ? 'Import' : { profile: 'Import a game profile', opponent: 'Import a Rankings profile', roster: 'Restore a backup', lootBag: 'Loot bag', fightLog: 'Fight log' }[plan.kind],
   );
   const notes = $derived((plan?.report ?? []).map(describeReportEntry));
   const replacing = $derived(plan?.kind === 'roster' && plan.replaces.characters > 0);
@@ -32,7 +32,9 @@
   const confirmLabel = $derived(
     !plan
       ? ''
-      : plan.kind === 'profile'
+      : plan.kind === 'opponent'
+        ? plan.match ? `Update ${plan.match.name}` : 'Save as opponent'
+        : plan.kind === 'profile'
         ? updating
           ? `Update ${plan.match.name}`
           : 'Create character'
@@ -98,6 +100,18 @@
           <Banner variant="info">This profile also holds {plural(plan.pendingItems, 'pending drop')}. Check them in Drop Check after importing.</Banner>
         {/if}
         <p class="muted">Never read: player id, clan, quests, shop, currencies.</p>
+      </div>
+    {:else if plan.kind === 'opponent'}
+      <div class="report">
+        <p class="lead"><b>{plan.opponent.name}</b>, {classLabel(plan.opponent.class)}, level {plan.opponent.imported?.level}</p>
+        <p>
+          {plan.match ? `Refreshes the saved opponent ${plan.match.name} (the same player).` : 'Saved as a new PVP opponent.'}
+          Its stat sheet is the server's own; the {plural(plan.sigils, 'worn sigil')}, altar tier and major glyphs set its moves.
+        </p>
+        {#if plan.full}
+          <Banner variant="warn" lead="Opponent library full">Remove a saved opponent on the Opponents page first.</Banner>
+        {/if}
+        <p class="muted">Only the display name and the player id (to refresh it later) are kept. Gear, pet, mount and relics are not modelled for an opponent.</p>
       </div>
     {:else if plan.kind === 'roster'}
       <div class="report">
