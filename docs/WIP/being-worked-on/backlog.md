@@ -105,3 +105,26 @@ options to:
 - Each option is a toggle under "Allowed to change". The scope chips and Apply review say exactly
   what gets written: stones per set, the board shared by presets, the character-wide Awakening, relic
   levels and ownership.
+
+## 6. Optimiser results: say exactly which pet, mount or glyph
+
+**Ask.** Pets of the same species share a name, so "Pet: Iron Golem → Iron Golem" does not say which
+Iron Golem to equip. Show the suggested pet's secondary stats.
+
+**Notes**, from the same screenshot (Rank 1, dungeon, TTK median):
+- **Name owned instances unambiguously.** Wherever a result names something the user owns several of,
+  show what tells them apart:
+  - pet: rarity, level and secondary stats;
+  - mount: level and rolls;
+  - glyph: rarity and stat;
+  - stone: type and stats.
+  Apply this to change rows, the Apply review and the "Show full build" drawer. When two owned copies
+  are identical, say so ("either of your 2 identical copies").
+- **Raw stat keys leak** in the full-build drawer ("Quickstep (Common) healthPercent 4.5",
+  "critDamage 0.09"). Use the shared stat label formatter ("Health +4.5%", "Crit damage +9%").
+- **Talent changes list the whole allocation twice.** Show only the points that moved, e.g. "Essence
+  Siphon 2 → 0, Focused Casting 0 → 3".
+- **A baseline with no value shows "n/a".** On TTK the current build had no median because it
+  rarely wins, and the axis then reads "−0.00 s … 0.00 s". Say why instead: "Rarely clears: 18% win
+  rate; compared by win rate". Draw the axis on the basis actually used. Backlog §4 (Clear chance)
+  removes most of these cases.
