@@ -18,6 +18,12 @@ export const emptyStoneBonuses = () => ({
 
 const isOblivion = (type) => String(type).toUpperCase() === 'OBLIVION';
 
+// The SecondaryStatType cases of calculateEnchantStoneBonuses' switch (L1205726-1206148): every
+// bonus key but the grade's flatAttack / flatHp. Any other stat type adds nothing.
+const STONE_STAT_TYPES = new Set(Object.keys(emptyStoneBonuses())
+  .filter((k) => k !== 'flatAttack' && k !== 'flatHp')
+  .map((k) => k.replace(/[A-Z]/g, (c) => `_${c}`).toUpperCase()));
+
 // port of normalizeOblivionStoneLevel (stones.md §7): clamp(floor(x), 1, 5), non-finite -> 1
 export function normalizeOblivionLevel(x) {
   return Number.isFinite(x) ? Math.max(1, Math.min(5, Math.floor(x))) : 1;
@@ -26,10 +32,12 @@ export function normalizeOblivionLevel(x) {
 // port of getOblivionPowerGradeMult (stones.md §7)
 export const oblivionPowerGradeMult = (level) => POWER_GRADE_MULT ** (normalizeOblivionLevel(level) - 1);
 
-// port of oblivionPowerForQuality (stones.md §7): round(8 + 22 (clamp(q,1,100) - 1) / 99)
+// port of oblivionPowerForQuality L1205241-1205276 (stones.md §7), in the client's operation order.
+// A missing quality counts as 1 and +-Infinity clamps as in the client; NaN also counts as 1 (the
+// client would return NaN; the engine never does, plan invariant I9).
 export function oblivionPowerForQuality(quality) {
-  const q = Math.max(1, Math.min(100, Number.isFinite(quality) ? quality : 1));
-  return Math.round(8 + ((30 - 8) * (q - 1)) / 99);
+  const q = Math.max(1, Math.min(100, quality == null || Number.isNaN(quality) ? 1 : quality));
+  return Math.round(8 + (30 - 8) * ((q - 1) / 99));
 }
 
 // port of getAmplifyStatMultiplier (stones.md §8)
@@ -63,9 +71,8 @@ export function calculateStoneBonuses(stones) {
       }
     }
     for (const stat of stone.stats ?? []) {
-      const key = secondaryKey(stat.type);
-      if (!(key in out)) continue;
-      out[key] += stoneStatValue(stone, stat);
+      if (!STONE_STAT_TYPES.has(stat.type)) continue;
+      out[secondaryKey(stat.type)] += stoneStatValue(stone, stat);
     }
   }
   return out;
