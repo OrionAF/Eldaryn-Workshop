@@ -205,6 +205,23 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
   // recomputes it there; same result).
   let aMods = aRt ? buffMods(aRt) : null;
   let dMods = dRt ? buffMods(dRt) : null;
+  // processArenaSpells hands back the buff modifiers it computed after the cast (the same value buffMods
+  // would recompute: nothing touches the runtimes in between)
+  const spellsOut = { buffModifiers: null };
+  // each side's processArenaSpells input, refilled per tick (it reads the object and keeps nothing)
+  const aSpellIn = {
+    caster: A, target: D, dtMs: dt, timestamp: 0, side: 'attacker', targetDebuffs: dDebuffs, casterDebuffs: aDebuffs,
+    targetSpellResistBonus: 0, casterHpPercentBonus: 0, targetMinion: dMin, casterMinion: aMin,
+    log: keepRows, spellsOut,
+  };
+  const dSpellIn = {
+    caster: D, target: A, dtMs: dt, timestamp: 0, side: 'defender', targetDebuffs: aDebuffs, casterDebuffs: dDebuffs,
+    targetSpellResistBonus: 0, casterHpPercentBonus: 0, targetMinion: aMin, casterMinion: dMin,
+    log: keepRows, spellsOut,
+  };
+  // the casters' rng lanes, looked up once (a lane is created once per name and never changes)
+  const aLane = lane(rng, 'attacker');
+  const dLane = lane(rng, 'defender');
 
   // L1456488-1456788: one side's debuffs tick; the damage goes through the victim's PVP Defense
   // once, then its shield. Rows are named after the CASTER's side.
@@ -299,24 +316,22 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     let aBuff = null;
     let dBuff = null;
     if (aRt) {
-      const rows = processArenaSpells(aRt, {
-        caster: A, target: D, dtMs: dt, timestamp: t, side: 'attacker', targetDebuffs: dDebuffs, casterDebuffs: aDebuffs,
-        targetSpellResistBonus: dBuffBefore?.spellResist ?? 0, casterHpPercentBonus: aStackHp,
-        targetMinion: dMin, casterMinion: aMin, log: keepRows,
-      }, lane(rng, 'attacker'));
-      for (const r of rows) events.push(r);
-      aMods = buffMods(aRt);
+      aSpellIn.timestamp = t;
+      aSpellIn.targetSpellResistBonus = dBuffBefore?.spellResist ?? 0;
+      aSpellIn.casterHpPercentBonus = aStackHp;
+      const rows = processArenaSpells(aRt, aSpellIn, aLane);
+      for (let i = 0; i < rows.length; i++) events.push(rows[i]);
+      aMods = spellsOut.buffModifiers;
       aBuff = aMods;
       aMaxHp = getBuffedMaxHp(A.maxHp, aBuff.hpPercent);
     }
     if (dRt) {
-      const rows = processArenaSpells(dRt, {
-        caster: D, target: A, dtMs: dt, timestamp: t, side: 'defender', targetDebuffs: aDebuffs, casterDebuffs: dDebuffs,
-        targetSpellResistBonus: aBuffBefore?.spellResist ?? 0, casterHpPercentBonus: dStackHp,
-        targetMinion: aMin, casterMinion: dMin, log: keepRows,
-      }, lane(rng, 'defender'));
-      for (const r of rows) events.push(r);
-      dMods = buffMods(dRt);
+      dSpellIn.timestamp = t;
+      dSpellIn.targetSpellResistBonus = aBuffBefore?.spellResist ?? 0;
+      dSpellIn.casterHpPercentBonus = dStackHp;
+      const rows = processArenaSpells(dRt, dSpellIn, dLane);
+      for (let i = 0; i < rows.length; i++) events.push(rows[i]);
+      dMods = spellsOut.buffModifiers;
       dBuff = dMods;
       dMaxHp = getBuffedMaxHp(D.maxHp, dBuff.hpPercent);
     }
@@ -357,8 +372,8 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     const dE = dBuff && hasActiveBuffs(dBuff) ? applyBuffsToEntity(D, dBuff) : D;
 
     // regen with Wound (percent) and Siegebreaker mark (points, floor 0) reductions (L1456827-1456988)
-    const aWound = computeDebuffModifiers(aDebuffs).regenReductionPercent;
-    const dWound = computeDebuffModifiers(dDebuffs).regenReductionPercent;
+    const aWound = aDebuffs.length > 0 ? computeDebuffModifiers(aDebuffs).regenReductionPercent : 0;
+    const dWound = dDebuffs.length > 0 ? computeDebuffModifiers(dDebuffs).regenReductionPercent : 0;
     const aRegen0 = aE.hpRegen;
     const dRegen0 = dE.hpRegen;
     if (aWound > 0) aE.hpRegen = aE.hpRegen * (1 - aWound / 100);
@@ -434,7 +449,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
       break;
     }
     if (log && s.hasMinions) R.tagMinionSnapshots(start);
-    if (!log) events.length = 0;
+    if (!log && events.length > 0) events.length = 0;
   }
 
   // --- the result (L1457456-1457621) ---

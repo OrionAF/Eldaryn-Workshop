@@ -103,7 +103,17 @@ export function routeSpellHealToMinion(minion, result, ownerMaxHp) {
  * @property {Object|null} [targetMinion=null]  the target's minion: absorbs spell_damage hits while alive
  * @property {Object|null} [casterMinion=null]  the caster's minion: receives minion heals and buffs
  * @property {boolean} [log=true]  false returns [] and skips building the log (state is identical)
+ * @property {{buffModifiers?: Object}|null} [spellsOut=null]  receives the tick's `buffModifiers`
+ *   (computeActiveBuffModifiers of the runtimes after the tick), so the caller need not recompute it
  */
+
+// The processSpellsTick input, one shared object refilled on every call: processSpellsTick reads it and
+// keeps nothing, and it never re-enters this function (saves an allocation per caster per tick).
+const SPELL_INPUT = {
+  maxHp: 0, dtMs: 0, timestamp: 0, attack: 0, healReductionPercent: 0, hp: 0, enemyHp: 0, enemyMaxHp: 0,
+  offensiveConditions: true, selfConditionsMet: false, spellDamage: 0, targetSpellResist: 0, spellCritChance: 0,
+  critDamage: 0, spellVamp: 0, silencedMs: 0, healingMult: 1, healBaseMaxHp: 0, minionAlive: false,
+};
 
 // port of processArenaSpells L1453857-1454667
 /**
@@ -129,35 +139,35 @@ export function processArenaSpells(runtimes, input, rng) {
   const {
     caster, target, dtMs, timestamp, side, targetDebuffs, casterDebuffs,
     targetSpellResistBonus = 0, casterHpPercentBonus = 0, targetMinion = null, casterMinion = null, log = true,
+    spellsOut = null,
   } = input;
   const attacker = side === 'attacker' ? caster : target;
   const defender = side === 'attacker' ? target : caster;
   const targetSide = side === 'attacker' ? 'defender' : 'attacker';
   const defFraction = target.pvpDefense > 0 ? ratingFraction(target.pvpDefense) : 0;
-  const woundPercent = computeDebuffModifiers(casterDebuffs).regenReductionPercent;
+  const woundPercent = casterDebuffs.length > 0 ? computeDebuffModifiers(casterDebuffs).regenReductionPercent : 0;
 
-  const result = processSpellsTick(runtimes, {
-    maxHp: caster.maxHp,
-    dtMs,
-    timestamp,
-    attack: caster.attack,
-    healReductionPercent: woundPercent,
-    hp: caster.hp,
-    enemyHp: target.hp,
-    enemyMaxHp: target.maxHp,
-    offensiveConditions: true,
-    selfConditionsMet: false,
-    spellDamage: caster.spellDamage,
-    targetSpellResist: target.spellResist + targetSpellResistBonus,
-    spellCritChance: caster.spellCritChance,
-    critDamage: caster.critDamage,
-    spellVamp: caster.spellVamp,
-    silencedMs: caster.silencedMs ?? 0,
-    healingMult: 1 - defFraction,
-    healBaseMaxHp: caster.rawMaxHp,
-    minionAlive: isMinionAlive(casterMinion),
-  }, rng);
+  const si = SPELL_INPUT;
+  si.maxHp = caster.maxHp;
+  si.dtMs = dtMs;
+  si.timestamp = timestamp;
+  si.attack = caster.attack;
+  si.healReductionPercent = woundPercent;
+  si.hp = caster.hp;
+  si.enemyHp = target.hp;
+  si.enemyMaxHp = target.maxHp;
+  si.spellDamage = caster.spellDamage;
+  si.targetSpellResist = target.spellResist + targetSpellResistBonus;
+  si.spellCritChance = caster.spellCritChance;
+  si.critDamage = caster.critDamage;
+  si.spellVamp = caster.spellVamp;
+  si.silencedMs = caster.silencedMs ?? 0;
+  si.healingMult = 1 - defFraction;
+  si.healBaseMaxHp = caster.rawMaxHp;
+  si.minionAlive = isMinionAlive(casterMinion);
+  const result = processSpellsTick(runtimes, si, rng);
 
+  if (spellsOut) spellsOut.buffModifiers = result.buffModifiers;
   const minionEvents = routeSpellHealToMinion(casterMinion, result, caster.maxHp);
 
   // --- caster HP and shield (L1453996-1454052) ---
@@ -175,12 +185,12 @@ export function processArenaSpells(runtimes, input, rng) {
 
   // --- the target's minion intercepts spell_damage hits while alive (L1454054-1454112) ---
   let targetHpDelta = result.targetHpDelta;
-  const minionHits = new Map(); // spell event -> {dealt, died}
+  let minionHits = null; // spell event -> {dealt, died}; made on the first intercepted hit
   if (targetMinion && targetMinion.alive && targetHpDelta < 0) {
     for (const ev of result.events) {
       if (ev.type === 'spell_damage' && ev.value > 0 && targetMinion.alive) {
         targetHpDelta += ev.value; // the whole hit, whatever the minion's remaining HP
-        minionHits.set(ev, damageMinion(targetMinion, ev.value));
+        (minionHits ??= new Map()).set(ev, damageMinion(targetMinion, ev.value));
       }
     }
   }
@@ -247,7 +257,7 @@ export function processArenaSpells(runtimes, input, rng) {
     : side === 'attacker' ? { attackerMomentumStacks: result.ownerMomentumStacks }
       : { defenderMomentumStacks: result.ownerMomentumStacks };
   for (const ev of result.events) {
-    const hit = minionHits.size > 0 ? minionHits.get(ev) : undefined;
+    const hit = minionHits !== null ? minionHits.get(ev) : undefined;
     const crit = ev.isCrit ? { isCrit: true } : {};
     if (!hit) {
       const reduced = (ev.type === 'spell_damage' || ev.type === 'spell_dot_tick') && defFraction > 0;
