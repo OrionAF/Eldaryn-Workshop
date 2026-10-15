@@ -13,7 +13,8 @@
    * onrunmore(row), footer snippet, unmeasured (per-change effects were never measured for this
    * row: a run saved before the attribution pass, or a row not yet confirmed; the cells say so).
    * `target` is the PVE win-rate goal's share (a fraction) or null: the row then carries a Meets / Below target
-   * chip and, below the target, how many points short it is. `basePower` is the current build's Combat Power:
+   * chip and, below the target, how many points short it is. `tries` adds "about N tries per clear" without a
+   * target (the highest-chance goal; a target implies it). `basePower` is the current build's Combat Power:
    * the baseline row shows its Power, every other row its Power change (nothing on runs saved without Power).
    */
   import { triesPerClear } from '../../lib/ui/winRateFormat.js';
@@ -34,6 +35,7 @@
     onrunmore = null,
     unmeasured = false,
     target = null,
+    tries = false,
     basePower = null,
     footer,
   } = $props();
@@ -47,7 +49,7 @@
   const standing = $derived(targetStanding(row, target));
   const power = $derived(powerText(row, basePower));
   const summary = $derived(
-    [row.isBaseline ? 'Current build' : changeSummary(row.changes), standing.gap, target != null ? triesPerClear(row.aux?.winRate?.est) : ''].filter(Boolean).join(' · '),
+    [row.isBaseline ? 'Current build' : changeSummary(row.changes), standing.gap, tries || target != null ? triesPerClear(row.aux?.winRate?.est) : ''].filter(Boolean).join(' · '),
   );
 
   function sentence(c, name) {

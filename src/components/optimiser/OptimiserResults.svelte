@@ -16,6 +16,7 @@
   import Drawer from '../ui/Drawer.svelte';
   import { triesPerClear } from '../../lib/ui/winRateFormat.js';
   import { goalWinRate, fortressDamage } from '../../lib/ui/optimiserView.js';
+  import { isWinRateKind } from '../../lib/search/objectives.js';
   import { fmtSigned, fmtEstimate, fmtContrast, fmtContrastCi } from '../../lib/ui/statsFormat.js';
 
   let {
@@ -33,10 +34,14 @@
   let drawer = $state(false);
 
   const AXIS_TITLE = { dps: 'Change in DPS vs current', ms: 'Time saved vs current (positive is faster)', p: 'Change in chance vs current' };
-  // A PVE win-rate run (view.goal or kind 'win-rate'): one axis in win-rate points, a Meets / Below target chip per row.
-  // A Push run's rows are win-rate rows measured on the step the build was found for (simulation.md §Push).
-  const winRun = $derived(view.kind === 'win-rate' || view.kind === 'push');
+  // A PVE win-rate run (either win-rate goal): one axis in win-rate points and tries per clear on every row; a
+  // target goal adds a Meets / Below target chip per row. A Push run's rows are win-rate rows measured on the
+  // step the build was found for (simulation.md §Push).
+  const winRun = $derived(isWinRateKind(view.kind) || view.kind === 'push');
+  const maxRun = $derived(view.kind === 'win-chance');
   const target = $derived(winRun ? (view.goal?.target ?? view.push?.target ?? null) : null);
+  // The highest-chance verdict's build: the first row shown better than the current one (search.js chanceGoalOf).
+  const bestRow = $derived(maxRun ? (view.rows.find((r) => r.vsBaseline?.verdict === 'better' && r.vsBaseline.basis === 'win-rate') ?? null) : null);
   const axisTitle = $derived(winRun ? 'Change in win rate vs current (percentage points)' : AXIS_TITLE[view.unit]);
   // The win rate the goal banners talk about (optimiserView.js goalWinRate).
   const goalTries = $derived(triesPerClear(goalWinRate(view)));
@@ -51,7 +56,31 @@
 </script>
 
 <div class="table" class:busy aria-busy={busy} data-testid="optimiser-results">
-  {#if view.goal?.status === 'already'}
+  {#if maxRun && view.goal?.status === 'already'}
+    <div class="goal" data-testid="goal-already">
+      <Banner variant="success" lead="Already clears every try.">
+        No build can beat the current one by the precision{goalTries ? ` (${goalTries})` : ''}. No changes suggested.
+      </Banner>
+    </div>
+  {:else if view.goal?.status === 'no-wins'}
+    <div class="goal" data-testid="goal-no-wins">
+      <Banner variant="warn" lead="No build won a fight.">
+        The builds are ranked by how far their fights got: the share of the step's HP they remove before losing.
+      </Banner>
+    </div>
+  {:else if maxRun && view.goal?.status === 'best' && bestRow}
+    <div class="goal" data-testid="goal-best">
+      <Banner variant="success" lead="Best chance to win: {fmtEstimate('p', bestRow.aux.winRate)}.">
+        The first row has the best chance found{goalTries ? ` (${goalTries})` : ''}. Builds within the precision count as equal, and the one with fewer changes ranks first.
+      </Banner>
+    </div>
+  {:else if maxRun && view.goal?.status === 'best'}
+    <div class="goal" data-testid="goal-no-gain">
+      <Banner variant="info" lead="No change raised the chance to win.">
+        The current build wins {view.baseline?.aux?.winRate ? fmtEstimate('p', view.baseline.aux.winRate) : 'as before'}{goalTries ? ` (${goalTries})` : ''}.
+      </Banner>
+    </div>
+  {:else if view.goal?.status === 'already'}
     <div class="goal" data-testid="goal-already">
       <Banner variant="success" lead="Already clears the target.">
         The current build wins at least {pct(view.goal.target)} of the time{goalTries ? ` (${goalTries})` : ''}. No changes suggested.
@@ -83,7 +112,7 @@
     </div>
     {#if view.baseline}
       <div data-testid="baseline-row">
-        <ResultRank row={view.baseline} unit={view.unit} domain={view.domain} {presetName} {target} basePower={view.baseline.power ?? null} />
+        <ResultRank row={view.baseline} unit={view.unit} domain={view.domain} {presetName} {target} tries={winRun} basePower={view.baseline.power ?? null} />
       </div>
     {/if}
   </div>
@@ -96,15 +125,20 @@
         domain={view.domain}
         {presetName}
         {target}
+        tries={winRun}
         basePower={view.baseline?.power ?? null}
         unmeasured={unmeasured(row)}
         onrunmore={onrunmore && !busy ? onrunmore : null}
       >
         {#snippet footer(r)}
           {#if winRun && r.vsBaseline?.basis}
-            <p class="note" data-testid="goal-basis">{r.vsBaseline.basis === 'margin'
-              ? 'Both builds win less than the target, so the verdict compares how far the fights got, not the win rate shown.'
-              : 'The verdict counts win rate only up to the target; a build above it gains nothing more.'}</p>
+            <p class="note" data-testid="goal-basis">{maxRun
+              ? r.vsBaseline.basis === 'margin'
+                ? 'Neither build won a fight, so the verdict compares how far the fights got (the share of the step\'s HP removed).'
+                : 'The verdict compares the win rate; builds within the precision count as equal and the one with fewer changes ranks first.'
+              : r.vsBaseline.basis === 'margin'
+                ? 'Both builds win less than the target, so the verdict compares how far the fights got, not the win rate shown.'
+                : 'The verdict counts win rate only up to the target; a build above it gains nothing more.'}</p>
           {/if}
           {#each r.changes.filter((c) => c.own?.basis === 'winRate' || c.needed?.basis === 'winRate') as c (c.id)}
             {@const w = c.own?.winRate ?? c.needed?.winRate}

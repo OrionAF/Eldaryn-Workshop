@@ -7,7 +7,7 @@
 | 1 | §10 Push | XS | Merging (queue run wf_2c43327e-8d7) |
 | 2 | §13 Glyph dominance pruning | S | Done (slice G1); merge pending |
 | 3 | §10 Fortress boss shield fix | S | Queued: review and merge |
-| 4 | §12 Highest chance to win | M | Queued: resumes from branch `rebuild2/W3-wip` |
+| 4 | §12 Highest chance to win | M | Done (slice W3) on branch `rebuild2/W3`: review and merge |
 | 5 | §15 Fortress boss fight from the server log | M | Queued |
 | 6 | §11 Celestial Trial Optimiser target | S | Queued |
 | 7 | §6 Results say which pet, mount or glyph | S | Queued |
@@ -91,7 +91,23 @@ For the user's Sentinel this cuts about 378 minor-glyph rows per visit to about 
 - Fast decisions at low rates. When the leading build has wins, builds with none are dropped quickly. Only when no build wins does how far each one gets decide, and the result then says so plainly.
 - Measured problem: on Hard Forsaken Mines step 2, a race of 299 sigil sets ran 306,208 fights and dropped none.
 
-**Status:** paused mid-build; the work so far is on branch `rebuild2/W3-wip`.
+**Status:** done (slice W3), on branch `rebuild2/W3`. The goal, the exact discordant bounds and the verdicts are in simulation.md §Win rate.
+
+Measured on the user's Sentinel (`profile-sentinel-l85-oct15b.json`), Hard Forsaken Mines, Standard effort, sigils only, seed 1. Each run has one race of 299 sigil sets. "Old" is main before W3 with "Reach a win rate" at 95%.
+
+| Step | Rule | Race fights | Arms dropped | Fights per arm | Whole run |
+|---|---|---|---|---|---|
+| 2 | Old | 377,856 | 298 | 233 at 1,024, 64 at 2,048, 2 at 4,096 | 382,976 fights |
+| 2 | Highest chance | 376,832 | 298 | 234 at 1,024, 63 at 2,048, 2 at 4,096 | 381,952 fights |
+| 3 | Old | 745,472 | 298 | 234 at 2,048, 65 at 4,096 | 751,616 fights |
+| 3 | Highest chance | 741,376 | 298 | 236 at 2,048, 63 at 4,096 | 747,520 fights |
+| 6 | Old | 745,472 | 296 | 234 at 2,048, 65 at 4,096 | 761,856 fights |
+| 6 | Highest chance | 612,352 | 0 (all tied) | 299 at 2,048 | 1,555,456 fights |
+
+- The 306,208 fights above are 299 arms at 1,024 fights plus the 32-fight screen: a snapshot at the first full look, before any arm could leave. Both rules drop the zero-win arms at that look or the next.
+- On step 2 the leader wins 0.9%, so the old Tango interval already ruled the zero-win arms out at 1,024 fights. The new bound changes nothing there.
+- On step 6 almost nothing wins. Every arm ties with the leader within 1 point by 2,048 fights and the race ends there, cheaper than the old race. No build won on the minimise and confirm fights either, so those contrasts compare progress and run towards maxN in minimise (523,264 fights) and confirm (419,824 fights). The whole run costs twice the old one (368 s against 200 s).
+- Open: progress contrasts between builds that never win run to maxN when their progress is close. A progress tolerance (a δ for the margin) would stop them early.
 
 ## 15. Fortress boss fight from the server log
 

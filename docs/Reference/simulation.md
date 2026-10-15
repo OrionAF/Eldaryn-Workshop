@@ -257,7 +257,7 @@ unused by any objective.
 |---|---|---|---|---|
 | `dps` | damage / window s; the mob cannot die inside the window | mean | t | paired t (`paired-t`); δ relative |
 | `survival` | 1 if alive at the window end | proportion | Wilson | Tango paired proportion; δ absolute |
-| `win-rate` | 1 + HP left / max HP if the whole step is cleared, else the share of the step's enemy HP removed (< 1); the win bit is score ≥ 1 | proportion of wins | Wilson | capped win rate, then the margin (§Win rate); δ absolute |
+| `win-chance`, `win-rate` | 1 + HP left / max HP if the whole step is cleared, else the share of the step's enemy HP removed (< 1); the win bit is score ≥ 1 | proportion of wins | Wilson | capped win rate, then the margin (§Win rate); δ absolute |
 | `pvp-winrate` | 1 if my build wins the duel, one lane per (opponent, seat) | pooled proportion, equal N per lane | Wilson on the pool | stratified Tango, one stratum per lane; δ absolute |
 
 The PVP row reports per-matchup Wilson intervals, mean duel length and the timeout share. None of these rank anything:
@@ -272,35 +272,55 @@ equal statistics are a tie (no effective-HP or duel-length tie-break).
 - `survival` (custom mobs only) is refused for a mob that cannot damage the player (no swing with
   attack > 0 and speed > 0). `objectiveKindsFor(kind, target)` leaves it out of the picker.
 - Target kinds and their objectives (the first is the default): dummy `dps`; chapter, dungeon (normal
-  and `_hard`), raid, Oblivion `win-rate`, `push` (§Push); World Boss `dps`; Fortress boss `dps`; custom `dps`, `win-rate`, `survival`
+  and `_hard`), raid, Oblivion `win-chance`, `win-rate`, `push` (§Push); World Boss `dps`; Fortress boss `dps`; custom `dps`, `win-chance`, `win-rate`, `survival`
   (`dps` stays the default); pvp `pvp-winrate`. Anything else is a retired goal.
 
 ### Win rate
 
-The goal for content the player clears (backlog §4): **the build with the fewest changes that clears
-the step at least a target share of the time**. 10 s and 50 s are the same; dying or reaching the
-fight's time cap (each mob's own cap, or the custom window) is a loss. Spec `{kind: 'win-rate',
-target}`, `target` in [0.1, 1], default 0.95 (`WIN_RATE_TARGET`).
+Two goals for content the player clears. 10 s and 50 s are the same; dying or reaching the fight's
+time cap (each mob's own cap, or the custom window) is a loss.
+
+- **Highest chance to win** (backlog §12, the default): **the build with the highest clear rate; builds
+  within δ of it tie, and the tie goes to the fewest changes**. Spec `{kind: 'win-chance'}`, no target.
+  It is the objective below with τ = 1, so g is the plain rate difference. `objective.goal` is `'max'`
+  (`'target'` below) and `objective.target` is null.
+- **Reach a win rate** (backlog §4): **the build with the fewest changes that clears the step at least a
+  target share of the time**. Spec `{kind: 'win-rate', target}`, `target` in [0.01, 1], default 0.95
+  (`WIN_RATE_TARGET`). Push keeps its own range [0.1, 1] (`PUSH_TARGET`, §Push).
 
 - **Per fight** one score s: a win scores 1 + HP left / max HP (in [1, 2]), a loss the share of the
   step's enemy HP removed, `damageDealt / (damageDealt + enemyHpLeft)`, kept below 1. The win bit is
   s ≥ 1, so one vector carries both the rate and the margin. `pointOf` (the win bit) puts the
   attribution remainder in win-rate points.
 - **Main criterion: the capped rate** g(X, Y) = min(p_X, τ) − min(p_Y, τ). Every build at or above
-  τ is equally good on it. Its interval combines three intervals at a joint level (Bonferroni, alpha /
-  2 in all): Tango on p_X − p_Y at alpha / 4 and a Wilson interval per build at alpha / 8. Since
+  τ is equally good on it. Its interval intersects five intervals at a joint level (Bonferroni,
+  3 alpha / 4 in all): Tango on p_X − p_Y at alpha / 4, a Wilson interval per build at alpha / 8, and
+  an exact one-sided Clopper-Pearson bound U (`binomialUpper`) on each discordant rate at alpha / 8.
+  With b fights that only X won and c that only Y won, p_X − p_Y is at most U(b) and at least −U(c).
+  Tango needs about z² / δ fights to bound a difference with no discordant pair; the exact bound needs
+  about ln(8 / alpha) / δ. Since
   min(·, τ) is monotone and 1-Lipschitz, g lies between 0 and p_X − p_Y and g > 0 needs p_Y < τ, so
   lo = max(L, min(lo_X, τ) − min(hi_Y, τ)) with L = min(lo_Δ, τ − hi_Y) when lo_Δ > 0 and hi_Y < τ,
   0 when lo_Δ > 0 otherwise, else lo_Δ; hi mirrors it. Two builds that both reach τ are therefore
   `equivalent` once the intervals are inside δ, never `better`. `basis: 'win-rate'`, method
   `capped-tango`; the uncapped Tango interval is reported beside it as `winRate: {delta, lo, hi}`.
-- **Second criterion: the margin**, mean s, paired t at alpha / 2 (`basis: 'margin'`). It is
-  attached only when both builds are confidently below τ (both Wilson upper bounds < τ) and the
+- **Second criterion: the margin**, mean s, paired t at alpha / 4 (`basis: 'margin'`). The rate takes
+  3 alpha / 4 and the margin alpha / 4, so the split stays inside alpha. For a target goal the margin
+  is attached only when both builds are confidently below τ (both Wilson upper bounds < τ). For the
+  highest chance it is attached only while neither build has won a fight; wins only accumulate, so it
+  is never pending (`thenPending` false). The
   comparator reads it only once g is `equivalent`: `better`/`worse` on the margin decide; while it is
-  open the comparison continues; at maxN the tie on g stands (`equivalent`). This gives the search a
+  open the comparison continues (a race keeps the arm open until its last look); at maxN the tie on g
+  stands (`equivalent`). This gives the search a
   gradient where the rate saturates at 0 (a 0 % build that gets further is better) without letting
   a bigger change win on margin among builds that already reach the target. δ is absolute in both
   units. The combined false-claim rate per look is at most alpha.
+- **Fast drops at low rates.** When the leader has wins and an arm has none, the arm's b is 0, so its
+  upper bound against the leader soon falls below +δ and it is `futile`. It is `worse` once the
+  leader's own wins (c) push the Tango bound below 0. Either way it leaves on `basis: 'win-rate'`,
+  whatever its progress. A futile arm nearer the baseline than the leader stays until it is
+  `equivalent` or `worse`. Progress only decides when neither build won (the
+  highest chance) or both are below τ (a target goal).
 - **Score** (race leader, row order): min(p̂, τ) × 10⁶ + mean s, lexicographic for n ≤ 131 072.
   Racing then picks, among the leader and its ties, the arm nearest the baseline: of the builds that
   reach the target, the one with the fewest changes. `primary` (the capped p̂) orders `better` rows
@@ -308,29 +328,46 @@ target}`, `target` in [0.1, 1], default 0.95 (`WIN_RATE_TARGET`).
 - **Meets the target** (`meetsTarget(estimate, τ, δ)`): true when the Wilson lower bound is at
   least τ − δ, false when the upper bound is below τ, else null.
 - **Already clears**: after the screen look the baseline is checked on S3 at looks n0, 2n0, … maxN,
-  Wilson at alpha / looks, until `meetsTarget` resolves. If it meets, the run stops: no search, no
+  Wilson at alpha / looks, until `meetsTarget` resolves. The highest chance checks against τ = 1: the
+  Wilson lower bound must reach 1 − δ. A small sample of wins (64 straight wins) never claims
+  'already', and the check always ends at maxN. If it meets, the run stops: no search, no
   rows, headline "Already clears at N% (95% CI lo-hi). No change needed." (the decision interval,
   coverage at least 95 %). The baseline is fixed, so checking and reporting on S3 carries no
   selection. Otherwise the search runs as usual and maximises the capped rate; `goal.status` is
   `reached` when a row meets the target (the first such row has the fewest changes) or
   `not-reached`, with the best build's rate in the headline.
-- **Range.** The target goes down to 10 %: a loss usually costs nothing but time (a failed chapter level
+- **Highest-chance verdicts** (`search.js` `chanceGoalOf`; `goal.mode` `'max'`, `goal.target` null):
+  `already` as above. `best` names the first row whose verdict is `better` on the win rate
+  (`basis: 'win-rate'`; a row better only on progress never heads it) ("Best chance to win: N%
+  (95% CI lo-hi) with k changes; the current build wins M%."), or the current build when no row is
+  better ("No change was shown to raise the chance to win. The current build wins N% (95% CI lo-hi).").
+  `no-wins` when no build won a single fight: the rows are then ranked by progress (mean s) and the
+  headline says so ("No build won any of N fights; the build that gets furthest (k changes) removes
+  P% of the step's HP.").
+- **Range.** The target goes down to 1 %: a loss usually costs nothing but time (a failed chapter level
   restarts, an Oblivion floor keeps its key on defeat, and only a dungeon clear spends a key;
   combat-pve.md §14, pve-content.md §4, §11), so a low target is a sensible goal for content the player
   can retry. Every win rate on screen carries "about N tries per clear" = 1 / p (`ui/winRateFormat.js`
   `triesPerClear`: one decimal below 10 tries, whole from 10, p = 1 "clears every try", p = 0 "no
   clears"). A low target resolves faster: a build well above τ is shown to meet it (the Wilson lower
   bound reaching τ − δ) after few fights, and only builds close to τ need the large N.
-- Cost: equivalence on a proportion with no discordant pair needs roughly z²/δ fights (about 1 000-2 000
-  at Standard), so builds tied at 0 % or at 100 % are resolved slowly; the cost is precision, never a cap.
+- Cost: with the exact discordant bounds, two builds that never win (or always win) are equal on the
+  rate after about ln(8 / alpha) / δ fights: about 900 at Standard with alpha / 60 per test. Tango alone
+  needed z² / δ (4 096 fights per arm in the same race). The measured race is in backlog §12. The cost
+  is precision, never a cap.
 
 **On screen** (Optimiser page, `WinRateTarget.svelte`, `OptimiserResults.svelte`): the goal list leads with
-"Win rate (clear without dying)" for chapters, dungeons, raids and Oblivion, with a Target field (percent,
-10-100, default 95). Rows show the win rate with its 95 % CI, its tries per clear and a Meets / Below
-target chip (below the target, how many points short). The table has one axis in win-rate points: every contrast, a change's own
+"Highest chance to win" for chapters, dungeons, raids and Oblivion (the default; hint "Finds the build
+with the best chance to clear this; ties go to the fewest changes. Speed does not matter."), then
+"Reach a win rate" with a Target field (percent, 1-100, default 95), then Push. Rows show the win rate
+with its 95 % CI and its tries per clear; a target goal adds a Meets / Below target chip (below the
+target, how many points short). The table has one axis in win-rate points: every contrast, a change's own
 effect included, is drawn as its uncapped `winRate` difference, while the verdict stays the capped-rate or
 margin one, and a note under the row names which decided it. `goal.status` 'already' shows a success banner
-and no rows; 'not-reached' lists the closest builds with their gaps. Drop Check and Oblivion Floors offer no
+and no rows; 'not-reached' lists the closest builds with their gaps. The highest chance shows 'already'
+("Already clears every try."), 'best' with a better row (success, "Best chance to win: N%" with its CI),
+'best' without one (info, "No change raised the chance to win." with the current rate) and 'no-wins'
+(warn, "No build won a fight." and that the rows are ranked by how far their fights got). Drop Check and Oblivion Floors offer no
 objective choice, so they carry no win-rate goal.
 
 ### Target fidelity
@@ -631,7 +668,8 @@ so a step can be easier than the one before for some builds).
 Quick full-space win-rate run spent its 30-minute limit and about 5 M fights without a verdict, because
 ties at 0 % need about z² / δ fights each (§Win rate, cost), per comparison and for every comparison of
 the search. Push would probe exactly such rungs. A5's race futility stop (§Racing) does not end that: an
-arm tied at 0 % is futile only once its capped-rate interval is inside δ, the same z² / δ fights. So
+arm tied at 0 % is futile only once its capped-rate interval is inside δ, the same z² / δ fights (about
+ln(8 / alpha) / δ since W3, §Win rate). So
 before optimising rung r, Push screens the neighbourhood the optimisation would start from: the centres
 (B, and the deepest build so far when it differs), every build one change from a centre (each enabled
 block's domain; spec and mount values raw, not inner-optimised), m builds in all, and every (centre,
@@ -742,7 +780,8 @@ in 7 s. A flat 0 % rung stops at the screen after about z² / δ fights per scre
   `lines` is `describeBuild` (display only). Win rate: `aux` is `{winRate: Estimate, meetsTarget:
   true|false|null, margin: Estimate (mean score), target}` and the result has `goal: {target, status:
   'already'|'reached'|'not-reached', baseline: {winRate, meetsTarget, check: {meets, n, value}},
-  bestKey, text}`; `headline.text` is `goal.text`. Run more re-derives `goal` from the re-measured rows (the baseline check stays the run's).
+  bestKey, text}`. The highest chance has no `meetsTarget` and `goal: {mode: 'max', target: null,
+  status: 'already'|'best'|'no-wins', baseline: {winRate, check}, bestKey, progress?, text}`; `headline.text` is `goal.text`. Run more re-derives `goal` from the re-measured rows (the baseline check stays the run's).
 - **Change**: `effect.changesOf`'s `{id, dimension, label, from, to, scope, owner, sideEffects,
   bundle}` plus `own: Contrast|null`, `needed: Contrast|null` (null only for a change that cannot be
   dropped alone) and `keptBecause` (`'own-effect'`, `'interaction'` or `'power-floor'`). **WriteGroup** (`writes`): `effect.writesOf`.

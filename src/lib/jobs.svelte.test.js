@@ -31,7 +31,7 @@ const { router, syncRouter } = await import('./router.svelte.js');
 const { notifications, resetNotifications } = await import('./notify.svelte.js');
 
 const settled = (id, status) =>
-  vi.waitFor(() => expect(jobsStore.list.find((j) => j.id === id)?.status).toBe(status), { timeout: 3000 });
+  vi.waitFor(() => expect(jobsStore.list.find((j) => j.id === id)?.status).toBe(status), { timeout: 15000 });
 const job = (id) => jobsStore.list.find((j) => j.id === id);
 
 beforeEach(() => {

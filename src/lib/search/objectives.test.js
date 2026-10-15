@@ -83,12 +83,12 @@ describe('resolveTarget', () => {
 describe('objective / target compatibility', () => {
   it('lists the sensible objectives per target kind', () => {
     expect(objectiveKindsFor('dummy')).toEqual(['dps']);
-    for (const k of ['chapter', 'dungeon', 'raid', 'oblivion']) expect(objectiveKindsFor(k)).toEqual(['win-rate', 'push']);
+    for (const k of ['chapter', 'dungeon', 'raid', 'oblivion']) expect(objectiveKindsFor(k)).toEqual(['win-chance', 'win-rate', 'push']);
     expect(objectiveKindsFor('worldBoss')).toEqual(['dps']);
     // with the target itself: survival only where something can hurt the player (#61)
     expect(objectiveKindsFor('worldBoss', { kind: 'worldBoss', affinity: 'NONE' })).toEqual(['dps']);
     expect(objectiveKindsFor('worldBoss', { kind: 'worldBoss', affinity: 'ENRAGED' })).toEqual(['dps']);
-    expect(objectiveKindsFor('custom')).toEqual(['dps', 'win-rate', 'survival']);
+    expect(objectiveKindsFor('custom')).toEqual(['dps', 'win-chance', 'win-rate', 'survival']);
     expect(objectiveKindsFor('bogus')).toEqual([]);
   });
 
@@ -128,11 +128,11 @@ describe('objective / target compatibility', () => {
     expect(goalRetired('pvp', 'pvp-winrate')).toBe(false);
   });
 
-  it('the win-rate target accepts 10 % to 100 % and rejects below', () => {
+  it('the win-rate target accepts 1 % to 100 % and rejects below', () => {
     const t = resolveTarget({ kind: 'chapter', chapter: 1, level: 1 });
-    expect(WIN_RATE_TARGET.min).toBe(0.1);
-    expect(makeObjective({ kind: 'win-rate', target: 0.1 }, t).spec.target).toBe(0.1);
-    expect(() => makeObjective({ kind: 'win-rate', target: 0.09 }, t)).toThrow(/between 0.1 and 1/);
+    expect(WIN_RATE_TARGET.min).toBe(0.01);
+    expect(makeObjective({ kind: 'win-rate', target: 0.01 }, t).spec.target).toBe(0.01);
+    expect(() => makeObjective({ kind: 'win-rate', target: 0.009 }, t)).toThrow(/between 0.01 and 1/);
   });
 });
 

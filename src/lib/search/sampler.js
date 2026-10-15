@@ -135,11 +135,11 @@ function verdictOf(objective, x, y, o, alpha, final) {
       zone = tz;
       verdict = tv;
     } else if (tv == null) {
-      if (o.futility && futile) verdict = 'futile';
-      else if (!final) return null;
+      // still open: not a tie before the last look (a race keeps the arm, compareSets looks again)
+      verdict = o.futility && futile ? 'futile' : (final ? verdict : null);
     }
   }
-  verdict ??= (o.futility && futile ? 'futile' : null) ?? (final ? 'unresolved' : null);
+  verdict ??= (o.futility && futile ? 'futile' : null) ?? (final || o.open ? 'unresolved' : null);
   if (!verdict) return null;
   return {
     delta: c.delta, lo: c.lo, hi: c.hi,
@@ -156,12 +156,14 @@ function verdictOf(objective, x, y, o, alpha, final) {
 
 /**
  * One paired contrast of X against Y at a fixed n (confirm, attribution, a re-measure): a Contrast
- * whose verdict is `unresolved` unless the interval resolves.
- * @param {{delta?: number, deltaKind?: string, deltaWinRate?: number, alpha?: number, seed?: number, B?: number}} [o]
+ * whose verdict is `unresolved` unless the interval resolves. `final: false` marks a look before the
+ * last one (a race): a rate that is `equivalent` while its margin is still open is then `unresolved`,
+ * not a tie (simulation.md §Win rate).
+ * @param {{delta?: number, deltaKind?: string, deltaWinRate?: number, alpha?: number, seed?: number, B?: number, final?: boolean}} [o]
  */
 export function contrastSets(objective, x, y, o = {}) {
   const n = Math.min(x.n, y.n);
-  return { ...verdictOf(objective, sliceSet(x, n), sliceSet(y, n), o, o.alpha ?? 0.05, true), looks: 1 };
+  return { ...verdictOf(objective, sliceSet(x, n), sliceSet(y, n), { ...o, open: true }, o.alpha ?? 0.05, o.final ?? true), looks: 1 };
 }
 
 /**

@@ -33,7 +33,7 @@ describe('normaliseSetup', () => {
     expect(normaliseSetup({ target: { kind: 'chapter', chapter: 99, level: 1 } }, character()).target.kind).toBe('dummy');
     const s = normaliseSetup({ target: { kind: 'chapter', chapter: 3, level: 2 }, objective: { kind: 'dps' } }, character());
     expect(s.target).toEqual({ kind: 'chapter', chapter: 3, level: 2 });
-    expect(s.objective.kind).toBe('win-rate');
+    expect(s.objective.kind).toBe('win-chance');
   });
   it('accepts a hard dungeon target', () => {
     const s = normaliseSetup({ target: { kind: 'dungeon', id: 'dungeon_2_hard', step: 3 }, objective: { kind: 'win-rate', target: 0.8 } }, character());
