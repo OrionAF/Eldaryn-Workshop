@@ -11,12 +11,13 @@
   import { slotLabel, statLabel, formatStatValue, STONE_COLOR } from './gearFormat.js';
   import { BASE_SLOTS } from '../../lib/game/gear.js';
 
-  let { stones, sets, cls = null, selectedStoneId = null, onSelect, equippedStoneId = null } = $props();
+  let { stones, sets, cls = null, selectedStoneId = null, onSelect, equippedStoneId = null, typeFilter = '', sortBy = 'default' } = $props();
 
   const typeRank = new Map(STONE_TYPES.map((t, i) => [t.enum, i]));
   const socketedIds = $derived(new Set(sets.flatMap((s) => BASE_SLOTS.map((slot) => s.enchantSlots[slot]).filter(Boolean))));
   const sorted = $derived(
-    [...stones].sort((a, b) => {
+    [...stones.filter((x) => !typeFilter || x.type === typeFilter)].sort((a, b) => {
+      if (sortBy === 'quality') return (b.quality ?? 0) - (a.quality ?? 0);
       const bySocketed = (socketedIds.has(b.id) ? 1 : 0) - (socketedIds.has(a.id) ? 1 : 0);
       if (bySocketed !== 0) return bySocketed;
       const byType = (typeRank.get(b.type) ?? -1) - (typeRank.get(a.type) ?? -1);
@@ -61,8 +62,9 @@
           <span class="stone-type">{typeName(stone.type)}</span>
           <span class="stone-quality mono">{stone.quality != null ? `Q${stone.quality}` : 'Q?'}</span>
         </span>
-        {#if stone.amplifyLevel > 0 || stone.oblivionLevel}
+        {#if stone.amplifyLevel > 0 || stone.oblivionLevel || !stone.activated}
           <span class="stone-tags mono">
+            {#if !stone.activated}<span>Inactive</span>{/if}
             {#if stone.oblivionLevel}<span>Grade {stone.oblivionLevel} {oblivionGrade(stone.oblivionLevel)?.grade ?? ''}</span>{/if}
             {#if stone.amplifyLevel > 0}<span>+{stone.amplifyLevel}</span>{/if}
           </span>

@@ -17,6 +17,7 @@
   import { slotLabel, statLabel, toDisplay, fromDisplay } from './gearFormat.js';
   import { formatFlat } from '../../lib/format.js';
   import ConfirmButton from '../ConfirmButton.svelte';
+  import Checkbox from '../ui/Checkbox.svelte';
 
   let { realm = 'base', stones, cls = null, setKey, setLabel, selectedSlot, canSocket = true, selectedStoneId = null, onSelect } = $props();
 
@@ -28,6 +29,7 @@
   // The parent re-mounts this form per realm ({#key realm}), so the initial type is read once.
   let newType = $state(untrack(() => (realm === 'oblivion' ? 'OBLIVION' : 'PVE_ATTACK')));
   let newQuality = $state('');
+  let newActivated = $state(true);
   let newGrade = $state(1);
   let choiceStat = $state('');
   let values = $state({});
@@ -58,6 +60,7 @@
     const quality = parseInt(newQuality, 10);
     const id = rosterStore.addEnchantStone(realm, {
       type: recipe.type,
+      activated: newActivated,
       quality: Number.isFinite(quality) ? quality : null,
       oblivionLevel: recipe.type === 'OBLIVION' ? Number(newGrade) : null,
       stats,
@@ -103,6 +106,7 @@
       <span class="label">Quality (1-100)</span>
       <input type="number" aria-label="Stone quality" min="1" max="100" bind:value={newQuality} />
     </label>
+    <Checkbox bind:checked={newActivated} label="Activated" />
     {#if recipe.type === 'OBLIVION'}
       <label class="field">
         <span class="label">Grade</span>
@@ -167,6 +171,9 @@
       <span class="label">Quality (1-100)</span>
       <input type="number" aria-label="Stone quality" min="1" max="100" value={selected.quality ?? ''} onchange={(e) => setQuality(e.currentTarget.value)} />
     </label>
+
+    <Checkbox checked={selected.activated} label="Activated" onchange={(v) => patch({ activated: v })} />
+    {#if !selected.activated}<p class="hint">An inactive stone adds nothing to the build (stones.md §1), even when socketed.</p>{/if}
 
     <div class="field">
       <span class="label">Amplify (+0 to +{MAX_AMPLIFY_LEVEL})</span>
