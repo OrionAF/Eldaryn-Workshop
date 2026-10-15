@@ -1,4 +1,4 @@
-// Stat dominance pruning (backlog Â§16, simulation.md Â§Build space / Dominance): talents, relics, pets, and the
+// Stat dominance pruning (backlog §16, simulation.md §Build space / Dominance): talents, relics, pets, and the
 // damage-only and thorns rules, on small synthetic characters.
 import { describe, it, expect } from 'vitest';
 import { createBuildSpace, BLOCKS } from './space.js';
@@ -24,10 +24,10 @@ function warrior(edit = {}, presetEdit = {}, spec) {
 }
 
 describe('catalogue facts the rules rest on', () => {
-  it('every relic bonus is positive and grows with level (Game/relics.md Â§2)', () => {
+  it('every relic bonus is positive and grows with level (Game/relics.md §2)', () => {
     for (const r of RELICS) for (const b of r.bonuses) expect(b.base > 0 && b.max >= b.base, `${r.id} ${b.stat}`).toBe(true);
   });
-  it('every talent adds a positive amount per rank (Game/talents.md Â§5)', () => {
+  it('every talent adds a positive amount per rank (Game/talents.md §5)', () => {
     for (const spec of Object.values(TALENT_SPECS)) {
       for (const t of spec.tiers.flatMap((x) => x.talents)) {
         expect(t.bonusPerRank.valuePerRank > 0, t.id).toBe(true);
@@ -35,7 +35,7 @@ describe('catalogue facts the rules rest on', () => {
       }
     }
   });
-  it('every pet species adds positive flat Attack and HP (Game/pets.md Â§4)', () => {
+  it('every pet species adds positive flat Attack and HP (Game/pets.md §4)', () => {
     for (const p of PET_SPECIES) expect(p.baseAttack > 0 && p.baseHp > 0, p.species).toBe(true);
   });
 });
@@ -97,7 +97,7 @@ describe('pets', () => {
 });
 
 describe('talents', () => {
-  // level 20 has 6 talent points (Game/talents.md Â§3), all spent here, so no +1 move exists
+  // level 20 has 6 talent points (Game/talents.md §3), all spent here, so no +1 move exists
   const ALLOC = { dps_t1_sharpened_blade: 5, dps_t2_keen_edge: 1 };
   const space = createBuildSpace(warrior({ level: 20, talentSets: [{ spec: 'WARRIOR_DPS', allocation: ALLOC }, { spec: 'WARRIOR_TANK', allocation: {} }] }, { talentSet: 0, mountId: null }), 'p1'); // mounts unlock at 40
   const tried = block(space, 'talents').domain(space.start).map((c) => c.talentAllocation);
@@ -221,5 +221,9 @@ describe('a full optimise with pruning', () => {
     const dps = dpsVsDummy(s.fighterOf(best), { seconds: 60, n: 400, seed: 4242, cache: false }).mean;
     expect(dps).toBeGreaterThanOrEqual(BEFORE_DPS);
     expect(r.phases.find((p) => p.id === 'search').fights).toBeLessThan(BEFORE_SEARCH_FIGHTS);
+    // the result names what a block skipped ("N talent moves skipped: dominated")
+    const talents = r.search.blocks.find((b) => b.id === 'talents').pruned;
+    expect(talents.length).toBeGreaterThan(0);
+    expect(talents.every((p) => p.reason === 'dominated')).toBe(true);
   });
 });
