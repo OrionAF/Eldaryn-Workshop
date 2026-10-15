@@ -55,6 +55,16 @@ export const DUEL_STAT_DEFAULTS = Object.freeze({
   totalSpellResist: 0, totalSpellCritChance: 0, totalSpellVamp: 0,
 });
 
+/** The wording for "this duel stat was left blank and took its neutral value", shared by every place that says so. */
+export const NEUTRAL_VALUE_TEXT = Object.freeze({
+  /** lead of the banner above a sheet with blank rows */
+  bannerLead: 'Blank rows use neutral values.',
+  /** screen-reader tail of a defaulted cell */
+  cellHint: 'blank, neutral value used',
+  /** result warning for one opponent; `names` are the blank row names */
+  warning: (who, names) => `${who}: ${names.join(', ')} left blank in its sheet, so neutral values were used.`,
+});
+
 /**
  * A complete duel sheet from a sparse one (blank rows, stats the class sheet hides). Present keys are
  * kept as given; absent ones take their neutral value; `disruptionEffect` is derived from class and form

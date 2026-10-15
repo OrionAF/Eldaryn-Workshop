@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { fixtureCharacter } from './fixtures.js';
 import { describeBuild } from './describe.js';
 import { petDisplayName } from '../game/pets.js';
+import { buildFighter } from './fighter.js';
+import { SIGIL_CATALOGUE, sigilClasses, isSigilSpeciesActiveForSpec } from '../game/sigils.js';
 
 const line = (lines, label) => lines.find((l) => l.label === label)?.value;
 
@@ -42,6 +44,21 @@ describe('describeBuild', () => {
     const lines = describeBuild(c, cand);
     expect(lines.find((l) => l.label === 'Relics')).toMatchObject({ value: 'None', inactive: 'relic_gone (not owned)' });
     expect(lines.find((l) => l.label === 'Sigils')).toMatchObject({ value: 'None', inactive: 'GONE_SIGIL (not owned)' });
+  });
+
+  it('calls a sigil unusable exactly when the Fighter would not run it (one rule for both)', () => {
+    const w = JSON.parse(JSON.stringify(fixtureCharacter('WARRIOR')));
+    const foreign = SIGIL_CATALOGUE.find((x) => x.rarity !== 'Ancient' && !sigilClasses(x).includes('WARRIOR')).species;
+    w.sigils.owned[foreign] = { level: 1 };
+    const preset = { ...w.presets[0], sigilSpecies: [foreign] };
+    const fighterRuns = buildFighter(w, preset.id).sigils.length;
+    // the engine's rule (isSigilSpeciesActiveForSpec) does not look at the class for a Warrior, so
+    // describe must not claim the sigil is inert while the Fighter carries it
+    const runs = isSigilSpeciesActiveForSpec(foreign, 'WARRIOR', null);
+    const sigils = describeBuild(w, preset).find((l) => l.label === 'Sigils');
+    expect(runs).toBe(true);
+    expect(sigils.inactive).toBeUndefined();
+    expect(fighterRuns).toBeGreaterThan(0);
   });
 
   const LABELS = ['Gear set', 'Talents', 'Pet', 'Mount', 'Minor glyphs', 'Major glyphs', 'Mythic glyph', 'Relics', 'Sigils', 'Utility sigil', 'Ancient sigil', 'Conditions', 'Transcendence'];

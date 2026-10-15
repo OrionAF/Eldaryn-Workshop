@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   simulateFight, simulatePve, preparePveFighter, sigilStateOf, mobEntityOf, trainingDummy,
   oblivionCombatState, worldBossHooks, FIGHT_CAP_MS, PVE_SHIELD_MITIGATION, PVE_PLAYER_KEYS, PVE_MODES, pveModeOf,
+  PVE_ASSUMPTIONS, DUNGEON_TICK_MS, DUNGEON_SHIELD_MITIGATION, INTER_MOB_GAP_MS,
 } from './fight.js';
 import { createPlayerEntity, createMobEntity } from '../core/entity.js';
 import { initSpellRuntimes } from '../core/spells.js';
@@ -1095,10 +1096,27 @@ describe('engine input validation (plan I9)', () => {
   it('a fighter with missing stats is an EngineInputError, not NaN', () => {
     expect(errorName(() => simulatePve({ fighter: f({}), enemy: { hp: 1000, attack: 0, attackSpeed: 0 }, rng: rng() }))).toBe('EngineInputError');
   });
+  it.each([['dtMs', NaN], ['dtMs', 0], ['dtMs', Infinity], ['maxMs', NaN], ['maxMs', Infinity]])(
+    'a %s of %s is an EngineInputError, not a fight that never ends', (key, value) => {
+      const call = () => simulatePve({ fighter: f(stats()), enemy: { hp: 1000, attack: 0, attackSpeed: 0 }, rng: rng(), [key]: value });
+      expect(errorName(call)).toBe('EngineInputError');
+    });
   it('an empty enemy list is an EngineInputError', () => {
     expect(errorName(() => simulatePve({ fighter: f(stats()), enemy: [], rng: rng() }))).toBe('EngineInputError');
   });
   it('a mob without HP is an EngineInputError', () => {
     expect(errorName(() => simulatePve({ fighter: f(stats()), enemy: { attack: 1, attackSpeed: 1 }, rng: rng() }))).toBe('EngineInputError');
+  });
+});
+
+describe('the dungeon constants are stated once', () => {
+  it('the modes and the assumption labels read the same tick, mitigation and gap', () => {
+    expect(PVE_MODES.dungeon).toMatchObject({ dtMs: DUNGEON_TICK_MS, shieldMitigation: DUNGEON_SHIELD_MITIGATION, interMobGapMs: INTER_MOB_GAP_MS });
+    const text = PVE_ASSUMPTIONS.oblivionConstants.text;
+    expect(text).toContain(`${DUNGEON_TICK_MS} ms`);
+    expect(text).toContain(`(${DUNGEON_SHIELD_MITIGATION})`);
+    expect(text).toContain(`${INTER_MOB_GAP_MS} ms`);
+    expect(PVE_ASSUMPTIONS.raidShield.text).toContain(String(DUNGEON_SHIELD_MITIGATION));
+    expect(PVE_ASSUMPTIONS.customShield.text).toContain(String(PVE_SHIELD_MITIGATION));
   });
 });

@@ -5,6 +5,7 @@
    * the output. A row a side left blank is marked `default` and named in the cell's label.
    */
   import { displayStat } from '../../lib/features/duel.js';
+  import { NEUTRAL_VALUE_TEXT } from '../../lib/engine/pvp/resolver.js';
 
   /** @type {{rows: Array<{key: string, label: string, mine: number|null, theirs: number|null, mineDefaulted: boolean, theirsDefaulted: boolean}>, myName: string, theirName: string}} */
   let { rows, myName, theirName } = $props();
@@ -21,10 +22,10 @@
         <tr>
           <th scope="row" class="lbl">{r.label}</th>
           <td class="r num" class:dflt={r.mineDefaulted} data-defaulted={r.mineDefaulted ? 'true' : undefined}>
-            {displayStat(r.key, r.mine)}{#if r.mineDefaulted}<span class="tag"><span class="visually-hidden"> (</span>default<span class="visually-hidden">: blank, neutral value used)</span></span>{/if}
+            {displayStat(r.key, r.mine)}{#if r.mineDefaulted}<span class="tag"><span class="visually-hidden"> (</span>default<span class="visually-hidden">: {NEUTRAL_VALUE_TEXT.cellHint})</span></span>{/if}
           </td>
           <td class="r num" class:dflt={r.theirsDefaulted} data-defaulted={r.theirsDefaulted ? 'true' : undefined}>
-            {displayStat(r.key, r.theirs)}{#if r.theirsDefaulted}<span class="tag"><span class="visually-hidden"> (</span>default<span class="visually-hidden">: blank, neutral value used)</span></span>{/if}
+            {displayStat(r.key, r.theirs)}{#if r.theirsDefaulted}<span class="tag"><span class="visually-hidden"> (</span>default<span class="visually-hidden">: {NEUTRAL_VALUE_TEXT.cellHint})</span></span>{/if}
           </td>
         </tr>
       {/each}
