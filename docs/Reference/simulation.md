@@ -285,7 +285,9 @@ merged by engine key (`effect.mergeByEngine`).
   `search.unresolved` and mark their block `unresolved`.
 - **Compound blocks**: a `spec` arm is the switched build inner-optimised over sigils, utility,
   ancient, conditions, major glyphs and talents; a `mount` arm is the mount inner-optimised over its
-  sockets (memoised per start).
+  sockets (memoised per start). An inner ascent reports its optimum (the arm raced) and lists its
+  open neighbours in `search.unresolved`; its ties are not finalists, because the outer ascent's last
+  pass re-races every block around the final optimum.
 - **Finalists**: the distinct optima, plus the ties and unresolved arms of each ascent's last pass
   (the builds as good as the optimum at this precision), each canonicalised (inert changes reverted).
 
@@ -301,7 +303,8 @@ merged by engine key (`effect.mergeByEngine`).
 - **Confirm** (S3): every distinct minimised build against the baseline, sequentially, Holm across
   rows. `worse` rows are hidden (`headline.worseHidden`).
 - **Attribute** (S3, at the row's confirm n): `own(c)` = (B + c) against B and `needed(c)` = F against
-  F − c, each Holm within the row; `keptBecause` = `own-effect` when `own` is significantly better,
+  F − c, each Holm within the row (step-down over fixed-n contrasts: all at α / m, then the rest at
+  α / (m − rejected) until a round rejects nothing); `keptBecause` = `own-effect` when `own` is significantly better,
   else `interaction`. The interaction remainder (two or more changes): per fight
   `d_full − Σ d_c`, paired t, for mean and proportion objectives (PVP lanes averaged per fight
   index); a paired bootstrap of θ(F) − θ(B) − Σ(θ(B + c) − θ(B)) (B = 2 000) for quantile objectives.
@@ -341,7 +344,8 @@ sample lengths it requested). A checkpoint is posted after the search, after min
 finalists, minimised, confirmed}`. A request with `resumeFrom` replays the log step by step without
 simulating (a step whose kind or inputs differ ends the replay), so cancel + resume equals the
 uninterrupted run apart from wall-clock fields. A checkpoint of another request or character is
-ignored (warning `checkpoint-ignored`). Fight counts are logical (the highest n requested per build
+ignored (warning `checkpoint-ignored`). The plan's `frontier: {start, incumbentKey, block, armsN}`
+is reduced to `{armsN}` on purpose: replaying the log rebuilds the start, incumbent and block. Fight counts are logical (the highest n requested per build
 and stage, times lanes), so they too are identical after a resume. Cancel is soft: sampling stops at
 the next yield (every 25 ms), the checkpoint is posted, and the result has `status: 'cancelled'`,
 `aborted: true`, provisional rows (values from the fights already held, no contrasts) and
@@ -352,8 +356,11 @@ the next yield (every 25 ms), the checkpoint is posted, and the result has `stat
 `optimizeMore({character, result, rowKeys?, targetN, round?})` re-measures the chosen rows, their
 changes' `own`/`needed` and the baseline at exactly `targetN` on `S4k` (k = `round`, default the
 next), Holm across the chosen rows, and returns the result with those rows and the baseline updated
-and `more: {round, targetN, seed, rowKeys}`. A character whose snapshot key differs from the run's
-`request.characterKey` is refused.
+and `more: {round, targetN, seed, rowKeys}`. The rows are then re-checked (I1, I2; I3 stands from
+the run's minimise), rows now `worse` are hidden (`headline.worseHidden`), and the rest are re-ranked
+and re-grouped: a re-measured row is scored on S4k at `targetN`, any other on S3 at its confirm n;
+adjacent rows are resolved apart on S4k when both were re-measured, else on S3 at the smaller confirm
+n. A character whose snapshot key differs from the run's `request.characterKey` is refused.
 
 ### Cost
 
@@ -366,6 +373,9 @@ Measured on the Warrior fixture (one thread, this machine; a 60 s dummy fight co
 
 The full run shared four cores with other jobs. Standard and Thorough cost more: n0 doubles, and a
 comparison inside δ can run to maxN. A PVP duel costs several times a dummy fight, per matchup.
+The Effort control prints these figures (U8 owns its final form). The screen has
+Cancel (provisional rows) but no Resume yet: the task accepts `resumeFrom`, and the Resume button
+arrives with the job store (U3) and the optimiser page (U8).
 
 ## Result
 
@@ -394,7 +404,10 @@ comparison inside δ can run to maxN. A PVP duel costs several times a dummy fig
   `'winRate'` when a TTK contrast fell back to win rate; `n` per lane).
 - `search: {strategy, jointSize, blocks: [{id, enabled, domain, status: 'converged'|'unresolved'|
   'disabled'|'not-reached'}], starts, optima, evaluated, merged, fights: {search, minimise, confirm,
-  total}, converged, unresolved: [{fromKey, toKey, change, contrast}]}`.
+  total}, converged, unresolved: [{fromKey, toKey, change, contrast}]}`. `converged` is true for
+  every finished search: there is no pass cap, so an ascent only ends when a pass accepts nothing.
+  Whether that optimum is resolved is `unresolved` (open neighbours, distinct pairs) and the blocks'
+  `status`.
 - `phases: [{id, label, state: 'done'|'cancelled'|'not-run', fights, ms}]`, `multiplicity` (the
   families above), `warnings: [{code, message, severity}]` (`sheet-stale`, `sheet-unverified`,
   `residual-applied`, `opponent-defaulted`, `change-dropped-unresolved`, `arms-not-simulable`,

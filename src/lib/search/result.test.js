@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rowViolations, assertRow, contrastOut, estimateOut, headlineOf, rankRows, targetOut, failedResult, RESULT_SCHEMA } from './result.js';
+import { rowViolations, assertRow, contrastOut, estimateOut, headlineOf, rankRows, groupTies, nearestOfEqual, targetOut, failedResult, RESULT_SCHEMA } from './result.js';
 import { createBuildSpace } from './space.js';
 import { changesOf } from './effect.js';
 import { fixtureCharacter } from '../build/fixtures.js';
@@ -55,6 +55,29 @@ describe('result shapes', () => {
     const r = (key, verdict, score, n) => ({ key, vsBaseline: { verdict }, changes: Array(n).fill({}), score });
     const ranked = rankRows([r('e', 'equivalent', 9, 2), r('a', 'better', 1, 3), r('b', 'better', 5, 1), r('u', 'unresolved', 0, 1)], (x) => x.score);
     expect(ranked.map((x) => [x.key, x.rank])).toEqual([['b', 1], ['a', 2], ['u', 3], ['e', 4]]);
+  });
+
+  it('tie groups: adjacent better rows not resolved apart share the first rank; the rest are null or 0', async () => {
+    const r = (key, verdict, score) => ({ key, vsBaseline: { verdict }, changes: [{}], score });
+    const ranked = rankRows([r('a', 'better', 9), r('b', 'better', 8), r('c', 'better', 7), r('d', 'better', 3), r('e', 'better', 2), r('u', 'unresolved', 5), r('q', 'equivalent', 4)], (x) => x.score);
+    const seen = [];
+    // a~b and b~c are not resolved apart; c|d and d|e are
+    const tied = new Set(['a|b', 'b|c']);
+    await groupTies(ranked, async (x, y, alpha) => {
+      seen.push([`${x.key}|${y.key}`, alpha]);
+      return !tied.has(`${x.key}|${y.key}`);
+    });
+    expect(ranked.map((x) => [x.key, x.rank, x.tieGroup])).toEqual([['a', 1, 1], ['b', 2, 1], ['c', 3, 1], ['d', 4, null], ['e', 5, null], ['u', 6, 0], ['q', 7, 0]]);
+    // Bonferroni over the four adjacent better pairs
+    expect(seen.map(([p]) => p)).toEqual(['a|b', 'b|c', 'c|d', 'd|e']);
+    expect(seen.every(([, a]) => a === 0.05 / 4)).toBe(true);
+  });
+
+  it('builds equal in effect: of rows with one outcome signature the nearest (then smaller key) stays', () => {
+    const r = (key, sig, dist) => ({ key, _sig: sig, _dist: dist });
+    const out = nearestOfEqual([r('k3', 's1', 2), r('k2', 's1', 1), r('k1', 's2', 3), r('k0', 's1', 1), r('k4', 's3', 1)]);
+    expect(out.rows.map((x) => x.key)).toEqual(['k1', 'k0', 'k4']);
+    expect(out.merged).toBe(2);
   });
 
   it('targets carry tagged assumptions; a failed result explains itself', () => {
