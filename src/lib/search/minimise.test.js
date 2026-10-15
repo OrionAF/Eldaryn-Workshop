@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { holmSequential, remainderOf, gainOf } from './minimise.js';
+import { holmSequential, holmFixed, remainderOf, gainOf } from './minimise.js';
 import { compareSets } from './sampler.js';
 import { pairedT, meanInterval } from '../engine/stats/index.js';
 import { hashSeed, mulberry32 } from '../engine/rng.js';
@@ -22,6 +22,36 @@ describe('holmSequential', () => {
 
   it('an empty family is empty', async () => {
     expect(await holmSequential([], 0.05, async () => ({}))).toEqual([]);
+  });
+});
+
+describe('holmFixed (attribution within a row)', () => {
+  // A fixed-n contrast whose p-value is fixed per pair: significant when p <= the level it runs at.
+  const at = (ps) => async (X, Y, n, a) => ({ p: ps[X], n, significant: ps[X] <= a, verdict: ps[X] <= a ? 'better' : 'unresolved' });
+  const pairs = (m) => Array.from({ length: m }, (_, i) => [i, 'B']);
+
+  it('is Holm step-down: p = [0.03, 0.04] at 0.05 rejects neither', async () => {
+    const out = await holmFixed(pairs(2), 0.05, at([0.03, 0.04]), 16);
+    expect(out.map((c) => c.significant)).toEqual([false, false]);
+    expect(out.every((c) => c.n === 16)).toBe(true);
+  });
+
+  it('rejects the smallest first, then re-tests the rest at the looser level', async () => {
+    const out = await holmFixed(pairs(3), 0.06, at([0.01, 0.05, 0.025]), 16);
+    // 0.01 <= 0.02 rejected; then 0.025 <= 0.03 rejected; then 0.05 <= 0.06 rejected
+    expect(out.map((c) => c.significant)).toEqual([true, true, true]);
+    expect(out.map((c) => Number(c.alphaAdj.toFixed(4)))).toEqual([0.02, 0.06, 0.03]);
+  });
+
+  it('is monotone: a smaller p is never less significant than a larger one', async () => {
+    const rng = mulberry32(hashSeed('holm-fixed-monotone'));
+    for (let t = 0; t < 200; t++) {
+      const ps = Array.from({ length: 1 + Math.floor(rng() * 5) }, () => rng() * 0.1);
+      const out = await holmFixed(pairs(ps.length), 0.05, at(ps), 8);
+      for (let i = 0; i < ps.length; i++) {
+        for (let j = 0; j < ps.length; j++) if (ps[i] < ps[j] && out[j].significant) expect(out[i].significant).toBe(true);
+      }
+    }
   });
 });
 

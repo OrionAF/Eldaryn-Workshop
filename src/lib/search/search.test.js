@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { optimize, optimizeMore, resolveEffort, EXHAUSTIVE_MAX } from './search.js';
 import { BLOCKS, createBuildSpace } from './space.js';
+import { changesOf, writesOf } from './effect.js';
+import { rowViolations } from './result.js';
 import { legalityOf } from './legality.js';
 import { makeObjective, resolveTarget } from './objectives.js';
 import { fixtureCharacter } from '../build/fixtures.js';
@@ -9,6 +11,7 @@ import { genericSigils } from '../model/sigils.js';
 import { sanitiseAllocation } from '../model/talents.js';
 import { talentSpec } from '../game/talents.js';
 import { dpsVsDummy } from '../engine/metrics.js';
+import { cloneAsOpponent } from '../features/duel.js';
 
 const only = (...on) => Object.fromEntries(BLOCKS.map((b) => [b, on.includes(b)]));
 const TINY = { level: 'quick', n0: 8, maxN: 32, randomStarts: 0 };
@@ -95,6 +98,47 @@ describe('optimize: changes are the effect oracle\'s, never describe-line diffs 
     const r = await optimize({ character, presetId: 'p1', target: SHORT, space: only('ancient'), effort: TINY, seed: 1 });
     expect(r.rows[0].changes.map((c) => [c.id, c.from])).toEqual([['ancient', 'None']]);
   });
+
+  it('removing the Ancient sigil is an ancient change too (the oracle, both directions)', () => {
+    const character = fixtureCharacter('WARRIOR');
+    const space = createBuildSpace(character, 'p1', {});
+    const B = space.start;
+    expect(B.ancientSigilSpecies).toBe('FLAMEBORN');
+    const X = space.canonical({ ...B, ancientSigilSpecies: null });
+    const changes = changesOf(space, B, X);
+    expect(changes.map((c) => [c.id, c.dimension, c.to, c.scope])).toEqual([['ancient', 'ancient', 'None', 'preset']]);
+    expect(writesOf(space, B, X, changes).map((w) => w.changeIds)).toEqual([['ancient']]);
+    // reverting the removal alters the engine inputs (I2), so a row carrying it would stand
+    expect(rowViolations(space, B, { rank: 1, isBaseline: false, candidate: X, changes })).toEqual([]);
+  });
+});
+
+describe('optimize: too close to call (A.8, A.9)', { timeout: 120000 }, () => {
+  const character = edit((raw) => {
+    raw.glyphs.push({ id: 'gl-9', glyphType: 'g-keen', rarity: 'Legendary', secondary: { stat: 'attackPercent', quality: 1 } });
+  });
+  const req = { character, presetId: 'p1', target: SHORT, space: only('minorGlyphs'), effort: TINY };
+
+  it('a row still open at maxN is unresolved, offers Run more and sits in tie group 0', async () => {
+    const r = await optimize({ ...req, seed: 2 });
+    const open = r.rows.filter((row) => row.vsBaseline.verdict === 'unresolved');
+    expect(open.length).toBeGreaterThan(0);
+    for (const row of open) {
+      expect(row.vsBaseline.n).toBe(TINY.maxN);
+      expect(row.runMore).toMatchObject({ reason: 'unresolved' });
+      expect(row.runMore.targetN).toBeGreaterThan(TINY.maxN);
+      expect(row.tieGroup).toBe(0);
+    }
+    expect(r.headline.unresolved).toBe(open.length);
+    for (const row of r.rows.filter((x) => x.vsBaseline.verdict === 'better')) expect(row.runMore).toBeNull();
+  });
+
+  it('a change dropped while unresolved at maxN is listed as a warning', async () => {
+    const r = await optimize({ ...req, seed: 1 });
+    const w = r.warnings.filter((x) => x.code === 'change-dropped-unresolved');
+    expect(w.length).toBeGreaterThan(0);
+    expect(w[0].message).toMatch(new RegExp(`too close to call at ${TINY.maxN} fights`));
+  });
 });
 
 describe('optimize: no inert or target-inert riders (#53, #71)', { timeout: 120000 }, () => {
@@ -133,7 +177,20 @@ describe('optimize: coverage (#52, #57, #70)', { timeout: 120000 }, () => {
     });
     const r = await optimize({ character, presetId: 'p1', target: { kind: 'dummy', seconds: 15 }, space: only('talents'), effort: TINY, seed: 1 });
     expect(r.search.strategy).toBe('local');
-    expect(r.search.converged).toBe(true);
+    // every block was reached; neighbours still open at maxN are listed and mark their block
+    const talents = r.search.blocks.find((b) => b.id === 'talents');
+    expect(['converged', 'unresolved']).toContain(talents.status);
+    expect(talents.status === 'unresolved').toBe(r.search.unresolved.length > 0);
+    expect(new Set(r.search.unresolved.map((u) => `${u.fromKey}|${u.toKey}`)).size).toBe(r.search.unresolved.length);
+    // tie groups: adjacent better rows not resolved apart share the first one's rank, contiguously
+    const groups = new Map();
+    for (const row of r.rows) if (row.tieGroup) groups.set(row.tieGroup, [...(groups.get(row.tieGroup) ?? []), row.rank]);
+    expect(groups.size).toBeGreaterThan(0);
+    for (const [g, ranks] of groups) {
+      expect(ranks.length).toBeGreaterThan(1);
+      expect(ranks).toEqual(Array.from({ length: ranks.length }, (_, i) => g + i));
+    }
+    for (const row of r.rows) if (row.vsBaseline.verdict !== 'better') expect(row.tieGroup).toBe(0);
     const space = createBuildSpace(character, 'p1', {});
     const truth = (cand) => dpsVsDummy(space.fighterOf(cand), { seconds: 60, n: 400, seed: 4242, cache: false }).mean;
     // the old beam with maxPasses = 30 reached 1.2246x the poor allocation; its default (3 passes) 1.089x
@@ -149,6 +206,21 @@ describe('optimize: coverage (#52, #57, #70)', { timeout: 120000 }, () => {
     expect(r.search.blocks.every((b) => b.enabled)).toBe(true);
     expect(r.search.blocks.map((b) => b.status).filter((s) => s === 'not-reached')).toEqual([]);
   }, 120000);
+
+  it('PVP: a Warrior owning all 12 generic sigils still reaches every enabled block (#70)', async () => {
+    const character = edit((raw) => {
+      for (const s of genericSigils('WARRIOR', 'WARRIOR_DPS')) raw.sigils.owned[s.species] ??= { level: 10 };
+      raw.opponents = [{ ...cloneAsOpponent(fixtureCharacter('WARRIOR'), 'p1', 'WARRIOR_TANK', 'Tanky'), id: 'opp-a' }];
+    });
+    const r = await optimize({
+      character, presetId: 'p1', target: { kind: 'pvp', opponentIds: ['opp-a'], seats: 'attacker' }, objective: { kind: 'pvp-winrate' },
+      space: only('relics', 'sigils', 'utility', 'ancient', 'conditions', 'pet'), effort: { level: 'quick', n0: 2, maxN: 2, randomStarts: 0 }, seed: 1,
+    });
+    expect(r.status).toBe('done');
+    const enabled = r.search.blocks.filter((b) => b.enabled);
+    expect(enabled.find((b) => b.id === 'sigils').domain).toBeGreaterThan(200);
+    expect(enabled.map((b) => b.status).filter((s) => s === 'not-reached')).toEqual([]);
+  }, 300000);
 });
 
 describe('cancel and resume', { timeout: 120000 }, () => {
@@ -156,7 +228,7 @@ describe('cancel and resume', { timeout: 120000 }, () => {
 
   it('a cancelled run posts a checkpoint and returns provisional rows; resuming equals an uninterrupted run', async () => {
     const whole = await optimize(req);
-    for (const stopAt of ['search', 'minimise', 'attribute']) {
+    for (const stopAt of ['search', 'minimise', 'confirm', 'attribute']) {
       const ctl = new AbortController();
       const cps = [];
       const cut = await optimize(req, {
@@ -172,6 +244,27 @@ describe('cancel and resume', { timeout: 120000 }, () => {
       const resumed = await optimize({ ...req, resumeFrom: JSON.parse(JSON.stringify(cp)) });
       expect(timeless(resumed)).toEqual(timeless(whole));
     }
+  });
+
+  it('the local strategy: a run cancelled mid-ascent resumes to the uninterrupted result', async () => {
+    const local = { character: fixtureCharacter('WARRIOR'), presetId: 'p1', target: SHORT, space: only('talents', 'pet'), effort: { level: 'quick', n0: 4, maxN: 8, randomStarts: 0 }, seed: 6 };
+    const wholeCps = [];
+    const whole = await optimize(local, { onCheckpoint: (c) => wholeCps.push(c) });
+    expect(whole.search.strategy).toBe('local');
+    const searchSteps = wholeCps[0].log.length; // the checkpoint posted after the search
+    const ctl = new AbortController();
+    const cps = [];
+    const cut = await optimize(local, {
+      signal: ctl.signal,
+      onCheckpoint: (c) => cps.push(c),
+      onProgress: (p) => { if (p.phase === 'search' && p.counts.evaluated >= 40) ctl.abort(); },
+    });
+    expect(cut).toMatchObject({ status: 'cancelled', checkpoint: { phase: 'search' } });
+    const cp = cps.at(-1);
+    expect(cp.log.some((e) => e.kind === 'race')).toBe(true);
+    expect(cp.log.length).toBeLessThan(searchSteps); // cut inside the ascent
+    const resumed = await optimize({ ...local, resumeFrom: JSON.parse(JSON.stringify(cp)) });
+    expect(timeless(resumed)).toEqual(timeless(whole));
   });
 
   it('a checkpoint from another request is ignored with a note', async () => {
@@ -205,6 +298,26 @@ describe('optimizeMore', { timeout: 120000 }, () => {
     expect(m.rows[0].vsBaseline.n).toBe(24);
     expect(m.baseline.value.n).toBe(24);
     await expect(optimizeMore({ character: fixtureCharacter('WARRIOR'), result: r, targetN: 24 })).rejects.toThrow(/changed/);
+  });
+
+  it('re-ranks and re-groups the rows on their latest data', async () => {
+    const character = edit((raw) => {
+      raw.glyphs.push({ id: 'gl-9', glyphType: 'g-keen', rarity: 'Legendary', secondary: { stat: 'attackPercent', quality: 1 } });
+    });
+    const r = await optimize({ character, presetId: 'p1', target: SHORT, space: only('minorGlyphs'), effort: TINY, seed: 2 });
+    expect(r.rows.map((x) => x.vsBaseline.verdict)).toEqual(['better', 'unresolved']);
+    // a result whose order and groups are stale: the rows reversed, a bogus shared group
+    const stale = { ...r, rows: [...r.rows].reverse().map((x, i) => ({ ...x, rank: i + 1, tieGroup: 7 })) };
+    const warnings = JSON.stringify(stale.warnings);
+    const m = await optimizeMore({ character, result: stale, rowKeys: [r.rows[1].key], targetN: 64 });
+    expect(JSON.stringify(stale.warnings)).toBe(warnings);
+    const better = m.rows.filter((x) => x.vsBaseline.verdict === 'better');
+    expect(m.rows.slice(0, better.length)).toEqual(better);
+    expect(m.rows.map((x) => x.rank)).toEqual(m.rows.map((_, i) => i + 1));
+    expect(m.rows.some((x) => x.tieGroup === 7)).toBe(false);
+    for (const x of m.rows) if (x.vsBaseline.verdict !== 'better') expect(x.tieGroup).toBe(0);
+    expect(m.rows.find((x) => x.key === r.rows[1].key).vsBaseline.n).toBe(64);
+    expect(m.headline.better + m.headline.equivalent + m.headline.unresolved).toBe(m.rows.length);
   });
 });
 

@@ -7,7 +7,7 @@
 //   contrastAt(X, Y, n, alpha) -> Contrast  fixed n, on the confirm stage (S3)
 //   getSet(arm, n) -> sample set            on the confirm stage (S3)
 import { hashSeed, mulberry32 } from '../engine/rng.js';
-import { meanInterval, censoredQuantile, holm } from '../engine/stats/index.js';
+import { meanInterval, censoredQuantile } from '../engine/stats/index.js';
 import { changesOf, revert, addChange, canonicalise } from './effect.js';
 
 /**
@@ -136,15 +136,13 @@ export function remainderOf(objective, F, Bs, own, { alpha = 0.05, seed = 1, B =
   return { delta: point, lo, hi, method: 'bootstrap' };
 }
 
-/** Fixed-n contrasts with Holm: the level each one reaches, then each at that level. */
-async function holmFixed(pairs, alpha, contrastAt, n) {
-  if (!pairs.length) return [];
-  const first = [];
-  for (const [X, Y] of pairs) first.push(await contrastAt(X, Y, n, alpha));
-  const { alphaEach } = holm(first.map((c) => (Number.isFinite(c.p) ? c.p : 1)), alpha);
-  const out = [];
-  for (let i = 0; i < pairs.length; i++) out.push(alphaEach[i] === alpha ? first[i] : await contrastAt(pairs[i][0], pairs[i][1], n, alphaEach[i]));
-  return out;
+/**
+ * Fixed-n contrasts with Holm's step-down (the same rounds as holmSequential, each test a contrast at
+ * n): all at alpha / m, then the ones not yet significant at alpha / (m - rejected), until a round
+ * rejects nothing. `pairs` is [[X, Y], ...]; one Contrast per pair, with `alphaAdj`.
+ */
+export function holmFixed(pairs, alpha, contrastAt, n) {
+  return holmSequential(pairs, alpha, ([X, Y], a) => contrastAt(X, Y, n, a));
 }
 
 /**

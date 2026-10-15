@@ -21,10 +21,10 @@ import { legalityOf } from './legality.js';
 import { resolveTarget, makeObjective, residualFor } from './objectives.js';
 import { createSampler, compareSets, contrastSets, setOf, isAbort, AbortError } from './sampler.js';
 import { race } from './race.js';
-import { minimise, attribute, holmSequential } from './minimise.js';
+import { minimise, attribute, holmSequential, holmFixed } from './minimise.js';
 import {
   RESULT_SCHEMA, CHECKPOINT_SCHEMA, PHASES, MULTIPLICITY, estimateOut, contrastOut, targetOut, objectiveOut,
-  headlineOf, rankRows, failedResult, rowViolations,
+  headlineOf, rankRows, failedResult, rowViolations, nearestOfEqual, groupTies,
 } from './result.js';
 
 /** The joint space is raced exhaustively at or below this many builds (a strategy switch, not a cap). */
@@ -435,7 +435,13 @@ async function searchPhase(prep, run) {
     const start = armOf(cand);
     if (!ids.length || !simulable(start)) return start;
     const k = `${ids.join(',')}|${start.key}`;
-    if (!innerMemo.has(k)) innerMemo.set(k, (await ascent(start, ids)).x);
+    if (!innerMemo.has(k)) {
+      // The inner optimum is the arm raced; its neighbours still open are listed like the outer ones.
+      // Its ties are not finalists: the outer ascent's last pass re-races every block around the final x.
+      const r = await ascent(start, ids);
+      unresolvedOut.push(...r.unresolved);
+      innerMemo.set(k, r.x);
+    }
     return innerMemo.get(k);
   }
 
@@ -637,7 +643,7 @@ async function searchPhase(prep, run) {
     jointSize: out.strategy === 'exhaustive' || jointSize <= Number.MAX_SAFE_INTEGER ? jointSize : null,
     blocks,
     optimaCount: optimaKeys.size,
-    unresolved: unresolvedOut,
+    unresolved: [...new Map(unresolvedOut.map((u) => [`${u.fromKey}|${u.toKey}`, u])).values()],
     canonArm,
   };
 }
@@ -690,6 +696,32 @@ async function provisionalRow(prep, run, arm, B, stages) {
     rank: 0, tieGroup: null, isBaseline: arm.key === B.key, provisional: true, key: arm.key, engineKey: run.ekOf(arm),
     candidate: arm.cand, value, aux: {}, vsBaseline: null, changes, remainder: null,
     writes: arm.key === B.key ? [] : writesOf(space, B.cand, arm.cand, changes), runMore: null, lines: lineOf(space, arm.cand),
+  };
+}
+
+/** Rows that hold I1-I3 (result.js rowViolations); strict throws on the first violation, else it is withheld with a warning. */
+function withholdViolations(space, B, rows, { strict, warnings, decided }) {
+  const kept = [];
+  for (const r of rows) {
+    const v = rowViolations(space, B.cand, r, { decided: decided(r) });
+    if (v.length && strict) throw new Error(`Optimiser invariant violated on row ${r.key}: ${v.join('; ')}`);
+    if (v.length) warnings.push({ code: 'invariant', severity: 'warn', message: `A build was withheld: ${v.join('; ')}` });
+    else kept.push(r);
+  }
+  return kept;
+}
+
+/**
+ * Whether two adjacent `better` rows are resolved apart (groupTies): one fixed-n contrast on the stage
+ * and n `pick(a, b)` returns ({stage, n}).
+ */
+function apartOn(prep, run, pick) {
+  const { objective, effort } = prep;
+  return async (a, b, alpha) => {
+    const { stage, n } = pick(a, b);
+    const x = await run.getSet(run.armOf(a.candidate), stage, n);
+    const y = await run.getSet(run.armOf(b.candidate), stage, n);
+    return contrastSets(objective, x, y, { alpha, delta: effort.delta, deltaKind: effort.deltaKind, seed: stage.seed }).significant;
   };
 }
 
@@ -813,28 +845,10 @@ export async function optimize(request, hooks = {}) {
       });
     }
     // builds equal in effect on this target (bit-identical outcomes, A.5 b): the nearest one stays
-    const bySig = new Map();
-    for (const r of rows) {
-      const k = bySig.get(r._sig);
-      if (!k || r._dist < k._dist || (r._dist === k._dist && r.key < k.key)) bySig.set(r._sig, r);
-    }
-    st.merged.sampleIdentical += rows.length - bySig.size;
-    const ranked = rankRows(rows.filter((r) => bySig.get(r._sig) === r), (r) => r._score);
-    // tie groups: adjacent better rows not resolved apart (Bonferroni over the adjacent pairs);
-    // equivalent and unresolved rows are not resolved apart from the baseline (group 0)
-    const betterRows = ranked.filter((r) => r.vsBaseline.verdict === 'better');
-    const pairs = Math.max(1, betterRows.length - 1);
-    for (let i = 1; i < betterRows.length; i++) {
-      const a = betterRows[i - 1];
-      const b = betterRows[i];
-      const n = Math.min(a.vsBaseline.n, b.vsBaseline.n);
-      const ca = contrastSets(objective, await run.getSet(armOf(a.candidate), S3, n), await run.getSet(armOf(b.candidate), S3, n), { alpha: ALPHA / pairs, delta: effort.delta, deltaKind: effort.deltaKind, seed: S3.seed });
-      if (!ca.significant) {
-        a.tieGroup = a.tieGroup ?? a.rank;
-        b.tieGroup = a.tieGroup;
-      }
-    }
-    for (const r of ranked) if (r.vsBaseline.verdict !== 'better') r.tieGroup = 0;
+    const equal = nearestOfEqual(rows);
+    st.merged.sampleIdentical += equal.merged;
+    const kept = withholdViolations(space, B, equal.rows, { strict, warnings, decided: (r) => r._decided });
+    const ranked = await groupTies(rankRows(kept, (r) => r._score), apartOn(prep, run, (a, b) => ({ stage: S3, n: Math.min(a.vsBaseline.n, b.vsBaseline.n) })));
 
     const baseEst = objective.estimate(baseSet, { alpha: ALPHA });
     const baseline = {
@@ -842,14 +856,7 @@ export async function optimize(request, hooks = {}) {
       value: estimateOut({ ...baseEst.value, seed: S3.seed }), aux: auxOf(prep, baseEst, null, null), vsBaseline: null, changes: [],
       remainder: null, writes: [], runMore: null, lines: lineOf(space, B.cand),
     };
-    const kept = [];
-    for (const r of ranked) {
-      const v = rowViolations(space, B.cand, r, { decided: r._decided });
-      if (v.length && strict) throw new Error(`Optimiser invariant violated on row ${r.rank}: ${v.join('; ')}`);
-      if (v.length) warnings.push({ code: 'invariant', severity: 'warn', message: `A build was withheld: ${v.join('; ')}` });
-      else kept.push(r);
-    }
-    const rowsOut = kept.map(({ _score, _decided, _sig, _dist, ...r }, i) => ({ ...r, rank: i + 1 }));
+    const rowsOut = ranked.map(({ _score, _decided, _sig, _dist, ...r }) => r);
     st.phaseState.attribute = 'done';
     st.phaseMs.attribute += Date.now() - st.phaseStart;
     const result = {
@@ -935,7 +942,7 @@ function searchSummary(s, st) {
     evaluated: st.evaluated.size,
     merged: { ...st.merged },
     fights: { search, minimise: f.minimise, confirm, total: search + f.minimise + confirm },
-    converged: true,
+    converged: true, // a finished search always ends at a fixed point (simulation.md §Result)
     unresolved: s.unresolved,
   };
 }
@@ -946,7 +953,8 @@ function searchSummary(s, st) {
 /**
  * Re-measure rows of a finished result, their changes and the baseline at a fixed `targetN` on a
  * fresh seed (S4k). Request: {character, result, rowKeys?, targetN, seed?, round?}. Returns the
- * result with those rows (and the baseline) updated and `more: {round, targetN, seed}`.
+ * result with those rows (and the baseline) updated, the rows re-checked (I1, I2), re-ranked and
+ * re-grouped, rows now `worse` hidden, and `more: {round, targetN, seed, rowKeys}`.
  */
 export async function optimizeMore(request, hooks = {}) {
   const { character, result } = request ?? {};
@@ -957,8 +965,10 @@ export async function optimizeMore(request, hooks = {}) {
   const targetN = Number.isInteger(request.targetN) && request.targetN >= 2 ? request.targetN : null;
   if (!targetN) throw new Error('optimizeMore: targetN must be an integer >= 2');
   const round = Number.isInteger(request.round) && request.round >= 1 ? request.round : (result.more?.round ?? 0) + 1;
+  const S3 = { id: 'confirm', seed: prep.seeds.confirm };
   const S4 = { id: `more${round}`, seed: moreSeed(prep.seed, prep.target.key, round) };
   const { space, objective, effort } = prep;
+  const strict = hooks.strict ?? strictDefault();
   const run = createRun(prep, { ...hooks, jobId: request.jobId ?? null, replay: null });
   const { armOf } = run;
   const B = armOf(space.start);
@@ -967,12 +977,7 @@ export async function optimizeMore(request, hooks = {}) {
   try {
     run.setPhase('confirm');
     const arms = picked.map((x) => armOf(x.candidate));
-    const first = [];
-    for (const a of arms) first.push(await run.contrastAt(a, B, S4, targetN, effort.alpha));
-    const vs = await holmSequential(arms, effort.alpha, async (a, alphaEach) => {
-      const i = arms.indexOf(a);
-      return alphaEach === effort.alpha ? first[i] : run.contrastAt(a, B, S4, targetN, alphaEach);
-    });
+    const vs = await holmFixed(arms.map((a) => [a, B]), effort.alpha, (X, Y, n, a) => run.contrastAt(X, Y, S4, n, a), targetN);
     run.setPhase('attribute');
     const ctx = {
       space, B, armOf, objective,
@@ -993,12 +998,29 @@ export async function optimizeMore(request, hooks = {}) {
       });
     }
     const baseEst = objective.estimate(baseSet, { alpha: ALPHA });
-    const rows = result.rows.map((x) => (updated.has(x.key) ? { ...x, ...updated.get(x.key) } : x));
+    // Re-rank on each row's latest data: a re-measured row on S4 at targetN, the others on S3 at their
+    // confirm n (the same fights the run reported). Adjacent rows are resolved apart on S4 when both were
+    // re-measured, else on S3 at the smaller of their confirm n.
+    const confirmN = new Map(result.rows.map((x) => [x.key, x.vsBaseline.n]));
+    const merged = result.rows.map((x) => (updated.has(x.key) ? { ...x, ...updated.get(x.key) } : x));
+    const shown = merged.filter((x) => x.vsBaseline.verdict !== 'worse');
+    const warnings = [...(result.warnings ?? [])];
+    const kept = withholdViolations(space, B, shown, { strict, warnings, decided: () => null });
+    const scores = new Map();
+    for (const x of kept) {
+      const set = updated.has(x.key) ? await run.getSet(armOf(x.candidate), S4, targetN) : await run.getSet(armOf(x.candidate), S3, confirmN.get(x.key));
+      scores.set(x.key, objective.score(set));
+    }
+    const pick = (a, b) => (updated.has(a.key) && updated.has(b.key)
+      ? { stage: S4, n: targetN }
+      : { stage: S3, n: Math.min(confirmN.get(a.key), confirmN.get(b.key)) });
+    const rows = await groupTies(rankRows(kept, (x) => scores.get(x.key)), apartOn(prep, run, pick));
     return {
       ...result,
       baseline: { ...result.baseline, value: estimateOut({ ...baseEst.value, seed: S4.seed }), aux: auxOf(prep, baseEst, null, null) },
       rows,
-      headline: headlineOf(rows, result.headline.worseHidden),
+      warnings,
+      headline: headlineOf(rows, result.headline.worseHidden + merged.length - shown.length),
       more: { round, targetN, seed: S4.seed, rowKeys: [...updated.keys()] },
     };
   } catch (e) {

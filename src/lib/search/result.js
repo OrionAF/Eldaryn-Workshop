@@ -123,6 +123,43 @@ export function rankRows(rows, scoreOf) {
   return [...better, ...rest].map((r, i) => ({ ...r, rank: i + 1 }));
 }
 
+/**
+ * Builds equal in effect on this target (bit-identical outcome vectors at the same n, A.5 b): of each
+ * set the one nearest the baseline stays (then the smaller key). Rows carry `_sig` (n and a hash of the
+ * vectors) and `_dist` (distanceOf). Keeps the input order.
+ * @returns {{rows: Object[], merged: number}}
+ */
+export function nearestOfEqual(rows) {
+  const bySig = new Map();
+  for (const r of rows) {
+    const k = bySig.get(r._sig);
+    if (!k || r._dist < k._dist || (r._dist === k._dist && r.key < k.key)) bySig.set(r._sig, r);
+  }
+  const kept = rows.filter((r) => bySig.get(r._sig) === r);
+  return { rows: kept, merged: rows.length - kept.length };
+}
+
+/**
+ * Tie groups over ranked rows (simulation.md §Minimise and confirm, Ranking): adjacent `better` rows
+ * not resolved apart (Bonferroni over the adjacent pairs) share a group, the first one's rank; other
+ * `better` rows have null; `equivalent` and `unresolved` rows have 0 (not resolved apart from the
+ * baseline). `apart(a, b, alpha)` resolves whether the pair differs. Sets `tieGroup` in place.
+ * @returns {Promise<Object[]>} the rows
+ */
+export async function groupTies(ranked, apart, alpha = MULTIPLICITY.alpha) {
+  const better = ranked.filter((r) => r.vsBaseline?.verdict === 'better');
+  for (const r of ranked) r.tieGroup = r.vsBaseline?.verdict === 'better' ? null : 0;
+  const a = alpha / Math.max(1, better.length - 1);
+  for (let i = 1; i < better.length; i++) {
+    const [x, y] = [better[i - 1], better[i]];
+    if (!(await apart(x, y, a))) {
+      x.tieGroup = x.tieGroup ?? x.rank;
+      y.tieGroup = x.tieGroup;
+    }
+  }
+  return ranked;
+}
+
 /** A failed result (setup blocker or engine error): no rows, the reason stated. */
 export function failedResult({ request, target, objective, warnings = [], baselineViolations = [], error = null, ms = 0 }) {
   return {

@@ -154,6 +154,8 @@
       </label>
     </div>
     <p class="hint">{effortHint} The same seed reproduces the same result. A different seed re-rolls the fights.</p>
+    <!-- measured cost: docs/Reference/simulation.md §Cost -->
+    <p class="hint" data-testid="effort-cost">Run time is not capped. Measured at Quick: relics and pet about 1 s, every block about 4 minutes. Standard and Thorough take longer, PVP several times longer.</p>
   </div>
 
   <div class="run-row">
