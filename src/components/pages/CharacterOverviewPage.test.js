@@ -44,8 +44,8 @@ it('class is editable here and re-normalises the character', () => {
 
 it('a level change that drops nothing applies at once and shows the Saved tick', () => {
   mountPage();
-  commit(view.q('input[aria-label="Level"]'), '55');
-  expect(rosterStore.current.level).toBe(55);
+  commit(view.q('input[aria-label="Level"]'), '58');
+  expect(rosterStore.current.level).toBe(58);
   expect(view.q('[role="status"]').textContent).toContain('Saved');
   expect(view.q('dialog[open]')).toBeNull();
 });
@@ -62,6 +62,16 @@ it('lowering the level previews what it drops and writes nothing until confirmed
   click([...dialog.querySelectorAll('button')].find((b) => b.textContent.includes('Lower level')));
   expect(rosterStore.current.level).toBe(10);
   expect(rosterStore.current.presets[0].sigilSpecies).toEqual([]);
+});
+
+it('lowering the level below an unlock gate warns that Set 2, Set B, mounts and Transcendence go inert', () => {
+  rosterStore.setCharacterLevel(60);
+  mountPage();
+  commit(view.q('input[aria-label="Level"]'), '30');
+  const text = view.q('dialog[open]').textContent;
+  for (const name of ['Set B', 'Mounts', 'Transcendence presets']) expect(text).toContain(name);
+  expect(text).not.toContain('Set 2 ');
+  expect(rosterStore.current.level).toBe(60); // preview only
 });
 
 it('cancelling the drop preview keeps the level and the stepper shows it again', () => {

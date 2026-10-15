@@ -191,3 +191,25 @@ describe('level change', () => {
     expect(cur.awakening.level).toBe(0);
   });
 });
+
+describe('previewLevelChange inert gates', () => {
+  const inertAt = (from, to) => {
+    const c = fixtureCharacter('WARRIOR');
+    c.level = from;
+    return storeFor(c).characters.previewLevelChange(to).inert;
+  };
+
+  it('names each gate the new level falls below, which stays saved but stops counting', () => {
+    expect(inertAt(100, 27)).toEqual(['Set 2', 'Set B', 'Mounts', 'Transcendence', 'Transcendence presets']);
+    expect(inertAt(100, 57)).toEqual(['Transcendence presets']);
+    expect(inertAt(100, 54)).toEqual(['Transcendence', 'Transcendence presets']);
+    expect(inertAt(100, 39)).toEqual(['Mounts', 'Transcendence', 'Transcendence presets']);
+    expect(inertAt(100, 37)).toEqual(['Set B', 'Mounts', 'Transcendence', 'Transcendence presets']);
+  });
+
+  it('lists nothing when no gate is crossed, including a level that is already below it', () => {
+    expect(inertAt(100, 58)).toEqual([]);
+    expect(inertAt(30, 29)).toEqual([]);
+    expect(inertAt(20, 10)).toEqual([]);
+  });
+});

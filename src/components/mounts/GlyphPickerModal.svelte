@@ -10,6 +10,7 @@
   import { glyphTypeInfo, majorGlyphAllowed } from '../../lib/model/glyphs.js';
   import { glyphImage } from '../../lib/assets/glyphs.js';
   import Modal from '../Modal.svelte';
+  import Button from '../ui/Button.svelte';
   import { TIER_LABELS, glyphText, rarityClass } from './mountsView.js';
 
   let { open = $bindable(false), mountName = '', tier = 'minor', index = 0, current = null, glyphs = [], playerClass = null, specs = [], whereIs = () => null, onPick } = $props();
@@ -39,7 +40,7 @@
           <li>
             <button
               type="button"
-              class="option rarity-card {rarityClass(glyph.rarity)}"
+              class="option {rarityClass(glyph.rarity)}"
               class:on={glyph.id === current}
               disabled={glyph.sealed}
               aria-pressed={glyph.id === current}
@@ -58,14 +59,14 @@
     {/if}
   {/snippet}
   {#snippet footer()}
-    <button type="button" class="btn-ghost" disabled={!current} onclick={() => pick(null)}>Empty this socket</button>
+    <Button variant="ghost" disabled={!current} onclick={() => pick(null)}>Empty this socket</Button>
   {/snippet}
 </Modal>
 
 <style>
   .empty {
-    color: var(--color-muted);
-    font-size: 12px;
+    color: var(--text-muted);
+    font-size: var(--fs-12);
     margin: 0;
   }
   .options {
@@ -73,25 +74,28 @@
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: var(--space-2);
+    grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+    gap: var(--sp-2);
   }
   .option {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--sp-2);
     width: 100%;
-    padding: 6px 8px;
+    padding: var(--sp-2);
+    border: 1px solid var(--rarity-border, var(--line-rule));
+    background: var(--rarity-bg, var(--surface-2));
+    border-radius: var(--r-2);
     cursor: pointer;
     text-align: left;
-    color: var(--color-ink);
+    color: var(--text-ink);
   }
   .option:disabled {
     opacity: 0.45;
     cursor: not-allowed;
   }
   .option.on {
-    outline: 2px solid var(--color-gold);
+    outline: 2px solid var(--brass-400);
     outline-offset: -2px;
   }
   .option img {
@@ -107,17 +111,17 @@
     flex: 1;
   }
   .option-rarity {
-    font-size: 9.5px;
-    letter-spacing: 0.08em;
+    font-size: var(--fs-11);
+    letter-spacing: var(--track-label);
     text-transform: uppercase;
-    color: var(--rarity-fg-strong, var(--color-muted));
+    color: var(--rarity-fg-strong, var(--text-muted));
   }
   .option-label {
-    font-size: 11px;
-    color: var(--color-soft);
+    font-size: var(--fs-12);
+    color: var(--text-soft);
   }
   .note {
-    font-size: 10px;
-    color: var(--color-warning);
+    font-size: var(--fs-11);
+    color: var(--status-warn);
   }
 </style>

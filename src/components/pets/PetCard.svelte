@@ -17,6 +17,8 @@
   import Slider from '../Slider.svelte';
   import ConfirmButton from '../ConfirmButton.svelte';
   import NumberField from '../ui/NumberField.svelte';
+  import Select from '../ui/Select.svelte';
+  import Button from '../ui/Button.svelte';
 
   let { pet, species = [], types = [], evolved = false, altarLevel = null, altarTier = 1, usedBy = [], editing = false, onSpecies, onType, onValue, onDropSecondary, onToggleEdit, onRemove } = $props();
 
@@ -27,15 +29,16 @@
   const label = (type) => statByEnum(type)?.sheetLabel ?? type;
   const taken = (current) => new Set(pet.secondaries.map((s) => s.type).filter((t) => t !== current));
   const choices = (current) => types.filter((t) => !taken(current).has(t) || t === current);
+  const speciesOptions = $derived(species.map((s) => ({ value: s.id, label: `${petDisplayName(s.id, evolved)} · ${s.rarity}` })));
+  const typeOptions = (current) => choices(current).map((t) => ({ value: t, label: label(t) }));
+  const addOptions = $derived([{ value: '', label: '+ add secondary…' }, ...typeOptions(null)]);
 </script>
 
-<div class="pet-card rarity-card {rarityClass(pet.rarity)}" class:editing>
+<div class="pet-card {rarityClass(pet.rarity)}" class:editing>
   {#if editing}
-    <select class="species-select" value={pet.species} aria-label="Species" onchange={(e) => onSpecies(e.target.value)}>
-      {#each species as s (s.id)}<option value={s.id}>{petDisplayName(s.id, evolved)} · {s.rarity}</option>{/each}
-    </select>
+    <Select label="Species" options={speciesOptions} value={pet.species} onchange={(v) => onSpecies(v)} />
   {:else}
-    <h3 class="rarity-title">{name}</h3>
+    <h3 class="card-title">{name}</h3>
   {/if}
 
   <img class="pet-art" src={petImage(name)} alt="" loading="lazy" />
@@ -56,14 +59,12 @@
   {/if}
 
   <div class="secondaries">
-    <span class="micro-label">SECONDARY {pet.secondaries.length}/{slots}</span>
+    <span class="head-label">Secondary {pet.secondaries.length}/{slots}</span>
     {#each pet.secondaries as sec, i (i)}
       {@const range = PET_SECONDARY_RANGES[sec.type]}
       {#if editing}
         <div class="sec-edit">
-          <select value={sec.type} aria-label="Secondary stat {i + 1}" onchange={(e) => onType(i, e.target.value)}>
-            {#each choices(sec.type) as t (t)}<option value={t}>{label(t)}</option>{/each}
-          </select>
+          <Select label="Secondary stat {i + 1}" options={typeOptions(sec.type)} value={sec.type} onchange={(v) => onType(i, v)} />
           <NumberField
             label="{label(sec.type)} value"
             value={sec.value}
@@ -77,51 +78,66 @@
               <span class="sec-range">{formatPct(range.min)}-{formatPct(range.max)}</span>
             </div>
           {/if}
-          <button type="button" class="drop-sec" aria-label="Remove secondary {i + 1}" onclick={() => onDropSecondary(i)}>×</button>
+          <div class="drop-sec"><Button variant="quiet" size="small" aria-label="Remove secondary {i + 1}" onclick={() => onDropSecondary(i)}>×</Button></div>
         </div>
       {:else}
         <p class="sec-line"><span class="sec-name">{label(sec.type)}</span><span class="num">+{formatPct(sec.value)}%{#if scaled}<span class="scaled"> → +{formatPct(petSecondaryValue(sec.value, altarLevel))}%</span>{/if}</span></p>
       {/if}
     {/each}
     {#if editing && pet.secondaries.length < slots}
-      <select class="add-sec" value="" aria-label="Add secondary stat" onchange={(e) => e.target.value && onType(pet.secondaries.length, e.target.value)}>
-        <option value="">+ add secondary…</option>
-        {#each choices(null) as t (t)}<option value={t}>{label(t)}</option>{/each}
-      </select>
+      {#key pet.secondaries.length}
+        <Select label="Add secondary stat" options={addOptions} value="" onchange={(v) => v && onType(pet.secondaries.length, v)} />
+      {/key}
     {/if}
   </div>
 
   <p class="used-by">{usedBy.length ? `used by ${usedBy.join(', ')}` : 'unused'}</p>
 
   <div class="card-foot">
-    <button type="button" class="btn-ghost" onclick={onToggleEdit}>{editing ? 'Save' : 'Edit'}</button>
-    <ConfirmButton class="btn-danger" label="Remove" confirmLabel="Confirm remove" onConfirm={onRemove} />
+    <Button variant="ghost" size="small" onclick={onToggleEdit}>{editing ? 'Save' : 'Edit'}</Button>
+    <ConfirmButton variant="danger" size="small" label="Remove" confirmLabel="Confirm remove" onConfirm={onRemove} />
   </div>
 </div>
 
 <style>
-  .pet-card { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); }
-  .pet-card.editing { outline: 1px solid var(--color-gold); outline-offset: -1px; }
-  .rarity-title { margin: 0; }
-  .species-select { width: 100%; }
-  .pet-art { display: block; width: 84px; height: 84px; margin: 0 auto; object-fit: contain; border-radius: var(--radius-field); }
-  .base-stats { margin: 0; text-align: center; font-size: 12px; color: var(--color-soft); }
-  .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--color-ink); }
-  .sep { color: var(--color-dim); margin: 0 4px; }
-  .scaled { color: var(--color-gold); }
-  .secondaries { display: flex; flex-direction: column; gap: 4px; background: var(--color-inset); border-radius: var(--radius-field); padding: 6px 8px; }
-  .sec-edit { display: flex; flex-direction: column; gap: 3px; padding-bottom: 4px; position: relative; }
-  .sec-edit select { width: 100%; font-size: 11.5px; }
-  .sec-slider { display: flex; align-items: center; gap: 4px; }
+  .pet-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    padding: var(--sp-3);
+    min-width: 0;
+    border: 1px solid var(--rarity-border, var(--line-rule));
+    background: var(--rarity-bg, var(--surface-2));
+    border-radius: var(--r-2);
+  }
+  .pet-card.editing { outline: 1px solid var(--brass-400); outline-offset: -1px; }
+  .card-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-14);
+    text-align: center;
+    color: var(--rarity-fg, var(--text-ink));
+  }
+  .pet-art { display: block; width: 84px; height: 84px; margin: 0 auto; object-fit: contain; border-radius: var(--r-2); }
+  .base-stats { margin: 0; text-align: center; font-size: var(--fs-12); color: var(--text-soft); }
+  .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--text-ink); }
+  .sep { color: var(--text-muted); margin: 0 var(--sp-1); }
+  .scaled { color: var(--brass-400); }
+  .head-label {
+    font-size: var(--fs-11);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--text-soft);
+  }
+  .secondaries { display: flex; flex-direction: column; gap: var(--sp-1); background: var(--surface-1); border-radius: var(--r-2); padding: var(--sp-2); min-width: 0; }
+  .sec-edit { display: flex; flex-direction: column; gap: var(--sp-1); padding-bottom: var(--sp-1); position: relative; min-width: 0; }
+  .sec-slider { display: flex; align-items: center; gap: var(--sp-1); }
   .sec-slider :global(.slider) { flex: 1; min-width: 0; }
-  .sec-range { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 11px; color: var(--color-soft); text-align: right; white-space: nowrap; }
-  .drop-sec { position: absolute; top: 0; right: 0; background: none; border: none; color: var(--color-muted); cursor: pointer; font-size: 13px; line-height: 1; padding: 2px 4px; }
-  .drop-sec:hover { color: var(--color-danger); }
-  .sec-line { margin: 0; display: flex; justify-content: space-between; gap: var(--space-2); font-size: 11.5px; }
-  .sec-name { color: var(--color-muted); }
-  .used-by { margin: 0; font-size: 10.5px; color: var(--color-muted); }
-  .card-foot { display: flex; align-items: center; gap: 4px; margin-top: auto; padding-top: var(--space-2); border-top: 1px solid var(--color-border-hairline); }
-  .card-foot .btn-ghost { flex: 1; }
-  .card-foot button { font-size: 11px; }
-  @media (max-width: 700px) { .card-foot button { min-height: 44px; } }
+  .sec-range { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: var(--fs-11); color: var(--text-soft); text-align: right; white-space: nowrap; }
+  .drop-sec { align-self: flex-end; }
+  .sec-line { margin: 0; display: flex; justify-content: space-between; gap: var(--sp-2); font-size: var(--fs-12); }
+  .sec-name { color: var(--text-muted); }
+  .used-by { margin: 0; font-size: var(--fs-11); color: var(--text-muted); }
+  .card-foot { display: flex; align-items: center; gap: var(--sp-1); margin-top: auto; padding-top: var(--sp-2); border-top: 1px solid var(--line-hairline); flex-wrap: wrap; }
 </style>

@@ -1,6 +1,7 @@
 import { it, expect, beforeEach, afterEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import PetsScreen from './CharacterPetsPage.svelte';
+import pageSource from './CharacterPetsPage.svelte?raw';
 import { petDisplayName } from '../../lib/game/pets.js';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
 
@@ -20,7 +21,7 @@ afterEach(() => {
 });
 
 const btn = (label) => [...target.querySelectorAll('button')].find((b) => b.textContent.trim() === label);
-const byLabel = (text) => document.getElementById([...target.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith(text)).htmlFor);
+const byLabel = (text) => document.getElementById([...target.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith(text))?.htmlFor);
 const click = (el) => {
   el.click();
   flushSync();
@@ -37,21 +38,21 @@ it('starts empty, adds a pet in edit mode, and shows the species', () => {
   click(btn('+ Add pet'));
   expect(rosterStore.current.pets.owned[0].species).toBe('EMBER_FOX');
   expect(target.querySelectorAll('.pet-card')).toHaveLength(1);
-  expect(target.querySelector('select[aria-label="Species"]')).not.toBeNull();
+  expect(target.querySelector('.pet-card select')).not.toBeNull();
   click(btn('Save'));
-  expect(target.querySelector('.rarity-title').textContent).toBe('Ember Fox');
+  expect(target.querySelector('.card-title').textContent).toBe('Ember Fox');
 });
 
 it('adds a secondary through the edit controls', () => {
   click(btn('+ Add pet'));
-  change(target.querySelector('select[aria-label="Add secondary stat"]'), 'ATTACK_PERCENT');
+  change(byLabel('Add secondary stat'), 'ATTACK_PERCENT');
   expect(rosterStore.current.pets.owned[0].secondaries[0].type).toBe('ATTACK_PERCENT');
   click(btn('Save'));
   expect(target.querySelector('.sec-line').textContent).toContain('+0.1%');
 });
 
 it('altar level steppers write the store', () => {
-  click(target.querySelector('button[aria-label="Raise altar level"]'));
+  click(target.querySelector('button[aria-label="Increase Altar level"]'));
   expect(rosterStore.current.pets.altar.level).toBe(2);
   expect(target.querySelector('[data-testid="altar-level"]').textContent).toBe('2');
 });
@@ -63,7 +64,7 @@ it('changing the tier asks first, names the pets and presets it will clear, then
   const petName = petDisplayName(rosterStore.current.pets.owned[0].species, false);
   rosterStore.setPresetPet(rosterStore.current.presets[0].id, id);
   flushSync();
-  change(target.querySelector('select[aria-label="Pet altar tier"]'), '2');
+  change(byLabel('Pet altar tier'), '2');
   click(btn('Change tier'));
   expect(rosterStore.current.pets.altar.tier).toBe(1);
   const dialog = document.querySelector('dialog');
@@ -75,7 +76,7 @@ it('changing the tier asks first, names the pets and presets it will clear, then
   expect(rosterStore.current.presets[0].petId).toBeNull();
   click(btn('+ Add pet'));
   click(btn('Save'));
-  expect(target.querySelector('.rarity-title').textContent).toBe('Dust Stalker');
+  expect(target.querySelector('.card-title').textContent).toBe('Dust Stalker');
 });
 
 it('the altar level has a number field that writes the same value as the slider and steppers', () => {
@@ -87,4 +88,15 @@ it('the altar level has a number field that writes the same value as the slider 
   flushSync();
   expect(rosterStore.current.pets.altar.level).toBe(12);
   expect(target.querySelector('[data-testid="altar-level"]').textContent).toBe('12');
+});
+
+// jsdom applies no layout, so the 1440 overflow fix (scrollWidth 1479) is guarded at the source: the grid carries
+// no fixed max-width (auto-fill would count columns it cannot fit) and its wrapper may shrink and scrolls inside itself.
+it('the pet grid cannot widen the page', () => {
+  const css = pageSource.split('<style>')[1];
+  const rule = (sel) => css.match(new RegExp(`\\${sel}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+  expect(rule('.pet-grid')).toContain('min-width: 0');
+  expect(rule('.pet-grid')).not.toContain('max-width');
+  expect(rule('.page')).toMatch(/min-width: 0/);
+  expect(rule('.page')).toMatch(/overflow-x: auto/);
 });

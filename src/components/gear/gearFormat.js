@@ -58,17 +58,17 @@ export function flatFieldText(n) {
   return Number.isFinite(v) && v !== 0 ? formatFlat(v) : '';
 }
 
-/** Stone type -> CSS colour tokens (app.css --stone-* / --nav-oblivion). */
+/** Stone type -> CSS colour tokens (tokens --stone-*). */
 export const STONE_COLOR = {
   PVE_ATTACK: { color: 'var(--stone-crimson)', tint: 'var(--stone-crimson-tint)' },
   PVE_DEFENSE: { color: 'var(--stone-verdant)', tint: 'var(--stone-verdant-tint)' },
   PVP: { color: 'var(--stone-azure)', tint: 'var(--stone-azure-tint)' },
   ULTIMATE: { color: 'var(--stone-eldaryn)', tint: 'var(--stone-eldaryn-tint)' },
   MYTHIC: { color: 'var(--stone-mythic)', tint: 'var(--stone-mythic-tint)' },
-  OBLIVION: { color: 'var(--nav-oblivion)', tint: 'var(--nav-oblivion-tint)' },
+  OBLIVION: { color: 'var(--stone-oblivion)', tint: 'var(--stone-oblivion-tint)' },
 };
 
 /** Rarity id -> the app.css rarity foreground token. */
 export function rarityColor(rarity) {
-  return rarity ? `var(--rarity-${rarity.toLowerCase()}-fg)` : 'var(--color-muted)';
+  return rarity ? `var(--rarity-${rarity.toLowerCase()}-fg)` : 'var(--text-muted)';
 }

@@ -1,23 +1,20 @@
 import { it, expect, beforeEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
-import GearScreen from './GearScreen.svelte';
+import CharacterGearPage from './CharacterGearPage.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
+import { field, setField } from '../gear/fieldKit.js';
 
 let target;
 beforeEach(() => {
   localStorage.clear();
-  rosterStore.addCharacter('Gear Screen', 'WARRIOR');
+  rosterStore.addCharacter('Gear Page', 'WARRIOR');
   target = document.createElement('div');
   document.body.appendChild(target);
 });
 
-const q = (label) => target.querySelector(`[aria-label="${label}"]`);
+const q = (label) => field(target, label);
 const slotBtn = (s) => target.querySelector(`[data-slot="${s}"]`);
-function change(el, value) {
-  el.value = value;
-  el.dispatchEvent(new Event('change', { bubbles: true }));
-  flushSync();
-}
+const change = setField;
 const tab = (text) => [...target.querySelectorAll('[role="tab"]')].find((b) => b.textContent.trim().startsWith(text));
 const press = (el) => {
   el.click();
@@ -26,7 +23,7 @@ const press = (el) => {
 const button = (text) => [...target.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
 
 it('base realm: 9 slots, Set 1 / Set 2 tabs, editing writes to the selected set only', () => {
-  const app = mount(GearScreen, { target });
+  const app = mount(CharacterGearPage, { target });
   flushSync();
   expect(target.querySelectorAll('.silhouette .slot')).toHaveLength(9);
   change(q('Rarity'), 'EPIC');
@@ -43,7 +40,7 @@ it('base realm: 9 slots, Set 1 / Set 2 tabs, editing writes to the selected set 
 });
 
 it('set tabs say which presets use them', () => {
-  const app = mount(GearScreen, { target });
+  const app = mount(CharacterGearPage, { target });
   flushSync();
   expect(tab('Set 1').textContent).toContain('used by Preset 1');
   expect(tab('Set 2').textContent).toContain('used by Preset 2');
@@ -51,7 +48,7 @@ it('set tabs say which presets use them', () => {
 });
 
 it('realm="oblivion": 12 slots, edits the Oblivion loadout and its own stone pool', () => {
-  const app = mount(GearScreen, { target, props: { realm: 'oblivion' } });
+  const app = mount(CharacterGearPage, { target, props: { realm: 'oblivion' } });
   flushSync();
   expect(target.querySelectorAll('.silhouette .slot')).toHaveLength(12);
   expect(tab('Set 1')).toBeUndefined();
@@ -65,7 +62,7 @@ it('realm="oblivion": 12 slots, edits the Oblivion loadout and its own stone poo
 });
 
 it('the Oblivion tab is locked with a reason until Oblivion is unlocked', () => {
-  const app = mount(GearScreen, { target });
+  const app = mount(CharacterGearPage, { target });
   flushSync();
   const locked = tab('Oblivion');
   expect(locked.disabled || locked.getAttribute('aria-disabled') === 'true').toBe(true);
@@ -79,7 +76,7 @@ it('the Oblivion tab is locked with a reason until Oblivion is unlocked', () => 
 });
 
 it('a stone can be added, socketed in both sets, and the Oblivion pool stays empty', () => {
-  const app = mount(GearScreen, { target });
+  const app = mount(CharacterGearPage, { target });
   flushSync();
   const id = rosterStore.addEnchantStone('base', { type: 'PVE_ATTACK', quality: 60, stats: [] });
   flushSync();
@@ -101,7 +98,7 @@ it('a stone can be added, socketed in both sets, and the Oblivion pool stays emp
 it('the item panel footer shows the socketed stone and can unsocket it', () => {
   const id = rosterStore.addEnchantStone('base', { type: 'PVE_ATTACK', quality: 60, stats: [] });
   rosterStore.socketStone('set1', 'WEAPON', id);
-  const app = mount(GearScreen, { target });
+  const app = mount(CharacterGearPage, { target });
   flushSync();
   expect(target.querySelector('.socket-line').textContent).toContain('socket:');
   press(button('Unsocket'));
@@ -111,7 +108,7 @@ it('the item panel footer shows the socketed stone and can unsocket it', () => {
 
 it('a stone can be switched off, which the grid marks as inactive', () => {
   const id = rosterStore.addEnchantStone('base', { type: 'PVE_ATTACK', quality: 60, stats: [] });
-  const app = mount(GearScreen, { target });
+  const app = mount(CharacterGearPage, { target });
   flushSync();
   press(tab('Enchant stones'));
   press(target.querySelector('.stone-tile'));
@@ -126,7 +123,7 @@ it('a stone can be switched off, which the grid marks as inactive', () => {
 it('the stone grid filters by type', () => {
   rosterStore.addEnchantStone('base', { type: 'PVE_ATTACK', quality: 60, stats: [] });
   rosterStore.addEnchantStone('base', { type: 'PVE_DEFENSE', quality: 40, stats: [] });
-  const app = mount(GearScreen, { target });
+  const app = mount(CharacterGearPage, { target });
   flushSync();
   press(tab('Enchant stones'));
   expect(target.querySelectorAll('.stone-tile')).toHaveLength(2);
