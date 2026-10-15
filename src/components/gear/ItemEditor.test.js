@@ -177,3 +177,14 @@ it('raising the item level shows no clamp note', () => {
   expect(target.textContent).not.toContain('lowers the highest roll');
   unmount(app);
 });
+
+it('an item without a quality says so, and says what the model does with it', () => {
+  const { app } = render({ value: { ...legendary, quality: null } });
+  const note = target.querySelector('[data-testid="quality-unknown"]');
+  expect(note.textContent).toContain('Unknown (not in the profile)');
+  expect(note.textContent).toContain('no stat or result here uses item quality');
+  unmount(app);
+  const known = render({ value: legendary });
+  expect(target.querySelector('[data-testid="quality-unknown"]')).toBeNull();
+  unmount(known.app);
+});
