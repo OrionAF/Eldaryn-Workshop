@@ -20,6 +20,8 @@ import {
   secondaryPoolFor,
   CONDUIT,
   OBLIVION_PRESTIGE,
+  MAX_ITEM_LEVEL_BY_ASCENSION,
+  ASCENSION_ABOVE_HUNDRED_STAT_RATE,
 } from '../game/gear.js';
 
 /** The three persisted sets and the realm each one belongs to. */
@@ -34,11 +36,40 @@ export function realmOfSet(setKey) {
   return EQUIP_SETS.find((s) => s.key === setKey)?.realm ?? null;
 }
 
-// gear.md §6: base item-level cap is the top Ascension step (100/130/160/190/240; the base table is
-// not in gear.json, so 240 is stated here once); Oblivion's is the top of ASCENSION_MAX_ITEM_LEVELS.
-const BASE_ASCENSION_TOP = 240;
-export function maxItemLevel(realm) {
-  return realm === 'oblivion' ? Math.max(...OBLIVION_PRESTIGE.ASCENSION_MAX_ITEM_LEVELS) : BASE_ASCENSION_TOP;
+// gear.md §6: the item-level cap is the Ascension skill's step (gear.json maxItemLevelByAscension,
+// indexed by max(1, ascension) - 1). `maxItemLevel(realm)` with no ascension is the TOP step, the
+// bound for stored items (an owned item may predate a respec); drops use the character's step.
+export function maxItemLevel(realm, ascension = null) {
+  const table = MAX_ITEM_LEVEL_BY_ASCENSION[realm === 'oblivion' ? 'oblivion' : 'regular'];
+  if (ascension == null) return Math.max(...table);
+  const i = Math.min(table.length, Math.max(1, Math.floor(Number(ascension)) || 1)) - 1;
+  return table[i];
+}
+
+/** Warnings (not clamps) for an owned item: its level above what the character's Ascension step drops. */
+export function itemWarnings(item, { realm = 'base', ascension = null } = {}) {
+  const out = [];
+  if (item?.itemLevel != null && ascension != null && item.itemLevel > maxItemLevel(realm, ascension)) {
+    out.push({ kind: 'itemLevelAboveAscension', itemLevel: item.itemLevel, cap: maxItemLevel(realm, ascension) });
+  }
+  return out;
+}
+
+// gear.md §3: the stat level of an item (Oblivion gear halves its level, ITEM_LEVEL_SCALE)
+export const itemStatLevel = (itemLevel, realm) => (realm === 'oblivion' ? itemLevel * OBLIVION_PRESTIGE.ITEM_LEVEL_SCALE : itemLevel);
+const effectiveLevel = (L) => (L <= 100 ? L : 100 + (L - 100) * ASCENSION_ABOVE_HUNDRED_STAT_RATE);
+
+/**
+ * Highest value a secondary can roll at an item stat level (gear.md §4 secondaryStatMaxValue, rounded
+ * to the stat's decimals like calculateStatQuality's cmax). Null for a type outside the pool.
+ */
+export function secondaryStatMaxValue(type, statLevel) {
+  const def = SECONDARY_STAT_POOL.find((s) => s.type === type);
+  if (!def) return null;
+  const frac = Math.min(statLevel, 100) / 100;
+  const base = def.minValue + (def.maxValue - def.minValue) * (0.5 + 0.5 * frac);
+  const max = statLevel > 100 ? (base * effectiveLevel(statLevel)) / 100 : base;
+  return parseFloat(max.toFixed(def.decimals));
 }
 
 // stats.md §1.3: stored as multipliers, shown as percent
@@ -59,11 +90,22 @@ function intIn(v, lo, hi) {
   return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : null;
 }
 
-/** Whether an item of this rarity may carry a Conduit in this realm (gear.md §7). */
+/**
+ * Conduit types an item of this rarity can carry in this realm (gear.md §7 rollConduitForRarity,
+ * L677825-677900): Oblivion realm and rarity >= DARK_CONDUIT_MIN_RARITY -> DARK; otherwise ETERNAL ->
+ * FLAME/EARTHEN; OBLIVION rarity -> DARK; any other rarity none. Unknown rarity (migrated) is permissive.
+ */
+export function conduitTypesFor(rarity, realm) {
+  if (rarity == null) return [...CONDUIT.types];
+  if (realm === 'oblivion' && isRarityAtLeast(rarity, OBLIVION_PRESTIGE.DARK_CONDUIT_MIN_RARITY)) return ['DARK'];
+  if (rarity === 'ETERNAL') return ['FLAME', 'EARTHEN'];
+  if (rarity === 'OBLIVION') return ['DARK'];
+  return [];
+}
+
+/** Whether an item of this rarity may carry a Conduit in this realm. */
 export function conduitAllowed(rarity, realm) {
-  if (rarity == null) return true; // unknown rarity (migrated): do not discard user data
-  if (isRarityAtLeast(rarity, 'ETERNAL')) return true;
-  return realm === 'oblivion' && isRarityAtLeast(rarity, OBLIVION_PRESTIGE.DARK_CONDUIT_MIN_RARITY);
+  return conduitTypesFor(rarity, realm).length > 0;
 }
 
 /** How many secondary rows an item of this rarity can hold. */
@@ -77,31 +119,43 @@ export function emptyItem() {
 
 /**
  * Any value -> a valid Item or null. `cls` gates the secondary pool (game/classes available());
- * a null class applies no class gating. Idempotent.
+ * a null class applies no class gating. Idempotent. Secondary values above the item-level ceiling are
+ * clamped and illegal conduits dropped; `ascension` (Drop Check callers) caps the item level at the
+ * character's own step, owned gear leaves it null (top step, see itemWarnings); both push an entry to `report` (an array) when given.
  */
-export function normaliseItem(raw, { cls = null, realm = 'base' } = {}) {
+export function normaliseItem(raw, { cls = null, realm = 'base', report = null, slot = null, ascension = null } = {}) {
   if (!raw || typeof raw !== 'object') return null;
   const rarity = RARITY_IDS.includes(raw.rarity) ? raw.rarity : null;
+  const itemLevel = intIn(raw.itemLevel, 1, maxItemLevel(realm, ascension));
   const pool = new Set((cls ? secondaryPoolFor(cls) : SECONDARY_STAT_POOL).map((s) => s.type));
   const seen = new Set();
   const secondaryStats = [];
   for (const s of Array.isArray(raw.secondaryStats) ? raw.secondaryStats : []) {
     if (!s || !pool.has(s.type) || seen.has(s.type)) continue;
-    const value = Number(s.value);
+    let value = Number(s.value);
     if (!Number.isFinite(value) || value < 0) continue;
+    const ceiling = secondaryStatMaxValue(s.type, itemStatLevel(itemLevel ?? maxItemLevel(realm), realm));
+    if (ceiling != null && value > ceiling) {
+      report?.push({ kind: 'secondaryClamped', realm, slot, type: s.type, from: value, to: ceiling });
+      value = ceiling;
+    }
     seen.add(s.type);
     secondaryStats.push({ type: s.type, value });
   }
   secondaryStats.length = Math.min(secondaryStats.length, secondarySlots(rarity));
   let conduit = null;
   const c = raw.conduit;
-  if (c && CONDUIT.types.includes(c.type) && conduitAllowed(rarity, realm)) {
-    const value = Number(c.value);
-    if (Number.isFinite(value) && value >= 0) conduit = { type: c.type, value };
+  if (c && CONDUIT.types.includes(c.type)) {
+    if (!conduitTypesFor(rarity, realm).includes(c.type)) {
+      report?.push({ kind: 'conduitDropped', realm, slot, rarity, type: c.type });
+    } else {
+      const value = Number(c.value);
+      if (Number.isFinite(value) && value >= 0) conduit = { type: c.type, value };
+    }
   }
   return {
     rarity,
-    itemLevel: intIn(raw.itemLevel, 1, maxItemLevel(realm)),
+    itemLevel,
     quality: intIn(raw.quality, 1, 100),
     primaryStats: { attack: nonNeg(raw.primaryStats?.attack), hp: nonNeg(raw.primaryStats?.hp) },
     secondaryStats,
@@ -117,9 +171,9 @@ export function emptyEquip(realm = 'base') {
   return { items, enchantSlots };
 }
 
-function normaliseEquip(raw, realm, cls) {
+function normaliseEquip(raw, realm, cls, report) {
   const out = emptyEquip(realm);
-  for (const slot of Object.keys(out.items)) out.items[slot] = normaliseItem(raw?.items?.[slot], { cls, realm });
+  for (const slot of Object.keys(out.items)) out.items[slot] = normaliseItem(raw?.items?.[slot], { cls, realm, report, slot });
   for (const slot of BASE_SLOTS) {
     const id = raw?.enchantSlots?.[slot];
     out.enchantSlots[slot] = typeof id === 'string' && id ? id : null;
@@ -134,7 +188,7 @@ export function defaultEquipment() {
 export function normaliseEquipment(rawCharacter, ctx) {
   const raw = rawCharacter?.equipment;
   const equipment = {};
-  for (const { key, realm } of EQUIP_SETS) equipment[key] = normaliseEquip(raw?.[key], realm, ctx?.class ?? null);
+  for (const { key, realm } of EQUIP_SETS) equipment[key] = normaliseEquip(raw?.[key], realm, ctx?.class ?? null, ctx?.report ?? null);
   return { equipment };
 }
 

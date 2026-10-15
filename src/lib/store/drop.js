@@ -2,7 +2,7 @@
 // The candidate item is normalised on the way in, so a bad item never persists.
 import { slotsForRealm } from '../game/gear.js';
 import { EQUIP_SET_KEYS, realmOfSet, normaliseItem } from '../model/equipment.js';
-import { newDrop } from '../model/drop.js';
+import { newDrop, dropAscension } from '../model/drop.js';
 
 export function createDropStore(ctx) {
   /** Start a fresh, empty drop. Defaults keep the current slot and realm. Returns false for an unknown slot. */
@@ -28,7 +28,7 @@ export function createDropStore(ctx) {
     const r = realm === 'oblivion' ? 'oblivion' : 'base';
     return ctx.edit((c) => {
       const slot = c.drop && slotsForRealm(r).includes(c.drop.slot) ? c.drop.slot : 'WEAPON';
-      const item = c.drop?.item ? normaliseItem(c.drop.item, { cls: c.class, realm: r }) : null;
+      const item = c.drop?.item ? normaliseItem(c.drop.item, { cls: c.class, realm: r, ascension: dropAscension(c) }) : null;
       c.drop = { ...newDrop(slot, r), ...(item ? { item } : {}) };
       return true;
     });
@@ -38,7 +38,7 @@ export function createDropStore(ctx) {
   function setDropItem(item) {
     return ctx.edit((c) => {
       const base = c.drop ?? newDrop('WEAPON', 'base');
-      const next = normaliseItem(item, { cls: c.class, realm: base.realm });
+      const next = normaliseItem(item, { cls: c.class, realm: base.realm, ascension: dropAscension(c) });
       c.drop = { ...base, item: next ?? newDrop(base.slot, base.realm).item };
       return true;
     });
@@ -62,7 +62,7 @@ export function createDropStore(ctx) {
     return ctx.edit((c) => {
       const d = c.drop;
       if (!d || realmOfSet(setKey) !== d.realm) return false;
-      const item = normaliseItem(d.item, { cls: c.class, realm: d.realm });
+      const item = normaliseItem(d.item, { cls: c.class, realm: d.realm, ascension: dropAscension(c) });
       if (!item || !(d.slot in c.equipment[setKey].items)) return false;
       c.equipment[setKey].items[d.slot] = item;
       return true;

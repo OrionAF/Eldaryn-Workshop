@@ -45,7 +45,7 @@ const ROLL_POOL = [
 ];
 
 // A deterministic 3-secondary item for slot i, using only stats the class can roll.
-function makeItem(cls, i, scale = 1, withConduit = false) {
+function makeItem(cls, i, scale = 1, withConduit = false, realm = 'base') {
   const pool = ROLL_POOL.filter(([t]) => available(t, cls));
   const secondaryStats = [0, 1, 2].map((k) => {
     const [type, value] = pool[(i * 3 + k) % pool.length];
@@ -58,14 +58,14 @@ function makeItem(cls, i, scale = 1, withConduit = false) {
     quality: 80,
     primaryStats: weapon ? { attack: 4200 * scale, hp: 0 } : { attack: 900 * scale, hp: 21000 * scale },
     secondaryStats,
-    conduit: withConduit ? { type: ['FLAME', 'EARTHEN', 'DARK'][i % 3], value: 40 * scale } : null,
+    conduit: withConduit ? { type: realm === 'oblivion' ? 'DARK' : ['FLAME', 'EARTHEN'][i % 2], value: 40 * scale } : null,
   };
 }
 
-function makeEquip(cls, scale, conduits) {
+function makeEquip(cls, scale, conduits, realm = 'base') {
   const items = {};
   SLOTS.forEach((slot, i) => {
-    items[slot] = makeItem(cls, i, scale, conduits.includes(slot));
+    items[slot] = makeItem(cls, i, scale, conduits.includes(slot), realm);
   });
   return items;
 }
@@ -154,7 +154,7 @@ export function fixtureCharacter(cls, { spec = FIXTURE_SPECS[cls] } = {}) {
       },
       set2: { items: makeEquip(cls, 0.8, []), enchantSlots: { WEAPON: 'st-atk' } },
       oblivion: {
-        items: { ...makeEquip(cls, 1.3, ['WEAPON']), BELT: makeItem(cls, 9, 1.3), GLOVES: makeItem(cls, 10, 1.3), RIFT_CORE: makeItem(cls, 11, 1.3) },
+        items: { ...makeEquip(cls, 1.3, ['WEAPON'], 'oblivion'), BELT: makeItem(cls, 9, 1.3), GLOVES: makeItem(cls, 10, 1.3), RIFT_CORE: makeItem(cls, 11, 1.3) },
         enchantSlots: { WEAPON: 'ob-1' },
       },
     },

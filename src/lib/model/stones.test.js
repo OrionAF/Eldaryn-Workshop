@@ -42,7 +42,7 @@ describe('normaliseStone', () => {
 
   it('keeps a valid stone as-is (idempotent)', () => {
     const once = normaliseStone(base);
-    expect(once).toEqual({ ...base, oblivionLevel: null });
+    expect(once).toEqual({ ...base, activated: true, oblivionLevel: null });
     expect(normaliseStone(once)).toEqual(once);
   });
 
@@ -63,6 +63,37 @@ describe('normaliseStone', () => {
   it('assigns fresh ids to missing or duplicate ids within a pool', () => {
     const pool = normaliseStones({ enchantStones: [{ ...base }, { ...base }, { ...base, id: undefined }] }).enchantStones;
     expect(new Set(pool.map((s) => s.id)).size).toBe(3);
+  });
+});
+
+describe('stone legality (M2 #119)', () => {
+  it('drops a PvP stat on a Crimson stone and stats outside the type pool', () => {
+    const s = normaliseStone({ id: 'c', type: 'PVE_ATTACK', stats: [{ type: 'PVP_ATTACK', value: 10 }, { type: 'HEALTH_PERCENT', value: 5 }, { type: 'CRIT_CHANCE', value: 1 }] });
+    expect(s.stats).toEqual([{ type: 'CRIT_CHANCE', value: 1 }]);
+  });
+
+  it('keeps a guaranteed stat listed last, ordering guaranteed first', () => {
+    const s = normaliseStone({ id: 'm', type: 'MYTHIC', stats: [{ type: 'CRIT_CHANCE', value: 1 }, { type: 'BLOCK_CHANCE', value: 1 }, { type: 'LIFESTEAL', value: 1 }, { type: 'PVP_DEFENSE', value: 10 }, { type: 'PVP_ATTACK', value: 10 }] });
+    expect(s.stats.map((x) => x.type)).toEqual(['PVP_ATTACK', 'PVP_DEFENSE', 'CRIT_CHANCE', 'BLOCK_CHANCE']);
+  });
+
+  it('clamps values to the stat range and decimals; Azure takes one PvP stat only', () => {
+    const s = normaliseStone({ id: 'a', type: 'PVP', stats: [{ type: 'PVP_ATTACK', value: 99 }, { type: 'PVP_DEFENSE', value: 10 }, { type: 'CRIT_CHANCE', value: 7.77 }] });
+    expect(s.stats).toEqual([{ type: 'PVP_ATTACK', value: 25 }, { type: 'CRIT_CHANCE', value: 2.5 }]);
+  });
+
+  it('separates the realms: Oblivion stones only in the Oblivion pool and vice versa', () => {
+    const got = normaliseStones({
+      enchantStones: [{ id: 'a', type: 'OBLIVION', stats: [] }, { id: 'b', type: 'PVE_ATTACK', stats: [] }],
+      oblivionEnchantStones: [{ id: 'c', type: 'MYTHIC', stats: [] }, { id: 'd', type: 'OBLIVION', stats: [] }],
+    });
+    expect(got.enchantStones.map((s) => s.id)).toEqual(['b']);
+    expect(got.oblivionEnchantStones.map((s) => s.id)).toEqual(['d']);
+  });
+
+  it('persists activated (default on for old saves)', () => {
+    expect(normaliseStone({ id: 'u', type: 'PVE_ATTACK', activated: false, stats: [] }).activated).toBe(false);
+    expect(normaliseStone({ id: 'v', type: 'PVE_ATTACK', stats: [] }).activated).toBe(true);
   });
 });
 

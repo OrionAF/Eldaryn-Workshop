@@ -35,6 +35,7 @@
  * @property {number} amplifyLevel  0..10
  * @property {number|null} oblivionLevel  1..5, or null
  * @property {SecondaryStat[]} stats
+ * @property {boolean} [activated]  absent counts as active; any falsy value is skipped (Game/stones.md §1)
  */
 
 /**

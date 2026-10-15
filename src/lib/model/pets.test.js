@@ -10,7 +10,7 @@ describe('normalisePets', () => {
     const raw = { altar: { level: 12, tier: 3 }, owned: [{ id: 'a', species: 'EMBER_FOX', secondaries: [{ type: 'ATTACK_PERCENT', value: 5.04 }] }] };
     const once = norm(raw);
     expect(norm(once)).toEqual(once);
-    expect(once.owned[0]).toEqual({ id: 'a', species: 'EMBER_FOX', rarity: 'Uncommon', secondaries: [{ type: 'ATTACK_PERCENT', value: 5 }] });
+    expect(once.owned[0]).toEqual({ id: 'a', species: 'EMBER_FOX', rarity: 'Uncommon', secondaries: [{ type: 'ATTACK_PERCENT', value: 5.04 }] });
   });
 
   it('clamps the altar and drops junk pets', () => {
@@ -96,5 +96,14 @@ describe('migratePetsFromV1', () => {
     expect(migratePetsFromV1(null).value).toEqual(defaultPets());
     expect(migratePetsFromV1({ pets: 'x' }).idMap).toEqual({});
     expect(newCharacter('X', 'MYSTIC').pets).toEqual(defaultPets().pets);
+  });
+});
+
+describe('imported secondary values (M2 #109)', () => {
+  it('keeps a real roll above the observed envelope, rounded to 3 dp', () => {
+    const raw = { pets: { altar: { level: 1, tier: 1 }, owned: [{ id: 'a', species: 'EMBER_FOX', secondaries: [{ type: 'HEALTH_PERCENT', value: 24.3 }, { type: 'CRIT_CHANCE', value: -2 }] }] } };
+    const sec = normalisePets(raw, { class: 'WARRIOR' }).pets.owned[0].secondaries;
+    expect(sec[0].value).toBe(24.3);
+    expect(sec[1].value).toBe(0);
   });
 });

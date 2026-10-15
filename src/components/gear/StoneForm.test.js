@@ -80,7 +80,7 @@ it('Mythic: both PvP rows are fixed, 2 free rows must be chosen before Add enabl
     { type: 'PVP_ATTACK', value: 12 },
     { type: 'PVP_DEFENSE', value: 9 },
     { type: 'CRIT_CHANCE', value: 1.5 },
-    { type: 'DOUBLE_HIT', value: 0 },
+    { type: 'DOUBLE_HIT', value: 0.5 },
   ]);
   unmount(app);
 });
