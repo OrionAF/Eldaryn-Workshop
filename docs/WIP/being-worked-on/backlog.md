@@ -4,27 +4,24 @@
 
 | Order | Item | Size | Status |
 |---|---|---|---|
-| 1 | §10 Push | XS | Merging (queue run wf_2c43327e-8d7) |
-| 2 | §13 Glyph dominance pruning | S | Done (slice G1); merge pending |
-| 3 | §10 Fortress boss shield fix | S | Queued: review and merge |
-| 4 | §12 Highest chance to win | M | Done (slice W3) on branch `rebuild2/W3`: review and merge |
-| 5 | §15 Fortress boss fight from the server log | M | Queued |
-| 6 | §11 Celestial Trial Optimiser target | S | Queued |
-| 7 | §6 Results say which pet, mount or glyph | S | Queued |
-| 8 | §1 Optimiser step list | S | Queued |
-| 9 | §3 Setup estimates | M | Not started |
-| 10 | §9 Stat weights chart | M | Not started |
-| 11 | §2 Rankings profiles as PVP opponents (and Celestial partners) | M | Not started |
-| 12 | §10 Arena reward weighting | S | Needs §2 |
-| 13 | §7 PVE replay check | L | Not started; needs dungeon logs |
-| 14 | §10 Crusade (solo) | L | Not started |
-| 15 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Not started |
+| 1 | §15 Fortress boss fight from the server log | M | Queued |
+| 2 | §11 Celestial Trial Optimiser target | S | Queued |
+| 3 | §6 Results say which pet, mount or glyph | S | Queued |
+| 4 | §1 Optimiser step list | S | Queued |
+| 5 | §3 Setup estimates | M | Not started |
+| 6 | §9 Stat weights chart | M | Not started |
+| 7 | §2 Rankings profiles as PVP opponents (and Celestial partners) | M | Not started |
+| 8 | §10 Arena reward weighting | S | Needs §2 |
+| 9 | §7 PVE replay check | L | Not started; needs dungeon logs |
+| 10 | §10 Crusade (solo) | L | Not started |
+| 11 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Not started |
+| - | §12 follow-up: a progress tolerance for builds that never win | S | Not started (see §12 open item) |
 | - | §11 Celestial open questions | - | Waits for more server logs |
-| Done | §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target; §11 Celestial engine | - | Merged |
+| Done | §10 Push, Fortress shield fix; §12 highest chance to win; §13 glyph pruning; §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target; §11 Celestial engine | - | Merged |
 
 ## 10. Optimiser objectives: trim, fix the target range, add Push, a Power guard and Crusade
 
-**Status (2026-10-15).** Done: retire kill time and survival, target range (slice O1); Combat Power and the Power guard (O2); Fortress boss target (O3). Fortress shield fix (O3b): two server siege snapshots show the shield divides alive defenders by the server's clan cap (30 on server 5), not the defending clan's size; implemented, awaiting review. Push (O4): merged (§Push in simulation.md). Not started: Crusade (solo), Arena reward weighting.
+**Status (2026-10-15).** Done: retire kill time and survival, target range (slice O1); Combat Power and the Power guard (O2); Fortress boss target (O3). Fortress shield fix (O3b): two server siege snapshots show the shield divides alive defenders by the server's clan cap (30 on server 5), not the defending clan's size; merged. Push (O4): merged (§Push in simulation.md). Not started: Crusade (solo), Arena reward weighting.
 
 **Ask** (2026-10-15): the user agreed to this review of the objectives.
 

@@ -2,18 +2,15 @@
 
 Everything the agents had not merged is preserved here; nothing lives only in the old container.
 
-## Restore unfinished branches
-`git fetch docs/WIP/being-worked-on/handoff/wip-branches.bundle 'refs/heads/*:refs/heads/*'`
-gives back every `rebuild2/*` and `wip/*` branch (each agent's unfinished work is one "WIP (session limit...)" commit on top).
+## Branches (updated 2026-10-15, local session)
+Every bundle branch except `rebuild2/S1-wip` is merged into main and deleted locally. `S1-wip` was dropped (§13 replaced it) and is kept only until the user says to delete it. The bundle still holds every branch.
 
 ## Queue (user's order); specs are the backlog sections
-1. §10 Push: **merged**. §14 mount pruning: **merged**.
-2. §10 Fortress shield fix: branch `rebuild2/O3b` (+ `-r1` if present): implemented; needs review, then merge.
-3. §13 Glyph dominance pruning (slice G1): branch `rebuild2/G1` / `wip/*`: was mid-build.
-4. §12 Highest chance to win: `rebuild2/W3-wip` (+ `rebuild2/W3` if present): mid-build.
-5. §15 Fortress boss fight from the server log (F2): not started. Fixture `fixtures/fortress-boss-top-fight.json`, attacker `fixtures/profile-sentinel-l85-miss.json`.
-6. §11 Celestial Optimiser target (C2): not started. Engine merged; reverse-engineered rules in `celestial/REPORT2.md`.
-7. §6 results clarity, 8. §1 step list, then the rest of the backlog table.
+1. Merged: §10 Push, §14 mount pruning, §10 Fortress shield fix (O3b), §13 glyph pruning (G1), §12 highest chance to win (W3). Full suite on main: 2,808 tests pass.
+2. Next: §15 Fortress boss fight from the server log (F2): not started. Fixture `fixtures/fortress-boss-top-fight.json`, attacker `fixtures/profile-sentinel-l85-miss.json`.
+3. §11 Celestial Optimiser target (C2): not started. Engine merged; reverse-engineered rules in `celestial/REPORT2.md`.
+4. §6 results clarity, §1 step list, then the rest of the backlog table.
+5. Follow-up from W3 (backlog §12 open item): on content where almost nothing wins (Hard Forsaken Mines step 6), the highest-chance goal costs about 2x the fights of the old target goal (1.56M vs 0.76M), all in minimise and confirm, which compare progress with no tolerance. A small progress tolerance (a delta for the margin) should fix it.
 
 ## Here
 - `fixtures/`: sanitised real captures (user's own characters, one leaderboard tank with ids stripped, Celestial and Fortress logs). Copy into `src/lib/__fixtures__/real/` when a slice needs them.
