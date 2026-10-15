@@ -18,7 +18,7 @@ import { sigilBySpecies } from '../game/sigils.js';
 import { transcendenceBoard } from '../game/transcendence.js';
 import { boardKeyFor } from '../transcendence.js';
 import { isMultiplierStat } from '../model/equipment.js';
-import { resolveTranscendencePreset, ancientActive } from '../model/legality.js';
+import { effectiveTranscendencePreset, ancientActive, UNLOCK_LEVELS } from '../model/legality.js';
 
 /** The fortress group -> the catalogue id that stands for it (each group counts once). */
 const FORTRESS_ID = { TOP: 'TOP_1', BOTTOM: 'BOTTOM_1', CORE: 'CORE' };
@@ -100,8 +100,8 @@ function transcendenceBoardFor(character, spec) {
   return key ? transcendenceBoard(key) : null;
 }
 
-/** The transcendence preset a build preset uses: its link, else the active board, else 'default', else the first. */
-export const transcendencePreset = resolveTranscendencePreset;
+/** The transcendence preset a build preset runs on, level gates applied (none below 55, no link below 58). */
+export const transcendencePreset = effectiveTranscendencePreset;
 
 /** Sum two StoneBonuses-shaped bundles key by key (relics ride in the stones argument). */
 function addBundles(a, b) {
@@ -151,9 +151,11 @@ export function buildPresetInputs(character, presetId, { realm = 'base' } = {}) 
   const pet = calculatePetBonuses(petInput(character, preset));
   // Q3 strict: an Ancient counts only while the resolved board allocates its Transcendence sigil node.
   const ancientDropped = !!preset?.ancientSigilSpecies && !ancientActive(preset.ancientSigilSpecies, tr);
-  const warnings = ancientDropped
-    ? [`${preset.ancientSigilSpecies} is ignored: the Transcendence board does not allocate its sigil node.`]
-    : [];
+  const warnings = !ancientDropped
+    ? []
+    : tr
+      ? [`${preset.ancientSigilSpecies} is ignored: the Transcendence board does not allocate its sigil node.`]
+      : [`${preset.ancientSigilSpecies} is ignored: Transcendence unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE}.`];
   const effective = ancientDropped ? { ...preset, ancientSigilSpecies: null } : preset;
   const sigils = calculateSigilBonuses(sigilState(character, effective, spec), cls, spec, formKind);
   const relics = (preset?.relicIds ?? [])

@@ -3,7 +3,7 @@
 // transcendence), so cross-references are validated in `reconcilePresets` and remapped from v1 in
 // `migratePresetsFromV1` - the domain slices never edit this file.
 import { newId, normaliseSheet } from './character.js';
-import { linksAnotherBoard, transcendenceLinkUnlocked } from './legality.js';
+import { linksAnotherBoard, transcendenceLinkUnlocked, dualEquipUnlocked, dualTalentsUnlocked } from './legality.js';
 
 export const MIN_PRESETS = 2;
 export const MAX_PRESETS = 8;
@@ -53,8 +53,11 @@ function normalisePreset(raw, index) {
   return base;
 }
 
-/** -> { presets (2..8, unique ids), activePresetId }. Cross-references are left for reconcile. */
-export function normalisePresets(rawCharacter) {
+/**
+ * -> { presets (2..8, unique ids), activePresetId }. Cross-references are left for reconcile.
+ * `level` (the normalised one) picks the padding: set 2 / talent set 1 only once the level unlocks them.
+ */
+export function normalisePresets(rawCharacter, level) {
   const rawList = Array.isArray(rawCharacter?.presets) ? rawCharacter.presets : [];
   const seen = new Set();
   const presets = rawList.slice(0, MAX_PRESETS).map((p, i) => {
@@ -65,7 +68,11 @@ export function normalisePresets(rawCharacter) {
   });
   while (presets.length < MIN_PRESETS) {
     const i = presets.length;
-    presets.push(newPreset(`Preset ${i + 1}`, { equipmentSet: i % 2 === 0 ? 1 : 2, talentSet: i % 2 }));
+    const second = i % 2 === 1;
+    presets.push(newPreset(`Preset ${i + 1}`, {
+      equipmentSet: second && dualEquipUnlocked(level) ? 2 : 1,
+      talentSet: second && dualTalentsUnlocked(level) ? 1 : 0,
+    }));
   }
   const active = presets.some((p) => p.id === rawCharacter?.activePresetId) ? rawCharacter.activePresetId : presets[0].id;
   return { presets, activePresetId: active };

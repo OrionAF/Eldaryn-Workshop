@@ -58,11 +58,12 @@ describe('legalityOf', () => {
     expect(gates(r)).toEqual(['ancientBoard']);
   });
 
-  it('unlock gates the model only reports: set 2 below 28, talent set 2 below 38, mounts below 40, links below 58', () => {
+  it('unlock gates the model only reports: set 2 below 28, talent set 2 below 38, mounts below 40; a link below 58 only warns', () => {
     const c = fixture('WARRIOR', (r) => {
       r.level = 26;
-      r.presets[0].mountId = null; // mounts unlock at 40 and transcendence at 55: the fixture's choices
-      r.presets[0].transcendencePresetId = null; // would be an illegal baseline
+      r.presets[0].mountId = null; // mounts unlock at 40: the fixture's mount would be an illegal baseline
+      r.presets[0].ancientSigilSpecies = null; // no board counts below 55, so neither does the Ancient (strict)
+      r.presets[0].transcendencePresetId = null;
       r.transcendence.presets.push({ id: 'bare', name: 'Bare', allocatedNodeIds: [] });
     });
     const s = candidateOf(c, 'p1');
@@ -70,11 +71,31 @@ describe('legalityOf', () => {
     expect(gates(legalityOf(c, 'p1', { ...s, equipmentSet: 2 }))).toEqual(['dualEquip']);
     expect(gates(legalityOf(c, 'p1', { ...s, talentSet: 1, ancientSigilSpecies: null, sigilSpecies: [] }))).toContain('dualTalents');
     expect(gates(legalityOf(c, 'p1', { ...s, mountId: 'mount-a' }))).toEqual(['mounts']);
-    expect(gates(legalityOf(c, 'p1', { ...s, transcendencePresetId: 'bare', ancientSigilSpecies: null }))).toContain('transcendenceLink');
+    const linked = legalityOf(c, 'p1', { ...s, transcendencePresetId: 'bare' });
+    expect(linked.ok).toBe(true);
+    expect(linked.warnings.map((w) => w.gate)).toContain('transcendenceLink');
+  });
+
+  it('the optimiser takes a baseline whose saved link below 58 the build ignores (transcendence.md §9)', () => {
+    const c = fixture('WARRIOR', (r) => {
+      r.level = 56;
+      r.transcendence.presets.push({ id: 'bare', name: 'Bare', allocatedNodeIds: [] });
+      r.presets[0].transcendencePresetId = 'bare'; // a link to another board stays saved below 58
+    });
+    expect(c.presets[0].transcendencePresetId).toBe('bare');
+    const r = legalityOf(c, 'p1', candidateOf(c, 'p1'));
+    expect(r.ok).toBe(true);
+    expect(r.warnings.map((w) => w.gate)).toEqual(['transcendenceLink']);
+  });
+
+  it('below 55 an Ancient is illegal for a candidate even when the board allocates its node (Q3 strict)', () => {
+    const c = fixture('WARRIOR', (r) => { r.level = 54; });
+    expect(gates(legalityOf(c, 'p1', candidateOf(c, 'p1')))).toContain('ancientBoard');
+    expect(legalityOf(c, 'p1', { ...candidateOf(c, 'p1'), ancientSigilSpecies: null }).ok).toBe(true);
   });
 
   it('a condition below level 54 is illegal; the default is fine', () => {
-    const c = fixture('WARRIOR', (r) => { r.level = 53; r.presets[0].transcendencePresetId = null; });
+    const c = fixture('WARRIOR', (r) => { r.level = 53; r.presets[0].transcendencePresetId = null; r.presets[0].ancientSigilSpecies = null; });
     const s = candidateOf(c, 'p1');
     expect(gates(legalityOf(c, 'p1', { ...s, sigilConditions: { WARBORN_FURY: 'MY_HP_BELOW_40' } }))).toContain('conditions');
     expect(legalityOf(c, 'p1', { ...s, sigilConditions: { WARBORN_FURY: 'ON_COOLDOWN' } }).ok).toBe(true);

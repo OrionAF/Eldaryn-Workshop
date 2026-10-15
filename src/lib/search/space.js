@@ -19,7 +19,7 @@ import { glyphTypeInfo, glyphStatLabel, glyphSecondaryValue, GLYPH_TIERS, GLYPH_
 import { PRESET_SIGIL_CAP } from '../model/presets.js';
 import {
   relicSlotCap, talentPointsForLevel, sigilSlotCap, sigilsUnlocked, dualEquipUnlocked, dualTalentsUnlocked,
-  mountsUnlocked, conditionsUnlocked, resolveTranscendencePreset, ancientActive, UNLOCK_LEVELS,
+  mountsUnlocked, conditionsUnlocked, resolveTranscendencePreset, effectiveTranscendencePreset, ancientActive, UNLOCK_LEVELS,
 } from '../model/legality.js';
 import { applyCandidate, candidateWrites } from './patch.js';
 import { subsetsUpTo } from './combinatorics.js';
@@ -129,6 +129,11 @@ export function boardOf(character, cand) {
   return resolveTranscendencePreset(character, { transcendencePresetId: cand.transcendencePresetId ?? null });
 }
 
+/** The board a candidate's stats run on: boardOf with the level gates applied, as the build does. */
+export function runningBoardOf(character, cand) {
+  return effectiveTranscendencePreset(character, { transcendencePresetId: cand.transcendencePresetId ?? null });
+}
+
 /** The character-wide condition of a sigil (ON_COOLDOWN when none is stored). */
 export const storedCondition = (character, sp) => character.sigils?.owned?.[sp]?.condition ?? DEFAULT_CONDITION;
 
@@ -236,7 +241,7 @@ export function runningSigils(character, cand) {
   const out = cand.sigilSpecies.filter((sp) => own[sp]);
   if (cand.utilitySigilSpecies && own[cand.utilitySigilSpecies]) out.push(cand.utilitySigilSpecies);
   const anc = cand.ancientSigilSpecies;
-  if (anc && own[anc] && isSigilSpeciesActiveForSpec(anc, character.class, spec) && ancientActive(anc, boardOf(character, cand))) out.push(anc);
+  if (anc && own[anc] && isSigilSpeciesActiveForSpec(anc, character.class, spec) && ancientActive(anc, runningBoardOf(character, cand))) out.push(anc);
   return out;
 }
 
@@ -305,7 +310,7 @@ export function createBuildSpace(character, presetOrId, { realm = 'base', mode =
     if (!(slots > 0 && owned[c.utilitySigilSpecies] && utility.has(c.utilitySigilSpecies))) c.utilitySigilSpecies = null;
     if (!boardIds.includes(c.transcendencePresetId)) c.transcendencePresetId = boardOf(character, { transcendencePresetId: null })?.id ?? null;
     const anc = c.ancientSigilSpecies;
-    if (!(slots > 0 && owned[anc] && ancient.has(anc) && isSigilSpeciesActiveForSpec(anc, cls, spec) && ancientActive(anc, boardOf(character, c)))) {
+    if (!(slots > 0 && owned[anc] && ancient.has(anc) && isSigilSpeciesActiveForSpec(anc, cls, spec) && ancientActive(anc, runningBoardOf(character, c)))) {
       c.ancientSigilSpecies = null;
     }
     c.relicIds = c.relicIds.filter((id) => classRelics.has(id) && character.relics?.[id] > 0).slice(0, relicCap);
@@ -419,7 +424,7 @@ export function createBuildSpace(character, presetOrId, { realm = 'base', mode =
     ancient(c) {
       if (slots === 0) return [];
       const spec = specOf(c);
-      const board = boardOf(character, c);
+      const board = runningBoardOf(character, c);
       const pool = ancientSigils(cls).map((s) => s.species)
         .filter((sp) => owned[sp] && isSigilSpeciesActiveForSpec(sp, cls, spec) && ancientActive(sp, board));
       return [null, ...pool].map((ancientSigilSpecies) => legalise({ ...c, ancientSigilSpecies }));

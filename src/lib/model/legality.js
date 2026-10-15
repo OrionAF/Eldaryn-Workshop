@@ -88,6 +88,17 @@ export function linksAnotherBoard(character, preset) {
 }
 
 /**
+ * The board a preset's stats run on, with the level gates applied (transcendence.md §1, §9): none
+ * below 55, the unlinked board below 58 (a saved link stays but is ignored), else the resolved one.
+ * Everything that computes from the board uses this; resolveTranscendencePreset is the stored choice.
+ */
+export function effectiveTranscendencePreset(character, preset) {
+  const L = lvl(character?.level);
+  if (!transcendenceUnlocked(L)) return null;
+  return resolveTranscendencePreset(character, transcendenceLinkUnlocked(L) ? preset : null);
+}
+
+/**
  * Is the Ancient sigil granted by the allocated board? Strict rule (Q3, sigils.md §9): it needs its
  * Transcendence sigil node allocated on the board the preset resolves to. `board` is a transcendence
  * preset ({allocatedNodeIds}) or a plain id list.
@@ -116,8 +127,12 @@ export function checkPreset(character, preset) {
   if (preset.equipmentSet === 2 && !dualEquipUnlocked(L)) add('dualEquip', 'equipmentSet', `Equipment set 2 unlocks at level ${UNLOCK_LEVELS.DUAL_EQUIP}`);
   if (preset.talentSet === 1 && !dualTalentsUnlocked(L)) add('dualTalents', 'talentSet', `Talent set 2 unlocks at level ${UNLOCK_LEVELS.DUAL_TALENTS}`);
   if (preset.mountId && !mountsUnlocked(L)) add('mounts', 'mountId', `Mounts unlock at level ${UNLOCK_LEVELS.MOUNTS}`);
-  if (linksAnotherBoard(character, preset) && !transcendenceUnlocked(L)) {
-    add('transcendence', 'transcendencePresetId', `Transcendence unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE}`);
+  // advisory: below its level the board (or the link) is kept but the build ignores it
+  if (!transcendenceUnlocked(L) && resolveTranscendencePreset(character, preset)?.allocatedNodeIds?.length) {
+    add('transcendence', 'transcendencePresetId', `Transcendence unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE}; the board does not count until then`, true);
+  }
+  if (!transcendenceLinkUnlocked(L) && linksAnotherBoard(character, preset)) {
+    add('transcendenceLink', 'transcendencePresetId', `Linking a transcendence preset unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE_PRESETS}; the link is ignored until then`, true);
   }
 
   const cap = relicSlotCap(L, character.extraRelicSlots);
@@ -141,7 +156,9 @@ export function checkPreset(character, preset) {
   const anc = preset.ancientSigilSpecies;
   if (anc) {
     if (!ancientSigils(cls).some((s) => s.species === anc)) add('ancientClass', 'ancientSigilSpecies', `${anc} is not an Ancient of this class`);
-    else if (!ancientActive(anc, resolveTranscendencePreset(character, preset))) {
+    else if (!transcendenceUnlocked(L)) {
+      add('ancientBoard', 'ancientSigilSpecies', `${anc} needs Transcendence, which unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE}; it is ignored until then`, true);
+    } else if (!ancientActive(anc, effectiveTranscendencePreset(character, preset))) {
       add('ancientBoard', 'ancientSigilSpecies', `${anc} needs its Transcendence sigil node allocated on the board; it is ignored until then`, true);
     }
   }
@@ -157,18 +174,22 @@ export function checkPreset(character, preset) {
   return out;
 }
 
-/** Features that stay saved but stop counting below their unlock level, ascending (classes.md §3). */
-const LEVEL_GATES = [
+/** Features that stay saved but stop counting below their unlock level (effectiveTranscendencePreset), ascending (classes.md §6). */
+const INERT_GATES = [
+  ['Transcendence', UNLOCK_LEVELS.TRANSCENDENCE],
+  ['Transcendence presets', UNLOCK_LEVELS.TRANSCENDENCE_PRESETS],
+];
+/** Per-preset choices that stay saved and still count, so checkPreset flags the presets using them. */
+const FLAGGED_GATES = [
   ['Set 2', UNLOCK_LEVELS.DUAL_EQUIP],
   ['Set B', UNLOCK_LEVELS.DUAL_TALENTS],
   ['Mounts', UNLOCK_LEVELS.MOUNTS],
-  ['Transcendence', UNLOCK_LEVELS.TRANSCENDENCE],
-  ['Transcendence presets', UNLOCK_LEVELS.TRANSCENDENCE_PRESETS],
 ];
 
 /**
  * What changing the level to `newLevel` would drop, for the confirm dialog (ia.md §4.1).
- * `inert` names the gates the change falls below: nothing is deleted for them, they just stop counting.
+ * Of the gates the change falls below, nothing is deleted: `inert` ones stop counting, `flagged` ones
+ * still count, and checkPreset (so the optimiser) rejects a preset that uses them.
  * `normalise` is normaliseCharacter, injected because model/index.js imports this file.
  */
 export function previewLevelChange(character, newLevel, normalise) {
@@ -179,12 +200,14 @@ export function previewLevelChange(character, newLevel, normalise) {
   const equippedOf = (c) => c.presets.flatMap((p) => [...p.sigilSpecies, p.utilitySigilSpecies, p.ancientSigilSpecies].filter(Boolean).map((sp) => `${p.id}:${sp}`));
   const kept = new Set(equippedOf(after));
   const relicCount = (c) => c.presets.reduce((n, p) => n + p.relicIds.length, 0);
+  const crossed = (gates) => gates.filter(([, at]) => lvl(character.level) >= at && after.level < at).map(([name]) => name);
   return {
     level: after.level,
     talentPointsLost: Math.max(0, spent(character) - spent(after)),
     sigilsDropped: equippedOf(character).filter((k) => !kept.has(k)),
     relicsDropped: Math.max(0, relicCount(character) - relicCount(after)),
     awakeningPointsLost: Math.max(0, (character.awakening?.level ?? 0) - (after.awakening?.level ?? 0)),
-    inert: LEVEL_GATES.filter(([, at]) => lvl(character.level) >= at && after.level < at).map(([name]) => name),
+    inert: crossed(INERT_GATES),
+    flagged: crossed(FLAGGED_GATES),
   };
 }

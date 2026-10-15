@@ -7,7 +7,7 @@
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { petImage } from '../../lib/assets/pets.js';
   import { mountImage } from '../../lib/assets/mounts.js';
-  import { mountsUnlocked, UNLOCK_LEVELS, ancientActive, resolveTranscendencePreset } from '../../lib/model/legality.js';
+  import { mountsUnlocked, UNLOCK_LEVELS, ancientActive, effectiveTranscendencePreset } from '../../lib/model/legality.js';
   import { mountGlyphLoadout, activeMajorGlyphs } from '../../lib/model/mounts.js';
   import { glyphTypeInfo } from '../../lib/model/glyphs.js';
   import { petDisplayName } from '../../lib/game/pets.js';
@@ -28,7 +28,7 @@
     const load = mountGlyphLoadout(character, mount, spec);
     // The species the Fighter runs: a major glyph acts only with its sigil equipped (mounts-glyphs.md §10).
     const ancient = preset.ancientSigilSpecies;
-    const ancientOn = ancient && ancientActive(ancient, resolveTranscendencePreset(character, preset)) ? ancient : null;
+    const ancientOn = ancient && ancientActive(ancient, effectiveTranscendencePreset(character, preset)) ? ancient : null;
     const equipped = [...preset.sigilSpecies, preset.utilitySigilSpecies, ancientOn].filter((sp) => sp && character.sigils.owned[sp]);
     const { active, inert } = activeMajorGlyphs(character, mount, spec, equipped);
     const name = (g) => glyphTypeInfo(g.glyphType)?.name ?? g.glyphType;

@@ -89,6 +89,14 @@ describe('Transcendence board picker', () => {
     board().dispatchEvent(new Event('change', { bubbles: true }));
     expect(preset().transcendencePresetId).toBeNull();
   });
+
+  it('at 55-57 a saved link says the preset runs the active board; below 55 no board counts', () => {
+    withBoards(56, 'bare');
+    expect(t.target.textContent).toContain('Uses Default (the active board)');
+    expect(t.target.textContent).toContain('the link is ignored until then');
+    withBoards(54, 'bare');
+    expect(t.target.textContent).toContain('Transcendence unlocks at level 55');
+  });
 });
 
 it('pet and mount are radio cards; None clears the choice', () => {

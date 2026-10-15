@@ -4,7 +4,7 @@
 // gates directly; this full check runs on reported rows and in tests.
 import { normaliseCharacter } from '../model/index.js';
 import {
-  checkPreset, talentPointsForLevel, conditionsUnlocked, sigilSlotCap, resolveTranscendencePreset, UNLOCK_LEVELS,
+  checkPreset, talentPointsForLevel, conditionsUnlocked, sigilSlotCap, UNLOCK_LEVELS,
 } from '../model/legality.js';
 import { pointsSpent } from '../model/talents.js';
 import { DEFAULT_CONDITION, ENEMY_CONDITIONS, SELF_CONDITIONS } from '../model/sigils.js';
@@ -114,12 +114,6 @@ export function legalityOf(character, presetId, cand, { roundTrip = true } = {})
   }
   for (const [sp, v] of Object.entries(canonical(character, presetId, cand).sigilConditions)) {
     if (v !== DEFAULT_CONDITION && !conditionsUnlocked(L)) add('conditions', 'sigilConditions', `${sp}: conditions unlock at level ${UNLOCK_LEVELS.CONDITIONS}`);
-  }
-  // A build preset links a board only from level 58 (transcendence.md §9); below that it runs the active board.
-  const unlinked = resolveTranscendencePreset(character, { transcendencePresetId: null })?.id ?? null;
-  const board = resolveTranscendencePreset(character, { transcendencePresetId: cand.transcendencePresetId ?? null })?.id ?? null;
-  if (L < UNLOCK_LEVELS.TRANSCENDENCE_PRESETS && board !== unlinked) {
-    add('transcendenceLink', 'transcendencePresetId', `Linking a transcendence preset unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE_PRESETS}`);
   }
   // glyphs the candidate places (mounts-glyphs.md §8-§10): unsealed, once per mount, majors of the class and spec
   if (cand.mountId && cand.mountGlyphs) {

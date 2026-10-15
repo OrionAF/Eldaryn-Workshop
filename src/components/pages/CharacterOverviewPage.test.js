@@ -64,12 +64,16 @@ it('lowering the level previews what it drops and writes nothing until confirmed
   expect(rosterStore.current.presets[0].sigilSpecies).toEqual([]);
 });
 
-it('lowering the level below an unlock gate warns that Set 2, Set B, mounts and Transcendence go inert', () => {
+it('lowering the level below an unlock gate: Transcendence stops counting, Set B and mounts are flagged', () => {
   rosterStore.setCharacterLevel(60);
   mountPage();
   commit(view.q('input[aria-label="Level"]'), '30');
   const text = view.q('dialog[open]').textContent;
-  for (const name of ['Set B', 'Mounts', 'Transcendence presets']) expect(text).toContain(name);
+  expect(text).toContain('Transcendence stops counting');
+  expect(text).toContain('Transcendence presets stops counting');
+  expect(text).toContain('Set B is kept, but presets that use it are flagged');
+  expect(text).toContain('Mounts is kept, but presets that use it are flagged');
+  expect(text).not.toContain('Set B stops counting');
   expect(text).not.toContain('Set 2 ');
   expect(rosterStore.current.level).toBe(60); // preview only
 });

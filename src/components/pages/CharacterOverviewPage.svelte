@@ -77,6 +77,7 @@
     }
     if (p.relicsDropped > 0) lines.push(`${p.relicsDropped} equipped relic${p.relicsDropped === 1 ? '' : 's'} (slots unlock with level)`);
     if (p.awakeningPointsLost > 0) lines.push(`${p.awakeningPointsLost} Awakening level${p.awakeningPointsLost === 1 ? '' : 's'}`);
+    for (const name of p.flagged ?? []) lines.push(`${name} is kept, but presets that use it are flagged and cannot be optimised until switched back`);
     for (const name of p.inert ?? []) lines.push(`${name} stops counting (kept, but inert below its unlock level)`);
     return lines;
   }

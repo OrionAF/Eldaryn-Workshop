@@ -16,7 +16,7 @@
   import ProvenanceTag from '../ui/ProvenanceTag.svelte';
   import ConfirmButton from '../ConfirmButton.svelte';
   import { SET_LABELS, petLabel, mountLabel, talentSetLabel, transcendenceLabel, filledSlots } from './presetLabels.js';
-  import { resolveTranscendencePreset } from '../../lib/model/legality.js';
+  import { effectiveTranscendencePreset } from '../../lib/model/legality.js';
   import { statText } from './statText.js';
 
   let { character, setStatus = () => {} } = $props();
@@ -38,7 +38,7 @@
   const relicCap = $derived(relicSlotCap(character.level, character.extraRelicSlots));
 
   function boardOf(p) {
-    const b = resolveTranscendencePreset(character, p);
+    const b = effectiveTranscendencePreset(character, p);
     return b ? (transcendenceLabel(character, b.id) ?? b.name ?? 'Board') : 'None';
   }
 
