@@ -25,8 +25,9 @@ it('opens as a modal dialog when open is true', () => {
 
 it('labels itself from the title for screen readers', () => {
   const { target, app, dialog } = setup({ open: true });
-  expect(dialog().getAttribute('aria-labelledby')).toBe('modal-title');
-  expect(target.querySelector('#modal-title').textContent).toBe('Glyphs');
+  const labelledBy = dialog().getAttribute('aria-labelledby');
+  expect(labelledBy).toBeTruthy();
+  expect(document.getElementById(labelledBy).textContent).toBe('Glyphs');
   unmount(app);
 });
 
@@ -66,4 +67,16 @@ it('falls back to an aria-label when no title is given', () => {
   const { app, dialog } = setup({ open: true, title: '' });
   expect(dialog().getAttribute('aria-label')).toBe('Dialog');
   unmount(app);
+});
+
+it('gives every instance its own title id, so two modals never share one', () => {
+  const a = setup({ open: true, title: 'First' });
+  const b = setup({ open: true, title: 'Second' });
+  const idA = a.dialog().getAttribute('aria-labelledby');
+  const idB = b.dialog().getAttribute('aria-labelledby');
+  expect(idA).not.toBe(idB);
+  expect(document.getElementById(idA).textContent).toBe('First');
+  expect(document.getElementById(idB).textContent).toBe('Second');
+  unmount(a.app);
+  unmount(b.app);
 });

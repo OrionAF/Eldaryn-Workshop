@@ -70,3 +70,29 @@ it('disabled prevents entering the confirm state', () => {
   expect(onConfirm).not.toHaveBeenCalled();
   unmount(app);
 });
+
+it('moves focus to the Confirm button when the swap happens', () => {
+  const { target, app } = setup();
+  target.querySelector('button').click();
+  flushSync();
+  expect(document.activeElement).toBe(target.querySelector('.confirm-yes'));
+  unmount(app);
+});
+
+it('an unanswered confirm reverts to the label after 4 s', () => {
+  vi.useFakeTimers();
+  const { target, app, onConfirm } = setup();
+  target.querySelector('button').click();
+  flushSync();
+  expect(target.querySelector('.confirm-yes')).not.toBeNull();
+  vi.advanceTimersByTime(3900);
+  flushSync();
+  expect(target.querySelector('.confirm-yes')).not.toBeNull();
+  vi.advanceTimersByTime(200);
+  flushSync();
+  expect(target.querySelector('.confirm-yes')).toBeNull();
+  expect(target.querySelector('button').textContent).toBe('Remove');
+  expect(onConfirm).not.toHaveBeenCalled();
+  unmount(app);
+  vi.useRealTimers();
+});
