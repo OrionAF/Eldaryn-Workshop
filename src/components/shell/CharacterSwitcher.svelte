@@ -204,6 +204,7 @@
   }
   .hint { margin: var(--sp-1) 0 0; font-size: var(--fs-12); color: var(--text-muted); }
   @media (max-width: 700px) {
-    .text, .chev { display: none; }
+    .sub, .chev { display: none; }
+    .name { max-width: 9ch; }
   }
 </style>
