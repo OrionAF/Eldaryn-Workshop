@@ -146,3 +146,21 @@ it('a mount with no star data at all is fully inert', () => {
   expect(onchange).not.toHaveBeenCalled();
   unmount(app);
 });
+
+it('clearable shows a visible Clear button that sets 0; hidden by default', () => {
+  const onchange = vi.fn();
+  const target = document.createElement('div');
+  document.body.appendChild(target);
+  const app = mount(StarRating, { target, props: { value: 3, clearable: true, onchange } });
+  flushSync();
+  const clear = target.querySelector('.clear');
+  expect(clear.textContent).toBe('Clear');
+  clear.click();
+  expect(onchange).toHaveBeenCalledWith(0);
+  unmount(app);
+
+  const plain = mount(StarRating, { target, props: { value: 3, onchange } });
+  flushSync();
+  expect(target.querySelector('.clear')).toBeNull();
+  unmount(plain);
+});
