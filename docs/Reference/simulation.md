@@ -238,7 +238,8 @@ and legality bundle. `canonicalise` reverts every change whose legalised revert 
 ## Objectives
 
 Code: `src/lib/search/objectives.js` (targets, PVE objectives, ordering heuristics),
-`src/lib/search/pvpObjective.js` (PVP), `src/lib/search/sampler.js` (sample store, contrasts).
+`src/lib/search/pvpObjective.js` (PVP), `src/lib/search/celestialObjective.js` (Celestial Trial),
+`src/lib/search/sampler.js` (sample store, contrasts).
 Design record: plan §A.6.
 
 ### Per-fight outcome, statistic, interval, contrast
@@ -260,7 +261,7 @@ unused by any objective.
 |---|---|---|---|---|
 | `dps` | damage / window s; the mob cannot die inside the window | mean | t | paired t (`paired-t`); δ relative |
 | `survival` | 1 if alive at the window end | proportion | Wilson | Tango paired proportion; δ absolute |
-| `win-chance`, `win-rate` | 1 + HP left / max HP if the whole step is cleared, else the share of the step's enemy HP removed (< 1); the win bit is score ≥ 1 | proportion of wins | Wilson | capped win rate, then the margin (§Win rate); δ absolute |
+| `win-chance`, `win-rate` | 1 + HP left / max HP if the whole step is cleared, else the share of the step's enemy HP removed (< 1); the win bit is score ≥ 1. Celestial: the party's HP left over its max HP, and the boss's HP removed (§Celestial Trial) | proportion of wins | Wilson | capped win rate, then the margin (§Win rate); δ absolute |
 | `pvp-winrate` | 1 if my build wins the duel, one lane per (opponent, seat) | pooled proportion, equal N per lane | Wilson on the pool | stratified Tango, one stratum per lane; δ absolute |
 
 The PVP row reports per-matchup Wilson intervals, mean duel length and the timeout share. None of these rank anything:
@@ -276,7 +277,7 @@ equal statistics are a tie (no effective-HP or duel-length tie-break).
   attack > 0 and speed > 0). `objectiveKindsFor(kind, target)` leaves it out of the picker.
 - Target kinds and their objectives (the first is the default): dummy `dps`; chapter, dungeon (normal
   and `_hard`), raid, Oblivion `win-chance`, `win-rate`, `push` (§Push); World Boss `dps`; Fortress boss `dps`; custom `dps`, `win-chance`, `win-rate`, `survival`
-  (`dps` stays the default); pvp `pvp-winrate`. Anything else is a retired goal.
+  (`dps` stays the default); Celestial Trial `win-chance`, `win-rate`; pvp `pvp-winrate`. Anything else is a retired goal.
 
 ### Win rate
 
@@ -391,6 +392,42 @@ counts from 0; the boss and the adds attack the tank (the "adds target everyone"
 modelled) and, with the tank dead, the first living player; no add spawns at the
 `maxAlive` cap; Block Fury and the per-add attack bonus multiply. MYTHIC is not simulated (its
 party-power HP scaling is server-side).
+
+### Celestial Trial
+
+Target `{kind: 'celestial', difficulty: 'NORMAL'|'HARD', level?: whole number from 40 (the unlock level), partner:
+null | {source: 'character', characterId, presetId} | {source: 'opponent', opponentId}, tank?: 'auto'|'me'|'partner'
+(default 'auto'), starter?: 'me'|'partner' (default 'me'), tactics?: {focus: 'HOLD'|'BOSS'|'SPAWN', holdCount}}`
+(`search/celestialObjective.js`). MYTHIC is refused (not simulated, §Target fidelity). `holdCount` is a whole
+number from 1 to `celestialMaxHoldCount(difficulty)`; the tactics default to the catalogue's finder tactics for the
+difficulty (`CELESTIAL_FINDER_DEFAULT_TACTICS`, Game/pve-content.md §6). `level` defaults to the engine's rule, the
+party's highest level, read once at resolve time from my character and a roster partner's Fighter; an opponent
+partner's typed sheet has no level, so it never sets the scaling. Tank or starter 'partner' needs a partner.
+Label: "Celestial Trial (HARD, L85, with <partner name>)", or "solo". Objectives: the win-rate family only
+(`win-chance` the default, `win-rate`); Push and survival are not offered (backlog §11).
+
+Engine path: `engine/pve/celestial.js` `simulateCelestial`, the party in a fixed order, my build member 0 (as in
+every server log) and the partner member 1. `tank` maps to `tankIndex` (me 0, partner 1; 'auto' leaves it to the
+engine's `defaultTankIndex` on each candidate's party, since my spec can change with my talents); `starter` maps to
+`stackPlayerIndex` (the stack player, combat-pve.md §20.7). Fight i of every build runs on `fightRng(seed, i)` with
+the partner prepared once and fixed. Per fight: a clear in time scores 1 + the party's HP left / its max HP, a loss
+the share of the boss's HP removed (below 1), so the win bit is the party clear. The search runs in `pve` mode on the
+base realm (Celestial members are `preparePveFighter` results), so builds are keyed, canonicalised and merged as in
+PVE (`effect.js` `engineKey`), with the PVE condition options; the Power guard and the toggles are unchanged.
+
+Partner. The user's build is the variable; the partner is fixed. A roster partner (another character's preset) is
+resolved where the request is built (`ui/optimiserSetup.js` `requestOf`, via `resolveRosterPartner`: the preset
+built with `build/fighter.js`) and sent as plain JSON in `request.partner`, since the worker never sees the roster; a
+pool worker gets it in its setup. An opponent partner is resolved inside `resolveTarget` from `character.opponents`
+(`features/duel.js` `opponentFighter`): its typed sheet is taken as given. The target's assumptions are the
+`CELESTIAL_ASSUMPTIONS` labels plus one (`celestial-partner`) saying what the partner is. A Rankings profile (backlog
+§2) is meant to become a third source beside these two.
+
+Keys. The target key carries the resolved level and a hash of the partner's Fighter (`partnerKey`), and the run
+echoes `partnerKey` in `request`, so the seeds, the run key and the caches change whenever the partner's build does,
+and runs never mix partners. Run more re-resolves the roster partner and refuses a run whose `partnerKey` no longer
+matches. A saved setup whose partner (character, preset or opponent) is gone normalises to the same fight solo, with
+tank and starter back on their defaults; the picker shows why an unresolvable fight cannot run and never throws.
 
 ### Fortress boss
 

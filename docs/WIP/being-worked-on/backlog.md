@@ -5,7 +5,7 @@
 | Order | Item | Size | Status |
 |---|---|---|---|
 | 1 | §15 Fortress boss fight from the server log | M | Built on rebuild2/F2, not merged |
-| 2 | §11 Celestial Trial Optimiser target | S | Queued |
+| 2 | §11 Celestial Trial Optimiser target | S | Built on rebuild2/C2, not merged |
 | 3 | §6 Results say which pet, mount or glyph | S | Queued |
 | 4 | §1 Optimiser step list | S | Merged |
 | 5 | §3 Setup estimates | M | Merged |
@@ -133,7 +133,7 @@ The old engine's pick (Elusive Supremacy, Blinding Mark, Mist Veil) is the set t
 
 ## 11. Celestial Trial (party of 2), and party roles
 
-**Status (2026-10-15).** The Celestial engine is merged (slice C1), replay-checked against five server logs. The Optimiser target (C2: partner, tank, starter, tactics, difficulty, level) is paused. Open questions (Overload end and Judgment, NORMAL Overload, stack-player rule) wait for more logs.
+**Status (2026-10-15).** The Celestial engine is merged (slice C1), replay-checked against five server logs. The Optimiser target (C2: partner from my other characters or my opponents, or solo; tank; starter; tactics; difficulty; level) is built on rebuild2/C2, not merged (simulation.md §Celestial Trial). Follow-up: Push on Celestial (the deepest level cleared at a target rate). Open questions (Overload end and Judgment, NORMAL Overload, stack-player rule) wait for more logs.
 
 **Ask** (2026-10-15): can the Celestial Trial be simulated? The user supplied one server fight log
 (Hard, level 85, the user plus a tank partner). It stays outside the repo because it names another

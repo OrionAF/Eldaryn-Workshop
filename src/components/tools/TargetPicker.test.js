@@ -2,6 +2,12 @@ import { it, expect, afterEach } from 'vitest';
 import { flushSync } from 'svelte';
 import TargetPicker from './TargetPicker.svelte';
 import { setup } from '../ui/testkit.js';
+import sentinelProfile from '../../lib/__fixtures__/real/profile-sentinel-l85-oct15b.json';
+import warriorProfile from '../../lib/__fixtures__/real/profile-warrior-l73.json';
+import { normaliseCharacter } from '../../lib/model/index.js';
+import { gameProfileToCharacter } from '../../lib/model/gameProfile.js';
+import { cloneAsOpponent } from '../../lib/features/duel.js';
+import { celestialMaxHoldCount } from '../../lib/engine/pve/celestial.js';
 
 let mounted;
 afterEach(() => mounted?.done());
@@ -31,7 +37,7 @@ const optionsOf = (ui, label) =>
 it('lists the target kinds, with Oblivion only when unlocked and PVP disabled without opponents', () => {
   const { ui } = mountPicker();
   const kinds = [...ui.target.querySelectorAll('option')].map((o) => [o.value, o.disabled]);
-  expect(kinds.map(([v]) => v)).toEqual(['dummy', 'chapter', 'dungeon', 'raid', 'worldBoss', 'fortressBoss', 'custom', 'pvp']);
+  expect(kinds.map(([v]) => v)).toEqual(['dummy', 'chapter', 'dungeon', 'raid', 'worldBoss', 'fortressBoss', 'custom', 'celestial', 'pvp']);
   expect(kinds.find(([v]) => v === 'pvp')[1]).toBe(true);
   expect(ui.q('[data-testid="pvp-hint"]').textContent).toMatch(/saved opponent/);
 });
@@ -169,4 +175,87 @@ it('a new Fortress boss target starts on the character\'s server', () => {
   const m = mountPicker({}, { character: { server: 5 } });
   pick(m.ui, 'Fight', 'fortressBoss');
   expect(m.state.target.server).toBe(5);
+});
+
+// ---- Celestial Trial ----
+const NOW = '2026-10-15T00:00:00.000Z';
+const sentinelChar = normaliseCharacter(gameProfileToCharacter(sentinelProfile, { now: NOW }));
+const warriorChar = normaliseCharacter(gameProfileToCharacter(warriorProfile, { now: NOW }));
+const tankPreset = warriorChar.presets.find((p) => p.name === 'TANK');
+const tinCan = { ...cloneAsOpponent(warriorChar, tankPreset.id, 'WARRIOR_TANK', 'Tin Can'), id: 'opp-tin' };
+const celestialProps = { character: { ...sentinelChar, opponents: [tinCan] }, characters: [warriorChar], opponents: [tinCan] };
+const segButton = (ui, testid, label) => [...ui.qa(`[data-testid="${testid}"] button`)].find((b) => b.textContent.trim() === label);
+
+// The accessor props are not reactive, so each step remounts with what the previous step wrote.
+const remount = (state) => mountPicker({ target: state.target, objective: state.objective }, celestialProps);
+const celestialSolo = { kind: 'celestial', difficulty: 'HARD', partner: null, tank: 'auto', starter: 'me', tactics: { focus: 'HOLD', holdCount: 3 } };
+
+it('choosing the Celestial Trial starts solo on HARD with the catalogue tactics and the highest-chance goal', () => {
+  const first = mountPicker({}, celestialProps);
+  pick(first.ui, 'Fight', 'celestial');
+  expect(first.state.target).toEqual(celestialSolo);
+  expect(first.state.objective).toEqual({ kind: 'win-chance' });
+  const { ui } = remount(first.state);
+  expect(ui.q('[data-testid="celestial-level"]').textContent).toMatch(/Default: level 85/);
+  expect(segButton(ui, 'celestial-tank', 'Partner').disabled).toBe(true);
+  expect(segButton(ui, 'celestial-starter', 'Partner').disabled).toBe(true);
+  expect(ui.q('[data-testid="fidelity"]').dataset.fidelity).toBe('server-model');
+  expect(ui.q('[data-testid="fidelity"]').textContent).toMatch(/Solo: a party of one/);
+});
+
+it('the Celestial partner picker offers my other characters (then a preset) and my opponents', () => {
+  const solo = mountPicker({ target: celestialSolo, objective: { kind: 'win-chance' } }, celestialProps);
+  expect(optionsOf(solo.ui, 'Partner')).toEqual(['None (solo)', `${warriorChar.name} (level 73)`, 'Opponent: Tin Can (Warrior)']);
+  pick(solo.ui, 'Partner', `character:${warriorChar.id}`);
+  expect(solo.state.target.partner).toEqual({ source: 'character', characterId: warriorChar.id, presetId: warriorChar.activePresetId });
+
+  const withChar = remount(solo.state);
+  expect(optionsOf(withChar.ui, 'Partner preset')).toEqual(warriorChar.presets.map((p) => p.name));
+  pick(withChar.ui, 'Partner preset', tankPreset.id);
+  expect(withChar.state.target.partner.presetId).toBe(tankPreset.id);
+
+  const seats = remount(withChar.state);
+  expect(seats.ui.q('[data-testid="fidelity"]').textContent).toMatch(/from the roster/);
+  segButton(seats.ui, 'celestial-tank', 'Partner').click();
+  flushSync();
+  expect(seats.state.target.tank).toBe('partner');
+  const starter = remount(seats.state);
+  segButton(starter.ui, 'celestial-starter', 'Partner').click();
+  flushSync();
+  expect(starter.state.target).toMatchObject({ tank: 'partner', starter: 'partner' });
+
+  // an opponent partner; back to solo drops the partner seats
+  const opp = remount(starter.state);
+  pick(opp.ui, 'Partner', 'opponent:opp-tin');
+  expect(opp.state.target.partner).toEqual({ source: 'opponent', opponentId: 'opp-tin' });
+  const oppShown = remount(opp.state);
+  expect(oppShown.ui.q('[data-testid="fidelity"]').textContent).toMatch(/typed sheet is taken as given/);
+  pick(oppShown.ui, 'Partner', '');
+  expect(oppShown.state.target).toMatchObject({ partner: null, tank: 'auto', starter: 'me' });
+});
+
+it('the Celestial difficulty, focus and hold count edit the tactics within the catalogue range', () => {
+  const hard = mountPicker({ target: { ...celestialSolo, tactics: { focus: 'HOLD', holdCount: celestialMaxHoldCount('HARD') } }, objective: { kind: 'win-chance' } }, celestialProps);
+  expect(numberField(hard.ui, 'Hold count')).toBeTruthy();
+  segButton(hard.ui, 'celestial-difficulty', 'Normal').click();
+  flushSync();
+  expect(hard.state.target.difficulty).toBe('NORMAL');
+  expect(hard.state.target.tactics.holdCount).toBeLessThanOrEqual(celestialMaxHoldCount('NORMAL'));
+  const normal = remount(hard.state);
+  setNumber(numberField(normal.ui, 'Hold count'), 1);
+  expect(normal.state.target.tactics).toEqual({ focus: 'HOLD', holdCount: 1 });
+  pick(normal.ui, 'Focus', 'BOSS');
+  expect(normal.state.target.tactics.focus).toBe('BOSS');
+  expect(numberField(remount(normal.state).ui, 'Hold count')).toBeFalsy();
+  // a typed level replaces the default
+  const lv = remount(normal.state);
+  setNumber(numberField(lv.ui, 'Level'), 95);
+  expect(lv.state.target.level).toBe(95);
+  expect(remount(lv.state).ui.q('[data-testid="celestial-level"]').textContent).toMatch(/Scaling level 95/);
+});
+
+it('a Celestial partner that is gone shows why the fight cannot run, without throwing', () => {
+  const { ui } = mountPicker({ target: { ...celestialSolo, partner: { source: 'character', characterId: 'gone', presetId: 'x' } }, objective: { kind: 'win-chance' } }, celestialProps);
+  expect(ui.q('[data-testid="celestial-error"]').textContent).toMatch(/missing/);
+  expect(ui.q('[data-testid="fidelity"]')).toBeNull();
 });

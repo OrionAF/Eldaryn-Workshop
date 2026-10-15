@@ -5,6 +5,7 @@ import { resolveTarget, objectiveKindsFor, goalRetired, WIN_RATE_TARGET, PUSH_TA
 import { SPACE_DEFAULTS, normalisePowerFloor } from '../search/space.js';
 import { EFFORT_LEVELS } from '../search/search.js';
 import { PVP_MAX_OPPONENTS, PVP_SEATS } from '../search/pvpObjective.js';
+import { CELESTIAL_TARGET_KIND, rosterPartnerFor } from '../search/celestialObjective.js';
 import { metricKey } from '../engine/metrics.js';
 import { jobSignature } from '../jobs.svelte.js';
 import { crusadePowerRequirement } from '../game/pveContent.js';
@@ -30,12 +31,37 @@ export const defaultSetup = (defaultEffort = 'standard') => ({
   seed: 1,
 });
 
+/** The roster's characters other than `character` (the Celestial partner picker). */
+export const otherCharacters = (character, characters = []) => (characters ?? []).filter((c) => c && c.id !== character?.id);
+
+/**
+ * What resolveTarget needs beside the spec: the character and, for a Celestial roster partner, that partner
+ * resolved from `characters` (null when it is gone; resolveTarget then says so).
+ */
+export const targetContext = (target, character, characters = []) => ({ character, partner: rosterPartnerFor(target, characters) });
+
+/**
+ * A Celestial fight whose partner is gone (character, preset or opponent deleted) -> the same fight solo,
+ * with tank and starter back on their defaults. `characters` undefined: roster partners are not checked.
+ */
+function celestialWithoutDanglingPartner(t, character, characters) {
+  const ref = t.partner;
+  let gone = false;
+  if (ref && typeof ref === 'object') {
+    if (ref.source === 'opponent') gone = !(character?.opponents ?? []).some((o) => o.id === ref.opponentId);
+    else if (ref.source === 'character' && characters) gone = !rosterPartnerFor(t, characters);
+  }
+  if (!gone) return t;
+  return { ...t, partner: null, tank: t.tank === 'partner' ? 'auto' : t.tank, starter: t.starter === 'partner' ? 'me' : t.starter };
+}
+
 /**
  * Any value -> a setup that is valid for `character`: an unknown preset falls back to the active one,
  * a target that does not resolve (or an objective it cannot score) to the defaults, deleted
- * opponents drop out of a PVP target. Unknown keys are ignored.
+ * opponents drop out of a PVP target, a deleted Celestial partner leaves the fight solo. Unknown keys
+ * are ignored. `characters` is the roster's characters (for a Celestial roster partner).
  */
-export function normaliseSetup(raw, character, defaultEffort = 'standard') {
+export function normaliseSetup(raw, character, defaultEffort = 'standard', characters = undefined) {
   const out = defaultSetup(defaultEffort);
   const r = raw && typeof raw === 'object' ? raw : {};
   const presets = character?.presets ?? [];
@@ -48,8 +74,13 @@ export function normaliseSetup(raw, character, defaultEffort = 'standard') {
       const ids = (Array.isArray(t.opponentIds) ? t.opponentIds : []).filter((id) => known.has(id)).slice(0, PVP_MAX_OPPONENTS);
       t = { kind: 'pvp', opponentIds: ids, seats: PVP_SEATS.includes(t.seats) ? t.seats : 'attacker' };
     }
+    if (t.kind === CELESTIAL_TARGET_KIND) t = celestialWithoutDanglingPartner(t, character, characters);
     try {
-      if (t.kind !== 'pvp') resolveTarget(t, { character });
+      // without the roster a roster partner cannot be resolved here; the spec is checked solo instead
+      const check = t.kind === CELESTIAL_TARGET_KIND && t.partner?.source === 'character' && !characters
+        ? { ...t, partner: null, tank: 'auto', starter: 'me' }
+        : t;
+      if (t.kind !== 'pvp') resolveTarget(check, targetContext(check, character, characters));
       out.target = t;
     } catch {
       // keep the default target
@@ -119,7 +150,7 @@ export function retiredGoalBlock(spec) {
 }
 
 /** The setup a saved run was made with ("Re-run with settings"), validated against today's character. */
-export function setupFromRun(run, character, defaultEffort = 'standard') {
+export function setupFromRun(run, character, defaultEffort = 'standard', characters = undefined) {
   const level = run.budget?.level;
   return normaliseSetup(
     {
@@ -133,6 +164,7 @@ export function setupFromRun(run, character, defaultEffort = 'standard') {
     },
     character,
     defaultEffort,
+    characters,
   );
 }
 
@@ -158,11 +190,16 @@ export function runApplyBlock(run, character) {
   return '';
 }
 
-/** The `optimize` worker request for a setup. */
-export function requestOf(setup, character) {
+/**
+ * The `optimize` worker request for a setup. A Celestial roster partner is resolved here from `characters`
+ * into `partner` (plain JSON): the worker never sees the roster.
+ */
+export function requestOf(setup, character, characters = []) {
+  const partner = rosterPartnerFor(setup.target, characters);
   return {
     mode: 'optimize',
     character: searchCharacter(character),
+    ...(partner ? { partner } : {}),
     presetId: setup.presetId,
     target: JSON.parse(JSON.stringify(setup.target)),
     objective: JSON.parse(JSON.stringify(setup.objective)),

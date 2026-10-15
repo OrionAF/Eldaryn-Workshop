@@ -26,6 +26,7 @@ export const TARGET_KIND_LABEL = Object.freeze({
   worldBoss: 'World boss',
   fortressBoss: 'Fortress boss',
   custom: 'Custom mob',
+  celestial: 'Celestial Trial',
   pvp: 'PVP vs my saved opponents',
 });
 
