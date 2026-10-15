@@ -174,6 +174,8 @@ CONTROL_POINTS (ratio → shield%): 1→60, 0.8→50, 0.6→40, 0.5→30, 0.4→
 
 The argument order of `calculateBossShield` (`a0` alive, `a1` guard, `a2` divisor) is read from the bytecode. I assumed `a1` is the starting defender count. [DERIVED]
 
+The app's Fortress boss target (simulation.md, Fortress boss) passes `startingDefenders` as `maxClanSize` (so the zero guard only fires on a non-positive clan size) and takes the fatigue factor as 1. Both only scale the displayed credit. [DERIVED]
+
 The guide says the divisor is the server's max clan size (L910334). `getClanMaxMembers` returns `maxMembersDefault` 50, or `maxMembersOverrides[serverId]` (5:30, 6-10:18, 99:20) (L1045076-1045092, L1045703-1045706). [CODE]
 
 The guide's "Siege Fatigue" is the star vulnerability multiplier (UI string `fatigueValue: '+{{pct}}% DMG'`, L910292). `starVulnerabilityToPercent(m) = round((max(1,m)-1)*100)`. [CODE]
@@ -306,20 +308,20 @@ War Pact is a **skill**, not a clan feature. `crusadeDiscount` ("War Pact", cate
 
 ## §9 Data file schema
 `data/clan-fortress.json` (camelCase). The `source` field carries the line citations.
-- `fortressConstants`, `fortresses[]`, `bosses{group}`, `buffs{group:{combat,nonCombat}}`, `classRemap{class:{from:to}}`
+- `fortressConstants` (includes `bossFightDurationMs`, `bossTickIntervalMs` 10 at L1223934 and `maxMembersDefault` 50 at L1045076), `fortresses[]`, `bosses{group}`, `buffs{group:{combat,nonCombat}}`, `classRemap{class:{from:to}}`
 - `bossShieldControlPoints[]`, `stars`, `contributionBonus`
 - `attackRewardTiers[]`, `defenseReward`, `coreDefenseWinMultiplier`, `rewardScaleByClanCount[]`
 - `clanRanks[]`, `warPointRates[]`, `doubleRewardSchedule`, `clanWarSessionRewards[]`
 - `raidConstants`, `raids[]`: each has `{id, name, requiredPlayerLevel, source, stepMultipliers[], roster[], steps[{stepNumber, influenceReward, mobIds[], mobHp[], mobAttack[]}]}`
 
 ## §10 App comparison
-The app models Fortress Buffs as three checkboxes with fixed stat blocks (`src/lib/totals.js` `FORTRESS_BUFF_STATS`, `fortressBuffsContribution`). Nothing else from this system is modelled.
+The app models Fortress Buffs as three checkboxes with fixed stat blocks (`src/lib/totals.js` `FORTRESS_BUFF_STATS`, `fortressBuffsContribution`). The Optimiser also has a `fortressBoss` target (`src/lib/engine/pve/fortressBoss.js`; contract in simulation.md §Fortress boss): the 60 s boss race, with the §3.1 shield, contribution bonus and §2.5 star multipliers shown as the clan's credited damage. Nothing else from this system is modelled.
 
 Disagreements:
 1. **BOTTOM class remap is missing, and miss/blind are double counted.** The app BOTTOM block gives `dmg_reduction 5 + miss_chance 5` and `block_chance 3 + blind_chance 3` at once. The game gives each class only one set (§2.2). Warrior gets DR and block, Sentinel gets miss and blind, Mystic gets lifesteal 5 and hpRegen +3, and Necromancer gets health% +5 and hpRegen +3.
 2. **TOP `speed: 3`.** The game value is `attackSpeed 0.03`, displayed as "+0.03 Atk Speed". The app may be off by a factor of 100 depending on how `speed` is scaled. See §2.4, [UNRESOLVED].
 3. **Non-combat bonuses.** The app has no XP income (5%/10%, plus 4% per star), Crusade Seals/day or Raid Keys/day.
-4. **Stars.** The app has no star state, so it lacks the star XP bonus and boss vulnerability.
+4. **Stars.** The app stores no star state, so it lacks the star XP bonus. The boss vulnerability is modelled only as an input of the Optimiser's Fortress boss target (stars are chosen there, not stored).
 5. **Matches.** TOP attack% 5, crit 3, penetration 3, pvpAttack 15; BOTTOM health% 5, regen 3, pvpDefense 15; CORE 25/25; top and bottom mutually exclusive, core independent. These are all consistent with §2.1 and §3.2.
 
 Things the game has that the app lacks: stars, siege rewards, medals, clan ranks, Clan Wars, War Pact, Village Raids content.

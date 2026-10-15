@@ -154,3 +154,20 @@ it('the Target field accepts 10 % and says a loss usually costs nothing but time
   expect(mounted.q('input').value).toBe('10');
   expect(mounted.q('[data-testid="win-rate-explain"]').textContent).toMatch(/A loss usually costs nothing but time/);
 });
+
+it('a Fortress boss result shows raw and credited damage for the rows and the current build', () => {
+  const result = winRateResult();
+  result.objective = { kind: 'dps', label: 'Damage per second', unit: 'dps', higherIsBetter: true, statistic: 'mean', q: null };
+  result.target = { ...result.target, kind: 'fortressBoss', fortress: { shieldPercent: 30, contributionBonus: 1.5, starVulnerability: 6, total: 6.3 } };
+  for (const r of [result.baseline, ...result.rows]) r.value = { ...r.value, est: 1000 };
+  const view = viewResult(result);
+  expect(view.fortress.total).toBe(6.3);
+  const ui = mountView(view);
+  const base = ui.q('[data-testid="fortress-credit-baseline"]');
+  expect(base.textContent).toMatch(/60,?000/);
+  expect(base.textContent).toMatch(/378,?000/);
+  click(ui.qa('[data-testid="result-row"] button[aria-expanded]')[0]);
+  const notes = ui.qa('[data-testid="fortress-credit"]');
+  expect(notes.length).toBeGreaterThan(0);
+  expect(notes[0].textContent).toMatch(/378,?000/);
+});

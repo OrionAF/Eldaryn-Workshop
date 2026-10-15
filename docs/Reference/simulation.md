@@ -210,13 +210,13 @@ equal statistics are a tie (no effective-HP or duel-length tie-break).
 ### Windows and compatibility
 
 - A target with its own length (dummy and custom: `seconds`, default 60; World Boss: its affinity's
-  fight duration) is the `dps` window and the default `survival` window (custom mobs). A sequence
+  fight duration; Fortress boss: 60 s) is the `dps` window and the default `survival` window (custom mobs). A sequence
   target (chapter, dungeon, raid, Oblivion) has none: every mob keeps its own cap. An objective
   `seconds` overrides the survival window.
 - `survival` (custom mobs only) is refused for a mob that cannot damage the player (no swing with
   attack > 0 and speed > 0). `objectiveKindsFor(kind, target)` leaves it out of the picker.
 - Target kinds and their objectives (the first is the default): dummy `dps`; chapter, dungeon (normal
-  and `_hard`), raid, Oblivion `win-rate`; World Boss `dps`; custom `dps`, `win-rate`, `survival`
+  and `_hard`), raid, Oblivion `win-rate`; World Boss `dps`; Fortress boss `dps`; custom `dps`, `win-rate`, `survival`
   (`dps` stays the default); pvp `pvp-winrate`. Anything else is a retired goal.
 
 ### Win rate
@@ -282,7 +282,33 @@ objective choice, so they carry no win-rate goal.
 Every resolved target carries its engine `mode` (`PVE_MODES` key, or `pvp`), the mode's labelled
 `assumptions` (`{id, label, value?}`; the Oblivion output-cut toggle gives `value` 'on'/'off',
 default off) and `fidelity`: `server-model` when the fight is server-run (dungeon, raid, Oblivion,
-World Boss, PVP), else `client`.
+World Boss, Fortress boss, PVP), else `client`.
+
+### Fortress boss
+
+Target `{kind: 'fortressBoss', group: 'TOP'|'BOTTOM'|'CORE', stars?: 1-5 (TOP, BOTTOM; CORE has none and
+refuses it), aliveDefenders?: 0+ (default 0), maxClanSize?: 1+ (default 50, the server default;
+per-server overrides are in clan-fortress.md §3.1), kills?: 0+}`. Objective `dps` only (the reward is
+the clan's damage). The boss is the table's HP, attack and speed (clan-fortress.md §1.1) in a 60 s
+window.
+
+Engine path: PVE mode `fortressBoss`, the shared fight engine with the dungeon-family rules
+(non-live loop, server-run) at the 10 ms `BOSS_TICK_INTERVAL_MS`, no hit-back hook. This is the client's
+`simulateBossFight` rule set (combat-pve.md §1: shared engine, identical structure, no call site found), not
+the World Boss mode, whose affinity ramp and rebound belong to that boss only. Shield mitigation is not
+carried by the boss constants, so the campaign value is assumed (labelled `fortress-boss-model`). A player
+the boss kills stops dealing damage, so durable builds score higher.
+
+Credit: the result shows raw damage (dps x 60) and the effective damage the clan is credited,
+`round(raw x shield x contribution x star)` (clan-fortress.md §3.1). The multipliers are constant within a
+run, so they are display only: they sit in the echoed target (`target.fortress`) and never enter the
+sampled statistic, a contrast or a rank. They do change the target key, so a run with other defenders is a
+different run.
+
+Deviations of the displayed credit from the client formula (clan-fortress.md §3.1): the app's two-argument
+`calculateBossShield(aliveDefenders, maxClanSize)` treats the client's `startingDefenders` guard as
+`maxClanSize`, and the fatigue factor is taken as 1. `aliveDefenders` defaults to 0, which is a 0% shield (the
+boss at full damage); set it for a realistic defended boss. These only scale the display, never the ranking.
 
 ### Residual
 

@@ -23,6 +23,7 @@ export const TARGET_KIND_LABEL = Object.freeze({
   raid: 'Village raid',
   oblivion: 'Oblivion floor',
   worldBoss: 'World boss',
+  fortressBoss: 'Fortress boss',
   custom: 'Custom mob',
   pvp: 'PVP vs my saved opponents',
 });
@@ -95,6 +96,7 @@ export function viewResult(result) {
   return {
     unit,
     kind: result?.objective?.kind ?? null,
+    fortress: result?.target?.fortress ?? null,
     goal: result?.goal ? { status: result.goal.status, target: result.goal.target } : null,
     higherIsBetter: hib,
     baseline: result?.baseline ? { changes: [], ...result.baseline } : null,
@@ -102,6 +104,16 @@ export function viewResult(result) {
     withheld: all.length - rows.length,
     domain: forestDomain(items),
   };
+}
+
+/**
+ * A Fortress boss row's damage in the 60 s fight: raw, and what the clan is credited (the run's constant
+ * multipliers, display only). `dps` is the row's mean damage per second.
+ */
+export function fortressDamage(fortress, dps, seconds = 60) {
+  if (!fortress || !finite(dps)) return null;
+  const raw = Math.round(dps * seconds);
+  return { raw, effective: Math.round(raw * fortress.total) };
 }
 
 /**
@@ -157,7 +169,7 @@ export function viewRun(run) {
   if (!run.detail) return null;
   if (run.schema === 2) {
     return viewResult({
-      objective: { unit, higherIsBetter: hib, kind: run.objective?.kind }, goal: run.headline?.goal ?? null,
+      objective: { unit, higherIsBetter: hib, kind: run.objective?.kind }, target: run.target ?? null, goal: run.headline?.goal ?? null,
       baseline: run.detail.baseline, rows: run.detail.rows,
     });
   }

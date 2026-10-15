@@ -34,7 +34,7 @@ import { glyphCombatMods } from '../core/glyphMods.js';
 import { processCombatTick, routeSpellHealToMinion } from './tick.js';
 import { EngineInputError, assertFiniteEntity, assertPositive } from '../validate.js';
 import { PVE_PROGRESS_CONSTANTS } from '../../game/combatPve.js';
-import { RAID_CONSTANTS } from '../../game/fortress.js';
+import { RAID_CONSTANTS, FORTRESS_CONSTANTS } from '../../game/fortress.js';
 import { WORLD_BOSS_CONSTANTS } from '../../game/worldBoss.js';
 
 /** Fight cap of the shared engine: 20 min (combat-pve.md §14, L1087922). */
@@ -62,6 +62,7 @@ export const PVE_ASSUMPTIONS = Object.freeze({
   oblivionConstants: note('oblivion-constants', `Oblivion floors assume the dungeon tick (${DUNGEON_TICK_MS} ms), shield mitigation (${DUNGEON_SHIELD_MITIGATION}) and ${INTER_MOB_GAP_MS} ms start gap: the floor config carries none.`),
   oblivionOutputCut: note('oblivion-output-cut', 'The instability output cut is off unless switched on: the client fight never applies it, and where the server does is unresolved.'),
   worldBossModel: note('world-boss-model', 'World Boss hit-back, ramp and rebound are modelled from the affinity record; the fight itself is server-run.'),
+  fortressBossModel: note('fortress-boss-model', `The Fortress boss fight is server-run. The client's shared boss engine (simulateBossFight) has no call site, so it is played with the same tick rules against the boss's listed HP, attack and speed, at the ${FORTRESS_CONSTANTS.bossTickIntervalMs} ms boss tick and a ${PVE_SHIELD_MITIGATION} shield mitigation assumed (the campaign value).`),
   customShield: note('custom-shield', `Shield mitigation ${PVE_SHIELD_MITIGATION} assumed (the campaign and dungeon value).`),
 });
 
@@ -96,6 +97,10 @@ export const PVE_MODES = Object.freeze({
   }),
   worldBoss: pveMode({
     dtMs: WORLD_BOSS_CONSTANTS.tickIntervalMs, shieldMitigation: 0, assumptions: [A.serverFight, A.worldBossModel],
+  }),
+  fortressBoss: pveMode({
+    dtMs: FORTRESS_CONSTANTS.bossTickIntervalMs, shieldMitigation: PVE_SHIELD_MITIGATION,
+    assumptions: [A.serverFight, A.fortressBossModel],
   }),
   custom: pveMode({ dtMs: DEFAULT_DT_MS, shieldMitigation: PVE_SHIELD_MITIGATION, assumptions: [A.customShield] }),
   dummy: pveMode({ dtMs: DEFAULT_DT_MS, shieldMitigation: PVE_SHIELD_MITIGATION, assumptions: [] }),
