@@ -60,6 +60,9 @@
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   @media (max-width: 700px) {
     .realm .micro-label { display: none; }
+    /* the labels go (the controls keep their accessible names) so both fit one 44px row under the first */
+    .preset :global(label) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .context { align-items: center; }
     /* the preset name must stay readable: a floor wide enough for a few characters, then it grows */
     .context { flex: 1 1 auto; }
     .preset { min-width: 7rem; flex: 1 1 7rem; max-width: none; }
