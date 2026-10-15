@@ -42,9 +42,9 @@ export function oblivionFighter(character, presetId) {
  * Start a floor scan through the task facade. Returns { promise, cancel, fighter }.
  * @param {object} character  plain or $state character (JSON-cloned)
  */
-export function runFloorScan(character, { presetId, from = 1, to = 30, n = 64, seed = 1, threshold = WIN_THRESHOLD } = {}, hooks = {}) {
+export function runFloorScan(character, { presetId, from = 1, to = 30, n = 64, seed = 1, threshold = WIN_THRESHOLD, maxMs, applyOutputCut } = {}, hooks = {}) {
   const plain = JSON.parse(JSON.stringify(character));
   const fighter = oblivionFighter(plain, presetId);
-  const task = runOptimizerTask({ mode: 'oblivionFloors', fighter, from, to, n, seed, threshold }, hooks);
+  const task = runOptimizerTask({ mode: 'oblivionFloors', fighter, from, to, n, seed, threshold, maxMs, applyOutputCut }, hooks);
   return { ...task, fighter };
 }

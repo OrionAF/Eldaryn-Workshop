@@ -372,7 +372,7 @@ named; groups can be excluded. Applying marks the preset sheet stale (S1) and th
 Drop Check, Duel and Oblivion Floors report `Estimate`/`Contrast` from the same `engine/stats`
 modules and the same sequential comparator: Drop Check verdicts become Holm across metrics with an
 `inconclusive` state (F1); Duel shows a Wilson interval, `nNeeded` and Run more (U10); Oblivion
-floors resolve "≥ threshold" per floor sequentially (F2).
+floors report a fixed-n Wilson verdict per floor (F2); sequential resolution is a follow-up.
 
 ### A.13 Optimiser slices
 
@@ -754,8 +754,9 @@ Owns `tasks/oblivionFloors.js`, `features/oblivionDungeon.js` tests, new `oblivi
 Findings: #96 5-minute cap and stop rule (policy B.0); #107 no tests for the scan task and helpers
 (worker-branch tests land in J1).
 Behaviour: `maxMs` defaults to `FIGHT_CAP_MS`; rows split wins/deaths/timeouts; `stopAfter` counts
-floors with no wins and no timeouts; each floor resolves "≥ threshold" with the sequential
-comparator; result carries `assumptions` (cap, output-cut policy) and `scanCapped` when the last
+floors with no wins and no timeouts; each floor runs a fixed `n` and reports a Wilson verdict
+(pass/fail/unresolved). DEVIATION (accepted for F2; a follow-up slice owes the one-sample sequential
+look from A1, so U11 must not assume it yet); result carries `assumptions` (cap, output-cut policy) and `scanCapped` when the last
 data floor passes. Tests (fail first): a sustain build with timeouts at 300 s is not stopped and
 wins at the 20-min cap; n = 0 / abort; non-contiguous `maxFloor`; `scanCapped`.
 
