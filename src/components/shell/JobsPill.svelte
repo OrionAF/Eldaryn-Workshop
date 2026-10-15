@@ -1,7 +1,8 @@
 <script>
   /**
    * JobsPill.svelte - the labelled "Jobs" pill in the top bar (design-system §4.18): ring spinner
-   * while any job runs, count badge (muted when idle). Toggles the JobsTray; Escape in the tray
+   * while any job runs, and a count badge of the RUNNING jobs only (no badge when none run: finished jobs
+   * are in the tray, not in the number). Toggles the JobsTray; Escape in the tray
    * closes it and returns focus here.
    */
   import { onMount } from 'svelte';
@@ -44,7 +45,7 @@
     {#if running > 0}<circle class="arc" cx="10" cy="10" r="7.5" stroke-dasharray="16 32" />{/if}
   </svg>
   <span class="jobs-lbl">Jobs</span>
-  <span class="count" class:idle={running === 0}>{total}</span>
+  {#if running > 0}<span class="count" data-testid="jobs-running">{running}</span>{/if}
 </button>
 
 {#if open}<JobsTray id="jobs-tray" onclose={close} />{/if}
@@ -82,7 +83,6 @@
     font-size: var(--fs-11);
     font-weight: var(--fw-bold);
   }
-  .count.idle { background: var(--surface-4); color: var(--text-soft); }
   @keyframes jobs-spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) {
     .arc { animation: none; stroke-dasharray: 14 26; }

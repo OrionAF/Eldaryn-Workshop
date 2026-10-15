@@ -176,7 +176,7 @@ describe('schema 2 runs (optimiser-result/2)', () => {
     expect(row.changes[0]).toMatchObject({ id: 'talents:0', scope: 'character', own: { verdict: 'better' }, needed: { verdict: 'better' }, keptBecause: 'own-effect' });
     expect(row.changes[0].sideEffects[0]).toMatchObject({ name: 'Boss build' });
     expect(row.remainder).toMatchObject({ delta: 1200, lo: null });
-    expect(row).not.toHaveProperty('writes');
+    expect(row.writes.map((w) => w.title)).toEqual(['Talents (set 1)', 'Preset Main']);
     expect(row).not.toHaveProperty('runMore');
     expect(row.provisional).toBe(false);
   });
@@ -224,5 +224,19 @@ describe('schema 2 runs (optimiser-result/2)', () => {
   it('the applied mark survives normalisation', () => {
     const r = normaliseRun({ ...v2(), applied: { at: '2026-10-02T00:00:00.000Z', rank: 1 } });
     expect(r.applied).toEqual({ at: '2026-10-02T00:00:00.000Z', rank: 1 });
+  });
+});
+
+describe('write groups survive the save (a saved run can be applied)', () => {
+  it('keeps each row\'s writes through normalisation, and a row without any gets an empty list', () => {
+    const r = richResult();
+    const run = runFromResult(r, { presetName: 'Main' });
+    expect(run.detail.rows[0].writes).toEqual([
+      { scope: 'character', title: 'Talents (set 1)', owner: { talentSet: 0 }, changeIds: ['talents:0'], sideEffects: [{ presetId: 'p2', name: 'Boss build', reason: 'uses Talent Set 1' }] },
+      { scope: 'preset', title: 'Preset Main', owner: { presetId: 'p1' }, changeIds: ['relics'], sideEffects: [] },
+    ]);
+    const again = normaliseRun(JSON.parse(JSON.stringify(run)));
+    expect(again.detail.rows[0].writes).toEqual(run.detail.rows[0].writes);
+    expect(Array.isArray(run.detail.rows[1].writes)).toBe(true);
   });
 });

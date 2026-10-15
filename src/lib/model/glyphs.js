@@ -38,6 +38,9 @@ const majorById = new Map(MAJOR_GLYPHS.map((t) => [t.id, t]));
 const mythicById = new Map(MYTHIC_GLYPH_TYPES.map((t) => [t.id, t]));
 const poolByStat = new Map(GLYPH_SECONDARY_POOL.map((s) => [s.stat, s]));
 
+/** A secondary stat key as text: "attackSpeed" -> "Attack Speed". */
+export const glyphStatLabel = (stat) => String(stat).replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
+
 export const GLYPH_SECONDARY_STATS = GLYPH_SECONDARY_POOL.map((s) => s.stat);
 
 /**

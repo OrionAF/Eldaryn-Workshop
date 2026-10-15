@@ -66,9 +66,9 @@
       signature: jobSignature({ characterKey: id, inputs: floorScanInputs(character, o) }),
       currentSignature: () => jobSignature({ characterKey: id, inputs: floorScanInputs(rosterStore.current, opts) }),
       openRoute: 'tools/oblivion',
+      notice: 'Floor scan started',
       summarize: (r) => [{ tone: r?.maxFloor ? 'up' : 'warn', text: r?.maxFloor ? `Floor ${r.maxFloor} (estimate)` : 'No floor reached' }],
     });
-    setStatus('Floor scan started');
   }
 
   const pct = (p) => `${(p * 100).toFixed(0)}%`;
@@ -106,9 +106,9 @@
 
       <Panel title="Scan setup" scope="tool">
         <div class="setup">
-          <Stepper label="From floor" bind:value={from} min={1} max={to} />
-          <Stepper label="To floor" bind:value={to} min={from} max={LAST_FLOOR} />
-          <Stepper label="Win threshold %" bind:value={threshold} min={50} max={99} />
+          <div class="field"><span class="micro-label" aria-hidden="true">From floor</span><Stepper label="From floor" bind:value={from} min={1} max={to} /></div>
+          <div class="field"><span class="micro-label" aria-hidden="true">To floor</span><Stepper label="To floor" bind:value={to} min={from} max={LAST_FLOOR} /></div>
+          <div class="field"><span class="micro-label" aria-hidden="true">Win threshold %</span><Stepper label="Win threshold %" bind:value={threshold} min={50} max={99} /></div>
           <SegmentedControl
             label="Effort" bind:value={effort}
             options={Object.entries(FLOOR_EFFORT).map(([value, n]) => ({ value, label: value[0].toUpperCase() + value.slice(1), sub: `N ${n}` }))}
@@ -141,6 +141,8 @@
       {/if}
 
       <Panel title="Floors" scope="oblivion" stale={stale}>
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex (a scrollable region must be focusable) -->
+        <div class="scroll" role="region" aria-label="Floors table" tabindex="0">
         <table class="floors" class:stale aria-label="Oblivion floors">
           <thead>
             <tr>
@@ -169,6 +171,7 @@
             {/each}
           </tbody>
         </table>
+        </div>
         <p class="caption">Sampling range is the 95% interval of the simulated win rate, not a game value.</p>
       </Panel>
     {/if}
@@ -180,6 +183,7 @@
   .obl { display: grid; gap: var(--sp-4); }
   .strip, .setup, .actions { display: flex; flex-wrap: wrap; gap: var(--sp-4); align-items: flex-end; }
   .strip > div { display: flex; flex-direction: column; gap: var(--sp-1); }
+  .field { display: flex; flex-direction: column; gap: var(--sp-1); }
   .caption, .muted { color: var(--text-muted); font-size: var(--fs-12); }
   .caption { margin: var(--sp-3) 0 0; }
   .chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); list-style: none; margin: 0; padding: 0; }
@@ -187,6 +191,7 @@
     font-size: var(--fs-12); color: var(--text-soft); border: 1px solid var(--line-rule);
     border-radius: var(--r-2); padding: var(--sp-1) var(--sp-2);
   }
+  .scroll { overflow-x: auto; max-width: 100%; }
   .floors { width: 100%; border-collapse: collapse; font-size: var(--fs-13); }
   .floors th { text-align: left; font-size: var(--fs-11); color: var(--text-muted); padding: var(--sp-1) var(--sp-2); }
   .floors td { padding: var(--sp-1) var(--sp-2); border-top: 1px solid var(--line-hairline); position: relative; }

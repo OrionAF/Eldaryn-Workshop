@@ -3,6 +3,7 @@ import { mount, unmount, flushSync } from 'svelte';
 import ToolsOblivionPage from './ToolsOblivionPage.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
 import { __resetJobs, jobsStore } from '../../lib/jobs.svelte.js';
+import { notifications } from '../../lib/notify.svelte.js';
 
 const ROWS = [
   { floor: 1, instability: 10, strain: 0, p: 1, pLo: 0.94, pHi: 1, wins: 64, deaths: 0, timeouts: 0, n: 64, medianMs: 4000, verdict: 'pass' },
@@ -59,6 +60,20 @@ it('scan: runs as a job with Standard N and the output cut off; labels the estim
   expect(target.querySelector('[data-testid="max-floor"]').textContent).toBe('30+ (scan cap)');
   expect(target.querySelector('tr[data-floor="2"]').textContent).toContain('30');
   expect(t).toContain('Each fight is cut off');
+  // the wide floors table scrolls inside its own focusable region, never the page
+  const region = target.querySelector('[role="region"][aria-label="Floors table"]');
+  expect(region.getAttribute('tabindex')).toBe('0');
+  expect(region.querySelector('table.floors')).not.toBeNull();
+  // the "started" note went with the job
+  expect(notifications.toasts.map((x) => x.message)).not.toContain('Floor scan started');
+});
+
+it('the three scan steppers carry visible labels, not only aria-labels', () => {
+  rosterStore.setOblivionUnlocked(true);
+  mountPage();
+  const fields = [...target.querySelectorAll('.setup .field')];
+  expect(fields.map((f) => f.querySelector('.micro-label').textContent.trim())).toEqual(['From floor', 'To floor', 'Win threshold %']);
+  for (const f of fields) expect(f.querySelector('[role="group"]').getAttribute('aria-label')).toBe(f.querySelector('.micro-label').textContent.trim());
 });
 
 it('stale: changing the build greys the result out and drops the highest floor', async () => {

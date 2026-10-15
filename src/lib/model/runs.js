@@ -103,7 +103,19 @@ function normaliseMatchup(m) {
   return { opponentId: str(m.opponentId), name: str(m.name), seat: m.seat === 'defender' ? 'defender' : 'attacker', value: normaliseEstimate(m.value), vsBaseline: normaliseContrast(m.vsBaseline) };
 }
 
-/** A schema 2 Row, compacted: no `writes` or `runMore` (a saved run is read-only; Re-run measures afresh). */
+function normaliseWrite(w) {
+  if (!isObj(w)) return null;
+  return {
+    scope: SCOPES.includes(w.scope) ? w.scope : 'preset', title: str(w.title), owner: plain(w.owner),
+    changeIds: (Array.isArray(w.changeIds) ? w.changeIds : []).filter((x) => typeof x === 'string'),
+    sideEffects: (Array.isArray(w.sideEffects) ? w.sideEffects : []).filter(isObj).map((s) => ({ presetId: str(s.presetId), name: str(s.name), reason: str(s.reason) })),
+  };
+}
+
+/**
+ * A schema 2 Row, compacted: no `runMore` (a saved run never measures more; Re-run measures afresh). The
+ * `writes` are kept so a saved run can be applied from the history; a run saved before that has none.
+ */
 function normaliseRow(r) {
   if (!isObj(r)) return null;
   const aux = isObj(r.aux) ? r.aux : {};
@@ -115,6 +127,7 @@ function normaliseRow(r) {
     provisional: false,
     key: str(r.key),
     candidate: plain(r.candidate),
+    writes: (Array.isArray(r.writes) ? r.writes : []).map(normaliseWrite).filter(Boolean),
     value: normaliseEstimate(r.value),
     aux: {
       winRate: normaliseEstimate(aux.winRate), meanMs: num(aux.meanMs), timeoutShare: num(aux.timeoutShare),

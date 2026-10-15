@@ -47,6 +47,7 @@
       aria-selected={tab.id === value}
       aria-disabled={tab.disabled ? 'true' : undefined}
       title={tab.disabled ? tab.reason : undefined}
+      aria-description={tab.disabled && tab.reason ? tab.reason : undefined}
       tabindex={tab.id === focusId ? 0 : -1}
       onclick={() => select(tab)}
     >

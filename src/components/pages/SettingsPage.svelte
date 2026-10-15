@@ -47,7 +47,7 @@
     {/if}
   </Panel>
 
-  <Panel title="Preferences" scopeLabel="This device">
+  <Panel title="Preferences" scope="global" scopeLabel="This device">
     <div class="prefs">
       <SegmentedControl
         label="Density"

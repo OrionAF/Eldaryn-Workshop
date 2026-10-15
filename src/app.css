@@ -108,11 +108,13 @@
   --scope-mount: #d6a27a;        /* 8.2:1 */
   --scope-oblivion: #bf93ff;     /* 7.8:1 realm, added as an inner rule */
   --scope-tool: var(--text-soft);
+  --scope-global: var(--text-soft); /* app-wide settings: not tied to a character or preset */
   --frame-character: #b8924f;    /* top rule */
   --frame-preset: #5b8fd0;       /* top rule */
   --frame-mount: #c08a5c;        /* top rule */
   --frame-oblivion: #8a63c8;     /* realm frame ring (see .realm-oblivion) */
   --frame-tool: #5b6579;         /* top rule */
+  --frame-global: var(--frame-tool); /* top rule */
 
   /* ── Rarity: the game's own values (unchanged) ───────────────────────── */
   --rarity-common-fg: #9d9d9d;     --rarity-common-fg-strong: #9d9d9d;     --rarity-common-border: #5a5e67;     --rarity-common-bg: #1e2536;

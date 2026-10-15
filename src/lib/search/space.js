@@ -14,7 +14,7 @@ import {
   genericSigils, utilitySigils, ancientSigils, sigilConditionOptions, SELF_CONDITIONS, DEFAULT_CONDITION,
 } from '../model/sigils.js';
 import { glyphSocketable, activeMajorGlyphs, emptyMountSockets, MOUNT_GLYPH_SOCKETS } from '../model/mounts.js';
-import { glyphTypeInfo, GLYPH_TIERS } from '../model/glyphs.js';
+import { glyphTypeInfo, glyphStatLabel, GLYPH_TIERS } from '../model/glyphs.js';
 import { PRESET_SIGIL_CAP } from '../model/presets.js';
 import {
   relicSlotCap, talentPointsForLevel, sigilSlotCap, sigilsUnlocked, dualEquipUnlocked, dualTalentsUnlocked,
@@ -498,5 +498,5 @@ export const glyphLabel = (character, id) => {
   const g = (character.glyphs ?? []).find((x) => x.id === id);
   if (!g) return 'Empty';
   const name = glyphTypeInfo(g.glyphType)?.name ?? g.glyphType;
-  return g.secondary ? `${name} (${g.rarity}, ${g.secondary.stat})` : `${name} (${g.rarity})`;
+  return g.secondary ? `${name} (${g.rarity}, ${glyphStatLabel(g.secondary.stat)})` : `${name} (${g.rarity})`;
 };
