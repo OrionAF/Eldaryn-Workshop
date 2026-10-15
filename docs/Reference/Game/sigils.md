@@ -89,6 +89,7 @@ common = 100 - uncommon - rare - epic - legendary
 | Cumulative fragments to reach L | `L*(L+1)/2 - 1` | [CODE] L1067512 |
 | Fragment source and the level-up action | server (duplicates). Client stores `{species, rarity, level, fragments, createdAt, activationCondition}` | [SERVER] `mapSigil` L1137671-1137690 |
 | Ancient sigils | stay level 1 ("no duplicates to forge with") | [CODE] UI string (strtab) |
+| Form sigils (Druid) | level fixed at 1 in the app | [UNRESOLVED] the client's level lock was not traced; the app pins them to level 1 (`model/legality`) |
 
 ## §4 Passive stats: flat Attack and Health
 
@@ -151,7 +152,7 @@ Consequences worked through (script `agent-scripts/sigils/scale.py`, all [DERIVE
 
 - Caps bind early (level 6-14) for almost every stat, e.g. Warborn Fury Attack% caps at L10, DR at L8; Iron Bastion Block caps at L20 (25); Phantom Veil Miss caps at L10 (25); Sanguine Rush Lifesteal caps at L10 (25); Blinding Mark caps at L10 (50); Withering Touch regen reduction caps at L7 (85).
 - **Attack Speed in BUFF effects is a 0.2-base value rounded to ONE decimal**, which makes the "step" the old doc recorded. Sanguine Rush AS by level: 0.2 (L1-4), 0.3 (L5-10), 0.4 (L11-16), 0.5 (L17-22), 0.6 (L23-29), 0.7 (L30); cap 0.8. [DERIVED]
-- Hawk Focus (aura AS 0.1) uses `toFixed(2)`: 0.10, 0.11, 0.12, 0.13 (L5), 0.17 (L10), 0.25 (L20), 0.33 (L30). [DERIVED] Whether the displayed unit is x100 percent (10%, 11%, ...) is the UI's concern; the stored unit is a fraction. [UNRESOLVED] how `attackSpeed` bonus is combined into the final Attack Speed stat (checked `calculateSigilBonuses` L1095765: it just adds `bonusValue` to a `attackSpeed` accumulator; the engine consumer was not traced).
+- Hawk Focus (aura AS 0.1) uses `toFixed(2)`: 0.10, 0.11, 0.12, 0.13 (L5), 0.17 (L10), 0.25 (L20), 0.33 (L30). [DERIVED] Whether the displayed unit is x100 percent (10%, 11%, ...) is the UI's concern; the stored unit is a fraction. [CODE] the `attackSpeed` bonus is added as stored to the raw attack-speed accumulator before the form multiplier and soft cap, see `stats.md` §3.2 (L1216476-1216501).
 
 ## §6 Sigil types and what each does
 
@@ -216,8 +217,8 @@ IDs in the JSON are kebab-cased names (`berserk-stance` is species `BERSERK_STAN
 | Hemorrhage | Epic | Debuff (Bleed) | 80% (120) hit, 40% (55) per stack per 2s, max 8 stacks, permanent | 10 / - |
 | Bulwark of Thorns | Legendary | Stack | see §6 | - |
 | Sunder Mark | Legendary | Stack | see §6 | - |
-| Earthwarden | Ancient | Transform | Attack% +30, HP% +100, Block +16 (soft cap), 60s | once per fight |
-| Flameborn | Ancient | Transform | Attack% +80, HP% +50, Penetration +12 (soft cap), 60s | once per fight |
+| Earthwarden | Ancient | Transform | Attack% +30, HP% +100, Block +16 (soft cap), 60s | on full Chrono Flux; re-arms (§9) |
+| Flameborn | Ancient | Transform | Attack% +80, HP% +50, Penetration +12 (soft cap), 60s | on full Chrono Flux; re-arms (§9) |
 
 ### Sentinel (12 forge + Stormcaller + Flameborn) [CODE] L1069233-1069466, L1069524-1069552
 
@@ -235,7 +236,7 @@ IDs in the JSON are kebab-cased names (`berserk-stance` is species `BERSERK_STAN
 | Ember Curse | Epic | Debuff (Bleed) | 80% (120) hit, 40% (55) per stack per 2s, max 8 | 10 / - |
 | Elusive Supremacy | Legendary | Stack | see §6 | - |
 | Siegebreaker Mark | Legendary | Stack | see §6 | - |
-| Stormcaller | Ancient | Transform | Attack% +60, HP% +70, Miss +20 (soft cap), 60s | once per fight |
+| Stormcaller | Ancient | Transform | Attack% +60, HP% +70, Miss +20 (soft cap), 60s | on full Chrono Flux; re-arms (§9) |
 
 Mystic (21 entries incl. druid variants/forms, Mage and Druid share the 3 generic slots but have different utility slots) and Necromancer (10 entries, Common to Rare only in 2.7.0) are fully tabulated in the JSON. Notable: Aether Renewal is a 25% instant heal that also refills the shield; Arcane Momentum stacks to 30 Momentum (+1.2% Spell Damage, +0.4% Spell Crit, +0.4% Spell Vamp each, first 15 stacks build twice as fast, resets per fight). [CODE] L1069570-1070528 (Arcane Momentum near L1070102).
 
@@ -244,8 +245,9 @@ Mystic (21 entries incl. druid variants/forms, Mage and Druid share the 3 generi
 - Acquired from the Transcendence board, not the Forge. Node ids: top-left `sig_-13,-25`, top-right `sig_13,-25`. Default mapping: top-left Earthwarden, top-right Flameborn. Sentinel override: top-left Stormcaller (top-right stays Flameborn). [CODE] `ANCIENT_SIGIL_BY_TRANSCENDENCE_NODE` L1069553-1069569, `getAncientSigilForNode` L1068346-1068375. Costs and unlocking: see transcendence.md (UI: flat Ichor cost for both corner nodes).
 - Transform: `durationMs` = 60000 (`TRANSFORM_DURATION_MS`). Effects: ATTACK_PERCENT and HP_PERCENT apply directly; PENETRATION, BLOCK_CHANCE, MISS_CHANCE go through `softCapGainFromSheet` (diminishing against the character sheet's current value, "counts like gear"). [CODE] `resolveTransformEffects` L1089965-1090085; stat values above in §8. Soft-cap curve itself: see stats.md.
 - Charge: Chrono Flux bar max 7000; Per event the bar gains `conduit value x weight`: attacker hit or crit = Flame x 1; defender block = Flame x 0.7; defender hit = Earthen x 0.7; attacker block = Earthen x 1. The Dark conduit value is added to both Flame and Earthen; if Flame+Dark and Earthen+Dark are both <= 0 the gain is 0. The sum is divided by `3^max(0, transformFireCount)` (`CHRONO_FLUX_RECHARGE_FACTOR` = 3, so each transform fired this fight cuts later gain by a further factor 3). The bar is clamped to 0..7000, and the caller skips accrual while a transform is active (L1089052-1089081). [CODE] L1094006-1094178 (`chronoFluxGainDivisor`, `chronoFluxFromEvents(events, flame, earthen, dark, transformFireCount)`) "When it maxes out, it awakens your equipped Ancient Sigil's transform." [CODE] L1094180 (`MAX 7000, FLAME_HIT 1, FLAME_BLOCKED 0.7, EARTHEN_HIT 0.7, EARTHEN_BLOCKED 1`); gear conduit source: see gear.md.
-- Once per fight, no cooldown (no `cooldownMs` on the spell). [CODE]
+- No cooldown (no `cooldownMs` on the spell). The transform re-arms when its 60s effect ends and fires again once Chrono Flux refills to 7000; the bar resets to 0 when it fires and does not accrue while the transform is active; each later gain is divided by 3^(fires this fight). [CODE] `hasPendingTransform` L1092524-1092548, PVE loop L1089040-1089110, patch note L1960459. The in-game "once per fight" description (L1961432) is stale. [CODE]
 - Unique: only one of each can exist, stays level 1, survives Altar evolve. Only one Ancient equipped at a time. [CODE] strtab / `sigil.notify.oneAncient`.
+- [SERVER] Whether an equipped Ancient is active when its Transcendence board does not allocate its node is not shown by client code. The app treats it as inactive when the resolved board lacks the node; that is a policy choice, not a client fact.
 - The Transcendence popup still says "the two Ancient Sigils await in a future update" (stale text), but the species, node mapping and equip UI are present in 2.7.0. [CODE] L668837 vs L1069553.
 
 ## §10 Combat ceilings that cap sigil buffs

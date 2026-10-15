@@ -108,7 +108,7 @@ base = Lc <= 40 ? 10 + (45 - 10) * (Lc - 1) / 39
 value = max(10, round(base * (1 + (2*random() - 1) * 0.15)))
 ```
 
-- What conduit value does in combat (Flux per hit, threshold, transform duration; "awakens your equipped Ancient Sigil's transform", no cooldown, can re-awaken, each further charge costs more) is **[UNRESOLVED]** here: see `sigils.md` / `combat-pve.md`. Not modelled by the app.
+- What conduit value does in combat (Flux per hit, threshold, transform duration; "awakens your equipped Ancient Sigil's transform", no cooldown, can re-awaken, each further charge costs more) is in `sigils.md` §9 **[CODE]** (flux per event, MAX 7000, the 3^fires divisor) and `combat-pve.md` §10.5-§10.6 (the transform). The app models it in `pve/fight.js`.
 
 ## §8 Dual Equip (two equipment sets)
 

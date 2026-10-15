@@ -91,7 +91,7 @@ getEnchantStoneStatMultiplier(stone, statType, amplifyLevel):
 - Contributions are purely additive per stat key; no per-slot weighting **[CODE]**.
 - Amplify multiplies **every** stat on the stone, including guaranteed PvP stats and (for Oblivion) the non-Power rolled stats **[CODE]**.
 - Quality, `qualityBonus`, rarity and slot do not enter this function for any non-Oblivion stone: `stat.value` is used as stored **[CODE]**. So whatever the stored `value` is already reflects quality server-side (§6).
-- Caller supplies the list: `useSocketedStoneIds` unions the ids of both sets and the Oblivion map (L1173834-1173885). Which exact list each combat/stat screen passes to `calculateEnchantStoneBonuses` was not traced **[UNRESOLVED]**.
+- Caller supplies the list: the client's only stat-sum caller is a preview on the stats screen, which runs outside the Oblivion realm and only when `viewedEquipmentSet != activeEquipmentSet` (L1209812-1209935). It passes `enchantStones.filter(s => s.activated && <ids of the set chosen by viewedEquipmentSet>)`, pairing set 2 with `equipment2` / `enchantSlots2` and any other value with set 1 (L1209868-1209914). Ids are deduped per set, and `oblivionEnchantSlots` is not in this filter. **[CODE]** The active character's stats are the server's `computedStats` (L1173002-1173013) **[SERVER]**.
 - Mapping of keys to the app's stat model (`pvpAttack`, `critDamage`, ...) is 1:1 by name. `critDamage` ranges 0.05-0.16 and `attackSpeed` 0.01-0.1 (two decimals), far smaller than other percents: these are **multiplier deltas** (0.05 = +5% Crit Damage), the convention `stats.md` §1.3 gives for Attack Speed, Crit Damage and Minion Attack Speed; every other stone stat is in percent points **[DERIVED]** from the ranges against that convention.
 - Oblivion Power is derived only for a stat row of type `OBLIVION_POWER` (the `getEnchantStoneStatValue` branch above); the row's stored `value` is ignored. An Oblivion stone represented without that row therefore yields `oblivionPower` 0. Golden check: quality 80, grade 3 gives `round(8 + 22*79/99) * 2.25` = 26 * 2.25 = 58.5 (unrounded) **[DERIVED]**; apply any rounding the consumer does.
 
@@ -171,5 +171,5 @@ Additive stat bonuses from up to 9 socketed stones per set (Set 1 and Set 2), sc
 ## §11 Unresolved / server-side
 
 - Actual roll distribution, quality's effect on values, attunement effect, awakening RNG, amplify RNG, Oblivion upgrade result: **[SERVER]**.
-- Which stone set feeds the active character stats when both sets are populated: **[UNRESOLVED]**.
+- Which stone set and stones the server uses for the active character's combat stats: **[SERVER]**. The client preview (L1209812-1209935) pairs set N with `enchantSlots` N **[CODE]**.
 - Per-slot or per-type socket restrictions server-side: **[UNRESOLVED]**.

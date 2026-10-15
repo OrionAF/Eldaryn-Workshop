@@ -28,7 +28,7 @@ export function applySoftCap(raw, cfg) {
   return cfg.soft + k * (1 - Math.pow(s / (raw - cfg.soft + s), EXP));
 }
 
-// port of rawFromSoftCapped L1080223-1080366 (inverse of applySoftCap; Infinity at/above the hard cap)
+// port of rawFromSoftCapped L1080224-1080265 (inverse of applySoftCap; Infinity at/above the hard cap)
 export function rawFromSoftCapped(capped, cfg) {
   if (!(capped > cfg.soft)) return capped;
   const k = cfg.hard - cfg.soft;
@@ -38,7 +38,7 @@ export function rawFromSoftCapped(capped, cfg) {
   return cfg.soft + s / x - s;
 }
 
-// port of applyCombatCeiling L1080367-1080400
+// port of applyCombatCeiling L1080297-1080308
 export function applyCombatCeiling(value, ceiling) {
   return value > ceiling ? ceiling : value;
 }
@@ -46,7 +46,7 @@ export function applyCombatCeiling(value, ceiling) {
 /** Combat ceiling for a stat (computedKey or enum name), or null. */
 export const ceilingFor = (id) => combatCeiling(id);
 
-// port of softCapGainFromSheet L1080442-1080480
+// port of softCapGainFromSheet L1080334-1080366
 /** Extra capped value from adding rawDelta on top of an already-capped sheet value. */
 export function softCapGainFromSheet(sheetValue, rawDelta, cfg) {
   if (!(rawDelta > 0)) return 0;
@@ -55,7 +55,7 @@ export function softCapGainFromSheet(sheetValue, rawDelta, cfg) {
   return Math.max(0, applySoftCap(raw + rawDelta, cfg) - sheetValue);
 }
 
-// port of softCapEfficiency L1080481-1080516 (marginal gain per raw point)
+// port of softCapEfficiency L1080367-1080400 (marginal gain per raw point)
 export function softCapEfficiency(raw, cfg) {
   if (!(raw > cfg.soft)) return 1;
   const k = cfg.hard - cfg.soft;

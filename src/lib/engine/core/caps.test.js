@@ -21,7 +21,7 @@ describe('caps', () => {
   it('applySoftCap: degenerate hard<=soft clamps to hard', () => {
     expect(applySoftCap(10, { soft: 5, hard: 5 })).toBe(5);
   });
-  it('rawFromSoftCapped round trip (L1080223-1080366)', () => {
+  it('rawFromSoftCapped round trip (L1080224-1080265)', () => {
     for (const c of [51, 60, 75, 80, 89.9]) {
       expect(applySoftCap(rawFromSoftCapped(c, crit), crit)).toBeCloseTo(c, 8);
     }
@@ -29,18 +29,18 @@ describe('caps', () => {
     expect(rawFromSoftCapped(40, crit)).toBe(40);
     expect(rawFromSoftCapped(90, crit)).toBe(Infinity);
   });
-  it('applyCombatCeiling (L1080367-1080400)', () => {
+  it('applyCombatCeiling (L1080297-1080308)', () => {
     expect(applyCombatCeiling(97, 95)).toBe(95);
     expect(applyCombatCeiling(60, 95)).toBe(60);
   });
-  it('softCapGainFromSheet (L1080442-1080480)', () => {
+  it('softCapGainFromSheet (L1080334-1080366)', () => {
     expect(softCapGainFromSheet(80, 0, crit)).toBe(0);
     expect(softCapGainFromSheet(80, -5, crit)).toBe(0);
     expect(softCapGainFromSheet(90, 10, crit)).toBe(0);
     expect(softCapGainFromSheet(30, 10, crit)).toBeCloseTo(10, 10);
     expect(softCapGainFromSheet(80, 30, crit)).toBeCloseTo(50 + 40 * (1 - (80 / 190) ** 2) - 80, 8);
   });
-  it('softCapEfficiency (L1080481-1080516)', () => {
+  it('softCapEfficiency (L1080367-1080400)', () => {
     expect(softCapEfficiency(40, crit)).toBe(1);
     expect(softCapEfficiency(130, crit)).toBeCloseTo(0.125, 10);
     expect(softCapEfficiency(70, { soft: 5, hard: 5 })).toBe(0);

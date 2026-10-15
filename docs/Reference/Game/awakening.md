@@ -50,7 +50,7 @@ spec override (path.specOverrides[spec].bonusPerLevel)   // whole bundle replace
 ```
 Overrides REPLACE the whole bundle, not merge. Spec is checked before class. **[CODE]**
 
-The bundle feeds the shared stat pipeline as the `awakening` source alongside enchant stones, fortress, transcendence and mounts (L1209917-1209933). How each field is added into final stats (percent vs flat, multiplicative or additive) is owned by `see stats.md`. Awakening values appear to be additive percentage points / flat stat values. **[UNRESOLVED]** (consumer `calculateTotalStats` not read; no field named awakeningBonus found by grep.)
+The bundle feeds the shared stat pipeline as the `awakening` source alongside enchant stones, fortress, transcendence and mounts (L1209917-1209933). How each field is added into final stats (percent vs flat, multiplicative or additive) is owned by `see stats.md`. Each awakening field is added into its stat's accumulator as the other sources are; `critDamageFlat` / 100 goes into the Crit Damage multiplier. **[CODE]** See `stats.md` §3.2 (L1216476-1216574).
 
 ## §4 Per-level values (per point)
 
@@ -81,7 +81,7 @@ Maximum (15 points) **[DERIVED]**: Shadow default Attack +30%, Crit +7.5, CritDm
 
 Enums: classes WARRIOR/SENTINEL/MYSTIC/NECROMANCER (L665457-665464); specs WARRIOR_TANK, WARRIOR_DPS, SENTINEL_MARKSMANSHIP, SENTINEL_DISRUPTION, MYSTIC_MAGE, MYSTIC_DRUID, NECROMANCER_DEATHLORD, NECROMANCER_DOOMWEAVER (L665830-665845).
 
-Unit meaning of the `...Flat` keys (percentage points of the named stat vs raw value) is not stated in this module. **[UNRESOLVED]** see stats.md.
+Unit meaning of the `...Flat` keys is as `stats.md` §3.2 states (L1216503-1216574): `critDamageFlat` / 100 into the Crit Damage multiplier, the other `...Flat` fields added to their accumulators. **[CODE]**
 
 ## §5 UI behaviour
 
