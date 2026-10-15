@@ -129,7 +129,7 @@ Measured on the user's Sentinel (`profile-sentinel-l85-oct15b.json`), Hard Forsa
 | Ember Curse + Elusive Supremacy + Siegebreaker Mark | #21 28.03M | **#4** 25.25M |
 | Ember Curse + Elusive Supremacy + Hawk Focus | #24 27.67M | **#5** 25.00M |
 
-The old engine's pick (Elusive Supremacy, Blinding Mark, Mist Veil) is the set the user fought the logged fight with. The new engine scores it 22.14M, close to the log's 22.6M. The optimiser itself (sigils only, Standard, seed 1) now keeps the current set ("No change measured better"); the old engine moved to that #1 set (+20%). Elusive Supremacy and Siegebreaker Mark tie because stack sigils do nothing here. Caveat: the new top sets lean on Venom Wound and Ember Curse damage against the boss's 20 spell resist, and the log had no spell damage to check that against. A Fortress log with a damage sigil would test it.
+The old engine's pick (Elusive Supremacy, Blinding Mark, Mist Veil) is the set the user fought the logged fight with. The new engine scores it 22.14M, close to the log's 22.6M. The optimiser itself (sigils only, Standard, seed 1) now keeps the current set ("No change measured better"); the old engine moved to that #1 set (+20%). Elusive Supremacy and Siegebreaker Mark tie because stack sigils do nothing here. Caveat: the new top sets lean on Venom Wound and Ember Curse damage. The boss's resist is a plain 20% (the game's "20% Spell resist", the engine's x0.8), but the log had no spell damage to check the rest of the spell path against. A Fortress log with a damage sigil would test it.
 
 ## 11. Celestial Trial (party of 2), and party roles
 
