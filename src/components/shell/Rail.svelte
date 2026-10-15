@@ -43,6 +43,7 @@
               href={`#/${page.id}`}
               data-tip={page.label}
               data-page={page.id}
+              aria-label={SHORT_LABEL[page.id] ? page.label : undefined}
               aria-current={route.kind === 'page' && route.id === page.id ? 'page' : undefined}
             >
               <span class="glyph"><NavIcon name={page.id} /></span>

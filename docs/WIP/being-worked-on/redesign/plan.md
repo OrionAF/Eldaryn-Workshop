@@ -278,7 +278,6 @@ higher as a whole" becomes "Not significant alone; kept because removing it cost
  *   starts: number, optima: number, evaluated: number,
  *   merged: {inert: number, engineIdentical: number, sampleIdentical: number},
  *   fights: {search: number, minimise: number, confirm: number, total: number},
- *   converged: boolean,
  *   unresolved: Array<{fromKey: string, toKey: string, change: string, contrast: Contrast}>}} search
  * @property {Array<{id: 'screen'|'search'|'minimise'|'confirm'|'attribute', label: string,
  *   state: 'done'|'cancelled'|'not-run', fights: number, ms: number}>} phases
