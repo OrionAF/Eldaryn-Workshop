@@ -191,6 +191,7 @@ One definition per objective: the value ranked is the value shown is the value t
 | `dps` | damage / window s; the mob cannot die inside the window | mean | t | paired t (`paired-t`); δ relative |
 | `ttk-median`, `ttk-p90` | time in ms if won, else +∞ | censored q-quantile of **all** fights (q = 0.5 / 0.9): the quantile of the wins at q/p, ∞ when p < q | order statistic | paired bootstrap of the quantile difference, in ms (`basis: 'quantile'`); when both builds are ∞ the quantiles cannot differ and the contrast is the paired win-rate difference (`basis: 'winRate'`, Tango, higher is better, absolute zone `WIN_RATE_DELTA` = 0.02 unless given) |
 | `survival` | 1 if alive at the window end | proportion | Wilson | Tango paired proportion; δ absolute |
+| `win-rate` | 1 + HP left / max HP if the whole step is cleared, else the share of the step's enemy HP removed (< 1); the win bit is score ≥ 1 | proportion of wins | Wilson | capped win rate, then the margin (§Win rate); δ absolute |
 | `pvp-winrate` | 1 if my build wins the duel, one lane per (opponent, seat) | pooled proportion, equal N per lane | Wilson on the pool | stratified Tango, one stratum per lane; δ absolute |
 
 The TTK row also reports the win rate (Wilson) and the mean time of the wins; the PVP row reports
@@ -206,8 +207,51 @@ equal statistics are a tie (no effective-HP or duel-length tie-break).
 - `survival` is refused for a target that cannot damage the player (no swing with attack > 0 and
   speed > 0, no World Boss hit-back, no Oblivion instability): World Boss NONE and FORTIFIED, a
   custom mob with no attack. `objectiveKindsFor(kind, target)` leaves it out of the picker.
-- Target kinds and their objectives: dummy `dps`; chapter, dungeon (normal and `_hard`), raid,
-  Oblivion `ttk-*`, `survival`; World Boss `dps`, `survival`; custom all four; pvp `pvp-winrate`.
+- Target kinds and their objectives (the first is the default): dummy `dps`; chapter, dungeon (normal
+  and `_hard`), raid, Oblivion `win-rate`, `ttk-*`, `survival`; World Boss `dps`, `survival`; custom
+  `dps`, `win-rate`, `ttk-*`, `survival`; pvp `pvp-winrate`.
+
+### Win rate
+
+The goal for content the player clears (backlog §4): **the build with the fewest changes that clears
+the step at least a target share of the time**. 10 s and 50 s are the same; dying or reaching the
+fight's time cap (each mob's own cap, or the custom window) is a loss. Spec `{kind: 'win-rate',
+target}`, `target` in [0.5, 1], default 0.95 (`WIN_RATE_TARGET`).
+
+- **Per fight** one score s: a win scores 1 + HP left / max HP (in [1, 2]), a loss the share of the
+  step's enemy HP removed, `damageDealt / (damageDealt + enemyHpLeft)`, kept below 1. The win bit is
+  s ≥ 1, so one vector carries both the rate and the margin. `pointOf` (the win bit) puts the
+  attribution remainder in win-rate points.
+- **Main criterion: the capped rate** g(X, Y) = min(p_X, τ) − min(p_Y, τ). Every build at or above
+  τ is equally good on it. Its interval combines three intervals at a joint level (Bonferroni, alpha /
+  2 in all): Tango on p_X − p_Y at alpha / 4 and a Wilson interval per build at alpha / 8. Since
+  min(·, τ) is monotone and 1-Lipschitz, g lies between 0 and p_X − p_Y and g > 0 needs p_Y < τ, so
+  lo = max(L, min(lo_X, τ) − min(hi_Y, τ)) with L = min(lo_Δ, τ − hi_Y) when lo_Δ > 0 and hi_Y < τ,
+  0 when lo_Δ > 0 otherwise, else lo_Δ; hi mirrors it. Two builds that both reach τ are therefore
+  `equivalent` once the intervals are inside δ, never `better`. `basis: 'win-rate'`, method
+  `capped-tango`; the uncapped Tango interval is reported beside it as `winRate: {delta, lo, hi}`.
+- **Second criterion: the margin**, mean s, paired t at alpha / 2 (`basis: 'margin'`). It is
+  attached only when both builds are confidently below τ (both Wilson upper bounds < τ) and the
+  comparator reads it only once g is `equivalent`: `better`/`worse` on the margin decide; while it is
+  open the comparison continues; at maxN the tie on g stands (`equivalent`). This gives the search a
+  gradient where the rate saturates at 0 (a 0 % build that gets further is better) without letting
+  a bigger change win on margin among builds that already reach the target. δ is absolute in both
+  units. The combined false-claim rate per look is at most alpha.
+- **Score** (race leader, row order): min(p̂, τ) × 10⁶ + mean s, lexicographic for n ≤ 131 072.
+  Racing then picks, among the leader and its ties, the arm nearest the baseline: of the builds that
+  reach the target, the one with the fewest changes. `primary` (the capped p̂) orders `better` rows
+  first, then fewest changes, then the score.
+- **Meets the target** (`meetsTarget(estimate, τ, δ)`): true when the Wilson lower bound is at
+  least τ − δ, false when the upper bound is below τ, else null.
+- **Already clears**: after the screen look the baseline is checked on S3 at looks n0, 2n0, … maxN,
+  Wilson at alpha / looks, until `meetsTarget` resolves. If it meets, the run stops: no search, no
+  rows, headline "Already clears at N% (95% CI lo-hi). No change needed." (the decision interval,
+  coverage at least 95 %). The baseline is fixed, so checking and reporting on S3 carries no
+  selection. Otherwise the search runs as usual and maximises the capped rate; `goal.status` is
+  `reached` when a row meets the target (the first such row has the fewest changes) or
+  `not-reached`, with the best build's rate in the headline.
+- Cost: equivalence on a proportion with no discordant pair needs roughly z²/δ fights (about 1 000-2 000
+  at Standard), so builds tied at 0 % or at 100 % are resolved slowly; the cost is precision, never a cap.
 
 ### Target fidelity
 
@@ -397,13 +441,18 @@ checkpoint as `resumeFrom`. The page sends the character with `runs: []`, so sav
   timeoutShare, matchups: [{opponentId, name, seat, value, vsBaseline}], defaulted?: [{opponentId,
   keys}]}` (a matchup's `vsBaseline` is unadjusted). `runMore` is `{targetN, reason: 'unresolved'}`
   when the row is too close to call (`targetN`: the next doubling of n reaching `nNeeded`), else null.
-  `lines` is `describeBuild` (display only).
+  `lines` is `describeBuild` (display only). Win rate: `aux` is `{winRate: Estimate, meetsTarget:
+  true|false|null, margin: Estimate (mean score), target}` and the result has `goal: {target, status:
+  'already'|'reached'|'not-reached', baseline: {winRate, meetsTarget, check: {meets, n, value}},
+  bestKey, text}`; `headline.text` is `goal.text`. Run more re-derives `goal` from the re-measured rows (the baseline check stays the run's).
 - **Change**: `effect.changesOf`'s `{id, dimension, label, from, to, scope, owner, sideEffects,
   bundle}` plus `own: Contrast|null`, `needed: Contrast|null` (null only for a change that cannot be
   dropped alone) and `keptBecause`. **WriteGroup** (`writes`): `effect.writesOf`.
 - **Estimate** `{est, lo, hi, n, seed, level: 0.95, alphaAdj, method}`; **Contrast** `{delta, lo, hi,
   pct, n, seed, alphaAdj, method, verdict, significant, nNeeded, basis, higherIsBetter}` (`basis`
-  `'winRate'` when a TTK contrast fell back to win rate; `n` per lane).
+  `'winRate'` when a TTK contrast fell back to win rate; `'win-rate'` or `'margin'` for the win-rate
+  objective, which also adds `winRate: {delta, lo, hi}`, the uncapped paired difference in win-rate
+  points, on every contrast including a change's `own`; `n` per lane).
 - `search: {strategy, jointSize, blocks: [{id, enabled, domain, status: 'converged'|'unresolved'|
   'disabled'|'not-reached'}], starts, optima, evaluated, merged, fights: {search, minimise, confirm,
   total}, unresolved: [{fromKey, toKey, change, contrast}]}`. There is no `converged` flag: with no
