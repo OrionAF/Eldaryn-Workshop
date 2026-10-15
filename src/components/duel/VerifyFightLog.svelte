@@ -13,8 +13,8 @@
   import Button from '../ui/Button.svelte';
   import Banner from '../ui/Banner.svelte';
 
-  /** @type {{fighters?: {attacker: Object, defender: Object, label: string}|null}} */
-  let { fighters = null } = $props();
+  /** @type {{fighters?: {attacker: Object, defender: Object, label: string}|null, handoff?: {text: string, n: number}|null}} */
+  let { fighters = null, handoff = null } = $props();
 
   let text = $state('');
   let useFighters = $state(false);
@@ -25,12 +25,12 @@
   const STATUS = { pass: ['✓', 'Pass'], fail: ['✕', 'Fail'], skipped: ['–', 'Skipped'] };
   const skipped = $derived(report ? report.rules.filter((r) => r.status === 'skipped') : []);
 
-  function check() {
+  function check(source = text) {
     error = '';
     report = null;
     let parsed;
     try {
-      parsed = JSON.parse(text);
+      parsed = JSON.parse(source);
     } catch {
       error = 'That is not valid JSON.';
       return;
@@ -41,6 +41,15 @@
       error = `Could not check this log: ${e.message}`;
     }
   }
+
+  // A fight log from the import dialog: load its text and check it at once (once per handoff).
+  let seen = 0;
+  $effect(() => {
+    if (!handoff || handoff.n === seen) return;
+    seen = handoff.n;
+    text = handoff.text;
+    check(handoff.text);
+  });
 
   async function onfile(file) {
     fileError = '';
@@ -58,7 +67,7 @@
     <Textarea label="Pasted log" rows={6} placeholder="paste the fight response here" bind:value={text} />
     <Checkbox bind:checked={useFighters} disabled={!fighters} label={fighters ? `Hold the simulator to these fighters: ${fighters.label}` : 'Hold the simulator to the fighters (pick a runnable duel first)'} />
     {#snippet footer()}
-      <Button variant="primary" size="block" disabled={!text.trim()} onclick={check}>Check log</Button>
+      <Button variant="primary" size="block" disabled={!text.trim()} onclick={() => check()}>Check log</Button>
     {/snippet}
   </Panel>
 

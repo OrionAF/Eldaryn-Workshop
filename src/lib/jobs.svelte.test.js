@@ -75,6 +75,17 @@ describe('job store', () => {
     expect(job(id).checkpoint).toBeNull();
   });
 
+  it('the running and active counts drop as soon as Cancel is pressed', async () => {
+    const id = startJob({ tool: 'duel', title: 'Duel', request: { mode: 'optimize' } });
+    await vi.waitFor(() => expect(job(id).progress?.phases[0].done).toBeGreaterThan(1), { interval: 2 });
+    expect(jobsStore.running).toBe(1);
+    cancelJob(id);
+    expect(job(id).status).toBe('running'); // still winding down
+    expect(jobsStore.running).toBe(0);
+    expect(jobsStore.active).toBe(0);
+    await settled(id, 'cancelled');
+  });
+
   it('a task that throws is failed with its message and Retry re-runs it', async () => {
     const id = startJob({ tool: 'duel', title: 'Duel', request: { mode: 'boom' } });
     await settled(id, 'failed');

@@ -19,6 +19,8 @@
    * first. Run more raises the precision step (features/dropView.js runMoreRequest).
    */
   import { untrack } from 'svelte';
+  import { prefs } from '../../lib/prefs.svelte.js';
+  import { importFlow, takeHandoff } from '../../lib/importFlow.svelte.js';
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { go } from '../../lib/router.svelte.js';
   import { formatHash } from '../../lib/routes.js';
@@ -36,7 +38,9 @@
   import EnemyPicker from '../drop/EnemyPicker.svelte';
   import DropImport from '../drop/DropImport.svelte';
   import DropSetCard from '../drop/DropSetCard.svelte';
-  import { itemSummary, signedPct } from '../drop/dropFormat.js';
+  import DropMetricTables from '../drop/DropMetricTables.svelte';
+  import { itemSummary, signedPct, dropStatRows } from '../drop/dropFormat.js';
+  import StatTable from '../ui/StatTable.svelte';
   import Panel from '../ui/Panel.svelte';
   import Tabs from '../ui/Tabs.svelte';
   import Button from '../ui/Button.svelte';
@@ -110,8 +114,8 @@
   let survivalOn = $state(false);
   let enemySpec = $state({ kind: 'campaign', chapter: 1, level: 1 });
   let pvpOn = $state(false);
-  let pvpIds = $state([]);
-  let precision = $state('standard');
+  let pvpIds = $state(null); // null = every saved opponent (the toggle never leaves PVP measuring nothing)
+  let precision = $state(untrack(() => prefs.defaultEffort));
   let maxNOverride = $state(null);
 
   const scopeId = $derived(scope === 'all' || character.presets.some((p) => p.id === scope) ? scope : 'all');
@@ -123,7 +127,11 @@
   const enemy = $derived(survivalOn ? buildEnemy(enemyEffective) : null);
   const opponentSet = $derived(dropOpponents(character));
   const opponents = $derived(opponentSet.opponents);
-  const chosenOpponents = $derived(pvpOn ? opponents.filter((o) => pvpIds.includes(o.id)) : []);
+  const chosenOpponents = $derived(pvpOn ? opponents.filter((o) => pvpIds === null || pvpIds.includes(o.id)) : []);
+  const pickOpponent = (id, on) => {
+    const cur = pvpIds ?? opponents.map((o) => o.id);
+    pvpIds = on ? [...new Set([...cur, id])] : cur.filter((x) => x !== id);
+  };
 
   // --- single drop -------------------------------------------------------------------------------
 
@@ -207,6 +215,7 @@
       : EQUIP_SETS.filter((s) => s.realm === 'base').map((s) => ({ key: s.key, label: s.label, item: character.equipment[s.key].items[slot] ?? null })),
   );
   const anySheet = $derived(rows.some((r) => r.source === 'sheet'));
+  const dropRows = $derived(drop ? dropStatRows(drop.item) : []);
 
   // --- loot bag ----------------------------------------------------------------------------------
 
@@ -307,6 +316,19 @@
   $effect(() => {
     view = tab === 'bag' ? 'bag' : 'single';
   });
+
+  // A loot bag handed over by the import dialog: on mount and whenever another one arrives, take it,
+  // show the Loot bag tab and run it.
+  $effect(() => {
+    importFlow.handoffSeq;
+    untrack(() => {
+      if (!character) return;
+      const text = takeHandoff('lootBag');
+      if (text == null) return;
+      pickTab('bag');
+      importDrops(text);
+    });
+  });
 </script>
 
 {#if drop}
@@ -337,10 +359,13 @@
             />
             <ul class="equipped" aria-label="Currently equipped in this slot">
               {#each equippedNow as e (e.key)}
-                <li><span class="micro-label">{e.label}</span> <span class="soft">{itemSummary(e.item)}</span></li>
+                <li><span class="cap-label">{e.label}</span> <span class="soft">{itemSummary(e.item)}</span></li>
               {/each}
             </ul>
             <ItemEditor value={drop.item} {realm} {...{ slot }} class={character.class} onchange={(item) => rosterStore.setDropItem(item)} />
+            {#if dropRows.length}
+              <StatTable rows={dropRows} caption="Stats of this drop" />
+            {/if}
             <Button variant="ghost" size="small" onclick={() => { rosterStore.discardDrop(); setStatus?.('Drop discarded'); }}>Discard this drop</Button>
           </Panel>
 
@@ -364,9 +389,9 @@
                 {#if opponents.length}
                   {#each opponents as o (o.id)}
                     <Checkbox
-                      checked={pvpIds.includes(o.id)}
+                      checked={pvpIds === null || pvpIds.includes(o.id)}
                       label={o.name}
-                      onchange={(on) => (pvpIds = on ? [...pvpIds, o.id] : pvpIds.filter((x) => x !== o.id))}
+                      onchange={(on) => pickOpponent(o.id, on)}
                     />
                   {/each}
                 {:else}
@@ -378,7 +403,7 @@
               {/if}
             </div>
             <div class="block">
-              <span class="micro-label">Effort</span>
+              <span class="cap-label">Effort</span>
               <SegmentedControl label="Effort" bind:value={precision} options={EFFORT} onchange={() => (maxNOverride = null)} />
               <p class="hint">Effort sets the precision only. Each comparison runs from a small first look until it is resolved, or stops and says "too close to call".</p>
             </div>
@@ -416,6 +441,9 @@
                   <button type="button" class="link" onclick={() => onNavigate('builds/sheet')}>Enter a sheet</button> for exact anchoring.
                 </p>
               {/if}
+              {#if singleJob?.status === 'finished' && !singleStale}
+                <DropMetricTables cards={singleCards} />
+              {/if}
               <div class="cards">
                 {#each singleCards as c (c.setKey)}
                   <DropSetCard
@@ -438,7 +466,7 @@
           </p>
           <DropImport onimport={importDrops} error={batchError} busy={bagBusy} />
           <div class="row">
-            <span class="micro-label">Effort</span>
+            <span class="cap-label">Effort</span>
             <SegmentedControl label="Effort" bind:value={precision} options={EFFORT} />
           </div>
         </Panel>
@@ -467,8 +495,8 @@
               <span class="v up"><span aria-hidden="true">▲</span> <span class="num">{counts.upgrade}</span> upgrade</span>
               <span class="v"><span aria-hidden="true">◆</span> <span class="num">{counts.sidegrade}</span> sidegrade</span>
               <span class="v down"><span aria-hidden="true">▼</span> <span class="num">{counts.downgrade}</span> downgrade</span>
-              {#if counts.mixed}<span class="v"><span class="num">{counts.mixed}</span> mixed</span>{/if}
-              {#if counts.inconclusive}<span class="v"><span class="num">{counts.inconclusive}</span> too close to call</span>{/if}
+              {#if counts.mixed}<span class="v side"><span class="num">{counts.mixed}</span> mixed</span>{/if}
+              {#if counts.inconclusive}<span class="v side" data-count="inconclusive"><span class="num">{counts.inconclusive}</span> too close to call</span>{/if}
               <span class="v"><span class="num">{counts.pending}</span> pending</span>
               <span class="v"><span aria-hidden="true">!</span> <span class="num">{counts.skipped}</span> skipped</span>
             </div>
@@ -484,10 +512,10 @@
 
             <div class="tbl" role="table" aria-label="Drops: change in DPS, 95% intervals">
               <div class="trow thead" role="row">
-                <span role="columnheader" class="micro-label">Drop</span>
+                <span role="columnheader" class="cap-label">Drop</span>
                 <div role="columnheader"><ForestAxis domain={dpsDomain} title="Δ DPS vs current (%)" format={(x) => `${x}`} /></div>
-                <span role="columnheader" class="micro-label right">Δ · 95% CI</span>
-                <span role="columnheader" class="micro-label">Verdict</span>
+                <span role="columnheader" class="cap-label right">Δ · 95% CI</span>
+                <span role="columnheader" class="cap-label">Verdict</span>
               </div>
               {#each ranked as r, i (r.entry.key)}
                 {@const e = r.entry}
@@ -560,6 +588,7 @@
 {/if}
 
 <style>
+  .cap-label { font-size: var(--fs-11); font-weight: var(--fw-heavy); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-soft); }
   .page { display: grid; gap: var(--sp-4); padding-top: var(--sp-4); min-width: 0; }
   .grid { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
   .col,
@@ -574,6 +603,7 @@
   .summary { display: flex; flex-wrap: wrap; gap: var(--sp-4); font-size: var(--fs-13); color: var(--text-soft); }
   .summary .up { color: var(--verdict-up); }
   .summary .down { color: var(--verdict-down); }
+  .summary .side { color: var(--verdict-side); }
   .tbl { display: grid; min-width: 0; }
   .trow {
     display: grid;

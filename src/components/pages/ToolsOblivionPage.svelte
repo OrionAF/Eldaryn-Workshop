@@ -8,7 +8,7 @@
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { computePresetStats } from '../../lib/build/stats.js';
   import { go } from '../../lib/router.svelte.js';
-  import { startJob, cancelJob, isStale, jobSignature, jobsStore } from '../../lib/jobs.svelte.js';
+  import { startJob, cancelJob, resumeJob, isStale, jobSignature, jobsStore } from '../../lib/jobs.svelte.js';
   import {
     strainRows, WIN_THRESHOLD, FLOOR_EFFORT, floorScanRequest, floorScanInputs,
   } from '../../lib/features/oblivionDungeon.js';
@@ -21,8 +21,7 @@
   import Checkbox from '../ui/Checkbox.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
 
-  // eslint-disable-next-line no-unused-vars
-  let { setStatus = () => {}, onNavigate = () => {}, tab = null } = $props();
+  let { setStatus = () => {} } = $props();
 
   const LAST_FLOOR = 60;
   const character = $derived(rosterStore.current);
@@ -92,14 +91,14 @@
     {:else}
       <Panel title="Summary" scope="oblivion">
         <div class="strip">
-          <div><span class="micro-label">Oblivion Power</span><strong class="num" data-testid="power">{formatFlat(power)}</strong></div>
-          <div><span class="micro-label">Attack</span><strong class="num">{stats?.totalAttack == null ? '-' : formatFlat(stats.totalAttack)}</strong></div>
-          <div><span class="micro-label">HP</span><strong class="num">{stats?.totalHp == null ? '-' : formatFlat(stats.totalHp)}</strong></div>
+          <div><span class="cap-label">Oblivion Power</span><strong class="num" data-testid="power">{formatFlat(power)}</strong></div>
+          <div><span class="cap-label">Attack</span><strong class="num">{stats?.totalAttack == null ? '-' : formatFlat(stats.totalAttack)}</strong></div>
+          <div><span class="cap-label">HP</span><strong class="num">{stats?.totalHp == null ? '-' : formatFlat(stats.totalHp)}</strong></div>
           <div>
-            <span class="micro-label">Highest scanned floor at {threshold}%+</span>
+            <span class="cap-label">Highest scanned floor at {threshold}%+</span>
             <strong class="num" data-testid="max-floor">{stale ? '-' : maxLabel}</strong>
           </div>
-          <div><span class="micro-label">Oblivion Level</span><strong class="num">{character.oblivion.level}</strong>
+          <div><span class="cap-label">Oblivion Level</span><strong class="num">{character.oblivion.level}</strong>
             <a href="#character/overview">Edit</a></div>
         </div>
         <p class="caption">Model estimate: the server resolves the real fight. Gear for this realm is on the <a href="#character/gear">Gear page, Oblivion tab</a>.</p>
@@ -129,7 +128,12 @@
       {#if stale}
         <Banner variant="warn" lead="Out of date">The build or scan setup changed since this scan. Run it again.</Banner>
       {/if}
-      {#if result?.aborted}<Banner variant="info" lead="Cancelled">Showing the floors finished so far.</Banner>{/if}
+      {#if job?.status === 'cancelled'}
+        <Banner variant="info" lead="Cancelled">
+          Showing the floors finished so far.
+          {#snippet action()}<Button variant="ghost" size="small" onclick={() => resumeJob(job.id)}>Resume</Button>{/snippet}
+        </Banner>
+      {/if}
       {#if result?.assumptions?.length}
         <ul class="chips" aria-label="Assumptions">
           {#each result.assumptions as a (a.key)}<li class="chip-static" title={a.text}>{a.text}</li>{/each}
@@ -172,6 +176,7 @@
 {/if}
 
 <style>
+  .cap-label { font-size: var(--fs-11); font-weight: var(--fw-heavy); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-soft); }
   .obl { display: grid; gap: var(--sp-4); }
   .strip, .setup, .actions { display: flex; flex-wrap: wrap; gap: var(--sp-4); align-items: flex-end; }
   .strip > div { display: flex; flex-direction: column; gap: var(--sp-1); }
@@ -187,7 +192,6 @@
   .floors td { padding: var(--sp-1) var(--sp-2); border-top: 1px solid var(--line-hairline); position: relative; }
   .floors .r { text-align: right; }
   .floors.stale { opacity: 0.45; filter: grayscale(1); }
-  .bar { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--brass-500); }
+  .bar { position: absolute; left: 0; bottom: 0; height: calc(var(--sp-1) * 0.5); background: var(--brass-500); }
   tr.ok td:first-child { color: var(--brass-400); }
-  .cap { color: var(--text-muted); font-size: var(--fs-12); }
 </style>

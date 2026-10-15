@@ -1,7 +1,8 @@
 <script>
   /**
    * RunHistoryTab.svelte - the Optimiser's "Run history" tab (ia.md §5.17): saved runs of the current
-   * character, newest first, with open / rename / notes / pin / delete / Clear unpinned, "Re-run with
+   * character, newest first. The run's name opens its stored result in Setup & results (`onopen`); Details
+   * expands it in place. Rename / notes / pin / delete / Clear unpinned, "Re-run with
    * settings" (loads the run's setup, measures afresh) and a side-by-side compare of two runs. A run's detail
    * is read-only; a run saved before per-change effects were measured says "not measured". The headline
    * rows are kept forever; the detail may have compacted away (model/runs.js).
@@ -9,7 +10,7 @@
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { viewRun } from '../../lib/ui/optimiserView.js';
   import { fmtScalar, fmtCount } from '../../lib/ui/statsFormat.js';
-  import ConfirmButton from '../ConfirmButton.svelte';
+  import ConfirmAction from '../tools/ConfirmAction.svelte';
   import Button from '../ui/Button.svelte';
   import Checkbox from '../ui/Checkbox.svelte';
   import Panel from '../ui/Panel.svelte';
@@ -19,7 +20,7 @@
   import OptimiserResults from './OptimiserResults.svelte';
   import RunCompare from './RunCompare.svelte';
 
-  let { onrerun = () => {} } = $props();
+  let { onrerun = () => {}, onopen = null } = $props();
 
   const runs = $derived(rosterStore.current?.runs ?? []);
   let openId = $state(null);
@@ -40,7 +41,7 @@
     <div class="top">
       <span class="hint">{runs.length} run{runs.length === 1 ? '' : 's'}. Finished runs are saved here automatically.</span>
       {#if runs.length}
-        <ConfirmButton class="btn-danger" label="Clear unpinned" confirmLabel="Confirm clear" onConfirm={() => rosterStore.clearRuns({ keepPinned: true })} />
+        <ConfirmAction label="Clear unpinned" confirmLabel="Confirm clear" prompt="Pinned runs are kept." onConfirm={() => rosterStore.clearRuns({ keepPinned: true })} />
       {/if}
     </div>
 
@@ -54,13 +55,21 @@
       {@const h = run.headline}
       <article class="run" data-testid="run-row">
         <div class="head">
-          <button type="button" class="open" aria-expanded={openId === run.id} onclick={() => toggleOpen(run.id)}>{run.name}</button>
+          {#if onopen}
+            <button type="button" class="open" onclick={() => onopen(run)} title="Open this result in Setup & results">{run.name}</button>
+          {:else}
+            <button type="button" class="open" aria-expanded={openId === run.id} onclick={() => toggleOpen(run.id)}>{run.name}</button>
+          {/if}
           <span class="meta num">{when(run.at)}</span>
           {#if run.pinned}<span class="tag">pinned</span>{/if}
           {#if run.applied}<span class="tag">applied</span>{/if}
           {#if run.schema !== 2}<span class="tag">before per-change effects</span>{/if}
           {#if h.aborted}<span class="tag">cancelled</span>{/if}
           <span class="spacer"></span>
+          {#if onopen}
+            <Button variant="quiet" size="small" aria-expanded={openId === run.id} onclick={() => toggleOpen(run.id)}>Details</Button>
+          {/if}
+          <Button variant="quiet" size="small" aria-pressed={run.pinned} onclick={() => rosterStore.setRunPinned(run.id, !run.pinned)}>{run.pinned ? 'Unpin' : 'Pin'}</Button>
           <Checkbox label="Compare" checked={picked.includes(run.id)} onchange={(on) => togglePick(run.id, on)} />
         </div>
         <div class="sub">
@@ -80,8 +89,7 @@
                 <input type="text" value={run.name} aria-label="Run name" onchange={(e) => rosterStore.setRunName(run.id, e.currentTarget.value)} />
               </label>
               <Button variant="secondary" size="small" onclick={() => onrerun(run)}>Re-run with settings</Button>
-              <Button variant="ghost" size="small" onclick={() => rosterStore.setRunPinned(run.id, !run.pinned)}>{run.pinned ? 'Unpin' : 'Pin'}</Button>
-              <ConfirmButton class="btn-danger" label="Delete" confirmLabel="Confirm delete" onConfirm={() => rosterStore.deleteRun(run.id)} />
+              <ConfirmAction label="Delete" confirmLabel="Confirm delete" onConfirm={() => rosterStore.deleteRun(run.id)} />
             </div>
             <Textarea label="Notes" rows={2} value={run.notes} oninput={(v) => rosterStore.setRunNotes(run.id, v)} />
             {#if run.schema !== 2}

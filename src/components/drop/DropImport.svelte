@@ -5,6 +5,10 @@
    *
    * Props: onimport(text), error (string shown under the box), busy (disables the buttons).
    */
+  import DropZone from '../ui/DropZone.svelte';
+  import Textarea from '../ui/Textarea.svelte';
+  import Button from '../ui/Button.svelte';
+
   let { onimport, error = '', busy = false } = $props();
 
   let text = $state('');
@@ -20,90 +24,31 @@
     });
   }
 
-  async function onFile(e) {
-    const input = e.currentTarget;
-    const file = input.files?.[0];
-    if (!file) return;
+  async function onFile(file) {
     fileName = file.name;
     try {
       text = await readFile(file);
     } catch {
       text = '';
     }
-    input.value = '';
     onimport(text);
   }
 </script>
 
 <div class="drop-import">
-  <div class="row">
-    <label class="btn-ghost file-btn">
-      Load .json file
-      <input type="file" accept=".json,application/json" aria-label="Loot-bag JSON file" onchange={onFile} disabled={busy} />
-    </label>
-    {#if fileName}<span class="file-name">{fileName}</span>{/if}
-  </div>
-  <textarea
-    aria-label="Loot-bag JSON"
-    rows="4"
-    spellcheck="false"
+  <DropZone onfile={onFile} disabled={busy} label="Drop a loot-bag .json file or click to choose" hint={fileName || 'JSON file'} />
+  <Textarea
+    label="Loot-bag JSON"
+    rows={4}
     placeholder={'Or paste the loot-bag JSON here: {"pendingItems": [...]} or a full game profile'}
     bind:value={text}
-  ></textarea>
-  <div class="row">
-    <button type="button" class="btn-gold" disabled={busy || !text.trim()} onclick={() => onimport(text)}>Check these drops</button>
+    {error}
+  />
+  <div>
+    <Button variant="primary" disabled={busy || !text.trim()} onclick={() => onimport(text)}>Check these drops</Button>
   </div>
-  {#if error}<p class="error" role="alert">{error}</p>{/if}
 </div>
 
 <style>
-  .drop-import {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-  .row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-  }
-  .file-btn {
-    position: relative;
-    display: inline-block;
-    cursor: pointer;
-  }
-  .file-btn input {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    width: 100%;
-    cursor: pointer;
-  }
-  .file-name {
-    font-size: 11.5px;
-    color: var(--color-muted);
-  }
-  textarea {
-    background: var(--color-field);
-    color: var(--color-ink);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-field);
-    padding: 8px 10px;
-    font-size: 12px;
-    font-family: var(--font-data);
-    resize: vertical;
-    max-width: 100%;
-  }
-  .error {
-    margin: 0;
-    font-size: 11.5px;
-    color: var(--color-downgrade);
-  }
-  @media (max-width: 700px) {
-    .row :global(button),
-    .file-btn {
-      min-height: 44px;
-    }
-  }
+  .drop-import { display: grid; gap: var(--sp-3); min-width: 0; }
 </style>
