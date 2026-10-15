@@ -7,6 +7,7 @@ import { SPEC_REALMS } from '../harness/specs.js';
 import { buildFighter } from '../build/fighter.js';
 import { EngineInputError } from './validate.js';
 import { createPlayerEntity, createMobEntity } from './core/entity.js';
+import { statToEntity } from '../harness/statEntity.js';
 import { simulatePve, trainingDummy, PVE_PLAYER_KEYS } from './pve/fight.js';
 import { runDuel, fighterDuelArgs, DUEL_STAT_DEFAULTS } from './pvp/resolver.js';
 import { mulberry32 } from './rng.js';
@@ -16,21 +17,6 @@ import { chapterMobs } from './pve/enemies.js';
 const BAD = [NaN, undefined, Infinity, -Infinity];
 const label = (v) => (v === undefined ? 'undefined' : String(v));
 
-// stat key -> the entity fields it feeds, read off createPlayerEntity itself so the table cannot drift
-const statToEntity = (() => {
-  const probe = {};
-  const names = [
-    'totalHp', 'totalAttack', 'totalAttackSpeed', 'totalDoubleHit', 'totalCritChance', 'totalCritDamage', 'totalLifesteal',
-    'totalHpRegen', 'totalDamageReduction', 'totalBlockChance', 'totalMissChance', 'totalBlindChance', 'totalParalyzeChance',
-    'totalPenetration', 'totalDisruptionChance', 'totalPvpAttack', 'totalPvpDefense', 'totalSpellDamage', 'totalSpellResist',
-    'totalSpellCritChance', 'totalSpellVamp',
-  ];
-  names.forEach((n, i) => { probe[n] = i + 1; });
-  const entity = createPlayerEntity(probe);
-  const map = {};
-  names.forEach((n, i) => { map[n] = Object.keys(entity).filter((k) => entity[k] === i + 1); });
-  return map;
-})();
 // the stat keys createPlayerEntity defaults when absent (orZero)
 const ZERO_DEFAULT = new Set(Object.keys(statToEntity).filter((k) => createPlayerEntity({ [k]: undefined, totalHp: 1 })[statToEntity[k][0]] === 0));
 

@@ -1,14 +1,13 @@
 // H1 property: finite fighters. For every spec x realm, buildFighter yields stats the engine can read
 // (plan C, invariant I9): finite, chances inside their combat ceiling, positive HP and attack speed, and
-// engine inputs that can be built and serialised (stand-in for A2's engineKey until it lands).
+// engine inputs that can be fingerprinted (engineKey).
 import { describe, it, expect } from 'vitest';
 import { forAll, arbCharacter, chance } from '../harness/arbitrary.js';
 import { SPEC_REALMS } from '../harness/specs.js';
 import { buildFighter } from './fighter.js';
 import { ceilingFor } from '../engine/core/caps.js';
 import { preparePveFighter } from '../engine/pve/fight.js';
-import { fighterDuelArgs } from '../engine/pvp/resolver.js';
-import { stableStringify } from '../engine/metrics.js';
+import { engineKey } from '../search/effect.js';
 import { DEFAULT_CONDITION, SIGIL_CONDITIONS_LEVEL } from '../model/sigils.js';
 
 const EPS = 1e-9;
@@ -32,11 +31,12 @@ describe('buildFighter property', () => {
         expect(f.stats.totalAttack).toBeGreaterThan(0);
         expect(f.stats.totalAttackSpeed).toBeGreaterThan(0);
 
-        // the engine inputs build and serialise: what A2's engineKey will hash
+        // the engine inputs fingerprint, and the key is stable for the same fighter
         const prepared = preparePveFighter(f);
-        expect(() => stableStringify(prepared.inputs)).not.toThrow();
-        expect(stableStringify(prepared.inputs)).toBe(stableStringify(preparePveFighter(f).inputs));
-        expect(() => stableStringify(fighterDuelArgs(f))).not.toThrow();
+        for (const mode of ['pve', 'pvp']) {
+          expect(() => engineKey(f, mode)).not.toThrow();
+          expect(engineKey(f, mode)).toBe(engineKey(structuredClone(f), mode));
+        }
         expect(Number.isFinite(prepared.fresh().player.hp)).toBe(true);
       }, { runs: 12 });
       expect(ceilings, 'no ceiling was checked').toBeGreaterThan(0);
