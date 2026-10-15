@@ -27,7 +27,7 @@
   import { relicSlotCap } from '../../lib/model/legality.js';
   import { presetDuelFighter, opponentFighter, missingStats } from '../../lib/features/duel.js';
   import {
-    normaliseSetup, setupFromRun, requestOf, searchCharacter, signatureOf, runApplyBlock, retiredGoalBlock,
+    normaliseSetup, setupFromRun, requestOf, searchCharacter, signatureOf, runApplyBlock, retiredGoalBlock, otherCharacters, targetContext,
   } from '../../lib/ui/optimiserSetup.js';
   import {
     viewResult, progressSegments, progressLine, effortPlan, enabledCount, toggleTotal, optimiserJobChips,
@@ -46,7 +46,10 @@
   import Banner from '../ui/Banner.svelte';
   import EmptyState from '../ui/EmptyState.svelte';
   import RunProgress from '../ui/RunProgress.svelte';
+  import StepList from '../ui/StepList.svelte';
+  import { searchStepRows } from '../../lib/ui/searchSteps.js';
   import TargetPicker from '../tools/TargetPicker.svelte';
+  import { rosterPartnerFor } from '../../lib/search/celestialObjective.js';
   import SpaceGroups from '../optimiser/SpaceGroups.svelte';
   import PowerGuard from '../optimiser/PowerGuard.svelte';
   import { presetPower } from '../../lib/build/power.js';
@@ -54,17 +57,18 @@
   import OptimiserResults from '../optimiser/OptimiserResults.svelte';
   import ApplyReview from '../optimiser/ApplyReview.svelte';
   import RunHistoryTab from '../optimiser/RunHistoryTab.svelte';
-  import { optimiserFights } from '../../lib/calibration.js';
-  import RunEstimate from '../ui/RunEstimate.svelte';
+  import SetupEstimate from '../optimiser/SetupEstimate.svelte';
 
   // eslint-disable-next-line no-unused-vars
   let { setStatus = () => {}, onNavigate = () => {}, tab = null } = $props();
 
   const character = $derived(rosterStore.current);
+  // the roster's other characters: Celestial partners (their presets are resolved into the request)
+  const others = $derived(otherCharacters(character, rosterStore.roster?.characters ?? []));
 
   // ---- setup, kept per character in the UI key ---------------------------------------------------
 
-  const loadSetup = (c) => normaliseSetup(loadUi().optimiserSetups[c.id], c, prefs.defaultEffort);
+  const loadSetup = (c) => normaliseSetup(loadUi().optimiserSetups[c.id], c, prefs.defaultEffort, otherCharacters(c, rosterStore.roster?.characters ?? []));
   let loadedId = untrack(() => character.id);
   let setup = $state(untrack(() => loadSetup(character)));
   $effect.pre(() => {
@@ -89,13 +93,15 @@
     if (!allowedObjectives.includes(setup.objective.kind)) setup.objective = { kind: allowedObjectives[0] };
   });
   const objectiveOptions = $derived(allowedObjectives.map((k) => ({ value: k, label: OBJECTIVE_LABEL[k] })));
-  const resolvedTarget = $derived.by(() => {
+  const resolvedFull = $derived.by(() => {
+    const t = $state.snapshot(setup.target);
     try {
-      return resolveTarget($state.snapshot(setup.target), { character });
-    } catch {
-      return null;
+      return { target: resolveTarget(t, targetContext(t, character, others)), error: '' };
+    } catch (e) {
+      return { target: null, error: e?.message ?? String(e) };
     }
   });
+  const resolvedTarget = $derived(resolvedFull.target);
   const targetLabel = $derived(resolvedTarget?.label ?? '');
   // the preset's Combat Power in the realm the fight uses (the guard compares candidates with the same figure)
   const currentPower = $derived.by(() => {
@@ -114,6 +120,12 @@
     }),
   );
   const presetOptions = $derived(character.presets.map((p) => ({ value: p.id, label: p.name })));
+  // the setup the run would start with (run() below), for the live estimate
+  const estimateSetup = $derived.by(() => {
+    const s = { ...$state.snapshot(setup), presetId: preset.id };
+    if (isPvp) s.target = { ...s.target, opponentIds: [...pvpIds] };
+    return s;
+  });
 
   // ---- blockers ----------------------------------------------------------------------------------
 
@@ -124,6 +136,7 @@
     return [...floorBlock, ...fightBlockers()];
   });
   function fightBlockers() {
+    if (setup.target.kind === 'celestial') return resolvedFull.error ? [{ text: resolvedFull.error }] : [];
     if (!isPvp) return [];
     if (!opponents.length) return [{ text: 'PVP needs a saved opponent.', fix: 'Open Opponents', to: '#/tools/opponents' }];
     if (!pvpIds.length) return [{ text: 'Pick at least one opponent.' }];
@@ -166,6 +179,9 @@
         : [],
   );
 
+  // the search's steps: live from the progress report, else the shown result's final list (none for Push or an old run)
+  const stepRows = $derived(searchStepRows(live ? live.progress?.searchSteps : result?.search?.steps));
+
   function start(request, meta, { title, context }) {
     const sig = () => signatureOf(rosterStore.current, meta.presetId);
     return startJob({
@@ -185,18 +201,24 @@
     openRunId = null;
     const s = { ...$state.snapshot(setup), presetId: preset.id };
     if (isPvp) s.target = { ...s.target, opponentIds: [...pvpIds] };
-    start(requestOf(s, character), { characterId: character.id, presetId: preset.id, presetName: preset.name, mode: 'optimize' }, {
+    start(requestOf(s, character, others), { characterId: character.id, presetId: preset.id, presetName: preset.name, mode: 'optimize' }, {
       title: `Optimise ${preset.name}`,
       context: `${targetLabel} · ${OBJECTIVE_LABEL[s.objective.kind]}`,
     });
     setStatus('');
   }
 
+  /** A Celestial run's roster partner as it is now (the task refuses it if the partner changed since). */
+  function partnerOf(target) {
+    const partner = rosterPartnerFor(target, others);
+    return partner ? { partner } : {};
+  }
+
   function runMore(row) {
     if (live || !shown || stale || !row.runMore || retiredGoalBlock(result)) return;
     const meta = { characterId: character.id, presetId: result.request.presetId, presetName: resultPreset?.name ?? '', mode: 'optimizeMore', fromJob: jobKey(shown) };
     start(
-      { mode: 'optimizeMore', character: searchCharacter(character), result, rowKeys: [row.key], targetN: row.runMore.targetN },
+      { mode: 'optimizeMore', character: searchCharacter(character), ...partnerOf(result.target), result, rowKeys: [row.key], targetN: row.runMore.targetN },
       meta,
       { title: `Re-measure rank ${row.rank}`, context: `${result.target.label} · N ${fmtCount(row.runMore.targetN)}` },
     );
@@ -297,7 +319,7 @@
 
   function rerun(r) {
     openRunId = null;
-    setup = setupFromRun(r, character, prefs.defaultEffort);
+    setup = setupFromRun(r, character, prefs.defaultEffort, others);
     go(formatHash('tools/optimiser'));
     notify('Settings loaded from the run. Press Optimise to measure again.', { kind: 'info' });
   }
@@ -322,7 +344,7 @@
 
         <section class="step">
           <h3><span class="n">II</span> Fight</h3>
-          <TargetPicker bind:target={setup.target} bind:objective={setup.objective} {character} oblivionUnlocked={character.oblivion?.unlocked ?? false} playerLevel={character.level} {opponents} onNavigate={go} />
+          <TargetPicker bind:target={setup.target} bind:objective={setup.objective} {character} oblivionUnlocked={character.oblivion?.unlocked ?? false} playerLevel={character.level} {opponents} characters={others} onNavigate={go} />
         </section>
 
         <section class="step">
@@ -365,11 +387,12 @@
           <p class="hint" data-testid="effort-cost">
             Run time is not capped. Measured at Quick: {MEASURED_COST.small.space} {MEASURED_COST.small.time}, {MEASURED_COST.full.space} {MEASURED_COST.full.time}. Standard and Thorough take longer; PVP several times longer.
           </p>
-          <RunEstimate bound="lower" fights={optimiserFights(plan, enabledCount(setup.space), setup.target.kind, pvpIds.length)} />
           <p class="hint" data-testid="plan-summary">
             Searches <span class="num">{enabledCount(setup.space)}</span> of <span class="num">{toggleTotal}</span> dimensions{targetLabel ? ` against ${targetLabel}` : ''}. The same seed reproduces the same result.
           </p>
         </section>
+
+        <SetupEstimate setup={estimateSetup} {character} />
 
         {#each blockers as b (b.text)}
           <Banner variant="warn">
@@ -438,6 +461,9 @@
 
           {#if segments.length}
             <div data-testid="optimiser-progress"><RunProgress {segments} /></div>
+          {/if}
+          {#if stepRows.length}
+            <div data-testid="search-steps"><StepList id="optimiser-search-steps" title="Search steps" steps={stepRows} /></div>
           {/if}
           {#if live}
             <p class="hint num" data-testid="progress-line">{progressLine(live.progress)}</p>

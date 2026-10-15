@@ -6,10 +6,16 @@
    * fields it prints the resolved target's fidelity and its labelled assumptions, so a server-run
    * fight is never presented as exact (plan Q1). Hard dungeons are `<id>_hard` ids (D1).
    * The PVP branch is disabled, with a link to Opponents, while the character has none.
+   * The Celestial Trial (simulation.md §Celestial Trial) picks a partner from `characters` (the roster's
+   * other characters, then one of their presets) or from `opponents`, or none.
    */
   import { TARGET_KINDS, objectiveKindsFor, resolveTarget } from '../../lib/search/objectives.js';
   import { targetOut } from '../../lib/search/result.js';
   import { PVP_MAX_OPPONENTS, PVP_SEATS } from '../../lib/search/pvpObjective.js';
+  import { defaultCelestialTactics, CELESTIAL_FOCUSES } from '../../lib/search/celestialObjective.js';
+  import { celestialMaxHoldCount } from '../../lib/engine/pve/celestial.js';
+  import { CELESTIAL_DIFFICULTIES, CELESTIAL_CONSTANTS } from '../../lib/game/celestial.js';
+  import { targetContext } from '../../lib/ui/optimiserSetup.js';
   import { chapterLabel } from '../../lib/game/combatPve.js';
   import { RAIDS, clanCapForServer } from '../../lib/game/fortress.js';
   import { FORTRESS_BOSS_GROUPS, MAX_SHIELD_PERCENT } from '../../lib/engine/pve/fortressBoss.js';
@@ -31,6 +37,7 @@
     oblivionUnlocked = false,
     playerLevel = null,
     opponents = [],
+    characters = [],
     onNavigate = () => {},
   } = $props();
 
@@ -44,11 +51,14 @@
     fortressBoss: { kind: 'fortressBoss', group: 'TOP', stars: 1, aliveDefenders: 0, server: character?.server ?? null, kills: 0 },
     custom: { kind: 'custom', mob: { hp: 1000000, attack: 10000, attackSpeed: 1 }, seconds: 60 },
   };
+  const celestialDefault = () => ({
+    kind: 'celestial', difficulty: 'HARD', partner: null, tank: 'auto', starter: 'me', tactics: defaultCelestialTactics('HARD'),
+  });
   const pvpDefault = () => ({ kind: 'pvp', opponentIds: opponents.slice(0, 1).map((o) => o.id), seats: 'attacker' });
   const SEAT_LABEL = { attacker: 'Attacker', defender: 'Defender', both: 'Both' };
   const AFFINITY_LABEL = { NONE: 'None', FORTIFIED: 'Fortified', ENRAGED: 'Enraged' };
 
-  const kinds = $derived([...TARGET_KINDS.filter((k) => k !== 'oblivion' || oblivionUnlocked || target.kind === 'oblivion'), 'pvp']);
+  const kinds = $derived([...TARGET_KINDS.filter((k) => k !== 'oblivion' || oblivionUnlocked || target.kind === 'oblivion'), 'celestial', 'pvp']);
   const kindOptions = $derived(
     kinds.map((k) => ({
       value: k,
@@ -74,7 +84,7 @@
 
   function pickKind(kind) {
     if (kind === target.kind) return;
-    target = kind === 'pvp' ? pvpDefault() : structuredClone(DEFAULTS[kind]);
+    target = kind === 'pvp' ? pvpDefault() : kind === 'celestial' ? celestialDefault() : structuredClone(DEFAULTS[kind]);
     const allowed = objectiveKindsFor(kind, kind === 'pvp' ? null : target);
     if (!allowed.includes(objective.kind)) objective = { kind: allowed[0] };
   }
@@ -90,19 +100,65 @@
     target = group === 'CORE' ? { ...rest, group } : { ...rest, group, stars: stars ?? 1 };
   }
 
+  // ---- Celestial ----
+  const DIFFICULTY_LABEL = { NORMAL: 'Normal', HARD: 'Hard' };
+  const FOCUS_LABEL = { HOLD: 'Hold: kill adds above the hold count', BOSS: 'Boss: always the boss', SPAWN: 'Adds: the oldest add first' };
+  const difficultyOptions = CELESTIAL_DIFFICULTIES.map((d) => ({ value: d, label: DIFFICULTY_LABEL[d] ?? d }));
+  const focusOptions = CELESTIAL_FOCUSES.map((f) => ({ value: f, label: FOCUS_LABEL[f] ?? f }));
+  const partnerValue = $derived(
+    target.kind !== 'celestial' || !target.partner ? ''
+      : target.partner.source === 'character' ? `character:${target.partner.characterId}` : `opponent:${target.partner.opponentId}`,
+  );
+  const partnerOptions = $derived([
+    { value: '', label: 'None (solo)' },
+    ...characters.map((c) => ({ value: `character:${c.id}`, label: `${c.name || 'Character'} (level ${c.level})` })),
+    ...opponents.map((o) => ({ value: `opponent:${o.id}`, label: `Opponent: ${o.name || 'Opponent'} (${classLabel(o.class)})` })),
+  ]);
+  const partnerCharacter = $derived(target.partner?.source === 'character' ? characters.find((c) => c.id === target.partner.characterId) ?? null : null);
+  const partnerPresetOptions = $derived((partnerCharacter?.presets ?? []).map((p) => ({ value: p.id, label: p.name })));
+  const solo = $derived(target.kind === 'celestial' && !target.partner);
+  const tankOptions = $derived([
+    { value: 'auto', label: 'Auto' }, { value: 'me', label: 'Me' }, { value: 'partner', label: 'Partner', disabled: solo },
+  ]);
+  const starterOptions = $derived([{ value: 'me', label: 'Me' }, { value: 'partner', label: 'Partner', disabled: solo }]);
+  const tacticsNow = $derived(target.kind === 'celestial' ? target.tactics ?? defaultCelestialTactics(target.difficulty) : null);
+
+  function pickPartner(v) {
+    let partner = null;
+    if (v.startsWith('character:')) {
+      const c = characters.find((x) => `character:${x.id}` === v);
+      const presetId = (c?.presets ?? []).some((p) => p.id === c.activePresetId) ? c.activePresetId : c?.presets?.[0]?.id;
+      if (c && presetId) partner = { source: 'character', characterId: c.id, presetId };
+    } else if (v.startsWith('opponent:')) {
+      partner = { source: 'opponent', opponentId: v.slice('opponent:'.length) };
+    }
+    target = partner
+      ? { ...target, partner }
+      : { ...target, partner: null, tank: target.tank === 'partner' ? 'auto' : target.tank, starter: 'me' };
+  }
+
+  function pickDifficulty(d) {
+    // the hold count's range depends on the difficulty: a count out of range falls back to its default
+    const t = tacticsNow;
+    const holdCount = t.holdCount <= celestialMaxHoldCount(d) ? t.holdCount : defaultCelestialTactics(d).holdCount;
+    target = { ...target, difficulty: d, tactics: { focus: t.focus, holdCount } };
+  }
+
   const patch = (p) => (target = { ...target, ...p });
   /** An emptied or invalid number field leaves the target as it was (resolveTarget would throw on NaN). */
   const patchInt = (key, v) => { if (Number.isFinite(v)) patch({ [key]: Math.round(v) }); };
   const patchMob = (p) => (target = { ...target, mob: { ...target.mob, ...p } });
 
   /** The target as the result will echo it: fidelity and tagged assumptions. Null while the fields are invalid. */
-  const resolved = $derived.by(() => {
+  const resolvedFull = $derived.by(() => {
+    const t = $state.snapshot(target);
     try {
-      return targetOut(resolveTarget($state.snapshot(target), { character }));
-    } catch {
-      return null;
+      return { target: resolveTarget(t, targetContext(t, character, characters)), error: '' };
+    } catch (e) {
+      return { target: null, error: e?.message ?? String(e) };
     }
   });
+  const resolved = $derived(resolvedFull.target ? targetOut(resolvedFull.target) : null);
   const fidelityText = $derived(
     resolved?.fidelity === 'server-model'
       ? 'The server runs this fight. The app models it from the client\'s own tables: a model, not exact rules.'
@@ -126,6 +182,52 @@
       <span class="lbl">My seat</span>
       <SegmentedControl label="My seat" options={seatOptions} value={target.seats} onchange={(v) => patch({ seats: v })} />
     </div>
+  {:else if target.kind === 'celestial'}
+    <div class="field" data-testid="celestial-difficulty">
+      <span class="lbl">Difficulty</span>
+      <SegmentedControl label="Difficulty" options={difficultyOptions} value={target.difficulty} onchange={pickDifficulty} />
+    </div>
+    <NumberField
+      label="Level"
+      min={CELESTIAL_CONSTANTS.UNLOCK_LEVEL}
+      max={999}
+      nullable
+      value={target.level ?? null}
+      onchange={(v) => {
+        const { level, ...rest } = target;
+        target = Number.isFinite(v) ? { ...rest, level: Math.round(v) } : rest;
+      }}
+    />
+    <span class="hint" data-testid="celestial-level">
+      {#if target.level != null}Scaling level {target.level}, set by hand (clear it for the default).{:else if resolvedFull.target}Default: level {resolvedFull.target.celestial.level}, the highest in the party.{:else}Default: the highest level in the party.{/if}
+    </span>
+    <Select label="Partner" options={partnerOptions} value={partnerValue} onchange={pickPartner} />
+    {#if partnerCharacter}
+      <Select label="Partner preset" options={partnerPresetOptions} value={target.partner.presetId} onchange={(v) => patch({ partner: { ...target.partner, presetId: v } })} />
+    {/if}
+    <div class="two">
+      <div class="field" data-testid="celestial-tank">
+        <span class="lbl">Tank</span>
+        <SegmentedControl label="Tank" options={tankOptions} value={target.tank ?? 'auto'} onchange={(v) => patch({ tank: v })} />
+      </div>
+      <div class="field" data-testid="celestial-starter">
+        <span class="lbl">Starts the run</span>
+        <SegmentedControl label="Starts the run" options={starterOptions} value={target.starter ?? 'me'} onchange={(v) => patch({ starter: v })} />
+      </div>
+    </div>
+    <Select label="Focus" options={focusOptions} value={tacticsNow.focus} onchange={(v) => patch({ tactics: { ...tacticsNow, focus: v } })} />
+    {#if tacticsNow.focus === 'HOLD'}
+      <NumberField
+        label="Hold count"
+        min={1}
+        max={celestialMaxHoldCount(target.difficulty)}
+        value={tacticsNow.holdCount}
+        onchange={(v) => { if (Number.isFinite(v)) patch({ tactics: { ...tacticsNow, holdCount: Math.round(v) } }); }}
+      />
+    {/if}
+    {#if resolvedFull.error}
+      <p class="hint warn" role="alert" data-testid="celestial-error">{resolvedFull.error}</p>
+    {/if}
   {:else if target.kind === 'dummy'}
     <NumberField label="Seconds" unit="s" min={5} max={600} value={target.seconds} onchange={(v) => patch({ seconds: Math.round(v) })} />
   {:else if target.kind === 'chapter'}
@@ -214,6 +316,7 @@
   .chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
   .hint { margin: 0; color: var(--text-muted); font-size: var(--fs-12); }
+  .hint.warn { color: var(--status-warn); }
   .assume { list-style: none; margin: var(--sp-1) 0 0; padding: 0; display: grid; gap: 3px; font-size: var(--fs-12); color: var(--text-soft); }
   .tag {
     display: inline-block;

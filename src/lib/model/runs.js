@@ -22,6 +22,8 @@
 //       baseline: RunEntry, results: RunEntry[] (top RUN_DETAIL_RESULTS; `lines` only on the first RUN_DETAIL_FULL_LINES)
 //     } | null
 //   }
+//   steps: [{id, state, reason, pass, tried, fights, improved}]   optional: the search's final per-block rows
+//     (simulation.md §Progress); absent on a run saved before they existed, on a Push run and on a cancelled one
 //   RunEntry = {rank, isBaseline, key, candidate, value, lo, hi, n, score, vsBaseline, changes, lines}
 //
 // Schema 2 (`schema: 2`, redesign plan U8) records an 'optimiser-result/2' result (docs/Reference/simulation.md
@@ -169,6 +171,18 @@ function normaliseDetail(d, schema = 1) {
   return { baseline, results };
 }
 
+const STEP_STATES = ['queued', 'running', 'done', 'skipped'];
+const STEP_REASONS = ['off', 'nothing-to-try'];
+/** A run's final search steps; null when absent or unusable (an older run simply has none). */
+function normaliseSteps(steps) {
+  if (!Array.isArray(steps)) return null;
+  const rows = steps.filter((r) => isObj(r) && typeof r.id === 'string' && STEP_STATES.includes(r.state)).slice(0, 32).map((r) => ({
+    id: r.id, state: r.state, reason: STEP_REASONS.includes(r.reason) ? r.reason : null,
+    pass: int(r.pass) ?? 0, tried: int(r.tried) ?? 0, fights: int(r.fights) ?? 0, improved: r.improved === true,
+  }));
+  return rows.length ? rows : null;
+}
+
 function normaliseHeadline(h) {
   const x = isObj(h) ? h : {};
   return {
@@ -245,6 +259,7 @@ export function normaliseRun(raw) {
     characterKey: str(raw.characterKey) || null,
     applied,
     headline: normaliseHeadline(raw.headline),
+    ...(normaliseSteps(raw.steps) ? { steps: normaliseSteps(raw.steps) } : {}),
     detail: normaliseDetail(raw.detail, schema),
   };
 }
@@ -314,6 +329,7 @@ function runFromResultV2(result, fields) {
     budget: req.effort,
     characterKey: req.characterKey,
     applied: fields.applied ?? null,
+    steps: result.search?.steps ?? null,
     headline: {
       unit, higherIsBetter: result.objective?.higherIsBetter, tier: 2, aborted: false, truncated: null,
       baseline: base?.value?.est ?? null, best: (top ?? base)?.value?.est ?? null,
