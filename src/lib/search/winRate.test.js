@@ -213,3 +213,72 @@ describe('optimize with a win-rate goal', { timeout: 120000 }, () => {
     expect(more.headline.text).toBe(more.goal.text);
   });
 });
+
+describe('win-rate objective under the futility stop (A5)', () => {
+  const o = makeObjective({ kind: 'win-rate', target: 0.95 }, custom({ hp: 10, attack: 1, attackSpeed: 1 }));
+  const zone = { delta: 0.02, deltaKind: 'absolute', alpha: 0.05 };
+  const lazy = (s) => async (n) => ({ ...s, main: [s.main[0].slice(0, n)], n });
+  // a stub objective returning one fixed lexicographic contrast, to test the rule on each branch
+  const stub = (c) => ({ higherIsBetter: true, deltaKind: 'absolute', contrast: () => c });
+  const one = setOf([[1]]);
+  const rate = { delta: -0.01, lo: -0.03, hi: 0.01, basis: 'win-rate', higherIsBetter: true, ref: 0.5 };
+  // a build that wins fight i iff a <= u_i < b (discordant with setFor(b - a) both ways)
+  const windowSet = (a, b, n, hp) => setOf([Array.from({ length: n }, (_, i) => (u(i) >= a && u(i) < b ? 1 + hp : 0.5))]);
+  const margin = (lo, hi) => ({ delta: (lo + hi) / 2, lo, hi, basis: 'margin', higherIsBetter: true, ref: 1 });
+
+  it('the rate alone cannot make an arm futile while the margin is attached and open in its favour', () => {
+    expect(contrastSets(stub({ ...rate, then: margin(0.1, 0.5) }), one, one, zone)).toMatchObject({ verdict: 'unresolved', futile: false });
+    expect(contrastSets(stub({ ...rate, then: margin(-0.2, 0.01) }), one, one, zone)).toMatchObject({ verdict: 'unresolved', futile: true });
+  });
+
+  it('while the margin may still attach (thenPending) the arm is not futile; once it cannot, it is', () => {
+    expect(contrastSets(stub({ ...rate, then: null, thenPending: true }), one, one, zone).futile).toBe(false);
+    expect(contrastSets(stub({ ...rate, then: null, thenPending: false }), one, one, zone).futile).toBe(true);
+  });
+
+  it('a rate-equivalent arm whose margin cannot win stops futile; without the stop it runs on', async () => {
+    const eq = { delta: 0, lo: -0.01, hi: 0.01, basis: 'win-rate', higherIsBetter: true, ref: 0.5 };
+    const marginLost = stub({ ...eq, then: margin(-0.1, 0.01) });
+    const g = async (n) => setOf([Array(n).fill(1)]);
+    const f = await compareSets(marginLost, g, g, { ...zone, n0: 1, maxN: 4, futility: true });
+    expect(f).toMatchObject({ verdict: 'futile', looks: 1 });
+    expect((await compareSets(marginLost, g, g, { ...zone, n0: 1, maxN: 4 })).looks).toBe(3);
+  });
+
+  it('a slightly lower rate with a much better margin (both below target) is still accepted as better', async () => {
+    // X wins 0.5 % fewer fights than Y (inside δ = 2 points; discordant both ways) but keeps far more
+    // HP: lexicographically better. A rate-only futility rule drops it before the rate is equivalent.
+    const x = windowSet(0.015, 0.51, 16384, 0.9);
+    const y = setFor(0.5, 16384, { hp: 0.1 });
+    const c = await compareSets(o, lazy(x), lazy(y), { ...zone, n0: 64, maxN: 16384, futility: true });
+    expect(c.verdict).toBe('better');
+    expect(c.basis).toBe('margin');
+  });
+
+  it('a race drops an arm just below a leader that reaches the target, and keeps one open on its margin', async () => {
+    const effort = { alpha: 0.05, delta: 0.02, deltaKind: 'absolute', n0: 64, maxN: 16384 };
+    const drawn = new Map();
+    const getSet = async (arm, n) => {
+      drawn.set(arm.key, Math.max(drawn.get(arm.key) ?? 0, n));
+      return setFor(arm.p, n, { hp: arm.hp });
+    };
+    const arms = [
+      { key: 'base', dist: 0, p: 0.3, hp: 0.5 },
+      { key: 'reach', dist: 1, p: 1, hp: 0.5 },
+      { key: 'short', dist: 2, p: 0.94, hp: 0.5 },
+    ];
+    const r = await race(arms, { objective: o, getSet, effort, seed: 1 });
+    expect(arms[r.winner].key).toBe('reach');
+    expect(r.futile.map((f) => arms[f.i].key)).toEqual(['short']);
+    expect(drawn.get('short')).toBeLessThan(effort.maxN);
+
+    // both below the target: the far arm's rate is inside δ of the leader's and its margin is better,
+    // so it is never dropped as futile (the margin can still win once the rate is equivalent)
+    const below = [
+      { key: 'base', dist: 0, p: 0.5, hp: 0.1 },
+      { key: 'margin', dist: 1, window: [0.015, 0.51], hp: 0.9 },
+    ];
+    const r2 = await race(below, { objective: o, getSet: async (arm, n) => (arm.window ? windowSet(...arm.window, n, arm.hp) : setFor(arm.p, n, { hp: arm.hp })), effort, seed: 1 });
+    expect(r2.futile).toEqual([]);
+  });
+});

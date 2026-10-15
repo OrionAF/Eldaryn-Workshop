@@ -331,12 +331,46 @@ request keys (`budget`, `maxMs`, `finalMs`, `maxEvals`, `maxPasses`) are ignored
 ### Racing (`race.js`)
 
 All arms are sampled to n0 (every look requests all surviving arms at once, so a worker pool samples
-them in parallel; the decision reads them in arm order once all are in); the leader is the best estimate (`objective.score`); an arm leaves when
-its contrast against the leader is `worse` at α / (arms × looks). The race stops when one arm is
-left or every survivor is `equivalent` to the leader; arms still open at maxN are `unresolved`. The
-winner is the arm nearest the baseline among the leader and its ties. Before a race the arms are
-made distinct, simulable (an `EngineInputError` arm is skipped, warning `arms-not-simulable`) and
-merged by engine key (`effect.mergeByEngine`).
+them in parallel; the decision reads them in arm order once all are in); the leader is the best estimate (`objective.score`). At each look
+every other arm's paired contrast against the leader, at α / (arms × looks), decides:
+
+- `worse` (the interval excludes 0 on the losing side): the arm leaves (`eliminated`).
+- `equivalent` (inside ±δ): a tie; it stays.
+- **futile**: the interval's bound on the winning side does not reach δ (higher is better:
+  `hi < δ`; lower is better: `lo > −δ`; δ in the statistic's units, `deltaAbs` as for the verdict,
+  the win-rate zone on a win-rate fallback), so the arm cannot beat the leader by δ. On the
+  lexicographic win-rate objective (§Win rate) the arm must be unable to win on either criterion:
+  the capped rate's `hi < δ` and, when the margin contrast is attached, the margin's `hi < δ` too;
+  while the margin may still attach at a later look (neither build's Wilson lower bound reaches τ,
+  `thenPending`) the arm is not futile. If it is no
+  nearer the baseline than the leader (`dist` ≥ the leader's) it leaves at once (`futile`, with
+  its contrast); a futile arm nearer the baseline stays until it resolves `equivalent` (a tie it
+  then wins) or `worse`.
+- otherwise it stays open.
+
+The race stops when no arm is open (every survivor is the leader or `equivalent` to it); arms still
+open at maxN are `unresolved`. The winner is the arm nearest the baseline among the leader and its
+ties. Before a race the arms are made distinct, simulable (an `EngineInputError` arm is skipped,
+warning `arms-not-simulable`) and merged by engine key (`effect.mergeByEngine`).
+
+Why futility keeps the declared precision: Effort promises the winner is within δ of the best arm
+(a build better by less than δ is "as good" at this precision). A futile arm's interval says, at the
+race's family level, that it is not better than the leader by δ or more, so dropping it can only
+lose a gain smaller than δ, which the precision already allows; and because it is no nearer the
+baseline it could not win a tie either. A nearer futile arm could win as a tie, so it keeps running:
+"fewest changes among equivalent builds" is decided exactly as before. The test reuses the race's
+two-sided interval, so its one-sided level is α / (2 × arms × looks), stricter than needed. Before
+this rule (A5) an arm only left as `worse` or `equivalent`, so arms a little worse than the leader
+(inside δ) ran on towards maxN; on synthetic arms 0.4δ worse the futility stop cuts the fights per
+arm by about 5.5× (`race.calibration.test.js`, which also checks over 400 seeded races that a 2δ
+better arm wins, and that with all arms equal the baseline-nearest wins, each in at least 1 − α of
+races). The guarantee is against the leader at the look that drops the arm: if the leader later
+changes to one the dropped arm is nearer than, that arm could have tied it, so in that rare case the
+rule can lose a fewest-changes tie (never a gain of δ or more). `effort.futility: false` restores the
+old rule (benchmarks only; it is part of the request key and the race step key). In code: a
+`sampler.js` contrast that is `unresolved` or `futile` carries `futile` (boolean); `compareSets(..., {futility: true})` also stops with
+verdict `futile` (used only by the accept compare below; a race keeps the plain verdicts). Confirm and attribute
+are unchanged (strict contrasts on fresh seeds).
 
 ### Strategy
 
@@ -347,7 +381,8 @@ merged by engine key (`effect.mergeByEngine`).
   a talent fill that spends points one at a time on the best ordering heuristic (`objective.screen`,
   a start only); `randomStarts` (3) seeded random legal starts. From each, coordinate ascent: race
   `[x, ...block.domain(x)]` per block in `BLOCKS` order and accept a winner only when a sequential
-  compare on S1 at α / arms says `better` and its canonical form was not visited; a full pass that
+  compare on S1 at α / arms says `better` and its canonical form was not visited (that compare also
+  stops, not accepted, once the winner is futile against x: it cannot beat x by δ); a full pass that
   accepts nothing is followed by a race of the two-point talent moves (+1 +1, −1 −1). The ascent ends
   when both accept nothing, so it always ends converged; neighbours still open are listed in
   `search.unresolved` and mark their block `unresolved`.
@@ -439,8 +474,11 @@ Measured on the Warrior fixture (one thread, this machine; a 60 s dummy fight co
 | relics + pet | Quick | exhaustive | 62 | 624 | 1.2 s |
 | every block | Quick | local (4 starts) | 8 437 | 138 920 | 249 s |
 
-The full run shared four cores with other jobs. Standard and Thorough cost more: n0 doubles, and a
-comparison inside δ can run to maxN. A PVP duel costs several times a dummy fight, per matchup.
+The full run shared four cores with other jobs, and both rows predate the futility stop (A5), so they
+are upper figures: since A5 an arm or challenger that cannot beat the leader or incumbent by δ stops
+early (about 5.5× fewer fights per slightly-worse arm on synthetic arms, §Racing), and only a
+contrast that could still go either way by δ, or a futile arm nearer the baseline than the leader,
+runs on towards maxN. Standard and Thorough cost more: n0 doubles. A PVP duel costs several times a dummy fight, per matchup.
 The Effort control prints δ, the first look n0 and maxN per level and these measured figures
 (`ui/optimiserView.js` `MEASURED_COST`, `effortPlan`); no run is time-capped. The Optimiser page runs as
 a session job (U3): Cancel keeps the provisional rows and Resume re-starts the task with the job's
