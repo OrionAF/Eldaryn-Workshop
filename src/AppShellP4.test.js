@@ -17,11 +17,11 @@ afterEach(() => {
   inspector.clear();
 });
 
-function mountApp({ empty }) {
+function mountApp({ empty, hash }) {
   localStorage.clear();
   rosterStore.roster.characters.splice(0);
   if (!empty) rosterStore.addCharacter('Aria', 'WARRIOR');
-  history.replaceState(null, '', empty ? '#/welcome' : '#/character/overview');
+  history.replaceState(null, '', hash ?? (empty ? '#/welcome' : '#/character/overview'));
   syncRouter();
   const target = document.createElement('div');
   document.body.appendChild(target);
@@ -31,21 +31,47 @@ function mountApp({ empty }) {
   return target;
 }
 
-it('the Welcome page and a picked file show exactly one import dialog', async () => {
-  mountApp({ empty: true });
-  loadImportText('{"not":"a known file"}');
+it('Settings with an empty roster: the Import section is reachable and shows one import dialog for a report', async () => {
+  const target = mountApp({ empty: true, hash: '#/settings' });
+  expect(location.hash).toBe('#/settings'); // not redirected to Welcome
+  expect(target.querySelector('[data-testid="import-section"]')).not.toBeNull();
+  expect(target.querySelector('.welcome-shell')).toBeNull();
+  loadImportText(JSON.stringify({ player: { name: 'Fresh', class: 'MYSTIC', level: 5 }, equipment: {} }));
   flushSync();
   await tick();
   expect(document.querySelectorAll('dialog').length).toBe(1);
 });
 
-it('a rejected file shows its reason on the Welcome page', async () => {
-  mountApp({ empty: true });
+it('a rejected file shows its reason in the Settings Import section, with no dialog', async () => {
+  const target = mountApp({ empty: true, hash: '#/settings' });
   loadImportText('{ "a": 1,\n  "b": }');
   flushSync();
   await tick();
-  const dialog = document.querySelector('dialog[open]');
-  expect(dialog.textContent).toMatch(/line \d+|JSON|valid/i);
+  expect(target.querySelector('[data-testid="import-section"] [role="alert"]').textContent).toMatch(/line \d+|JSON|valid/i);
+  expect(document.querySelector('dialog[open]')).toBeNull();
+});
+
+it('Welcome links to Settings, Import instead of hosting an import panel', () => {
+  const target = mountApp({ empty: true });
+  const link = target.querySelector('[data-testid="welcome-import-link"] a');
+  expect(link.getAttribute('href')).toBe('#/settings');
+  expect(target.querySelector('input[type="file"]')).toBeNull();
+  expect(target.textContent).not.toContain('Import your game profile');
+});
+
+it('importing from Settings with an empty roster leaves for Overview once a character exists', async () => {
+  const target = mountApp({ empty: true, hash: '#/settings' });
+  rosterStore.addCharacter('Fresh', 'MYSTIC');
+  flushSync();
+  await tick();
+  expect(location.hash).toBe('#/character/overview');
+  expect(target.querySelector('.welcome-shell')).toBeNull();
+});
+
+it('the shell has no Import button in the top bar or tab bar', () => {
+  const target = mountApp({ empty: false });
+  expect(target.querySelector('header.topbar').textContent).not.toMatch(/Import/);
+  expect(target.querySelector('nav[aria-label="Areas"]').textContent).not.toMatch(/Import/);
 });
 
 it('the first tab stop is a skip link to the main landmark', () => {

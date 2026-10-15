@@ -76,11 +76,11 @@ export async function race(arms, { objective, getSet, effort, seed, onLook }) {
         eliminated.push({ i, contrast: c });
       } else if (c.verdict === 'equivalent') ties.push(i);
       else if (futility && c.futile && arms[i].dist >= arms[leader].dist) {
-        // cannot beat the leader by δ, and would lose a tie to it: no outcome left in which it wins
+        // cannot beat this leader by δ and would lose a tie to it; a later leader it is nearer than
+        // could have been tied (rare; it then loses at most a fewest-changes tie, never a δ gain)
         alive.delete(i);
         futile.push({ i, contrast: c });
-      }
-      else open.set(i, c); // 'unresolved' at this look; 'better' cannot beat the best estimate, kept open
+      } else open.set(i, c); // 'unresolved' at this look; 'better' cannot beat the best estimate, kept open
     }
     onLook?.({ k, n, alive: alive.size });
     if (!final && open.size === 0) break;

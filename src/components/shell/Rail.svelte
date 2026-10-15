@@ -5,7 +5,7 @@
    * `<nav aria-label="Main">` lists the 18 pages in three groups. CSS lays it out as the full rail
    * (>= 1280), the 64px icon rail (labels hidden, `data-tip` flyout) and, on a phone, as the area
    * strip under the top bar (only the current area's group, scrolling sideways). `<nav
-   * aria-label="Areas">` is the phone bottom tab bar (Character / Builds / Tools / Import); CSS shows
+   * aria-label="Areas">` is the phone bottom tab bar (Character / Builds / Tools); CSS shows
    * one or the other. There is no JS breakpoint switch.
    *
    * Items are plain anchors, so Back/Forward, deep links and open-in-new-tab work without handlers.
@@ -15,7 +15,7 @@
   import { areaHash } from '../../lib/router.svelte.js';
   import NavIcon from './NavIcon.svelte';
 
-  let { route, character, onImport = () => {} } = $props();
+  let { route, character } = $props();
 
   const groups = $derived(navGroups(character));
   const currentArea = $derived(route.kind === 'page' ? route.area : null);
@@ -74,10 +74,6 @@
       <span class="micro-label">{area.label}</span>
     </a>
   {/each}
-  <button type="button" class="tab" onclick={onImport}>
-    <span class="glyph"><NavIcon name="import" size={20} /></span>
-    <span class="micro-label">Import</span>
-  </button>
 </nav>
 
 <style>
@@ -199,7 +195,7 @@
       right: 0;
       bottom: 0;
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       padding-bottom: env(safe-area-inset-bottom, 0px);
       background: var(--surface-1);
       border-top: 1px solid var(--line-rule);

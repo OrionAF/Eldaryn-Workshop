@@ -1,12 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
   resolveTarget, makeObjective, objectiveKindsFor, closedFormDps, ehpProxy, SCREEN_SPELL_WEIGHT,
-  OBJECTIVE_KINDS, TARGET_KINDS, residualFor,
+  TARGET_KINDS, residualFor, goalRetired, WIN_RATE_TARGET,
 } from './objectives.js';
-import { setOf, contrastSets } from './sampler.js';
+import { contrastSets } from './sampler.js';
 import { buildFighter } from '../build/fighter.js';
 import { fixtureCharacter } from '../build/fixtures.js';
-import { censoredQuantile } from '../engine/metrics.js';
 
 const stats = (o = {}) => ({
   totalHp: 10000, totalAttack: 1000, totalAttackSpeed: 1, totalDoubleHit: 0, totalCritChance: 0,
@@ -83,17 +82,18 @@ describe('resolveTarget', () => {
 describe('objective / target compatibility', () => {
   it('lists the sensible objectives per target kind', () => {
     expect(objectiveKindsFor('dummy')).toEqual(['dps']);
-    expect(objectiveKindsFor('chapter')).toEqual(['ttk-median', 'ttk-p90', 'survival']);
-    expect(objectiveKindsFor('worldBoss')).toEqual(['dps', 'survival']);
+    for (const k of ['chapter', 'dungeon', 'raid', 'oblivion']) expect(objectiveKindsFor(k)).toEqual(['win-rate']);
+    expect(objectiveKindsFor('worldBoss')).toEqual(['dps']);
     // with the target itself: survival only where something can hurt the player (#61)
     expect(objectiveKindsFor('worldBoss', { kind: 'worldBoss', affinity: 'NONE' })).toEqual(['dps']);
-    expect(objectiveKindsFor('worldBoss', { kind: 'worldBoss', affinity: 'ENRAGED' })).toEqual(['dps', 'survival']);
-    expect(objectiveKindsFor('custom')).toEqual(OBJECTIVE_KINDS);
+    expect(objectiveKindsFor('worldBoss', { kind: 'worldBoss', affinity: 'ENRAGED' })).toEqual(['dps']);
+    expect(objectiveKindsFor('custom')).toEqual(['dps', 'win-rate', 'survival']);
     expect(objectiveKindsFor('bogus')).toEqual([]);
   });
 
   it('makeObjective throws on a pair that makes no sense', () => {
-    expect(() => makeObjective({ kind: 'ttk-median' }, resolveTarget({ kind: 'dummy' }))).toThrow(/cannot score/);
+    expect(() => makeObjective({ kind: 'ttk-median' }, resolveTarget({ kind: 'dummy' }))).toThrow(/unknown objective/);
+    expect(() => makeObjective({ kind: 'ttk-p90' }, resolveTarget({ kind: 'custom', mob: { hp: 1e6, attack: 1, attackSpeed: 1 } }))).toThrow(/unknown objective/);
     expect(() => makeObjective({ kind: 'dps' }, resolveTarget({ kind: 'chapter', chapter: 1, level: 1 }))).toThrow(/cannot score/);
     expect(() => makeObjective({ kind: 'nope' })).toThrow(/unknown objective/);
   });
@@ -103,8 +103,35 @@ describe('objective / target compatibility', () => {
       expect(() => makeObjective({ kind: 'survival' }, resolveTarget({ kind: 'worldBoss', affinity }))).toThrow(/cannot score/);
     }
     expect(() => makeObjective({ kind: 'survival' }, resolveTarget({ kind: 'custom', mob: { hp: 1e6, attack: 0, attackSpeed: 1 } }))).toThrow(/cannot score/);
-    expect(makeObjective({ kind: 'survival' }, resolveTarget({ kind: 'worldBoss', affinity: 'ENRAGED' })).kind).toBe('survival');
-    expect(makeObjective({ kind: 'survival' }, resolveTarget({ kind: 'oblivion', floor: 3 })).kind).toBe('survival');
+    expect(makeObjective({ kind: 'survival' }, resolveTarget({ kind: 'custom', mob: { hp: 1e6, attack: 5, attackSpeed: 1 } })).kind).toBe('survival');
+  });
+
+  it('survival stays for custom mobs only (retired on chapter, dungeon, raid, Oblivion and World Boss)', () => {
+    for (const t of [
+      { kind: 'chapter', chapter: 1, level: 1 }, { kind: 'dungeon', id: 'dungeon_1', step: 1 },
+      { kind: 'raid', id: 'raid_1', step: 1 }, { kind: 'oblivion', floor: 3 }, { kind: 'worldBoss', affinity: 'ENRAGED' },
+    ]) {
+      expect(() => makeObjective({ kind: 'survival' }, resolveTarget(t))).toThrow(/cannot score/);
+      expect(goalRetired(t.kind, 'survival')).toBe(true);
+    }
+    expect(goalRetired('custom', 'survival')).toBe(false);
+  });
+
+  it('goalRetired flags the kill-time kinds on every target and keeps the live pairs', () => {
+    for (const k of TARGET_KINDS) {
+      expect(goalRetired(k, 'ttk-median')).toBe(true);
+      expect(goalRetired(k, 'ttk-p90')).toBe(true);
+    }
+    expect(goalRetired('chapter', 'win-rate')).toBe(false);
+    expect(goalRetired('dummy', 'dps')).toBe(false);
+    expect(goalRetired('pvp', 'pvp-winrate')).toBe(false);
+  });
+
+  it('the win-rate target accepts 10 % to 100 % and rejects below', () => {
+    const t = resolveTarget({ kind: 'chapter', chapter: 1, level: 1 });
+    expect(WIN_RATE_TARGET.min).toBe(0.1);
+    expect(makeObjective({ kind: 'win-rate', target: 0.1 }, t).spec.target).toBe(0.1);
+    expect(() => makeObjective({ kind: 'win-rate', target: 0.09 }, t)).toThrow(/between 0.1 and 1/);
   });
 });
 
@@ -204,48 +231,6 @@ describe('residualFor (only a confirmed sheet carries a residual)', () => {
   });
 });
 
-describe('ttk statistic: the censored quantile over all fights (#66 #73)', () => {
-  const o = makeObjective({ kind: 'ttk-median' }, resolveTarget({ kind: 'custom', mob: { hp: 1e5, attack: 10, attackSpeed: 1 } }));
-  // A wins 68.5 % of fights, its wins spread 15-34.5 s (wins-only median about 24.5 s); B wins 99.5 % at 25 s
-  const N = 200;
-  const A = setOf([Array.from({ length: N }, (_, i) => (i < 137 ? 15000 + Math.round((i / 136) * 19500) : Infinity))]);
-  const B = setOf([Array.from({ length: N }, (_, i) => (i < 199 ? 25000 + (i % 3) : Infinity))]);
-
-  it('a build with 68.5 % wins and a faster wins-only median ranks below a 99.5 % build', () => {
-    const winsOnly = A.main[0].filter(Number.isFinite).sort((a, b) => a - b)[68];
-    expect(winsOnly).toBeLessThan(25000); // the old ranking statistic preferred A
-    const a = o.estimate(A);
-    const b = o.estimate(B);
-    expect(a.value.est).toBeGreaterThan(b.value.est);
-    expect(o.score(A)).toBeLessThan(o.score(B));
-    expect(a.aux.winRate.est).toBeCloseTo(0.685, 6);
-    expect(contrastSets(o, A, B, { seed: 1 }).verdict).toBe('worse');
-  });
-
-  it('the displayed value lies inside its own interval, from the same vector', () => {
-    for (const s of [A, B]) {
-      const { value } = o.estimate(s);
-      expect(value.method).toBe('order-stat');
-      expect(value.lo).toBeLessThanOrEqual(value.est);
-      expect(value.hi).toBeGreaterThanOrEqual(value.est);
-      expect(value.est).toBe(censoredQuantile(s.main[0], 0.5));
-    }
-  });
-
-  it('the contrast is in ms of the ranked quantile; both unreached falls back to win rate', () => {
-    const c = contrastSets(o, A, B, { seed: 3 });
-    expect(c.delta).toBe(censoredQuantile(A.main[0], 0.5) - censoredQuantile(B.main[0], 0.5));
-    expect(c.method).toBe('paired-bootstrap');
-    expect(c.basis).toBe('quantile');
-    const lose = (k) => setOf([Array.from({ length: N }, (_, i) => (i < k ? 20000 : Infinity))]);
-    const w = contrastSets(o, lose(80), lose(20), { seed: 3 });
-    expect(w.basis).toBe('winRate');
-    expect(w.delta).toBeCloseTo(0.3, 9);
-    expect(w.verdict).toBe('better');
-  });
-
-});
-
 describe('measures', () => {
   const dummy = resolveTarget({ kind: 'dummy' });
 
@@ -284,27 +269,6 @@ describe('measures', () => {
     expect(strong.score).toBeGreaterThan(weak.score);
   });
 
-  it('ttk: a stronger fighter is faster; a fighter that loses ranks below any winner and by win rate', () => {
-    const target = resolveTarget({ kind: 'custom', mob: { hp: 20000, attack: 100, attackSpeed: 1 }, seconds: 120 });
-    const o = makeObjective({ kind: 'ttk-median' }, target);
-    const slow = o.measure(fighter({ totalAttack: 500 }), { n: 6, seed: 1 });
-    const fast = o.measure(fighter({ totalAttack: 2000 }), { n: 6, seed: 1 });
-    expect(fast.value).toBeLessThan(slow.value);
-    expect(fast.score).toBeGreaterThan(slow.score);
-    const dead = o.measure(fighter({ totalAttack: 500, totalHp: 50 }), { n: 6, seed: 1 });
-    expect(dead.value).toBeNull();
-    expect(dead.score).toBeLessThan(slow.score);
-    expect(dead.extra.winRate).toBe(0);
-    expect(fast.lo).toBeLessThanOrEqual(fast.value);
-  });
-
-  it('ttk-p90 needs 90 % wins before it reports a time', () => {
-    const target = resolveTarget({ kind: 'custom', mob: { hp: 20000, attack: 100, attackSpeed: 1 }, seconds: 120 });
-    const m = makeObjective({ kind: 'ttk-p90' }, target).measure(fighter({ totalAttack: 2000 }), { n: 6, seed: 1 });
-    expect(m.value).toBeGreaterThan(0);
-    expect(m.extra.winRate).toBe(1);
-  });
-
   it('survival: p with a Wilson interval; certain survivors tie exactly, with no effective-HP tie-break (#61)', () => {
     const target = resolveTarget({ kind: 'custom', mob: { hp: 1e6, attack: 50, attackSpeed: 1 }, seconds: 20 });
     const o = makeObjective({ kind: 'survival', seconds: 20 }, target);
@@ -328,8 +292,6 @@ describe('measures', () => {
     const longer = makeObjective({ kind: 'survival', seconds: 60 }, target);
     expect(longer.measure(fighter({ totalHp: 45000 }), { n: 4, seed: 1 }).value).toBe(0);
     expect(longer.key).not.toBe(o.key);
-    const chapter = makeObjective({ kind: 'survival' }, resolveTarget({ kind: 'chapter', chapter: 1, level: 1 }));
-    expect([chapter.window, chapter.label]).toEqual([null, 'Survival chance (whole fight)']);
   });
 
   it('an aborted signal returns an aborted measure', () => {
@@ -341,7 +303,7 @@ describe('measures', () => {
 
   it('Oblivion: the fighter\'s Oblivion Power rides into the fight', () => {
     const target = resolveTarget({ kind: 'oblivion', floor: 12 });
-    const o = makeObjective({ kind: 'survival', seconds: 30 }, target);
+    const o = makeObjective({ kind: 'win-rate' }, target);
     const f = (power) => fighter({ totalHp: 300000, totalAttack: 20000, totalOblivionPower: power });
     const low = o.measure(f(0), { n: 6, seed: 3 });
     const high = o.measure(f(500), { n: 6, seed: 3 });

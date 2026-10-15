@@ -8,6 +8,7 @@ import JobsTray from '../shell/JobsTray.svelte';
 import { __resetJobs, jobsStore, startJob } from '../../lib/jobs.svelte.js';
 import { applyPrefs, prefs, setPrefs } from '../../lib/prefs.svelte.js';
 import { loadUi } from '../../lib/uiState.js';
+import { requestImportFocus } from '../../lib/importFlow.svelte.js';
 import { APP_VERSION } from '../../lib/calibration.js';
 
 let ui;
@@ -153,5 +154,38 @@ describe('Jobs tray', () => {
     ui = setup(JobsTray);
     expect(ui.q('[data-testid="job-workers"]').textContent).toBe('2 workers');
     expect(requests[0].workers).toBe(2);
+  });
+});
+
+describe('Import section', () => {
+  it('holds the disclaimer, the drop zone, paste and the file picker; no separate Import button remains', () => {
+    ui = setup(SettingsPage);
+    const section = ui.target.querySelector('[data-testid="import-section"]');
+    expect(section.querySelector('h3').textContent).toBe('Import');
+    const note = section.querySelector('[data-testid="import-disclaimer"]').textContent.replace(/\s+/g, ' ');
+    expect(note).toContain('HTTP Catcher');
+    expect(note).toContain('HTTP Toolkit');
+    expect(note).toContain('Android usually needs root');
+    expect(note).toContain('Backups exported from this app always import normally');
+    expect(section.querySelector('input[type="file"]')).not.toBeNull();
+    expect(section.querySelector('textarea')).not.toBeNull();
+    expect([...ui.target.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Import a file')).toBe(false);
+  });
+
+  it('a pointer link focuses the Import heading', async () => {
+    ui = setup(SettingsPage);
+    const h = ui.target.querySelector('#settings-import-h');
+    requestImportFocus();
+    flushSync();
+    await Promise.resolve();
+    expect(document.activeElement).toBe(h);
+  });
+
+  it('a pointer request made before Settings mounts still focuses the heading', async () => {
+    requestImportFocus();
+    ui = setup(SettingsPage);
+    flushSync();
+    await Promise.resolve();
+    expect(document.activeElement).toBe(ui.target.querySelector('#settings-import-h'));
   });
 });

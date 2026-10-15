@@ -11,11 +11,11 @@
 //   {kind: 'worldBoss', affinity?: 'NONE'|'FORTIFIED'|'ENRAGED'}
 //   {kind: 'custom', mob: MobSpec, seconds?: 60}      a user-entered mob
 //   {kind: 'pvp', opponentIds: string[], seats}       saved opponents (pvpObjective.js); needs `{character}`
-// An OBJECTIVE is what "better" means: {kind: 'dps'|'ttk-median'|'ttk-p90'|'survival', seconds?}.
+// An OBJECTIVE is what "better" means: {kind: 'dps'|'survival', seconds?} (survival: custom mobs only) or
+// {kind: 'win-rate', target?: 0.1..1} (clear the step before dying or the time cap; default target 0.95).
 import { fightRng } from '../engine/rng.js';
 import {
-  stableStringify, meanInterval, wilsonInterval, quantileInterval, censoredQuantile, pairedT, pairedProportion,
-  pairedQuantileDiff,
+  stableStringify, meanInterval, wilsonInterval, pairedT, pairedProportion,
 } from '../engine/metrics.js';
 import { preparePveFighter, simulatePve, trainingDummy, PVE_MODES } from '../engine/pve/fight.js';
 import { chapterMobs, dungeonMobs, raidMobs, oblivionFloorMob, worldBossMob } from '../engine/pve/enemies.js';
@@ -27,17 +27,18 @@ import { setOf } from './sampler.js';
 import { resolvePvpTarget, makePvpObjective, PVP_TARGET_KIND, PVP_OBJECTIVE_KIND } from './pvpObjective.js';
 
 // The PVE kinds. The PVP pair is kept apart: it is only valid together and needs the character's opponents.
-export const OBJECTIVE_KINDS = ['dps', 'ttk-median', 'ttk-p90', 'survival'];
+export const OBJECTIVE_KINDS = ['dps', 'survival', 'win-rate'];
 export const TARGET_KINDS = ['dummy', 'chapter', 'dungeon', 'raid', 'oblivion', 'worldBoss', 'custom'];
 
+// The first kind is the target's default (the Optimiser picks it): win rate for content you clear.
 const COMPAT = {
   dummy: ['dps'],
-  chapter: ['ttk-median', 'ttk-p90', 'survival'],
-  dungeon: ['ttk-median', 'ttk-p90', 'survival'],
-  raid: ['ttk-median', 'ttk-p90', 'survival'],
-  oblivion: ['ttk-median', 'ttk-p90', 'survival'],
-  worldBoss: ['dps', 'survival'],
-  custom: ['dps', 'ttk-median', 'ttk-p90', 'survival'],
+  chapter: ['win-rate'],
+  dungeon: ['win-rate'],
+  raid: ['win-rate'],
+  oblivion: ['win-rate'],
+  worldBoss: ['dps'],
+  custom: ['dps', 'win-rate', 'survival'],
   [PVP_TARGET_KIND]: [PVP_OBJECTIVE_KIND],
 };
 
@@ -69,6 +70,15 @@ export function objectiveKindsFor(targetKind, rawTarget = null) {
   } catch {
     return kinds;
   }
+}
+
+/**
+ * Whether a saved goal (target kind + objective kind) can no longer be run: kill time was retired for
+ * every target, and survival stays only for custom mobs (simulation.md §Objectives). Saved runs that carry
+ * such a goal stay viewable; only re-running them is off.
+ */
+export function goalRetired(targetKind, objectiveKind) {
+  return !(COMPAT[targetKind] ?? []).includes(objectiveKind);
 }
 
 const dungeonLabel = (id) => {
@@ -251,7 +261,7 @@ function pveSampler(target, { enemy, maxMs }, outcome) {
     for (let i = from; i < to; i++) {
       if (signal?.aborted) return { main: [out], side: {}, aborted: true };
       const r = simulatePve({ fighter: prepared, enemy, maxMs, rng: fightRng(seed, i), ...opts });
-      out.push(outcome(r));
+      out.push(outcome(r, prepared));
     }
     return { main: [out], side: {}, aborted: false };
   };
@@ -267,8 +277,92 @@ function proportionEstimate(xs, alpha) {
   return { est: w.est, lo: w.lo, hi: w.hi, n: xs.length, level: level(alpha), alphaAdj: alpha, method: 'wilson' };
 }
 
-/** `score` of a TTK set (higher is better; picks a race's leader): ∞ ranks below every finite time, by win rate. */
-const UNREACHED_MS = 1e12;
+// ---------------------------------------------------------------------------------------------
+// Win rate (simulation.md §Win rate): clear the whole step before dying or the time cap. One fight
+// scores 1 + (HP left / max HP) when won, else the share of the step's enemy HP removed (< 1), so the
+// win bit is `score >= 1` and the same vector carries the safety margin.
+
+/** The default and the allowed range of a win-rate target. */
+export const WIN_RATE_TARGET = Object.freeze({ default: 0.95, min: 0.1, max: 1 });
+
+/** A win-rate objective's target rate: the default when absent; throws outside [0.1, 1]. */
+export function winRateTarget(v) {
+  if (v == null) return WIN_RATE_TARGET.default;
+  if (!isNum(v) || v < WIN_RATE_TARGET.min || v > WIN_RATE_TARGET.max) {
+    throw new Error(`win-rate target must be between ${WIN_RATE_TARGET.min} and ${WIN_RATE_TARGET.max}, got ${v}`);
+  }
+  return v;
+}
+
+const clamp01 = (x) => (Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 0);
+// A loss never reaches 1, whatever the rounding of a nearly cleared step.
+const LOSS_CEILING = 1 - 1e-9;
+
+/** One fight's win-rate score (exported for tests). `maxHp` is the player's. */
+export function winRateFightScore(r, maxHp) {
+  if (r.won) return 1 + clamp01(r.hpLeft / maxHp);
+  const total = r.damageDealt + r.enemyHpLeft;
+  return Math.min(LOSS_CEILING, total > 0 ? clamp01(r.damageDealt / total) : 0);
+}
+
+const winBit = (v) => (v >= 1 ? 1 : 0);
+
+/**
+ * Whether an Estimate of a win rate meets the target: true when its lower bound is at least
+ * target − δ (inside the indifference zone counts as reached), false when its upper bound is below
+ * the target, else null (not resolved).
+ */
+export function meetsTarget(e, target, delta = 0) {
+  if (!e || e.lo == null || e.hi == null) return null;
+  if (e.lo >= target - delta) return true;
+  if (e.hi < target) return false;
+  return null;
+}
+
+/**
+ * The paired contrast of the capped win rate g = min(p_X, τ) − min(p_Y, τ) (simulation.md §Win rate).
+ * Three intervals share alpha / 2 (Bonferroni): Tango on p_X − p_Y at alpha / 4 and a Wilson interval
+ * per build at alpha / 8. Because min(·, τ) is monotone and 1-Lipschitz, g lies between 0 and p_X − p_Y,
+ * and g > 0 needs p_Y < τ; the bounds below follow. When both builds are confidently below the target
+ * the margin contrast (paired t at alpha / 2) is attached as `then`: the comparator reads it only when
+ * g is `equivalent`. `thenPending` marks a contrast whose margin may still attach at a later look (the
+ * futility rule keeps such an arm open).
+ */
+function cappedWinRateContrast(tau, x, y, alpha) {
+  const xs = x.main[0];
+  const ys = y.main[0];
+  const n = Math.min(xs.length, ys.length);
+  const bx = xs.slice(0, n).map(winBit);
+  const by = ys.slice(0, n).map(winBit);
+  const t = pairedProportion(bx, by, { alpha: alpha / 4 });
+  const wx = wilsonInterval(sumOf(bx), n, { alpha: alpha / 8 });
+  const wy = wilsonInterval(sumOf(by), n, { alpha: alpha / 8 });
+  const cap = (p) => Math.min(p, tau);
+  const delta = cap(wx.est) - cap(wy.est);
+  const pairedLo = t.lo > 0 ? (wy.hi < tau ? Math.min(t.lo, tau - wy.hi) : 0) : t.lo;
+  const pairedHi = t.hi < 0 ? (wx.hi < tau ? Math.max(t.hi, wx.hi - tau) : 0) : t.hi;
+  let lo = Math.max(pairedLo, cap(wx.lo) - cap(wy.hi));
+  let hi = Math.min(pairedHi, cap(wx.hi) - cap(wy.lo));
+  // the three intervals disagree (each holds at its own level): fall back to the weaker bounds
+  if (lo > hi) [lo, hi] = [Math.min(lo, hi), Math.max(lo, hi)];
+  const both = Math.max(wx.hi, wy.hi) < tau;
+  const then = both
+    ? { ...pairedT(xs.slice(0, n), ys.slice(0, n), { alpha: alpha / 2 }), method: 'paired-t', basis: 'margin', higherIsBetter: true, ref: meanInterval(ys.slice(0, n)).est }
+    : null;
+  return {
+    delta, lo, hi, p: t.p, sd: t.sd, method: 'capped-tango', basis: 'win-rate', higherIsBetter: true,
+    ref: cap(wy.est), winRate: { delta: t.delta, lo: t.lo, hi: t.hi }, then,
+    // the margin may still attach at a later look: neither build is yet confidently at the target
+    thenPending: !both && Math.max(wx.lo, wy.lo) < tau,
+  };
+}
+
+/**
+ * Lexicographic score: the capped win rate first (one fight moves it by 1/n ≥ 1/131 072, so ×1e6
+ * outweighs any margin in [0, 2]), then the mean margin.
+ */
+const SCORE_SCALE = 1e6;
+
 
 // ---------------------------------------------------------------------------------------------
 // Objectives
@@ -325,39 +419,29 @@ export function makeObjective(raw = { kind: 'dps' }, target = resolveTarget({ ki
     });
   }
 
-  // ttk-median / ttk-p90: time if won, else +∞; θ = the q-quantile over ALL fights (simulation.md §Objectives)
-  const q = kind === 'ttk-median' ? 0.5 : 0.9;
-  const won = (xs) => xs.map((t) => (Number.isFinite(t) ? 1 : 0));
-  return withLegacy({
-    ...common, key: stableStringify({ kind }), spec: { kind },
-    label: kind === 'ttk-median' ? 'Median time to kill' : 'P90 time to kill', unit: 'ms', higherIsBetter: false,
-    statistic: 'censored-quantile', q, deltaKind: 'relative', window: target.seconds || null,
-    sample: pveSampler(target, { enemy: target.enemy, maxMs: target.maxMs }, (r) => (r.won ? r.timeMs : Infinity)),
-    estimate(s, { alpha = 0.05 } = {}) {
-      const xs = s.main[0];
-      const qi = quantileInterval(xs, q, { alpha });
-      const wins = xs.filter(Number.isFinite);
-      return {
-        value: { est: qi.est, lo: qi.lo, hi: qi.hi, n: s.n, level: level(alpha), alphaAdj: alpha, method: 'order-stat' },
-        aux: { winRate: proportionEstimate(won(xs), alpha), meanMs: wins.length ? sumOf(wins) / wins.length : null },
-      };
-    },
-    contrast(x, y, { alpha = 0.05, seed = 1, B = 2000 } = {}) {
-      const tx = censoredQuantile(x.main[0], q);
-      const ty = censoredQuantile(y.main[0], q);
-      // neither build reaches the quantile: the quantiles cannot differ, so the contrast is on win rate
-      if (!Number.isFinite(tx) && !Number.isFinite(ty)) {
-        const wx = won(x.main[0]);
-        const wy = won(y.main[0]);
-        return { ...pairedProportion(wx, wy, { alpha }), basis: 'winRate', higherIsBetter: true, ref: sumOf(wy) / wy.length };
-      }
-      return { ...pairedQuantileDiff(x.main[0], y.main[0], q, { alpha, seed, B }), basis: 'quantile', ref: ty };
-    },
-    score(s) {
-      const t = censoredQuantile(s.main[0], q);
-      return Number.isFinite(t) ? -t : -UNREACHED_MS * (2 - sumOf(won(s.main[0])) / Math.max(1, s.n));
-    },
-  });
+  if (kind === 'win-rate') {
+    const tau = winRateTarget(raw.target);
+    const rateOf = (s) => sumOf(s.main[0].map(winBit)) / Math.max(1, s.n);
+    return withLegacy({
+      ...common, key: stableStringify({ kind, target: tau }), spec: { kind, target: tau },
+      label: `Win rate (target ${Math.round(tau * 1000) / 10}%)`, unit: 'p', higherIsBetter: true,
+      statistic: 'proportion', q: null, deltaKind: 'absolute', window: target.seconds || null, target: tau,
+      sample: pveSampler(target, { enemy: target.enemy, maxMs: target.maxMs }, (r, prepared) => winRateFightScore(r, prepared.inputs.player.maxHp)),
+      /** The per-fight point a remainder is measured in: the win bit (win-rate points). */
+      pointOf: winBit,
+      estimate(s, { alpha = 0.05 } = {}) {
+        const m = meanInterval(s.main[0], { alpha });
+        return {
+          value: proportionEstimate(s.main[0].map(winBit), alpha),
+          aux: { margin: { est: m.est, lo: m.lo, hi: m.hi, n: s.n, level: level(alpha), alphaAdj: alpha, method: 't' }, target: tau },
+        };
+      },
+      contrast: (x, y, { alpha = 0.05 } = {}) => cappedWinRateContrast(tau, x, y, alpha),
+      /** The capped win rate alone (ranking: rows equal on it are ordered by fewest changes). */
+      primary: (s) => Math.min(rateOf(s), tau),
+      score: (s) => Math.min(rateOf(s), tau) * SCORE_SCALE + (meanInterval(s.main[0]).est ?? 0),
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------------------------

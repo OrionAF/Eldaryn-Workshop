@@ -12,7 +12,10 @@
   import ResultRank from '../ui/ResultRank.svelte';
   import ForestAxis from '../ui/ForestAxis.svelte';
   import Button from '../ui/Button.svelte';
+  import Banner from '../ui/Banner.svelte';
   import Drawer from '../ui/Drawer.svelte';
+  import { triesPerClear } from '../../lib/ui/winRateFormat.js';
+  import { goalWinRate } from '../../lib/ui/optimiserView.js';
   import { fmtSigned, fmtEstimate, fmtContrast, fmtContrastCi } from '../../lib/ui/statsFormat.js';
 
   let {
@@ -30,6 +33,13 @@
   let drawer = $state(false);
 
   const AXIS_TITLE = { dps: 'Change in DPS vs current', ms: 'Time saved vs current (positive is faster)', p: 'Change in chance vs current' };
+  // A PVE win-rate run (view.goal or kind 'win-rate'): one axis in win-rate points, a Meets / Below target chip per row.
+  const winRun = $derived(view.kind === 'win-rate');
+  const target = $derived(winRun ? (view.goal?.target ?? null) : null);
+  const axisTitle = $derived(winRun ? 'Change in win rate vs current (percentage points)' : AXIS_TITLE[view.unit]);
+  // The win rate the goal banners talk about (optimiserView.js goalWinRate).
+  const goalTries = $derived(triesPerClear(goalWinRate(view)));
+  const pct = (x) => `${Math.round(x * 1000) / 10}%`;
   const showBuild = (row) => {
     buildRow = row;
     drawer = true;
@@ -38,16 +48,33 @@
 </script>
 
 <div class="table" class:busy aria-busy={busy} data-testid="optimiser-results">
+  {#if view.goal?.status === 'already'}
+    <div class="goal" data-testid="goal-already">
+      <Banner variant="success" lead="Already clears the target.">
+        The current build wins at least {pct(view.goal.target)} of the time{goalTries ? ` (${goalTries})` : ''}. No changes suggested.
+      </Banner>
+    </div>
+  {:else if view.goal?.status === 'not-reached' && view.rows.length}
+    <div class="goal" data-testid="goal-not-reached">
+      <Banner variant="warn" lead="No build reached {pct(view.goal.target)}.">
+        These are the closest builds, and each row says how far it falls short.{goalTries ? ` The best wins ${goalTries}.` : ''}
+      </Banner>
+    </div>
+  {:else if view.goal?.status === 'not-reached'}
+    <div class="goal" data-testid="goal-not-reached">
+      <Banner variant="warn" lead="No build reached {pct(view.goal.target)}.">No change moved the win rate; the current build is the closest{goalTries ? ` (${goalTries})` : ''}.</Banner>
+    </div>
+  {/if}
   <div class="sticky">
     <div class="head" role="presentation">
       <span class="lbl">Value · 95% CI</span>
-      <ForestAxis domain={view.domain} title={AXIS_TITLE[view.unit]} format={(x) => fmtSigned(view.unit, x)} />
+      <ForestAxis domain={view.domain} title={axisTitle} format={(x) => fmtSigned(view.unit, x)} />
       <span class="lbl right">Change</span>
       <span class="lbl">Verdict</span>
     </div>
     {#if view.baseline}
       <div data-testid="baseline-row">
-        <ResultRank row={view.baseline} unit={view.unit} domain={view.domain} {presetName} />
+        <ResultRank row={view.baseline} unit={view.unit} domain={view.domain} {presetName} {target} />
       </div>
     {/if}
   </div>
@@ -59,15 +86,21 @@
         unit={view.unit}
         domain={view.domain}
         {presetName}
+        {target}
         unmeasured={unmeasured(row)}
         onrunmore={onrunmore && !busy ? onrunmore : null}
       >
         {#snippet footer(r)}
-          {#each r.changes.filter((c) => c.own?.winRate || c.needed?.winRate) as c (c.id)}
+          {#if winRun && r.vsBaseline?.basis}
+            <p class="note" data-testid="goal-basis">{r.vsBaseline.basis === 'margin'
+              ? 'Both builds win less than the target, so the verdict compares how far the fights got, not the win rate shown.'
+              : 'The verdict counts win rate only up to the target; a build above it gains nothing more.'}</p>
+          {/if}
+          {#each r.changes.filter((c) => c.own?.basis === 'winRate' || c.needed?.basis === 'winRate') as c (c.id)}
             {@const w = c.own?.winRate ?? c.needed?.winRate}
             <p class="note" data-testid="winrate-note">{c.label}: both builds rarely win, so this change is compared by win rate ({fmtSigned('p', w.delta)}).</p>
           {/each}
-          {#if r.vsBaseline?.winRate}
+          {#if r.vsBaseline?.basis === 'winRate'}
             <p class="note" data-testid="winrate-note">Both builds rarely win, so the verdict compares win rate ({fmtSigned('p', r.vsBaseline.winRate.delta)}), not time.</p>
           {/if}
           {#if r.aux?.matchups?.length}
@@ -87,7 +120,7 @@
               </tbody>
             </table>
           {/if}
-          {#if r.aux?.winRate}
+          {#if r.aux?.winRate && !winRun}
             <p class="note">Win rate {fmtEstimate('p', r.aux.winRate)}{r.aux.meanMs != null ? ` · mean time of the wins ${(r.aux.meanMs / 1000).toFixed(2)} s` : ''}</p>
           {/if}
           <div class="actions">
@@ -133,6 +166,7 @@
   }
   .lbl { font-size: var(--fs-11); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-muted); padding-bottom: var(--sp-1); }
   .lbl.right { text-align: right; }
+  .goal { padding: var(--sp-3); border-bottom: 1px solid var(--line-rule); }
   .note { margin: 0; padding: var(--sp-1) var(--sp-4) var(--sp-1) var(--sp-8); font-size: var(--fs-12); color: var(--text-soft); }
   .actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-8); }
   .matchups { margin: var(--sp-2) var(--sp-4) var(--sp-2) var(--sp-8); border-collapse: collapse; font-size: var(--fs-12); color: var(--text-soft); }

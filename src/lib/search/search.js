@@ -6,6 +6,7 @@
 // (search/sampler.js): nothing is ranked by a proxy, N is never lowered and no block is skipped
 // for time. The cost of a run is therefore variable; Effort only sets the precision.
 import { hashSeed, mulberry32 } from '../engine/rng.js';
+import { lookSchedule } from '../engine/stats/index.js';
 import { metricKey } from '../engine/metrics.js';
 import { EngineInputError } from '../engine/validate.js';
 import { NEUTRAL_VALUE_TEXT } from '../engine/pvp/resolver.js';
@@ -19,7 +20,7 @@ import { DROP_PRECISION } from '../features/swap.js';
 import { BLOCKS, createBuildSpace } from './space.js';
 import { candidateEngineKey, changesOf, canonicalise, mergeByEngine, writesOf } from './effect.js';
 import { legalityOf } from './legality.js';
-import { resolveTarget, makeObjective, residualFor } from './objectives.js';
+import { resolveTarget, makeObjective, residualFor, meetsTarget } from './objectives.js';
 import { createSampler, compareSets, contrastSets, setOf, isAbort, AbortError } from './sampler.js';
 import { race } from './race.js';
 import { minimise, attribute, holmSequential, holmFixed } from './minimise.js';
@@ -324,7 +325,7 @@ function createRun(prep, hooks) {
   /** A race on a stage (logged; eliminated and futile arms are kept as counts so checkpoints stay small). */
   function raceArms(list, stage) {
     for (const a of list) st.evaluated.add(a.key);
-    return step('race', [stage.id, ...list.map((a) => a.key)], async () => {
+    return step('race', [stage.id, ...list.map((a) => a.key), ...(effort.futility ? [] : ['no-futility'])], async () => {
       const r = await race(list, {
         objective, effort: { ...effortFor(effort.alpha), futility: effort.futility }, seed: stage.seed,
         getSet: (a, n) => getSet(a, stage, n),
@@ -383,7 +384,25 @@ function createRun(prep, hooks) {
     };
   }
 
-  return { st, sampler, base, armOf, ekOf, getSet, heldSet, prefetch, compare, contrastAt, raceArms, setPhase, progress, checkpoint, t0, signal, workers: pool?.size ?? 1 };
+  /**
+   * Win rate: does the arm meet the target (simulation.md §Win rate)? Looks n0, 2n0, ... maxN on the
+   * stage, Wilson at alpha / looks, stopping once `meetsTarget` resolves (logged).
+   * @returns {Promise<{meets: boolean|null, n: number, value: Object}>}
+   */
+  function goalCheck(X, stage) {
+    return step('goal', [stage.id, X.key], async () => {
+      const looks = lookSchedule(effort.n0, effort.maxN);
+      const alpha = effort.alpha / looks.length;
+      for (let k = 0; k < looks.length; k++) {
+        const value = objective.estimate(await getSet(X, stage, looks[k]), { alpha }).value;
+        const meets = meetsTarget(value, objective.target, effort.delta);
+        if (meets != null || k === looks.length - 1) return { meets, n: looks[k], value };
+      }
+      throw new Error('unreachable');
+    });
+  }
+
+  return { st, sampler, base, armOf, ekOf, getSet, heldSet, prefetch, compare, contrastAt, raceArms, goalCheck, setPhase, progress, checkpoint, t0, signal, workers: pool?.size ?? 1 };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -689,6 +708,11 @@ async function searchPhase(prep, run) {
 function auxOf(prep, est, set, baseSet) {
   const aux = { ...est.aux };
   if (aux.winRate) aux.winRate = estimateOut(aux.winRate);
+  if (prep.objective.kind === 'win-rate') {
+    aux.winRate = estimateOut(est.value);
+    aux.meetsTarget = meetsTarget(est.value, prep.objective.target, prep.effort.delta);
+    aux.margin = estimateOut(aux.margin);
+  }
   if (aux.matchups) {
     aux.matchups = aux.matchups.map((m, j) => {
       let vs = null;
@@ -810,6 +834,10 @@ export async function optimize(request, hooks = {}) {
     // screen: the baseline's first look (the space and its legality are checked above)
     run.setPhase('screen');
     await run.getSet(B, S1, effort.n0);
+    // win rate: a baseline that already meets the target needs no change (the check is on S3, whose
+    // baseline fights confirm reuses; the baseline is fixed, so no selection rides on it)
+    const goal = objective.kind === 'win-rate' ? await run.goalCheck(B, S3) : null;
+    if (goal?.meets) return alreadyResult(prep, run, B, goal, await run.getSet(B, S3, goal.n), echo, S3, t0);
 
     run.setPhase('search');
     searchOut = await searchPhase(prep, run);
@@ -876,6 +904,7 @@ export async function optimize(request, hooks = {}) {
         runMore: r.vs.verdict === 'unresolved' ? { targetN: nextLook(r.vs.n, r.vs.nNeeded), reason: 'unresolved' } : null,
         lines: lineOf(space, r.arm.cand),
         _score: objective.score(set),
+        _primary: objective.primary ? objective.primary(set) : 0,
         _decided: r.decided,
         _sig: `${r.vs.n}|${hashSeed(...set.main.map((l) => l.join(',')))}`,
         _dist: r.arm.dist,
@@ -885,7 +914,7 @@ export async function optimize(request, hooks = {}) {
     const equal = nearestOfEqual(rows);
     st.merged.sampleIdentical += equal.merged;
     const kept = withholdViolations(space, B, equal.rows, { strict, warnings, decided: (r) => r._decided });
-    const ranked = await groupTies(rankRows(kept, (r) => r._score), apartOn(prep, run, (a, b) => ({ stage: S3, n: Math.min(a.vsBaseline.n, b.vsBaseline.n) })));
+    const ranked = await groupTies(rankRows(kept, (r) => r._score, { primaryOf: objective.primary ? (r) => r._primary : null }), apartOn(prep, run, (a, b) => ({ stage: S3, n: Math.min(a.vsBaseline.n, b.vsBaseline.n) })));
 
     const baseEst = objective.estimate(baseSet, { alpha: ALPHA });
     const baseline = {
@@ -893,16 +922,20 @@ export async function optimize(request, hooks = {}) {
       value: estimateOut({ ...baseEst.value, seed: S3.seed }), aux: auxOf(prep, baseEst, null, null), vsBaseline: null, changes: [],
       remainder: null, writes: [], runMore: null, lines: lineOf(space, B.cand),
     };
-    const rowsOut = ranked.map(({ _score, _decided, _sig, _dist, ...r }) => r);
+    const rowsOut = ranked.map(({ _score, _primary, _decided, _sig, _dist, ...r }) => r);
     st.phaseState.attribute = 'done';
     st.phaseMs.attribute += Date.now() - st.phaseStart;
+    const headline = headlineOf(rowsOut, shown.length === rowsDraft.length ? 0 : rowsDraft.length - shown.length);
+    const goalOut = goal ? goalOf(objective, baseline, rowsOut, goal) : null;
+    if (goalOut) headline.text = goalOut.text;
     const result = {
       schema: RESULT_SCHEMA,
       status: 'done',
       aborted: false,
       error: null,
       ...echo,
-      headline: headlineOf(rowsOut, shown.length === rowsDraft.length ? 0 : rowsDraft.length - shown.length),
+      headline,
+      ...(goalOut ? { goal: goalOut } : {}),
       baseline,
       rows: rowsOut,
       search: searchSummary(searchOut, st),
@@ -943,6 +976,69 @@ export async function optimize(request, hooks = {}) {
       stats: { ms: Date.now() - t0, workers: run.workers },
     };
   }
+}
+
+const pctText = (p) => `${Math.round(p * 1000) / 10}%`;
+const ciText = (e) => (e.lo == null || e.hi == null ? '' : ` (95% CI ${pctText(e.lo)}-${pctText(e.hi)})`);
+
+/**
+ * The win-rate verdict (simulation.md §Win rate): 'already' (the baseline meets the target), 'reached'
+ * (a row meets it; the first such row has the fewest changes) or 'not-reached' (the best row, or the
+ * baseline, and how close it comes).
+ */
+function goalOf(objective, baseline, rows, check) {
+  const target = objective.target;
+  const base = { winRate: baseline.aux.winRate, meetsTarget: baseline.aux.meetsTarget, check: { meets: check.meets, n: check.n, value: estimateOut(check.value) } };
+  const reaching = rows.filter((r) => r.aux.meetsTarget === true);
+  if (reaching.length) {
+    const r = reaching[0];
+    const k = r.changes.length;
+    return {
+      target, status: 'reached', baseline: base, bestKey: r.key,
+      text: `${reaching.length} build${reaching.length === 1 ? '' : 's'} reach${reaching.length === 1 ? 'es' : ''} ${pctText(target)}. Fewest changes: ${k} change${k === 1 ? '' : 's'}, win rate ${pctText(r.aux.winRate.est)}${ciText(r.aux.winRate)}.`,
+    };
+  }
+  const best = rows[0] ?? baseline;
+  const w = best.aux.winRate;
+  return {
+    target, status: 'not-reached', baseline: base, bestKey: best.key,
+    text: `No build was shown to reach ${pctText(target)}. ${best.isBaseline ? 'The current build' : 'The best build'} wins ${pctText(w.est)}${ciText(w)}.`,
+  };
+}
+
+/** The result of a run whose baseline already meets the win-rate target: no search, no rows. */
+function alreadyResult(prep, run, B, goal, set, echo, S3, t0) {
+  const { space, objective, warnings } = prep;
+  // the decision's own interval (alpha / looks) on the same fights: the value shown is the value tested
+  const est = objective.estimate(set, { alpha: goal.value.alphaAdj });
+  const value = estimateOut({ ...est.value, seed: S3.seed });
+  const baseline = {
+    rank: 0, tieGroup: null, isBaseline: true, provisional: false, key: B.key, engineKey: run.ekOf(B), candidate: B.cand,
+    value, aux: auxOf(prep, est, null, null), vsBaseline: null, changes: [], remainder: null, writes: [], runMore: null,
+    lines: lineOf(space, B.cand),
+  };
+  const text = `Already clears at ${pctText(value.est)}${ciText(value)}. No change needed.`;
+  const st = run.st;
+  st.phaseState[st.phase] = 'done';
+  st.phaseMs[st.phase] += Date.now() - st.phaseStart;
+  return {
+    schema: RESULT_SCHEMA,
+    status: 'done',
+    aborted: false,
+    error: null,
+    ...echo,
+    headline: { better: 0, equivalent: 0, unresolved: 0, worseHidden: 0, text },
+    goal: { target: objective.target, status: 'already', baseline: { winRate: value, meetsTarget: true, check: { meets: true, n: goal.n, value } }, bestKey: B.key, text },
+    baseline,
+    rows: [],
+    search: null,
+    phases: phasesOut(st),
+    multiplicity: { ...MULTIPLICITY },
+    warnings: dedupeWarnings(warnings, st),
+    baselineViolations: [],
+    checkpoint: null,
+    stats: { ms: Date.now() - t0, workers: run.workers },
+  };
 }
 
 function dedupeWarnings(warnings, st) {
@@ -1052,13 +1148,25 @@ export async function optimizeMore(request, hooks = {}) {
     const pick = (a, b) => (updated.has(a.key) && updated.has(b.key)
       ? { stage: S4, n: targetN }
       : { stage: S3, n: Math.min(confirmN.get(a.key), confirmN.get(b.key)) });
-    const rows = await groupTies(rankRows(kept, (x) => scores.get(x.key)), apartOn(prep, run, pick));
+    const primary = new Map();
+    if (objective.primary) {
+      for (const x of kept) {
+        const set = updated.has(x.key) ? await run.getSet(armOf(x.candidate), S4, targetN) : await run.getSet(armOf(x.candidate), S3, confirmN.get(x.key));
+        primary.set(x.key, objective.primary(set));
+      }
+    }
+    const rows = await groupTies(rankRows(kept, (x) => scores.get(x.key), { primaryOf: objective.primary ? (x) => primary.get(x.key) : null }), apartOn(prep, run, pick));
+    const baseline = { ...result.baseline, value: estimateOut({ ...baseEst.value, seed: S4.seed }), aux: auxOf(prep, baseEst, null, null) };
+    const headline = headlineOf(rows, result.headline.worseHidden + merged.length - shown.length);
+    const goal = result.goal ? goalOf(objective, baseline, rows, result.goal.baseline.check) : null;
+    if (goal) headline.text = goal.text;
     return {
       ...result,
-      baseline: { ...result.baseline, value: estimateOut({ ...baseEst.value, seed: S4.seed }), aux: auxOf(prep, baseEst, null, null) },
+      baseline,
       rows,
       warnings,
-      headline: headlineOf(rows, result.headline.worseHidden + merged.length - shown.length),
+      headline,
+      ...(goal ? { goal } : {}),
       more: { round, targetN, seed: S4.seed, rowKeys: [...updated.keys()] },
     };
   } catch (e) {
