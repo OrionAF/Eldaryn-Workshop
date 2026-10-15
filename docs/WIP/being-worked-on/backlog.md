@@ -156,7 +156,7 @@ runs.
 - Commit the log as a fixture next to `arena-fight-warrior.json`. It holds fight values only, no
   player identifiers; check before committing.
 
-## 8. Easier imports without HTTP Toolkit
+## 8. Easier imports without HTTP Toolkit (phone-only capture guide)
 
 **Ask** (2026-10-15): can users capture the profile and fight JSON from their phones without HTTP
 Toolkit? Can the app ask the game server for it?
@@ -176,9 +176,3 @@ Toolkit? Can the app ask the game server for it?
    fight in game, and share the response to Files, with no computer. Android needs root or a
    computer (apps ignore user certificates since Android 7), so say that plainly. Keep the steps
    short, with screenshots.
-2. **Screenshot import** as the no-tech fallback: read the in-game stat sheet and a ranked player's
-   profile screen from screenshots in the browser (OCR, all on the device). It fills the preset's
-   stat sheet or an opponent's sheet, shows what it read for confirmation, and labels the result as
-   read from a screenshot.
-3. **Ask the developer** (Discord) for an in-game "export profile / copy build" button. It is the
-   clean solution for every player. The wiki has a Builds section that could use the same format.
