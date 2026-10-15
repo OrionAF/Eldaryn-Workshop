@@ -54,6 +54,43 @@ it('the equipment set control writes the preset, and Set 2 is gated below level 
   expect(set2b.disabled || set2b.getAttribute('aria-disabled') === 'true').toBe(true);
 });
 
+describe('Transcendence board picker', () => {
+  const board = () => {
+    const label = t.qa('label').find((l) => l.textContent.trim() === 'Transcendence board');
+    return document.getElementById(label.getAttribute('for'));
+  };
+  const withBoards = (level, link) => {
+    const c = fixtureCharacter('WARRIOR');
+    c.level = level;
+    c.transcendence.presets.push({ id: 'bare', name: 'Bare', allocatedNodeIds: [] });
+    c.presets[0].transcendencePresetId = link;
+    load(c);
+    reopen();
+  };
+  const enabled = () => [...board().options].filter((o) => !o.disabled).map((o) => o.value);
+
+  it('links any board from level 58', () => {
+    withBoards(58, 'default');
+    expect(board().disabled).toBe(false);
+    expect(enabled()).toEqual(['', 'default', 'bare']);
+  });
+
+  it('at 55-57 it offers no link: the preset follows the active board', () => {
+    withBoards(56, null);
+    expect(board().disabled).toBe(true);
+    expect(t.target.textContent).toContain('Linking a board unlocks at level 58');
+  });
+
+  it('below 58 a saved link to another board can still be cleared', () => {
+    withBoards(38, 'bare');
+    expect(board().disabled).toBe(false);
+    expect(enabled()).toEqual(['', 'bare']);
+    board().value = '';
+    board().dispatchEvent(new Event('change', { bubbles: true }));
+    expect(preset().transcendencePresetId).toBeNull();
+  });
+});
+
 it('pet and mount are radio cards; None clears the choice', () => {
   const none = t.qa('[aria-label="Pet"] [role="radio"]')[0];
   click(none);
