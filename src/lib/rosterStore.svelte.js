@@ -28,6 +28,7 @@ import { createDropStore } from './store/drop.js';
 import { createPvpStore } from './store/pvp.js';
 import { createOblivionStore } from './store/oblivion.js';
 import { createRunsStore } from './store/runs.js';
+import { createApplyStore } from './store/apply.js';
 
 function createRosterStore() {
   let roster = $state(loadRoster());
@@ -67,6 +68,7 @@ function createRosterStore() {
     createPvpStore(ctx),
     createOblivionStore(ctx),
     createRunsStore(ctx),
+    createApplyStore(ctx),
   );
 }
 
