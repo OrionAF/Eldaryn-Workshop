@@ -585,6 +585,20 @@ phases: [{id, label, state: 'done'|'current'|'queued', done, total}], block, cou
 fights, eliminated, merged}, elapsedMs, provisional}`; `provisional` lists the current optima
 (`{key, candidate, provisional: true}`) during the search, else null.
 
+**Search steps** (`searchSteps`, present from the start of the search phase; absent in the screen phase and
+in a Push run, whose rungs are its `steps`): one row per build-space block, in `BLOCKS` order,
+`{id, state: 'queued'|'running'|'done'|'skipped', reason: null|'off'|'nothing-to-try', pass, tried, fights,
+improved}`. `id` is the block (the UI names it with the change dimension's label). `skipped` with `off`:
+the block is turned off under Allowed to change; with `nothing-to-try`: its domain had no second value
+whenever the search reached it. `pass` counts the visits of the block (every sweep of the blocks is one
+more; a multi-start run sweeps once per start and more until a sweep accepts nothing), `tried` the builds
+raced against the incumbent over those visits (inner ascents of Spec and Mount belong to their block),
+`fights` the logical fights they asked for, `improved` whether any visit accepted a better build. A block
+shows `running` on every visit, so a second visit reads `running` again with its new `pass`. An exhaustive
+search races every open block together: each such row shows the one joint race (`pass` 1, the joint
+`tried` and `fights`, `improved` when the winner differs from the current build in that block). The rows
+are small plain JSON; the final rows are `search.steps` of the result and `steps` of a saved run.
+
 Every race and comparison is a logged **step** (`kind`, a hash of its inputs, its output and the
 sample lengths it requested). A checkpoint is posted after the search, after minimise and on cancel:
 `{schema: 'optimiser-checkpoint/1', requestKey, characterKey, phase, seeds, log, frontier: {armsN},
@@ -800,7 +814,7 @@ in 7 s. A flat 0 % rung stops at the screen after about z² / δ fights per scre
   objective, which also adds `winRate: {delta, lo, hi}`, the uncapped paired difference in win-rate
   points, on every contrast including a change's `own`; `n` per lane).
 - `search: {strategy, jointSize, blocks: [{id, enabled, domain, status: 'converged'|'unresolved'|
-  'disabled'|'not-reached'}], starts, optima, evaluated, merged, belowFloor, fights: {search, minimise, confirm,
+  'disabled'|'not-reached'}], steps: [the final search steps, §Progress], starts, optima, evaluated, merged, belowFloor, fights: {search, minimise, confirm,
   total}, unresolved: [{fromKey, toKey, change, contrast}]}` (`belowFloor`: distinct builds the Combat
   Power guard kept out). There is no `converged` flag: with no
   pass cap an ascent only ends when a pass accepts nothing, so every finished search is at a fixed

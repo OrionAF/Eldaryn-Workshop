@@ -19,6 +19,8 @@
   } from '../../lib/jobs.svelte.js';
   import { retiredGoalBlock } from '../../lib/ui/optimiserSetup.js';
   import RunProgress from '../ui/RunProgress.svelte';
+  import StepList from '../ui/StepList.svelte';
+  import { searchStepRows } from '../../lib/ui/searchSteps.js';
   import Button from '../ui/Button.svelte';
 
   const retiredOf = (job) => (job.tool === 'optimiser' ? retiredGoalBlock(job.request) : '');
@@ -109,6 +111,7 @@
       {#if job.status === 'running' || (job.status === 'cancelled' && job.progress)}
         {@const segs = segmentsOf(job)}
         {#if segs.length > 0}<RunProgress segments={segs} />{/if}
+        <StepList id="jobs-steps-{job.id}" title="Search steps" steps={searchStepRows(job.progress?.searchSteps, { showOff: false })} />
       {/if}
 
       {#if job.status === 'failed' && job.error}

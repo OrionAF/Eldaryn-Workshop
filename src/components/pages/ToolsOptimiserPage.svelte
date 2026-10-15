@@ -46,6 +46,8 @@
   import Banner from '../ui/Banner.svelte';
   import EmptyState from '../ui/EmptyState.svelte';
   import RunProgress from '../ui/RunProgress.svelte';
+  import StepList from '../ui/StepList.svelte';
+  import { searchStepRows } from '../../lib/ui/searchSteps.js';
   import TargetPicker from '../tools/TargetPicker.svelte';
   import SpaceGroups from '../optimiser/SpaceGroups.svelte';
   import PowerGuard from '../optimiser/PowerGuard.svelte';
@@ -165,6 +167,9 @@
         ? progressSegments({ result, status: shown.status })
         : [],
   );
+
+  // the search's steps: live from the progress report, else the shown result's final list (none for Push or an old run)
+  const stepRows = $derived(searchStepRows(live ? live.progress?.searchSteps : result?.search?.steps));
 
   function start(request, meta, { title, context }) {
     const sig = () => signatureOf(rosterStore.current, meta.presetId);
@@ -438,6 +443,9 @@
 
           {#if segments.length}
             <div data-testid="optimiser-progress"><RunProgress {segments} /></div>
+          {/if}
+          {#if stepRows.length}
+            <div data-testid="search-steps"><StepList id="optimiser-search-steps" title="Search steps" steps={stepRows} /></div>
           {/if}
           {#if live}
             <p class="hint num" data-testid="progress-line">{progressLine(live.progress)}</p>
