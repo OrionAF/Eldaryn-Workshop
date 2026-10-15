@@ -5,7 +5,7 @@
 | Order | Item | Size | Status |
 |---|---|---|---|
 | 1 | §9 Stat weights chart | M | Not started |
-| 2 | §2 Rankings profiles as PVP opponents (and Celestial partners) | M | Not started |
+| 2 | §2 Rankings profiles as PVP opponents (and Celestial partners) | M | Built on rebuild2/RANK, not merged |
 | 3 | §10 Arena reward weighting | S | Needs §2 |
 | 4 | §7 PVE replay check | L | Not started; needs dungeon logs |
 | 5 | §10 Crusade (solo) | L | Not started |
@@ -244,6 +244,8 @@ formula, not from fights.
 - It runs as a job, on the Character Stats page or in Tools, for the selected preset.
 
 ## 2. Import other players' profiles as PVP opponents
+
+**Status (2026-10-15).** Built on rebuild2/RANK, not merged. Import kind `opponent` (`importPlan.js`), `opponents[].imported {playerId, level, importedAt}`, re-import by playerId updates in place, the Opponents page shows the source and points to re-import, and a Rankings opponent is a Celestial partner with its real level. Details: data-model.md (Rankings opponents), simulation.md §Celestial Trial. The player id and name field names in the real file are assumed (`playerId`, `name`); check against a real capture.
 
 **Ask.** Import the profile JSON that the game returns when you open another player from Rankings,
 and save it as a PVP opponent.

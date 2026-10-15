@@ -61,7 +61,8 @@ Character = {
   presets: Preset[]   (2..8),  activePresetId,
   drop: { realm, slot, item: Item } | null,
   opponents: [{ id, name, class, spec, sheet: Sheet, sigils, utility, ancient,
-                conditions, majorGlyphs, altarTier }],
+                conditions, majorGlyphs, altarTier,
+                imported: { playerId: string|null, level: 1..200, importedAt: ISO|null } | null }],   // `imported`: set only for an opponent imported from Rankings (null when typed; old saves load as null)
   runs: OptimiserRun[]        // byte-budgeted run history; `schema: 2` = an optimiser-result/2 (model/runs.js header; optional `steps` = the search's final per-block rows, simulation.md §Progress);
                               // `powerFloor` (the run's Combat Power guard) and each Row's `power` are kept when present
 }
@@ -312,6 +313,16 @@ agrees with them after rounding, the change is computed exactly and only the res
 computed) is anchored; otherwise the sheet's 1-dp values are used and `anchoredDeltaDetailed`
 returns `approx: true` with a per-key error bound (Attack/HP from the percent's ±0.05 rounding,
 capped stats one display tick).
+
+**Rankings opponents.** A player profile opened from Rankings (`isRankingsProfile`: `computedStats` and
+`equippedSigils`, no `player` and no `presets`) imports as an opponent (`opponentFromRankingsProfile`, Settings > Data >
+Import, kind `opponent`). `computedStats` becomes the sheet as is (no model gaps); `activeSpec`, the worn sigils with
+levels (Ancient and utility told apart by the catalogue), `sigilAltarTier` and `activeMajorGlyphs` (upper-case rarity
+mapped to the app's) set the mechanics, and a Druid form follows from its utility sigil as for any opponent. Gear, pet,
+mount, relics and the awakening path are not kept. Only `imported.playerId` (so a re-import updates the same opponent in
+place, `saveRankingsOpponent`) and the display name are kept; clan and every other identifier are dropped. `imported.level`
+is the player's real level: `opponentFighter` uses it (a typed opponent keeps the placeholder 100) and a Celestial run
+reads it for the party scaling. A profile with no `playerId` always adds a new opponent.
 
 **Opponent sheets are sparse.** The editor saves only the rows the class sheet shows, and the user may
 leave rows blank. At the PVP boundary (`completeDuelStats`, applied in `opponentFighter` and again in

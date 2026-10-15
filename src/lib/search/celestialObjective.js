@@ -21,7 +21,7 @@ export const CELESTIAL_TARGET_KIND = 'celestial';
 export const CELESTIAL_TANKS = ['auto', 'me', 'partner'];
 export const CELESTIAL_STARTERS = ['me', 'partner'];
 export const CELESTIAL_FOCUSES = ['HOLD', 'BOSS', 'SPAWN'];
-/** Partner sources. A Rankings profile (backlog §2) becomes a third one: a resolver beside these two. */
+/** Partner sources. A Rankings profile (backlog §2) is saved as an opponent, so it is the 'opponent' source with a real level. */
 export const CELESTIAL_PARTNER_SOURCES = ['character', 'opponent'];
 
 /** The party order: my build is member 0 (as in every server log), the partner member 1. */
@@ -100,8 +100,10 @@ function partnerOf(ref, { character, partner }) {
   const f = opponentFighter(o);
   const missing = missingStats(f);
   if (missing.length) throw new Error(`Celestial partner: opponent '${o.name || 'Opponent'}' has no ${missing.join(' / ')} in its sheet`);
-  // a typed sheet carries no level (opponentFighter's 100 is a placeholder), so it never sets the scaling
-  return { source: 'opponent', name: o.name || 'Opponent', detail: '', fighter: f, level: null };
+  // a typed sheet carries no level (opponentFighter's 100 is a placeholder), so it never sets the scaling;
+  // a Rankings import has the player's real level, which does
+  const level = o.imported ? o.imported.level : null;
+  return { source: 'opponent', name: o.name || 'Opponent', detail: '', fighter: f, level, imported: !!o.imported };
 }
 
 function tacticsOf(raw, difficulty) {
@@ -123,6 +125,9 @@ const partnerLabel = (p) => {
   if (!p) return { id: 'celestial-partner', label: 'Solo: a party of one.' };
   if (p.source === 'character') {
     return { id: 'celestial-partner', label: `Partner: ${p.name}'s preset${p.detail ? ` ${p.detail}` : ''} from the roster, as saved now; fixed for every build.` };
+  }
+  if (p.imported) {
+    return { id: 'celestial-partner', label: `Partner: ${p.name}, imported from Rankings (level ${p.level}); its server sheet, sigils and glyphs are taken as given, with no talents modelled. The party scales by the higher level. Fixed for every build.` };
   }
   return { id: 'celestial-partner', label: `Partner: the opponent ${p.name}, whose typed sheet is taken as given; it has no level, so the party scales by yours. Fixed for every build.` };
 };

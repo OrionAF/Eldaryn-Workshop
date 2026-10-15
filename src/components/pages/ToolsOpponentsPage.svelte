@@ -6,6 +6,7 @@
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { go } from '../../lib/router.svelte.js';
+  import { requestImportFocus } from '../../lib/importFlow.svelte.js';
   import { SPECS, classLabel } from '../../lib/game/classes.js';
   import { MAX_OPPONENTS } from '../../lib/model/opponents.js';
   import { opponentFighter, missingStats } from '../../lib/features/duel.js';
@@ -72,7 +73,7 @@
               <li>
                 <button type="button" class="row" class:is-sel={selected?.id === o.id} aria-current={selected?.id === o.id ? 'true' : undefined} onclick={() => (selectedId = o.id)}>
                   <span class="name">{o.name}</span>
-                  <span class="sub">{specLabel(o.spec)}</span>
+                  <span class="sub">{specLabel(o.spec)}{o.imported ? ` · from Rankings, level ${o.imported.level}` : ''}</span>
                   <span class="state" class:warn={missing.length > 0}>{missing.length ? `Needs ${missing.join(', ')}` : 'Ready'}</span>
                 </button>
               </li>
@@ -96,6 +97,12 @@
     {#if selected}
       <Button variant="ghost" onclick={() => go('#/tools/duel')}>Duel an opponent</Button>
     {/if}
+    <p class="note" data-testid="rankings-import-note">
+      <a href="#/settings" onclick={requestImportFocus}>Import a player from Rankings in Settings → Import</a>.
+      {#if selected?.imported}
+        {selected.name} came from Rankings (level {selected.imported.level}){selected.imported.importedAt ? `, ${selected.imported.importedAt.slice(0, 10)}` : ''}: import the same player's profile again to refresh it.
+      {/if}
+    </p>
   </div>
 
   <div class="editor">
@@ -138,5 +145,6 @@
   .sub { grid-column: 1; color: var(--text-soft); font-size: var(--fs-12); }
   .state { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--text-muted); font-size: var(--fs-12); }
   .state.warn { color: var(--verdict-warn, var(--text-soft)); }
+  .note { margin: 0; font-size: var(--fs-13); color: var(--text-soft); }
   hr { border: 0; border-top: 1px solid var(--line-hairline); width: 100%; margin: 0; }
 </style>
