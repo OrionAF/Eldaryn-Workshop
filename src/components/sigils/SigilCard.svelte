@@ -8,14 +8,20 @@
    */
   import { rarityClass, formatFlat } from '../../lib/format.js';
   import { sigilImage } from '../../lib/assets.js';
-  import { MAX_SIGIL_LEVEL } from '../../lib/model/sigils.js';
+  import { MAX_SIGIL_LEVEL, isFormSigil } from '../../lib/model/sigils.js';
+  import Menu from '../ui/Menu.svelte';
   import { getSigilBonusAttack, getSigilBonusHp } from '../../lib/engine/sources/sigilScale.js';
   import { sigilSpellBlocks } from './sigilView.js';
 
-  let { def, level = 0, tier = 1, spec = null, usedBy = [], note = '', onLevel = () => {} } = $props();
+  // `equip` is the "Equip in" menu (sigilView.equipItems); `onEquip(presetId)` toggles the sigil in that preset.
+  let { def, level = 0, tier = 1, spec = null, usedBy = [], note = '', onLevel = () => {}, equip = [], onEquip = () => {} } = $props();
 
   const owned = $derived(level > 0);
   const ancient = $derived(def.rarity === 'Ancient');
+  // Ancients are unique and Form sigils are granted, not forged: both stay at level 1 (model/sigils.js clampSigilLevel).
+  const fixed = $derived(ancient || isFormSigil(def.species));
+  let details = $state(false);
+  let menuOpen = $state(false);
   // Show level-1 numbers for a sigil that is not owned yet, so the card still reads as a catalogue.
   const shownLevel = $derived(Math.max(1, level));
   const attack = $derived(getSigilBonusAttack(def, shownLevel, tier));
@@ -30,10 +36,10 @@
     <img class="sigil-art" src={art} alt="" loading="lazy" />
   {/if}
 
-  {#if ancient}
+  {#if fixed}
     <label class="owned-toggle">
       <input type="checkbox" checked={owned} aria-label="{def.name} owned" onchange={(e) => onLevel(def.species, e.currentTarget.checked ? 1 : 0)} />
-      <span>{owned ? 'Unlocked (level 1)' : 'Not unlocked'}</span>
+      <span>{owned ? (ancient ? 'Unlocked (level 1)' : 'Owned (fixed at level 1)') : ancient ? 'Not unlocked' : 'Not owned (level is fixed at 1)'}</span>
     </label>
   {:else}
     <div class="level-row">
@@ -59,6 +65,9 @@
     Health <span class="stat-num" data-testid="hp">{formatFlat(hp)}</span>
   </p>
 
+  <button type="button" class="details-toggle" aria-expanded={details} onclick={() => (details = !details)}>{details ? 'Hide details' : 'Details'}</button>
+
+  {#if details}
   <div class="effects">
     {#each blocks as block (block.form ?? 'base')}
       {#if block.rows.length || block.title}
@@ -77,11 +86,30 @@
       {/if}
     {/each}
   </div>
+  {/if}
 
   {#if note}<p class="notes">{note}</p>{/if}
 
   <div class="card-foot">
-    <span class="used-by">{usedBy.length ? `in ${usedBy.join(', ')}` : 'unequipped'}</span>
+    <span class="used-by">{usedBy.length ? `Equipped in: ${usedBy.join(', ')}` : 'Unequipped'}</span>
+    {#if equip.length}
+      <span class="equip-wrap">
+        <button type="button" class="equip-btn" aria-haspopup="menu" aria-expanded={menuOpen} onclick={() => (menuOpen = !menuOpen)}>Equip in ▾</button>
+        {#if menuOpen}
+          <div class="equip-menu">
+            <Menu
+              label="Equip {def.name} in"
+              items={equip}
+              onselect={(item) => {
+                menuOpen = false;
+                onEquip(item.id);
+              }}
+              onclose={() => (menuOpen = false)}
+            />
+          </div>
+        {/if}
+      </span>
+    {/if}
   </div>
 </div>
 
@@ -196,4 +224,17 @@
   .used-by {
     color: var(--color-muted);
   }
+  .card-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
+  .details-toggle, .equip-btn {
+    background: transparent;
+    border: 1px solid var(--line-control, var(--color-border));
+    color: var(--text-soft, var(--color-soft));
+    border-radius: var(--r-1, var(--radius-field));
+    padding: 2px 8px;
+    font-size: 11.5px;
+    cursor: pointer;
+  }
+  .details-toggle { align-self: flex-start; }
+  .equip-wrap { position: relative; }
+  .equip-menu { position: absolute; right: 0; bottom: 100%; z-index: 5; }
 </style>

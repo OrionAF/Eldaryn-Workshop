@@ -9,10 +9,21 @@
    * on `change` (blur / Enter), so a half-typed number is never clamped under the cursor.
    */
   import { RARITIES, secondaryPoolFor, SECONDARY_STAT_POOL, CONDUIT } from '../../lib/game/gear.js';
-  import { emptyItem, maxItemLevel, secondarySlots, conduitAllowed } from '../../lib/model/equipment.js';
+  import { emptyItem, maxItemLevel, secondarySlots, conduitAllowed, secondaryStatMaxValue, itemStatLevel, itemWarnings } from '../../lib/model/equipment.js';
   import { slotLabel, toDisplay, fromDisplay, parseFlat, flatFieldText, rarityColor } from './gearFormat.js';
 
-  let { value = null, realm = 'base', slot, class: cls = null, onchange } = $props();
+  // `ascension` (optional) is the character's Ascension step: an item above what it drops gets a warning.
+  let { value = null, realm = 'base', slot, class: cls = null, ascension = null, onchange } = $props();
+
+  const uid = $props.id();
+
+  // Out-of-range input is clamped, not dropped, and the field says so: { itemLevel, quality, 'sec0'... } -> message.
+  let flags = $state({});
+  $effect(() => {
+    slot;
+    flags = {};
+  });
+  const flag = (key, msg) => (flags = { ...flags, [key]: msg });
 
   const item = $derived(value ?? emptyItem());
   const pool = $derived(cls ? secondaryPoolFor(cls) : SECONDARY_STAT_POOL);
@@ -35,11 +46,32 @@
     next[i] = { type, value: type ? next[i].value || 0 : '' };
     setRows(next);
   }
+  /** Highest roll of a secondary at this item's level (gear.md §4), in the unit the field shows. */
+  function secondaryMax(type) {
+    const max = secondaryStatMaxValue(type, itemStatLevel(item.itemLevel ?? levelMax, realm));
+    return max == null ? null : max;
+  }
   function setRowValue(i, text) {
     const next = rows.map((r) => ({ ...r }));
     if (!next[i].type) return;
-    next[i] = { ...next[i], value: fromDisplay(next[i].type, text) };
+    let v = fromDisplay(next[i].type, text);
+    const max = secondaryMax(next[i].type);
+    if (max != null && v > max) {
+      flag(`sec${i}`, `${toDisplay(next[i].type, v)} is above the highest roll at this item level; set to ${toDisplay(next[i].type, max)}.`);
+      v = max;
+    } else flag(`sec${i}`, '');
+    next[i] = { ...next[i], value: v };
     setRows(next);
+  }
+  function setBounded(key, text, lo, hi) {
+    const n = intOrNull(text);
+    if (n == null) {
+      flag(key, '');
+      return null;
+    }
+    const clamped = Math.min(hi, Math.max(lo, Math.floor(n)));
+    flag(key, clamped !== n ? `${n} is outside ${lo} to ${hi}; set to ${clamped}.` : '');
+    return clamped;
   }
   function optionsFor(i) {
     const taken = new Set(rows.filter((_, j) => j !== i).map((r) => r.type));
@@ -47,8 +79,10 @@
   }
   function rangeHint(type) {
     const def = SECONDARY_STAT_POOL.find((s) => s.type === type);
-    return def ? `Range ${toDisplay(type, def.minValue)} to ${toDisplay(type, def.maxValue)}` : '';
+    const max = secondaryMax(type);
+    return def && max != null ? `${toDisplay(type, def.minValue)} to ${toDisplay(type, max)} at item level ${item.itemLevel ?? levelMax}` : '';
   }
+  const warnings = $derived(itemWarnings(item, { realm, ascension }));
   function intOrNull(text) {
     const t = String(text).trim();
     return t === '' ? null : Number(t);
@@ -85,8 +119,11 @@
         min="1"
         max={levelMax}
         value={item.itemLevel ?? ''}
-        onchange={(e) => emit({ itemLevel: intOrNull(e.currentTarget.value) })}
+        aria-describedby="{uid}-il"
+        onchange={(e) => emit({ itemLevel: setBounded('itemLevel', e.currentTarget.value, 1, levelMax) })}
       />
+      <span class="range" id="{uid}-il">Range 1 to {levelMax}</span>
+      {#if flags.itemLevel}<span class="flag" role="alert">{flags.itemLevel}</span>{/if}
     </label>
 
     <label class="field">
@@ -97,8 +134,11 @@
         min="1"
         max="100"
         value={item.quality ?? ''}
-        onchange={(e) => emit({ quality: intOrNull(e.currentTarget.value) })}
+        aria-describedby="{uid}-q"
+        onchange={(e) => emit({ quality: setBounded('quality', e.currentTarget.value, 1, 100) })}
       />
+      <span class="range" id="{uid}-q">Range 1 to 100</span>
+      {#if flags.quality}<span class="flag" role="alert">{flags.quality}</span>{/if}
     </label>
 
     <label class="field">
@@ -124,6 +164,10 @@
     </label>
   </div>
 
+  {#each warnings as w (w.kind)}
+    <p class="flag" role="status">Item level {w.itemLevel} is above what your Ascension step drops (up to {w.cap}).</p>
+  {/each}
+
   <h3 class="subheading">Secondary stats ({item.secondaryStats.length}/{rowCount})</h3>
   {#if rowCount === 0}
     <p class="hint">A {item.rarity ? RARITIES.find((r) => r.id === item.rarity)?.name : ''} item has no secondary stats.</p>
@@ -148,6 +192,8 @@
           />
           <span class="unit">%</span>
         </div>
+        {#if row.type}<span class="range">Range {rangeHint(row.type)}</span>{/if}
+        {#if flags[`sec${i}`]}<span class="flag" role="alert">{flags[`sec${i}`]}</span>{/if}
       {/each}
     </div>
   {/if}
@@ -228,6 +274,16 @@
   .hint {
     color: var(--color-muted);
     font-size: 12px;
+    margin: 0;
+  }
+  .range {
+    color: var(--text-muted, var(--color-muted));
+    font-size: 11px;
+    font-family: var(--font-data);
+  }
+  .flag {
+    color: var(--status-warn, var(--color-gold-light));
+    font-size: 11.5px;
     margin: 0;
   }
 </style>

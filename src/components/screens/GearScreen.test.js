@@ -18,9 +18,14 @@ function change(el, value) {
   el.dispatchEvent(new Event('change', { bubbles: true }));
   flushSync();
 }
-const chip = (text) => [...target.querySelectorAll('.chip')].find((b) => b.textContent.trim() === text);
+const tab = (text) => [...target.querySelectorAll('[role="tab"]')].find((b) => b.textContent.trim().startsWith(text));
+const press = (el) => {
+  el.click();
+  flushSync();
+};
+const button = (text) => [...target.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
 
-it('base realm: 9 slots, Set 1 / Set 2 chips, editing writes to the selected set only', () => {
+it('base realm: 9 slots, Set 1 / Set 2 tabs, editing writes to the selected set only', () => {
   const app = mount(GearScreen, { target });
   flushSync();
   expect(target.querySelectorAll('.silhouette .slot')).toHaveLength(9);
@@ -29,13 +34,19 @@ it('base realm: 9 slots, Set 1 / Set 2 chips, editing writes to the selected set
   expect(rosterStore.current.equipment.set1.items.WEAPON).toMatchObject({ rarity: 'EPIC', primaryStats: { attack: 1500, hp: 0 } });
   expect(rosterStore.current.equipment.set2.items.WEAPON).toBeNull();
 
-  chip('Set 2').click();
-  flushSync();
-  slotBtn('RING').click();
-  flushSync();
+  press(tab('Set 2'));
+  press(slotBtn('RING'));
   change(q('Rarity'), 'RARE');
   expect(rosterStore.current.equipment.set2.items.RING.rarity).toBe('RARE');
   expect(rosterStore.current.equipment.set1.items.RING).toBeNull();
+  unmount(app);
+});
+
+it('set tabs say which presets use them', () => {
+  const app = mount(GearScreen, { target });
+  flushSync();
+  expect(tab('Set 1').textContent).toContain('used by Preset 1');
+  expect(tab('Set 2').textContent).toContain('used by Preset 2');
   unmount(app);
 });
 
@@ -43,26 +54,27 @@ it('realm="oblivion": 12 slots, edits the Oblivion loadout and its own stone poo
   const app = mount(GearScreen, { target, props: { realm: 'oblivion' } });
   flushSync();
   expect(target.querySelectorAll('.silhouette .slot')).toHaveLength(12);
-  expect(chip('Set 1')).toBeUndefined();
-  slotBtn('RIFT_CORE').click();
-  flushSync();
+  expect(tab('Set 1')).toBeUndefined();
+  press(slotBtn('RIFT_CORE'));
   change(q('Rarity'), 'OBLIVION');
   change(q('Item level'), '400');
   expect(rosterStore.current.equipment.oblivion.items.RIFT_CORE).toMatchObject({ rarity: 'OBLIVION', itemLevel: 400 });
+  press(tab('Enchant stones'));
   expect([...q('Stone type').options].map((o) => o.value)).toEqual(['OBLIVION']);
   unmount(app);
 });
 
-it('without a realm prop an Oblivion-unlocked character gets a realm toggle', () => {
+it('the Oblivion tab is locked with a reason until Oblivion is unlocked', () => {
   const app = mount(GearScreen, { target });
   flushSync();
-  expect(chip('Oblivion')).toBeUndefined();
+  const locked = tab('Oblivion');
+  expect(locked.disabled || locked.getAttribute('aria-disabled') === 'true').toBe(true);
+  expect(locked.title).toContain('Unlock Oblivion');
   rosterStore.setOblivionUnlocked(true);
   flushSync();
-  chip('Oblivion').click();
-  flushSync();
+  press(tab('Oblivion'));
   expect(target.querySelectorAll('.silhouette .slot')).toHaveLength(12);
-  expect(target.querySelector('h2').textContent).toBe('Oblivion Gear');
+  expect(target.textContent).toContain('One loadout');
   unmount(app);
 });
 
@@ -71,16 +83,13 @@ it('a stone can be added, socketed in both sets, and the Oblivion pool stays emp
   flushSync();
   const id = rosterStore.addEnchantStone('base', { type: 'PVE_ATTACK', quality: 60, stats: [] });
   flushSync();
-  target.querySelector('.stone-tile').click();
-  flushSync();
-  [...target.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Socket in Set 1 Sword').click();
-  flushSync();
-  chip('Set 2').click();
-  flushSync();
-  target.querySelector('.stone-tile').click();
-  flushSync();
-  [...target.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Socket in Set 2 Sword').click();
-  flushSync();
+  press(tab('Enchant stones'));
+  press(target.querySelector('.stone-tile'));
+  press(button('Socket in Set 1 Sword'));
+  press(tab('Set 2'));
+  // the selection survives the set switch: the pool is shared, so the same stone is still selected
+  expect(target.querySelector('.stone-tile.selected')).not.toBeNull();
+  press(button('Socket in Set 2 Sword'));
   const eq = rosterStore.current.equipment;
   expect(eq.set1.enchantSlots.WEAPON).toBe(id);
   expect(eq.set2.enchantSlots.WEAPON).toBe(id);
@@ -89,9 +98,40 @@ it('a stone can be added, socketed in both sets, and the Oblivion pool stays emp
   unmount(app);
 });
 
-it('shows which presets use the selected set', () => {
+it('the item panel footer shows the socketed stone and can unsocket it', () => {
+  const id = rosterStore.addEnchantStone('base', { type: 'PVE_ATTACK', quality: 60, stats: [] });
+  rosterStore.socketStone('set1', 'WEAPON', id);
   const app = mount(GearScreen, { target });
   flushSync();
-  expect(target.querySelector('.used-by').textContent).toContain('Set 1 is used by');
+  expect(target.querySelector('.socket-line').textContent).toContain('socket:');
+  press(button('Unsocket'));
+  expect(rosterStore.current.equipment.set1.enchantSlots.WEAPON).toBeNull();
+  unmount(app);
+});
+
+it('a stone can be switched off, which the grid marks as inactive', () => {
+  const id = rosterStore.addEnchantStone('base', { type: 'PVE_ATTACK', quality: 60, stats: [] });
+  const app = mount(GearScreen, { target });
+  flushSync();
+  press(tab('Enchant stones'));
+  press(target.querySelector('.stone-tile'));
+  const box = [...target.querySelectorAll('input[type="checkbox"]')].find((c) => c.closest('label')?.textContent.includes('Activated'));
+  expect(box.checked).toBe(true);
+  press(box);
+  expect(rosterStore.current.enchantStones.find((s) => s.id === id).activated).toBe(false);
+  expect(target.querySelector('.stone-tile').textContent).toContain('Inactive');
+  unmount(app);
+});
+
+it('the stone grid filters by type', () => {
+  rosterStore.addEnchantStone('base', { type: 'PVE_ATTACK', quality: 60, stats: [] });
+  rosterStore.addEnchantStone('base', { type: 'PVE_DEFENSE', quality: 40, stats: [] });
+  const app = mount(GearScreen, { target });
+  flushSync();
+  press(tab('Enchant stones'));
+  expect(target.querySelectorAll('.stone-tile')).toHaveLength(2);
+  const select = [...target.querySelectorAll('select')].find((s) => [...s.options].some((o) => o.textContent === 'All types'));
+  change(select, 'PVE_ATTACK');
+  expect(target.querySelectorAll('.stone-tile')).toHaveLength(1);
   unmount(app);
 });
