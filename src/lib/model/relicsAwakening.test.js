@@ -18,22 +18,23 @@ describe('relics model', () => {
     expect(normaliseRelics(once, { class: 'WARRIOR' })).toEqual(once);
   });
   it('v1 Sentinel ids are renamed and idMap keeps preset relicIds', () => {
-    const v1 = { class: 'Sentinel', relicLevels: { relic_iron_heart: 5 }, presets: [{ id: 'a', name: 'A', relicIds: ['relic_iron_heart', 'relic_war_charm'] }] };
+    const v1 = { class: 'Sentinel', relicLevels: { relic_iron_heart: 5, relic_war_charm: 2 }, presets: [{ id: 'a', name: 'A', relicIds: ['relic_iron_heart', 'relic_war_charm'] }] };
     const { value, idMap } = migrateRelicsFromV1(v1);
-    expect(value.relics).toEqual({ relic_falcons_eye: 5 });
+    expect(value.relics).toEqual({ relic_falcons_eye: 5, relic_hunters_mark: 2 });
     expect(idMap.relic_iron_heart).toBe('relic_falcons_eye');
     const c = migrateCharacterFromV1(v1);
     expect(c.presets[0].relicIds).toEqual(['relic_falcons_eye', 'relic_hunters_mark']);
   });
   it('v1 Warrior ids are kept; preset relicIds capped at 4', () => {
     const ids = war.slice(0, 6).map((r) => r.id);
-    const v1 = { class: 'Warrior', relicLevels: { [ids[0]]: 2 }, presets: [{ id: 'a', relicIds: ids }, { id: 'b' }] };
+    const v1 = { class: 'Warrior', relicLevels: Object.fromEntries(ids.map((id) => [id, 2])), presets: [{ id: 'a', relicIds: ids }, { id: 'b' }] };
     const c = migrateCharacterFromV1(v1);
-    expect(c.relics).toEqual({ [ids[0]]: 2 });
+    expect(c.relics).toEqual(Object.fromEntries(ids.map((id) => [id, 2])));
     expect(c.presets[0].relicIds).toEqual(ids.slice(0, 4));
   });
   it('reconcile drops preset relics illegal for the class', () => {
     const c = newCharacter('t', 'WARRIOR');
+    c.relics[war[0].id] = 1;
     c.presets[0].relicIds = [war[0].id, myst[0].id];
     reconcileRelics(c);
     expect(c.presets[0].relicIds).toEqual([war[0].id]);

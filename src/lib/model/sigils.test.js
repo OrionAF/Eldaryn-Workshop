@@ -171,17 +171,16 @@ describe('reconcileSigils', () => {
     expect(c.presets[1].ancientSigilSpecies).toBeNull();
   });
 
-  it('keeps legal conditions (enemy-HP for damage, own-HP for heal), drops illegal or unused ones', () => {
+  it('keeps legal character-wide conditions (enemy-HP for damage, own-HP for heal), drops illegal ones', () => {
     const c = warrior();
     c.presets[0].sigilSpecies = ['CATACLYSM', 'REJUVENATION', 'IRON_BASTION'];
-    c.presets[0].sigilConditions = {
-      CATACLYSM: 'ENEMY_HP_BELOW_40',
-      REJUVENATION: 'ENEMY_HP_BELOW_40', // heal takes MY_HP only
-      IRON_BASTION: 'MY_HP_BELOW_60',
-      ARROWSTORM: 'ENEMY_HP_BELOW_80', // not equipped
-    };
+    c.sigils.owned.CATACLYSM.condition = 'ENEMY_HP_BELOW_40';
+    c.sigils.owned.REJUVENATION.condition = 'ENEMY_HP_BELOW_40'; // heal takes MY_HP only
+    c.sigils.owned.IRON_BASTION.condition = 'MY_HP_BELOW_60';
     reconcileSigils(c);
-    expect(c.presets[0].sigilConditions).toEqual({ CATACLYSM: 'ENEMY_HP_BELOW_40', IRON_BASTION: 'MY_HP_BELOW_60' });
+    expect(c.sigils.owned.CATACLYSM.condition).toBe('ENEMY_HP_BELOW_40');
+    expect(c.sigils.owned.REJUVENATION.condition).toBeUndefined();
+    expect(c.sigils.owned.IRON_BASTION.condition).toBe('MY_HP_BELOW_60');
   });
 
   it('survives a full normaliseCharacter round trip', () => {

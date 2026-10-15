@@ -141,10 +141,10 @@ describe('presets', () => {
     c.mounts = [{ id: 'm-1' }];
     c.transcendence.presets.push({ id: 'tp2', name: 'Two', allocatedNodeIds: [] });
     const [p] = c.presets;
-    Object.assign(p, { petId: 'pet-1', mountId: 'ghost', transcendencePresetId: 'tp2', sigilSpecies: ['wolf'], sigilConditions: { wolf: 'low-hp', gone: 'x' } });
+    Object.assign(p, { petId: 'pet-1', mountId: 'ghost', transcendencePresetId: 'tp2', sigilSpecies: ['wolf'], sigilConditions: { wolf: 'low-hp' } });
     reconcilePresets(c);
     expect(p).toMatchObject({ petId: 'pet-1', mountId: null, transcendencePresetId: 'tp2' });
-    expect(p.sigilConditions).toEqual({ wolf: 'low-hp' });
+    expect(p.sigilConditions).toBeUndefined(); // lifted to the owned sigils by normaliseSigils (M1)
     p.transcendencePresetId = 'zzz';
     reconcilePresets(c);
     expect(p.transcendencePresetId).toBeNull();

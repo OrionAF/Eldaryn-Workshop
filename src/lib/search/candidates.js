@@ -26,7 +26,7 @@ import { buildFighter } from '../build/fighter.js';
 import { applyResidual } from '../build/residual.js';
 import { relicsForClass } from '../game/relics.js';
 import { isSigilSpeciesActiveForSpec } from '../game/sigils.js';
-import { talentSpec, TALENT_CONSTANTS } from '../game/talents.js';
+import { talentSpec } from '../game/talents.js';
 import { sanitiseAllocation, pointsSpent } from '../model/talents.js';
 import {
   genericSigils, utilitySigils, ancientSigils, maxSigilSlots, sigilConditionOptions, SELF_CONDITIONS, DEFAULT_CONDITION,
@@ -35,6 +35,7 @@ import {
 import { glyphSocketable } from '../model/mounts.js';
 import { MAJOR_GLYPHS } from '../game/mountsGlyphs.js';
 import { PRESET_RELIC_CAP, PRESET_SIGIL_CAP } from '../model/presets.js';
+import { relicSlotCap, talentPointsForLevel } from '../model/legality.js';
 import { choose, combinations } from './combinatorics.js';
 
 const MAJOR_SIGIL = new Map(MAJOR_GLYPHS.map((g) => [g.id, g.sigilSpecies]));
@@ -65,8 +66,13 @@ const ENUMERATE_LIMIT = 2500;
 const sorted = (a) => [...a].sort();
 const emptySockets = () => ({ minor: [], major: [], mythic: [] });
 
-/** The candidate that reproduces `preset` exactly. */
+/** The candidate that reproduces `preset` exactly. Conditions are character-wide (M1): only those of its equipped sigils count. */
 export function candidateOf(character, preset) {
+  const sigilConditions = {};
+  for (const sp of [...(preset.sigilSpecies ?? []), preset.utilitySigilSpecies, preset.ancientSigilSpecies]) {
+    const cond = sp ? character.sigils?.owned?.[sp]?.condition : null;
+    if (cond) sigilConditions[sp] = cond;
+  }
   return {
     equipmentSet: preset.equipmentSet === 2 ? 2 : 1,
     talentSet: preset.talentSet === 1 ? 1 : 0,
@@ -79,7 +85,7 @@ export function candidateOf(character, preset) {
     utilitySigilSpecies: preset.utilitySigilSpecies ?? null,
     ancientSigilSpecies: preset.ancientSigilSpecies ?? null,
     transcendencePresetId: preset.transcendencePresetId ?? null,
-    sigilConditions: { ...(preset.sigilConditions ?? {}) },
+    sigilConditions,
   };
 }
 
@@ -94,8 +100,9 @@ export function candidatePatch(candidate) {
       equipmentSet: candidate.equipmentSet, talentSet: candidate.talentSet, petId: candidate.petId,
       mountId: candidate.mountId, relicIds: [...candidate.relicIds], sigilSpecies: [...candidate.sigilSpecies],
       utilitySigilSpecies: candidate.utilitySigilSpecies, ancientSigilSpecies: candidate.ancientSigilSpecies,
-      transcendencePresetId: candidate.transcendencePresetId, sigilConditions: { ...candidate.sigilConditions },
+      transcendencePresetId: candidate.transcendencePresetId,
     },
+    sigilConditions: { ...candidate.sigilConditions }, // character-wide: written to sigils.owned[sp].condition
     talentAllocation: candidate.talentAllocation ? { talentSet: candidate.talentSet, allocation: { ...candidate.talentAllocation } } : null,
     mountGlyphs: candidate.mountGlyphs && candidate.mountId ? { mountId: candidate.mountId, glyphs: structuredCloneSockets(candidate.mountGlyphs) } : null,
   };
@@ -121,10 +128,21 @@ export function materialise(character, preset, candidate) {
     utilitySigilSpecies: candidate.utilitySigilSpecies,
     ancientSigilSpecies: candidate.ancientSigilSpecies,
     transcendencePresetId: candidate.transcendencePresetId,
-    sigilConditions: candidate.sigilConditions,
     sheet: null,
   };
   const out = { ...character, presets: [mp], activePresetId: mp.id, oblivion: { ...character.oblivion, sheet: null } };
+  // Conditions live on the owned sigils: overlay the candidate's value for every species it equips.
+  const equipped = [...candidate.sigilSpecies, candidate.utilitySigilSpecies, candidate.ancientSigilSpecies].filter(Boolean);
+  const owned = { ...(character.sigils?.owned ?? {}) };
+  let touched = false;
+  for (const sp of equipped) {
+    if (!owned[sp]) continue;
+    const { condition: _drop, ...rest } = owned[sp];
+    const cond = candidate.sigilConditions?.[sp];
+    owned[sp] = cond ? { ...rest, condition: cond } : rest;
+    touched = true;
+  }
+  if (touched) out.sigils = { ...character.sigils, owned };
   if (candidate.talentAllocation) {
     out.talentSets = character.talentSets.map((s, i) => (i === candidate.talentSet ? { ...s, allocation: candidate.talentAllocation } : s));
   }
@@ -146,6 +164,8 @@ export function createBuildSpace(character, preset, { realm = 'base', residual =
     if (space && k in space) toggles[k] = k === 'relicSlots' ? Math.max(1, Math.min(PRESET_RELIC_CAP, Math.floor(Number(space[k])) || 1)) : !!space[k];
   }
   const cls = character.class;
+  toggles.relicSlots = Math.min(toggles.relicSlots, relicSlotCap(character.level, character.extraRelicSlots)); // M1 gate
+  const talentCap = talentPointsForLevel(character.level);
   const start = candidateOf(character, preset);
   const mountById = (id) => (character.mounts ?? []).find((m) => m.id === id) ?? null;
   const savedAllocation = (c) => character.talentSets?.[c.talentSet]?.allocation ?? {};
@@ -267,14 +287,14 @@ export function createBuildSpace(character, preset, { realm = 'base', residual =
     const saved = allocKey(savedAllocation(c));
     const out = [];
     const push = (next, expectSpent) => {
-      const clean = sanitiseAllocation(next, specKey);
+      const clean = sanitiseAllocation(next, specKey, talentCap);
       if (pointsSpent(clean) !== expectSpent) return; // a tier lost its unlock threshold
       const same = JSON.stringify(allocKey(clean)) === JSON.stringify(saved);
       out.push({ ...c, talentAllocation: same ? null : clean });
     };
     for (const to of talents) {
       if ((alloc[to.id] || 0) >= to.maxRank) continue;
-      if (spent < TALENT_CONSTANTS.totalTalentPoints) push({ ...alloc, [to.id]: (alloc[to.id] || 0) + 1 }, spent + 1);
+      if (spent < talentCap) push({ ...alloc, [to.id]: (alloc[to.id] || 0) + 1 }, spent + 1);
       for (const from of talents) {
         if (from.id === to.id || !(alloc[from.id] > 0)) continue;
         push({ ...alloc, [from.id]: alloc[from.id] - 1, [to.id]: (alloc[to.id] || 0) + 1 }, spent);

@@ -1,9 +1,9 @@
-// store/sigils.js - sigil ownership and the Altar (B5). Which sigils a PRESET equips is
-// setPresetSigils / setPresetSigilCondition in store/presets.js (M1); their legality is enforced by
+// store/sigils.js - sigil ownership, the Altar and the character-wide activation conditions (B5, M1).
+// Which sigils a PRESET equips is setPresetSigils in store/presets.js (M1); their legality is enforced by
 // model/sigils.js reconcile, which ctx.editPreset and every edit here run.
 // Every mutator ends with persist() through ctx.edit.
 import { sigilBySpecies } from '../game/sigils.js';
-import { sigilForClass, clampSigilLevel, MAX_ALTAR_TIER, EVOLVE_TIER_CAP } from '../model/sigils.js';
+import { sigilForClass, clampSigilLevel, sigilConditionOptions, DEFAULT_CONDITION, MAX_ALTAR_TIER, EVOLVE_TIER_CAP } from '../model/sigils.js';
 
 export function createSigilsStore(ctx) {
   /**
@@ -15,7 +15,7 @@ export function createSigilsStore(ctx) {
       if (!sigilForClass(species, c.class)) return;
       const n = Number(level);
       if (!Number.isFinite(n) || n < 1) delete c.sigils.owned[species];
-      else c.sigils.owned[species] = { level: clampSigilLevel(species, n) };
+      else c.sigils.owned[species] = { ...c.sigils.owned[species], level: clampSigilLevel(species, n) }; // keeps the character-wide condition
       ctx.reconcile(c);
     });
   }
@@ -51,5 +51,24 @@ export function createSigilsStore(ctx) {
     });
   }
 
-  return { setSigilLevel, setSigilOwned, setSigilAltarTier, evolveSigilAltar };
+  /**
+   * Set (or clear, with null / ON_COOLDOWN) the character-wide activation condition of an owned sigil
+   * (sigils.md §7). Refused (false) for an unowned sigil or a condition no spec of the character offers.
+   */
+  function setSigilCondition(species, conditionId) {
+    return ctx.edit((c) => {
+      const own = c.sigils.owned[species];
+      if (!own) return false;
+      if (!conditionId || conditionId === DEFAULT_CONDITION) {
+        delete own.condition;
+        return true;
+      }
+      const specs = c.talentSets.map((s) => s.spec);
+      if (!(specs.some(Boolean) ? specs.filter(Boolean) : [null]).some((spec) => sigilConditionOptions(species, spec).includes(conditionId))) return false;
+      own.condition = conditionId;
+      return true;
+    });
+  }
+
+  return { setSigilLevel, setSigilOwned, setSigilAltarTier, setSigilCondition, evolveSigilAltar };
 }

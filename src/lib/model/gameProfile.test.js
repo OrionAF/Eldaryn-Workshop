@@ -226,10 +226,13 @@ describe('gameProfileToCharacter', () => {
       sigilSpecies: ['IRON_BASTION', 'CATACLYSM'], ancientSigilSpecies: 'EARTHWARDEN',
       transcendencePresetId: 'tp2',
     });
-    // conditions come from the owned sigils, only for the preset's own sigils, never ON_COOLDOWN
-    expect(tank.sigilConditions).toEqual({ IRON_BASTION: 'MY_HP_BELOW_60', CATACLYSM: 'ENEMY_HP_BELOW_40' });
+    // conditions are character-wide: they ride on the owned sigils, never ON_COOLDOWN
+    expect(tank.sigilConditions).toBeUndefined();
+    const owned = c.sigils.owned;
+    expect(owned.IRON_BASTION.condition).toBe('MY_HP_BELOW_60');
+    expect(owned.CATACLYSM.condition).toBe('ENEMY_HP_BELOW_40');
+    expect(owned.ARROWSTORM.condition).toBeUndefined();
     expect(dps).toMatchObject({ id: 'preset-2', equipmentSet: 2, talentSet: 0, petId: null, mountId: 'mount-b', sigilSpecies: ['ARROWSTORM'] });
-    expect(dps.sigilConditions).toEqual({});
   });
 
   it('pets: multiplier secondaries become percent points, altar level comes from totalXp and tier', () => {

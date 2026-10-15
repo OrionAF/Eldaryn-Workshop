@@ -84,7 +84,7 @@ export function createPresetsStore(ctx) {
 
   function setPresetRelics(presetId, relicIds) {
     ctx.editPreset(presetId, (p) => {
-      p.relicIds = uniq(relicIds, PRESET_RELIC_CAP);
+      p.relicIds = uniq(relicIds, PRESET_RELIC_CAP); // reconcile clamps to the character's slot cap
     });
   }
 
@@ -97,11 +97,18 @@ export function createPresetsStore(ctx) {
     });
   }
 
-  /** conditionId null clears the condition for that species. */
+  /**
+   * @deprecated Conditions are character-wide (M1): this writes the same value for every preset and
+   * ignores `presetId`. Use setSigilCondition. Removed with the old screens (U12). conditionId null clears it.
+   */
+  // eslint-disable-next-line no-unused-vars
   function setPresetSigilCondition(presetId, species, conditionId) {
-    ctx.editPreset(presetId, (p) => {
-      if (conditionId) p.sigilConditions[species] = conditionId;
-      else delete p.sigilConditions[species];
+    ctx.edit((c) => {
+      const own = c.sigils.owned[species];
+      if (!own) return;
+      if (conditionId && conditionId !== 'ON_COOLDOWN') own.condition = conditionId;
+      else delete own.condition;
+      ctx.reconcile(c);
     });
   }
 

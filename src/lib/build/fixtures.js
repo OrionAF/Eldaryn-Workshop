@@ -8,6 +8,8 @@ import { available } from '../game/classes.js';
 import { relicsForClass } from '../game/relics.js';
 import { majorGlyphForSigil } from '../game/mountsGlyphs.js';
 import { boardKeyFor, boardGraph } from '../transcendence.js';
+import { sigilBySpecies } from '../game/sigils.js';
+import { isFormSigil } from '../model/sigils.js';
 
 /** Default spec per class for the golden fixtures (Mystic is a Druid so the Form path is covered). */
 export const FIXTURE_SPECS = {
@@ -86,6 +88,25 @@ function transcendenceNodes(cls) {
   return out;
 }
 
+// Core-to-node path (inclusive of the node, without the core) so an Ancient's sigil node is allocated
+// and connected; the strict Ancient rule (plan Q3) ignores an Ancient whose node is missing.
+function pathToNode(cls, nodeId) {
+  const g = boardGraph(boardKeyFor(cls, null));
+  const prev = new Map([[g.coreId, null]]);
+  const queue = [g.coreId];
+  while (queue.length && !prev.has(nodeId)) {
+    const id = queue.shift();
+    for (const n of [...(g.neighbors.get(id) ?? [])].sort()) {
+      if (prev.has(n)) continue;
+      prev.set(n, id);
+      queue.push(n);
+    }
+  }
+  const out = [];
+  for (let id = prev.has(nodeId) ? nodeId : null; id && id !== g.coreId; id = prev.get(id)) out.unshift(id);
+  return out;
+}
+
 function fullAllocation(specKey) {
   const all = {};
   for (const tier of talentSpec(specKey).tiers) for (const t of tier.talents) all[t.id] = t.maxRank;
@@ -103,13 +124,17 @@ export function fixtureCharacter(cls, { spec = FIXTURE_SPECS[cls] } = {}) {
   const alt = SIGILS[other];
   const owned = {};
   for (const sp of [...loadout.generic, loadout.utility, loadout.ancient, ...alt.generic, alt.utility, alt.ancient]) {
-    if (sp) owned[sp] = { level: sp === loadout.ancient || sp === alt.ancient ? 1 : 12 };
+    if (sp) owned[sp] = { level: sp === loadout.ancient || sp === alt.ancient || isFormSigil(sp) ? 1 : 12 };
   }
   const relicIds = relicsForClass(cls).slice(0, 3).map((r) => r.id);
   const relics = Object.fromEntries(relicsForClass(cls).slice(0, 5).map((r, i) => [r.id, 3 + i]));
 
   const petTypes = [['ATTACK_PERCENT', 12.5], ['CRIT_DAMAGE', 20], ['ATTACK_SPEED', 8]].filter(([t]) => available(t, cls));
-  const nodes = transcendenceNodes(cls);
+  const nodes = [...transcendenceNodes(cls)];
+  for (const anc of [loadout.ancient, alt.ancient]) {
+    const node = anc ? sigilBySpecies(anc)?.transcendenceNode : null;
+    if (node) for (const id of pathToNode(cls, node)) if (!nodes.includes(id)) nodes.push(id);
+  }
   const major = loadout.generic.map((s) => majorGlyphForSigil(s)).find((g) => g && g.playerClass.toUpperCase() === cls);
   const mountSpecies = 'NIGHT_WOLF';
 
@@ -162,12 +187,12 @@ export function fixtureCharacter(cls, { spec = FIXTURE_SPECS[cls] } = {}) {
       {
         id: 'p1', name: 'Main', equipmentSet: 1, talentSet: 0, petId: 'pet-a', mountId: 'mount-a', relicIds,
         sigilSpecies: loadout.generic, utilitySigilSpecies: loadout.utility, ancientSigilSpecies: loadout.ancient,
-        sigilConditions: {}, transcendencePresetId: 'default', sheet: null,
+        transcendencePresetId: 'default', sheet: null,
       },
       {
         id: 'p2', name: 'Alt', equipmentSet: 2, talentSet: 1, petId: null, mountId: null, relicIds: [],
         sigilSpecies: alt.generic.slice(0, 2), utilitySigilSpecies: alt.utility, ancientSigilSpecies: alt.ancient,
-        sigilConditions: {}, transcendencePresetId: null, sheet: null,
+        transcendencePresetId: null, sheet: null,
       },
     ],
     activePresetId: 'p1',

@@ -53,7 +53,7 @@ describe('buildFighter', () => {
 
   it('Druid: the Form sigil gives formKind and formConfig; the stats use the form multipliers', () => {
     const f = buildFighter(fixtureCharacter('MYSTIC'), 'p1');
-    expect(f.utility).toEqual({ species: 'DIRE_URSINE', level: 12 });
+    expect(f.utility).toEqual({ species: 'DIRE_URSINE', level: 1 }); // Form sigils stay at level 1 (M1)
     expect(f.formKind).toBe('BEAR');
     expect(f.formConfig.gearHpMult).toBe(1.6);
     expect(f.stats.disruptionEffect).toBe('STAGGER');
@@ -70,7 +70,7 @@ describe('buildFighter', () => {
 
   it('sigil activation conditions apply from character level 54 only', () => {
     const c = fixtureCharacter('WARRIOR');
-    c.presets[0].sigilConditions = { CATACLYSM: 'ENEMY_HP_BELOW_40' };
+    c.sigils.owned.CATACLYSM.condition = 'ENEMY_HP_BELOW_40';
     expect(buildFighter(c, 'p1').conditions.CATACLYSM).toBe('ENEMY_HP_BELOW_40');
     expect(buildFighter(c, 'p1').conditions.BERSERK_STANCE).toBe('ON_COOLDOWN');
     c.level = 50;

@@ -25,9 +25,9 @@ function talentsLine(character, preset, allocation) {
   return names.length ? `${label} - ${names.join(', ')}` : label;
 }
 
-function sigilName(preset, species) {
+function sigilName(character, species) {
   const name = sigilBySpecies(species)?.name ?? species;
-  const cond = preset.sigilConditions?.[species];
+  const cond = character.sigils?.owned?.[species]?.condition;
   return cond ? `${name} (${cond})` : name;
 }
 
@@ -53,10 +53,10 @@ export function describeBuild(character, presetOrId, { realm = 'base', talentAll
 
   lines.push({ label: 'Relics', value: join((preset.relicIds ?? []).map((id) => relicById(id)?.name ?? id)) });
 
-  const generic = (preset.sigilSpecies ?? []).map((sp) => sigilName(preset, sp));
+  const generic = (preset.sigilSpecies ?? []).map((sp) => sigilName(character, sp));
   lines.push({ label: 'Sigils', value: join(generic) });
-  if (preset.utilitySigilSpecies) lines.push({ label: 'Utility sigil', value: sigilName(preset, preset.utilitySigilSpecies) });
-  if (preset.ancientSigilSpecies) lines.push({ label: 'Ancient sigil', value: sigilName(preset, preset.ancientSigilSpecies) });
+  if (preset.utilitySigilSpecies) lines.push({ label: 'Utility sigil', value: sigilName(character, preset.utilitySigilSpecies) });
+  if (preset.ancientSigilSpecies) lines.push({ label: 'Ancient sigil', value: sigilName(character, preset.ancientSigilSpecies) });
 
   const mount = preset.mountId ? (character.mounts ?? []).find((m) => m.id === preset.mountId) : null;
   lines.push({ label: 'Mount', value: mount ? `${mountBySpecies(mount.species)?.name ?? mount.species} (level ${mount.level})` : NONE });

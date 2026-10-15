@@ -161,11 +161,11 @@ describe('equip panel', () => {
     sel.value = 'ENEMY_HP_BELOW_40';
     sel.dispatchEvent(new Event('change', { bubbles: true }));
     flushSync();
-    expect(preset().sigilConditions).toEqual({ CATACLYSM: 'ENEMY_HP_BELOW_40' });
+    expect(rosterStore.current.sigils.owned.CATACLYSM.condition).toBe('ENEMY_HP_BELOW_40');
     sel.value = 'ON_COOLDOWN';
     sel.dispatchEvent(new Event('change', { bubbles: true }));
     flushSync();
-    expect(preset().sigilConditions).toEqual({});
+    expect(rosterStore.current.sigils.owned.CATACLYSM.condition).toBeUndefined();
   });
 });
 
