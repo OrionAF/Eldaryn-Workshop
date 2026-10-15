@@ -41,7 +41,7 @@
   );
 </script>
 
-<div class="mount-card {rarityClass(mount.rarity)}" data-mount-id={mount.id}>
+<div class="mount-card rarity-card {rarityClass(mount.rarity)}" data-mount-id={mount.id}>
   <h3 class="card-title">{species?.name ?? mount.species}</h3>
   <span class="badge">{mount.rarity}</span>
 
@@ -110,18 +110,14 @@
     gap: var(--sp-2);
     padding: var(--sp-3);
     min-width: 0;
-    border: 1px solid var(--rarity-border, var(--line-rule));
-    background: var(--rarity-bg, var(--surface-2));
-    border-radius: var(--r-2);
   }
-  .card-title { margin: 0; font-family: var(--font-display); font-size: var(--fs-14); text-align: center; color: var(--rarity-fg, var(--text-ink)); }
+  .card-title { margin: 0; font-family: var(--font-display); font-size: var(--fs-14); text-align: center; color: var(--r-up, var(--text-ink)); }
   .badge {
     align-self: center;
     padding: 1px var(--sp-2);
-    border: 1px solid var(--rarity-border, var(--line-rule));
+    border: 1px solid var(--line-control);
     border-radius: var(--r-pill);
-    background: var(--rarity-bg, transparent);
-    color: var(--rarity-fg-strong, var(--text-muted));
+    color: var(--r-up, var(--text-muted));
     font-size: var(--fs-11);
     font-weight: var(--fw-bold);
     letter-spacing: var(--track-label);

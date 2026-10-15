@@ -83,7 +83,7 @@
             >
           </div>
           <p class="talent-value">
-            {#if rank > 0}<strong class="num">{describe(talent, rank)}</strong>{/if}
+            {#if rank > 0}<strong>{describe(talent, rank)}</strong>{/if}
             {#if rank > 0 && rank < talent.maxRank}&middot;{/if}
             {#if rank < talent.maxRank}<span class="next">NEXT: {describe(talent, rank + 1)}</span>{/if}
           </p>
@@ -143,7 +143,8 @@
   .pip.on { background: var(--brass-400); border-color: var(--brass-400); }
   .talent-rank-badge { grid-area: rank; font-size: var(--fs-12); color: var(--text-muted); white-space: nowrap; }
   .talent-controls { grid-area: controls; display: flex; gap: var(--sp-1); }
-  .talent-value { grid-area: value; margin: 0; font-size: var(--fs-12); color: var(--text-muted); }
+  /* Prose in the UI face; only the figures elsewhere are mono. */
+  .talent-value { grid-area: value; margin: 0; font-family: var(--font-ui); font-variant-numeric: tabular-nums; font-size: var(--fs-12); color: var(--text-muted); }
   .talent-value strong { color: var(--brass-200); }
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
 </style>

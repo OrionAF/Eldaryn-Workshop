@@ -121,7 +121,7 @@
     <h2 class="collection-head">Collection</h2>
     {#each sections as section (section.rarity)}
       <section class="rarity-section">
-        <h3 class="subheading">{section.rarity}</h3>
+        <h3 class="rarity-head">{section.rarity}</h3>
         <div class="sigil-grid">
           {#each section.defs as def (def.species)}
             <SigilCard
@@ -173,7 +173,7 @@
   .equipped li { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
   .equipped .names { color: var(--text-soft); }
   .collection-head { margin: var(--sp-4) 0 0; }
-  .label, .rarity-section .subheading {
+  .label, .rarity-head {
     font-family: var(--font-ui);
     font-weight: var(--fw-bold);
     font-size: var(--fs-11);
@@ -181,7 +181,7 @@
     text-transform: uppercase;
     color: var(--text-soft);
   }
-  .rarity-section .subheading { margin: 0 0 var(--sp-2); }
+  .rarity-head { margin: 0 0 var(--sp-2); }
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
   .sigil-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--sp-3); }
   .destroyed { color: var(--text-soft); }

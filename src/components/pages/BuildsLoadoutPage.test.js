@@ -106,12 +106,18 @@ it('sigil slots beyond the unlock level read "Unlocks at level n"', () => {
   expect(t.q('.sigil-slots').textContent).toMatch(/Unlocks at level \d+/);
 });
 
+/** The native <select> a design-system Select renders for the label text (exact string or RegExp). */
+const selectFor = (root, text) => {
+  const lab = [...root.querySelectorAll('label')].find((l) => (typeof text === 'string' ? l.textContent.trim() === text : text.test(l.textContent.trim())));
+  return lab ? root.querySelector(`select[id="${lab.getAttribute("for")}"]`) : null;
+};
+
 it('a condition names the other presets that equip the sigil (CHARACTER scope) and writes character-wide', () => {
   const [a, b] = rosterStore.current.presets;
   const sp = a.sigilSpecies[1]; // WARBORN_FURY offers HP conditions; slot 0 (Berserk Stance) does not
   rosterStore.setPresetSigils(b.id, { species: [sp] });
   reopen();
-  const sel = t.q('select[aria-label$="activation condition"]');
+  const sel = selectFor(t.target, /activation condition$/);
   const chip = t.q('[aria-label="Activation conditions"] .scope-chip');
   expect(chip.textContent).toMatch(/Character/i);
   expect(chip.textContent).toContain(`also ${b.name}`);
@@ -137,7 +143,7 @@ it('every relic tile carries tier art, so none renders an empty icon square', ()
 });
 
 describe('sigil tray (moved from the Sigils page)', () => {
-  const slot = (n) => t.q(`select[aria-label="Sigil slot ${n}"]`);
+  const slot = (n) => selectFor(t.target, `Sigil ${n}`);
   const fire = (el, value) => {
     el.value = value;
     el.dispatchEvent(new Event('change', { bubbles: true }));
@@ -153,11 +159,11 @@ describe('sigil tray (moved from the Sigils page)', () => {
   });
 
   it('a Warrior has no utility slot; a Mystic gets a utility slot (Form, Shield or Summon by spec)', () => {
-    expect(t.q('select[aria-label="Utility sigil slot"]')).toBeNull();
+    expect(selectFor(t.target, /^(Shield|Form|Summon) slot$/)).toBeNull();
     const m = fixtureCharacter('MYSTIC');
     load(m);
     reopen();
-    const util = t.q('select[aria-label="Utility sigil slot"]');
+    const util = selectFor(t.target, /^(Shield|Form|Summon) slot$/);
     expect(util).not.toBeNull();
     expect(t.target.textContent).toMatch(/(Shield|Form|Summon) slot/);
     const pick = [...util.options].map((o) => o.value).filter(Boolean)[0];

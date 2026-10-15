@@ -352,119 +352,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
   :root { --control-h: 44px; --row-h: 44px; }
 }
 
-:root {
-  /* Legacy aliases: the pre-redesign names, mapped onto the new tokens so
-     screens not yet ported keep rendering. Each slice that ports a screen
-     stops using them; U-final deletes this block.
-     DELETE at integration, once
-       grep -rE "var\(--color-|btn-gold|btn-ghost|rank-controls|subheading|micro-label" src
-     finds nothing outside app.css: this alias block, and the legacy classes .btn-gold, .btn-ghost,
-     .btn-danger (legacy form), .rank-controls button, .subheading and .micro-label. */
-  --color-bg: var(--surface-0);
-  --color-rail: var(--surface-1);
-  --color-panel: var(--surface-2);
-  --color-inset: var(--surface-1);
-  --color-field: var(--surface-3);
-  --color-canvas: var(--surface-0);
-  --color-border-hairline: var(--line-hairline);
-  --color-border: var(--line-rule);
-  --color-border-strong: var(--line-control);
-  --color-ink: var(--text-ink);
-  --color-text: var(--text-ink);
-  --color-soft: var(--text-soft);
-  --color-muted: var(--text-muted);
-  --color-dim: var(--text-muted);
-  --color-gold: var(--brass-400);
-  --color-gold-light: var(--brass-200);
-  --color-gold-tint: var(--brass-tint);
-  --color-gold-glow: none;
-  --color-gold-glow-strong: none;
-  --color-dps: var(--status-info);
-  --color-dps-dim: var(--status-info);
-  --color-hps: var(--verdict-up);
-  --color-hps-dim: var(--verdict-up);
-  --color-upgrade: var(--verdict-up);
-  --color-success: var(--verdict-up);
-  --color-upgrade-border: color-mix(in srgb, var(--verdict-up) 55%, transparent);
-  --color-upgrade-soft: var(--verdict-up-tint);
-  --color-downgrade: var(--verdict-down);
-  --color-danger: var(--verdict-down);
-  --color-downgrade-border: color-mix(in srgb, var(--verdict-down) 55%, transparent);
-  --color-downgrade-soft: var(--verdict-down-tint);
-  --color-warning: var(--status-warn);
-  --color-warning-soft: color-mix(in srgb, var(--status-warn) 8%, transparent);
-  --font-heading: var(--font-display);
-  --font-body: var(--font-ui);
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 18px;
-  --space-6: 26px;
-  --space-8: 34px;
-  --content-max-width: 1200px;
-  /* Mobile tab bar height without the safe-area inset: 44px tap target + 4px padding each side + 1px border. */
-  --bottom-bar-h: 53px;
-  --radius-chip: 7px;
-  --radius-mini-chip: 12px;
-  --radius-pill: 999px;
-  --radius-panel: 10px;
-  --radius-field: 6px;
-  --radius: var(--radius-field);
-
-  /* Nav / domain hues - one per rail item and its matching screen accents. */
-  --nav-character: #e0e4ee;
-  --nav-character-light: #f2f4f9;
-  --nav-character-tint: rgba(224, 228, 238, 0.1);
-  --nav-optimiser: #4fe3c1;
-  --nav-optimiser-light: #a4f1de;
-  --nav-optimiser-tint: rgba(79, 227, 193, 0.1);
-  --nav-duel: #ff5c5c;
-  --nav-duel-light: #ffa3a3;
-  --nav-duel-tint: rgba(255, 92, 92, 0.1);
-  --nav-oblivion: #8a7dff;
-  --nav-oblivion-light: #bdb5ff;
-  --nav-oblivion-tint: rgba(138, 125, 255, 0.1);
-  --nav-presets: #d9a94b;
-  --nav-presets-light: #f3d78d;
-  --nav-presets-tint: rgba(217, 169, 75, 0.13);
-  --nav-drop: #ff8f73;
-  --nav-drop-light: #ffbfa8;
-  --nav-drop-tint: rgba(255, 143, 115, 0.12);
-  --nav-gear: #b06cff;
-  --nav-gear-light: #d3b3ff;
-  --nav-gear-tint: rgba(176, 108, 255, 0.12);
-  --nav-talents: #54d0ff;
-  --nav-talents-light: #a8e5ff;
-  --nav-talents-tint: rgba(84, 208, 255, 0.1);
-  --nav-pets: #ff7ac2;
-  --nav-pets-light: #ffb8dd;
-  --nav-pets-tint: rgba(255, 122, 194, 0.1);
-  --nav-relics: #e8c84f;
-  --nav-relics-light: #f4df9a;
-  --nav-relics-tint: rgba(232, 200, 79, 0.1);
-  --nav-sigils: #7a8cff;
-  --nav-sigils-light: #b3bdff;
-  --nav-sigils-tint: rgba(122, 140, 255, 0.1);
-  --nav-simulations: #4fe3c1;
-  --nav-simulations-light: #a4f1de;
-  --nav-simulations-tint: rgba(79, 227, 193, 0.1);
-  /* No longer a nav item (PVP folded into the Simulations page) - kept as the PVP tab accent. */
-  --nav-pvp: #ff5c5c;
-  --nav-pvp-light: #ffa3a3;
-  --nav-pvp-tint: rgba(255, 92, 92, 0.1);
-  --nav-mounts: #67c26b;
-  --nav-mounts-light: #a8e0ab;
-  --nav-mounts-tint: rgba(103, 194, 107, 0.1);
-  --nav-awakening: #f5c66b;
-  --nav-awakening-light: #f9dda6;
-  --nav-awakening-tint: rgba(245, 198, 107, 0.1);
-  --nav-transcendence: #c084fc;
-  --nav-transcendence-light: #dcbafd;
-  --nav-transcendence-tint: rgba(192, 132, 252, 0.1);
-
-}
-
 /* Legacy button classes, kept until U2a ships .btn variants. .btn-gold is the
    brass-outline secondary; the ember primary is .btn-primary (components.css). */
 button { font-size: var(--fs-12); border-radius: var(--r-1); padding: 0.4rem 0.75rem; cursor: pointer; border: 1px solid transparent; background: none; }
@@ -494,57 +381,58 @@ button:disabled { color: var(--text-disabled); cursor: not-allowed; }
  * Use --rarity-fg for large text (card titles, stars) and --rarity-fg-strong
  * for normal-size text - see the token block at the top for why.
  */
-.rarity-common { --rarity-fg: var(--rarity-common-fg); --rarity-fg-strong: var(--rarity-common-fg-strong); --rarity-border: var(--rarity-common-border); --rarity-bg: var(--rarity-common-bg); }
-.rarity-uncommon { --rarity-fg: var(--rarity-uncommon-fg); --rarity-fg-strong: var(--rarity-uncommon-fg-strong); --rarity-border: var(--rarity-uncommon-border); --rarity-bg: var(--rarity-uncommon-bg); }
-.rarity-rare { --rarity-fg: var(--rarity-rare-fg); --rarity-fg-strong: var(--rarity-rare-fg-strong); --rarity-border: var(--rarity-rare-border); --rarity-bg: var(--rarity-rare-bg); }
-.rarity-epic { --rarity-fg: var(--rarity-epic-fg); --rarity-fg-strong: var(--rarity-epic-fg-strong); --rarity-border: var(--rarity-epic-border); --rarity-bg: var(--rarity-epic-bg); }
-.rarity-legendary { --rarity-fg: var(--rarity-legendary-fg); --rarity-fg-strong: var(--rarity-legendary-fg-strong); --rarity-border: var(--rarity-legendary-border); --rarity-bg: var(--rarity-legendary-bg); }
-.rarity-mythic { --rarity-fg: var(--rarity-mythic-fg); --rarity-fg-strong: var(--rarity-mythic-fg-strong); --rarity-border: var(--rarity-mythic-border); --rarity-bg: var(--rarity-mythic-bg); }
-.rarity-ancient { --rarity-fg: var(--rarity-ancient-fg); --rarity-fg-strong: var(--rarity-ancient-fg-strong); --rarity-border: var(--rarity-ancient-border); --rarity-bg: var(--rarity-ancient-bg); }
-.rarity-divine { --rarity-fg: var(--rarity-divine-fg); --rarity-fg-strong: var(--rarity-divine-fg-strong); --rarity-border: var(--rarity-divine-border); --rarity-bg: var(--rarity-divine-bg); }
-.rarity-eternal { --rarity-fg: var(--rarity-eternal-fg); --rarity-fg-strong: var(--rarity-eternal-fg-strong); --rarity-border: var(--rarity-eternal-border); --rarity-bg: var(--rarity-eternal-bg); }
-.rarity-oblivion { --rarity-fg: var(--rarity-oblivion-fg); --rarity-fg-strong: var(--rarity-oblivion-fg-strong); --rarity-border: var(--rarity-oblivion-border); --rarity-bg: var(--rarity-oblivion-bg); }
+.rarity-common { --rarity-fg: var(--rarity-common-fg); --rarity-fg-strong: var(--rarity-common-fg-strong); --rarity-border: var(--rarity-common-border); --rarity-bg: var(--rarity-common-bg);  --r-fg: var(--rarity-common-fg-strong); --r-up: var(--rarity-common-fg-on-raised); --r-edge: var(--rarity-common-fg-on-raised); }
+.rarity-uncommon { --rarity-fg: var(--rarity-uncommon-fg); --rarity-fg-strong: var(--rarity-uncommon-fg-strong); --rarity-border: var(--rarity-uncommon-border); --rarity-bg: var(--rarity-uncommon-bg);  --r-fg: var(--rarity-uncommon-fg-strong); --r-up: var(--rarity-uncommon-fg-on-raised); --r-edge: var(--rarity-uncommon-fg-on-raised); }
+.rarity-rare { --rarity-fg: var(--rarity-rare-fg); --rarity-fg-strong: var(--rarity-rare-fg-strong); --rarity-border: var(--rarity-rare-border); --rarity-bg: var(--rarity-rare-bg);  --r-fg: var(--rarity-rare-fg-strong); --r-up: var(--rarity-rare-fg-on-raised); --r-edge: var(--rarity-rare-fg-on-raised); }
+.rarity-epic { --rarity-fg: var(--rarity-epic-fg); --rarity-fg-strong: var(--rarity-epic-fg-strong); --rarity-border: var(--rarity-epic-border); --rarity-bg: var(--rarity-epic-bg);  --r-fg: var(--rarity-epic-fg-strong); --r-up: var(--rarity-epic-fg-on-raised); --r-edge: var(--rarity-epic-fg-on-raised); }
+.rarity-legendary { --rarity-fg: var(--rarity-legendary-fg); --rarity-fg-strong: var(--rarity-legendary-fg-strong); --rarity-border: var(--rarity-legendary-border); --rarity-bg: var(--rarity-legendary-bg);  --r-fg: var(--rarity-legendary-fg-strong); --r-up: var(--rarity-legendary-fg-on-raised); --r-edge: var(--rarity-legendary-fg-on-raised); }
+.rarity-mythic { --rarity-fg: var(--rarity-mythic-fg); --rarity-fg-strong: var(--rarity-mythic-fg-strong); --rarity-border: var(--rarity-mythic-border); --rarity-bg: var(--rarity-mythic-bg);  --r-fg: var(--rarity-mythic-fg-strong); --r-up: var(--rarity-mythic-fg-on-raised); --r-edge: var(--rarity-mythic-fg-on-raised); }
+.rarity-ancient { --rarity-fg: var(--rarity-ancient-fg); --rarity-fg-strong: var(--rarity-ancient-fg-strong); --rarity-border: var(--rarity-ancient-border); --rarity-bg: var(--rarity-ancient-bg);  --r-fg: var(--rarity-ancient-fg-strong); --r-up: var(--rarity-ancient-fg-on-raised); --r-edge: var(--rarity-ancient-fg-on-raised); }
+.rarity-divine { --rarity-fg: var(--rarity-divine-fg); --rarity-fg-strong: var(--rarity-divine-fg-strong); --rarity-border: var(--rarity-divine-border); --rarity-bg: var(--rarity-divine-bg);  --r-fg: var(--rarity-divine-fg-strong); --r-up: var(--rarity-divine-fg-on-raised); --r-edge: var(--rarity-divine-fg-on-raised); }
+.rarity-eternal { --rarity-fg: var(--rarity-eternal-fg); --rarity-fg-strong: var(--rarity-eternal-fg-strong); --rarity-border: var(--rarity-eternal-border); --rarity-bg: var(--rarity-eternal-bg);  --r-fg: var(--rarity-eternal-fg-strong); --r-up: var(--rarity-eternal-fg-on-raised); --r-edge: var(--rarity-eternal-fg-on-raised); }
+.rarity-oblivion { --rarity-fg: var(--rarity-oblivion-fg); --rarity-fg-strong: var(--rarity-oblivion-fg-strong); --rarity-border: var(--rarity-oblivion-border); --rarity-bg: var(--rarity-oblivion-bg);  --r-fg: var(--rarity-oblivion-fg-strong); --r-up: var(--rarity-oblivion-fg-on-raised); --r-edge: var(--rarity-oblivion-fg-on-raised); }
 
-/* Unknown/absent rarity: fall back to the neutral panel treatment. */
-.rarity-unknown { --rarity-fg: var(--text-muted); --rarity-fg-strong: var(--color-soft); --rarity-border: var(--color-border); --rarity-bg: var(--color-inset); }
+/* Unknown/absent rarity: neutral treatment. */
+.rarity-unknown { --rarity-fg: var(--text-muted); --rarity-fg-strong: var(--text-soft); --rarity-border: var(--line-rule); --rarity-bg: transparent; --r-fg: var(--text-soft); --r-up: var(--text-soft); --r-edge: var(--line-control); }
 
-/* Small rarity pill. Normal-size text, so it uses the AA-safe -fg-strong. */
+/* Small rarity pill: neutral ground, rarity only in the text and a hairline of the same hue. */
 .rarity-badge {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  font-size: var(--fs-11);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   padding: 2px 7px;
-  border-radius: var(--radius-pill);
-  color: var(--rarity-fg-strong, var(--text-muted));
-  border: 1px solid var(--rarity-border, var(--color-border));
-  background: var(--rarity-bg, transparent);
+  border-radius: var(--r-pill);
+  color: var(--r-up, var(--text-muted));
+  border: 1px solid var(--line-control);
 }
 
-/* Card shell carrying a rarity. Concentric radius: inner elements go smaller. */
+/* Card shell carrying a rarity (design-system 4.23): s3 ground, control border, 4px rarity edge and
+   an 8% inset glow. Rarity is an edge, never a fill. */
 .rarity-card {
-  border: 1px solid var(--rarity-border, var(--color-border));
-  background: var(--rarity-bg, var(--color-panel));
-  border-radius: var(--radius-panel);
+  border: 1px solid var(--line-control);
+  background: var(--surface-3);
+  border-radius: var(--r-2);
+  box-shadow: inset 4px 0 0 var(--r-edge, var(--line-rule)), inset 0 0 18px color-mix(in srgb, var(--r-edge, transparent) 8%, transparent);
 }
 
-/* Card title at the rarity hue - large text, so plain -fg is AA-safe at 3:1. */
+/* Card title: -fg-on-raised is the rule for rarity text on s3. */
 .rarity-title {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 15px;
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-14);
   text-align: center;
-  color: var(--rarity-fg, var(--color-ink));
+  color: var(--r-up, var(--text-ink));
 }
 
 input,
 select {
   font-family: inherit;
-  font-size: 12.5px;
-  border-radius: var(--radius-field);
-  background: var(--color-field);
-  color: var(--color-ink);
-  border: 1px solid var(--color-border-strong);
+  font-size: var(--fs-13);
+  border-radius: var(--r-1);
+  background: var(--surface-3);
+  color: var(--text-ink);
+  border: 1px solid var(--line-control);
   padding: 6px 10px;
 }
 
@@ -571,7 +459,6 @@ select {
 /* Legacy numeric selectors (pre-redesign class names), tabular mono like .num. */
 input[type='text'],
 .deltas,
-.talent-value,
 .bonus-value,
 .per-point,
 .relic-stats,
