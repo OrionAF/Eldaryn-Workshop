@@ -8,6 +8,12 @@ const options = [
   { value: 'deep', label: 'Thorough', disabled: true },
 ];
 
+it('stack lays the options out vertically and never wraps', () => {
+  const { q, done } = setup(SegmentedControl, { options, value: 'quick', stack: true });
+  expect(q('.seg').classList.contains('stack')).toBe(true);
+  done();
+});
+
 it('is a labelled group of aria-pressed buttons', () => {
   const { q, qa, done } = setup(SegmentedControl, { options, value: 'standard', label: 'Effort' });
   expect(q('[role=group]').getAttribute('aria-label')).toBe('Effort');

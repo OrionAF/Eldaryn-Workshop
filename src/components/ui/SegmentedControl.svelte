@@ -4,8 +4,9 @@
    * (design-system §4.5). A role=group of button[aria-pressed]; Left/Right move the selection.
    *
    * options: [{ value, label, sub?, disabled? }]; `sub` is the mono sub-label (Effort's N range).
+   * Cells are equal width and never wrap; `stack` lays them out vertically for a narrow column.
    */
-  let { options, value = $bindable(), label = '', onchange = () => {} } = $props();
+  let { options, value = $bindable(), label = '', stack = false, onchange = () => {} } = $props();
 
   function pick(opt) {
     if (opt.disabled || opt.value === value) return;
@@ -27,7 +28,7 @@
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<div class="seg" role="group" aria-label={label || undefined} tabindex="-1" onkeydown={onKeyDown}>
+<div class="seg" class:stack role="group" aria-label={label || undefined} tabindex="-1" onkeydown={onKeyDown}>
   {#each options as opt (opt.value)}
     <button
       type="button"
@@ -44,6 +45,7 @@
 <style>
   .seg {
     display: inline-flex;
+    max-width: 100%;
     border: 1px solid var(--line-control);
     border-radius: var(--r-1);
     background: var(--surface-2);
@@ -53,7 +55,10 @@
   button {
     position: relative;
     display: inline-flex;
+    flex: 1 1 0; /* equal-width cells that share the row instead of wrapping */
+    min-width: 0;
     align-items: center;
+    justify-content: center;
     gap: var(--sp-2);
     white-space: nowrap;
     height: calc(var(--control-h) - 6px);
@@ -80,6 +85,8 @@
     background: var(--brass-400);
   }
   button:disabled { color: var(--text-disabled); cursor: not-allowed; background: transparent; }
+  .seg.stack { display: flex; flex-direction: column; }
+  .seg.stack button { flex: none; justify-content: flex-start; }
   .num { font-family: var(--font-data); font-size: var(--fs-12); color: var(--text-muted); }
   @media (pointer: coarse), (max-width: 700px) {
     button { min-height: calc(var(--hit) - 6px); }

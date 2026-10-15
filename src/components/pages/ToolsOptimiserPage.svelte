@@ -308,7 +308,7 @@
 
         <section class="step">
           <h3><span class="n">V</span> Effort</h3>
-          <SegmentedControl label="Effort" options={effortOptions} value={setup.effort} onchange={(v) => (setup.effort = v)} />
+          <SegmentedControl label="Effort" stack options={effortOptions} value={setup.effort} onchange={(v) => (setup.effort = v)} />
           <NumberField label="Seed" min={1} value={setup.seed} onchange={(v) => (setup.seed = Math.max(1, Math.round(v)))} />
           <p class="hint" data-testid="effort-plan">
             Resolves differences of <span class="num">{plan.zone}</span>. Each comparison starts at N <span class="num">{fmtCount(plan.n0)}</span> and stops when it is resolved or at N <span class="num">{fmtCount(plan.maxN)}</span> per build, where it is reported as too close to call.

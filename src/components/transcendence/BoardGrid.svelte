@@ -15,6 +15,7 @@
    */
   import { canAllocateNode } from '../../lib/transcendence.js';
   import BoardNode from './BoardNode.svelte';
+  import { fitView } from './boardView.js';
   import Button from '../ui/Button.svelte';
 
   let { boardKey, nodes, allocatedIds = [], highlightStats = null, onSelect = null, onHover = null } = $props();
@@ -35,7 +36,7 @@
 
   const CELL_SIZE = $derived(isMobile ? 40 : 32);
   const NODE_SIZE = $derived(isMobile ? 32 : 24);
-  const MIN_ZOOM = 0.4;
+  const MIN_ZOOM = 0.25;
   const MAX_ZOOM = 2.5;
 
   const allocatedSet = $derived(new Set(allocatedIds));
@@ -58,12 +59,12 @@
   let pinchStartDistance = 0;
   let pinchStartZoom = 1;
 
+  // Fit the whole board, centred, below the floating controls (boardView.js).
   function centerOnStart() {
     if (!viewportEl) return;
     const rect = viewportEl.getBoundingClientRect();
-    // The core sits at the bottom-centre of the board; start with it near the bottom of the viewport.
-    panX = rect.width / 2 - 13 * CELL_SIZE * zoom;
-    panY = rect.height - 25 * CELL_SIZE * zoom - CELL_SIZE * 2;
+    if (rect.width === 0) return;
+    ({ zoom, panX, panY } = fitView(rect.width, rect.height, CELL_SIZE, NODE_SIZE, MIN_ZOOM));
   }
 
   function pointerDistance() {
@@ -84,6 +85,7 @@
   }
 
   function onViewportPointerDown(e) {
+    touched = true;
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     if (activePointers.size === 2) {
@@ -140,6 +142,7 @@
 
   function onWheel(e) {
     e.preventDefault();
+    touched = true;
     const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
     const rect = viewportEl.getBoundingClientRect();
     // Zoom toward the cursor: keep the point under the cursor fixed in screen space.
@@ -147,11 +150,12 @@
   }
 
   function zoomBy(factor) {
+    touched = true;
     const rect = viewportEl.getBoundingClientRect();
     zoomTo(zoom * factor, rect.width / 2, rect.height / 2);
   }
   function resetView() {
-    zoom = 1;
+    touched = false;
     centerOnStart();
   }
 
@@ -162,16 +166,16 @@
     onSelect?.(node);
   }
 
-  // Center on mount only. Without the `centered` guard, this effect would
-  // re-run on every zoom change too - it reads `zoom` (via centerOnStart),
-  // so Svelte tracks that as a dependency, and every wheel/pinch zoom would
-  // snap the view back to the start position instead of zooming in place.
-  let centered = false;
+  // Fit on mount and again whenever the viewport is resized or first laid out, until the user
+  // pans or zooms; after that the view is theirs (Reset view returns to the fit).
+  let touched = false;
   $effect(() => {
-    if (viewportEl && !centered) {
-      centered = true;
-      centerOnStart();
-    }
+    if (!viewportEl) return;
+    centerOnStart();
+    if (typeof ResizeObserver !== 'function') return;
+    const ro = new ResizeObserver(() => !touched && centerOnStart());
+    ro.observe(viewportEl);
+    return () => ro.disconnect();
   });
 </script>
 
