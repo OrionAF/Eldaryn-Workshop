@@ -97,14 +97,16 @@ export function createCharactersStore(ctx) {
 
   /**
    * Import JSON text. An app export (v1 or v2) replaces the whole roster; a game profile is added as a
-   * new character, selected. Throws on unparseable JSON.
-   * @returns {{kind: 'profile'|'roster', name: string|null}}
+   * new character, selected. Throws ImportError (storage.js) on unparseable or unrecognised JSON, and then
+   * leaves the roster untouched. `report` entries are listed in data-model.md §7.
+   * @returns {{kind: 'profile'|'roster', name: string|null, report: object[]}}
    */
   function importFromJson(text) {
-    const { kind, roster, character } = importJson(text, ctx.roster());
+    const report = [];
+    const { kind, roster, character } = importJson(text, ctx.roster(), { report });
     ctx.setRoster(roster);
     ctx.persist();
-    return { kind, name: character?.name ?? null };
+    return { kind, name: character?.name ?? null, report };
   }
 
   function exportDownload() {
