@@ -117,7 +117,8 @@ describe('optimize: too close to call (A.8, A.9)', { timeout: 120000 }, () => {
   const character = edit((raw) => {
     raw.glyphs.push({ id: 'gl-9', glyphType: 'g-keen', rarity: 'Legendary', secondary: { stat: 'attackPercent', quality: 1 } });
   });
-  const req = { character, presetId: 'p1', target: SHORT, space: only('minorGlyphs'), effort: TINY };
+  // δ = 0: no arm is futile or equivalent (A5), so near-equal glyphs stay open to maxN
+  const req = { character, presetId: 'p1', target: SHORT, space: only('minorGlyphs'), effort: { ...TINY, delta: 0 } };
 
   it('a row still open at maxN is unresolved, offers Run more and sits in tie group 0', async () => {
     const r = await optimize({ ...req, seed: 2 });
@@ -306,7 +307,7 @@ describe('optimizeMore', { timeout: 120000 }, () => {
     const character = edit((raw) => {
       raw.glyphs.push({ id: 'gl-9', glyphType: 'g-keen', rarity: 'Legendary', secondary: { stat: 'attackPercent', quality: 1 } });
     });
-    const r = await optimize({ character, presetId: 'p1', target: SHORT, space: only('minorGlyphs'), effort: TINY, seed: 2 });
+    const r = await optimize({ character, presetId: 'p1', target: SHORT, space: only('minorGlyphs'), effort: { ...TINY, delta: 0 }, seed: 2 });
     expect(r.rows.map((x) => x.vsBaseline.verdict)).toEqual(['better', 'unresolved']);
     // a result whose order and groups are stale: the rows reversed, a bogus shared group
     const stale = { ...r, rows: [...r.rows].reverse().map((x, i) => ({ ...x, rank: i + 1, tieGroup: 7 })) };

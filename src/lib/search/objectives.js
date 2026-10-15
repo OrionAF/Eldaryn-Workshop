@@ -325,7 +325,8 @@ export function meetsTarget(e, target, delta = 0) {
  * per build at alpha / 8. Because min(·, τ) is monotone and 1-Lipschitz, g lies between 0 and p_X − p_Y,
  * and g > 0 needs p_Y < τ; the bounds below follow. When both builds are confidently below the target
  * the margin contrast (paired t at alpha / 2) is attached as `then`: the comparator reads it only when
- * g is `equivalent`.
+ * g is `equivalent`. `thenPending` marks a contrast whose margin may still attach at a later look (the
+ * futility rule keeps such an arm open).
  */
 function cappedWinRateContrast(tau, x, y, alpha) {
   const xs = x.main[0];
@@ -351,6 +352,8 @@ function cappedWinRateContrast(tau, x, y, alpha) {
   return {
     delta, lo, hi, p: t.p, sd: t.sd, method: 'capped-tango', basis: 'win-rate', higherIsBetter: true,
     ref: cap(wy.est), winRate: { delta: t.delta, lo: t.lo, hi: t.hi }, then,
+    // the margin may still attach at a later look: neither build is yet confidently at the target
+    thenPending: !both && Math.max(wx.lo, wy.lo) < tau,
   };
 }
 

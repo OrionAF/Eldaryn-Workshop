@@ -7,7 +7,10 @@ import { fmtCount } from './statsFormat.js';
 import { resolveEffort } from '../search/search.js';
 import { SCOPES } from '../search/patch.js';
 
-/** Measured cost of the Quick level on the Warrior fixture (simulation.md §Cost); no run is time-capped. */
+/**
+ * Measured cost of the Quick level on the Warrior fixture (simulation.md §Cost: measured before the A5
+ * futility stop, so upper figures); no run is time-capped.
+ */
 export const MEASURED_COST = Object.freeze({
   small: { space: 'relics and pet', time: 'about 1 s' },
   full: { space: 'every block', time: 'about 4 minutes' },

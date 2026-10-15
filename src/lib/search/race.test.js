@@ -78,4 +78,44 @@ describe('race', () => {
     const b = await race(arms, { objective, getSet: getter().getSet, effort: effort({ maxN: 64 }), seed: 1 });
     expect(b).toEqual(a);
   });
+
+  describe('futility (A5)', () => {
+    // δ = 0.5 % of ~1000 = 5. An arm 2 below the leader (−0.4δ) cannot beat it by δ long before its
+    // interval fits inside ±δ (equivalent) or below 0 (worse).
+    const slight = () => [arm('lead', 0, { dist: 0, sd: 20 }), arm('far', -2, { dist: 2, sd: 20 })];
+
+    it('a futile arm no nearer the baseline than the leader leaves at once, listed in `futile`', async () => {
+      const g = getter();
+      const r = await race(slight(), { objective, getSet: g.getSet, effort: effort({ maxN: 4096 }), seed: 1 });
+      expect(r.winner).toBe(0);
+      expect(r.futile.map((f) => f.i)).toEqual([1]);
+      expect(r.futile[0].contrast.futile).toBe(true);
+      expect(r.futile[0].contrast.hi).toBeLessThan(r.futile[0].contrast.zone);
+      expect(r.eliminated).toEqual([]);
+      expect(r.unresolved).toEqual([]);
+
+      const old = getter();
+      const o = await race(slight(), { objective, getSet: old.getSet, effort: effort({ maxN: 4096, futility: false }), seed: 1 });
+      expect(o.futile).toEqual([]);
+      expect(g.calls.get('far')).toBeLessThan(old.calls.get('far'));
+    });
+
+    it('a futile arm nearer the baseline than the leader stays until it resolves equivalent (and wins the tie)', async () => {
+      const g = getter();
+      const arms = [arm('lead', 1, { dist: 2, sd: 20 }), arm('near', 0, { dist: 0, sd: 20 })];
+      const r = await race(arms, { objective, getSet: g.getSet, effort: effort({ maxN: 4096 }), seed: 1 });
+      expect(r.futile).toEqual([]);
+      expect(r.winner).toBe(1);
+      expect(r.ties).toEqual([0]);
+    });
+
+    it('a futile nearer arm that is truly worse still leaves only as `worse`', async () => {
+      const g = getter();
+      const arms = [arm('lead', 0, { dist: 2, sd: 20 }), arm('near', -4, { dist: 0, sd: 20 })];
+      const r = await race(arms, { objective, getSet: g.getSet, effort: effort({ maxN: 1 << 15, delta: 0.001 }), seed: 1 });
+      expect(r.futile).toEqual([]);
+      expect(r.winner).toBe(0);
+      expect(r.eliminated.map((e) => e.i)).toEqual([1]);
+    });
+  });
 });

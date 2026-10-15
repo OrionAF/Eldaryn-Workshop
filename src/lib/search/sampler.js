@@ -105,6 +105,9 @@ export function createSampler(objective) {
 /** Default indifference zone, in win-rate points, when a TTK contrast falls back to win rate. */
 export const WIN_RATE_DELTA = 0.02;
 
+// X cannot beat Y by z: the interval's bound on X's winning side does not reach z
+const cannotBeat = (c, z, hib) => (hib ? c.hi < z : c.lo > -z);
+
 function verdictOf(objective, x, y, o, alpha, final) {
   const main = objective.contrast(x, y, { alpha, seed: o.seed, B: o.B });
   const zoneOf = (c) => (c.basis === 'winRate'
@@ -114,6 +117,12 @@ function verdictOf(objective, x, y, o, alpha, final) {
   let hib = c.higherIsBetter ?? objective.higherIsBetter;
   let zone = zoneOf(c);
   let verdict = decide(c, zone, hib);
+  // futile: X cannot beat Y by δ (simulation.md §Search, racing). A lexicographic objective (win rate,
+  // then its margin) is futile only when neither criterion can win: with the margin attached it must
+  // be futile on the margin too, and while the margin may still attach (`thenPending`) it is not
+  let futile = cannotBeat(main, zone, hib);
+  if (main.then) futile &&= cannotBeat(main.then, zoneOf(main.then), main.then.higherIsBetter ?? true);
+  else if (main.thenPending) futile = false;
   // a lexicographic objective (win rate, then its margin): the second criterion decides only once the
   // first is equivalent; while it is open the comparison continues, and at maxN the tie stands
   if (verdict === 'equivalent' && main.then) {
@@ -125,9 +134,12 @@ function verdictOf(objective, x, y, o, alpha, final) {
       hib = t.higherIsBetter ?? true;
       zone = tz;
       verdict = tv;
-    } else if (tv == null && !final) return null;
+    } else if (tv == null) {
+      if (o.futility && futile) verdict = 'futile';
+      else if (!final) return null;
+    }
   }
-  verdict ??= final ? 'unresolved' : null;
+  verdict ??= (o.futility && futile ? 'futile' : null) ?? (final ? 'unresolved' : null);
   if (!verdict) return null;
   return {
     delta: c.delta, lo: c.lo, hi: c.hi,
@@ -136,6 +148,8 @@ function verdictOf(objective, x, y, o, alpha, final) {
     verdict, significant: verdict === 'better' || verdict === 'worse',
     nNeeded: verdict === 'unresolved' ? nNeeded({ sd: c.sd, delta: c.delta, deltaMin: zone, alpha }) : null,
     p: c.p ?? null, sd: c.sd ?? null, zone,
+    // only where it can still matter: the comparison is open (a race reads it) or stopped on it
+    ...(verdict === 'unresolved' || verdict === 'futile' ? { futile } : {}),
     ...(c.winRate ? { winRate: c.winRate } : {}),
   };
 }
@@ -153,8 +167,9 @@ export function contrastSets(objective, x, y, o = {}) {
 /**
  * Sequential comparison of X against Y (simulation.md §Statistics): looks at n0, 2n0, ... maxN, each
  * at alpha / looks, stopping at the first resolved verdict. `getX(n)` / `getY(n)` return (or
- * promise) sample sets of at least n fights, typically `sampler.get` calls.
- * @param {{delta?: number, deltaKind?: string, deltaWinRate?: number, alpha?: number, n0: number, maxN: number, seed?: number, B?: number}} o
+ * promise) sample sets of at least n fights, typically `sampler.get` calls. With `futility`, it also
+ * stops with verdict `futile` once X cannot beat Y by δ (a challenger against an incumbent).
+ * @param {{delta?: number, deltaKind?: string, deltaWinRate?: number, alpha?: number, n0: number, maxN: number, seed?: number, B?: number, futility?: boolean}} o
  */
 export async function compareSets(objective, getX, getY, o) {
   const looks = lookSchedule(o.n0, o.maxN);
