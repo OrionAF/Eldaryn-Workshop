@@ -85,6 +85,25 @@ export function setupFromRun(run, character, defaultEffort = 'standard') {
 /** The character the search sees: the saved run history is not an input and must not move the characterKey. */
 export const searchCharacter = (character) => ({ ...JSON.parse(JSON.stringify(character)), runs: [] });
 
+/**
+ * Is a saved run out of date against the character as it is now? A run is measured on one snapshot (its
+ * `characterKey`); once any search input has changed the stored candidates may no longer mean what they
+ * did. A run without a key cannot be checked and counts as stale.
+ */
+export const runIsStale = (run, character) => !run?.characterKey || !character || run.characterKey !== metricKey('character', searchCharacter(character));
+
+/**
+ * Why a saved run cannot be applied right now, or '' when it can: its preset is gone, the character moved on
+ * since it was measured, or it was saved before the write groups were kept (re-run to get them).
+ */
+export function runApplyBlock(run, character) {
+  if (!run || !character) return 'Nothing to apply.';
+  if (!character.presets.some((p) => p.id === run.presetId)) return 'That preset no longer exists.';
+  if (run.schema !== 2) return 'This run was saved before it could be applied. Re-run with settings.';
+  if (runIsStale(run, character)) return 'The character changed since this run. Re-run with settings before applying.';
+  return '';
+}
+
 /** The `optimize` worker request for a setup. */
 export function requestOf(setup, character) {
   return {

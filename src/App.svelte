@@ -18,7 +18,7 @@
   import Button from './components/ui/Button.svelte';
   import { rosterStore } from './lib/rosterStore.svelte.js';
   import { router, go } from './lib/router.svelte.js';
-  import { statusMessage } from './lib/notify.svelte.js';
+  import { statusMessage, dismissStale } from './lib/notify.svelte.js';
   import InspectorOutlet from './components/InspectorOutlet.svelte';
   import { AFTER_IMPORT_PAGE_ID, DEFAULT_PAGE_ID, pageById } from './lib/routes.js';
 
@@ -35,6 +35,14 @@
   // Old screens still call setStatus(msg) / onNavigate(id); both are app services now.
   const setStatus = (msg) => statusMessage(msg);
   const onNavigate = (target) => go(target);
+
+  // A toast about the page you left must not cover the next one (notify.svelte.js dismissStale).
+  let lastRouteKey = null;
+  $effect(() => {
+    const key = route.kind === 'page' ? route.id : route.kind;
+    if (lastRouteKey !== null && key !== lastRouteKey) dismissStale();
+    lastRouteKey = key;
+  });
 
   // Empty roster -> Welcome (G0); the first character created or imported opens Overview (C1).
   let wasEmpty = null;

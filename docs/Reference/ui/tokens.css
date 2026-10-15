@@ -76,6 +76,7 @@
   --scope-mount: #d6a27a;        /* 8.2:1 */
   --scope-oblivion: #bf93ff;     /* 7.8:1 realm, added as an inner rule */
   --scope-tool: var(--text-soft);
+  --scope-global: var(--text-soft);
   --frame-character: #b8924f;    /* top rule */
   --frame-preset: #5b8fd0;       /* top rule */
   --frame-mount: #c08a5c;        /* top rule */

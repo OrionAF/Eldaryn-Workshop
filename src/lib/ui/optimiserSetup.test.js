@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { defaultSetup, normaliseSetup, setupFromRun, requestOf, searchCharacter, signatureOf } from './optimiserSetup.js';
+import { defaultSetup, normaliseSetup, setupFromRun, requestOf, searchCharacter, signatureOf, runIsStale, runApplyBlock } from './optimiserSetup.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { normaliseCharacter } from '../model/index.js';
 import { cloneAsOpponent } from '../features/duel.js';
 import { SPACE_DEFAULTS } from '../search/space.js';
 import { runFromResult } from '../model/runs.js';
+import { metricKey } from '../engine/metrics.js';
 import { richResult } from '../__fixtures__/optimiser/index.js';
 
 const character = (fn) => {
@@ -89,5 +90,32 @@ describe('request and signature', () => {
   it('searchCharacter detaches from the source', () => {
     const c = character();
     expect(searchCharacter(c)).not.toBe(c);
+  });
+});
+
+describe('a saved run against the character as it is now', () => {
+  const runFor = (c, fields = {}) => ({ ...runFromResult(richResult(), { presetName: 'Main' }), presetId: c.presets[0].id, characterKey: metricKey('character', searchCharacter(c)), ...fields });
+
+  it('is current while the search inputs match, stale once they change', () => {
+    const c = character();
+    const run = runFor(c);
+    expect(runIsStale(run, c)).toBe(false);
+    expect(runIsStale(run, character((raw) => { raw.presets[0].relicIds = []; }))).toBe(true);
+  });
+  it('the saved history itself is not an input', () => {
+    const c = character();
+    const run = runFor(c);
+    expect(runIsStale(run, { ...c, runs: [run] })).toBe(false);
+  });
+  it('a run with no key cannot be checked and counts as stale', () => {
+    const c = character();
+    expect(runIsStale(runFor(c, { characterKey: '' }), c)).toBe(true);
+  });
+  it('says why Apply is off: missing preset, old schema, changed character; empty when it can run', () => {
+    const c = character();
+    expect(runApplyBlock(runFor(c), c)).toBe('');
+    expect(runApplyBlock(runFor(c, { presetId: 'gone' }), c)).toMatch(/no longer exists/);
+    expect(runApplyBlock(runFor(c, { schema: 1 }), c)).toMatch(/saved before/);
+    expect(runApplyBlock(runFor(c), character((raw) => { raw.presets[0].relicIds = []; }))).toMatch(/character changed/);
   });
 });

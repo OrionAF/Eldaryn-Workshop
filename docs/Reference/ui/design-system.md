@@ -402,7 +402,9 @@ with `aria-label`. Primary buttons that open a review end with "…" ("Apply to 
 Two-part chip: `[SCOPE]` micro label in scope colour with scope border, then the target and any
 side effect in the same box: `PRESET | Farm build only`, `CHARACTER | Talent Set A, **also Boss
 build**`, `MOUNT | Shardback, **also ridden in PVP**`. Side effects in brass 700 weight. Shown on
-every ablation row and in Apply review. a11y: one text run, readable as a sentence.
+every ablation row and in Apply review. Settings uses `GLOBAL | This device` (app-wide, not tied to a
+character or preset). The target and the side effect are separate runs, so the comma follows the target
+with no space before it. a11y: one text run, readable as a sentence.
 
 ### 4.12 ProvenanceTag
 

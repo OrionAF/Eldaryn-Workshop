@@ -16,6 +16,7 @@
   import CIForest from './CIForest.svelte';
   import VerdictChip from './VerdictChip.svelte';
   import ScopeChip from './ScopeChip.svelte';
+  import { changeSummary, bundleText, dimensionLabel } from '../../lib/ui/optimiserView.js';
   import {
     fmtEstimate, fmtContrast, fmtContrastCi, fmtSigned, verdictText, nNeededText, verdictTone, fmtCount,
   } from '../../lib/ui/statsFormat.js';
@@ -40,7 +41,7 @@
   const summary = $derived(
     row.isBaseline
       ? 'Current build'
-      : `${row.changes.length} change${row.changes.length === 1 ? '' : 's'} · ${row.changes.map((c) => c.dimension).join(', ')}`,
+      : changeSummary(row.changes),
   );
 
   function sentence(c, name) {
@@ -48,7 +49,7 @@
     const bits = [fmtContrast(unit, c), fmtContrastCi(unit, c), verdictText(c)].filter(Boolean);
     return `${name}: ${bits.join(', ')}`;
   }
-  const targetOf = (c) => (c.scope === 'preset' ? `${presetName} only` : c.dimension);
+  const targetOf = (c) => (c.scope === 'preset' ? `${presetName} only` : dimensionLabel(c.dimension));
 </script>
 
 <div class="rank" class:expanded>
@@ -123,7 +124,7 @@
                 <span>Without it: {fmtContrast(unit, c.needed)} {fmtContrastCi(unit, c.needed)}</span>
               {/if}
               {#if c.keptBecause}<span>{c.keptBecause === 'interaction' ? 'Kept for its interaction with other changes' : 'Kept for its own effect'}</span>{/if}
-              {#if c.bundle?.length}<span>Comes with: {c.bundle.join(', ')}</span>{/if}
+              {#if c.bundle?.length}<span>Comes with: {bundleText(c.bundle, row.changes)}</span>{/if}
             </span>
           </div>
         {/each}

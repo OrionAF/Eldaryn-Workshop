@@ -30,12 +30,13 @@ function startTimer(id) {
 
 /**
  * @param {string} message
- * @param {{kind?: 'info'|'success'|'warn'|'error'}} [opts]
+ * @param {{kind?: 'info'|'success'|'warn'|'error', key?: string}} [opts]  `key` names what the toast is about;
+ *   `dismissKey(key)` removes it when that thing ends (a job's "started" note once the job settles)
  * @returns {number} the notification id
  */
-export function notify(message, { kind = 'info' } = {}) {
+export function notify(message, { kind = 'info', key = null } = {}) {
   const id = nextId++;
-  const entry = { id, message: String(message), kind, at: new Date() };
+  const entry = { id, message: String(message), kind, key, at: new Date() };
   log = [...log, entry].slice(-LOG_CAP);
   toasts = [...toasts, entry].slice(-MAX_VISIBLE);
   if (!STICKY.has(kind)) startTimer(id);
@@ -51,6 +52,21 @@ export function dismiss(id) {
   clearTimeout(timers.get(id));
   timers.delete(id);
   toasts = toasts.filter((t) => t.id !== id);
+}
+
+/** Remove the toasts raised for `key` (the log keeps them). */
+export function dismissKey(key) {
+  for (const t of toasts.filter((x) => x.key === key)) dismiss(t.id);
+}
+
+/**
+ * On a route change: remove the info and success toasts that have been up for at least `minAgeMs`, so a
+ * message about the page you left does not cover the next one. A toast raised just before the navigation
+ * itself (an import that then opens its page) is younger than that and stays. Warnings and errors stay.
+ */
+export function dismissStale(minAgeMs = 1500) {
+  const now = Date.now();
+  for (const t of toasts.filter((x) => !STICKY.has(x.kind) && now - x.at.getTime() >= minAgeMs)) dismiss(t.id);
 }
 
 /** Hover or focus on a toast holds its timer; leaving restarts it. */

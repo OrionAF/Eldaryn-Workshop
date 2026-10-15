@@ -5,13 +5,13 @@
    * list of preset names (or {name} objects). Reads as one sentence.
    */
   let { scope = 'preset', target = '', sideEffects = [] } = $props();
-  const LABEL = { character: 'Character', preset: 'Preset', mount: 'Mount', oblivion: 'Oblivion', tool: 'Tool' };
+  const LABEL = { character: 'Character', preset: 'Preset', mount: 'Mount', oblivion: 'Oblivion', tool: 'Tool', global: 'Global' };
   const names = $derived(sideEffects.map((s) => (typeof s === 'string' ? s : s.name)));
 </script>
 
 <span class="scope-chip" style="--scope-c: var(--scope-{scope})">
   <b>{LABEL[scope] ?? scope}</b>
-  <span class="t">{target}{#if names.length}{target ? ', ' : ''}<em>also {names.join(', ')}</em>{/if}</span>
+  <span class="t">{#if target}<span class="tg">{target}</span>{#if names.length}<span class="sep">,</span>{/if}{/if}{#if names.length}{' '}<em>also {names.join(', ')}</em>{/if}</span>
 </span>
 
 <style>
@@ -45,5 +45,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .sep { margin-inline-end: var(--sp-1); }
   em { font-style: normal; color: var(--status-warn); font-weight: var(--fw-bold); }
 </style>

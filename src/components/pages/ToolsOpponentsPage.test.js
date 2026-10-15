@@ -72,3 +72,29 @@ it('the stat sheet is the shared SheetTable: typing a flat value commits it with
   flushSync();
   expect(opp()[0].sheet.values.totalHp).toBe(48124);
 });
+
+it('Clone defaults "as spec" to the preset\'s own talent-set spec, and follows the preset picked', () => {
+  rosterStore.setTalentSetSpec(0, 'WARRIOR_TANK');
+  rosterStore.setTalentSetSpec(1, 'WARRIOR_DPS');
+  flushSync();
+  const selectFor = (text) => document.getElementById([...view.qa('label')].find((l) => l.textContent.trim() === text).htmlFor);
+  expect(selectFor('as spec').value).toBe('WARRIOR_TANK');
+  const second = rosterStore.current.presets.find((p) => p.talentSet === 1);
+  const presetSelect = selectFor('Clone my preset');
+  presetSelect.value = second.id;
+  presetSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+  expect(selectFor('as spec').value).toBe('WARRIOR_DPS');
+  presetSelect.value = rosterStore.current.presets.find((p) => p.talentSet === 0).id;
+  presetSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+  click(buttonByText(/^Clone$/));
+  expect(opp()[0].spec).toBe('WARRIOR_TANK');
+});
+
+it('the cloned opponent\'s sheet table has no empty Model column', () => {
+  click(buttonByText(/^Clone$/));
+  const heads = view.qa('[data-testid="opponent-editor"] thead th').map((th) => th.textContent.trim());
+  expect(heads).not.toContain('Model');
+  expect(heads).toContain('Your sheet');
+});
