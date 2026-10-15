@@ -7,12 +7,13 @@
 //   sim?: true, seconds?: 60, nSim?: 32,                          sim DPS vs a training dummy
 //   enemy?: {mobs: MobSpec[], oblivion?: boolean},                survival target (buildEnemy)
 //   survivalSeconds?: 60, nSurvival?: 200,
-//   opponents?: [{id, name, fighter: Fighter}], nPvp?: 64,        PVP win rate as the attacker
-//   seed?: 1,
-// }
+//   opponents?: [{id, name, fighter: Fighter}], nPvp?: 64,        PVP win rate as the attacker (dropOpponents)
+//   seed?: 1, precision?: 'quick'|'standard'|'thorough', maxN?,   nSim / nSurvival / nPvp are the first look
+// }                                                               of each sequential comparison, maxN its end
 // result: { results: [{presetId, sim?, survival?, pvp?: [...]}], aborted }
-//   each metric is {before: {mean, lo, hi, n}, after: {...}, delta: {delta, lo, hi, n, significant}},
-//   the delta being the common-random-number paired difference (after - before).
+//   each metric is {before: {mean, lo, hi, n}, after: {...}, delta: {delta, lo, hi, n, significant, verdict, ...}},
+//   the delta being the common-random-number paired difference (after - before) at the look where it
+//   resolved ('better' | 'worse' | 'equivalent') or at maxN ('unresolved'). Contract: simulation.md §Drop Check.
 // Cancelling resolves with the finished presets and aborted: true.
 import { runSwapMetrics } from '../features/swap.js';
 

@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { runTask } from './index.js';
 import { runOptimizerTask } from '../optimizerClient.js';
-import { prepareSwap, buildEnemy, opponentFighter } from '../features/swap.js';
+import { prepareSwap, buildEnemy } from '../features/swap.js';
+import { opponentFighter } from '../features/duel.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { computePresetStats } from '../build/stats.js';
 import { clearMetricCache } from '../engine/metrics.js';
@@ -57,13 +58,13 @@ describe("worker task 'dropCheck'", () => {
       items: rows.map((x) => ({ presetId: x.presetId, before: x.before, after: x.after })),
       sim: false,
       enemy: buildEnemy({ kind: 'campaign', chapter: 1, level: 3 }),
-      nSurvival: 6, survivalSeconds: 20,
+      nSurvival: 6, survivalSeconds: 20, maxN: 6,
       opponents: [{ id: 'o1', name: 'Rival', fighter: rival }], nPvp: 4,
     });
     expect(r.aborted).toBe(false);
     expect(r.results[0].sim).toBeUndefined();
-    expect(r.results[0].survival.delta.n).toBe(6);
-    expect(r.results[0].pvp[0].delta.n).toBe(4);
+    expect(r.results[0].survival.delta.n).toBeLessThanOrEqual(6);
+    expect(r.results[0].pvp[0].delta.n).toBeGreaterThanOrEqual(4);
   }, 30000);
 
   it('Oblivion floors run with the realm power', async () => {
@@ -71,7 +72,7 @@ describe("worker task 'dropCheck'", () => {
     const rows = prepareSwap(c, { slot: 'BELT', item: weapon(40000), realm: 'oblivion', presetIds: ['p1'] });
     const r = await runTask('dropCheck', {
       items: rows.map((x) => ({ presetId: x.presetId, before: x.before, after: x.after })),
-      sim: false, enemy: buildEnemy({ kind: 'oblivion', floor: 3 }), nSurvival: 4, survivalSeconds: 20,
+      sim: false, enemy: buildEnemy({ kind: 'oblivion', floor: 3 }), nSurvival: 4, survivalSeconds: 20, maxN: 4,
     });
     expect(r.results[0].survival.before.n).toBe(4);
   }, 30000);
