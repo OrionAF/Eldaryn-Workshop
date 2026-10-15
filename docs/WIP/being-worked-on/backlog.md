@@ -4,7 +4,7 @@
 
 | Order | Item | Size | Status |
 |---|---|---|---|
-| 1 | §9 Stat weights chart | M | Not started |
+| 1 | §9 Stat weights chart | M | Built on rebuild2/STATW, not merged |
 | 2 | §2 Rankings profiles as PVP opponents (and Celestial partners) | M | Not started |
 | 3 | §10 Arena reward weighting | S | Needs §2 |
 | 4 | §7 PVE replay check | L | Not started; needs dungeon logs |
@@ -220,6 +220,11 @@ interpolated Optimiser line under Effort. What is exact and what is assumed: sim
 Push estimates the start rung's build search only.
 
 ## 9. Stat weights chart (like the v1 one)
+
+**Status (2026-10-15).** Built on `rebuild2/STATW`, not merged: a Stat weights panel on the Stat Sheet
+page (B3) runs a job for the active preset; contract in `simulation.md` §Stat weights. The survival
+chart's reference enemy has its Attack tuned per run so the preset survives about half the time (a
+fixed Attack measured nothing for most builds).
 
 **Ask** (2026-10-15): bring back the old stat-weight display, one chart that ranks every stat, not a
 weight table per piece of content.

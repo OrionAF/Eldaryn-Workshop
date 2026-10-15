@@ -74,6 +74,25 @@ export const KERNELS = {
     },
   },
 
+  /**
+   * Stat weights (features/statWeights.js runStatWeights), each metric as engine/metrics.js draws it. The
+   * enemy rides in args because the reference enemy's Attack is searched during the job.
+   * args: {metric: 'dps' | 'survival', fighter, enemy?, seed}.
+   */
+  statWeights: {
+    prepare: ({ seconds = 60, survivalSeconds = 60 }) => ({ seconds, survivalSeconds }),
+    run(p, { metric, fighter, enemy, seed }, from, to) {
+      const prepared = preparePveFighter(fighter);
+      if (metric === 'dps') {
+        const dummy = trainingDummy();
+        return { main: [range(from, to, (i) => simulatePve({ fighter: prepared, enemy: dummy, maxMs: p.seconds * 1000, rng: fightRng(seed, i) }).damageDealt / p.seconds)], side: {} };
+      }
+      if (metric !== 'survival') throw new Error(`statWeights kernel: unknown metric '${metric}'`);
+      const alive = (i) => (simulatePve({ fighter: prepared, enemy, maxMs: p.survivalSeconds * 1000, rng: fightRng(seed, i) }).hpLeft > 0 ? 1 : 0);
+      return { main: [range(from, to, alive)], side: {} };
+    },
+  },
+
   /** Oblivion floors (tasks/oblivionFloors.js): fight k of a floor uses mulberry32(hashSeed(seed, k)). args: {floor, seed}. */
   oblivion: {
     prepare: ({ fighter, power, applyOutputCut = false, maxMs }) => ({ prepared: preparePveFighter(fighter), power, applyOutputCut, maxMs }),

@@ -995,3 +995,42 @@ Code: `src/lib/features/swap.js` (`runSwapMetrics`, `contrastMetric`, `applyFami
   anchor on the Oblivion sheet only for its owner preset (data-model.md §6); others recompute.
 - Without a simulation the verdict is the closed-form auto-attack estimate (`basis: 'closed'`,
   `estimate: true`); it is never mixed with simulated results.
+
+## Stat weights
+
+Code: `src/lib/features/statWeights.js` (`STAT_WEIGHT_STEPS`, `statWeightsRequest`, `runStatWeights`,
+`calibrateAttack`, `chartBars`), worker task `tasks/statWeights.js` (`KERNELS.statWeights`), UI
+`components/statWeights/StatWeightsPanel.svelte` on the Stat Sheet page (B3). Backlog §9.
+
+- **Probes.** One step per stat, the v1 sizes, in `STAT_WEIGHT_STEPS` (the only copy): +100 Attack,
+  +1 point Attack %, +1 % Crit Chance, +10 % Crit Damage, +10 % Attack Speed, +1 point for every
+  other percent stat, +1 000 gear Health. A class only gets the steps its sheet has. Each probe is the
+  preset's Fighter with one stat changed by `anchoredDelta` (the pipeline's cap step): the step is
+  added to the **raw** total and the soft cap applied once, so a stat at its hard cap does not move and
+  a stat past its soft cap gains only what the curve gives. Never added to the capped value.
+- **Damage chart.** Mean DPS over 60 s on the training dummy (the `dps` metric, the one Drop Check
+  uses). The dummy has no defence and never hits back, so Penetration, PVP ratings and every defensive
+  stat are not probed here.
+- **Survival chart.** Chance to be alive after 60 s (the `survival` metric) against the **reference
+  enemy** `REFERENCE_ENEMY`: a custom-mode mob with 10¹⁵ HP (it never dies), Attack Speed 1, no
+  crit, defence or spells. Its Attack alone is set per run by `calibrateAttack`, so the preset itself
+  survives about half the time (128 fights per try, seed `hashSeed('stat-weights-calibration', seed)`,
+  never the measured fights; ×4 / ÷4 until bracketed, then log-space bisection; stops inside 35-65 %
+  or after 24 tries). A fixed Attack would leave almost every build at 0 % or 100 %, where no step
+  can show. When no try lands in the band (survival jumps from always to never, e.g. a minion that
+  takes every hit), the try closest to 50 % is used and the page says survival is barely measurable.
+  Spell Resist and Penetration are not probed (the enemy casts nothing and has no defence).
+- **Pairing.** The base and every probe of a chart use the same seed and fight indices
+  (`fightRng(seed, i)`), so each bar is a paired contrast probe − base: paired t for DPS (δ shown
+  relative to the base mean), Tango paired proportion for survival (points). Fixed N per probe
+  (`STAT_WEIGHT_PRECISION`: Quick 128 / 512, Standard 256 / 1 024, Thorough 1 024 / 4 096 fights for
+  DPS / survival); no sequential looks.
+- **No measurable effect.** Each chart is one family at α = 0.05, split evenly over its bars
+  (Bonferroni), and every bar shows that simultaneous interval. A bar whose interval spans 0 has **no
+  measurable effect** at this precision: it gets no rank and is listed after the ranked bars. That
+  is not a claim that the stat does nothing, only that this many fights cannot tell. Ranked bars are
+  ordered largest change first; a deterministic effect (zero-width interval, e.g. Spell Damage when
+  every spell lands on a fixed schedule) is measurable.
+- **Job.** Runs on the job's pool; progress phases Damage, Reference enemy, Survival in fights.
+  Cancelling returns the bars finished so far (`aborted: true`); Resume re-runs from fight 0, which
+  gives the same numbers as an uninterrupted run.
