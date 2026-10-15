@@ -283,9 +283,9 @@ which of the app's presets the server uses there is unknown, so the sheet belong
 
 A new sheet is stamped with the current build; editing rows keeps the old stamp, so a stale
 sheet stays stale until the user confirms it (`confirmPresetSheet` / `confirmOblivionSheet`).
-Absorbing into base never stales a sheet. A deleted owner preset leaves the Oblivion sheet unused;
-on load `reconcileOblivion` clears the dangling `presetId`, and the sheet then counts only where its
-`inputsKey` matches.
+Absorbing into base never stales a sheet. Deleting the owner preset leaves the Oblivion sheet ownerless:
+`deletePreset` reconciles at once (and `reconcileOblivion` does the same on load), clearing the dangling
+`presetId`, and the sheet then counts only where its `inputsKey` matches.
 
 The overlay keeps a computed `raw*` the sheet omits while the computed total equals the sheet's
 (it then describes the same total); otherwise the raw is dropped.

@@ -292,11 +292,11 @@ item list.
    (generic/utility/Ancient sigils with level and condition, major glyphs with rarity, altar tier).
    Missing required stats are listed at the top of the editor ("Needs: HP, Attack").
 2. **T3 Duel**, setup pane: my preset, opponent, seat (Attacker / Defender / **Both**), effort
-   (N = 400 default, 1 600, 6 400; seed shown). Blockers listed with links to fix them
+   (Quick / Standard / Thorough = N 200 / 800 / 3,200, Standard the default; seed shown). Blockers listed with links to fix them
    ("Rival has no HP: open in Opponents").
 3. Run → G4 job. Result pane:
    - **Win rate** with 95% Wilson CI band (wide, labelled axis, 50% line), N, seed, verdict text
-     ("Favoured" / "Unfavoured" / "Too close to call at N=400: about N=1 600 would resolve a 3-pt
+     ("Favoured" / "Unfavoured" / "Too close to call at N=800: about N=3,200 would resolve a 3-pt
      edge") and "Run more". With Both seats: two rows (I attack / I defend) plus the mean.
    - **Fighters as simulated**: side-by-side stat columns (my effective stats incl. ×8 PVP HP, theirs)
      so the inputs are visible next to the output.

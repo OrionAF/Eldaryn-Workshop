@@ -43,10 +43,10 @@ Conventions for every slice (inherits rebuild-plan §7.1):
 | File (new unless noted) | Layer | Role | Slice |
 |---|---|---|---|
 | `src/lib/engine/stats/tdist.js` | L2 | exact Student-t quantile (inverse regularised incomplete beta) | A1 |
-| `src/lib/engine/stats/intervals.js` | L2 | mean/t, Wilson, Newcombe paired-binary, censored quantile + order-statistic CI, paired bootstrap of quantile difference (seeded) | A1 |
+| `src/lib/engine/stats/intervals.js` | L2 | mean/t, Wilson, Tango paired-binary (and stratified Tango), censored quantile + order-statistic CI, paired bootstrap of quantile difference (seeded) | A1 |
 | `src/lib/engine/stats/multiplicity.js` | L2 | Holm, Bonferroni | A1 |
 | `src/lib/engine/stats/sequential.js` | L2 | look schedule, per-look alpha, `decide()`, `nNeeded()` | A1 |
-| `src/lib/engine/metrics.js` (edit) | L2 | re-exports stats; `tCrit95` delegates to `tdist`; `pairedDelta` routes 0/1 data to Newcombe | A1 |
+| `src/lib/engine/metrics.js` (edit) | L2 | re-exports stats; `tCrit95` delegates to `tdist`; `pairedDelta` routes 0/1 data to Tango | A1 |
 | `src/lib/model/legality.js` | L3 | pure game gates (A.4), shared by model, build, UI and search | M1 |
 | `src/lib/search/space.js` (replaces `candidates.js`) | L5 | Candidate, `candidateOf`, `materialise`, `candidatePatch`, blocks with full legal domains, mode-aware | A2 |
 | `src/lib/search/legality.js` | L5 | `legalityOf(character, presetId, cand)` = round-trip + `model/legality` gates | A2 |
@@ -159,11 +159,11 @@ prefix-stable, so raising N extends, never restarts.
 |---|---|---|---|---|---|
 | `dps` | damage / window s | mean | t (exact quantile) | paired t on differences | window = target window |
 | `ttk-median`, `ttk-p90` | time if won, else **+∞** (censored) | q-quantile over **all** fights (= quantile of wins at q/p; ∞ when p < q) | order-statistic binomial CI on the same vector | paired bootstrap of θ(X) − θ(Y) (fight-index resampling, B = 2 000, seeded); both ∞ → contrast on win rate | win rate shown on every row (#66 #73) |
-| `survival` | alive at window end | proportion | Wilson | Newcombe paired (method 10) on discordant pairs | window defaults to the target's own fight length (#78); rejected for targets that deal no damage (#61); no EHP tie (#61) |
-| `pvp-winrate` | my win per duel, per (opponent, seat) | pooled proportion, equal N per matchup | Wilson | stratified Newcombe across matchups | no `-meanMs` tie (#63); per-matchup rows kept |
+| `survival` | alive at window end | proportion | Wilson | Tango paired score interval on discordant pairs | window defaults to the target's own fight length (#78); rejected for targets that deal no damage (#61); no EHP tie (#61) |
+| `pvp-winrate` | my win per duel, per (opponent, seat) | pooled proportion, equal N per matchup | Wilson | stratified Tango across matchups | no `-meanMs` tie (#63); per-matchup rows kept |
 
 Rules: t critical values are exact for every df (#69). A 0/1 paired difference never uses a t
-interval; zero discordant pairs gives a non-degenerate Newcombe interval (#101).
+interval; zero discordant pairs gives a non-degenerate Tango interval (#101).
 
 **Sequential comparator** `compare(X, Y, {stage, delta, alpha, n0, maxN})`: looks at
 `n0, 2n0, 4n0, … ≤ maxN`; at each look the two-sided interval at `alpha / looks` (Bonferroni over
@@ -253,7 +253,7 @@ higher as a whole" becomes "Not significant alone; kept because removing it cost
  *   level: 0.95, alphaAdj: number, method: 't'|'wilson'|'order-stat'|'bootstrap'}} Estimate */
 
 /** @typedef {{delta: number|null, lo: number|null, hi: number|null, pct: number|null, n: number, seed: number,
- *   alphaAdj: number, method: 'paired-t'|'newcombe'|'paired-bootstrap',
+ *   alphaAdj: number, method: 'paired-t'|'tango'|'stratified-tango'|'paired-bootstrap',
  *   verdict: 'better'|'worse'|'equivalent'|'unresolved', significant: boolean,
  *   nNeeded: number|null}} Contrast            // significant === (verdict === 'better' || verdict === 'worse') */
 
@@ -379,7 +379,7 @@ floors report a fixed-n Wilson verdict per floor (F2); sequential resolution is 
 **A1 Statistics core** (opus medium). Owns `src/lib/engine/stats/*` (new), `engine/metrics.js`
 (stats parts), `docs/Reference/simulation.md` §Statistics (new). Findings: #69 tCrit95 too small
 for df 31-59/61-119; #101 zero-discordant paired CI degenerate.
-Behaviour: exact t quantile; Newcombe paired-binary; censored quantile + order-statistic CI;
+Behaviour: exact t quantile; Tango paired-binary (and stratified Tango); censored quantile + order-statistic CI;
 seeded paired bootstrap; Holm/Bonferroni; sequential `compare`/`decide`; `nNeeded`.
 Tests (fail first): `tCrit95(31)` = 2.0395 (now 2.0); `tCrit95(63)` = 1.9983 (now 1.98); paired
 0/1 vectors with no discordant pairs at n = 64 give hi > 0.03 (now [0, 0]); Holm adjusts 11 equal
@@ -620,7 +620,7 @@ Behaviour:
   mounts 40, awakening 45, conditions 54, transcendence 55, boards 58), `isFormSigil`,
   `ancientActive(character, species, board)`, `checkPreset(character, preset) → violations[]`.
 - Talents: over-cap allocations trimmed deterministically (highest tier first) in normalise.
-- Relics: character-wide `extraRelicSlots` (top level of the character, since `relics` is an id-to-level map; = the game's `extraSlotsPurchased`; 0-2; default 2 so old saves keep 4);
+- Relics: character-wide `extraRelicSlots` (top level of the character, since `relics` is an id-to-level map). Range, default and the game's slot rule live in `Reference/data-model.md` and `Reference/Game/relics.md` §5, not here;
   `preset.relicIds` clamped to the cap; relics at level 0 or unowned leave presets
   (`setRelicLevel` reconciles).
 - Awakening points ≤ `max(0, min(level, 59) − 44)` (awakening.md L13).
@@ -822,7 +822,7 @@ app stays usable between waves. Every `data-testid` and aria-label listed in ia.
 | **U3** Session job store + Jobs tray | sonnet medium | `src/lib/jobs.svelte.js` (start, progress, cancel → checkpoint, resume, dismiss, open result; staleness signature = `characterKey` + preset + inputs; IndexedDB checkpoint opt-in for resume after reload); JobsPill/JobsTray with the status table | J1, U1, U2a/b | §5.1 G4 row (optimiser/duel/drop/batch/Oblivion progress + Cancel) | job survives navigation; cancel → `cancelled` + checkpoint; resume equals uninterrupted (inline runner); stale marker after a preset edit |
 | **U4** Import, Welcome, Data & Settings | sonnet medium | G0 Welcome; G3 Import dialog with kind detection (roster / profile / loot bag / fight log / unrecognised, specific errors) and import report (dry-run normalise + M1/M2/M3 report: defaulted, dropped, conditions merged); "Update <name>" via new `model/merge.js mergeProfileIntoCharacter` (keeps presets, opponents, runs; one-step undo); roster replace confirm with backup download; G6 Data (export all / this character), Preferences (density, reduced motion, default effort), Danger zone | M3, U1-U2 | §5.2, §5.3, §5.4 (RESET exact text, v1 key untouched) | junk import shows the error and leaves the roster; merge keeps presets/opponents/runs; RESET rules. Note: `prefs.defaultEffort` is stored only; the tool slices (optimiser/duel) must read it |
 | **U5** Character I: C1-C5 | sonnet medium | C1 Overview (class editable, level stepper with M1 drop preview, Oblivion card, base stats); C2 Skills & Clan; C3 Gear (Set 1 / Set 2 / Oblivion × Equipment / Stones; visible ranges, M2 out-of-range flags, stone `activated`); C4 Talents (points bar against `talentPointsForLevel`); C5 Sigils (altar with tier > 3 warning, Evolve destructive preview, Form sigils level-locked, "Equipped in ▾") | M1, M2, U1-U2 | §5.6, §5.9, §5.10, §5.11 (collection part) | existing screen tests ported; level-lowering preview; Form level locked |
-| **U6** Character II: C6-C10 | sonnet medium | C6 Pets (number field + slider hint; tier-change wipe names pets and presets); C7 Mounts & Glyphs (sockets, inventory, inert warning naming presets via `activeMajorGlyphs`, quality bands); C8 Relics (levels, "Relic slots 2/3/4" = `extraRelicSlots`, "Equipped in ▾" with cap); C9 Awakening (cap by level); C10 Transcendence (board, Used by, unlinked presets follow the active board) | M1, M2, B1, U1-U2 | §5.12-§5.16 | ported tests; relic cap honoured; inert glyph warning text |
+| **U6** Character II: C6-C10 | sonnet medium | C6 Pets (number field + slider hint; tier-change wipe names pets and presets); C7 Mounts & Glyphs (sockets, inventory, inert warning naming presets via `activeMajorGlyphs`, quality bands); C8 Relics (levels, "Relic slots" stepper showing the total, 2 + `extraRelicSlots` (2, 3 or 4), "Equipped in ▾" with cap); C9 Awakening (cap by level); C10 Transcendence (board, Used by, unlinked presets follow the active board) | M1, M2, B1, U1-U2 | §5.12-§5.16 | ported tests; relic cap honoured; inert glyph warning text |
 | **U7** Builds: B1-B3 | sonnet medium | B1 compare table (source tag sheet/computed/stale); B2 Loadout trays (gear set, talent set, pet, mount + sockets read-only, board, relics to cap, sigils by unlock level, conditions with `CHARACTER` ScopeChip "also <presets>", M1 `checkPreset` badges); B3 Stat Sheet (one table, `sheetStatus` banner and "Confirm sheet matches this build", Oblivion sheet owner, per-source contribution, absorb preview + undo) | M1, S1, B1, U1-U2 | §5.7, §5.8 | Presets tests split B1/B2/B3; stale sheet banner after an edit |
 | **U8** Optimiser (T2) | sonnet medium | Setup steps (preset; shared Target picker incl. hard dungeons, server-model labels and assumption chips; objective with compat; allowed-to-change groups with relic cap; effort printing δ, n0, maxN and measured cost, no time cap; seed); blockers (`baselineViolations`, opponent missing stats); run as a job with RunProgress and provisional rows; results per A.9 (sticky baseline, forest rows, tie groups "2=", verdicts, change rows with `own`/`needed`/scope, remainder, power hint, Run more → `optimizeMore`); Apply review grouped by `writes` (exclude groups; side effects named) through `store/apply.js`; Run history (schema 2 in `model/runs.js` compaction; legacy runs show "not measured"; Re-run with settings; compare two runs) | A4, U2b, U3 | §5.17 all rows | contract fixtures render; no non-baseline row without changes; Apply review lists every side effect; legacy run renders |
 | **U9** Drop Check (T1) | sonnet medium | Single drop + Loot bag; per-set verdict cards (Holm verdict, `inconclusive`, `coverage` label "DPS only: defence not measured", `notJudged` keys); one table per metric, own axis; Run more; Apply → scoped confirm; `ESTIMATE` row under the simulated one; stale batch | F1, U2b, U3 | §5.18 | VerdictCard states incl. inconclusive; estimate never coloured |
@@ -831,6 +831,8 @@ app stays usable between waves. Every `data-testid` and aria-label listed in ia.
 | **U12** Retire old UI + docs | sonnet low | delete unrouted screens/components, legacy class aliases, `setPresetSigilCondition` alias and `components/optimiser/apply.js`; CLAUDE.md (L7 row, styling conventions: fonts, tokens, components, router, job store); data-model.md (UI key); a route smoke test that every route renders for an empty, a fresh and the real fixture character | all U | parity sweep against ia.md §5 | route smoke test |
 
 **U12 note (r1):** legacy class aliases (`.btn-gold`, `.btn-ghost`, `.rank-controls`, `.subheading`, `.micro-label`, legacy numeric selectors) are deferred to a follow-up slice **U13** (migrate ~30 components to `ui/` primitives, then delete the aliases). The ia.md §5 parity sweep is likewise deferred to U13; U12 asserts per-route h1 markers and no console errors only. `GearScreen`/`SigilEquipPanel` stay as adapters until then.
+
+**U12 note (r2):** as built, `GearScreen` was folded into `CharacterGearPage` and `components/screens/` was deleted; only `SigilEquipPanel` remained an adapter at that point.
 
 Dependency order inside D: U0 → U1, U2a → U2b → {U3, U5, U6, U7}; U3 → {U4, U8, U9, U10, U11};
 everything → U12. Tool pages need their engine slices merged first (U8 ← A4, U9 ← F1, U10 ← E3, U11 ← F2).

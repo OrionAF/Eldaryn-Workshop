@@ -406,10 +406,10 @@ checkpoint as `resumeFrom`. The page sends the character with `runs: []`, so sav
   `'winRate'` when a TTK contrast fell back to win rate; `n` per lane).
 - `search: {strategy, jointSize, blocks: [{id, enabled, domain, status: 'converged'|'unresolved'|
   'disabled'|'not-reached'}], starts, optima, evaluated, merged, fights: {search, minimise, confirm,
-  total}, converged, unresolved: [{fromKey, toKey, change, contrast}]}`. `converged` is true for
-  every finished search: there is no pass cap, so an ascent only ends when a pass accepts nothing.
-  Whether that optimum is resolved is `unresolved` (open neighbours, distinct pairs) and the blocks'
-  `status`.
+  total}, unresolved: [{fromKey, toKey, change, contrast}]}`. There is no `converged` flag: with no
+  pass cap an ascent only ends when a pass accepts nothing, so every finished search is at a fixed
+  point. Whether that optimum is resolved is `unresolved` (open neighbours, distinct pairs) and the
+  blocks' `status`.
 - `phases: [{id, label, state: 'done'|'cancelled'|'not-run', fights, ms}]`, `multiplicity` (the
   families above), `warnings: [{code, message, severity}]` (`sheet-stale`, `sheet-unverified`,
   `residual-applied`, `opponent-defaulted`, `change-dropped-unresolved`, `arms-not-simulable`,

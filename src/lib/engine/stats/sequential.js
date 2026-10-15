@@ -67,6 +67,10 @@ function lookResult(x, y, n, o, alphaLook, final) {
   const xs = x.length === n ? x : x.slice(0, n);
   const ys = y.length === n ? y : y.slice(0, n);
   if (xs.length < n || ys.length < n) throw new RangeError(`compare: sampler returned fewer than ${n} outcomes`);
+  // A NaN / infinite outcome would poison every interval silently. Only the quantile statistic
+  // takes +Infinity: a lost fight is a censored (never-finished) time there.
+  const finiteOutcome = (v) => (typeof v === 'number' && (Number.isFinite(v) || (o.statistic === 'quantile' && v === Infinity)));
+  if (!xs.every(finiteOutcome) || !ys.every(finiteOutcome)) throw new RangeError('compare: sampler returned a non-finite outcome');
   const c = contrastAt(xs, ys, { ...o, alpha: alphaLook });
   const ref = statisticOf(ys, o);
   const zone = deltaAbs(o.delta, o.deltaKind, ref);

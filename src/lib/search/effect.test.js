@@ -131,4 +131,15 @@ describe('mergeByEngine', () => {
     expect(r.merged).toBe(1);
     expect(r.arms.map((a) => space.key(a))).toEqual([space.key(space.start), space.key({ ...space.start, petId: null })]);
   });
+
+  it('arms whose fighter cannot fight are kept apart, not thrown on and not merged', () => {
+    const c = fixture('WARRIOR');
+    const base = createBuildSpace(c, 'p1');
+    const space = { ...base, fighterOf: (cand) => (cand.petId === null ? { ...base.fighterOf(cand), stats: {} } : base.fighterOf(cand)) };
+    const broken = { ...space.start, petId: null };
+    const broken2 = { ...space.start, petId: null, mountId: null };
+    const r = mergeByEngine(space, [space.start, broken, broken2]);
+    expect(r.merged).toBe(0);
+    expect(r.arms).toHaveLength(3);
+  });
 });

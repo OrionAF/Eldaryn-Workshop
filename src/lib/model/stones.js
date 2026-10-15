@@ -101,7 +101,7 @@ export function normaliseStone(raw, used = new Set()) {
     id,
     type: raw.type,
     // Only an activated stone contributes (stones.md §1, L1205747); old saves had no flag, so default on.
-    activated: raw.activated !== false,
+    activated: raw.activated === undefined ? true : !!raw.activated,
     quality: raw.quality == null || raw.quality === '' ? null : clampInt(raw.quality, 1, 100, null),
     amplifyLevel: clampInt(raw.amplifyLevel, 0, MAX_AMPLIFY_LEVEL, 0),
     oblivionLevel: raw.type === 'OBLIVION' ? clampInt(raw.oblivionLevel, 1, MAX_OBLIVION_GRADE, 1) : null,

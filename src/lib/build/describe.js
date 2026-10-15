@@ -8,10 +8,10 @@ import { talentSpec } from '../game/talents.js';
 import { relicById } from '../game/relics.js';
 import { petDisplayName } from '../game/pets.js';
 import { mountBySpecies } from '../game/mountsGlyphs.js';
-import { sigilBySpecies } from '../game/sigils.js';
+import { sigilBySpecies, isSigilSpeciesActiveForSpec } from '../game/sigils.js';
 import { mountGlyphLoadout, activeMajorGlyphs } from '../model/mounts.js';
 import { glyphTypeInfo } from '../model/glyphs.js';
-import { genericSigils, utilitySigils, DEFAULT_CONDITION, SIGIL_CONDITIONS_LEVEL } from '../model/sigils.js';
+import { DEFAULT_CONDITION, SIGIL_CONDITIONS_LEVEL } from '../model/sigils.js';
 import { ancientActive } from '../model/legality.js';
 import { presetSpec, equipSetKey, resolvePreset, transcendencePreset } from './presetInputs.js';
 
@@ -60,15 +60,15 @@ export function describeBuild(character, presetOrId, { realm = 'base', talentAll
 
   // Sigils the Fighter runs: owned, usable on the spec, and an Ancient only while the board allocates its node.
   const tr = transcendencePreset(character, preset);
-  const genericOk = new Set(genericSigils(cls, spec).map((s) => s.species));
-  const utilityOk = new Set(utilitySigils(cls, spec).map((s) => s.species));
+  // "Usable" is the rule the engine applies to the Fighter's sigils (game/sigils.js), not a second list.
+  const usable = { has: (sp) => isSigilSpeciesActiveForSpec(sp, cls, spec) };
   const item = (sp, ok, extra = null) => {
     if (!sp) return null;
     const reason = !owns(character, sp) ? 'not owned' : ok && !ok.has(sp) ? `not usable on ${spec ?? 'this spec'}` : extra;
     return { sp, name: sigilName(sp), reason };
   };
-  const generic = (preset.sigilSpecies ?? []).map((sp) => item(sp, genericOk));
-  const utility = item(preset.utilitySigilSpecies, utilityOk);
+  const generic = (preset.sigilSpecies ?? []).map((sp) => item(sp, usable));
+  const utility = item(preset.utilitySigilSpecies, usable);
   const ancient = item(preset.ancientSigilSpecies, null, ancientActive(preset.ancientSigilSpecies, tr) ? null : 'Transcendence board lacks its node');
   const equipped = [...generic, utility, ancient].filter((s) => s && !s.reason).map((s) => s.sp);
 

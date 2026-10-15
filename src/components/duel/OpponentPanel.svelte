@@ -10,6 +10,7 @@
   import { SPECS, classLabel } from '../../lib/game/classes.js';
   import { sheetKeysForClass } from '../../lib/engine/pipeline/sheet.js';
   import { MAX_OPPONENTS } from '../../lib/model/opponents.js';
+  import { NEUTRAL_VALUE_TEXT } from '../../lib/engine/pvp/resolver.js';
   import { opponentFighter, missingStats, defaultedLabels, requiredStatsText } from '../../lib/features/duel.js';
   import Chip from '../Chip.svelte';
   import ConfirmButton from '../ConfirmButton.svelte';
@@ -53,7 +54,7 @@
       </Banner>
     {/if}
     {#if blank.length}
-      <Banner variant="info" lead="Blank rows use neutral values.">
+      <Banner variant="info" lead={NEUTRAL_VALUE_TEXT.bannerLead}>
         <span data-testid="opponent-defaulted">The duel reads these as 0 (Crit Damage as 150%): {blank.join(', ')}.</span>
       </Banner>
     {/if}
