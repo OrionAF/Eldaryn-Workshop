@@ -4,6 +4,7 @@ import App from './App.svelte';
 import { rosterStore } from './lib/rosterStore.svelte.js';
 import { syncRouter, go, router } from './lib/router.svelte.js';
 import { notify, resetNotifications } from './lib/notify.svelte.js';
+import { resetImportFlow } from './lib/importFlow.svelte.js';
 
 let target, app;
 
@@ -34,6 +35,7 @@ function onlyCharacter(name, cls) {
 beforeEach(() => {
   localStorage.clear();
   resetNotifications();
+  resetImportFlow();
   onlyCharacter('Aria', 'WARRIOR');
 });
 afterEach(() => {
@@ -234,10 +236,10 @@ it('phone area bar: Character / Builds / Tools / Import, the current area marked
   expect(tabs[2].getAttribute('href')).toBe('#/tools/duel'); // last-used page of the area
 });
 
-it('Import: a game profile becomes a new character and opens Overview; junk shows the error and changes nothing', async () => {
+it('Import: junk shows the specific reason in the dialog and changes nothing; a profile is reported, then created', async () => {
   open('#/builds/presets');
-  const before = rosterStore.roster.characters.length;
-  const input = q('input[type="file"]');
+  const before = JSON.stringify(rosterStore.roster);
+  const input = q('dialog input[type="file"]');
   const send = (text) => {
     Object.defineProperty(input, 'files', { value: [new File([text], 'x.json', { type: 'application/json' })], configurable: true });
     input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -245,25 +247,34 @@ it('Import: a game profile becomes a new character and opens Overview; junk show
   send('{nope');
   await vi.waitFor(() => {
     flushSync();
-    expect(q('div[aria-label="Notifications"]').textContent).toContain('Import failed');
+    expect(q('dialog [role="alert"]').textContent).toContain('not valid JSON');
   });
-  expect(rosterStore.roster.characters).toHaveLength(before);
+  expect(JSON.stringify(rosterStore.roster)).toBe(before);
 
   send(JSON.stringify({ player: { name: 'Profile Hero', class: 'MYSTIC', level: 44 }, equipment: {} }));
+  await vi.waitFor(() => {
+    flushSync();
+    expect(q('dialog .report').textContent).toContain('Profile Hero');
+  });
+  expect(JSON.stringify(rosterStore.roster)).toBe(before); // the report writes nothing
+  const importDialog = qa('dialog').find((d) => d.querySelector('.report'));
+  click([...importDialog.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Create character'));
   await vi.waitFor(() => {
     flushSync();
     expect(rosterStore.current.name).toBe('Profile Hero');
   });
   flushSync();
   expect(q('h1').textContent).toBe('Overview');
-  expect(q('div[aria-label="Notifications"]').textContent).toContain('Imported Profile Hero from a game profile');
+  expect(q('div[aria-label="Notifications"]').textContent).toContain('Created Profile Hero from a game profile');
 });
 
-it('Settings route renders the data page with the RESET danger zone', () => {
+it('Settings route renders Data, Preferences and the RESET danger zone', () => {
   open('#/settings');
   expect(q('h1').textContent).toBe('Data & Settings');
   expect(q('[aria-label="Danger Zone"]')).not.toBeNull();
   expect(byText('button', 'Export all characters')).toBeTruthy();
+  expect(byText('button', 'Export Aria')).toBeTruthy();
+  expect(qa('h2').map((h) => h.textContent.trim())).toEqual(expect.arrayContaining(['Data', 'Preferences', 'Danger zone']));
 });
 
 it('switching characters raises a "Switched to" notification and keeps the page', () => {
