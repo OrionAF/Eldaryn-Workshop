@@ -4,6 +4,7 @@ import {
   enforceRunsBudget, RUN_DETAIL_LIMIT, RUN_DETAIL_RESULTS, RUN_DETAIL_FULL_LINES, RUN_KIND,
 } from './runs.js';
 import { normaliseCharacter, migrateCharacterFromV1, newCharacter } from './index.js';
+import { richResult, pvpResult, ttkResult } from '../__fixtures__/optimiser/index.js';
 
 const entry = (rank, o = {}) => ({
   rank, isBaseline: rank === 0, key: `k${rank}`, candidate: { relicIds: ['a'], talentAllocation: null },
@@ -157,5 +158,71 @@ describe('compaction and budget', () => {
     const runs = list(60);
     const c = normaliseRuns({ runs: JSON.parse(JSON.stringify(runs)) }).runs;
     expect(c.filter((r) => r.detail).length).toBe(RUN_DETAIL_LIMIT);
+  });
+});
+
+describe('schema 2 runs (optimiser-result/2)', () => {
+  const v2 = (o = {}) => runFromResult(richResult(), { id: 'v2', at: '2026-10-01T00:00:00.000Z', presetName: 'Main', ...o });
+
+  it('records the request, the headline text and compact rows with per-change effects', () => {
+    const r = v2();
+    expect(r).toMatchObject({
+      schema: 2, presetId: 'p1', realm: 'base', seed: 2, budget: { level: 'quick', n0: 8, maxN: 32 },
+      headline: { unit: 'dps', tier: 2, aborted: false, baseline: expect.any(Number), best: expect.any(Number), n: 8, changes: 2, text: expect.stringContaining('too close to call') },
+    });
+    expect(r.characterKey).toMatch(/^character:/);
+    expect(r.detail.rows).toHaveLength(3);
+    const row = r.detail.rows[0];
+    expect(row.changes[0]).toMatchObject({ id: 'talents:0', scope: 'character', own: { verdict: 'better' }, needed: { verdict: 'better' }, keptBecause: 'own-effect' });
+    expect(row.changes[0].sideEffects[0]).toMatchObject({ name: 'Boss build' });
+    expect(row.remainder).toMatchObject({ delta: 1200, lo: null });
+    expect(row).not.toHaveProperty('writes');
+    expect(row).not.toHaveProperty('runMore');
+    expect(row.provisional).toBe(false);
+  });
+
+  it('keeps full describe lines only on the leading rows and survives a normalise round trip', () => {
+    const r = v2();
+    expect(r.detail.rows[0].lines.length).toBeGreaterThan(0);
+    expect(normaliseRun(JSON.parse(JSON.stringify(r)))).toEqual(r);
+  });
+
+  it('a pvp run keeps its per-matchup Wilson estimates', () => {
+    const r = runFromResult(pvpResult(), { id: 'pv' });
+    const m = r.detail.rows[0].aux.matchups;
+    expect(m.map((x) => x.seat)).toEqual(['attacker', 'defender']);
+    expect(m[0].value).toMatchObject({ est: 0.7, n: 32 });
+    expect(r.headline.unit).toBe('p');
+  });
+
+  it('a time-to-kill run records the contrast as measured (raw sign, higherIsBetter false)', () => {
+    const r = runFromResult(ttkResult(), { id: 'tk' });
+    expect(r.headline.unit).toBe('ms');
+    expect(r.headline.higherIsBetter).toBe(false);
+    expect(r.detail.rows[0].vsBaseline).toMatchObject({ higherIsBetter: false, basis: 'quantile' });
+  });
+
+  it('junk in a schema 2 row is repaired, not trusted', () => {
+    const raw = JSON.parse(JSON.stringify(v2()));
+    raw.detail.rows[0].vsBaseline.verdict = 'amazing';
+    raw.detail.rows[0].changes[0].scope = 'galaxy';
+    raw.detail.rows[0].value.est = 'lots';
+    const r = normaliseRun(raw);
+    expect(r.detail.rows[0].vsBaseline.verdict).toBe('unresolved');
+    expect(r.detail.rows[0].vsBaseline.significant).toBe(false);
+    expect(r.detail.rows[0].changes[0].scope).toBe('preset');
+    expect(r.detail.rows[0].value.est).toBeNull();
+  });
+
+  it('a legacy run stays schema 1 with its RunEntry detail', () => {
+    const r = run(1);
+    expect(r.schema).toBe(1);
+    expect(r.detail.results).toHaveLength(2);
+    expect(r.applied).toBeNull();
+  });
+
+  it('the applied mark survives normalisation', () => {
+    const r = normaliseRun({ ...v2(), applied: { at: '2026-10-02T00:00:00.000Z', rank: 1 } });
+    expect(r.applied).toEqual({ at: '2026-10-02T00:00:00.000Z', rank: 1 });
   });
 });

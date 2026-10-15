@@ -24,6 +24,13 @@
 //   }
 //   RunEntry = {rank, isBaseline, key, candidate, value, lo, hi, n, score, vsBaseline, changes, lines}
 //
+// Schema 2 (`schema: 2`, redesign plan U8) records an 'optimiser-result/2' result (docs/Reference/simulation.md
+// §Result): `budget` is the request's effort, `characterKey` the snapshot it was measured on, `headline` adds
+// `text` and the verdict counts, and `detail` is {baseline: Row, rows: Row[]} with Row = {rank, tieGroup,
+// isBaseline, key, candidate, value: Estimate, aux, vsBaseline: Contrast|null, changes (each with own, needed,
+// keptBecause, sideEffects), remainder, lines}. Schema 1 runs (no `schema`) keep the RunEntry detail above and
+// show per-change effects as "not measured". `applied` is {at, rank} once a row was written to the preset.
+//
 // Budget (single localStorage key, so overflow is prevented up front; storage.js also reports a failed save):
 // detail drops oldest-first until the history fits RUN_BYTE_BUDGET, then whole rows beyond
 // RUN_MAX_ROWS (pinned runs are exempt from both). storage.js saveRoster applies the roster-wide
@@ -60,7 +67,76 @@ function normaliseEntry(e) {
   };
 }
 
-function normaliseDetail(d) {
+const VERDICTS = ['better', 'worse', 'equivalent', 'unresolved'];
+const SCOPES = ['preset', 'character', 'mount'];
+
+function normaliseEstimate(e) {
+  if (!isObj(e)) return null;
+  return { est: num(e.est), lo: num(e.lo), hi: num(e.hi), n: num(e.n) ?? 0, seed: num(e.seed), level: 0.95, alphaAdj: num(e.alphaAdj) ?? 0.05, method: str(e.method) };
+}
+
+function normaliseContrast(c) {
+  if (!isObj(c)) return null;
+  const verdict = VERDICTS.includes(c.verdict) ? c.verdict : 'unresolved';
+  return {
+    delta: num(c.delta), lo: num(c.lo), hi: num(c.hi), pct: num(c.pct), n: num(c.n) ?? 0, seed: num(c.seed),
+    alphaAdj: num(c.alphaAdj), method: str(c.method), verdict, significant: verdict === 'better' || verdict === 'worse',
+    nNeeded: num(c.nNeeded), basis: typeof c.basis === 'string' ? c.basis : null,
+    higherIsBetter: typeof c.higherIsBetter === 'boolean' ? c.higherIsBetter : null,
+  };
+}
+
+function normaliseChange(c) {
+  if (!isObj(c)) return null;
+  return {
+    id: str(c.id), dimension: str(c.dimension), label: str(c.label), from: str(c.from), to: str(c.to),
+    scope: SCOPES.includes(c.scope) ? c.scope : 'preset', owner: plain(c.owner),
+    sideEffects: (Array.isArray(c.sideEffects) ? c.sideEffects : []).filter(isObj).map((s) => ({ presetId: str(s.presetId), name: str(s.name), reason: str(s.reason) })),
+    bundle: (Array.isArray(c.bundle) ? c.bundle : []).filter((b) => typeof b === 'string'),
+    own: normaliseContrast(c.own), needed: normaliseContrast(c.needed),
+    keptBecause: c.keptBecause === 'interaction' ? 'interaction' : c.keptBecause === 'own-effect' ? 'own-effect' : null,
+  };
+}
+
+function normaliseMatchup(m) {
+  if (!isObj(m)) return null;
+  return { opponentId: str(m.opponentId), name: str(m.name), seat: m.seat === 'defender' ? 'defender' : 'attacker', value: normaliseEstimate(m.value), vsBaseline: normaliseContrast(m.vsBaseline) };
+}
+
+/** A schema 2 Row, compacted: no `writes` or `runMore` (a saved run is read-only; Re-run measures afresh). */
+function normaliseRow(r) {
+  if (!isObj(r)) return null;
+  const aux = isObj(r.aux) ? r.aux : {};
+  const rem = isObj(r.remainder) ? r.remainder : null;
+  return {
+    rank: Number.isInteger(r.rank) ? r.rank : 0,
+    tieGroup: Number.isInteger(r.tieGroup) ? r.tieGroup : null,
+    isBaseline: r.isBaseline === true,
+    provisional: false,
+    key: str(r.key),
+    candidate: plain(r.candidate),
+    value: normaliseEstimate(r.value),
+    aux: {
+      winRate: normaliseEstimate(aux.winRate), meanMs: num(aux.meanMs), timeoutShare: num(aux.timeoutShare),
+      matchups: (Array.isArray(aux.matchups) ? aux.matchups : []).map(normaliseMatchup).filter(Boolean),
+    },
+    vsBaseline: normaliseContrast(r.vsBaseline),
+    changes: (Array.isArray(r.changes) ? r.changes : []).map(normaliseChange).filter(Boolean),
+    remainder: rem ? { delta: num(rem.delta), lo: num(rem.lo), hi: num(rem.hi), method: str(rem.method) } : null,
+    lines: (Array.isArray(r.lines) ? r.lines : []).filter(isObj).map((l) => ({ label: str(l.label), value: str(l.value) })),
+  };
+}
+
+function normaliseDetail2(d) {
+  if (!isObj(d)) return null;
+  const rows = (Array.isArray(d.rows) ? d.rows : []).map(normaliseRow).filter(Boolean).slice(0, RUN_DETAIL_RESULTS);
+  const baseline = normaliseRow(d.baseline);
+  if (!baseline && rows.length === 0) return null;
+  return { baseline, rows };
+}
+
+function normaliseDetail(d, schema = 1) {
+  if (schema === 2) return normaliseDetail2(d);
   if (!isObj(d)) return null;
   const results = (Array.isArray(d.results) ? d.results : []).map(normaliseEntry).filter(Boolean).slice(0, RUN_DETAIL_RESULTS);
   const baseline = normaliseEntry(d.baseline);
@@ -76,15 +152,19 @@ function normaliseHeadline(h) {
     baseline: num(x.baseline), best: num(x.best), gainPct: num(x.gainPct),
     significant: typeof x.significant === 'boolean' ? x.significant : null,
     n: num(x.n) ?? 0, evaluated: num(x.evaluated) ?? 0, changes: num(x.changes) ?? 0,
+    text: str(x.text),
   };
 }
 
 /** One raw run -> a valid run, or null when it has no usable id. */
 export function normaliseRun(raw) {
   if (!isObj(raw) || typeof raw.id !== 'string' || !raw.id) return null;
+  const schema = raw.schema === 2 ? 2 : 1;
+  const applied = isObj(raw.applied) && str(raw.applied.at) ? { at: str(raw.applied.at), rank: num(raw.applied.rank) } : null;
   return {
     id: raw.id,
     kind: RUN_KIND,
+    schema,
     at: str(raw.at) || new Date(0).toISOString(),
     name: str(raw.name) || 'Optimiser run',
     notes: str(raw.notes),
@@ -97,8 +177,10 @@ export function normaliseRun(raw) {
     seed: num(raw.seed) ?? 1,
     space: plain(raw.space),
     budget: plain(raw.budget),
+    characterKey: str(raw.characterKey) || null,
+    applied,
     headline: normaliseHeadline(raw.headline),
-    detail: normaliseDetail(raw.detail),
+    detail: normaliseDetail(raw.detail, schema),
   };
 }
 
@@ -109,6 +191,7 @@ export function normaliseRun(raw) {
  * @param {{id?: string, at?: string, name?: string, presetName?: string, notes?: string, pinned?: boolean}} [fields]
  */
 export function runFromResult(result, fields = {}) {
+  if (result?.schema === 'optimiser-result/2') return runFromResultV2(result, fields);
   const top = result.results?.[0] ?? null;
   const base = result.baseline ?? null;
   const bestIsBaseline = !top || top.isBaseline;
@@ -138,6 +221,43 @@ export function runFromResult(result, fields = {}) {
     // Full describe lines are long text: only the baseline and the top RUN_DETAIL_FULL_LINES keep them;
     // every entry keeps `changes` (what differs from the current build), which is what a reader needs.
     detail: { baseline: base, results: (result.results ?? []).map((e, i) => (i < RUN_DETAIL_FULL_LINES ? e : { ...e, lines: [] })) },
+  });
+}
+
+/** A schema 2 run from an 'optimiser-result/2' result (the rows are compacted by normaliseRun). */
+function runFromResultV2(result, fields) {
+  const req = result.request ?? {};
+  const top = result.rows?.[0] ?? null;
+  const base = result.baseline ?? null;
+  const vs = top?.vsBaseline ?? null;
+  const unit = result.objective?.unit;
+  return normaliseRun({
+    id: fields.id ?? newRunId(),
+    at: fields.at ?? new Date().toISOString(),
+    name: fields.name || `${result.objective?.label ?? 'Optimiser'} - ${result.target?.label ?? 'run'}`,
+    notes: fields.notes ?? '',
+    pinned: fields.pinned === true,
+    schema: 2,
+    presetId: req.presetId,
+    presetName: fields.presetName ?? '',
+    realm: req.realm,
+    target: result.target,
+    objective: result.objective,
+    seed: req.seed,
+    space: req.space,
+    budget: req.effort,
+    characterKey: req.characterKey,
+    applied: fields.applied ?? null,
+    headline: {
+      unit, higherIsBetter: result.objective?.higherIsBetter, tier: 2, aborted: false, truncated: null,
+      baseline: base?.value?.est ?? null, best: (top ?? base)?.value?.est ?? null,
+      gainPct: top ? (unit === 'dps' ? vs?.pct ?? null : null) : 0,
+      significant: top ? vs?.significant ?? null : null,
+      n: (top ?? base)?.value?.n ?? 0, evaluated: result.search?.evaluated ?? 0, changes: top?.changes?.length ?? 0,
+      text: result.headline?.text ?? '',
+    },
+    // Full describe lines are long text: only the baseline and the top RUN_DETAIL_FULL_LINES keep them.
+    detail: { baseline: base, rows: (result.rows ?? []).map((r, i) => (i < RUN_DETAIL_FULL_LINES ? r : { ...r, lines: [] })) },
   });
 }
 
