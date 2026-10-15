@@ -4,8 +4,8 @@
 
 | Order | Item | Size | Status |
 |---|---|---|---|
-| 1 | §14 Mount pruning | XS | Merging |
-| 2 | §10 Push (merge only) | XS | Queued (run wf_2c43327e-8d7) |
+| 1 | §10 Push | XS | Merging (queue run wf_2c43327e-8d7) |
+| 2 | §13 Glyph dominance pruning | S | Building, alongside the queue (run wf_f4b445f6-df1) |
 | 3 | §10 Fortress boss shield fix | S | Queued: review and merge |
 | 4 | §12 Highest chance to win | M | Queued: resumes from branch `rebuild2/W3-wip` |
 | 5 | §15 Fortress boss fight from the server log | M | Queued |
@@ -13,29 +13,14 @@
 | 7 | §6 Results say which pet, mount or glyph | S | Queued |
 | 8 | §1 Optimiser step list | S | Queued |
 | 9 | §3 Setup estimates | M | Not started |
-| 10 | §13 Lean glyph neighbourhoods | M | Paused (branch `rebuild2/S1-wip`); decide after §14's measured gain |
-| 11 | §9 Stat weights chart | M | Not started |
-| 12 | §2 Rankings profiles as PVP opponents (and Celestial partners) | M | Not started |
-| 13 | §10 Arena reward weighting | S | Needs §2 |
-| 14 | §7 PVE replay check | L | Not started; needs dungeon logs |
-| 15 | §10 Crusade (solo) | L | Not started |
-| 16 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Not started |
+| 10 | §9 Stat weights chart | M | Not started |
+| 11 | §2 Rankings profiles as PVP opponents (and Celestial partners) | M | Not started |
+| 12 | §10 Arena reward weighting | S | Needs §2 |
+| 13 | §7 PVE replay check | L | Not started; needs dungeon logs |
+| 14 | §10 Crusade (solo) | L | Not started |
+| 15 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Not started |
 | - | §11 Celestial open questions | - | Waits for more server logs |
-| Done | §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target; §11 Celestial engine | - | Merged |
-
-## 14. Optimiser: never try a mount another owned mount beats
-
-**Ask** (2026-10-15): the Optimiser should never test Common mounts when Epic ones are owned.
-
-**Rule.** A mount only adds attack % and HP % (each `round(base * (1 + 0.1*(level-1)))`), and every mount has the same sockets. So a mount that another owned mount matches or beats on both values can never help. This is pruned by Pareto dominance, not by rarity, because a level-5 Rare (up to 41 HP / 28 attack) can beat a level-1 Epic (34-39 / 24-27). For the user's Sentinel it cuts 11 mounts to 2.
-
-**Status:** running (slice M1).
-
-## 15. Fortress boss fight from the server log
-
-**Finding** (2026-10-15, a real `/fortress/boss-fight/start` log, fixture `fortress-boss-top-fight.json`): the server runs this fight with the Arena duel vocabulary (the player is the attacker, the boss the defender). The boss swings every 1 s for 500 ±15%, and the player's misses work (35 of 60 dodged). Elusive Supremacy never raised attack or speed: all 171 swings came at a steady 349 ms, and every hit was exactly the sheet attack. The real fight dealt 22.6M per second, against about 42M in the app's PVE-engine model. The app's Fortress sigil advice was therefore wrong.
-
-**Plan:** rebuild the fight on the right engine and replay-check it against the log tick by tick, then re-rank sigil sets for this target.
+| Done | §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target; §11 Celestial engine | - | Merged |
 
 ## 10. Optimiser objectives: trim, fix the target range, add Push, a Power guard and Crusade
 
@@ -82,6 +67,37 @@ when "Spec" is on under Allowed to change. It never respecs, which costs 10 gems
 picking Fury over Protection is a valid answer when it clears more often, because solo fights have
 no roles. Party content is different (the boss hits the tank holder), and the solo objectives cannot
 express that. See §11.
+
+## 13. Optimiser: glyph dominance pruning
+
+**Ask** (2026-10-15): "If I have 4 minor glyphs that give attack speed, 11%, 10%, 10% and 5%, never try a build with the 5% one, and never replace a 10% glyph with another 10% one."
+
+**Rule.** A minor glyph adds one secondary stat, and more of a stat never hurts, so these cuts are exact:
+- Within a stat, a row that uses m glyphs of that stat uses that stat's top m by value.
+- Glyphs with the same stat and value are interchangeable, so a swap between them is never raced.
+- A socket is never left empty while a usable glyph remains.
+- For majors, only the best copy of each type counts.
+
+For the user's Sentinel this cuts about 378 minor-glyph rows per visit to about 80. It replaces the earlier single-socket idea (branch `rebuild2/S1-wip`, now dropped). It follows §14's measured result: mount pruning alone cut the mounts from 11 to 2, but the Fortress run still did not finish in 10 minutes.
+
+**Status:** building (slice G1).
+
+## 12. PVE goal: highest chance to win
+
+**Ask** (2026-10-15): "Find me a build which gives me the highest % chance to win."
+
+**Plan.**
+- A new goal, "Highest chance to win", becomes the default for content you clear. It ranks on clear rate, and ties go to the fewest changes. "Reach a win rate" stays as an option, with its minimum lowered to 1%.
+- Fast decisions at low rates. When the leading build has wins, builds with none are dropped quickly. Only when no build wins does how far each one gets decide, and the result then says so plainly.
+- Measured problem: on Hard Forsaken Mines step 2, a race of 299 sigil sets ran 306,208 fights and dropped none.
+
+**Status:** paused mid-build; the work so far is on branch `rebuild2/W3-wip`.
+
+## 15. Fortress boss fight from the server log
+
+**Finding** (2026-10-15, a real `/fortress/boss-fight/start` log, fixture `fortress-boss-top-fight.json`): the server runs this fight with the Arena duel vocabulary (the player is the attacker, the boss the defender). The boss swings every 1 s for 500 ±15%, and the player's misses work (35 of 60 dodged). Elusive Supremacy never raised attack or speed: all 171 swings came at a steady 349 ms, and every hit was exactly the sheet attack. The real fight dealt 22.6M per second, against about 42M in the app's PVE-engine model. The app's Fortress sigil advice was therefore wrong.
+
+**Plan:** rebuild the fight on the right engine and replay-check it against the log tick by tick, then re-rank sigil sets for this target.
 
 ## 11. Celestial Trial (party of 2), and party roles
 
@@ -148,17 +164,6 @@ one it is on, e.g. "1. Gear set: done · 2. Talents: done · 3. Pets: done · 4.
   (design-system.md §4.17).
 - The run history keeps the final list.
 
-## 12. PVE goal: highest chance to win
-
-**Ask** (2026-10-15): "Find me a build which gives me the highest % chance to win."
-
-**Plan.**
-- A new goal, "Highest chance to win", becomes the default for content you clear. It ranks on clear rate, and ties go to the fewest changes. "Reach a win rate" stays as an option, with its minimum lowered to 1%.
-- Fast decisions at low rates. When the leading build has wins, builds with none are dropped quickly. Only when no build wins does how far each one gets decide, and the result then says so plainly.
-- Measured problem: on Hard Forsaken Mines step 2, a race of 299 sigil sets ran 306,208 fights and dropped none.
-
-**Status:** paused mid-build; the work so far is on branch `rebuild2/W3-wip`.
-
 ## 3. Optimiser setup: estimates before you run
 
 **Ask.** A section of the setup shows the estimated time, the number of builds to try and the number
@@ -170,17 +175,6 @@ of fights to simulate.
   otherwise. Fights: a range from the race rules (the least when every arm resolves at the first
   look, up to the cap at maxN). Time: fights divided by the calibrated speed and the worker count.
 - Label every number as an estimate (decision Q5), and update it live as the setup changes.
-
-## 13. Optimiser: lean glyph neighbourhoods
-
-**Measured problem** (the user's Fortress run, 2026-10-15): 76,068 builds in about 5 minutes, at about 15 fights each. Each minor-glyph visit races every set of up to 3 glyphs (378 sets). Each mount switch also re-optimises that mount's sockets from scratch.
-
-**Plan.**
-- Glyph blocks become single-socket moves (about 40 arms instead of 378), with a bounded pair polish where effects are not additive.
-- A mount switch keeps the current glyph rows where they are legal.
-- The run estimate becomes honest, instead of saying "under a minute".
-
-**Status:** paused (branch `rebuild2/S1-wip`). Decide after §14's measured gain.
 
 ## 9. Stat weights chart (like the v1 one)
 
@@ -288,6 +282,14 @@ options to:
   what gets written: stones per set, the board shared by presets, the character-wide Awakening, relic
   levels and ownership.
 
+## 14. Optimiser: never try a mount another owned mount beats
+
+**Ask** (2026-10-15): the Optimiser should never test Common mounts when Epic ones are owned.
+
+**Rule.** A mount only adds attack % and HP % (each `round(base * (1 + 0.1*(level-1)))`), and every mount has the same sockets. So a mount that another owned mount matches or beats on both values can never help. This is pruned by Pareto dominance, not by rarity, because a level-5 Rare (up to 41 HP / 28 attack) can beat a level-1 Epic (34-39 / 24-27). For the user's Sentinel it cuts 11 mounts to 2.
+
+**Status:** done (slice M1, merged 828af25). The mount list dropped from 11 to 2. Measured on the Fortress run, 10-minute caps: 8,762 builds before vs 6,484 after; neither finished. The minor glyphs are the bigger cost (§13).
+
 ## 4. PVE goal: win rate ("clear without dying")
 
 **Ask.** For dungeons, raids, chapters and Oblivion floors, the useful question is whether the
@@ -307,6 +309,7 @@ build clears the content without dying, not how fast. Ten seconds and fifty are 
   example the lowest HP fraction left across fights). The margin also gives the search, and stat
   weights, a gradient where the win rate saturates.
 - Make it the default goal for these targets. Keep TTK as an option for players who farm for speed.
+
 ## 8. Easier imports without HTTP Toolkit (phone-only capture guide)
 
 **Status (2026-10-15): replaced.** The capture-guide idea is dropped. Instead every import entry point
@@ -332,4 +335,3 @@ Toolkit? Can the app ask the game server for it?
    fight in game, and share the response to Files, with no computer. Android needs root or a
    computer (apps ignore user certificates since Android 7), so say that plainly. Keep the steps
    short, with screenshots.
-
