@@ -105,6 +105,12 @@ export function createSampler(objective) {
 /** Default indifference zone, in win-rate points, when a TTK contrast falls back to win rate. */
 export const WIN_RATE_DELTA = 0.02;
 
+/**
+ * The progress tolerance (simulation.md §Win rate, δ_progress): the indifference zone of a margin
+ * contrast between two builds that won no fight, from the rate's δ. Never finer than δ.
+ */
+export const progressDelta = (delta) => (delta > 0 ? Math.max(delta, Math.sqrt(delta / 2)) : 0);
+
 // X cannot beat Y by z: the interval's bound on X's winning side does not reach z
 const cannotBeat = (c, z, hib) => (hib ? c.hi < z : c.lo > -z);
 
@@ -112,7 +118,9 @@ function verdictOf(objective, x, y, o, alpha, final) {
   const main = objective.contrast(x, y, { alpha, seed: o.seed, B: o.B });
   const zoneOf = (c) => (c.basis === 'winRate'
     ? o.deltaWinRate ?? WIN_RATE_DELTA
-    : deltaAbs(o.delta ?? 0, o.deltaKind ?? objective.deltaKind, c.ref));
+    : c.deltaKind === 'progress'
+      ? progressDelta(o.delta ?? 0)
+      : deltaAbs(o.delta ?? 0, o.deltaKind ?? objective.deltaKind, c.ref));
   let c = main;
   let hib = c.higherIsBetter ?? objective.higherIsBetter;
   let zone = zoneOf(c);
