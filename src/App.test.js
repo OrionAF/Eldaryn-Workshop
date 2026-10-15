@@ -103,10 +103,11 @@ it('a reload returns to the same page (fresh mount on the same hash)', () => {
   expect(router.route.tab).toBe('set2');
 });
 
-it('legacy onNavigate ids route: the Oblivion locked state sends the user to Overview', () => {
+it('the Oblivion locked state unlocks inline instead of sending the user away', () => {
   open('#/tools/oblivion');
-  click(byText('button', 'Go to Character'));
-  expect(q('h1').textContent).toBe('Overview');
+  click(byText('button', 'Unlock Oblivion'));
+  expect(rosterStore.current.oblivion.unlocked).toBe(true);
+  expect(q('[data-testid="power"]')).toBeTruthy();
 });
 
 it('a classless character opens Overview with the class picker focused and other pages say "needs class"', async () => {
