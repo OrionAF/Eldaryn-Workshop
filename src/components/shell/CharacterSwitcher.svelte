@@ -149,7 +149,7 @@
         />
       </label>
       <Select label="Class" options={classOptions('No class')} bind:value={editClass} onchange={changeClass} />
-      {#if editClass === NONE}
+      {#if !character.class}
         <Banner variant="warn" lead="No class.">Most pages need a class; choose one on Overview before using them.</Banner>
       {/if}
       <div>
