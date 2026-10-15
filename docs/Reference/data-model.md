@@ -68,6 +68,9 @@ Preset = { id, name, equipmentSet: 1|2, talentSet: 0|1, petId | null, mountId | 
            relicIds: string[] (≤ relic slot cap), sigilSpecies: string[] (≤3),
            utilitySigilSpecies | null, ancientSigilSpecies | null,
            transcendencePresetId | null, sheet: Sheet | null }
+  // A null (or unresolved) transcendencePresetId builds on `transcendence.activePresetId`, then
+  // 'default', then the first board (`model/legality.js` resolveTranscendencePreset; the game keeps
+  // the active board for a null link, Game/transcendence.md §9).
 
 Sheet  = { values: Partial<ComputedStats>, enteredAt }          // tier-2 input, §5
 ```
