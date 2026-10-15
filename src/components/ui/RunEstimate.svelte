@@ -3,7 +3,7 @@
    * RunEstimate.svelte - "About N min on this device (estimate)" under a tool's Effort control, from the
    * speed calibration (lib/calibration.js) and the run's expected fights by kind. Without a calibration it
    * links to Settings instead. A figure from another CPU profile or build is shown with that said.
-   * fights: {dummy?, dungeon?, duel?}; bound: 'about' | 'upper' (a run that can stop early).
+   * fights: {dummy?, dungeon?, duel?}; bound: 'about' | 'upper' (a run that can stop early) | 'lower' (close comparisons run longer).
    */
   import { prefs } from '../../lib/prefs.svelte.js';
   import { estimateText, staleReason } from '../../lib/calibration.js';

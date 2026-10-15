@@ -79,14 +79,14 @@ export function durationText(seconds) {
 
 /**
  * The line a tool page shows: "About 3 min on this device (estimate)". `bound: 'upper'` says "Up to about"
- * (a run that can stop early); `staleReason` adds that the figure is from an older measurement.
+ * (a run that can stop early), `'lower'` "At least about" (close comparisons run longer); `staleReason` adds that the figure is from an older measurement.
  */
 export function estimateText(cal, fights, { bound = 'about', stale = null } = {}) {
   const s = estimateSeconds(cal, fights);
   if (s === null) return null;
   const d = durationText(s);
-  const lead = bound === 'upper' ? 'Up to about' : 'About';
-  const phrase = d === 'under a minute' ? `${bound === 'upper' ? 'Up to' : 'Takes'} under a minute` : `${lead} ${d}`;
+  const lead = bound === 'upper' ? 'Up to about' : bound === 'lower' ? 'At least about' : 'About';
+  const phrase = d === 'under a minute' ? `${bound === 'upper' ? 'Up to' : bound === 'lower' ? 'At least' : 'Takes'} under a minute` : `${lead} ${d}`;
   const old = stale === 'profile' ? ' Measured under another CPU profile.' : stale === 'version' ? ' Measured on an older build.' : '';
   return `${phrase} on this device (estimate).${old}`;
 }
@@ -98,7 +98,7 @@ export function estimateText(cal, fights, { bound = 'about', stale = null } = {}
  * Optimiser: builds raced x fights per build. Builds are interpolated (log scale) between the two
  * measured points of simulation.md §Cost: 2 dimensions = 62 builds, 13 = 8 437; about 2 x n0 fights
  * per build (624 / 62 and 138 920 / 8 437 at Quick, n0 8). A comparison that runs on to maxN is not
- * counted, so this is an estimate, not a bound.
+ * counted, so this is a lower figure: show it with bound 'lower'.
  * @param {{n0: number}} effort  resolved effort (search.js resolveEffort)
  * @param {number} dimensions  space toggles that are on
  * @param {string} targetKind  'pvp' fights are duels (one set per opponent), a dummy target dummy fights, anything else dungeon-type

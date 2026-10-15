@@ -5,6 +5,7 @@ import { rosterStore } from '../../lib/rosterStore.svelte.js';
 import { jobsStore, __resetJobs } from '../../lib/jobs.svelte.js';
 import { loadImportText, confirmImport, resetImportFlow } from '../../lib/importFlow.svelte.js';
 import { setPrefs, applyPrefs } from '../../lib/prefs.svelte.js';
+import { APP_VERSION as ESTIMATE_VERSION } from '../../lib/calibration.js';
 import { field, setField } from '../gear/fieldKit.js';
 import lootBag from '../../lib/__fixtures__/real/drop-batch.json';
 
@@ -273,4 +274,48 @@ it('Loot bag: the too-close-to-call count in the summary takes the neutral verdi
   const count = target.querySelector('.summary [data-count="inconclusive"]');
   expect(count).not.toBeNull();
   expect(count.classList.contains('side')).toBe(true);
+});
+
+// ---- S2 run-time estimates -----------------------------------------------------------------------
+const CAL = () => ({ profile: 'balanced', workers: 4, fightsPerSec: { dummy: 1, dungeon: 1, duel: 1 }, measuredAt: Date.now(), version: ESTIMATE_VERSION });
+const estimate = () => target.querySelector('[data-testid="run-estimate"]');
+const pickEffort = (name) => [...target.querySelectorAll('button[aria-pressed]')].find((b) => b.textContent.trim().startsWith(name));
+
+it('S2: single drop shows an upper-bound estimate that follows the effort, or a link to calibrate', () => {
+  applyPrefs();
+  open();
+  change(q('Attack'), '9.000');
+  expect(estimate().querySelector('a').getAttribute('href')).toBe('#/settings');
+  setPrefs({ calibration: CAL() });
+  flushSync();
+  expect(estimate().textContent).toMatch(/Up to .* on this device \(estimate\)/);
+  const before = estimate().textContent;
+  pickEffort('Thorough').click();
+  flushSync();
+  expect(estimate().textContent).not.toBe(before);
+  localStorage.clear();
+  applyPrefs();
+});
+
+it('S2: Loot bag shows a neutral note before the import, then an upper-bound estimate from the batch', () => {
+  applyPrefs();
+  setPrefs({ calibration: CAL() });
+  open({ tab: 'bag' });
+  expect(target.querySelector('[data-testid="run-estimate-bag"]')).not.toBeNull();
+  paste(lootBag);
+  expect(target.querySelector('[data-testid="run-estimate-bag"]')).toBeNull();
+  expect(estimate().textContent).toMatch(/Up to .* on this device \(estimate\)/);
+  const before = estimate().textContent;
+  pickEffort('Thorough').click();
+  flushSync();
+  expect(estimate().textContent).not.toBe(before);
+  localStorage.clear();
+  applyPrefs();
+});
+
+it('S2: Loot bag without a calibration links to Settings once a bag is imported', () => {
+  applyPrefs();
+  open({ tab: 'bag' });
+  paste(lootBag);
+  expect(estimate().querySelector('a').getAttribute('href')).toBe('#/settings');
 });

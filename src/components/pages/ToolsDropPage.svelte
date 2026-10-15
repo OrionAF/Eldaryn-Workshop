@@ -232,6 +232,8 @@
   const ranked = $derived(bag ? rankEntries(bag.entries, bag.rows, bag.offsets, bagResults) : []);
   const counts = $derived(tally(ranked.map((r) => r.best), bag?.skipped ?? []));
   const bagStale = $derived(!!bagJob && isStale(bagJob));
+  /** The next loot-bag run's request (null before an import), for the run-time estimate. */
+  const bagRequest = $derived(bag && character ? prepareBatch(character, bag.entries).request : null);
   const bagBusy = $derived(bagJob?.status === 'queued' || bagJob?.status === 'running');
   const bagRowState = $derived(stateOf(bagJob));
 
@@ -472,6 +474,11 @@
             <span class="cap-label">Effort</span>
             <SegmentedControl label="Effort" bind:value={precision} options={EFFORT} />
           </div>
+          {#if bagRequest}
+            <RunEstimate bound="upper" fights={dropFights(bagRequest, DROP_PRECISION[precision].maxN)} />
+          {:else}
+            <p class="hint" data-testid="run-estimate-bag">Run-time estimate appears once a loot bag is imported.</p>
+          {/if}
         </Panel>
 
         {#if !bag}
