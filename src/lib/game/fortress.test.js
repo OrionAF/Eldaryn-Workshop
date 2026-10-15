@@ -1,7 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import {
-  FORTRESSES, FORTRESS_BUFFS, fortressById, fortressGroupOnDayIndex, remapFortressStat, CLAN_RANKS,
+  FORTRESSES, FORTRESS_BUFFS, fortressById, fortressGroupOnDayIndex, remapFortressStat, CLAN_RANKS, clanCapForServer,
 } from './fortress.js';
+
+describe('clanCapForServer', () => {
+  it('uses the per-server override, else the default 50', () => {
+    expect(clanCapForServer(5)).toBe(30);
+    expect(clanCapForServer(7)).toBe(18);
+    expect(clanCapForServer(99)).toBe(20);
+    expect(clanCapForServer(1)).toBe(50);
+    expect(clanCapForServer(null)).toBe(50);
+    expect(clanCapForServer(undefined)).toBe(50);
+  });
+});
 
 describe('game/fortress catalogue', () => {
   it('5 fortresses and the anchor-based schedule', () => {

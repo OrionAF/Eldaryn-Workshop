@@ -409,6 +409,7 @@ export function gameProfileToCharacter(profile, { now = new Date().toISOString()
     skills: mapSkills(profile.skills),
     attunementBans: arr(profile.excludedDropStats).filter((s) => typeof s === 'string'),
     fortress: mapFortress(profile.fortressBuffs),
+    server: Number.isInteger(player.server) ? player.server : null,
     oblivion: {
       unlocked: oblivionPrestige.unlocked === true,
       level: hero?.level,
