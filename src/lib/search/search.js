@@ -41,8 +41,8 @@ export const EFFORT_LEVELS = Object.freeze(['quick', 'standard', 'thorough']);
 export const ALPHA = 0.05;
 
 // Blocks a compound value is re-optimised over before it is raced (plan A.3).
-const SPEC_INNER = ['sigils', 'utility', 'ancient', 'conditions', 'majorGlyphs', 'talents'];
-const MOUNT_INNER = ['minorGlyphs', 'majorGlyphs'];
+export const SPEC_INNER = ['sigils', 'utility', 'ancient', 'conditions', 'majorGlyphs', 'talents'];
+export const MOUNT_INNER = ['minorGlyphs', 'majorGlyphs'];
 const PROGRESS_MS = 250;
 const YIELD_MS = 25;
 
@@ -417,6 +417,57 @@ function createRun(prep, hooks) {
 // ---------------------------------------------------------------------------------------------
 // search (A.7)
 
+/**
+ * Every build of the joint space of the enabled blocks around `base` (the baseline first), deduplicated
+ * by canonical key; null once it holds more than EXHAUSTIVE_MAX (the local strategy runs instead).
+ * The exhaustive race's arms before the race's own filters; search/estimate.js counts the same list.
+ */
+export function enumerateJoint(space, base, enabled) {
+  const ids = BLOCKS.filter((id) => enabled.has(id));
+  const blockById = new Map(space.blocks.map((b) => [b.id, b]));
+  const out = new Map([[space.key(base), base]]);
+  let over = false;
+  const rec = (i, c) => {
+    if (over) return;
+    if (i === ids.length) {
+      const k = space.key(c);
+      if (!out.has(k)) out.set(k, c);
+      if (out.size > EXHAUSTIVE_MAX) over = true;
+      return;
+    }
+    rec(i + 1, c);
+    for (const v of blockById.get(ids[i]).domain(c)) rec(i + 1, v);
+  };
+  rec(0, base);
+  return over ? null : [...out.values()];
+}
+
+/** Talent moves of two points that the talents block does not list (+1 +1, -1 -1), legalised. */
+export function twoPointMoves(space, cand) {
+  const specKey = space.specOf(cand);
+  const spec = talentSpec(specKey);
+  const cap = talentPointsForLevel(Number.isFinite(space.character.level) ? space.character.level : 100);
+  if (!spec || cap === 0) return [];
+  const alloc = cand.talentAllocation ?? space.character.talentSets?.[cand.talentSet]?.allocation ?? {};
+  const spent = pointsSpent(alloc);
+  const talents = spec.tiers.flatMap((t) => t.talents);
+  const out = [];
+  for (let a = 0; a < talents.length; a++) {
+    for (let b = a; b < talents.length; b++) {
+      for (const s of [1, -1]) {
+        const next = { ...alloc };
+        next[talents[a].id] = (next[talents[a].id] ?? 0) + s;
+        next[talents[b].id] = (next[talents[b].id] ?? 0) + s;
+        if (Object.values(next).some((r) => r < 0)) continue;
+        const clean = sanitiseAllocation(next, specKey, cap);
+        if (pointsSpent(clean) !== spent + 2 * s) continue;
+        out.push(space.legalise({ ...cand, talentAllocation: clean }));
+      }
+    }
+  }
+  return out;
+}
+
 async function searchPhase(prep, run) {
   const { space, objective, effort, seeds } = prep;
   const S1 = { id: 'search', seed: seeds.search };
@@ -499,24 +550,7 @@ async function searchPhase(prep, run) {
   const labelOf = (from, to) => changesOf(space, from.cand, to.cand, { bundles: false }).map((c) => `${c.label}: ${c.from} -> ${c.to}`).join('; ');
 
   // --- exhaustive ------------------------------------------------------------------------------
-  function enumerateJoint() {
-    const ids = BLOCKS.filter((id) => enabled.has(id));
-    const out = new Map([[B.key, B.cand]]);
-    let over = false;
-    const rec = (i, c) => {
-      if (over) return;
-      if (i === ids.length) {
-        const k = space.key(c);
-        if (!out.has(k)) out.set(k, c);
-        if (out.size > EXHAUSTIVE_MAX) over = true;
-        return;
-      }
-      rec(i + 1, c);
-      for (const v of blockById.get(ids[i]).domain(c)) rec(i + 1, v);
-    };
-    rec(0, B.cand);
-    return over ? null : [...out.values()];
-  }
+  const enumerate = () => enumerateJoint(space, B.cand, enabled);
 
   async function exhaustive(cands) {
     const arms = prepareArms(cands.map(armOf));
@@ -576,31 +610,7 @@ async function searchPhase(prep, run) {
     return prepareArms([x, ...vals]);
   }
 
-  /** Talent moves of two points that the talents block does not list (+1 +1, -1 -1). */
-  function twoPointArms(x) {
-    const specKey = space.specOf(x.cand);
-    const spec = talentSpec(specKey);
-    const cap = talentPointsForLevel(Number.isFinite(space.character.level) ? space.character.level : 100);
-    if (!spec || cap === 0) return [];
-    const alloc = x.cand.talentAllocation ?? space.character.talentSets?.[x.cand.talentSet]?.allocation ?? {};
-    const spent = pointsSpent(alloc);
-    const talents = spec.tiers.flatMap((t) => t.talents);
-    const out = [];
-    for (let a = 0; a < talents.length; a++) {
-      for (let b = a; b < talents.length; b++) {
-        for (const s of [1, -1]) {
-          const next = { ...alloc };
-          next[talents[a].id] = (next[talents[a].id] ?? 0) + s;
-          next[talents[b].id] = (next[talents[b].id] ?? 0) + s;
-          if (Object.values(next).some((r) => r < 0)) continue;
-          const clean = sanitiseAllocation(next, specKey, cap);
-          if (pointsSpent(clean) !== spent + 2 * s) continue;
-          out.push(armOf(space.legalise({ ...x.cand, talentAllocation: clean })));
-        }
-      }
-    }
-    return out;
-  }
+  const twoPointArms = (x) => twoPointMoves(space, x.cand).map(armOf);
 
   /** The arm to accept from a race, if one is significantly better than the incumbent (arms[0]). */
   async function acceptable(arms, r, visited) {
@@ -752,7 +762,7 @@ async function searchPhase(prep, run) {
 
   let out = null;
   if (!talentsLocal && jointSize <= EXHAUSTIVE_MAX) {
-    const cands = enumerateJoint();
+    const cands = enumerate();
     if (cands) out = await exhaustive(cands);
   }
   if (!out) out = await local();

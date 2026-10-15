@@ -14,7 +14,9 @@ import { dungeonMobs } from '../engine/pve/enemies.js';
 import { MIN_SHARD, poolScope } from './pool.js';
 
 export const DEFAULT_BUDGET_MS = 6000;
-const SECONDS = 60;
+/** Length of the dummy and dungeon benchmark fights (s); search/estimate.js scales other windows by it. */
+export const CALIBRATION_FIGHT_SECONDS = 60;
+const SECONDS = CALIBRATION_FIGHT_SECONDS;
 const now = () => globalThis.performance?.now?.() ?? Date.now();
 
 export async function calibrate(request, { signal, onProgress, pool } = {}) {

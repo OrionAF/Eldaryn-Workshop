@@ -471,17 +471,37 @@ it('a run saved without write groups says to re-run, not "Nothing to write"', ()
   expect(btn(/^Apply to Main/).title).toMatch(/saved before it could be applied/);
 });
 
-it('S2: shows the run-time estimate under Effort, or a link to calibrate', () => {
+it('§3: the Estimate section shows builds, fights and time, or a link to calibrate', () => {
   resetEstimatePrefs();
   mountPage();
-  expect(view.q('[data-testid="run-estimate"] a').getAttribute('href')).toBe('#/settings');
+  const sec = () => view.q('[data-testid="setup-estimate"]');
+  expect(sec().textContent).toMatch(/Estimate/);
+  expect(view.q('[data-testid="estimate-builds"] .num').textContent).toMatch(/^[\d,]+$/);
+  expect(view.q('[data-testid="estimate-fights"] .num').textContent).toMatch(/^[\d,]+$/);
+  expect(view.q('[data-testid="estimate-time"] a').getAttribute('href')).toBe('#/settings');
   view.done();
   view = null;
   setEstimatePrefs({ calibration: { profile: 'balanced', workers: 4, fightsPerSec: { dummy: 100, dungeon: 100, duel: 100 }, measuredAt: Date.now(), version: ESTIMATE_VERSION } });
   mountPage();
-  expect(view.q('[data-testid="run-estimate"]').textContent).toMatch(/At least about .* on this device \(estimate\)/);
+  expect(view.q('[data-testid="estimate-time"] a')).toBeNull();
+  expect(view.q('[data-testid="estimate-time"]').textContent).toMatch(/about .* range .* to /);
   localStorage.clear();
   resetEstimatePrefs();
+});
+
+it('§3: the estimate updates live when an allowed-to-change toggle changes', () => {
+  mountPage();
+  const builds = () => view.q('[data-testid="estimate-builds"]').textContent.replace(/\s+/g, ' ').trim();
+  const chip = (label) => [...view.qa('[data-testid="space-picker"] button')].find((b) => b.textContent.trim() === label);
+  click(btn(/^None$/));
+  flushSync();
+  expect(builds()).toMatch(/^Builds to try 1 exactly/);
+  click(chip('Pet'));
+  flushSync();
+  expect(builds()).toMatch(/^Builds to try 2 exactly/);
+  click(chip('Talent points'));
+  flushSync();
+  expect(builds()).toMatch(/^Builds to try about [\d,]+ range [\d,]+ to [\d,]+/);
 });
 
 // ---- retired goals stay viewable but cannot be re-run ------------------------------------------------

@@ -73,6 +73,7 @@ export function durationText(seconds) {
   const min = Math.round(seconds / 60);
   if (min < 60) return `${min} min`;
   const h = Math.floor(min / 60);
+  if (h >= 48) return `${Math.round(min / 1440)} days`;
   const m = min % 60;
   return m ? `${h} h ${m} min` : `${h} h`;
 }
@@ -94,23 +95,7 @@ export function estimateText(cal, fights, { bound = 'about', stale = null } = {}
 // ---- expected fights per tool --------------------------------------------------------------------
 // Budgets are the ones the search uses (search.js resolveEffort, features/swap.js DROP_PRECISION).
 
-/**
- * Optimiser: builds raced x fights per build. Builds are interpolated (log scale) between the two
- * measured points of simulation.md §Cost: 2 dimensions = 62 builds, 13 = 8 437; about 2 x n0 fights
- * per build (624 / 62 and 138 920 / 8 437 at Quick, n0 8). A comparison that runs on to maxN is not
- * counted, so this is a lower figure: show it with bound 'lower'.
- * @param {{n0: number}} effort  resolved effort (search.js resolveEffort)
- * @param {number} dimensions  space toggles that are on
- * @param {string} targetKind  'pvp' fights are duels (one set per opponent), a dummy target dummy fights, anything else dungeon-type
- */
-export function optimiserFights(effort, dimensions, targetKind, opponents = 1) {
-  const d = Math.min(13, Math.max(1, dimensions));
-  const builds = 62 * Math.pow(8437 / 62, (d - 2) / 11);
-  const pvp = targetKind === 'pvp';
-  const fights = Math.round(builds * 2 * effort.n0 * (pvp ? Math.max(1, opponents) : 1));
-  const kind = pvp ? 'duel' : targetKind === 'dummy' ? 'dummy' : 'dungeon';
-  return { [kind]: fights };
-}
+// Optimiser: search/estimate.js (it models the search itself; simulation.md §Estimates).
 
 /** Drop Check: per preset and metric a before/after pair, each up to maxN fights (an upper bound). */
 export function dropFights(request, maxN) {

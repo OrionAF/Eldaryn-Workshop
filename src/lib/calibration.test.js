@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   normaliseCalibration, staleReason, calibrationFrom, estimateSeconds, estimateText, durationText,
-  optimiserFights, dropFights, duelFights, oblivionFights, APP_VERSION,
+  dropFights, duelFights, oblivionFights, APP_VERSION,
 } from './calibration.js';
 import { normalisePrefs } from './uiState.js';
 
@@ -69,23 +69,12 @@ describe('estimates', () => {
   it('formats long runs in hours', () => {
     expect(durationText(80 * 60)).toBe('1 h 20 min');
     expect(durationText(2 * 3600)).toBe('2 h');
+    expect(durationText(47 * 3600)).toBe('47 h');
+    expect(durationText(5 * 86400 + 3600)).toBe('5 days');
   });
 });
 
 describe('fight counts', () => {
-  it('Optimiser: the two measured points of simulation.md §Cost are reproduced at Quick', () => {
-    const quick = { n0: 8 };
-    expect(optimiserFights(quick, 2, 'dummy').dummy).toBeGreaterThan(600);
-    expect(optimiserFights(quick, 2, 'dummy').dummy).toBeLessThan(1100);
-    expect(optimiserFights(quick, 13, 'dummy').dummy).toBeGreaterThan(130_000);
-    expect(optimiserFights(quick, 13, 'dummy').dummy).toBeLessThan(150_000);
-  });
-  it('Optimiser: kind follows the target, and a longer first look costs more', () => {
-    expect(Object.keys(optimiserFights({ n0: 16 }, 5, 'pvp', 2))).toEqual(['duel']);
-    expect(Object.keys(optimiserFights({ n0: 16 }, 5, 'dungeon'))).toEqual(['dungeon']);
-    expect(optimiserFights({ n0: 32 }, 5, 'dummy').dummy).toBe(2 * optimiserFights({ n0: 16 }, 5, 'dummy').dummy);
-    expect(optimiserFights({ n0: 16 }, 5, 'pvp', 3).duel).toBeCloseTo(3 * optimiserFights({ n0: 16 }, 5, 'pvp', 1).duel, -1);
-  });
   it('Drop Check: a before/after pair up to maxN per item, per metric', () => {
     expect(dropFights({ items: [1, 2], sim: true, enemy: null, opponents: [] }, 100)).toEqual({ dummy: 400 });
     expect(dropFights({ items: [1], sim: true, enemy: { mobs: [] }, opponents: [{}, {}] }, 100)).toEqual({ dummy: 200, dungeon: 200, duel: 400 });
