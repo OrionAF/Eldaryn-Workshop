@@ -4,7 +4,7 @@
    * role=status. The glyph is decorative; the lead word carries the meaning.
    */
   let { variant = 'info', lead = '', onclose = null, children, action } = $props();
-  const GLYPH = { info: 'ⓘ', warn: '⚠', error: '✕', estimate: '≈' };
+  const GLYPH = { info: 'ⓘ', warn: '⚠', error: '✕', estimate: '≈', success: '✓' };
 </script>
 
 <div class="banner {variant}" role={variant === 'error' ? 'alert' : 'status'}>
@@ -33,6 +33,7 @@
     font-size: var(--fs-13);
     color: var(--text-soft);
   }
+  .banner.success { --bn: var(--verdict-up); }
   .banner.warn { --bn: var(--status-warn); }
   .banner.error { --bn: var(--verdict-down); }
   .banner.estimate { --bn: var(--text-muted); border-left-style: dotted; }
