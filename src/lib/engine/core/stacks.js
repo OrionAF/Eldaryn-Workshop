@@ -235,11 +235,17 @@ export function withStackGlyphOverride(def, kind, override) {
   return def;
 }
 
+// the combat ceilings are catalogue constants: read once, not per tick
+const C_DR = ceilingFor('DAMAGE_REDUCTION');
+const C_CRIT = ceilingFor('CRIT_CHANCE');
+const C_LIFESTEAL = ceilingFor('LIFESTEAL');
+const C_ATTACK_SPEED = ceilingFor('ATTACK_SPEED');
+
 // port of applyBulwarkDr L1079643-1079666
 /** Damage reduction plus Bulwark DR, clamped to the DR combat ceiling (75). */
 export function applyBulwarkDr(damageReduction, mods) {
   if (!(mods.drPercent > 0)) return damageReduction;
-  return applyCombatCeiling(damageReduction + mods.drPercent, ceilingFor('DAMAGE_REDUCTION'));
+  return applyCombatCeiling(damageReduction + mods.drPercent, C_DR);
 }
 
 // port of applyElusiveBuff L1079667-1079740
@@ -257,9 +263,9 @@ export function applyElusiveBuff(attack, critChance, lifesteal, attackSpeed, mod
   }
   return {
     attack: Math.round(attack * (1 + mods.attackPercent / 100)),
-    critChance: applyCombatCeiling(critChance + mods.critChancePercent, ceilingFor('CRIT_CHANCE')),
-    lifesteal: applyCombatCeiling(lifesteal + mods.lifestealPercent, ceilingFor('LIFESTEAL')),
-    attackSpeed: applyCombatCeiling(attackSpeed * (1 + mods.attackSpeedPercent / 100), ceilingFor('ATTACK_SPEED')),
+    critChance: applyCombatCeiling(critChance + mods.critChancePercent, C_CRIT),
+    lifesteal: applyCombatCeiling(lifesteal + mods.lifestealPercent, C_LIFESTEAL),
+    attackSpeed: applyCombatCeiling(attackSpeed * (1 + mods.attackSpeedPercent / 100), C_ATTACK_SPEED),
   };
 }
 
@@ -317,9 +323,15 @@ export function createStackCombat(equipped, active = true, overrides, ctx) {
 
   return {
     active: lossDef != null || targetDef != null,
-    selfModifiers: () => (bulwarkDef ? bulwarkModifiers(rtSelf, bulwarkDef) : { ...EMPTY_BULWARK_MODIFIERS }),
-    elusiveSelfModifiers: () => (elusiveDef ? elusiveModifiers(rtSelf, elusiveDef) : { ...EMPTY_ELUSIVE_MODIFIERS }),
-    targetModifiers: () => (targetDef ? sunderModifiers(rtTarget, targetDef) : { ...EMPTY_SUNDER_MODIFIERS }),
+    // the empty sets are fresh literals in the EMPTY_* key order (a frozen-object spread is slow per tick)
+    selfModifiers: () => (bulwarkDef ? bulwarkModifiers(rtSelf, bulwarkDef)
+      : { hpPercent: 0, drPercent: 0, thornsPercent: 0 }),
+    elusiveSelfModifiers: () => (elusiveDef ? elusiveModifiers(rtSelf, elusiveDef)
+      : { attackPercent: 0, critChancePercent: 0, lifestealPercent: 0, attackSpeedPercent: 0 }),
+    targetModifiers: () => (targetDef ? sunderModifiers(rtTarget, targetDef) : {
+      drReductionPercent: 0, blindReductionPercent: 0, blockReductionPercent: 0, missReductionPercent: 0,
+      hpRegenReductionPercent: 0,
+    }),
     /** The player dodged (attacker_miss) or the enemy swing was blinded (defender_blind): Elusive +1. */
     onEvaded: () => { if (elusiveDef) elusiveOnEvade(rtSelf, elusiveDef); },
     /** An unblocked hit landed on the player: the shared counter loses stackLossPerHit. */

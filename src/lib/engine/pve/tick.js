@@ -90,6 +90,45 @@ function mitigateInline(d, dr) {
   return dr > 0 ? Math.max(1, Math.round(d * (1 - dr / 100))) : d;
 }
 
+// The helpers below are module functions rather than per-tick closures (no allocation per tick).
+
+/** The app's optional output cut on a landed amount (1 = off). */
+const cutBy = (d, mult) => (mult === 1 ? d : Math.round(d * mult));
+
+/** The player's lifesteal on `damage`, clamped to `maxHp` and the Oblivion heal budget; the new HP. */
+function lifestealHeal(player, maxHp, healBudget, hpNow, damage) {
+  if (!(player.lifesteal > 0 && hpNow < maxHp)) return hpNow;
+  const want = Math.min(Math.floor((damage * player.lifesteal) / 100), maxHp - hpNow);
+  const granted = spendHealBudget(healBudget, want);
+  return granted > 0 ? Math.min(maxHp, hpNow + granted) : hpNow;
+}
+
+/** The enemy's lifesteal on `damage`, clamped to its max HP; the new HP. */
+function enemyLifesteal(enemy, hpNow, damage) {
+  if (!(enemy.lifesteal > 0 && hpNow < enemy.maxHp)) return hpNow;
+  const h = Math.floor((damage * enemy.lifesteal) / 100);
+  return h > 0 ? Math.min(enemy.maxHp, hpNow + h) : hpNow;
+}
+
+/** The TickResult (see processCombatTick). */
+function tickResult(atkHp, defHp, attackerTimer, defenderTimer, regenTimer, events, blinded, paralyzedMs, silencedMs,
+  staggerStacks, feared, atkShield, defShield, dealt) {
+  return {
+    attackerHp: atkHp,
+    defenderHp: defHp,
+    timers: { attackerTimer, defenderTimer, regenTimer },
+    events,
+    defenderBlinded: blinded,
+    defenderParalyzedMs: paralyzedMs,
+    defenderSilencedMs: silencedMs,
+    defenderStaggerStacks: staggerStacks,
+    defenderFearedMs: feared,
+    attackerShieldHp: atkShield,
+    defenderShieldHp: defShield,
+    attackerDamageDealt: dealt,
+  };
+}
+
 // port of processCombatTick L1086167-1087434
 /**
  * One combat tick. `player` is the attacker entity, `enemy` the defender entity; HP is passed and
@@ -122,7 +161,6 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
     attackerOutputMult = 1,
   } = opts ?? {};
   const maxHp = attackerMaxHp == null ? player.maxHp : attackerMaxHp;
-  const cut = attackerOutputMult === 1 ? (d) => d : (d) => Math.round(d * attackerOutputMult);
 
   let paralyzedMs = Math.max(0, defenderParalyzedMs - dtMs);
   let silencedMs = Math.max(0, defenderSilencedMs - dtMs);
@@ -163,32 +201,7 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
   let dealt = 0;
   let attackerTimer = attackerTimerAcc;
 
-  const result = (over) => ({
-    attackerHp: atkHp,
-    defenderHp: defHp,
-    timers: { attackerTimer, defenderTimer: defenderTimerAcc, regenTimer },
-    events,
-    defenderBlinded: blinded,
-    defenderParalyzedMs: paralyzedMs,
-    defenderSilencedMs: silencedMs,
-    defenderStaggerStacks: staggerStacks,
-    defenderFearedMs: feared,
-    attackerShieldHp: atkShield,
-    defenderShieldHp: defShield,
-    attackerDamageDealt: dealt,
-    ...over,
-  });
-  const defenderDead = () => {
-    events.push({ timestamp, type: 'defender_dead', damage: 0, attackerHp: atkHp, defenderHp: 0 });
-    return result({ defenderHp: 0 });
-  };
 
-  const lifestealHeal = (hpNow, damage) => {
-    if (!(player.lifesteal > 0 && hpNow < maxHp)) return hpNow;
-    const want = Math.min(Math.floor((damage * player.lifesteal) / 100), maxHp - hpNow);
-    const granted = spendHealBudget(healBudget, want);
-    return granted > 0 ? Math.min(maxHp, hpNow + granted) : hpNow;
-  };
 
   if (attackerTimerAcc >= playerInterval) {
     attackerTimer = attackerTimerAcc - playerInterval;
@@ -197,13 +210,13 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
     const negated = negate > 0 ? lane(P, 'avoid')() * 100 < negate : false;
     if (!negated) {
       const roll = rollAttackDamage(player, P);
-      const d1 = cut(applyDamageReduction(roll.damage, enemy.damageReduction));
-      const d2 = cut(applyDamageReduction(roll.doubleHitDamage, enemy.damageReduction));
+      const d1 = cutBy(applyDamageReduction(roll.damage, enemy.damageReduction), attackerOutputMult);
+      const d2 = cutBy(applyDamageReduction(roll.doubleHitDamage, enemy.damageReduction), attackerOutputMult);
       const s1 = absorbWithShield(defShield, d1);
       defShield = s1.shieldHp;
       defHp = Math.max(0, defenderHp - s1.hpDamage);
       dealt = 0 + d1;
-      atkHp = lifestealHeal(atkHp, d1);
+      atkHp = lifestealHeal(player, maxHp, healBudget, atkHp, d1);
       events.push({
         timestamp,
         type: roll.isCrit ? 'attacker_crit' : 'attacker_hit',
@@ -216,7 +229,7 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
         defShield = s2.shieldHp;
         defHp = Math.max(0, defHp - s2.hpDamage);
         dealt += d2;
-        atkHp = lifestealHeal(atkHp, d2);
+        atkHp = lifestealHeal(player, maxHp, healBudget, atkHp, d2);
         events.push({ timestamp, type: 'attacker_hit', damage: d2, attackerHp: atkHp, defenderHp: defHp, doubleHit: true });
       }
       if (player.blindChance > 0 && !blinded && defHp > 0 && lane(P, 'blind')() * 100 < player.blindChance) {
@@ -261,13 +274,13 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
       if (player.penetration > 0 && enemy.missChance === 0) {
         const base = Math.round((player.attack * player.penetration) / 100);
         const mult = rollPenetrationCritMult(player, P);
-        const d = cut(mitigateInline(Math.round(base * mult), enemy.damageReduction));
+        const d = cutBy(mitigateInline(Math.round(base * mult), enemy.damageReduction), attackerOutputMult);
         const s = absorbWithShield(defShield, d);
         defShield = s.shieldHp;
         defHp = Math.max(0, defenderHp - s.hpDamage);
         dealt = 0 + d;
         shown = d;
-        atkHp = lifestealHeal(atkHp, d);
+        atkHp = lifestealHeal(player, maxHp, healBudget, atkHp, d);
       }
       events.push({
         timestamp,
@@ -278,14 +291,18 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
       });
     }
     // the kill check belongs to the swing branch (L1086896); a no-swing tick goes straight to the minion
-    if (defHp <= 0) return defenderDead();
+    if (defHp <= 0) {
+      events.push({ timestamp, type: 'defender_dead', damage: 0, attackerHp: atkHp, defenderHp: 0 });
+      return tickResult(atkHp, 0, attackerTimer, defenderTimerAcc, regenTimer, events, blinded,
+        paralyzedMs, silencedMs, staggerStacks, feared, atkShield, defShield, dealt);
+    }
   }
 
   // --- minion swing (L1086910-1086950): after the player, before the enemy
   if (minion && minion.alive && defHp > 0) {
     const sw = minionSwing(minion, dtMs, lane(rng, 'minion'));
     if (sw) {
-      const dmg = cut(mitigateMinionHit(sw.damage, enemy.damageReduction));
+      const dmg = cutBy(mitigateMinionHit(sw.damage, enemy.damageReduction), attackerOutputMult);
       const s = absorbWithShield(defShield, dmg);
       defShield = s.shieldHp;
       defHp = Math.max(0, defHp - s.hpDamage);
@@ -297,35 +314,32 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
         attackerHp: atkHp,
         defenderHp: defHp,
       });
-      if (defHp <= 0) return defenderDead();
+      if (defHp <= 0) {
+        events.push({ timestamp, type: 'defender_dead', damage: 0, attackerHp: atkHp, defenderHp: 0 });
+        return tickResult(atkHp, 0, attackerTimer, defenderTimerAcc, regenTimer, events, blinded,
+          paralyzedMs, silencedMs, staggerStacks, feared, atkShield, defShield, dealt);
+      }
     }
   }
 
   // --- enemy swing (L1086957-1087430)
   let defenderTimer = defenderTimerAcc;
-  const enemyLifesteal = (hpNow, damage) => {
-    if (!(enemy.lifesteal > 0 && hpNow < enemy.maxHp)) return hpNow;
-    const h = Math.floor((damage * enemy.lifesteal) / 100);
-    return h > 0 ? Math.min(enemy.maxHp, hpNow + h) : hpNow;
-  };
-  const finish = () => result({ timers: { attackerTimer, defenderTimer, regenTimer } });
   if (defenderTimerAcc >= enemyInterval) {
     defenderTimer = defenderTimerAcc - enemyInterval;
     const E = lane(rng, 'enemy');
-    const status = (type) => events.push({ timestamp, type, damage: 0, attackerHp: atkHp, defenderHp: defHp });
     if (paralyzedMs > 0) {
-      status('defender_paralyze');
+      events.push({ timestamp, type: 'defender_paralyze', damage: 0, attackerHp: atkHp, defenderHp: defHp });
     } else if (feared > 0) {
-      status('defender_fear');
+      events.push({ timestamp, type: 'defender_fear', damage: 0, attackerHp: atkHp, defenderHp: defHp });
     } else if (blinded) {
-      status('defender_blind');
+      events.push({ timestamp, type: 'defender_blind', damage: 0, attackerHp: atkHp, defenderHp: defHp });
       blinded = false;
     } else if (minion && minion.alive) {
       // the enemy hits the minion (L1087238-1087328); the crit draw happens even at 0% crit
       const isCrit = lane(E, 'crit')() * 100 < enemy.critChance;
       const raw = isCrit ? Math.round(enemy.attack * enemy.critDamage) : enemy.attack;
       const r = damageMinion(minion, raw);
-      defHp = enemyLifesteal(defHp, r.dealt);
+      defHp = enemyLifesteal(enemy, defHp, r.dealt);
       events.push({
         timestamp, type: 'minion_damaged', damage: r.dealt, attackerHp: atkHp, defenderHp: defHp,
         ...(isCrit ? { isCrit: true } : {}),
@@ -348,7 +362,7 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
         atkShield = s.shieldHp;
         const newHp = Math.max(0, atkHp - s.hpDamage);
         const shown = Math.round(s.effectiveDamage);
-        defHp = enemyLifesteal(defHp, shown);
+        defHp = enemyLifesteal(enemy, defHp, shown);
         events.push({
           timestamp,
           type: newHp <= 0 ? 'attacker_dead' : 'defender_hit',
@@ -369,7 +383,7 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
           atkShield = s.shieldHp;
           newHp = Math.max(0, atkHp - s.hpDamage);
           shown = Math.round(s.effectiveDamage);
-          defHp = enemyLifesteal(defHp, shown);
+          defHp = enemyLifesteal(enemy, defHp, shown);
         }
         events.push({
           timestamp,
@@ -382,11 +396,13 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
       }
       if (atkHp <= 0) {
         atkHp = 0;
-        return finish();
+        return tickResult(atkHp, defHp, attackerTimer, defenderTimer, regenTimer, events, blinded,
+          paralyzedMs, silencedMs, staggerStacks, feared, atkShield, defShield, dealt);
       }
     }
   }
-  return finish();
+  return tickResult(atkHp, defHp, attackerTimer, defenderTimer, regenTimer, events, blinded,
+    paralyzedMs, silencedMs, staggerStacks, feared, atkShield, defShield, dealt);
 }
 
 // port of routeSpellHealToMinion L1095017-1095364

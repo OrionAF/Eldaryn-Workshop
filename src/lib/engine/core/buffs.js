@@ -21,7 +21,16 @@ import { applyCombatCeiling, ceilingFor } from './caps.js';
  */
 
 const n = (v) => (v == null ? 0 : v);
-const capped = (value, id) => applyCombatCeiling(value, ceilingFor(id));
+// the ceilings are catalogue constants: read once, not per buffed tick
+const C_ATTACK_SPEED = ceilingFor('ATTACK_SPEED');
+const C_LIFESTEAL = ceilingFor('LIFESTEAL');
+const C_BLOCK = ceilingFor('BLOCK_CHANCE');
+const C_MISS = ceilingFor('MISS_CHANCE');
+const C_BLIND = ceilingFor('BLIND_CHANCE');
+const C_CRIT = ceilingFor('CRIT_CHANCE');
+const C_DR = ceilingFor('DAMAGE_REDUCTION');
+const C_REGEN = ceilingFor('HP_REGEN');
+const C_PEN = ceilingFor('PENETRATION');
 
 // port of applyBuffsToEntity L1085543-1085695
 /**
@@ -35,16 +44,16 @@ export function applyBuffsToEntity(entity, buff) {
   const b = buff;
   const out = { ...e };
   out.attack = n(b.attackPercent) > 0 ? Math.floor(e.attack * (1 + b.attackPercent / 100)) : e.attack;
-  out.attackSpeed = capped(e.attackSpeed + n(b.attackSpeed), 'ATTACK_SPEED');
-  out.lifesteal = capped(e.lifesteal + n(b.lifesteal), 'LIFESTEAL');
-  out.blockChance = capped(e.blockChance + n(b.blockChance), 'BLOCK_CHANCE');
-  out.missChance = capped(e.missChance + n(b.missChance), 'MISS_CHANCE');
-  out.blindChance = capped(e.blindChance + n(b.blindChance), 'BLIND_CHANCE');
-  out.critChance = capped(e.critChance + n(b.critChance), 'CRIT_CHANCE');
+  out.attackSpeed = applyCombatCeiling(e.attackSpeed + n(b.attackSpeed), C_ATTACK_SPEED);
+  out.lifesteal = applyCombatCeiling(e.lifesteal + n(b.lifesteal), C_LIFESTEAL);
+  out.blockChance = applyCombatCeiling(e.blockChance + n(b.blockChance), C_BLOCK);
+  out.missChance = applyCombatCeiling(e.missChance + n(b.missChance), C_MISS);
+  out.blindChance = applyCombatCeiling(e.blindChance + n(b.blindChance), C_BLIND);
+  out.critChance = applyCombatCeiling(e.critChance + n(b.critChance), C_CRIT);
   out.critDamage = n(b.critDamage) > 0 ? e.critDamage + b.critDamage / 100 : e.critDamage;
-  out.damageReduction = capped(e.damageReduction + n(b.damageReduction), 'DAMAGE_REDUCTION');
-  out.hpRegen = capped(e.hpRegen + n(b.hpRegen), 'HP_REGEN');
-  out.penetration = capped(e.penetration + n(b.penetration), 'PENETRATION');
+  out.damageReduction = applyCombatCeiling(e.damageReduction + n(b.damageReduction), C_DR);
+  out.hpRegen = applyCombatCeiling(e.hpRegen + n(b.hpRegen), C_REGEN);
+  out.penetration = applyCombatCeiling(e.penetration + n(b.penetration), C_PEN);
   out.spellResist = e.spellResist + n(b.spellResist);
   return out;
 }
