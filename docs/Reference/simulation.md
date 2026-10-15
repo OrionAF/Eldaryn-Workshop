@@ -312,8 +312,11 @@ World Boss, Fortress boss, PVP), else `client`.
 ### Fortress boss
 
 Target `{kind: 'fortressBoss', group: 'TOP'|'BOTTOM'|'CORE', stars?: 1-5 (TOP, BOTTOM; CORE has none and
-refuses it), aliveDefenders?: 0+ (default 0), maxClanSize?: 1+ (default 50, the server default;
-per-server overrides are in clan-fortress.md §3.1), kills?: 0+}`. Objective `dps` only (the reward is
+refuses it), aliveDefenders?: 0+ (default 0), server?: whole number or null (default the character's `server`, else
+null, which gives the default clan cap 50; caps per server are in clan-fortress.md §3.1), shieldPercent?: 0-60
+(a shield read off the siege screen, used directly instead of the interpolation), kills?: 0+}`. An older spec's
+`maxClanSize` is still accepted and stays an explicit cap that overrides the server's. The echoed
+`target.fortress` carries `clanCap`. Objective `dps` only (the reward is
 the clan's damage). The boss is the table's HP, attack and speed (clan-fortress.md §1.1) in a 60 s
 window.
 
@@ -331,8 +334,9 @@ sampled statistic, a contrast or a rank. They do change the target key, so a run
 different run.
 
 Deviations of the displayed credit from the client formula (clan-fortress.md §3.1): the app's two-argument
-`calculateBossShield(aliveDefenders, maxClanSize)` treats the client's `startingDefenders` guard as
-`maxClanSize`, and the fatigue factor is taken as 1. `aliveDefenders` defaults to 0, which is a 0% shield (the
+`calculateBossShield(aliveDefenders, clanCap)` takes the client's `startingDefenders` guard as met (the divisor
+is the server's clan cap, confirmed by server siege data), and the fatigue factor is taken as 1. Stars come from
+the siege screen; the picker defaults to 1. `aliveDefenders` defaults to 0, which is a 0% shield (the
 boss at full damage); set it for a realistic defended boss. These only scale the display, never the ranking.
 
 ### Residual

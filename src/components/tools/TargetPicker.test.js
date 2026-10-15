@@ -119,10 +119,11 @@ it('the Fortress boss fields show the shield, drop Stars for the Core and restor
   expect(first.state.target).toMatchObject({ kind: 'fortressBoss', group: 'TOP', stars: 1 });
   expect(first.state.objective.kind).toBe('dps');
 
-  const top = mountPicker({ target: { ...first.state.target, aliveDefenders: 25, maxClanSize: 50 } });
+  const top = mountPicker({ target: { ...first.state.target, aliveDefenders: 25, server: null } });
   expect(numberField(top.ui, 'Stars')).toBeTruthy();
   expect(numberField(top.ui, 'Alive defenders').value).toMatch(/25/);
-  expect(top.ui.q('[data-testid="fortress-shield"]').textContent).toMatch(/shield 30%/);
+  expect(top.ui.q('[data-testid="fortress-shield"]').textContent).toMatch(/shield 30% \(25 alive of a 50 cap\)/);
+  expect(top.ui.q('[data-testid="clan-cap"]').textContent).toMatch(/cap 50/);
   expect(top.ui.q('[data-testid="fidelity"]').dataset.fidelity).toBe('server-model');
   setNumber(numberField(top.ui, 'Alive defenders'), 50);
   expect(top.state.target.aliveDefenders).toBe(50);
@@ -136,4 +137,26 @@ it('the Fortress boss fields show the shield, drop Stars for the Core and restor
   pick(core.ui, 'Fortress', 'TOP');
   expect(core.state.target.stars).toBe(1);
   expect(numberField(mountPicker({ target: core.state.target }).ui, 'Stars')).toBeTruthy();
+});
+
+it('the Fortress boss shield follows the server cap, or a typed shield percent', () => {
+  const server5 = mountPicker({ target: { kind: 'fortressBoss', group: 'TOP', stars: 5, aliveDefenders: 26, server: 5, kills: 0 } });
+  expect(numberField(server5.ui, 'Server').value).toMatch(/5/);
+  expect(server5.ui.q('[data-testid="clan-cap"]').textContent).toMatch(/cap 30/);
+  expect(server5.ui.q('[data-testid="fortress-shield"]').textContent).toMatch(/Boss shield 53\.3% \(26 alive of a 30 cap\)/);
+  expect(server5.ui.q('[data-testid="stars-hint"]').textContent).toMatch(/siege screen/);
+  setNumber(numberField(server5.ui, 'Server'), 7);
+  expect(server5.state.target.server).toBe(7);
+
+  const typed = mountPicker({ target: { kind: 'fortressBoss', group: 'TOP', stars: 5, aliveDefenders: 26, server: 5, shieldPercent: 45, kills: 0 } });
+  expect(numberField(typed.ui, 'Alive defenders')).toBeFalsy();
+  expect(typed.ui.q('[data-testid="fortress-shield"]').textContent).toMatch(/Boss shield 45%\./);
+  setNumber(numberField(typed.ui, 'Boss shield'), 50);
+  expect(typed.state.target.shieldPercent).toBe(50);
+});
+
+it('a new Fortress boss target starts on the character\'s server', () => {
+  const m = mountPicker({}, { character: { server: 5 } });
+  pick(m.ui, 'Fight', 'fortressBoss');
+  expect(m.state.target.server).toBe(5);
 });

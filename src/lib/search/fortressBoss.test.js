@@ -21,7 +21,7 @@ describe('Fortress boss target', () => {
     const top = resolveTarget({ kind: 'fortressBoss', group: 'TOP' });
     expect(top.enemy).toMatchObject({ hp: 2e10, attack: 500, attackSpeed: 1, name: 'Fortress Guardian' });
     expect([top.maxMs, top.seconds]).toEqual([60000, 60]);
-    expect(top.spec).toEqual({ kind: 'fortressBoss', group: 'TOP', stars: 1, aliveDefenders: 0, maxClanSize: 50, kills: 0 });
+    expect(top.spec).toEqual({ kind: 'fortressBoss', group: 'TOP', stars: 1, aliveDefenders: 0, server: null, kills: 0 });
     expect(top.fidelity).toBe('server-model');
     expect(top.assumptions.map((a) => a.id)).toContain('fortress-boss-model');
     expect(PVE_MODES.fortressBoss.dtMs).toBe(10);
@@ -40,6 +40,10 @@ describe('Fortress boss target', () => {
     expect(() => resolveTarget({ kind: 'fortressBoss', group: 'CORE', stars: 2 })).toThrow(/no stars/);
     expect(bad({ aliveDefenders: -1 })).toThrow(/alive/);
     expect(bad({ maxClanSize: 0 })).toThrow(/clan size/);
+    expect(bad({ server: -1 })).toThrow(/server/);
+    expect(bad({ server: 1.5 })).toThrow(/server/);
+    expect(bad({ shieldPercent: 61 })).toThrow(/shield percent/);
+    expect(bad({ shieldPercent: -1 })).toThrow(/shield percent/);
     expect(bad({ kills: -1 })).toThrow(/kills/);
   });
 
@@ -60,11 +64,45 @@ describe('Fortress boss target', () => {
     expect(calculateBossShield(90, 50)).toBe(60);
     expect(calculateContributionBonus(4)).toBeCloseTo(1.2, 12);
     expect(calculateContributionBonus(40)).toBe(2);
-    const m = fortressBossMultipliers({ group: 'TOP', stars: 4, aliveDefenders: 25, maxClanSize: 50, kills: 10 });
+    const m = fortressBossMultipliers({ group: 'TOP', stars: 4, aliveDefenders: 25, clanCap: 50, kills: 10 });
     expect(m).toMatchObject({ shieldPercent: 30, contributionBonus: 1.5, starVulnerability: 6 });
     expect(m.total).toBeCloseTo(0.7 * 1.5 * 6, 12);
     expect(fortressBossCredit(m, 1000)).toEqual({ raw: 1000, effective: 6300 });
-    expect(fortressBossMultipliers({ group: 'CORE', aliveDefenders: 50, maxClanSize: 50, kills: 0 }).starVulnerability).toBe(1);
+    expect(fortressBossMultipliers({ group: 'CORE', aliveDefenders: 50, clanCap: 50, kills: 0 }).starVulnerability).toBe(1);
+  });
+
+  it('server siege data: 26 alive of server 5\'s cap 30 is 53.333...%, not the defending clan\'s size', () => {
+    expect(calculateBossShield(26, 30)).toBe(53.333333333333336);
+    expect(calculateBossShield(26, 27)).toBeCloseTo(58.148, 2);
+    expect(calculateBossShield(26, 26)).toBe(60);
+    const t = resolveTarget({ kind: 'fortressBoss', group: 'TOP', stars: 5, aliveDefenders: 26, server: 5 });
+    expect(t.fortress.shieldPercent).toBe(53.333333333333336);
+    expect(t.fortress.clanCap).toBe(30);
+    expect(t.fortress.starVulnerability).toBe(11);
+  });
+
+  it('takes the server from the character, else the default cap of 50', () => {
+    const spec = { kind: 'fortressBoss', group: 'TOP', aliveDefenders: 26 };
+    expect(resolveTarget(spec, { character: { server: 5 } }).spec.server).toBe(5);
+    expect(resolveTarget(spec, { character: { server: 5 } }).fortress.clanCap).toBe(30);
+    expect(resolveTarget(spec, { character: { server: 5 } }).fortress.shieldPercent).toBeCloseTo(53.33, 1);
+    expect(resolveTarget({ ...spec, server: 7 }, { character: { server: 5 } }).fortress.clanCap).toBe(18);
+    expect(resolveTarget({ ...spec, server: null }, { character: { server: 5 } }).fortress.clanCap).toBe(50);
+    expect(resolveTarget(spec).fortress.clanCap).toBe(50);
+  });
+
+  it('a typed shield percent is used directly', () => {
+    const t = resolveTarget({ kind: 'fortressBoss', group: 'TOP', aliveDefenders: 3, server: 5, shieldPercent: 42.5 });
+    expect(t.fortress.shieldPercent).toBe(42.5);
+    expect(t.fortress.shieldMultiplier).toBeCloseTo(0.575, 12);
+    expect(t.spec.shieldPercent).toBe(42.5);
+    expect(resolveTarget({ kind: 'fortressBoss', group: 'TOP', shieldPercent: 0 }).fortress.shieldPercent).toBe(0);
+  });
+
+  it('an old saved spec with maxClanSize keeps it as an explicit cap', () => {
+    const t = resolveTarget({ kind: 'fortressBoss', group: 'TOP', stars: 1, aliveDefenders: 25, maxClanSize: 50, kills: 0 }, { character: { server: 5 } });
+    expect(t.fortress).toMatchObject({ shieldPercent: 30, clanCap: 50 });
+    expect(t.spec.maxClanSize).toBe(50);
   });
 
   it('the echoed target carries the multipliers and the display credit follows them', () => {
