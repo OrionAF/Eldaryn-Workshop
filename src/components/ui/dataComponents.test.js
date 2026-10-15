@@ -183,6 +183,31 @@ it('ResultRank: toggle controls the body; expanded lists changes, scope, remaind
   t.done();
 });
 
+it('ResultRank: a change with an exactly zero own effect reads "Only with: <driver>", Without it as the number, no verdict chip', () => {
+  const zero = contrast({ delta: 0, lo: 0, hi: 0, verdict: 'equivalent', significant: true });
+  const r = row({
+    changes: [
+      {
+        id: 'spec', dimension: 'spec', label: 'Talent set', from: 'A', to: 'B', scope: 'preset', owner: {}, sideEffects: [],
+        bundle: ['talents:1'], own: contrast({ delta: 800, lo: 100, hi: 1500, verdict: 'better', significant: true }), needed: contrast(), keptBecause: 'own-effect',
+      },
+      {
+        id: 'talents:1', dimension: 'talents', label: 'Talents (Set B)', from: 'None', to: 'Rage 3', scope: 'character', owner: {}, sideEffects: [],
+        bundle: [], own: zero, needed: contrast({ delta: -700, lo: -1200, hi: -200, verdict: 'worse', significant: true }), keptBecause: 'interaction',
+      },
+    ],
+  });
+  const t = setup(ResultRank, { row: r, unit: 'dps', domain });
+  click(t.q('button.toggle'));
+  const dep = t.qa('.abl')[1];
+  expect(dep.textContent).toContain('Only with: Talent set');
+  expect(dep.textContent).toContain('700');
+  expect(dep.textContent).not.toContain('Equivalent');
+  expect(dep.querySelector('.vchip')).toBeNull();
+  expect(t.qa('.abl')[0].querySelector('.vchip')).not.toBeNull();
+  t.done();
+});
+
 it('ResultRank: baseline has no verdict; provisional rows are never up/down; Run more calls back', () => {
   const b = setup(ResultRank, { row: row({ isBaseline: true, rank: 0, changes: [], vsBaseline: null, remainder: null, runMore: null }), unit: 'dps', domain });
   expect(b.q('.mark').textContent).toBe('NOW');

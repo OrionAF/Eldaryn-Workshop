@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   orientContrast, orientRow, viewResult, viewRun, legacyRows, progressSegments, progressLine, effortPlan,
-  changeSummary, changeIdLabel, bundleText, dimensionLabel,
+  changeSummary, changeIdLabel, bundleText, onlyWith, dimensionLabel,
   setGroup, enabledCount, toggleTotal, SPACE_GROUPS, applyPlan, sideEffectsOf, fmtDuration, optimiserJobChips,
 } from './optimiserView.js';
 import { runFromResult } from '../model/runs.js';
@@ -211,5 +211,20 @@ describe('change labels (no internal id reaches the UI)', () => {
     const t = bundleText(['talents:0', glyph(0).id, glyph(1).id, glyph(2).id], changes);
     expect(t).toBe('Talents (Set A), 3 glyph sockets');
     expect(t).not.toMatch(/glyph:|talents:\d|[0-9a-f]{8}-/);
+  });
+});
+
+describe('onlyWith', () => {
+  const z = { delta: 0, lo: 0, hi: 0 };
+  const need = { delta: -5, lo: -6, hi: -4 };
+  const changes = [
+    { id: 'mount', label: 'Mount', bundle: ['glyph:m:minor:0'], own: { delta: 3, lo: 1, hi: 5 }, needed: need },
+    { id: 'glyph:m:minor:0', label: 'Minor glyph socket 1', bundle: [], own: z, needed: need },
+    { id: 'pet', label: 'Pet', bundle: [], own: z, needed: null },
+  ];
+  it('names the change whose bundle forces a zero-own change; null otherwise', () => {
+    expect(onlyWith(changes[1], changes)).toBe('Mount');
+    expect(onlyWith(changes[0], changes)).toBeNull();
+    expect(onlyWith(changes[2], changes)).toBeNull();
   });
 });
