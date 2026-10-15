@@ -149,8 +149,8 @@ value of the block given the rest of `c` (legalised, canonical, without `c` itse
 - conditions: PVP offers every option of the sigil; PVE only `ON_COOLDOWN` and `MY_HP_BELOW_*`
   (damage and debuff sigils cast on cooldown in PVE);
 - the Ancient only on a board that allocates its node (Q3 strict); a board switch drops it;
-- majors only those that act for the spec and the running sigils, one per glyph type; minors every
-  unsealed instance, identical twins included;
+- majors only those that act for the spec and the running sigils, one per glyph type (and only the best
+  instance of a type, see glyph dominance below); minors only as glyph dominance below allows;
 - mounts: only owned mounts no other owned mount dominates. A mount adds only `attackPercent += effAtk` and
   `hpPercent += effHp` (`mountEffectiveStats`; Game/mounts-glyphs.md §1, §5) and every mount has the same sockets
   (§8), so (mount stats being realm-independent) a mount another one matches or beats on both stats can never improve any objective: pruning is exact.
@@ -158,6 +158,26 @@ value of the block given the rest of `c` (legalised, canonical, without `c` itse
   Of equal twins the ridden one, else the first owned, is kept. The candidate's current mount stays the baseline
   even when dominated, and switching to its dominator stays offered. `space.prunedMounts(c)` lists `{id, by}`;
   the search result's `blocks[mount].pruned` carries it;
+- glyphs (exact under the same monotonicity as mounts): a minor glyph adds one secondary stat with a value
+  (`glyphSecondaryValue`; Game/mounts-glyphs.md §9) to the ridden mount's bonuses, and every stat of the 26-stat
+  pool enters the totals as a sum that only flattens at a cap (Game/stats.md caps), none of them lowers any
+  objective (the control stats act on the enemy; miss/blind/DR/block only help the holder). So more of a stat
+  is never worse, and the pruning is exact:
+  1. within one stat a row that uses m glyphs of it uses that stat's top-m by value (an 11% / 10% / 10% / 5%
+     attack-speed set never races the 5%). `minorGlyphs` therefore enumerates per-stat counts m_s, each stat
+     contributing its top-m_s glyphs, not every subset (`space.minorRowsFor`);
+  2. glyphs of one stat and value are interchangeable. A row may still use several of them (two 10% glyphs
+     add 20%), so they are not collapsed to one representative: they are ordered (socketed one first, else
+     lowest id) and a row takes a prefix, so a swap between twins is never offered;
+  3. an empty minor socket is dominated by the same row plus any unused usable glyph (a value is always
+     > 0), so rows are full: min(3, usable) glyphs. The current row stays the baseline even when partial;
+     "usable" means unsealed with a rolled secondary (a glyph without one adds nothing, like an empty socket);
+  4. majors: per glyph type only the best unsealed instance (rarity ladder; every perRarity table of
+     Game/mounts-glyphs.md §10 improves with rarity: cooldown, damage, thorns, stacks and CC grow, decay
+     and the Elusive stack loss shrink, which is the better direction) and `activeMajorGlyphs` already keeps
+     only the highest rarity of a type; of equal rarity the socketed instance, else the lowest id. The
+     one-per-type, sealed and inert-major rules stay. Major rows still allow empty sockets;
+  5. the same domains serve the compound mount block's inner socket ascent and the spec block's.
 - talents: +1, −1, move 1 or k points between two talents, every redistribution of a tier's points,
   within `talentPointsForLevel`.
 

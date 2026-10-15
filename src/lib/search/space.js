@@ -15,7 +15,7 @@ import {
   genericSigils, utilitySigils, ancientSigils, sigilConditionOptions, SELF_CONDITIONS, DEFAULT_CONDITION,
 } from '../model/sigils.js';
 import { glyphSocketable, activeMajorGlyphs, emptyMountSockets, mountEffectiveStats, MOUNT_GLYPH_SOCKETS } from '../model/mounts.js';
-import { glyphTypeInfo, glyphStatLabel, GLYPH_TIERS } from '../model/glyphs.js';
+import { glyphTypeInfo, glyphStatLabel, glyphSecondaryValue, GLYPH_TIERS, GLYPH_RARITY_LADDER } from '../model/glyphs.js';
 import { PRESET_SIGIL_CAP } from '../model/presets.js';
 import {
   relicSlotCap, talentPointsForLevel, sigilSlotCap, sigilsUnlocked, dualEquipUnlocked, dualTalentsUnlocked,
@@ -51,6 +51,49 @@ function presetOf(character, presetOrId) {
   const p = (character.presets ?? []).find((x) => x.id === id);
   if (!p) throw new Error(`Unknown preset ${id}`);
   return p;
+}
+
+const cmpKeys = (a, b) => {
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
+  return 0;
+};
+
+/**
+ * The minor-glyph rows worth trying (glyph dominance, simulation.md Build space / Blocks). Usable glyphs are the
+ * unsealed minors with a rolled secondary. Per stat they are ordered by value, best first (of equal values the
+ * socketed one, else the lowest id: twins are interchangeable and never swapped); a row takes the top m of a
+ * stat. Rows are full: min(sockets, usable) glyphs, split over the stats in every way.
+ * @returns {string[][]} id sets (the current row's own set may be among them; callers drop it by key)
+ */
+export function minorRowsFor(character, cur) {
+  const byStat = new Map();
+  for (const g of character.glyphs ?? []) {
+    if (!g.secondary || !glyphSocketable(character, g, 'minor') || cur.major.includes(g.id) || cur.mythic.includes(g.id)) continue;
+    if (!byStat.has(g.secondary.stat)) byStat.set(g.secondary.stat, []);
+    byStat.get(g.secondary.stat).push({ id: g.id, value: glyphSecondaryValue(g.secondary) });
+  }
+  const socketed = (id) => (cur.minor.includes(id) ? 0 : 1);
+  const lists = [...byStat.entries()].sort(([a], [b]) => byString(a, b)).map(([, list]) => list
+    .sort((x, y) => y.value - x.value || socketed(x.id) - socketed(y.id) || byString(x.id, y.id))
+    .map((x) => x.id));
+  const size = Math.min(MOUNT_GLYPH_SOCKETS.minor, lists.reduce((n, l) => n + l.length, 0));
+  if (size === 0) return [];
+  const rows = [];
+  const pick = [];
+  const go = (i, left) => {
+    if (left === 0) {
+      rows.push([...pick]);
+      return;
+    }
+    if (i === lists.length) return;
+    for (let m = Math.min(left, lists[i].length); m >= 0; m--) {
+      for (let k = 0; k < m; k++) pick.push(lists[i][k]);
+      go(i + 1, left - m);
+      pick.length -= m;
+    }
+  };
+  go(0, size);
+  return rows;
 }
 
 /** Kept entries in saved order, then the new ones sorted. */
@@ -412,12 +455,8 @@ export function createBuildSpace(character, presetOrId, { realm = 'base', mode =
     minorGlyphs(c) {
       const cur = socketsOf(character, c);
       if (!cur) return [];
-      // every unsealed instance (identical twins included, #58); one without a secondary adds nothing,
-      // so it is only kept where it already sits
-      const pool = (character.glyphs ?? [])
-        .filter((g) => glyphSocketable(character, g, 'minor') && (g.secondary || cur.minor.includes(g.id)))
-        .map((g) => g.id).filter((id) => !cur.major.includes(id) && !cur.mythic.includes(id));
-      return subsetsUpTo(pool, MOUNT_GLYPH_SOCKETS.minor).map((set) => legalise({ ...c, mountGlyphs: { ...cur, minor: set } }));
+      // glyph dominance (simulation.md Build space / Blocks): per stat the top m by value, full rows only
+      return minorRowsFor(character, cur).map((set) => legalise({ ...c, mountGlyphs: { ...cur, minor: set } }));
     },
     majorGlyphs(c) {
       const cur = socketsOf(character, c);
@@ -425,13 +464,19 @@ export function createBuildSpace(character, presetOrId, { realm = 'base', mode =
       const spec = specOf(c);
       const running = runningSigils(character, c);
       // a major acts only for its class and spec while its sigil runs (#47); the current ones stay choosable
-      const pool = (character.glyphs ?? [])
+      const live = (character.glyphs ?? [])
         .filter((g) => glyphSocketable(character, g, 'major') && (cur.major.includes(g.id) || activeMajorIds(character, [g.id], spec, running).size))
-        .map((g) => g.id).filter((id) => !cur.minor.includes(id) && !cur.mythic.includes(id));
-      const typeOf = (id) => glyphById.get(id)?.glyphType;
-      return subsetsUpTo(pool, MOUNT_GLYPH_SOCKETS.major)
-        .filter((set) => new Set(set.map(typeOf)).size === set.length) // two of a type never stack (mounts-glyphs.md §10)
-        .map((set) => legalise({ ...c, mountGlyphs: { ...cur, major: set } }));
+        .filter((g) => !cur.minor.includes(g.id) && !cur.mythic.includes(g.id));
+      // glyph dominance: per type only the best instance (highest rarity; of equals the socketed one, else the
+      // lowest id), because two of a type never stack (mounts-glyphs.md §10)
+      const best = new Map();
+      const order = (g) => [-GLYPH_RARITY_LADDER.indexOf(g.rarity), cur.major.includes(g.id) ? 0 : 1, g.id];
+      for (const g of live) {
+        const b = best.get(g.glyphType);
+        if (!b || cmpKeys(order(g), order(b)) < 0) best.set(g.glyphType, g);
+      }
+      const pool = [...best.values()].map((g) => g.id).sort(byString);
+      return subsetsUpTo(pool, MOUNT_GLYPH_SOCKETS.major).map((set) => legalise({ ...c, mountGlyphs: { ...cur, major: set } }));
     },
     talents(c) {
       return talentMoves(c).map((talentAllocation) => legalise({ ...c, talentAllocation }));
