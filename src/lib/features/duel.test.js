@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { fixtureCharacter } from '../build/fixtures.js';
-import { runDuel } from '../engine/pvp/resolver.js';
+import { runDuel, fighterDuelArgs } from '../engine/pvp/resolver.js';
 import { pvpWinRate } from '../engine/metrics.js';
 import { mulberry32 } from '../engine/rng.js';
 import { newOpponent } from '../model/opponents.js';
@@ -33,16 +33,16 @@ describe('fighters', () => {
     o.sheet.values = { totalHp: 10000, totalAttack: 500 };
     o.utility = { species: 'DIRE_URSINE', level: 3 };
     const f = opponentFighter(o);
-    expect(f.stats).toEqual({ totalHp: 10000, totalAttack: 500 });
+    expect(f.stats).toMatchObject({ totalHp: 10000, totalAttack: 500 });
     expect(f).toMatchObject({ class: 'MYSTIC', spec: 'MYSTIC_DRUID', form: 'BEAR', formKind: 'BEAR' });
     expect(f.formConfig.form).toBe('BEAR');
     expect(opponentFighter(newOpponent('MYSTIC_DRUID')).form).toBeNull();
   });
 
   it('missingStats names what a duel cannot start without', () => {
-    expect(missingStats({ stats: {} })).toEqual(['HP', 'Attack']);
-    expect(missingStats({ stats: { totalHp: 5, totalAttack: 0 } })).toEqual(['Attack']);
-    expect(missingStats({ stats: { totalHp: 5, totalAttack: 1 } })).toEqual([]);
+    expect(missingStats({ stats: {} })).toEqual(['HP', 'Attack', 'Attack Speed']);
+    expect(missingStats({ stats: { totalHp: 5, totalAttack: 0, totalAttackSpeed: 1 } })).toEqual(['Attack']);
+    expect(missingStats({ stats: { totalHp: 5, totalAttack: 1, totalAttackSpeed: 1 } })).toEqual([]);
   });
 });
 
@@ -175,5 +175,83 @@ describe('duel task', () => {
     expect(b.trace).not.toEqual(a.trace);
     const again = await runTask('duel', { attacker: mine, defender: theirs, n: 0, seed: 3, trace: true });
     expect(again.trace).toEqual(a.trace);
+  });
+});
+
+describe('opponents with sparse sheets (plan E3)', () => {
+  const sparse = (spec, values, utility) => {
+    const o = newOpponent(spec, 'Sparse');
+    o.sheet.values = values;
+    if (utility) o.utility = { species: utility, level: 3 };
+    return o;
+  };
+  const base = { totalHp: 200000, totalAttack: 4000, totalAttackSpeed: 1.2 };
+  const hitter = { class: 'WARRIOR', spec: 'WARRIOR_DPS', sigils: [], source: 'sheet',
+    stats: { ...base, totalDoubleHit: 0, totalCritChance: 0, totalCritDamage: 1.5, totalLifesteal: 0, totalHpRegen: 0, totalDamageReduction: 0,
+      totalBlockChance: 0, totalMissChance: 0, totalBlindChance: 0, totalParalyzeChance: 0, totalPenetration: 0, totalPvpAttack: 0, totalPvpDefense: 0 } };
+
+  it('missingStats also needs Attack Speed', () => {
+    expect(missingStats({ stats: { totalHp: 5, totalAttack: 1 } })).toEqual(['Attack Speed']);
+  });
+
+  it('HP, Attack and Attack Speed alone give a finite duel, and defaulted lists the rest', () => {
+    const f = opponentFighter(sparse('WARRIOR_TANK', base));
+    expect(missingStats(f)).toEqual([]);
+    expect(f.defaulted).toEqual(expect.arrayContaining(['totalCritDamage', 'totalHpRegen', 'totalBlockChance', 'totalMissChance']));
+    expect(f.defaulted).not.toContain('totalHp');
+    expect(f.stats.totalCritDamage).toBe(1.5);
+    for (const seat of [{ attacker: hitter, defender: f }, { attacker: f, defender: hitter }]) {
+      const r = runDuel({ ...seat, rng: mulberry32(5) });
+      expect(Number.isFinite(r.attackerHpLeft) && Number.isFinite(r.defenderHpLeft)).toBe(true);
+      expect(r.timeMs).toBeGreaterThan(1000);
+    }
+  });
+
+  it('blank Crit Damage with a Crit Chance gives no NaN', () => {
+    const f = opponentFighter(sparse('WARRIOR_DPS', { ...base, totalCritChance: 100 }));
+    const r = runDuel({ attacker: f, defender: hitter, rng: mulberry32(1), log: true });
+    expect(r.log.every((e) => Number.isFinite(e.damage))).toBe(true);
+    expect(r.log.some((e) => e.type === 'attacker_crit')).toBe(true);
+  });
+
+  it('a Warrior Tank with Block 30 and Miss blank still blocks (about 28% of swings)', () => {
+    const tank = opponentFighter(sparse('WARRIOR_TANK', { ...base, totalHp: 1e7, totalBlockChance: 30 }));
+    let blocks = 0;
+    let swings = 0;
+    for (let seed = 1; seed <= 20; seed++) {
+      for (const e of runDuel({ attacker: hitter, defender: tank, rng: mulberry32(seed), log: true }).log) {
+        if (e.type === 'defender_block') { blocks++; swings++; } else if (e.type === 'attacker_hit' || e.type === 'attacker_crit') swings++;
+      }
+    }
+    expect(blocks / swings).toBeGreaterThan(0.22);
+    expect(blocks / swings).toBeLessThan(0.34);
+  });
+
+  it('typed Necromancer, Bear and Wolf opponents fear or stagger instead of silencing', () => {
+    const seen = (opp) => {
+      const kinds = new Set();
+      const f = opponentFighter(opp);
+      for (let seed = 1; seed <= 6; seed++) {
+        for (const e of runDuel({ attacker: f, defender: hitter, rng: mulberry32(seed), log: true }).log) kinds.add(e.type);
+      }
+      return kinds;
+    };
+    const dis = { ...base, totalDisruptionChance: 40 };
+    const necro = seen(sparse('NECROMANCER_DEATHLORD', dis));
+    expect(necro.has('defender_feared')).toBe(true);
+    expect(necro.has('defender_silenced')).toBe(false);
+    const bear = seen(sparse('MYSTIC_DRUID', dis, 'DIRE_URSINE'));
+    expect(bear.has('defender_staggered')).toBe(true);
+    expect(bear.has('defender_silenced')).toBe(false);
+    const wolf = seen(sparse('MYSTIC_DRUID', dis, 'ALPHA_LUPINE'));
+    expect(wolf.has('defender_feared')).toBe(true);
+    expect(wolf.has('defender_silenced')).toBe(false);
+    expect(seen(sparse('WARRIOR_DPS', dis)).has('defender_silenced')).toBe(true);
+  });
+
+  it('a cloned Necromancer keeps Fear', () => {
+    const c = fixtureCharacter('NECROMANCER');
+    const f = opponentFighter(cloneAsOpponent(c, c.presets[0].id, 'NECROMANCER_DEATHLORD'));
+    expect(fighterDuelArgs(f).stats.disruptionEffect).toBe('FEAR');
   });
 });

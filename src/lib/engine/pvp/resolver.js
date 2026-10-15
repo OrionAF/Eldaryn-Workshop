@@ -28,10 +28,50 @@ import {
   buildCombatSpells, getEquippedShieldConfig, getEquippedSummonConfig, classifyShieldVariant,
 } from '../core/spellConfig.js';
 import { glyphCombatMods } from '../core/glyphMods.js';
+import { disruptionEffectFor } from '../core/disruption.js';
+import { assertFiniteEntity } from '../validate.js';
 
 /** @typedef {import('./events.js').DuelEvent} DuelEvent */
 /** @typedef {import('./events.js').ArenaPvpResult} ArenaPvpResult */
 /** @typedef {import('./events.js').DuelSummary} DuelSummary */
+
+/** Every numeric field createPlayerEntity produces; a duel needs each of them finite (plan I9). */
+const ENTITY_KEYS = Object.freeze([
+  'maxHp', 'rawMaxHp', 'hp', 'attack', 'attackSpeed', 'doubleHit', 'critChance', 'critDamage', 'lifesteal',
+  'hpRegen', 'damageReduction', 'blockChance', 'missChance', 'blindChance', 'paralyzeChance', 'penetration',
+  'disruptionChance', 'pvpAttack', 'pvpDefense', 'spellDamage', 'spellResist', 'spellCritChance', 'spellVamp',
+]);
+
+/**
+ * The sheet keys a duel needs, with the neutral value an absent one takes (stats.md §2: chances, ratings,
+ * regen and DR are 0, Crit Damage is the base 1.5). HP, Attack and Attack Speed have no neutral value:
+ * a sheet without them cannot duel (features/duel.js `missingStats`).
+ */
+export const DUEL_STAT_DEFAULTS = Object.freeze({
+  totalDoubleHit: 0, totalCritChance: 0, totalCritDamage: 1.5, totalLifesteal: 0, totalHpRegen: 0,
+  totalDamageReduction: 0, totalBlockChance: 0, totalMissChance: 0, totalBlindChance: 0, totalParalyzeChance: 0,
+  totalPenetration: 0, totalDisruptionChance: 0, totalPvpAttack: 0, totalPvpDefense: 0, totalSpellDamage: 0,
+  totalSpellResist: 0, totalSpellCritChance: 0, totalSpellVamp: 0,
+});
+
+/**
+ * A complete duel sheet from a sparse one (blank rows, stats the class sheet hides). Present keys are
+ * kept as given; absent ones take their neutral value; `disruptionEffect` is derived from class and form
+ * when the sheet carries none. Returns a copy and the keys that were defaulted.
+ * @param {Object} stats
+ * @param {string} [playerClass]
+ * @param {'BEAR'|'WOLF'|null} [form]
+ * @returns {{stats: Object, defaulted: string[]}}
+ */
+export function completeDuelStats(stats, playerClass, form = null) {
+  const out = { ...stats };
+  const defaulted = [];
+  for (const [key, neutral] of Object.entries(DUEL_STAT_DEFAULTS)) {
+    if (out[key] == null) { out[key] = neutral; defaulted.push(key); }
+  }
+  if (out.disruptionEffect == null) out.disruptionEffect = disruptionEffectFor(playerClass, form);
+  return { stats: out, defaulted };
+}
 
 const STATUS_FIELDS = ['blinded', 'paralyzedMs', 'silencedMs', 'staggerStacks', 'fearedMs'];
 
@@ -98,6 +138,8 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
   const R = createReactions(s, { isSpellBuffActive, activeBuffThornsPercent, pvpRatingToFraction });
   const A = s.attacker;
   const D = s.defender;
+  assertFiniteEntity('attacker', A, ENTITY_KEYS);
+  assertFiniteEntity('defender', D, ENTITY_KEYS);
   const aMin = s.attackerMinion;
   const dMin = s.defenderMinion;
   const aRt = s.attackerSpellRuntimes;
@@ -450,8 +492,9 @@ export function fighterDuelArgs(f) {
     altarTier: f.altarTier ?? 1,
   };
   const glyphs = glyphCombatMods(f.glyphMods ?? [], playerClass, spec);
+  const { stats } = completeDuelStats(f.stats, playerClass, form);
   return {
-    stats: applyPvpHpBuff(f.stats),
+    stats: applyPvpHpBuff(stats),
     spells: buildCombatSpells(state, playerClass, spec, form, glyphs.mods),
     equipped: generic,
     glyphCombat: glyphs.combat,

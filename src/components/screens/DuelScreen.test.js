@@ -34,7 +34,7 @@ it('without an opponent it asks for one and cannot run', () => {
   expect(q('[data-testid="opponent-editor"]')).toBeNull();
 });
 
-it('a new opponent has no stats yet: the editor opens and the run stays blocked until HP and Attack are entered', () => {
+it('a new opponent has no stats yet: the editor opens and the run stays blocked until HP, Attack and Attack Speed are entered', () => {
   open();
   click(btn('+ New opponent'));
   expect(rosterStore.current.opponents).toHaveLength(1);
@@ -43,6 +43,9 @@ it('a new opponent has no stats yet: the editor opens and the run stays blocked 
   expect(btn('Run 400 duels').disabled).toBe(true);
 
   rosterStore.setOpponentSheet(rosterStore.current.opponents[0].id, { totalHp: 800, totalAttack: 30 });
+  flushSync();
+  expect(btn('Run 400 duels').disabled).toBe(true); // Attack Speed is required too
+  rosterStore.setOpponentSheet(rosterStore.current.opponents[0].id, { totalHp: 800, totalAttack: 30, totalAttackSpeed: 1 });
   flushSync();
   expect(btn('Run 400 duels').disabled).toBe(false);
 });

@@ -6,14 +6,18 @@ import { buildFighter } from '../build/fighter.js';
 import { classOfSpec } from '../game/classes.js';
 import { sigilBySpecies } from '../game/sigils.js';
 import { parseEventType, TIME_UP } from '../engine/pvp/events.js';
+import { completeDuelStats } from '../engine/pvp/resolver.js';
 import { normaliseSheetValues } from '../engine/pipeline/sheet.js';
 import { normaliseOpponent } from '../model/opponents.js';
 import { glyphTypeInfo } from '../model/glyphs.js';
 
-/** Stats a duel cannot start without: an HP pool and an attack. */
+export { completeDuelStats };
+
+/** Stats a duel cannot start without: an HP pool, an attack and a swing speed (no neutral value exists). */
 export const REQUIRED_STATS = [
   ['totalHp', 'HP'],
   ['totalAttack', 'Attack'],
+  ['totalAttackSpeed', 'Attack Speed'],
 ];
 
 /**
@@ -24,7 +28,10 @@ export function duelFighter(f) {
   return { ...f, form: f.form ?? f.formKind ?? null };
 }
 
-/** Saved opponent -> Fighter. Its sheet is its stat block (no pipeline runs). */
+/**
+ * Saved opponent -> Fighter. Its sheet is its stat block (no pipeline runs); rows it leaves blank or its
+ * class hides take their neutral value and are listed in `defaulted` (data-model.md §7).
+ */
 export function opponentFighter(opp) {
   const o = normaliseOpponent(opp);
   const utilityDef = o.utility ? sigilBySpecies(o.utility.species) : null;
@@ -32,8 +39,11 @@ export function opponentFighter(opp) {
   // A major glyph is inert unless its sigil is equipped (CLAUDE.md BigReworkV1), as in build/fighter.js.
   const equipped = new Set([...o.sigils, o.utility, o.ancient].filter(Boolean).map((s) => s.species));
   const glyphMods = o.majorGlyphs.filter((g) => equipped.has(glyphTypeInfo(g.glyphType)?.def.sigilSpecies));
+  const formKind = formConfig?.form ?? null;
+  const { stats, defaulted } = completeDuelStats(o.sheet.values, o.class, formKind);
   return duelFighter({
-    stats: { ...o.sheet.values },
+    stats,
+    defaulted,
     class: o.class,
     spec: o.spec,
     level: 100,
@@ -43,7 +53,7 @@ export function opponentFighter(opp) {
     conditions: o.conditions,
     glyphMods,
     altarTier: o.altarTier,
-    formKind: formConfig?.form ?? null,
+    formKind,
     formConfig,
     realm: 'base',
     presetId: null,
