@@ -20,7 +20,9 @@ import {
   MINOR_GLYPH_TYPES,
   MYTHIC_GLYPH_TYPES,
   GLYPH_SECONDARY_POOL,
+  GLYPH_QUALITY_BANDS,
 } from '../game/mountsGlyphs.js';
+import { available } from '../game/classes.js';
 import { newId } from './character.js';
 
 /** Doc §8: rarity ladder for minor/major/mythic glyphs. Minor types fix their rarity; others pick per instance. */
@@ -114,10 +116,25 @@ export function majorEffectAtRarity(glyphType, rarity) {
 
 // --- normalise ---
 
-function normaliseSecondary(raw) {
+/** [lo, hi] quality band of a rarity (doc §9; unknown rarity falls back to Common like the client). */
+export function glyphQualityBand(rarity) {
+  return GLYPH_QUALITY_BANDS[rarity] ?? GLYPH_QUALITY_BANDS.Common;
+}
+
+/**
+ * Is `stat` in the class's secondary pool? The per-class lists are partly [UNRESOLVED] (doc §9), so
+ * this only ever warns; normalisation keeps a stat the pool lists whatever the class.
+ */
+export function glyphSecondaryInClassPool(stat, cls) {
+  const def = poolByStat.get(stat);
+  return !!def && available(def.statEnum, cls ?? 'WARRIOR');
+}
+
+function normaliseSecondary(raw, rarity) {
   if (!raw || typeof raw !== 'object' || !poolByStat.has(raw.stat)) return null;
   const q = Number(raw.quality);
-  return { stat: raw.stat, quality: Number.isFinite(q) ? Math.min(1, Math.max(0, q)) : 0 };
+  const [lo, hi] = glyphQualityBand(rarity);
+  return { stat: raw.stat, quality: Number.isFinite(q) ? Math.min(hi, Math.max(lo, q)) : lo };
 }
 
 /** One raw glyph -> a valid glyph, or null when its type does not resolve (or is another class's major). */
@@ -134,7 +151,7 @@ export function normaliseGlyph(raw, ctx = {}) {
     rarity,
     sealed,
     // Only minor glyphs roll a secondary, and only once unlocked (doc §8-§9).
-    secondary: info.tier === 'minor' && !sealed ? normaliseSecondary(raw.secondary) : null,
+    secondary: info.tier === 'minor' && !sealed ? normaliseSecondary(raw.secondary, rarity) : null,
   };
 }
 

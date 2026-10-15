@@ -64,6 +64,8 @@ export const CONDUIT = gearData.conduit;
 
 // gear.md §6, §8, §11 (ascension rate, dual equip, total power weights)
 export const ASCENSION_ABOVE_HUNDRED_STAT_RATE = gearData.ascensionAboveHundredStatRate;
+// gear.md §6: item-level cap per Ascension step, `regular` and `oblivion`, indexed by ascension - 1
+export const MAX_ITEM_LEVEL_BY_ASCENSION = gearData.maxItemLevelByAscension;
 export const OBLIVION_PRESTIGE = gearData.oblivionPrestige;
 export const TOTAL_POWER_EQUIP = gearData.totalPowerEquip;
 export const FEATURE_UNLOCK_LEVELS = gearData.featureUnlockLevels;

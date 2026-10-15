@@ -11,6 +11,7 @@
 //   rankEntries(...)                   best verdict first
 import { isGameProfile, mapItem } from '../model/gameProfile.js';
 import { normaliseItem } from '../model/equipment.js';
+import { dropAscension } from '../model/drop.js';
 import { dropHasStats } from '../model/drop.js';
 import { slotsForRealm } from '../game/gear.js';
 import { prepareSwap, verdictFor } from './swap.js';
@@ -72,7 +73,7 @@ export function parseDropBatch(input, character) {
       if (itemClass && cls && itemClass !== cls) return skip(`Item for another class (${itemClass})`);
       if (!slotsForRealm(realm).includes(raw.slot)) return skip(`Unknown ${realm === 'oblivion' ? 'Oblivion ' : ''}slot ${raw.slot ?? '(none)'}`);
       const mapped = mapItem(raw);
-      const item = normaliseItem(mapped, { cls, realm });
+      const item = normaliseItem(mapped, { cls, realm, ascension: dropAscension(character) });
       if (!item || !dropHasStats(item)) return skip('No stats');
       const dropped = Math.max(0, mapped.secondaryStats.length - item.secondaryStats.length);
       entries.push({ key: `${realm}:${i}`, name, realm, slot: raw.slot, item, dropped });

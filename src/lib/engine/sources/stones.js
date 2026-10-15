@@ -45,7 +45,7 @@ export function stoneStatValue(stone, stat) {
 }
 
 /**
- * port of calculateEnchantStoneBonuses L1205726-1206148. Skips stones with `activated === false`.
+ * port of calculateEnchantStoneBonuses L1205726-1206148. Skips stones with a falsy `activated`.
  * Oblivion stones add their grade's base Attack/HP to flatAttack/flatHp.
  * @param {import('../types.js').Stone[]} stones
  * @returns {import('../types.js').StoneBonuses & {flatAttack:number, flatHp:number}}
@@ -53,7 +53,8 @@ export function stoneStatValue(stone, stat) {
 export function calculateStoneBonuses(stones) {
   const out = emptyStoneBonuses();
   for (const stone of stones ?? []) {
-    if (!stone || stone.activated === false) continue;
+    // L1205747 skips a falsy `activated`; a record with no flag at all (engine-level callers) counts.
+    if (!stone || (stone.activated !== undefined && !stone.activated)) continue;
     if (isOblivion(stone.type)) {
       const g = oblivionGrade(normalizeOblivionLevel(stone.oblivionLevel));
       if (g) {

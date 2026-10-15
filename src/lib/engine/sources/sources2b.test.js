@@ -56,6 +56,15 @@ describe('stones source', () => {
     expect(b.pvpAttack).toBeCloseTo(13, 9);
     expect(b.pvpDefense).toBe(12);
   });
+  it('skips every falsy activated flag, not only false (L1205747)', () => {
+    const stat = [{ type: 'CRIT_CHANCE', value: 5 }];
+    const b = calculateStoneBonuses([
+      { type: 'PVE_ATTACK', activated: null, stats: stat },
+      { type: 'PVE_ATTACK', activated: 0, stats: stat },
+      { type: 'PVE_ATTACK', activated: true, stats: stat },
+    ]);
+    expect(b.critChance).toBe(5);
+  });
   it('Oblivion: grade base Attack/HP, power excludes amplify', () => {
     expect(oblivionPowerForQuality(1)).toBe(8);
     expect(oblivionPowerForQuality(100)).toBe(30);

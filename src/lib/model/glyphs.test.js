@@ -82,12 +82,17 @@ describe('normalise', () => {
   });
 
   it('only unsealed minors keep a secondary, validated against the pool', () => {
-    const sec = { stat: 'critChance', quality: 0.5 };
+    const sec = { stat: 'critChance', quality: 0.15 }; // inside the Common band [0.1, 0.2]
     expect(normaliseGlyph({ glyphType: 'g-swift', secondary: sec }).secondary).toEqual(sec);
+    expect(normaliseGlyph({ glyphType: 'g-swift', secondary: { stat: 'critChance', quality: 1 } }).secondary.quality).toBe(0.2);
+    expect(normaliseGlyph({ glyphType: 'g-swift', secondary: { stat: 'critChance', quality: 0 } }).secondary.quality).toBe(0.1);
     expect(normaliseGlyph({ glyphType: 'g-swift', secondary: sec, sealed: true }).secondary).toBeNull();
     expect(normaliseGlyph({ glyphType: 'sg-warborn-cd', secondary: sec }).secondary).toBeNull();
     expect(normaliseGlyph({ glyphType: 'g-swift', secondary: { stat: 'bogus', quality: 1 } }).secondary).toBeNull();
-    expect(normaliseGlyph({ glyphType: 'g-swift', secondary: { stat: 'critChance', quality: 7 } }).secondary.quality).toBe(1);
+    expect(normaliseGlyph({ glyphType: 'g-swift', secondary: { stat: 'critChance', quality: 7 } }).secondary.quality).toBe(0.2);
+    // a Legendary-rarity minor (band [0.8, 1]) keeps its top quality
+    const legendary = MINOR_GLYPH_TYPES.find((t) => t.rarity === 'Legendary');
+    if (legendary) expect(normaliseGlyph({ glyphType: legendary.id, secondary: { stat: 'critChance', quality: 1 } }).secondary.quality).toBe(1);
   });
 
   it('is idempotent and repairs duplicate ids', () => {

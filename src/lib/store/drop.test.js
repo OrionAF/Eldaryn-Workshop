@@ -24,7 +24,7 @@ describe('drop store', () => {
   it('setDropItem normalises, and works before any drop exists', () => {
     rosterStore.setDropItem({ ...item, itemLevel: 9999 });
     expect(rosterStore.current.drop.slot).toBe('WEAPON');
-    expect(rosterStore.current.drop.item.itemLevel).toBe(240);
+    expect(rosterStore.current.drop.item.itemLevel).toBe(100); // no Ascension bought: step 1 (gear.md §6)
   });
 
   it('setDropSlot starts a fresh item only when the slot changes', () => {
