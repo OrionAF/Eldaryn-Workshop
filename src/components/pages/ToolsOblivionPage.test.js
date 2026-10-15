@@ -4,6 +4,8 @@ import ToolsOblivionPage from './ToolsOblivionPage.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
 import { __resetJobs, jobsStore } from '../../lib/jobs.svelte.js';
 import { notifications } from '../../lib/notify.svelte.js';
+import { setPrefs as setEstimatePrefs, applyPrefs as resetEstimatePrefs } from '../../lib/prefs.svelte.js';
+import { APP_VERSION as ESTIMATE_VERSION } from '../../lib/calibration.js';
 
 const ROWS = [
   { floor: 1, instability: 10, strain: 0, p: 1, pLo: 0.94, pHi: 1, wins: 64, deaths: 0, timeouts: 0, n: 64, medianMs: 4000, verdict: 'pass' },
@@ -133,4 +135,16 @@ it('stale: changing the scan setup (not only the build) marks the finished scan 
   flushSync();
   expect(target.querySelector('table.stale')).toBeTruthy();
   expect(target.textContent).toContain('Out of date');
+});
+
+it('S2: the scan setup shows an upper-bound run-time estimate, or a link to calibrate', () => {
+  resetEstimatePrefs();
+  rosterStore.setOblivionUnlocked(true);
+  mountPage();
+  expect(target.querySelector('[data-testid="run-estimate"] a').getAttribute('href')).toBe('#/settings');
+  setEstimatePrefs({ calibration: { profile: 'balanced', workers: 4, fightsPerSec: { dummy: 100, dungeon: 100, duel: 100 }, measuredAt: Date.now(), version: ESTIMATE_VERSION } });
+  flushSync();
+  expect(target.querySelector('[data-testid="run-estimate"]').textContent).toMatch(/Up to .* on this device \(estimate\)/);
+  localStorage.clear();
+  resetEstimatePrefs();
 });

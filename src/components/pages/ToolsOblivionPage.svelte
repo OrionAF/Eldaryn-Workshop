@@ -13,6 +13,8 @@
     strainRows, WIN_THRESHOLD, FLOOR_EFFORT, floorScanRequest, floorScanInputs,
   } from '../../lib/features/oblivionDungeon.js';
   import { formatFlat } from '../../lib/format.js';
+  import { oblivionFights } from '../../lib/calibration.js';
+  import RunEstimate from '../ui/RunEstimate.svelte';
   import Panel from '../ui/Panel.svelte';
   import Banner from '../ui/Banner.svelte';
   import Button from '../ui/Button.svelte';
@@ -113,6 +115,7 @@
             label="Effort" bind:value={effort}
             options={Object.entries(FLOOR_EFFORT).map(([value, n]) => ({ value, label: value[0].toUpperCase() + value.slice(1), sub: `N ${n}` }))}
           />
+          <RunEstimate bound="upper" fights={oblivionFights(to - from + 1, FLOOR_EFFORT[effort] ?? FLOOR_EFFORT.standard)} />
           <Checkbox label="Apply the instability output cut" bind:checked={applyOutputCut} />
         </div>
         <div class="actions">

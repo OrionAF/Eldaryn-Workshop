@@ -41,6 +41,8 @@
   import FightersTable from '../duel/FightersTable.svelte';
   import SampleDuel from '../duel/SampleDuel.svelte';
   import VerifyFightLog from '../duel/VerifyFightLog.svelte';
+  import { duelFights } from '../../lib/calibration.js';
+  import RunEstimate from '../ui/RunEstimate.svelte';
 
   // eslint-disable-next-line no-unused-vars
   let { setStatus = () => {}, onNavigate = () => {}, tab = null } = $props();
@@ -264,6 +266,7 @@
         <div class="field">
           <span class="lbl">Effort</span>
           <SegmentedControl label="Effort" options={effortOptions} bind:value={effort} />
+          <RunEstimate fights={duelFights(perSeat, seat === 'both' ? 2 : 1)} />
           <span class="hint">Duels per seat. Seed <span class="num">{SEED}</span>. Effort sets precision only; "Run more" tightens a result.</span>
         </div>
         {#each blockers as b (b.text)}

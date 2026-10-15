@@ -135,7 +135,7 @@
 
       <div class="job-foot">
         <span class="time">
-          {#if job.status === 'running'}Elapsed <span class="num">{elapsed(job)}</span>
+          {#if job.status === 'running'}Elapsed <span class="num">{elapsed(job)}</span>{#if job.workers} · <span class="num" data-testid="job-workers">{job.workers} {job.workers === 1 ? 'worker' : 'workers'}</span>{/if}
           {:else if job.status === 'queued'}Waiting for a free slot
           {:else}{st.word} <span class="num">{clock(job.endedAt ?? job.queuedAt)}</span>
             {#if job.startedAt}· took <span class="num">{elapsed(job)}</span>{/if}

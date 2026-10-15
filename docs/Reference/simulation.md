@@ -461,6 +461,21 @@ Code: `src/lib/tasks/pool.js` (`createPool`, `inlinePool`, `poolScope`), `tasks/
   small here because the search is a long chain of small logged steps (8-fight first looks) and the
   driver's own work (legality, canonical forms, engine keys) stays on one thread.
 
+### Speed calibration and run-time estimates
+
+Settings > Performance holds the CPU thermal profile (pref `cpuProfile`) and an opt-in **Calibrate
+speed** button; nothing calibrates on load. The `calibrate` task (`tasks/calibrate.js`) runs about 6 s
+through the pool of the current profile: per fight kind (training dummy, a dungeon step, and a duel when
+the character has an opponent with a complete sheet) one untimed warm-up batch, then batches until the
+kind's slice is spent. It stores `{profile, workers, fightsPerSec by kind, measuredAt, version}` in the
+per-device prefs (`lib/calibration.js`); `version` is the build id (package version plus commit, vite
+`define`). The calibration is stale when the profile or the build id differs; it keeps giving estimates,
+labelled as old. Tool pages show "About N min on this device (estimate)" under Effort, from fights by
+kind over those rates: Duel exact, Drop Check and Oblivion Floors an upper bound (every comparison to
+maxN, every floor scanned), Optimiser a rough figure (builds interpolated between the two measured points
+of §Cost, about 2 x n0 fights per build; a comparison that runs on to maxN is not counted). The Jobs
+tray prints the pool size a running job started with.
+
 ## Drop Check
 
 Code: `src/lib/features/swap.js` (`runSwapMetrics`, `contrastMetric`, `applyFamily`, `verdictFor`),

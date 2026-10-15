@@ -9,6 +9,8 @@ import { loadImportText, confirmImport, resetImportFlow } from '../../lib/import
 import { resetDuelSetup } from '../../lib/duelSetup.svelte.js';
 import fightLog from '../../lib/__fixtures__/real/arena-fight-warrior.json';
 import SampleDuel from '../duel/SampleDuel.svelte';
+import { setPrefs as setEstimatePrefs, applyPrefs as resetEstimatePrefs } from '../../lib/prefs.svelte.js';
+import { APP_VERSION as ESTIMATE_VERSION } from '../../lib/calibration.js';
 
 let view;
 let calls;
@@ -210,4 +212,17 @@ it('the sample duel header keeps the space before the duration ("you lose in 60.
   const s = setup(SampleDuel, { trace, traceResult: { attackerWon: false, totalDuration: 60000 }, attackerName: 'A', defenderName: 'B', mineSide: 'attacker', seed: 1, onreroll: () => {} });
   expect(s.target.textContent).toContain('you lose in 60.0 s');
   s.done();
+});
+
+it('S2: shows the run-time estimate under Effort, or a link to calibrate', () => {
+  resetEstimatePrefs();
+  view = setup(ToolsDuelPage);
+  expect(view.q('[data-testid="run-estimate"] a').getAttribute('href')).toBe('#/settings');
+  view.done();
+  view = null;
+  setEstimatePrefs({ calibration: { profile: 'balanced', workers: 4, fightsPerSec: { dummy: 100, dungeon: 100, duel: 100 }, measuredAt: Date.now(), version: ESTIMATE_VERSION } });
+  view = setup(ToolsDuelPage);
+  expect(view.q('[data-testid="run-estimate"]').textContent).toMatch(/on this device \(estimate\)/);
+  localStorage.clear();
+  resetEstimatePrefs();
 });
