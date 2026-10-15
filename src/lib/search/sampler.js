@@ -111,7 +111,9 @@ function verdictOf(objective, x, y, o, alpha, final) {
   const zone = c.basis === 'winRate'
     ? o.deltaWinRate ?? WIN_RATE_DELTA
     : deltaAbs(o.delta ?? 0, o.deltaKind ?? objective.deltaKind, c.ref);
-  const verdict = decide(c, zone, hib) ?? (final ? 'unresolved' : null);
+  // futile: X cannot beat Y by δ (one-sided bound of the same interval; simulation.md §Search, racing)
+  const futile = hib ? c.hi < zone : c.lo > -zone;
+  const verdict = decide(c, zone, hib) ?? (o.futility && futile ? 'futile' : null) ?? (final ? 'unresolved' : null);
   if (!verdict) return null;
   return {
     delta: c.delta, lo: c.lo, hi: c.hi,
@@ -119,7 +121,7 @@ function verdictOf(objective, x, y, o, alpha, final) {
     n: x.n, seed: o.seed ?? 1, alphaAdj: alpha, method: c.method, basis: c.basis, higherIsBetter: hib,
     verdict, significant: verdict === 'better' || verdict === 'worse',
     nNeeded: verdict === 'unresolved' ? nNeeded({ sd: c.sd, delta: c.delta, deltaMin: zone, alpha }) : null,
-    p: c.p ?? null, sd: c.sd ?? null, zone,
+    p: c.p ?? null, sd: c.sd ?? null, zone, futile,
   };
 }
 
@@ -136,8 +138,9 @@ export function contrastSets(objective, x, y, o = {}) {
 /**
  * Sequential comparison of X against Y (simulation.md §Statistics): looks at n0, 2n0, ... maxN, each
  * at alpha / looks, stopping at the first resolved verdict. `getX(n)` / `getY(n)` return (or
- * promise) sample sets of at least n fights, typically `sampler.get` calls.
- * @param {{delta?: number, deltaKind?: string, deltaWinRate?: number, alpha?: number, n0: number, maxN: number, seed?: number, B?: number}} o
+ * promise) sample sets of at least n fights, typically `sampler.get` calls. With `futility`, it also
+ * stops with verdict `futile` once X cannot beat Y by δ (a challenger against an incumbent).
+ * @param {{delta?: number, deltaKind?: string, deltaWinRate?: number, alpha?: number, n0: number, maxN: number, seed?: number, B?: number, futility?: boolean}} o
  */
 export async function compareSets(objective, getX, getY, o) {
   const looks = lookSchedule(o.n0, o.maxN);
