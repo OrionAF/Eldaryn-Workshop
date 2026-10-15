@@ -7,14 +7,18 @@
 // Two inputs: the response (`{result}` or the bare `result`) and, optionally, the two fighters the
 // fight was between (Fighters or fighterDuelArgs output). Without fighters the same rules run on what
 // the log itself shows (an interval is inferred from the swing times; sizes must be self-consistent);
-// with them the log is held to the sheet. A rule that cannot be decided reports `skipped` with the
-// reason, never a pass. Pure; no rng.
+// with them the log is held to the sheet. One fighter may be given alone: its side is held to its sheet,
+// the other side is only held to the log itself. A rule whose substantive comparison did not run reports
+// `skipped` with the reason, never a pass; a rule that ran only its grid check says so in its note.
+// Pure; no rng.
 import { ARENA_CONSTANTS } from '../../game/combatPvp.js';
 import { pvpRatingToFraction, REGEN_PULSE_MS } from './attack.js';
 import { createDuelState } from './reactions.js';
 import { fighterDuelArgs } from './resolver.js';
 import { parseEventType } from './events.js';
 import { initSpellRuntimes } from '../core/spells.js';
+import { sigilBySpecies } from '../../game/sigils.js';
+import { completeDuelStats } from './resolver.js';
 import { openingSummonWindowMs } from '../core/minions.js';
 
 /** @typedef {import('./events.js').DuelEvent} DuelEvent */
@@ -76,12 +80,18 @@ function modelSwingTimes(interval, base, end) {
   return out;
 }
 
+// An attack-speed or regen buff among a side's own spells changes its swing clock or its pulses.
+const buffsStat = (spells, stat) => spells.some((c) => {
+  const sp = c.spell;
+  return sp && (sp.spellType === 'TRANSFORM' || ((sp.spellType === 'BUFF') && (sp.effects ?? []).some((e) => e.stat === stat)));
+});
+
 const sameList = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
 
 /**
  * Runs every rule on one response.
  * @param {Object} response  `/arena/fight` body: `{result: ArenaPvpResult}` or the result itself
- * @param {{attacker?: Object, defender?: Object}} [fighters]  both or neither; Fighters or
+ * @param {{attacker?: Object, defender?: Object}} [fighters]  one, both or neither; Fighters or
  *   fighterDuelArgs output (the sheet the server used, before or after the x8 buff)
  * @returns {ReplayReport}
  */
@@ -106,7 +116,7 @@ export function replayCheck(response, fighters = {}) {
       },
     };
     fn(c);
-    if (r.status !== 'skipped' && r.failed > 0) r.status = 'fail';
+    if (r.failed > 0) r.status = 'fail'; // a mismatch found before a skip still fails
     return r;
   };
   const finish = () => ({ ok: !rules.some((r) => r.status === 'fail'), mismatches, rules, totalMismatches: total });
@@ -142,9 +152,13 @@ export function replayCheck(response, fighters = {}) {
 
   // ---- the sheet, when the fighters are known ----
   let sheet = null;
-  if (fighters?.attacker && fighters?.defender) {
-    const a = fighters.attacker.stackCtx ? fighters.attacker : fighterDuelArgs(fighters.attacker);
-    const d = fighters.defender.stackCtx ? fighters.defender : fighterDuelArgs(fighters.defender);
+  if (fighters?.attacker || fighters?.defender) {
+    // A side with no fighter gets a placeholder sheet so the shared duel state can be built; `known` marks
+    // the sides every rule may hold to a sheet.
+    const placeholder = { stats: completeDuelStats({ totalHp: 1, totalAttack: 1, totalAttackSpeed: 1 }).stats, spells: [], equipped: [], stackCtx: {} };
+    const argsOf = (f) => (f ? (f.stackCtx ? f : fighterDuelArgs(f)) : placeholder);
+    const a = argsOf(fighters.attacker);
+    const d = argsOf(fighters.defender);
     const s = createDuelState({
       attackerStats: a.stats, defenderStats: d.stats, attackerSummon: a.summon, defenderSummon: d.summon,
       attackerShield: a.shield, defenderShield: d.shield, attackerEquipped: a.equipped, defenderEquipped: d.equipped,
@@ -152,10 +166,15 @@ export function replayCheck(response, fighters = {}) {
       attackerStackCtx: a.stackCtx, defenderStackCtx: d.stackCtx, attackerSpellRuntimes: null, defenderSpellRuntimes: null,
       rng: () => 0.5,
     });
+    const known = { attacker: !!fighters.attacker, defender: !!fighters.defender };
     const spells = { attacker: a.spells ?? [], defender: d.spells ?? [] };
+    const stacks = { attacker: s.attackerStack, defender: s.defenderStack };
     sheet = {
       e: { attacker: s.attacker, defender: s.defender },
+      known,
+      both: known.attacker && known.defender,
       spells,
+      stacks,
       minions: { attacker: s.attackerMinion, defender: s.defenderMinion },
       hasMinions: s.hasMinions,
       window: openingSummonWindowMs([s.attackerMinion, s.defenderMinion]),
@@ -168,9 +187,27 @@ export function replayCheck(response, fighters = {}) {
     || e.attackerBulwarkStacks !== undefined || e.defenderBulwarkStacks !== undefined
     || e.attackerSunderStacks !== undefined || e.defenderSunderStacks !== undefined);
 
-  // the opening window: the sheet's, else what the t=0 summon rows announce
+  // debuffs the other side landed on `s`, and whether one of them can slow it
+  const debuffsOn = (s) => ticks.filter((e) => e.type === `${other(s)}_spell_debuff_applied`);
+  const slowedOn = (s) => debuffsOn(s).some((e) => !(sigilBySpecies(e.spell?.species)?.spell) || sigilBySpecies(e.spell.species).spell.slow);
+  const stackRows = ticks.some((e) => e.attackerBulwarkStacks !== undefined || e.defenderBulwarkStacks !== undefined
+    || e.attackerSunderStacks !== undefined || e.defenderSunderStacks !== undefined);
+  // Wound or a Siegebreaker mark can shrink `s`'s regen pulses
+  const regenReducible = (s) => debuffsOn(s).length > 0
+    || (sheet?.known[other(s)] ? sheet.stacks[other(s)].active : stackRows);
+  // The side's swing clock is the plain 1000 / speed one: no minion opening, no Elusive, no attack-speed
+  // buff of its own, no Slow on it. Without a sheet the log itself must show a plain duel.
+  const swingExact = (s) => {
+    if (!sheet) return evidencePlain;
+    return sheet.known[s] && !hasMinions && !sheet.stacks[s].active
+      && !buffsStat(sheet.spells[s], 'ATTACK_SPEED') && !slowedOn(s);
+  };
+  const regenExact = (s) => (sheet ? sheet.known[s] && !buffsStat(sheet.spells[s], 'HP_REGEN') : evidencePlain);
+
+  // the opening window: the sheet's (both fighters known), else what the t=0 summon rows announce
   const opening = ticks.filter((e) => e.timestamp === 0 && e.type.endsWith('_minion_summoned'));
-  const window = sheet ? sheet.window : Math.max(0, ...opening.map((e) => e.summonReadyMs ?? 0));
+  const window = sheet?.both ? sheet.window : Math.max(0, ...opening.map((e) => e.summonReadyMs ?? 0));
+  const hasMinions = sheet ? sheet.hasMinions || opening.length > 0 : opening.length > 0;
   const timedOut = res.attackerHpRemaining > 0 && res.defenderHpRemaining > 0;
   const base = window; // the first tick is base + TICK
 
@@ -208,15 +245,15 @@ export function replayCheck(response, fighters = {}) {
 
   // ---- max-hp: the x8 pool ----
   run('max-hp', (c) => {
-    if (!sheet) {
-      for (const s of SIDES) {
-        const v = res[`${s}MaxHp`];
-        if (v > 0 && v % ARENA_CONSTANTS.PVP_HP_MULTIPLIER === 0) c.ok();
-        else c.bad(`${s}MaxHp is not a positive multiple of ${ARENA_CONSTANTS.PVP_HP_MULTIPLIER}`, { actual: v });
-      }
-      return c.note('no fighters: only divisibility by the x8 multiplier is checked');
-    }
     for (const s of SIDES) {
+      if (sheet?.known[s]) continue;
+      const v = res[`${s}MaxHp`];
+      if (v > 0 && v % ARENA_CONSTANTS.PVP_HP_MULTIPLIER === 0) c.ok();
+      else c.bad(`${s}MaxHp is not a positive multiple of ${ARENA_CONSTANTS.PVP_HP_MULTIPLIER}`, { actual: v });
+    }
+    if (!sheet?.both) c.note('a side without fighter: only divisibility by the x8 multiplier is checked');
+    for (const s of SIDES) {
+      if (!sheet?.known[s]) continue;
       const want = sheet.e[s].maxHp;
       if (res[`${s}MaxHp`] === want) c.ok();
       else c.bad(`${s}MaxHp differs from floor(totalHp x ${ARENA_CONSTANTS.PVP_HP_MULTIPLIER})`, { expected: want, actual: res[`${s}MaxHp`] });
@@ -232,10 +269,10 @@ export function replayCheck(response, fighters = {}) {
     if (!sheet && !opening.length) return c.skip('no opening summon rows in the log');
     for (const s of SIDES) {
       const rows = opening.filter((e) => e.type === `${s}_minion_summoned`);
-      const has = sheet ? sheet.minions[s] != null : rows.length > 0;
+      const has = sheet?.known[s] ? sheet.minions[s] != null : rows.length > 0;
       if (!has) {
         if (rows.length) c.bad(`${s} has no minion on the sheet but the log opens with a summon`);
-        else if (sheet) c.ok();
+        else if (sheet?.known[s]) c.ok();
         continue;
       }
       if (rows.length !== 1) { c.bad(`${s} minion is not summoned exactly once at t=0`, { expected: 1, actual: rows.length }); continue; }
@@ -255,8 +292,8 @@ export function replayCheck(response, fighters = {}) {
     const off = ticks.filter((e) => e.timestamp > 0 && e.type !== 'time_up' && (e.timestamp - base) % TICK !== 0);
     if (off.length) c.bad('rows off the 10 ms tick grid', { timestamp: off[0].timestamp, actual: off.length });
     else c.ok();
-    const exact = sheet ? sheet.plain && !sheet.hasMinions : evidencePlain;
-    if (!exact) return c.note('swing times not checked: spells, stacks or minions can change swing timing');
+    const sides = SIDES.filter(swingExact);
+    if (!sides.length) return c.skip('swing times not compared (grid only): a minion, spell, stack or Slow can change the swing clock, or no sheet');
     const times = (s) => {
       const t = new Set();
       for (const e of ticks) {
@@ -265,9 +302,9 @@ export function replayCheck(response, fighters = {}) {
       }
       return [...t].sort((x, y) => x - y);
     };
-    for (const s of SIDES) {
+    for (const s of sides) {
       const actual = times(s);
-      if (sheet) {
+      if (sheet?.known[s]) {
         const interval = Math.round(1000 / sheet.e[s].attackSpeed);
         const want = modelSwingTimes(interval, base, res.totalDuration);
         if (sameList(actual, want)) c.ok();
@@ -293,19 +330,22 @@ export function replayCheck(response, fighters = {}) {
       if (e.timestamp > base && (e.timestamp - base) % REGEN_PULSE_MS === 0) c.ok();
       else c.bad('regen pulse is off the 100 ms grid', { index: i, timestamp: e.timestamp, expected: `${base} + k x ${REGEN_PULSE_MS}` });
     }
-    if (!(sheet ? sheet.plain : evidencePlain)) return c.note('pulse sizes not checked: spells and stacks can change regen');
-    for (const s of SIDES) {
+    const sides = SIDES.filter(regenExact);
+    if (!sides.length) return c.skip('pulse sizes not compared (grid only): a spell or no sheet can change regen');
+    for (const s of sides) {
       const rows = regen.filter(({ e }) => rowSide(e).side === s);
-      const want = sheet
+      const want = sheet?.known[s]
         ? (sheet.e[s].hpRegen > 0 ? Math.max(1, Math.round((sheet.e[s].rawMaxHp * sheet.e[s].hpRegen) / 100 / 10)) : 0)
         : Math.max(0, ...rows.map(({ e }) => e.damage));
+      const reduced = sheet?.known[s] && regenReducible(s); // Wound or a mark: a smaller pulse is lawful
       for (const { e, i } of rows) {
         if (e.damage === want) c.ok();
+        else if (reduced && e.damage > 0 && e.damage < want) c.ok();
         else if (e.damage > 0 && e.damage < want && e[`${s}HpAfter`] === res[`${s}MaxHp`]) c.ok(); // the last pulse tops up to max
         else c.bad(`${s} regen pulse has the wrong size`, { index: i, timestamp: e.timestamp, expected: want, actual: e.damage });
       }
     }
-    if (!sheet) c.note('pulse size taken from the largest pulse in the log');
+    if (!sheet?.both) c.note('a side without fighter: pulse size taken from the largest pulse in the log');
   });
 
   // ---- spell-casts: not before the opening delay, not within the cooldown ----
@@ -313,6 +353,7 @@ export function replayCheck(response, fighters = {}) {
     const casts = ticks.some((e) => e.type.endsWith('_spell_cast'));
     if (!sheet) return c.skip(casts ? 'needs the fighters for cooldowns' : 'no spell casts in the log');
     for (const s of SIDES) {
+      if (!sheet.known[s]) continue;
       const rts = sheet.spells[s].length ? initSpellRuntimes(sheet.spells[s]) : [];
       const byName = new Map(rts.map((rt) => [rt.config.name, rt]));
       const last = new Map();
@@ -334,8 +375,9 @@ export function replayCheck(response, fighters = {}) {
 
   // ---- hit-sizes: what one swing can deal ----
   run('hit-sizes', (c) => {
-    if (sheet && !(sheet.plain && !sheet.hasMinions)) return c.skip('spells, stacks and minions change hit sizes');
-    if (!sheet && !evidencePlain) return c.skip('the log shows spells, minions or stacks; hit sizes vary');
+    const bySheet = sheet?.both;
+    if (bySheet && !(sheet.plain && !sheet.hasMinions)) return c.skip('spells, stacks and minions change hit sizes');
+    if (!bySheet && !evidencePlain) return c.skip('the log shows spells, minions or stacks; hit sizes vary');
     for (const s of SIDES) {
       const normal = [];
       const crit = [];
@@ -350,7 +392,7 @@ export function replayCheck(response, fighters = {}) {
       for (const { e, i } of [...normal, ...dbl, ...crit, ...pen]) {
         if (!(e.damage >= 1)) c.bad(`${s} landed a hit of ${e.damage}`, { index: i, timestamp: e.timestamp });
       }
-      if (sheet) {
+      if (bySheet) {
         const atk = sheet.e[s];
         const def = sheet.e[other(s)];
         const N = mitigate(atk.attack, atk, def);
@@ -386,7 +428,7 @@ export function replayCheck(response, fighters = {}) {
 
   // ---- hp-chain: a hit never raises its target's HP; HP stays under max; the log ends at the result ----
   run('hp-chain', (c) => {
-    const plainLog = sheet ? sheet.plain : evidencePlain;
+    const plainLog = sheet?.both ? sheet.plain : evidencePlain;
     let prev = null;
     ticks.forEach((e, i) => {
       const { side, kind } = rowSide(e);
