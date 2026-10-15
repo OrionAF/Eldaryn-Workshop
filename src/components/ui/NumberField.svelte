@@ -87,9 +87,12 @@
 </div>
 
 <style>
-  .field { display: grid; gap: 4px; min-width: 0; }
+  .field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; }
   label { font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }
   .input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
     display: flex;
     align-items: center;
     justify-content: flex-end;
@@ -104,9 +107,14 @@
     color: var(--text-ink);
   }
   .input:hover { border-color: var(--line-control-hover); }
+  /* resets what the global input rule (app.css) would add: its padding and intrinsic width made every
+     field wider than its grid cell */
   input {
     flex: 1;
+    width: 100%;
     min-width: 0;
+    padding: 0;
+    border-radius: 0;
     background: transparent;
     border: 0;
     color: inherit;

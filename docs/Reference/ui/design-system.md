@@ -317,6 +317,8 @@ spacer · **Jobs pill** · **Saved indicator** · **Notifications** (bell, unrea
 (cog: data, export/import JSON) · **Import** primary button. Preset and realm are the global
 context every tool reads; changing them is announced in a polite live region.
 
+**Phone top bar (≤ 700)**: two rows, `--topbar-h-phone` 100 in the app (the mockup's 52 was one row). Row 1: character switcher, Jobs pill, bell, settings. Row 2: preset select and realm control, visible labels dropped (the controls keep their accessible names). The Saved indicator hides unless storage failed. Brand and Import live in the tab bar.
+
 **Rail on the icon rail** shows a real Tooltip (4.32) on hover and focus, fed from `data-tip`. **Saved indicator**: dot + word. States: `Saved` (verdict-up dot), `Saving…` (muted, pulsing
 dot, static under reduced motion), `Not saved` (verdict-down dot + "Retry"). `role="status"`.
 

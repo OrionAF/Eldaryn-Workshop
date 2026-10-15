@@ -212,7 +212,7 @@
 
   /* ── Layout ───────────────────────────────────────────────────────────── */
   --topbar-h: 56px;
-  --topbar-h-phone: 52px;
+  --topbar-h-phone: 100px; /* two rows: character + jobs/alerts, then preset + realm */
   --rail-w: 240px;
   --rail-w-icon: 64px;
   --inspector-w: 344px;
@@ -350,6 +350,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 @media (pointer: coarse) {
   :root { --control-h: 44px; --row-h: 44px; }
+}
+
+@media (max-width: 700px) {
+  :root { --topbar-h: var(--topbar-h-phone); }
 }
 
 :root {
@@ -546,6 +550,8 @@ select {
   color: var(--color-ink);
   border: 1px solid var(--color-border-strong);
   padding: 6px 10px;
+  max-width: 100%;
+  min-width: 0;
 }
 
 /* Mobile (same 700px contract as App.svelte/Sidebar.svelte): fields must be
