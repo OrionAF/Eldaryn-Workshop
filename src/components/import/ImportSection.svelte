@@ -7,10 +7,9 @@
    */
   import Banner from '../ui/Banner.svelte';
   import ImportSource from './ImportSource.svelte';
-  import { importFlow, loadImportFile, loadImportText } from '../../lib/importFlow.svelte.js';
+  import { importFlow, consumeImportFocus, loadImportFile, loadImportText } from '../../lib/importFlow.svelte.js';
 
   let heading = $state(null);
-  let seen = importFlow.focusSeq;
   const reduce = () => globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
 
   function focusHeading() {
@@ -19,11 +18,9 @@
   }
 
   $effect(() => {
-    const n = importFlow.focusSeq;
-    if (n !== seen && heading) {
-      seen = n;
-      focusHeading();
-    }
+    // Reads focusSeq so a request made while mounted re-runs this; a request made before mount is pending.
+    void importFlow.focusSeq;
+    if (heading && importFlow.focusPending && consumeImportFocus()) focusHeading();
   });
 </script>
 

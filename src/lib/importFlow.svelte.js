@@ -29,6 +29,8 @@ let state = $state({
   handoffSeq: 0,
   /** bumped by a pointer link so Settings focuses its Import section */
   focusSeq: 0,
+  /** true from a pointer link's request until the Import section has taken the focus */
+  focusPending: false,
 });
 
 /** The last "Update <name>": the character as it was, for the one-step undo. */
@@ -65,6 +67,9 @@ export const importFlow = {
   get focusSeq() {
     return state.focusSeq;
   },
+  get focusPending() {
+    return state.focusPending;
+  },
   /** {name, at} of the update that can still be undone, or null. */
   get undo() {
     return lastUpdate ? { name: lastUpdate.name, at: lastUpdate.at } : null;
@@ -82,16 +87,14 @@ export function setBackupFirst(on) {
 /** Ask the Settings page to scroll to and focus its Import section (the pointer links on the tool pages). */
 export function requestImportFocus() {
   state.focusSeq += 1;
+  state.focusPending = true;
 }
 
-/** Open the dialog at the file / paste step. */
-export function openImport() {
-  handoff = null; // a handoff nobody collected is stale
-  state.open = true;
-  state.stage = 'choose';
-  state.text = '';
-  state.plan = null;
-  state.error = '';
+/** The Import section calls this once it has focused its heading. */
+export function consumeImportFocus() {
+  const was = state.focusPending;
+  state.focusPending = false;
+  return was;
 }
 
 export function closeImport() {

@@ -11,7 +11,7 @@
   import Rail from './components/shell/Rail.svelte';
   import ContextHeader from './components/shell/ContextHeader.svelte';
   import NotificationStack from './components/shell/NotificationStack.svelte';
-  import ImportFile from './components/shell/ImportFile.svelte';
+  import ImportDialog from './components/import/ImportDialog.svelte';
   import SettingsPage from './components/pages/SettingsPage.svelte';
   import { PAGE_COMPONENTS } from './components/pages/index.js';
   import EmptyState from './components/ui/EmptyState.svelte';
@@ -98,7 +98,7 @@
   </div>
 {/if}
 
-<ImportFile />
+<ImportDialog />
 <NotificationStack />
 
 <style>
