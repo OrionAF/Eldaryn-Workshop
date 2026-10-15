@@ -117,6 +117,12 @@ it('RunProgress: data-driven segments with progressbar text', () => {
   two.done();
 });
 
+it('RunProgress: the A.9 "current" phase state is drawn as the active segment', () => {
+  const t = setup(RunProgress, { segments: [{ id: 'search', label: 'Search', state: 'current', done: 1, total: 4 }] });
+  expect(t.q('.seg-step').classList.contains('is-active')).toBe(true);
+  t.done();
+});
+
 const contrast = (over = {}) => ({
   delta: 1000, lo: -3000, hi: 5000, pct: null, n: 800, seed: 1, alphaAdj: 0.05, method: 'paired-t',
   verdict: 'unresolved', significant: false, nNeeded: 4000, ...over,

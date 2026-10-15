@@ -43,7 +43,7 @@
   }
 </script>
 
-<article class="card" aria-labelledby="{id}-t" data-set={card.setKey} data-verdict={chip.verdict}>
+<article class="card" class:inconclusive={card.basis === 'sim' && card.verdict === 'inconclusive'} aria-labelledby="{id}-t" data-set={card.setKey} data-verdict={chip.verdict}>
   <header class="head">
     <h3 id="{id}-t">{card.setLabel}</h3>
     <span class="used">worn by {#each names as n (n)}<span class="pchip">{n}</span>{/each}</span>
@@ -117,6 +117,8 @@
     gap: var(--sp-2);
     min-width: 0;
   }
+  /* Too close to call: the neutral verdict colour on the card's edge, never up or down. */
+  .card.inconclusive { border-left: var(--sp-1) solid var(--verdict-side); }
   .head,
   .foot,
   .preset {

@@ -71,6 +71,14 @@ describe('changesOf', () => {
     expect(groups.map((w) => [w.scope, w.changeIds])).toEqual([['character', ['talents:0']], ['mount', ['glyph:mount-a:minor:1']]]);
   });
 
+  it('names talent sets "Set A" / "Set B" like the Presets page', () => {
+    const c = fixture('WARRIOR', (r) => { r.presets[1].talentSet = 0; });
+    const space = createBuildSpace(c, 'p1');
+    const [talents] = changesOf(space, space.start, { ...space.start, talentAllocation: {} });
+    expect(talents.label).toBe('Talents (Set A)');
+    expect(talents.sideEffects[0].reason).toBe('also uses Talent Set A');
+  });
+
   it('a spec switch bundles what legality drops with it (#50)', () => {
     const c = fixtureCharacter('MYSTIC', { spec: 'MYSTIC_MAGE' });
     const space = createBuildSpace(c, 'p1');

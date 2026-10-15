@@ -1,9 +1,14 @@
 import { it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { flushSync } from 'svelte';
+import { applyPrefs } from '../../lib/prefs.svelte.js';
 import ToolsDuelPage from './ToolsDuelPage.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
 import { __resetJobs, jobsStore } from '../../lib/jobs.svelte.js';
 import { setup, click, type } from '../ui/testkit.js';
+import { loadImportText, confirmImport, resetImportFlow } from '../../lib/importFlow.svelte.js';
+import { resetDuelSetup } from '../../lib/duelSetup.svelte.js';
+import fightLog from '../../lib/__fixtures__/real/arena-fight-warrior.json';
+import SampleDuel from '../duel/SampleDuel.svelte';
 
 let view;
 let calls;
@@ -31,6 +36,8 @@ beforeEach(() => {
     /* ignore */
   }
   calls = [];
+  resetImportFlow();
+  resetDuelSetup();
   window.location.hash = '';
   rosterStore.addCharacter('Duelist', 'WARRIOR');
 });
@@ -139,4 +146,68 @@ it('Verify: invalid JSON is reported without throwing', () => {
   type(view.q('textarea'), '{nope');
   click(buttonByText(/^Check log$/));
   expect(view.q('[role="alert"]').textContent).toMatch(/not valid JSON/);
+});
+
+it('a cancelled Both-seats run with one seat shows no verdict and no Both-seats row, only a partial label', async () => {
+  ready();
+  // the first seat finished, the second never started (summary 0.9 over 50 duels, swapped empty)
+  __resetJobs({ run: fakeRun(() => ({ ...summary(0.9, 50, { trace, traceResult: { attackerWon: true, totalDuration: 1000 } }), swapped: null, aborted: true })) });
+  view = setup(ToolsDuelPage);
+  click(buttonByText(/^Run /));
+  await vi.waitFor(() => expect(view.q('[data-testid="win-row-attack"]')).not.toBeNull());
+  expect(view.q('[data-testid="win-row-total"]')).toBeNull();
+  expect(view.q('[data-testid="duel-verdict"]')).toBeNull();
+  expect(view.q('[data-testid="duel-partial"]').textContent).toMatch(/inconclusive \/ partial/i);
+  expect(view.q('[data-testid="win-row-attack"]').textContent).not.toMatch(/Favoured|Unfavoured/);
+});
+
+it('the setup (seat, effort, preset) survives leaving the page and the Run label matches', () => {
+  ready();
+  view = setup(ToolsDuelPage);
+  click(view.q('button[data-value="defender"]'));
+  click(view.q('button[data-value="thorough"]'));
+  expect(buttonByText(/^Run /).textContent).toContain('3.200'.replace('.', ','));
+  view.done();
+  view = setup(ToolsDuelPage);
+  expect(view.q('button[data-value="defender"]').getAttribute('aria-pressed')).toBe('true');
+  expect(view.q('button[data-value="thorough"]').getAttribute('aria-pressed')).toBe('true');
+  expect(buttonByText(/^Run /).textContent).toContain('3.200'.replace('.', ','));
+});
+
+it('the preference default effort is where the effort starts', () => {
+  localStorage.setItem('eldaryn_ui_v1', JSON.stringify({ prefs: { defaultEffort: 'quick' } }));
+  applyPrefs();
+  try {
+    ready();
+    view = setup(ToolsDuelPage);
+    expect(view.q('button[data-value="quick"]').getAttribute('aria-pressed')).toBe('true');
+  } finally {
+    localStorage.clear();
+    applyPrefs();
+  }
+});
+
+it('Import dialog handoff: a fight log lands on Verify and is checked at once', () => {
+  expect(loadImportText(JSON.stringify(fightLog))).toBe(true);
+  expect(confirmImport()).toBe(true);
+  view = setup(ToolsDuelPage);
+  expect(view.q('#duel-panel-verify')).not.toBeNull();
+  expect(view.q('textarea').value).toContain('ticks');
+  expect(view.qa('[data-testid="replay-rules"] tbody tr').length).toBeGreaterThan(3);
+});
+
+it('Import dialog handoff: an open Duel page switches to Verify when a fight log arrives', async () => {
+  view = setup(ToolsDuelPage);
+  expect(view.q('#duel-panel-duel')).not.toBeNull();
+  loadImportText(JSON.stringify(fightLog));
+  confirmImport();
+  flushSync();
+  await vi.waitFor(() => expect(view.q('[data-testid="replay-rules"]')).not.toBeNull());
+  expect(view.q('#duel-panel-verify')).not.toBeNull();
+});
+
+it('the sample duel header keeps the space before the duration ("you lose in 60.0 s")', () => {
+  const s = setup(SampleDuel, { trace, traceResult: { attackerWon: false, totalDuration: 60000 }, attackerName: 'A', defenderName: 'B', mineSide: 'attacker', seed: 1, onreroll: () => {} });
+  expect(s.target.textContent).toContain('you lose in 60.0 s');
+  s.done();
 });

@@ -41,7 +41,7 @@
 <Panel title="One sample duel (not a statistic)" scope="tool">
   {#snippet meta()}
     <span class="note">
-      {#if seed != null}seed <span class="num">{seed}</span> · {/if}{won === null ? '' : won ? 'you win' : 'you lose'}{#if traceResult?.totalDuration} in <span class="num">{secs(traceResult.totalDuration)}</span>{/if}
+      {#if seed != null}seed <span class="num">{seed}</span> · {/if}{won === null ? '' : won ? 'you win' : 'you lose'}{#if traceResult?.totalDuration}{' '}in <span class="num">{secs(traceResult.totalDuration)}</span>{/if}
     </span>
     <Button variant="ghost" size="small" disabled={rerolling} onclick={onreroll}>Re-roll sample</Button>
   {/snippet}

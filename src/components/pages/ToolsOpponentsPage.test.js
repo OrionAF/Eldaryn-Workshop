@@ -61,3 +61,14 @@ it('the editor edits spec and sigils and keeps the store normalised', () => {
   click(chip('Mystic · Mage'));
   expect(opp()[0]).toMatchObject({ class: 'MYSTIC', spec: 'MYSTIC_MAGE', sigils: [] });
 });
+
+it('the stat sheet is the shared SheetTable: typing a flat value commits it with "." as thousands', () => {
+  click(buttonByText(/\+ New opponent/));
+  const input = view.q('[data-testid="opponent-editor"] table.sheet input[aria-label="Health"]');
+  expect(input).not.toBeNull();
+  input.value = '48.124';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  input.dispatchEvent(new Event('blur', { bubbles: true }));
+  flushSync();
+  expect(opp()[0].sheet.values.totalHp).toBe(48124);
+});

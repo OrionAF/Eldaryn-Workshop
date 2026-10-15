@@ -12,8 +12,8 @@
   import { MAX_OPPONENTS } from '../../lib/model/opponents.js';
   import { opponentFighter, missingStats, defaultedLabels, requiredStatsText } from '../../lib/features/duel.js';
   import Chip from '../Chip.svelte';
-  import ConfirmButton from '../ConfirmButton.svelte';
-  import SheetFields from '../sheet/SheetFields.svelte';
+  import ConfirmAction from '../tools/ConfirmAction.svelte';
+  import SheetTable from '../builds/SheetTable.svelte';
   import Panel from '../ui/Panel.svelte';
   import Banner from '../ui/Banner.svelte';
   import Button from '../ui/Button.svelte';
@@ -44,7 +44,7 @@
   <Panel title={opponent.name} level="primary" scope="tool">
     {#snippet meta()}
       <Button variant="ghost" size="small" disabled={full} onclick={() => rosterStore.duplicateOpponent(opponent.id)}>Duplicate</Button>
-      <ConfirmButton class="btn-danger" label="Delete" confirmLabel="Confirm delete" prompt="Delete this opponent?" onConfirm={remove} />
+      <ConfirmAction label="Delete" confirmLabel="Confirm delete" prompt="Delete this opponent?" onConfirm={remove} />
     {/snippet}
 
     {#if missing.length}
@@ -91,7 +91,7 @@
         Type the numbers from the opponent's arena profile. Flat rows read "." as a thousands separator ("48.124" is 48124), percentage
         rows as a decimal point. The engine applies the x8 PVP HP buff itself, so enter plain Health.
       </p>
-      <SheetFields {keys} values={opponent.sheet.values} onChange={onSheetChange} />
+      <SheetTable {keys} values={opponent.sheet.values} computed={null} onChange={onSheetChange} />
     </div>
 
     <OpponentLoadout {opponent} />

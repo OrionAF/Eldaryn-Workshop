@@ -14,19 +14,25 @@ const render = (props) => {
   flushSync();
 };
 
+const raidSelect = () => {
+  const label = [...target.querySelectorAll('label')].find((l) => l.textContent === 'Village raid');
+  return document.getElementById(label.htmlFor);
+};
+
 it('the raid select lists all five village raids by name and emits a raid spec', () => {
   const got = [];
   render({ value: { kind: 'raid', id: 'raid_1', step: 1 }, onchange: (s) => got.push(s) });
-  const sel = target.querySelector('select[aria-label="Village raid"]');
+  const sel = raidSelect();
   expect([...sel.options].map((o) => o.textContent)).toEqual(
     ['Bandit Village', 'Fortified Stronghold', 'Royal Garrison', 'Shadow Enclave', 'Obsidian Citadel'],
   );
   sel.value = 'raid_3';
   sel.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
   expect(got.at(-1)).toEqual({ kind: 'raid', id: 'raid_3', step: 1 });
 });
 
 it('marks raids above the character level', () => {
   render({ value: { kind: 'raid', id: 'raid_1', step: 1 }, playerLevel: 5, onchange: () => {} });
-  expect(target.querySelector('select[aria-label="Village raid"]').options[0].textContent).toBe('Bandit Village (needs level 10)');
+  expect(raidSelect().options[0].textContent).toBe('Bandit Village (needs level 10)');
 });
