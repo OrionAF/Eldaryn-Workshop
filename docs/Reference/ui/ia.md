@@ -50,7 +50,7 @@ BUILDS  (per-preset; what each preset chooses)
   B1  Presets           compare table of all presets; add / duplicate / delete / rename / reorder
   B2  Loadout           the active preset's choices of every source
   B3  Stat Sheet        [Base realm (this preset) | Oblivion realm (shared)]: entry + model diff
-                        + per-source breakdown + absorb into base
+                        + per-source breakdown + absorb into base + stat weights (simulated)
 
 TOOLS  (simulations; read the character, write only through an explicit Apply)
   T1  Drop Check        [Single drop | Loot bag]
@@ -521,6 +521,7 @@ here.
 | Source note "Using your sheet / computed totals" | B3 header + B1 source tag + inspector |
 | SheetDiff summary "N/M explained", ok/off rows | B3 header summary and Status column with text ("explained" / "off by 3.2") and the numeric tolerance |
 | Absorb into base + footnote | B3 "Absorb into base" opens a preview: current base → new base for the five stats, presets affected; confirm; Undo in notification |
+| (new) stat weights (backlog §9) | B3 "Stat weights" panel under the sheet: a job for the active preset (or the Oblivion realm's), two forest tables (DPS on the training dummy, survival against the reference enemy; simulation.md §Stat weights) |
 | (new) per-source contribution | B3 row expand: model value broken down by source (base, gear set, stones, talents, pet, mount + glyphs, relics (labelled assumption), sigils, awakening, transcendence, skills, fortress, carried residual) |
 
 ### 5.9 Gear (C3)

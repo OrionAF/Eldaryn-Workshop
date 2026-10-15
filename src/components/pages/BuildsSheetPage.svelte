@@ -3,7 +3,8 @@
    * BuildsSheetPage.svelte - B3 (plan §D U7): the in-game stat sheet of the active preset (Base realm) or
    * of the shared Oblivion realm, as one table of model value, your sheet and the gap. The sheet is per
    * preset; the Oblivion realm has one sheet (character.oblivion.sheet) owned by one preset. Status rules
-   * (fresh / stale / unverified): data-model.md §6. `tab` is the optional third hash segment.
+   * (fresh / stale / unverified): data-model.md §6. `tab` is the optional third hash segment. Below the
+   * sheet, the preset's simulated stat weights (backlog §9, StatWeightsPanel).
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { notify } from '../../lib/notify.svelte.js';
@@ -18,6 +19,7 @@
   import ConfirmButton from '../ConfirmButton.svelte';
   import SheetTable from '../builds/SheetTable.svelte';
   import AbsorbDialog from '../builds/AbsorbDialog.svelte';
+  import StatWeightsPanel from '../statWeights/StatWeightsPanel.svelte';
 
   // eslint-disable-next-line no-unused-vars
   let { setStatus = () => {}, onNavigate = () => {}, tab = null } = $props();
@@ -128,6 +130,8 @@
       {onChange}
     />
   </Panel>
+
+  <StatWeightsPanel {character} {preset} {realm} />
 </div>
 
 <AbsorbDialog bind:open={absorbOpen} {character} {stats} onconfirm={absorb} />
