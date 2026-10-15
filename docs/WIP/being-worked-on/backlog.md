@@ -57,7 +57,7 @@ of fights to simulate.
   look, up to the cap at maxN). Time: fights divided by the calibrated speed and the worker count.
 - Label every number as an estimate (decision Q5), and update it live as the setup changes.
 
-## 4. PVE goal: "Clear without dying"
+## 4. PVE goal: win rate ("clear without dying")
 
 **Ask.** For dungeons, raids, chapters and Oblivion floors, the useful question is whether the
 build clears the content without dying, not how fast. Ten seconds and fifty are the same to the user.
@@ -65,15 +65,16 @@ build clears the content without dying, not how fast. Ten seconds and fifty are 
 **Notes.**
 - Today's "Survival chance" measures surviving N seconds against an unkillable copy of the mob, and
   the TTK goals measure speed. Neither is "clears the step".
-- New goal, **Clear chance**: the share of fights in which the whole step is cleared before the
+- New goal, **Win rate** (the user confirmed 2026-10-15: "basically the win rate"; same name and
+  intervals as PVP win rate): the share of fights in which the whole step is cleared before the
   character dies or the time cap is reached (a proportion; Wilson/Newcombe intervals as for win
   rate). The user sets the target, e.g. "at least 95%".
 - Search framing: find the build **with the fewest changes** that reaches the target. If the current
-  build already reaches it, say so and suggest nothing. If no build reaches it, maximise the clear
-  chance and show how close each build gets.
-- At 100% clear chance builds tie, so the tie-break is fewest changes, then a safety margin (for
+  build already reaches it, say so and suggest nothing. If no build reaches it, maximise the win
+  rate and show how close each build gets.
+- At a 100% win rate builds tie, so the tie-break is fewest changes, then a safety margin (for
   example the lowest HP fraction left across fights). The margin also gives the search, and stat
-  weights, a gradient where the clear chance saturates.
+  weights, a gradient where the win rate saturates.
 - Make it the default goal for these targets. Keep TTK as an option for players who farm for speed.
 
 ## 5. Optimiser: let it change more than the loadout
@@ -126,5 +127,5 @@ Iron Golem to equip. Show the suggested pet's secondary stats.
   Siphon 2 → 0, Focused Casting 0 → 3".
 - **A baseline with no value shows "n/a".** On TTK the current build had no median because it
   rarely wins, and the axis then reads "−0.00 s … 0.00 s". Say why instead: "Rarely clears: 18% win
-  rate; compared by win rate". Draw the axis on the basis actually used. Backlog §4 (Clear chance)
+  rate; compared by win rate". Draw the axis on the basis actually used. Backlog §4 (Win rate)
   removes most of these cases.
