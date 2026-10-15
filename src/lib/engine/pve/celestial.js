@@ -193,6 +193,7 @@ function resolveTactics(tactics, difficulty) {
  * @property {number} bossHpLeft
  * @property {number} bossMaxHp
  * @property {number[]} playerMaxHps  the sheets' max HP
+ * @property {number[]} hpLeft  per member at the end (0 when dead)
  * @property {Array<number|null>} deathMs  per member
  * @property {number} tankIndex
  * @property {number} level
@@ -342,7 +343,7 @@ export function simulateCelestial(o) {
   const result = (won, timedOut) => {
     const out = {
       won, timedOut, timeMs: ts, bossHpLeft: bossHp, bossMaxHp: bossStats.hp,
-      playerMaxHps: M.map((m) => m.sheetHp), deathMs: M.map((m) => m.deathMs), tankIndex, level,
+      playerMaxHps: M.map((m) => m.sheetHp), hpLeft: M.map((m) => (m.dead ? 0 : Math.max(0, m.hp))), deathMs: M.map((m) => m.deathMs), tankIndex, level,
       addsSpawned: addSeq, addsKilled, overloadMs, mode: 'celestial',
     };
     if (log) out.log = ticks;

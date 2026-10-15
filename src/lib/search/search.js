@@ -41,8 +41,8 @@ export const EFFORT_LEVELS = Object.freeze(['quick', 'standard', 'thorough']);
 export const ALPHA = 0.05;
 
 // Blocks a compound value is re-optimised over before it is raced (plan A.3).
-const SPEC_INNER = ['sigils', 'utility', 'ancient', 'conditions', 'majorGlyphs', 'talents'];
-const MOUNT_INNER = ['minorGlyphs', 'majorGlyphs'];
+export const SPEC_INNER = ['sigils', 'utility', 'ancient', 'conditions', 'majorGlyphs', 'talents'];
+export const MOUNT_INNER = ['minorGlyphs', 'majorGlyphs'];
 const PROGRESS_MS = 250;
 const YIELD_MS = 25;
 
@@ -95,7 +95,9 @@ export function prepare(request) {
   if (!character || typeof character !== 'object') throw new Error('optimize: request.character is required');
   const preset = resolvePreset(character, request.presetId);
   if (!preset) throw new Error('optimize: the character has no preset to optimise');
-  const target = resolveTarget(request.target ?? { kind: 'dummy' }, { character });
+  // `partner`: a Celestial roster partner, resolved where the request was built (celestialObjective.js)
+  const partner = request.partner ?? null;
+  const target = resolveTarget(request.target ?? { kind: 'dummy' }, { character, partner });
   const realm = target.realm ?? (request.realm === 'oblivion' ? 'oblivion' : 'base');
   // the engine the target runs on: the Fortress boss is the duel engine under its own rules (effect.js engineKey)
   const mode = target.mode === 'pvp' ? 'pvp' : target.kind === 'fortressBoss' ? 'fortress' : 'pve';
@@ -117,10 +119,12 @@ export function prepare(request) {
   const requestEcho = {
     presetId: preset.id, realm, mode, target: target.spec, objective: objective.spec, space: space.toggles,
     ...(powerFloor != null ? { powerFloor } : {}),
+    // the partner's build is an input of every fight: a changed partner is a different run
+    ...(target.partner ? { partnerKey: target.partner.key } : {}),
     seed, seeds, effort: { level: effort.level, delta: effort.delta, deltaKind: effort.deltaKind, alpha: effort.alpha, n0: effort.n0, maxN: effort.maxN }, characterKey,
   };
   const requestKey = metricKey('optimise-request', { ...requestEcho, characterKey: undefined, randomStarts: effort.randomStarts, ...(effort.futility ? {} : { futility: false }) });
-  return { character, preset, target, realm, mode, objective, effort, seed, seeds, warnings, space, characterKey, requestEcho, requestKey };
+  return { character, partner, preset, target, realm, mode, objective, effort, seed, seeds, warnings, space, characterKey, requestEcho, requestKey };
 }
 
 const symdiff = (a, b) => a.filter((x) => !b.includes(x)).length + b.filter((x) => !a.includes(x)).length;
@@ -150,7 +154,10 @@ export function distanceOf(space, B, X) {
 
 /** What a pool worker needs to rebuild this run's target and objective (KERNELS.objective). */
 function poolSetup(prep) {
-  return { target: prep.target.spec, objective: prep.objective.spec, character: { opponents: prep.character.opponents ?? [] } };
+  return {
+    target: prep.target.spec, objective: prep.objective.spec,
+    character: { opponents: prep.character.opponents ?? [], level: prep.character.level }, partner: prep.partner,
+  };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -180,6 +187,8 @@ function createRun(prep, hooks) {
     evaluated: new Set(),
     merged: { inert: 0, engineIdentical: 0, sampleIdentical: 0 },
     block: null,
+    steps: null, // the search's per-block rows (simulation.md §Progress), set by searchPhase
+    stepDepth: 0,
     eliminated: 0,
     lastProgress: 0,
     lastYield: Date.now(),
@@ -367,6 +376,7 @@ function createRun(prep, hooks) {
         done: null, total: null,
       })),
       block: st.block,
+      ...(st.steps ? { searchSteps: st.steps.map((r) => ({ ...r })) } : {}),
       counts: { evaluated: st.evaluated.size, fights: Object.values(st.fights).reduce((a, b) => a + b, 0), eliminated: st.eliminated, merged: st.merged.inert + st.merged.engineIdentical + st.merged.sampleIdentical },
       elapsedMs: now - t0,
       provisional: st.provisional,
@@ -414,6 +424,57 @@ function createRun(prep, hooks) {
 // ---------------------------------------------------------------------------------------------
 // search (A.7)
 
+/**
+ * Every build of the joint space of the enabled blocks around `base` (the baseline first), deduplicated
+ * by canonical key; null once it holds more than EXHAUSTIVE_MAX (the local strategy runs instead).
+ * The exhaustive race's arms before the race's own filters; search/estimate.js counts the same list.
+ */
+export function enumerateJoint(space, base, enabled) {
+  const ids = BLOCKS.filter((id) => enabled.has(id));
+  const blockById = new Map(space.blocks.map((b) => [b.id, b]));
+  const out = new Map([[space.key(base), base]]);
+  let over = false;
+  const rec = (i, c) => {
+    if (over) return;
+    if (i === ids.length) {
+      const k = space.key(c);
+      if (!out.has(k)) out.set(k, c);
+      if (out.size > EXHAUSTIVE_MAX) over = true;
+      return;
+    }
+    rec(i + 1, c);
+    for (const v of blockById.get(ids[i]).domain(c)) rec(i + 1, v);
+  };
+  rec(0, base);
+  return over ? null : [...out.values()];
+}
+
+/** Talent moves of two points that the talents block does not list (+1 +1, -1 -1), legalised. */
+export function twoPointMoves(space, cand) {
+  const specKey = space.specOf(cand);
+  const spec = talentSpec(specKey);
+  const cap = talentPointsForLevel(Number.isFinite(space.character.level) ? space.character.level : 100);
+  if (!spec || cap === 0) return [];
+  const alloc = cand.talentAllocation ?? space.character.talentSets?.[cand.talentSet]?.allocation ?? {};
+  const spent = pointsSpent(alloc);
+  const talents = spec.tiers.flatMap((t) => t.talents);
+  const out = [];
+  for (let a = 0; a < talents.length; a++) {
+    for (let b = a; b < talents.length; b++) {
+      for (const s of [1, -1]) {
+        const next = { ...alloc };
+        next[talents[a].id] = (next[talents[a].id] ?? 0) + s;
+        next[talents[b].id] = (next[talents[b].id] ?? 0) + s;
+        if (Object.values(next).some((r) => r < 0)) continue;
+        const clean = sanitiseAllocation(next, specKey, cap);
+        if (pointsSpent(clean) !== spent + 2 * s) continue;
+        out.push(space.legalise({ ...cand, talentAllocation: clean }));
+      }
+    }
+  }
+  return out;
+}
+
 async function searchPhase(prep, run) {
   const { space, objective, effort, seeds } = prep;
   const S1 = { id: 'search', seed: seeds.search };
@@ -435,6 +496,41 @@ async function searchPhase(prep, run) {
 
   let jointSize = 1;
   for (const id of enabled) jointSize *= sizes[id] ?? 1;
+
+  // --- steps: one row per block (simulation.md §Progress, searchSteps) ------------------------------
+  st.steps = BLOCKS.map((id) => ({
+    id,
+    state: !enabled.has(id) || (sizes[id] ?? 1) <= 1 ? 'skipped' : 'queued',
+    reason: !enabled.has(id) ? 'off' : (sizes[id] ?? 1) <= 1 ? 'nothing-to-try' : null,
+    pass: 0, tried: 0, fights: 0, improved: false,
+  }));
+  run.progress(true); // the rows, all queued, before the first block starts
+  const stepOf = (id) => st.steps.find((r) => r.id === id);
+  const fightsNow = () => Object.values(st.fights).reduce((a, b) => a + b, 0);
+  /**
+   * Run one visit of a block as a step row. Work nested inside it (the inner ascents that Spec and Mount
+   * run per value) belongs to the outer row, so only the outermost visit is recorded.
+   * @param {(row: Object) => Promise<any>} fn  sets `row.tried` increments and `row.improved`
+   */
+  async function inStep(id, fn) {
+    const row = stepOf(id);
+    if (st.stepDepth > 0 || !row || row.reason === 'off') return fn(row ?? {});
+    const f0 = fightsNow();
+    st.stepDepth++;
+    row.state = 'running';
+    row.reason = null;
+    row.pass++;
+    run.progress(true);
+    try {
+      return await fn(row);
+    } finally {
+      st.stepDepth--;
+      row.fights += fightsNow() - f0;
+      // a visit that raced nothing (the domain is empty or one value) has nothing to try
+      if (row.state === 'running') Object.assign(row, row.tried > 0 ? { state: 'done' } : { state: 'skipped', reason: 'nothing-to-try' });
+      run.progress(true);
+    }
+  }
   const talentsLocal = enabled.has('talents') && (sizes.talents ?? 1) > 1;
 
   /** Canonical (inert changes reverted, A.5) arm of a candidate. */
@@ -461,30 +557,25 @@ async function searchPhase(prep, run) {
   const labelOf = (from, to) => changesOf(space, from.cand, to.cand, { bundles: false }).map((c) => `${c.label}: ${c.from} -> ${c.to}`).join('; ');
 
   // --- exhaustive ------------------------------------------------------------------------------
-  function enumerateJoint() {
-    const ids = BLOCKS.filter((id) => enabled.has(id));
-    const out = new Map([[B.key, B.cand]]);
-    let over = false;
-    const rec = (i, c) => {
-      if (over) return;
-      if (i === ids.length) {
-        const k = space.key(c);
-        if (!out.has(k)) out.set(k, c);
-        if (out.size > EXHAUSTIVE_MAX) over = true;
-        return;
-      }
-      rec(i + 1, c);
-      for (const v of blockById.get(ids[i]).domain(c)) rec(i + 1, v);
-    };
-    rec(0, B.cand);
-    return over ? null : [...out.values()];
-  }
+  const enumerate = () => enumerateJoint(space, B.cand, enabled);
 
   async function exhaustive(cands) {
     const arms = prepareArms(cands.map(armOf));
     st.block = 'all';
+    const f0 = fightsNow();
+    for (const row of st.steps) if (row.state === 'queued') { row.state = 'running'; row.pass = 1; }
+    run.progress(true);
     const r = await run.raceArms(arms, S1);
     st.eliminated += r.eliminated;
+    // one joint race covers every open block: each row shows its tries and fights
+    const moved = new Set(changesOf(space, B.cand, arms[r.winner].cand, { bundles: false }).map((c) => c.dimension));
+    for (const row of st.steps) {
+      if (row.state !== 'running') continue;
+      row.state = 'done';
+      row.tried = arms.length;
+      row.fights = fightsNow() - f0;
+      row.improved = moved.has(row.id);
+    }
     for (const id of enabled) status.set(id, 'converged');
     for (const u of r.unresolved) {
       for (const c of changesOf(space, arms[r.winner].cand, arms[u.i].cand, { bundles: false })) status.set(c.dimension, 'unresolved');
@@ -526,31 +617,7 @@ async function searchPhase(prep, run) {
     return prepareArms([x, ...vals]);
   }
 
-  /** Talent moves of two points that the talents block does not list (+1 +1, -1 -1). */
-  function twoPointArms(x) {
-    const specKey = space.specOf(x.cand);
-    const spec = talentSpec(specKey);
-    const cap = talentPointsForLevel(Number.isFinite(space.character.level) ? space.character.level : 100);
-    if (!spec || cap === 0) return [];
-    const alloc = x.cand.talentAllocation ?? space.character.talentSets?.[x.cand.talentSet]?.allocation ?? {};
-    const spent = pointsSpent(alloc);
-    const talents = spec.tiers.flatMap((t) => t.talents);
-    const out = [];
-    for (let a = 0; a < talents.length; a++) {
-      for (let b = a; b < talents.length; b++) {
-        for (const s of [1, -1]) {
-          const next = { ...alloc };
-          next[talents[a].id] = (next[talents[a].id] ?? 0) + s;
-          next[talents[b].id] = (next[talents[b].id] ?? 0) + s;
-          if (Object.values(next).some((r) => r < 0)) continue;
-          const clean = sanitiseAllocation(next, specKey, cap);
-          if (pointsSpent(clean) !== spent + 2 * s) continue;
-          out.push(armOf(space.legalise({ ...x.cand, talentAllocation: clean })));
-        }
-      }
-    }
-    return out;
-  }
+  const twoPointArms = (x) => twoPointMoves(space, x.cand).map(armOf);
 
   /** The arm to accept from a race, if one is significantly better than the incumbent (arms[0]). */
   async function acceptable(arms, r, visited) {
@@ -580,37 +647,45 @@ async function searchPhase(prep, run) {
       for (const id of ids) {
         if (!enabled.has(id)) continue;
         st.block = id;
-        const arms = await blockArms(id, x);
-        if (!status.has(id)) status.set(id, 'converged');
-        if (arms.length < 2) continue;
-        const r = await run.raceArms(arms, S1);
-        st.eliminated += r.eliminated;
-        raced.push({ id, unresolved: r.unresolved.length > 0 });
-        contenders.push(...r.ties.map((i) => arms[i]), ...r.unresolved.map((u) => arms[u.i]));
-        for (const u of r.unresolved) unresolved.push({ fromKey: arms[0].key, toKey: arms[u.i].key, change: labelOf(arms[0], arms[u.i]), contrast: contrastOut(u.contrast) });
-        const W = await acceptable(arms, r, visited);
-        if (W) {
-          x = W;
-          visited.add(x.key);
-          accepted = true;
-        }
-      }
-      if (!accepted && ids.includes('talents') && enabled.has('talents')) {
-        st.block = 'talents';
-        const arms = prepareArms([x, ...twoPointArms(x)]);
-        if (arms.length > 1) {
+        await inStep(id, async (row) => {
+          const arms = await blockArms(id, x);
+          if (!status.has(id)) status.set(id, 'converged');
+          if (arms.length < 2) return;
+          row.tried += arms.length - 1;
           const r = await run.raceArms(arms, S1);
           st.eliminated += r.eliminated;
-          for (const u of r.unresolved) unresolved.push({ fromKey: arms[0].key, toKey: arms[u.i].key, change: labelOf(arms[0], arms[u.i]), contrast: contrastOut(u.contrast) });
-          if (r.unresolved.length) raced.push({ id: 'talents', unresolved: true });
+          raced.push({ id, unresolved: r.unresolved.length > 0 });
           contenders.push(...r.ties.map((i) => arms[i]), ...r.unresolved.map((u) => arms[u.i]));
+          for (const u of r.unresolved) unresolved.push({ fromKey: arms[0].key, toKey: arms[u.i].key, change: labelOf(arms[0], arms[u.i]), contrast: contrastOut(u.contrast) });
           const W = await acceptable(arms, r, visited);
           if (W) {
             x = W;
             visited.add(x.key);
             accepted = true;
+            row.improved = true;
           }
-        }
+        });
+      }
+      if (!accepted && ids.includes('talents') && enabled.has('talents')) {
+        st.block = 'talents';
+        await inStep('talents', async (row) => {
+          const arms = prepareArms([x, ...twoPointArms(x)]);
+          if (arms.length > 1) {
+            row.tried += arms.length - 1;
+            const r = await run.raceArms(arms, S1);
+            st.eliminated += r.eliminated;
+            for (const u of r.unresolved) unresolved.push({ fromKey: arms[0].key, toKey: arms[u.i].key, change: labelOf(arms[0], arms[u.i]), contrast: contrastOut(u.contrast) });
+            if (r.unresolved.length) raced.push({ id: 'talents', unresolved: true });
+            contenders.push(...r.ties.map((i) => arms[i]), ...r.unresolved.map((u) => arms[u.i]));
+            const W = await acceptable(arms, r, visited);
+            if (W) {
+              x = W;
+              visited.add(x.key);
+              accepted = true;
+              row.improved = true;
+            }
+          }
+        });
       }
       if (!accepted) {
         for (const r of raced) if (r.unresolved) status.set(r.id, 'unresolved');
@@ -694,10 +769,13 @@ async function searchPhase(prep, run) {
 
   let out = null;
   if (!talentsLocal && jointSize <= EXHAUSTIVE_MAX) {
-    const cands = enumerateJoint();
+    const cands = enumerate();
     if (cands) out = await exhaustive(cands);
   }
   if (!out) out = await local();
+  // a block never reached has nothing to show but its reason
+  for (const row of st.steps) if (row.state === 'queued') Object.assign(row, { state: 'skipped', reason: 'nothing-to-try' });
+  run.progress(true);
   const blocks = BLOCKS.map((id) => ({
     id,
     enabled: enabled.has(id),
@@ -1130,6 +1208,7 @@ function searchSummary(s, st) {
     strategy: s.strategy,
     jointSize: s.jointSize,
     blocks: s.blocks,
+    steps: st.steps ? st.steps.map((r) => ({ ...r })) : [],
     starts: s.starts,
     optima: s.optimaCount,
     evaluated: st.evaluated.size,
@@ -1153,8 +1232,9 @@ export async function optimizeMore(request, hooks = {}) {
   const { character, result } = request ?? {};
   if (!result || result.schema !== RESULT_SCHEMA || result.status !== 'done') throw new Error('optimizeMore: needs a finished optimiser result');
   const r = result.request;
-  const prep = prepare({ character, presetId: r.presetId, realm: r.realm, target: r.target, objective: r.objective, space: r.space, powerFloor: r.powerFloor, effort: r.effort, seed: r.seed });
+  const prep = prepare({ character, partner: request.partner, presetId: r.presetId, realm: r.realm, target: r.target, objective: r.objective, space: r.space, powerFloor: r.powerFloor, effort: r.effort, seed: r.seed });
   if (prep.characterKey !== r.characterKey) throw new Error('optimizeMore: the character has changed since this run; run the optimiser again');
+  if ((prep.target.partner?.key ?? null) !== (r.partnerKey ?? null)) throw new Error('optimizeMore: the Celestial partner has changed since this run; run the optimiser again');
   const targetN = Number.isInteger(request.targetN) && request.targetN >= 2 ? request.targetN : null;
   if (!targetN) throw new Error('optimizeMore: targetN must be an integer >= 2');
   const round = Number.isInteger(request.round) && request.round >= 1 ? request.round : (result.more?.round ?? 0) + 1;

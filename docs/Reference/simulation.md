@@ -238,7 +238,8 @@ and legality bundle. `canonicalise` reverts every change whose legalised revert 
 ## Objectives
 
 Code: `src/lib/search/objectives.js` (targets, PVE objectives, ordering heuristics),
-`src/lib/search/pvpObjective.js` (PVP), `src/lib/search/sampler.js` (sample store, contrasts).
+`src/lib/search/pvpObjective.js` (PVP), `src/lib/search/celestialObjective.js` (Celestial Trial),
+`src/lib/search/sampler.js` (sample store, contrasts).
 Design record: plan §A.6.
 
 ### Per-fight outcome, statistic, interval, contrast
@@ -260,7 +261,7 @@ unused by any objective.
 |---|---|---|---|---|
 | `dps` | damage / window s; the mob cannot die inside the window | mean | t | paired t (`paired-t`); δ relative |
 | `survival` | 1 if alive at the window end | proportion | Wilson | Tango paired proportion; δ absolute |
-| `win-chance`, `win-rate` | 1 + HP left / max HP if the whole step is cleared, else the share of the step's enemy HP removed (< 1); the win bit is score ≥ 1 | proportion of wins | Wilson | capped win rate, then the margin (§Win rate); δ absolute |
+| `win-chance`, `win-rate` | 1 + HP left / max HP if the whole step is cleared, else the share of the step's enemy HP removed (< 1); the win bit is score ≥ 1. Celestial: the party's HP left over its max HP, and the boss's HP removed (§Celestial Trial) | proportion of wins | Wilson | capped win rate, then the margin (§Win rate); δ absolute |
 | `pvp-winrate` | 1 if my build wins the duel, one lane per (opponent, seat) | pooled proportion, equal N per lane | Wilson on the pool | stratified Tango, one stratum per lane; δ absolute |
 
 The PVP row reports per-matchup Wilson intervals, mean duel length and the timeout share. None of these rank anything:
@@ -276,7 +277,7 @@ equal statistics are a tie (no effective-HP or duel-length tie-break).
   attack > 0 and speed > 0). `objectiveKindsFor(kind, target)` leaves it out of the picker.
 - Target kinds and their objectives (the first is the default): dummy `dps`; chapter, dungeon (normal
   and `_hard`), raid, Oblivion `win-chance`, `win-rate`, `push` (§Push); World Boss `dps`; Fortress boss `dps`; custom `dps`, `win-chance`, `win-rate`, `survival`
-  (`dps` stays the default); pvp `pvp-winrate`. Anything else is a retired goal.
+  (`dps` stays the default); Celestial Trial `win-chance`, `win-rate`; pvp `pvp-winrate`. Anything else is a retired goal.
 
 ### Win rate
 
@@ -391,6 +392,42 @@ counts from 0; the boss and the adds attack the tank (the "adds target everyone"
 modelled) and, with the tank dead, the first living player; no add spawns at the
 `maxAlive` cap; Block Fury and the per-add attack bonus multiply. MYTHIC is not simulated (its
 party-power HP scaling is server-side).
+
+### Celestial Trial
+
+Target `{kind: 'celestial', difficulty: 'NORMAL'|'HARD', level?: whole number from 40 (the unlock level), partner:
+null | {source: 'character', characterId, presetId} | {source: 'opponent', opponentId}, tank?: 'auto'|'me'|'partner'
+(default 'auto'), starter?: 'me'|'partner' (default 'me'), tactics?: {focus: 'HOLD'|'BOSS'|'SPAWN', holdCount}}`
+(`search/celestialObjective.js`). MYTHIC is refused (not simulated, §Target fidelity). `holdCount` is a whole
+number from 1 to `celestialMaxHoldCount(difficulty)`; the tactics default to the catalogue's finder tactics for the
+difficulty (`CELESTIAL_FINDER_DEFAULT_TACTICS`, Game/pve-content.md §6). `level` defaults to the engine's rule, the
+party's highest level, read once at resolve time from my character and a roster partner's Fighter; an opponent
+partner's typed sheet has no level, so it never sets the scaling. Tank or starter 'partner' needs a partner.
+Label: "Celestial Trial (HARD, L85, with <partner name>)", or "solo". Objectives: the win-rate family only
+(`win-chance` the default, `win-rate`); Push and survival are not offered (backlog §11).
+
+Engine path: `engine/pve/celestial.js` `simulateCelestial`, the party in a fixed order, my build member 0 (as in
+every server log) and the partner member 1. `tank` maps to `tankIndex` (me 0, partner 1; 'auto' leaves it to the
+engine's `defaultTankIndex` on each candidate's party, since my spec can change with my talents); `starter` maps to
+`stackPlayerIndex` (the stack player, combat-pve.md §20.7). Fight i of every build runs on `fightRng(seed, i)` with
+the partner prepared once and fixed. Per fight: a clear in time scores 1 + the party's HP left / its max HP, a loss
+the share of the boss's HP removed (below 1), so the win bit is the party clear. The search runs in `pve` mode on the
+base realm (Celestial members are `preparePveFighter` results), so builds are keyed, canonicalised and merged as in
+PVE (`effect.js` `engineKey`), with the PVE condition options; the Power guard and the toggles are unchanged.
+
+Partner. The user's build is the variable; the partner is fixed. A roster partner (another character's preset) is
+resolved where the request is built (`ui/optimiserSetup.js` `requestOf`, via `resolveRosterPartner`: the preset
+built with `build/fighter.js`) and sent as plain JSON in `request.partner`, since the worker never sees the roster; a
+pool worker gets it in its setup. An opponent partner is resolved inside `resolveTarget` from `character.opponents`
+(`features/duel.js` `opponentFighter`): its typed sheet is taken as given. The target's assumptions are the
+`CELESTIAL_ASSUMPTIONS` labels plus one (`celestial-partner`) saying what the partner is. A Rankings profile (backlog
+§2) is meant to become a third source beside these two.
+
+Keys. The target key carries the resolved level and a hash of the partner's Fighter (`partnerKey`), and the run
+echoes `partnerKey` in `request`, so the seeds, the run key and the caches change whenever the partner's build does,
+and runs never mix partners. Run more re-resolves the roster partner and refuses a run whose `partnerKey` no longer
+matches. A saved setup whose partner (character, preset or opponent) is gone normalises to the same fight solo, with
+tank and starter back on their defaults; the picker shows why an unresolvable fight cannot run and never throws.
 
 ### Fortress boss
 
@@ -585,6 +622,20 @@ phases: [{id, label, state: 'done'|'current'|'queued', done, total}], block, cou
 fights, eliminated, merged}, elapsedMs, provisional}`; `provisional` lists the current optima
 (`{key, candidate, provisional: true}`) during the search, else null.
 
+**Search steps** (`searchSteps`, present from the start of the search phase; absent in the screen phase and
+in a Push run, whose rungs are its `steps`): one row per build-space block, in `BLOCKS` order,
+`{id, state: 'queued'|'running'|'done'|'skipped', reason: null|'off'|'nothing-to-try', pass, tried, fights,
+improved}`. `id` is the block (the UI names it with the change dimension's label). `skipped` with `off`:
+the block is turned off under Allowed to change; with `nothing-to-try`: its domain had no second value
+whenever the search reached it. `pass` counts the visits of the block (every sweep of the blocks is one
+more; a multi-start run sweeps once per start and more until a sweep accepts nothing), `tried` the builds
+raced against the incumbent over those visits (inner ascents of Spec and Mount belong to their block),
+`fights` the logical fights they asked for, `improved` whether any visit accepted a better build. A block
+shows `running` on every visit, so a second visit reads `running` again with its new `pass`. An exhaustive
+search races every open block together: each such row shows the one joint race (`pass` 1, the joint
+`tried` and `fights`, `improved` when the winner differs from the current build in that block). The rows
+are small plain JSON; the final rows are `search.steps` of the result and `steps` of a saved run.
+
 Every race and comparison is a logged **step** (`kind`, a hash of its inputs, its output and the
 sample lengths it requested). A checkpoint is posted after the search, after minimise and on cancel:
 `{schema: 'optimiser-checkpoint/1', requestKey, characterKey, phase, seeds, log, frontier: {armsN},
@@ -628,6 +679,39 @@ The Effort control prints δ, the first look n0 and maxN per level and these mea
 a session job (U3): Cancel keeps the provisional rows and Resume re-starts the task with the job's
 checkpoint as `resumeFrom`. The page sends the character with `runs: []`, so saving a run does not change
 `characterKey` (Run more and the staleness marker compare it).
+
+### Estimates
+
+Code: `src/lib/search/estimate.js` `estimateRun(request, {calibration})`; UI: the Estimate section of the
+Optimiser setup (`components/optimiser/SetupEstimate.svelte`), recomputed on every setup change. It runs
+`prepare` and reads the build space, never simulates, and returns builds, fights and time, each as
+`lo` / `likely` / `hi` with its basis. Every figure is shown as an estimate (decision Q5).
+
+- **Builds (exact).** When the search will be exhaustive (§Strategy) and the joint space holds at most
+  `LIVE_ENUMERATE_MAX` = 1 000 builds, the count is the search's own list (`search.js enumerateJoint`, the
+  domains after legality, glyph and mount dominance) less the builds below the Combat Power floor. It is
+  the run's `search.evaluated` unless builds equal in engine inputs merge (§Builds equal in effect). Between
+  1 000 and `EXHAUSTIVE_MAX` the product of the block sizes stands in (the list can differ from it).
+- **Builds (local, assumed).** One pass of the coordinate ascent races every value of each enabled block
+  (`domainSizes` at the current build), a spec or mount switch plus its inner ascent, and the two-point
+  talent moves (`twoPointMoves`) once per ascent. `lo` is one start converging in one pass; `likely` every
+  start (§Strategy: the baseline, other specs, other gear sets, the talent fill, `randomStarts`) at 3 passes
+  with one inner pass; `hi` every start at 8 outer and 8 inner passes. How many passes an ascent takes
+  depends on what it finds, so 8 is an assumption, not a bound. Domain sizes are taken at the current build.
+- **Fights.** Fights are counted per build, stage and lane (§Progress), so the race rules give the range:
+  `lo` = builds `lo` × n0 × lanes (every arm resolved at the first look, no change found, so no minimise or
+  confirm), plus the goal check of a win-rate goal; `likely` = builds `likely` × 2 n0 × lanes (§Cost:
+  about 2 × n0 per build); `hi` = every comparison at maxN for builds `hi`, the baseline, and every possible
+  finalist (exhaustive: every other build; local: each start's last pass) with its minimise builds
+  (1 + m(m + 1) / 2) and confirm and attribution builds (2 + 2m), m the most changes the enabled blocks
+  allow. PVP lanes are its matchups.
+- **Time.** fights / the calibrated speed of the target's fight kind (§Speed calibration). The calibrated
+  speed is the whole pool's, so it is not divided by the workers again. Kinds (an assumption, labelled):
+  dummy, World Boss and custom mob are dummy-kind windows, scaled by the window over the 60 s calibration
+  fight; chapter, dungeon, raid and Oblivion are dungeon-kind; the Fortress boss (duel engine) and PVP
+  are duel-kind (an unmeasured duel counts at the slowest measured speed). A target kind not in
+  `FIGHT_KIND_OF`, or no calibration, shows builds and fights and says why there is no time.
+- **Push** runs this search at its start rung; the estimate covers that one search and says so.
 
 ## Push
 
@@ -807,7 +891,7 @@ in 7 s. A flat 0 % rung stops at the screen after about z² / δ fights per scre
   objective, which also adds `winRate: {delta, lo, hi}`, the uncapped paired difference in win-rate
   points, on every contrast including a change's `own`; `n` per lane).
 - `search: {strategy, jointSize, blocks: [{id, enabled, domain, status: 'converged'|'unresolved'|
-  'disabled'|'not-reached'}], starts, optima, evaluated, merged, belowFloor, fights: {search, minimise, confirm,
+  'disabled'|'not-reached'}], steps: [the final search steps, §Progress], starts, optima, evaluated, merged, belowFloor, fights: {search, minimise, confirm,
   total}, unresolved: [{fromKey, toKey, change, contrast}]}` (`belowFloor`: distinct builds the Combat
   Power guard kept out). There is no `converged` flag: with no
   pass cap an ascent only ends when a pass accepts nothing, so every finished search is at a fixed
@@ -875,8 +959,7 @@ per-device prefs (`lib/calibration.js`); `version` is the build id (package vers
 `define`). The calibration is stale when the profile or the build id differs; it keeps giving estimates,
 labelled as old. Tool pages show "About N min on this device (estimate)" under Effort, from fights by
 kind over those rates: Duel exact, Drop Check and Oblivion Floors an upper bound (every comparison to
-maxN, every floor scanned), Optimiser a rough figure (builds interpolated between the two measured points
-of §Cost, about 2 x n0 fights per build; a comparison that runs on to maxN is not counted). The Jobs
+maxN, every floor scanned). The Optimiser shows its own Estimate section instead (§Estimates). The Jobs
 tray prints the pool size a running job started with.
 
 ## Drop Check

@@ -62,7 +62,7 @@ Character = {
   drop: { realm, slot, item: Item } | null,
   opponents: [{ id, name, class, spec, sheet: Sheet, sigils, utility, ancient,
                 conditions, majorGlyphs, altarTier }],
-  runs: OptimiserRun[]        // byte-budgeted run history; `schema: 2` = an optimiser-result/2 (model/runs.js header);
+  runs: OptimiserRun[]        // byte-budgeted run history; `schema: 2` = an optimiser-result/2 (model/runs.js header; optional `steps` = the search's final per-block rows, simulation.md §Progress);
                               // `powerFloor` (the run's Combat Power guard) and each Row's `power` are kept when present
 }
 
@@ -254,7 +254,9 @@ user-typed sigil damage values. Class `Warrior`/`Sentinel` becomes
 
 View state lives apart from the roster under **`eldaryn_ui_v1`** (`src/lib/uiState.js`): `v`, `lastHash`
 (route to reopen), `areaLast` (last page per area), `optimiserSetups` (per character: preset, fight, objective, toggles, `powerFloor` (the Combat Power guard,
-a positive whole number or null; `ui/optimiserSetup.js normaliseSetup`), effort, seed) and
+a positive whole number or null; `ui/optimiserSetup.js normaliseSetup`), effort, seed; a Celestial fight names its
+partner by id, another character's preset or an opponent, and normalises to no partner once that is gone,
+simulation.md §Celestial Trial) and
 `prefs` (`density`, `reduceMotion`, `defaultEffort`, `cpuProfile`: `eco` | `balanced` (default) | `max`,
 the worker-pool size of a job, simulation.md §Worker pool; `dropSets`: `all` (default) | `set1`, the gear
 sets Drop Check compares against, simulation.md §Drop Check). Every read and write is try/catch-guarded, a

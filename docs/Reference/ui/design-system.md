@@ -460,6 +460,15 @@ dashed outline. Results above the current segment are labelled **Provisional** i
 Under reduced motion, no animation, the counts still update. a11y: `role="progressbar"` per
 segment with `aria-valuetext` ("Re-measure, 4 of 6").
 
+**StepList** (`components/ui/StepList.svelte`): the disclosure under a RunProgress that lists the steps
+of the Search segment, one per build-space block ("1. Gear set: done", "4. Relics: in progress", detail:
+builds tried, fights, pass, improvement; a skipped block says why). A quiet text button "Search steps ·
+3 of 4 done" with `aria-expanded` / `aria-controls` toggles it (collapsed by default); rows carry a glyph
+(✓ ● ◌ –) and the state word, never colour alone, and the current one has `aria-current="step"`. The
+list is not a live region. It sits under RunProgress on the Optimiser page, in each Jobs tray row (blocks
+turned off left out) and in a saved run's Details; no list when the run has no search steps (Push, an
+older run). Data and wording: `lib/ui/searchSteps.js`; shape: simulation.md §Progress.
+
 ### 4.18 Jobs pill and JobsTray
 
 **Jobs pill** (top bar): pill, labelled "Jobs" (never icon only) + ring spinner while any job

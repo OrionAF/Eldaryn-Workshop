@@ -18,6 +18,8 @@
   import Textarea from '../ui/Textarea.svelte';
   import EmptyState from '../ui/EmptyState.svelte';
   import Banner from '../ui/Banner.svelte';
+  import StepList from '../ui/StepList.svelte';
+  import { searchStepRows } from '../../lib/ui/searchSteps.js';
   import OptimiserResults from './OptimiserResults.svelte';
   import RunCompare from './RunCompare.svelte';
 
@@ -93,6 +95,7 @@
               <ConfirmAction label="Delete" confirmLabel="Confirm delete" onConfirm={() => rosterStore.deleteRun(run.id)} />
             </div>
             <Textarea label="Notes" rows={2} value={run.notes} oninput={(v) => rosterStore.setRunNotes(run.id, v)} />
+            <StepList id="run-steps-{run.id}" title="Search steps" steps={searchStepRows(run.steps)} />
             {#if run.schema !== 2}
               <Banner variant="info" lead="Per-change effects: not measured.">
                 This run was saved before each change was measured on its own. Its values and intervals are as recorded.
