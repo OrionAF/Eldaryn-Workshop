@@ -117,6 +117,37 @@ it('RunProgress: data-driven segments with progressbar text', () => {
   two.done();
 });
 
+it('RunProgress: one summary line names the current step, for containers too narrow for labels', () => {
+  const phases = (states) => ['Screen', 'Search', 'Minimise', 'Confirm', 'Attribute'].map((label, i) => ({ id: label, label, state: states[i] }));
+  const line = (segments) => {
+    const t = setup(RunProgress, { segments });
+    const text = t.q('.rp-now').textContent.replace(/\s+/g, ' ').trim();
+    t.done();
+    return text;
+  };
+  expect(line(phases(['done', 'current', 'queued', 'queued', 'queued']))).toBe('Step 2 of 5 Search running');
+  expect(line(phases(['done', 'done', 'done', 'done', 'done']))).toBe('All 5 steps done');
+  expect(line(phases(['done', 'cancelled', 'cancelled', 'cancelled', 'cancelled']))).toBe('Cancelled at step 2 of 5 Search');
+  const counted = phases(['done', 'done', 'active', 'queued', 'queued']);
+  counted[2] = { ...counted[2], done: 4, total: 6 };
+  expect(line(counted)).toBe('Step 3 of 5 Minimise 4/6');
+});
+
+it('RunProgress: counts use the data face, state words the UI face', () => {
+  const t = setup(RunProgress, {
+    segments: [
+      { id: 'a', label: 'Screen', state: 'done' },
+      { id: 'b', label: 'Search', state: 'active', done: 4, total: 6 },
+    ],
+  });
+  const caps = t.qa('.lbl span');
+  expect(caps[0].textContent).toBe('done');
+  expect(caps[0].classList.contains('num')).toBe(false);
+  expect(caps[1].textContent).toBe('4/6');
+  expect(caps[1].classList.contains('num')).toBe(true);
+  t.done();
+});
+
 it('RunProgress: the A.9 "current" phase state is drawn as the active segment', () => {
   const t = setup(RunProgress, { segments: [{ id: 'search', label: 'Search', state: 'current', done: 1, total: 4 }] });
   expect(t.q('.seg-step').classList.contains('is-active')).toBe(true);

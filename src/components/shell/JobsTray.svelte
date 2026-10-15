@@ -173,7 +173,10 @@
     />
     Keep checkpoints on this device so Resume works after a reload
   </label>
-  <div class="tray-foot">Jobs run in this tab and survive navigation; a reload cancels running jobs.</div>
+  <div class="tray-foot" data-testid="tray-foot">
+    Jobs run in the background: keep using the app while they work.
+    {jobsStore.persistCheckpoints ? 'A reload pauses running jobs; Resume picks up from the last checkpoint.' : 'A reload cancels running jobs.'}
+  </div>
   <div class="sr-only" role="status" aria-live="polite">{announce}</div>
 </section>
 
@@ -185,6 +188,7 @@
     width: min(var(--jobs-tray-w), calc(100vw - 2 * var(--sp-3)));
     max-height: calc(100vh - var(--topbar-h) - var(--sp-6));
     overflow-y: auto;
+    overflow-x: hidden;
     z-index: var(--z-popover);
     background: var(--surface-2);
     border: 1px solid var(--line-control);
@@ -197,7 +201,8 @@
   .close { width: var(--control-h); height: var(--control-h); background: none; border: 1px solid transparent; border-radius: var(--r-1); color: var(--text-soft); font-size: var(--fs-16); cursor: pointer; }
   .close:hover { background: var(--surface-3); color: var(--text-ink); }
   .empty { margin: 0; padding: var(--sp-4); color: var(--text-soft); font-size: var(--fs-13); }
-  .job { padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line-hairline); display: grid; gap: var(--sp-2); }
+  .job { padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line-hairline); display: grid; gap: var(--sp-2); min-width: 0; }
+  .job > :global(*) { min-width: 0; }
   .job-top { display: flex; align-items: flex-start; gap: var(--sp-2); }
   .t { flex: 1; min-width: 0; }
   .t b { display: block; color: var(--text-ink); }

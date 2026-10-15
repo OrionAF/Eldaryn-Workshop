@@ -57,6 +57,18 @@ describe('JobsPill and tray', () => {
     expect(ui.qa('button').some((b) => b.textContent.trim() === 'Dismiss')).toBe(true);
   });
 
+  it('the tray says jobs keep running while you use the app, and what a reload does follows the checkpoint setting', async () => {
+    await fresh();
+    startJob({ tool: 'optimize', title: 'Optimiser · Boss build', request: { mode: 'optimize' } });
+    click(ui.q('.jobs-pill'));
+    const foot = () => ui.q('[data-testid="tray-foot"]').textContent.replace(/\s+/g, ' ');
+    expect(foot()).toContain('keep using the app');
+    expect(foot()).toContain('A reload cancels running jobs.');
+    click(ui.q('.keep input'));
+    flushSync();
+    expect(foot()).toContain('A reload pauses running jobs; Resume picks up from the last checkpoint.');
+  });
+
   it('failed job shows the error and Retry; Escape closes the tray and refocuses the pill', async () => {
     await fresh();
     startJob({ tool: 'duel', title: 'Duel · Farm', request: { mode: 'boom' } });
