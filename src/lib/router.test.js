@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { router, go, areaHash, syncRouter } from './router.svelte.js';
-import { UI_KEY, loadUi, saveUi } from './uiState.js';
+import { UI_KEY, loadUi, saveUi, defaultPrefs } from './uiState.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 10));
 
@@ -73,7 +73,7 @@ describe('router', () => {
 describe('UI key', () => {
   it('survives junk and unavailable storage', () => {
     localStorage.setItem(UI_KEY, '{not json');
-    expect(loadUi()).toEqual({ v: 1, lastHash: null, areaLast: {} });
+    expect(loadUi()).toEqual({ v: 1, lastHash: null, areaLast: {}, prefs: defaultPrefs() });
     const real = Storage.prototype.getItem;
     Storage.prototype.getItem = () => {
       throw new Error('blocked');
