@@ -29,6 +29,7 @@ export const OBJECTIVE_LABEL = Object.freeze({
   'ttk-median': 'Time to kill, median',
   'ttk-p90': 'Time to kill, slow end (P90)',
   survival: 'Survival chance',
+  'win-rate': 'Win rate (clear the step)',
   'pvp-winrate': 'PVP win rate',
 });
 

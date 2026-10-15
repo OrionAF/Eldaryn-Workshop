@@ -77,7 +77,7 @@ it('switching the fight moves an objective it cannot score to one it can', () =>
   const { ui, state } = mountPicker();
   pick(ui, 'Fight', 'chapter');
   expect(state.target).toEqual({ kind: 'chapter', chapter: 1, level: 1 });
-  expect(state.objective.kind).toBe('ttk-median');
+  expect(state.objective.kind).toBe('win-rate');
 });
 
 it('Oblivion offers the instability output cut as an off-by-default assumption', () => {

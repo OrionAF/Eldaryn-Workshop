@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   resolveTarget, makeObjective, objectiveKindsFor, closedFormDps, ehpProxy, SCREEN_SPELL_WEIGHT,
-  OBJECTIVE_KINDS, TARGET_KINDS, residualFor,
+  TARGET_KINDS, residualFor,
 } from './objectives.js';
 import { setOf, contrastSets } from './sampler.js';
 import { buildFighter } from '../build/fighter.js';
@@ -83,12 +83,12 @@ describe('resolveTarget', () => {
 describe('objective / target compatibility', () => {
   it('lists the sensible objectives per target kind', () => {
     expect(objectiveKindsFor('dummy')).toEqual(['dps']);
-    expect(objectiveKindsFor('chapter')).toEqual(['ttk-median', 'ttk-p90', 'survival']);
+    expect(objectiveKindsFor('chapter')).toEqual(['win-rate', 'ttk-median', 'ttk-p90', 'survival']);
     expect(objectiveKindsFor('worldBoss')).toEqual(['dps', 'survival']);
     // with the target itself: survival only where something can hurt the player (#61)
     expect(objectiveKindsFor('worldBoss', { kind: 'worldBoss', affinity: 'NONE' })).toEqual(['dps']);
     expect(objectiveKindsFor('worldBoss', { kind: 'worldBoss', affinity: 'ENRAGED' })).toEqual(['dps', 'survival']);
-    expect(objectiveKindsFor('custom')).toEqual(OBJECTIVE_KINDS);
+    expect(objectiveKindsFor('custom')).toEqual(['dps', 'win-rate', 'ttk-median', 'ttk-p90', 'survival']);
     expect(objectiveKindsFor('bogus')).toEqual([]);
   });
 

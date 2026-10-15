@@ -317,6 +317,17 @@
             />
             <span class="hint">Empty means the whole fight.</span>
           {/if}
+          {#if setup.objective.kind === 'win-rate'}
+            <NumberField
+              label="Target win rate (%)"
+              unit="%"
+              min={50}
+              max={100}
+              value={Math.round((setup.objective.target ?? 0.95) * 100)}
+              onchange={(v) => (setup.objective = { kind: 'win-rate', target: Math.min(100, Math.max(50, Math.round(v ?? 95))) / 100 })}
+            />
+            <span class="hint">The fewest changes that clear the step at least this often.</span>
+          {/if}
         </section>
 
         <section class="step">
