@@ -1,9 +1,10 @@
 // Route smoke test (plan U12): every routed page mounts without throwing for a classless
 // character, a fresh one with a class, and the full fixture character.
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { flushSync } from 'svelte';
 import App from './App.svelte';
 import { PAGES } from './lib/routes.js';
+import { syncRouter } from './lib/router.svelte.js';
 import { rosterStore } from './lib/rosterStore.svelte.js';
 import { fixtureCharacter } from './lib/build/fixtures.js';
 import { setup } from './components/ui/testkit.js';
@@ -37,11 +38,20 @@ for (const [label, prep] of Object.entries(CASES)) {
         localStorage.clear();
         prep();
         location.hash = `#/${page.id}`;
-        t = setup(App, {});
-        flushSync();
-        const main = t.q('main#main');
-        expect(main).not.toBeNull();
-        expect(main.textContent.length).toBeGreaterThan(0);
+        syncRouter();
+        const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+        try {
+          t = setup(App, {});
+          flushSync();
+          const main = t.q('main#main');
+          expect(main).not.toBeNull();
+          expect(main.textContent.length).toBeGreaterThan(0);
+          // Page marker: the context header heading names the routed page (ia.md §6).
+          expect(t.q('h1')?.textContent.trim()).toBe(page.title);
+          expect(err).not.toHaveBeenCalled();
+        } finally {
+          err.mockRestore();
+        }
       });
     }
   });

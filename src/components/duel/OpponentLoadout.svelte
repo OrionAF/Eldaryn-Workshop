@@ -2,7 +2,7 @@
   /**
    * OpponentLoadout.svelte - the combat loadout of one saved opponent: generic, utility and Ancient
    * sigils with a level and an activation condition each, the major glyphs of its ridden mount (an
-   * opponent has no mount to own them), and the sigil altar tier. The stat block is in OpponentEditor.
+   * opponent has no mount to own them), and the sigil altar tier. The stat block is in the opponent library page.
    * Every write goes through rosterStore.updateOpponent, which re-normalises (illegal picks vanish).
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
