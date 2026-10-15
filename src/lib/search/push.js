@@ -18,9 +18,10 @@ import { dungeonSteps, raidSteps } from '../engine/pve/enemies.js';
 import { describeBuild } from '../build/describe.js';
 import { resolveTarget, makeObjective, meetsTarget } from './objectives.js';
 import { createSampler, AbortError, isAbort } from './sampler.js';
-import { candidateEngineKey } from './effect.js';
+import { candidateEngineKey, changesOf } from './effect.js';
+import { createDebugLog } from './debugLog.js';
 import { legalityOf } from './legality.js';
-import { prepare, optimize, ALPHA } from './search.js';
+import { prepare, optimize, debugHeader, ALPHA } from './search.js';
 import { RESULT_SCHEMA, MULTIPLICITY, targetOut, objectiveOut, estimateOut, failedResult } from './result.js';
 
 export const PUSH_KIND = 'push';
@@ -144,6 +145,7 @@ export async function pushCore(env, opts) {
     phase = p;
     at = r;
     phasesSeen.add(p);
+    env.logPhase?.(p, r);
     progress();
   };
   const raise = (k, n) => {
@@ -200,7 +202,13 @@ export async function pushCore(env, opts) {
       for (let k = 0; k < looks.length; k++) {
         const w = rateOf(await get(build, r, stage, looks[k]), al);
         const meets = meetsTarget(w, tau, effort.delta);
-        if (meets != null || k === looks.length - 1) return { meets, value: { est: w.est, lo: w.lo, hi: w.hi, n: looks[k], alphaAdj: al, method: 'wilson' } };
+        if (meets != null || k === looks.length - 1) {
+          env.logBuild?.(build, r, stage, {
+            phase, step: 'check', looks: k + 1, n: looks[k], decision: meets === true ? 'kept' : meets === false ? 'dropped' : 'unresolved',
+            basis: `${role}: ${meets === true ? 'clears' : meets === false ? 'fails' : 'open at maxN'}`,
+          });
+          return { meets, value: { est: w.est, lo: w.lo, hi: w.hi, n: looks[k], alphaAdj: al, method: 'wilson' } };
+        }
       }
       throw new Error('unreachable');
     });
@@ -251,7 +259,17 @@ export async function pushCore(env, opts) {
    */
   async function screen(r, around) {
     setPhase('screen', r);
-    return step('screen', ['flat', rungs[r].key, ...around.map((b) => env.keyOf(b))], async () => {
+    let all = [];
+    // debug log: one row per build the screen looked at, with where the screen left it
+    const logScreen = (res) => {
+      const looks = lookSchedule(effort.n0, effort.maxN);
+      for (const o of all) {
+        const decision = res.reason === 'meets' && res.best?.key === o.key ? 'kept' : o.open ? 'unresolved' : 'dropped';
+        env.logBuild?.(o.c, r, stageOf('screen', r), { phase, step: 'screen', looks: looks.indexOf(o.last?.n) + 1, n: o.last?.n ?? 0, decision, basis: `screen: ${res.reason}` });
+      }
+      return res;
+    };
+    return step('screen', ['flat', rungs[r].key, ...around.map((b) => env.keyOf(b))], async () => logScreen(await (async () => {
       const seen = new Map();
       const add = (c) => {
         const k = env.keyOf(c);
@@ -271,7 +289,7 @@ export async function pushCore(env, opts) {
           }
         }
       }
-      const all = [...seen.values()];
+      all = [...seen.values()];
       const looks = lookSchedule(effort.n0, effort.maxN);
       const a = alpha / ((all.length + pairs.length) * looks.length);
       const stage = stageOf('screen', r);
@@ -302,7 +320,7 @@ export async function pushCore(env, opts) {
         if (!all.some((o) => o.open) && !pairs.some((p) => p.open)) return out(false, 'below');
       }
       return out(true, 'open');
-    });
+    })()));
   }
 
   async function optimiseAt(r) {
@@ -433,6 +451,8 @@ function lineOf(space, cand) {
 function liveEnv(prep, request, ladder, hooks) {
   const { space } = prep;
   const tau = prep.objective.target;
+  const log = hooks.debugLog ?? null; // simulation.md §Debug log; it only observes
+  let logCtx = { phase: null, block: null, pass: null, rung: null };
   let lastYield = Date.now();
   const base = space.canonical(space.start);
   const builds = new Map();
@@ -473,10 +493,10 @@ function liveEnv(prep, request, ladder, hooks) {
             p = hooks.pool('objective', setup);
             handles.set(r, p);
           }
-          return p.run({ fighter, seed: o.seed }, o.from, o.to, { signal: o.signal });
+          return p.run({ fighter, seed: o.seed, ...(o.trace ? { trace: true } : {}) }, o.from, o.to, { signal: o.signal });
         }
         : objective.sample;
-      x = { target, sampler: createSampler({ ...objective, sample }) };
+      x = { target, sampler: createSampler({ ...objective, sample }, { log }) };
       rungs.set(r, x);
     }
     return x;
@@ -492,6 +512,23 @@ function liveEnv(prep, request, ladder, hooks) {
     keyOf: (b) => b.key,
     buildOf,
     release,
+    /** Debug log: the Push phase and rung fights are drawn in (push-<phase>; a rung's own run sets its own). */
+    logContext: () => logCtx,
+    logPhase(p, r) {
+      if (!log) return;
+      logCtx = { phase: `push-${p}`, block: null, pass: null, rung: ladder.rungs[r]?.short ?? null };
+      log.enterPhase(logCtx.phase);
+    },
+    /** Debug log: one build row of a Push decision (a check or the screen) on rung r. */
+    logBuild(b, r, stage, f) {
+      if (!log) return;
+      const ek = ekOf(b);
+      b.logChanges ??= b.key === base.key ? [] : changesOf(space, base, b.cand, { bundles: false }).map((c) => `${c.label}: ${c.to}`);
+      log.build({
+        phase: `push-${f.phase}`, block: null, pass: null, rung: ladder.rungs[r].short, step: f.step, stage: stage.id, key: b.key,
+        entry: ek ? rungOf(r).sampler.logId(ek, stage) : null, changes: b.logChanges, looks: f.looks, n: f.n, decision: f.decision, basis: f.basis,
+      });
+    },
     async getSet(b, r, stage, n) {
       const ek = ekOf(b);
       if (ek == null) throw new Error('push: a build that cannot be simulated was sampled');
@@ -528,7 +565,7 @@ function liveEnv(prep, request, ladder, hooks) {
           character: prep.character, partner: prep.partner, presetId: prep.preset.id, realm: request.realm, target: ladder.rungs[r].spec,
           objective: { kind: 'win-rate', target: tau }, space: request.space, effort: request.effort, seed: prep.seed, powerFloor: request.powerFloor,
           resumeFrom, jobId: hooks.jobId,
-        }, { signal: hooks.signal, onProgress, onCheckpoint, pool, strict: hooks.strict });
+        }, { signal: hooks.signal, onProgress, onCheckpoint, pool, strict: hooks.strict, ...(log ? { debugLog: log, debugRung: ladder.rungs[r].short } : {}) });
         const fights = res.phases?.reduce((a, p) => a + (p.fights ?? 0), 0) ?? 0;
         if (res.status === 'cancelled') return { status: 'cancelled', fights };
         if (res.status === 'failed') throw new Error(res.error?.message ?? res.headline?.text ?? 'optimise failed');
@@ -568,7 +605,8 @@ export async function push(request, hooks = {}) {
   const resumable = cp?.schema === PUSH_CHECKPOINT_SCHEMA && cp.requestKey === prep.requestKey && cp.characterKey === prep.characterKey && Array.isArray(cp.log);
   if (cp && !resumable) warnings.push({ code: 'checkpoint-ignored', severity: 'info', message: 'The saved progress belongs to a different request or character; the run started over.' });
   const jobId = request.jobId ?? `push-${prep.requestKey.split(':')[1] ?? 'job'}`;
-  const env = liveEnv(prep, request, ladder, { ...hooks, jobId });
+  const log = createDebugLog(request.debug);
+  const env = liveEnv(prep, request, ladder, { ...hooks, jobId, debugLog: log });
   try {
     candidateEngineKey(space, env.baseline.cand);
   } catch (e) {
@@ -593,6 +631,7 @@ export async function push(request, hooks = {}) {
   };
 
   let core;
+  const restoreLogCtx = log?.useContext(env.logContext);
   try {
     core = await pushCore(env, {
       tau, effort, seed: prep.seed, signal: hooks.signal,
@@ -601,9 +640,11 @@ export async function push(request, hooks = {}) {
     });
   } finally {
     env.release();
+    restoreLogCtx?.();
   }
   if (phaseAt.id) phaseMs[phaseAt.id] += Date.now() - phaseAt.t;
   const cancelled = core.status === 'cancelled';
+  if (log) log.flush(cancelled ? 'cancelled' : 'unclaimed');
 
   const block = pushBlock(ladder, tau, core);
   const best = core.best;
@@ -640,6 +681,7 @@ export async function push(request, hooks = {}) {
     baselineViolations: [],
     checkpoint: cancelled ? { jobId, phase: phaseAt.id, resumable: true } : null,
     stats: { ms: Date.now() - t0, workers: 1, fights: fightsTotal },
+    ...(log ? { debug: log.finish(debugHeader(prep, echo, jobId)) } : {}),
   };
 }
 

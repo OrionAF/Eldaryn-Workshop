@@ -35,6 +35,9 @@ let persistCheckpoints = $state(readFlag());
 let runner = runOptimizerTask;
 let db = createCheckpointDb();
 const handles = new Map(); // id -> {cancel}
+// id -> an Optimiser run's full debug log (simulation.md §Debug log). Kept out of the reactive job, whose
+// result keeps only the log's summary: up to millions of rows must not be proxied or persisted.
+const debugLogs = new Map();
 
 const find = (id) => jobs.find((j) => j.id === id);
 const plain = (v) => (v === undefined ? null : JSON.parse(JSON.stringify(v)));
@@ -91,6 +94,11 @@ function settle(id, status, { result, error } = {}) {
   dismissKey(id);
   job.status = status;
   job.endedAt = Date.now();
+  if (result?.debug) {
+    const { builds, fights, ...light } = result.debug;
+    debugLogs.set(id, result.debug);
+    result = { ...result, debug: light };
+  }
   if (result !== undefined) job.result = result;
   if (error) job.error = error instanceof Error ? error.message : String(error);
   if (status === 'finished') {
@@ -197,11 +205,18 @@ export function dismissJob(id) {
   const job = find(id);
   if (!job || job.status === 'running') return;
   jobs = jobs.filter((j) => j.id !== id);
+  debugLogs.delete(id);
   void db.remove(id);
 }
 
+/** A job's full debug log (header, summary, build and fight rows), or null when its run kept none. */
+export const jobDebugLog = (id) => debugLogs.get(id) ?? null;
+
 export function clearFinished() {
-  for (const j of jobs.filter((x) => x.status !== 'running' && x.status !== 'queued')) void db.remove(j.id);
+  for (const j of jobs.filter((x) => x.status !== 'running' && x.status !== 'queued')) {
+    void db.remove(j.id);
+    debugLogs.delete(j.id);
+  }
   jobs = jobs.filter((j) => j.status === 'running' || j.status === 'queued');
 }
 
@@ -298,6 +313,7 @@ export const jobsStore = {
 export function __resetJobs({ run = runOptimizerTask, checkpointDb = createCheckpointDb(), persist = false } = {}) {
   for (const h of handles.values()) h.cancel?.();
   handles.clear();
+  debugLogs.clear();
   jobs = [];
   seq = 1;
   runner = run;

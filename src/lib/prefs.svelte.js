@@ -28,6 +28,9 @@ export const prefs = {
   get calibration() {
     return state.calibration;
   },
+  get debugLog() {
+    return state.debugLog;
+  },
   get dropSets() {
     return state.dropSets;
   },
