@@ -89,6 +89,7 @@ const COLLECTIONS = [
 ];
 const at = (o, path) => path.split('.').reduce((v, k) => v?.[k], o);
 
+/** Counts are approximate (collection sizes compared; a remapped or grown collection can hide a drop). */
 /** `dropped` / `defaulted` report entries: what the profile held that the app could not keep, and what it filled in. */
 function normalisationNotes(profile, norm) {
   const notes = [];

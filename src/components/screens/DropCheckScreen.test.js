@@ -275,3 +275,16 @@ it('Cancel stops the batch and leaves the closed-form ranking', async () => {
   expect(target.querySelector('.batch [data-metric="closed"]')).not.toBeNull();
   done();
 }, 40000);
+
+it('a loot bag imported while the page is already open is picked up', async () => {
+  const { loadImportText, confirmImport, resetImportFlow } = await import('../../lib/importFlow.svelte.js');
+  resetImportFlow();
+  open();
+  expect(rows()).toHaveLength(0);
+  loadImportText(JSON.stringify(lootBag));
+  confirmImport();
+  flushSync();
+  expect(rows()).toHaveLength(4);
+  done();
+  resetImportFlow();
+}, 40000);

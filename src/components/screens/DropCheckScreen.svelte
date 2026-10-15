@@ -11,9 +11,9 @@
    * with the same evaluation, and lists them best first. Clicking one loads it as the drop above. The
    * batch is view state: it is not persisted.
    */
-  import { onMount } from 'svelte';
+  import { untrack } from 'svelte';
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
-  import { takeHandoff } from '../../lib/importFlow.svelte.js';
+  import { importFlow, takeHandoff } from '../../lib/importFlow.svelte.js';
   import { runOptimizerTask } from '../../lib/optimizerClient.js';
   import { prepareSwap, groupBySet, buildEnemy, dropOpponents } from '../../lib/features/swap.js';
   import { dropHasStats } from '../../lib/model/drop.js';
@@ -215,9 +215,11 @@
   }
 
   // A loot bag read by the import dialog (G3) arrives here once.
-  onMount(() => {
-    const text = takeHandoff('lootBag');
-    if (text) importDrops(text);
+  // Reactive (not mount-only): importing while this page is already open does not remount it.
+  $effect(() => {
+    importFlow.handoffSeq;
+    const text = untrack(() => takeHandoff('lootBag'));
+    if (text) untrack(() => importDrops(text));
   });
 
   function cancelBatch() {

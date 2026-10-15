@@ -25,6 +25,8 @@ let state = $state({
   mode: 'create',
   /** roster replace: download the current roster before replacing it */
   backupFirst: true,
+  /** bumped when a loot bag / fight log is handed over, so a tool page that is already open can react */
+  handoffSeq: 0,
 });
 
 /** The last "Update <name>": the character as it was, for the one-step undo. */
@@ -54,6 +56,10 @@ export const importFlow = {
   get backupFirst() {
     return state.backupFirst;
   },
+  /** Changes each time a loot bag / fight log is waiting; tool pages watch it and call `takeHandoff`. */
+  get handoffSeq() {
+    return state.handoffSeq;
+  },
   /** {name, at} of the update that can still be undone, or null. */
   get undo() {
     return lastUpdate ? { name: lastUpdate.name, at: lastUpdate.at } : null;
@@ -70,6 +76,7 @@ export function setBackupFirst(on) {
 
 /** Open the dialog at the file / paste step. */
 export function openImport() {
+  handoff = null; // a handoff nobody collected is stale
   state.open = true;
   state.stage = 'choose';
   state.text = '';
@@ -172,6 +179,7 @@ export function confirmImport() {
       return true;
     }
     handoff = { kind: plan.kind, text: state.text };
+    state.handoffSeq += 1;
     closeImport();
     go(plan.kind === 'lootBag' ? 'tools/drop' : 'tools/duel');
     return true;
