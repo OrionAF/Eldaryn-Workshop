@@ -21,8 +21,11 @@ import {
   CONDUIT,
   OBLIVION_PRESTIGE,
   MAX_ITEM_LEVEL_BY_ASCENSION,
-  ASCENSION_ABOVE_HUNDRED_STAT_RATE,
+  itemStatLevel,
+  secondaryStatCeiling,
 } from '../game/gear.js';
+
+export { itemStatLevel };
 
 /** The three persisted sets and the realm each one belongs to. */
 export const EQUIP_SETS = [
@@ -55,9 +58,6 @@ export function itemWarnings(item, { realm = 'base', ascension = null } = {}) {
   return out;
 }
 
-// gear.md §3: the stat level of an item (Oblivion gear halves its level, ITEM_LEVEL_SCALE)
-export const itemStatLevel = (itemLevel, realm) => (realm === 'oblivion' ? itemLevel * OBLIVION_PRESTIGE.ITEM_LEVEL_SCALE : itemLevel);
-const effectiveLevel = (L) => (L <= 100 ? L : 100 + (L - 100) * ASCENSION_ABOVE_HUNDRED_STAT_RATE);
 
 /**
  * Highest value a secondary can roll at an item stat level (gear.md §4 secondaryStatMaxValue, rounded
@@ -66,10 +66,7 @@ const effectiveLevel = (L) => (L <= 100 ? L : 100 + (L - 100) * ASCENSION_ABOVE_
 export function secondaryStatMaxValue(type, statLevel) {
   const def = SECONDARY_STAT_POOL.find((s) => s.type === type);
   if (!def) return null;
-  const frac = Math.min(statLevel, 100) / 100;
-  const base = def.minValue + (def.maxValue - def.minValue) * (0.5 + 0.5 * frac);
-  const max = statLevel > 100 ? (base * effectiveLevel(statLevel)) / 100 : base;
-  return parseFloat(max.toFixed(def.decimals));
+  return parseFloat(secondaryStatCeiling(def, statLevel).toFixed(def.decimals));
 }
 
 // stats.md §1.3: stored as multipliers, shown as percent

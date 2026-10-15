@@ -19,6 +19,18 @@ it('flat stats read "." as thousands and show the formatted value on blur', () =
   done();
 });
 
+it('flat mode (no statKey) reads and shows a flat number, "." as thousands', () => {
+  const onchange = vi.fn();
+  const { q, done } = setup(NumberField, { value: 13000, flat: true, label: 'Power', onchange });
+  const input = q('input');
+  expect(input.value).toBe('13.000');
+  type(input, '15.240');
+  blur(input);
+  expect(onchange).toHaveBeenCalledWith(15240);
+  expect(input.value).toBe('15.240');
+  done();
+});
+
 it('percentage stats read "." as a decimal point', () => {
   const onchange = vi.fn();
   const { q, done } = setup(NumberField, { value: 0, statKey: 'totalCritChance', label: 'Crit', unit: '%', onchange });

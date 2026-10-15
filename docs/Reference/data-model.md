@@ -61,7 +61,8 @@ Character = {
   drop: { realm, slot, item: Item } | null,
   opponents: [{ id, name, class, spec, sheet: Sheet, sigils, utility, ancient,
                 conditions, majorGlyphs, altarTier }],
-  runs: OptimiserRun[]        // byte-budgeted run history; `schema: 2` = an optimiser-result/2 (model/runs.js header)
+  runs: OptimiserRun[]        // byte-budgeted run history; `schema: 2` = an optimiser-result/2 (model/runs.js header);
+                              // `powerFloor` (the run's Combat Power guard) and each Row's `power` are kept when present
 }
 
 Preset = { id, name, equipmentSet: 1|2, talentSet: 0|1, petId | null, mountId | null,
@@ -243,7 +244,8 @@ user-typed sigil damage values. Class `Warrior`/`Sentinel` becomes
 ### 5.1 The per-device UI key
 
 View state lives apart from the roster under **`eldaryn_ui_v1`** (`src/lib/uiState.js`): `v`, `lastHash`
-(route to reopen), `areaLast` (last page per area), `optimiserSetups` (per character and preset) and
+(route to reopen), `areaLast` (last page per area), `optimiserSetups` (per character: preset, fight, objective, toggles, `powerFloor` (the Combat Power guard,
+a positive whole number or null; `ui/optimiserSetup.js normaliseSetup`), effort, seed) and
 `prefs` (`density`, `reduceMotion`, `defaultEffort`, `cpuProfile`: `eco` | `balanced` (default) | `max`,
 the worker-pool size of a job, simulation.md §Worker pool). Every read and write is try/catch-guarded, a
 missing or broken value falls back to the defaults, and nothing in the roster depends on it. It is not

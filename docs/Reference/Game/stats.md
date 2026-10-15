@@ -504,13 +504,13 @@ Where `ENCHANT_QUALITY_FLOOR 0.4` so the quality factor is `0.4 + (1-0.4)*q/100`
 
 | Rarity | Equipment | Sigil | Pet | Mount |
 |---|---|---|---|---|
-| COMMON | 5 | 150 * | 120 | 300 |
+| COMMON | 5 | 150 | 120 | 300 |
 | UNCOMMON | 12 | 300 | 280 | 700 |
 | RARE | 28 | 700 | 600 | 1500 |
 | EPIC | 65 | 1500 | 1200 | 3000 |
 | LEGENDARY | 150 | 2900 | 2400 | 5200 |
 | MYTHIC | 340 | — | 4400 | — |
-| ANCIENT | 750 | 1000 † | 7200 | — |
+| ANCIENT | 750 | 1000 | 7200 | — |
 | DIVINE | 1600 | — | — | — |
 | ETERNAL | 3400 | — | — | — |
 | OBLIVION | 7000 | — | — | — |
@@ -521,13 +521,46 @@ Relic tiers: BRONZE 400, SILVER 900, GOLD 1800. `ALTAR_TIER_BASE 3`,
 Caveats:
 
 - The decompiler collapses object-literal keys, so each rarity key is paired
-  with its value by statement order and register tracing. Values marked * (Sigil
-  COMMON, and `TALENT_PER_POINT 150`, `ENCHANT_SOCKET_POWER 600`) are assigned
-  from registers last loaded for another table (e.g. 150 from the Equipment
-  LEGENDARY step), so they are **[DERIVED]** by register tracing, not literal
-  constants. † Sigil ANCIENT reads 1000, lower than LEGENDARY 2900 — **[UNRESOLVED]**
-  (could be a special-case tier or a decompile artefact; sigil rarities, see
-  sigils.md).
+  with its value by statement order. `TOTAL_POWER_CONFIG` is straight-line code
+  (no branch), so the register a value is read from is unambiguous: Sigil COMMON
+  and `TALENT_PER_POINT` read register r3, last loaded with 150 (Equipment
+  LEGENDARY); `ENCHANT_SOCKET_POWER` reads r4 = 600 (Pet RARE); Mount
+  COMMON/UNCOMMON/RARE read r10/r9/r8 = 300/700/1500 (Sigil UNCOMMON/RARE/EPIC)
+  **[CODE]** (`L1187673-1187818`). Sigil ANCIENT is a literal 1000 assigned
+  after the ANCIENT key load **[CODE]**; it is lower than LEGENDARY 2900 and no
+  capture has an Ancient sigil equipped, so it is not confirmed against the
+  server.
+- **Inputs, as the hook builds them** (`useTotalPower` `L1186678-1187190`)
+  **[CODE]**: equipment = every slot of the active set, `quality =
+  calculateItemQuality(item)` (computed from the secondaries, never read from
+  the server item), `realm` from the item; sigils = `getActiveEquippedSpecies`
+  (`equippedSpecies`, or `druidEquippedSpecies` for a Druid; the Ancient is in
+  that list, and there is no Transcendence-board check) plus the utility slot
+  (`druidUtilitySlotSpecies` for a Druid), each with its owned `rarity` and
+  `level`; enchants = owned stones with `activated` whose id is in the active
+  enchant slots (a Set, so one stone counts once), `quality ?? 0`,
+  `amplifyLevel ?? 0`; `sigilAltarTier = altarTier ?? 1`;
+  `transcendenceNodeCount` = the allocated node list's length; pet = the
+  equipped pet's rarity with `altarLevel = altarLevelFromXp(altar.totalXp,
+  tier)` and `tier = altar.tier ?? 1`; mount = the active mount, `stars =
+  level ?? 1`; relics = each equipped relic's tier and `maxLevel` with the
+  owned level (`?? 1`); `talentPointsSpent` of the active talent set;
+  `awakeningPoints = awakeningState.level ?? 0`; `level` = player level.
+- **Checked against the server [DERIVED]**: two real 2.7.3 profiles carry the
+  server's `totalPower` (Sentinel L85: 250969; Warrior L73: 60985). The formula
+  above, with these inputs, reproduces both exactly (terms, Sentinel /
+  Warrior: equipment 59593 / 19615, sigils 2380 / 1340, enchants 6408 / 4828,
+  transcendence 5100 / 2200, pet 159408 / 17712, mount 3300 / 1650, relics
+  1780 / 1120, talents 4350 / 4350, awakening 5250 / 5250, level 3400 / 2920).
+  This confirms the Equipment table for UNCOMMON to OBLIVION gear worn
+  (including `ETERNAL` above level 100 and an `OBLIVION`-rarity item in the
+  base set), quality from secondaries with the rounding of gear.md §5, Sigil
+  UNCOMMON/RARE/EPIC/LEGENDARY with the altar tier, `ENCHANT_SOCKET_POWER 600`
+  with amplification, `TALENT_PER_POINT 150`, Pet ANCIENT with the altar tier,
+  Mount EPIC with stars, all three relic tiers, and that the server's figure
+  is the client formula. Not exercised by either profile: Sigil COMMON and
+  ANCIENT, utility sigils, and Oblivion-realm items (`ITEM_LEVEL_SCALE`).
+  App test: `src/lib/__fixtures__/real/power.test.js`.
 - `quality` (gear) = `round(mean over secondary stats of
   calculateStatQuality(type, value, itemStatLevel))` `L677261-677303`
   (module 3177; body of `calculateStatQuality` — `see gear.md`).
@@ -580,7 +613,7 @@ adds a non-crit strike) and takes `attackSpeed` as the multiplier unit.
 - a7 argument of `calculateTotalStats` (§3.1): shape known, producer unknown.
 - Whether the server applies the same per-source summing and floor/round
   steps as `calculateTotalStats` (the only visible copy is the preview).
-- Sigil ANCIENT power value and the register-traced power constants (§8).
+- Sigil ANCIENT power 1000 (a literal, §8) is not confirmed by a capture.
 - Level scaling of base stats, if any, on the server (§1.1).
 - Penetration crit interaction (§7).
 - Contribution functions of each source (talents, pets, sigils, stones,

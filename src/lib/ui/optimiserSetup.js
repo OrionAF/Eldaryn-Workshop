@@ -1,12 +1,14 @@
 // ui/optimiserSetup.js - the Optimiser page's setup (preset, fight, objective, allowed-to-change toggles,
-// effort, seed): defaults, validation of a stored or re-run setup against the live character, and the
+// Combat Power floor, effort, seed): defaults, validation of a stored or re-run setup against the live character, and the
 // worker request it stands for. Pure. The setup is kept per character in the UI key (uiState.js).
 import { resolveTarget, objectiveKindsFor, goalRetired, WIN_RATE_TARGET } from '../search/objectives.js';
-import { SPACE_DEFAULTS } from '../search/space.js';
+import { SPACE_DEFAULTS, normalisePowerFloor } from '../search/space.js';
 import { EFFORT_LEVELS } from '../search/search.js';
 import { PVP_MAX_OPPONENTS, PVP_SEATS } from '../search/pvpObjective.js';
 import { metricKey } from '../engine/metrics.js';
 import { jobSignature } from '../jobs.svelte.js';
+import { crusadePowerRequirement } from '../game/pveContent.js';
+import { formatFlat } from '../format.js';
 
 /** Keys a stored target/objective carries beyond the spec itself (the result's echo adds them). */
 const TARGET_ECHO = ['label', 'key', 'mode', 'fidelity', 'assumptions'];
@@ -23,6 +25,7 @@ export const defaultSetup = (defaultEffort = 'standard') => ({
   target: { kind: 'dummy', seconds: 60 },
   objective: { kind: 'dps' },
   space: { ...SPACE_DEFAULTS },
+  powerFloor: null,
   effort: EFFORT_LEVELS.includes(defaultEffort) ? defaultEffort : 'standard',
   seed: 1,
 });
@@ -61,9 +64,42 @@ export function normaliseSetup(raw, character, defaultEffort = 'standard') {
   if (r.space && typeof r.space === 'object') {
     for (const k of Object.keys(SPACE_DEFAULTS)) if (typeof r.space[k] === 'boolean') out.space[k] = r.space[k];
   }
+  out.powerFloor = normalisePowerFloor(r.powerFloor);
   if (EFFORT_LEVELS.includes(r.effort)) out.effort = r.effort;
   if (Number.isInteger(r.seed) && r.seed >= 1) out.seed = r.seed;
   return out;
+}
+
+/** Mythic+ levels offered as Combat Power floor quick picks. */
+export const POWER_FLOOR_MYTHIC_PLUS = 10;
+
+const gatePick = (label, value) => ({ value, label: `${label} (${formatFlat(value)})` });
+
+/**
+ * The highest Hell Crusade gate a Power meets (Hard, Mythic or Mythic+N with no upper N), as a pick, or
+ * null below Hard. The guard's default: a suggestion then never costs the player their current gate.
+ */
+export function currentCrusadeGate(power) {
+  if (!(Number.isFinite(power) && power >= crusadePowerRequirement('HARD'))) return null;
+  if (power < crusadePowerRequirement('MYTHIC')) return gatePick('Crusade Hard', crusadePowerRequirement('HARD'));
+  let n = 0;
+  while (crusadePowerRequirement('MYTHIC', n + 1) <= power) n += 1;
+  return gatePick(n === 0 ? 'Crusade Mythic' : `Crusade Mythic+${n}`, crusadePowerRequirement('MYTHIC', n));
+}
+
+/**
+ * Quick picks for the Combat Power floor ({value, label}): the preset's current Power (when known), its
+ * current Crusade gate when that is above Mythic+10, then the Hell Crusade gates Hard, Mythic and
+ * Mythic+1..10 (Game/pve-content.md §5).
+ */
+export function powerFloorPicks(currentPower = null) {
+  const out = [];
+  if (Number.isFinite(currentPower) && currentPower >= 1) out.push({ value: Math.round(currentPower), label: `Current Power (${formatFlat(currentPower)})` });
+  const gates = [gatePick('Crusade Hard', crusadePowerRequirement('HARD')), gatePick('Crusade Mythic', crusadePowerRequirement('MYTHIC'))];
+  for (let n = 1; n <= POWER_FLOOR_MYTHIC_PLUS; n++) gates.push(gatePick(`Crusade Mythic+${n}`, crusadePowerRequirement('MYTHIC', n)));
+  const gate = currentCrusadeGate(currentPower);
+  if (gate && !gates.some((g) => g.value === gate.value)) out.push(gate);
+  return [...out, ...gates];
 }
 
 /** Why a retired goal cannot be run again. */
@@ -89,6 +125,7 @@ export function setupFromRun(run, character, defaultEffort = 'standard') {
       target: run.target,
       objective: run.objective,
       space: run.space,
+      powerFloor: run.powerFloor,
       effort: EFFORT_LEVELS.includes(level) ? level : undefined,
       seed: run.seed,
     },
@@ -128,6 +165,7 @@ export function requestOf(setup, character) {
     target: JSON.parse(JSON.stringify(setup.target)),
     objective: JSON.parse(JSON.stringify(setup.objective)),
     space: { ...setup.space },
+    ...(setup.powerFloor != null ? { powerFloor: setup.powerFloor } : {}),
     effort: setup.effort,
     seed: setup.seed,
   };

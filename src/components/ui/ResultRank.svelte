@@ -13,13 +13,14 @@
    * onrunmore(row), footer snippet, unmeasured (per-change effects were never measured for this
    * row: a run saved before the attribution pass, or a row not yet confirmed; the cells say so).
    * `target` is the PVE win-rate goal's share (a fraction) or null: the row then carries a Meets / Below target
-   * chip and, below the target, how many points short it is.
+   * chip and, below the target, how many points short it is. `basePower` is the current build's Combat Power:
+   * the baseline row shows its Power, every other row its Power change (nothing on runs saved without Power).
    */
   import { triesPerClear } from '../../lib/ui/winRateFormat.js';
   import CIForest from './CIForest.svelte';
   import VerdictChip from './VerdictChip.svelte';
   import ScopeChip from './ScopeChip.svelte';
-  import { changeSummary, bundleText, dimensionLabel, onlyWith, targetStanding } from '../../lib/ui/optimiserView.js';
+  import { changeSummary, bundleText, dimensionLabel, onlyWith, targetStanding, powerText, KEPT_BECAUSE_TEXT } from '../../lib/ui/optimiserView.js';
   import {
     fmtEstimate, fmtContrast, fmtContrastCi, fmtSigned, verdictText, nNeededText, verdictTone, fmtCount,
   } from '../../lib/ui/statsFormat.js';
@@ -33,6 +34,7 @@
     onrunmore = null,
     unmeasured = false,
     target = null,
+    basePower = null,
     footer,
   } = $props();
   const id = $props.id();
@@ -43,6 +45,7 @@
   const chipVerdict = $derived(pending ? 'pending' : (vs?.verdict ?? 'unresolved'));
   const rankText = $derived(row.isBaseline ? 'NOW' : row.tieGroup != null ? `${row.rank}=` : String(row.rank));
   const standing = $derived(targetStanding(row, target));
+  const power = $derived(powerText(row, basePower));
   const summary = $derived(
     [row.isBaseline ? 'Current build' : changeSummary(row.changes), standing.gap, target != null ? triesPerClear(row.aux?.winRate?.est) : ''].filter(Boolean).join(' · '),
   );
@@ -68,6 +71,7 @@
       <span class="value">
         <span class="v">{fmtEstimate(unit, row.value)}</span>
         <span class="meta">{summary}</span>
+        {#if power}<span class="pw" data-testid="row-power">{power}</span>{/if}
       </span>
     </button>
     <CIForest
@@ -134,7 +138,7 @@
               {#if c.needed && !dep}
                 <span>Without it: {fmtContrast(unit, c.needed)} {fmtContrastCi(unit, c.needed)}</span>
               {/if}
-              {#if c.keptBecause}<span>{c.keptBecause === 'interaction' ? 'Kept for its interaction with other changes' : 'Kept for its own effect'}</span>{/if}
+              {#if KEPT_BECAUSE_TEXT[c.keptBecause]}<span>{KEPT_BECAUSE_TEXT[c.keptBecause]}</span>{/if}
               {#if c.bundle?.length}<span>Comes with: {bundleText(c.bundle, row.changes)}</span>{/if}
             </span>
           </div>
@@ -218,6 +222,7 @@
   .v { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
   .value .v { font-size: var(--fs-16); font-weight: var(--fw-medium); color: var(--text-ink); }
   .meta { font-size: var(--fs-12); color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pw { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: var(--fs-12); color: var(--text-soft); }
   .delta { display: grid; justify-items: end; line-height: 1.2; }
   .delta .v { font-size: var(--fs-14); font-weight: var(--fw-medium); color: var(--text-ink); }
   .delta .v.up { color: var(--verdict-up); }
