@@ -96,3 +96,20 @@ it('an unanswered confirm reverts to the label after 4 s', () => {
   unmount(app);
   vi.useRealTimers();
 });
+
+it('with a variant it renders ui/Button styling, confirms in the danger look, and keeps focus on Confirm', () => {
+  const { target, app, onConfirm } = setup({ variant: 'ghost', size: 'small', confirmLabel: 'Sure' });
+  const first = target.querySelector('button');
+  expect(first.className).toContain('btn-ghost');
+  expect(first.className).toContain('btn-sm');
+  first.click();
+  flushSync();
+  const yes = [...target.querySelectorAll('button')].find((b) => b.textContent === 'Sure');
+  expect(yes.className).toContain('btn-danger');
+  expect(yes.className).toContain('is-confirming');
+  expect(document.activeElement).toBe(yes);
+  yes.click();
+  flushSync();
+  expect(onConfirm).toHaveBeenCalledTimes(1);
+  unmount(app);
+});

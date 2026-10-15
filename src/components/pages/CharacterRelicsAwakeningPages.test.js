@@ -31,7 +31,7 @@ describe('Relics store + screen', () => {
     render(RelicsScreen);
     const war = relicsForClass('WARRIOR');
     expect(target.querySelectorAll('[data-relic]').length).toBe(war.length);
-    target.querySelector(`[data-relic="${war[0].id}"] button[aria-label^="Raise"]`).click();
+    target.querySelector(`[data-relic="${war[0].id}"] button[aria-label^="Increase"]`).click();
     flushSync();
     expect(rosterStore.current.relics[war[0].id]).toBe(1);
   });
@@ -78,7 +78,7 @@ const field = (label) => {
 const setField = (el, v) => {
   el.value = v;
   el.dispatchEvent(new Event('input', { bubbles: true }));
-  el.blur();
+  el.dispatchEvent(new Event('blur'));
   flushSync();
 };
 
@@ -98,6 +98,39 @@ describe('Relics page: slots and Equipped in', () => {
     expect(rosterStore.current.presets[0].relicIds).toHaveLength(2);
     flushSync();
     expect(target.textContent).toContain('2/2');
+  });
+
+  it('lowering the slots asks first and names the relics every preset would lose', () => {
+    const war = relicsForClass('WARRIOR');
+    for (const r of war.slice(0, 3)) rosterStore.setRelicLevel(r.id, 1);
+    const [p0] = rosterStore.current.presets;
+    for (const r of war.slice(0, 3)) rosterStore.togglePresetRelic(p0.id, r.id);
+    render(RelicsScreen);
+    const lower = () => {
+      field('Relic slots').value = '2';
+      field('Relic slots').dispatchEvent(new Event('change', { bubbles: true }));
+      flushSync();
+    };
+    lower();
+    const dialog = document.querySelector('dialog[open]');
+    expect(dialog.textContent).toContain(p0.name);
+    expect(dialog.textContent).toContain(war[2].name);
+    expect(rosterStore.current.extraRelicSlots).toBe(2); // nothing written yet
+    expect(rosterStore.current.presets[0].relicIds).toHaveLength(3);
+    [...dialog.querySelectorAll('button')].find((b) => b.textContent.startsWith('Keep')).click();
+    flushSync();
+    expect(rosterStore.current.presets[0].relicIds).toHaveLength(3);
+    expect(field('Relic slots').value).toBe('4');
+    lower();
+    [...document.querySelector('dialog[open]').querySelectorAll('button')].find((b) => b.textContent.startsWith('Lower slots')).click();
+    flushSync();
+    expect(rosterStore.current.extraRelicSlots).toBe(0);
+    expect(rosterStore.current.presets[0].relicIds).toEqual([war[0].id, war[1].id]);
+  });
+
+  it('each relic row shows its tier icon', () => {
+    render(RelicsScreen);
+    expect(target.querySelector('[data-relic] .relic-icon')).not.toBeNull();
   });
 
   it('Equipped in lists every preset by name, ticks the equipping ones, and disables the full ones', () => {
@@ -129,18 +162,19 @@ describe('Relics page: slots and Equipped in', () => {
 });
 
 describe('Awakening page: cap by level', () => {
-  it('the points field and steppers stop at what the level allows, and Max goes there', () => {
+  it('the points field stops at what the level allows, and Max goes there', () => {
     rosterStore.setCharacterLevel(50);
     rosterStore.setAwakeningPath('SHADOW');
     render(AwakeningScreen);
-    expect(target.textContent).toContain('0 / 6');
-    const more = target.querySelector('button[aria-label="More points"]');
-    for (let i = 0; i < 9; i++) {
-      more.click();
-      flushSync();
-    }
-    expect(rosterStore.current.awakening.level).toBe(6);
-    expect(more.disabled || more.getAttribute('aria-disabled') === 'true').toBe(true);
+    // The cap is written beside the field once: the old "0 / 6 points" readout drew the value a second time.
+    expect(target.querySelector('[data-testid="points-cap"]').textContent).toBe('/ 6 points');
+    expect(target.textContent).not.toContain('0 / 6');
+    const input = field('Awakening points');
+    setField(input, '9');
+    expect(rosterStore.current.awakening.level).toBe(0);
+    expect(target.querySelector('[role="alert"]').textContent).toContain('maximum');
+    setField(input, '4');
+    expect(rosterStore.current.awakening.level).toBe(4);
     rosterStore.resetAwakening();
     rosterStore.setAwakeningPath('RADIANT');
     flushSync();

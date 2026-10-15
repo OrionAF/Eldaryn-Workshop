@@ -2,6 +2,7 @@ import { it, expect, beforeEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import ItemEditor from './ItemEditor.svelte';
 import { parseFlat, flatFieldText, toDisplay, fromDisplay } from './gearFormat.js';
+import { field, setField } from './fieldKit.js';
 
 let target;
 beforeEach(() => {
@@ -24,12 +25,8 @@ function render(props) {
   flushSync();
   return { app, changes };
 }
-function change(el, value) {
-  el.value = value;
-  el.dispatchEvent(new Event('change', { bubbles: true }));
-  flushSync();
-}
-const q = (label) => target.querySelector(`[aria-label="${label}"]`);
+const change = setField;
+const q = (label) => field(target, label);
 
 it('shows one secondary row per rarity slot (Legendary: 2) and the class weapon name', () => {
   const { app } = render({ value: legendary });
@@ -160,5 +157,23 @@ it('a secondary above the highest roll at the item level is flagged and clamped 
 it('warns when the item level is above what the Ascension step drops', () => {
   const { app } = render({ value: { ...legendary, itemLevel: 130 }, ascension: 1 });
   expect(target.querySelector('.flag[role="status"]').textContent).toContain('above what your Ascension step drops');
+  unmount(app);
+});
+
+it('lowering the item level names the secondaries it will clamp before they drop', () => {
+  const high = { ...legendary, itemLevel: 100, secondaryStats: [{ type: 'CRIT_CHANCE', value: 3.2 }] };
+  const { app, changes } = render({ value: high });
+  change(q('Item level'), '1');
+  expect(changes.at(-1).itemLevel).toBe(1);
+  const note = [...target.querySelectorAll('.flag[role="status"]')].map((n) => n.textContent).join(' ');
+  expect(note).toContain('Item level 1 lowers the highest roll');
+  expect(note).toContain('Crit Chance 3.2 to');
+  unmount(app);
+});
+
+it('raising the item level shows no clamp note', () => {
+  const { app } = render({ value: { ...legendary, itemLevel: 50 } });
+  change(q('Item level'), '100');
+  expect(target.textContent).not.toContain('lowers the highest roll');
   unmount(app);
 });

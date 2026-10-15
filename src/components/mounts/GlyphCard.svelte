@@ -10,6 +10,9 @@
   import { glyphTypeInfo, glyphSecondaryDef, glyphSecondaryQuality, glyphSecondaryValue, GLYPH_SECONDARY_STATS } from '../../lib/model/glyphs.js';
   import { glyphImage } from '../../lib/assets/glyphs.js';
   import ConfirmButton from '../ConfirmButton.svelte';
+  import Select from '../ui/Select.svelte';
+  import NumberField from '../ui/NumberField.svelte';
+  import Button from '../ui/Button.svelte';
   import { TIER_LABELS, glyphText, majorText, rarityClass, secondaryUnit, statLabel } from './mountsView.js';
 
   let { glyph, mountName = null, inertIn = [], onUpdate, onRemove } = $props();
@@ -20,37 +23,33 @@
   const value = $derived(glyph.secondary ? glyphSecondaryValue(glyph.secondary) : '');
   const def = $derived(glyphSecondaryDef(stat));
 
-  function setStat(e) {
-    const next = e.currentTarget.value;
+  const statOptions = [{ value: '', label: 'None entered' }, ...GLYPH_SECONDARY_STATS.map((s) => ({ value: s, label: statLabel(s) }))];
+
+  function setStat(next) {
     onUpdate({ secondary: next ? { stat: next, quality: glyphSecondaryQuality(next, value === '' ? 0 : value) } : null });
   }
-  function setValue(e) {
-    const n = Number(String(e.currentTarget.value).replace(',', '.'));
+  function setValue(n) {
     if (stat && Number.isFinite(n)) onUpdate({ secondary: { stat, quality: glyphSecondaryQuality(stat, n) } });
   }
 </script>
 
-<div class="glyph-card rarity-card {rarityClass(glyph.rarity)}" class:inert={info?.tier === 'major' && inertIn.length > 0} data-glyph-id={glyph.id}>
-  <span class="rarity-badge">{glyph.rarity}</span>
+<div class="glyph-card {rarityClass(glyph.rarity)}" class:inert={info?.tier === 'major' && inertIn.length > 0} data-glyph-id={glyph.id}>
+  <span class="badge">{glyph.rarity}</span>
   {#if art}<img class="glyph-art" src={art} alt="" loading="lazy" />{/if}
   <p class="glyph-name">{info?.name ?? glyph.glyphType} <span class="tier">{info ? TIER_LABELS[info.tier] : ''}</span></p>
 
   {#if glyph.sealed}
     <p class="effect sealed">Sealed</p>
-    <button type="button" class="btn-ghost" onclick={() => onUpdate({ sealed: false })}>Unlock</button>
+    <Button variant="ghost" size="small" onclick={() => onUpdate({ sealed: false })}>Unlock</Button>
   {:else if info?.tier === 'minor'}
-    <label class="field">
-      <span class="micro-label">Stat</span>
-      <select aria-label="Secondary stat" value={stat} onchange={setStat}>
-        <option value="">None entered</option>
-        {#each GLYPH_SECONDARY_STATS as s (s)}<option value={s}>{statLabel(s)}</option>{/each}
-      </select>
-    </label>
+    <div class="field">
+      <Select label="Secondary stat" options={statOptions} value={stat} onchange={setStat} />
+    </div>
     {#if def}
-      <label class="field">
-        <span class="micro-label">Value {secondaryUnit(stat)} ({def.minValue}-{def.maxValue})</span>
-        <input type="text" inputmode="decimal" aria-label="Secondary value" {value} onchange={setValue} />
-      </label>
+      <div class="field">
+        <NumberField label="Secondary value" unit={secondaryUnit(stat)} {value} onchange={setValue} />
+        <span class="range">Range {def.minValue}-{def.maxValue}</span>
+      </div>
     {/if}
   {:else if info?.tier === 'major'}
     <p class="effect">{majorText(glyph.glyphType, glyph.rarity)}</p>
@@ -62,10 +61,10 @@
   {#if mountName}<p class="where">On {mountName}</p>{/if}
   {#if info?.tier === 'minor' || info?.tier === 'major'}
     {#if !glyph.sealed}
-      <button type="button" class="btn-ghost small" onclick={() => onUpdate({ sealed: true })}>Mark sealed</button>
+      <Button variant="quiet" size="small" onclick={() => onUpdate({ sealed: true })}>Mark sealed</Button>
     {/if}
   {/if}
-  <ConfirmButton class="btn-danger" label="Remove" confirmLabel="Confirm remove" onConfirm={onRemove} />
+  <ConfirmButton variant="danger" size="small" label="Remove" confirmLabel="Confirm remove" onConfirm={onRemove} />
 </div>
 
 <style>
@@ -73,64 +72,33 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 5px;
-    padding: var(--space-2);
+    gap: var(--sp-1);
+    padding: var(--sp-2);
     text-align: center;
+    min-width: 0;
+    border: 1px solid var(--rarity-border, var(--line-rule));
+    background: var(--rarity-bg, var(--surface-2));
+    border-radius: var(--r-2);
   }
-  .glyph-card.inert {
-    opacity: 0.7;
-  }
-  .glyph-art {
-    width: 48px;
-    height: 48px;
-    object-fit: contain;
-    border-radius: var(--radius-field);
-  }
-  .glyph-name {
-    margin: 0;
-    font-size: 11.5px;
-    font-weight: 600;
-    color: var(--rarity-fg-strong, var(--color-ink));
-  }
-  .tier {
-    display: block;
-    font-size: 9.5px;
-    font-weight: 400;
-    letter-spacing: 0.08em;
+  .glyph-card.inert { opacity: 0.7; }
+  .badge {
+    padding: 1px var(--sp-2);
+    border: 1px solid var(--rarity-border, var(--line-rule));
+    border-radius: var(--r-pill);
+    background: var(--rarity-bg, transparent);
+    color: var(--rarity-fg-strong, var(--text-muted));
+    font-size: var(--fs-11);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--track-label);
     text-transform: uppercase;
-    color: var(--color-dim);
   }
-  .effect {
-    margin: 0;
-    font-size: 11px;
-    color: var(--color-soft);
-  }
-  .sealed {
-    color: var(--color-warning);
-  }
-  .warn {
-    margin: 0;
-    font-size: 10px;
-    color: var(--color-warning);
-  }
-  .where {
-    margin: 0;
-    font-size: 10px;
-    color: var(--color-muted);
-  }
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    width: 100%;
-  }
-  .field select,
-  .field input {
-    width: 100%;
-    box-sizing: border-box;
-  }
-  .small {
-    font-size: 10px;
-    padding: 3px 6px;
-  }
+  .glyph-art { width: 48px; height: 48px; object-fit: contain; border-radius: var(--r-2); }
+  .glyph-name { margin: 0; font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--rarity-fg-strong, var(--text-ink)); }
+  .tier { display: block; font-size: var(--fs-11); font-weight: var(--fw-regular); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-muted); }
+  .effect { margin: 0; font-size: var(--fs-12); color: var(--text-soft); }
+  .sealed { color: var(--status-warn); }
+  .warn { margin: 0; font-size: var(--fs-11); color: var(--status-warn); }
+  .where { margin: 0; font-size: var(--fs-11); color: var(--text-muted); }
+  .range { font-family: var(--font-data); font-size: var(--fs-11); color: var(--text-muted); }
+  .field { display: grid; gap: var(--sp-1); width: 100%; text-align: left; }
 </style>

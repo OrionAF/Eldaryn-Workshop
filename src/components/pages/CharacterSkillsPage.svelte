@@ -159,7 +159,7 @@
       <div class="buffs">
         {#each ['TOP', 'BOTTOM', 'CORE'] as group (group)}
           <div class="buff" class:active={owned.includes(group)}>
-            <h3 class="micro-label">{group}</h3>
+            <h3 class="buff-label">{group}</h3>
             <ul>
               {#each remapped(group) as r (r.from)}
                 <li>
@@ -179,10 +179,17 @@
   .skills-page { display: grid; gap: var(--sp-4); }
   .note { margin: 0 0 var(--sp-3); color: var(--text-soft); font-size: var(--fs-13); }
   .muted { color: var(--text-muted); font-weight: var(--fw-regular, 400); }
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: var(--fs-13); }
-  th, td { padding: var(--sp-2) var(--sp-3); text-align: left; border-bottom: 1px solid var(--line-rule); vertical-align: middle; }
-  thead th { color: var(--text-muted); font-size: var(--fs-12); }
+  /* On a phone the table scrolls inside its panel instead of being clipped; cells stay on one line so the Cap
+     column and a level like "8 / 10" are never cut or wrapped. */
+  .table-wrap { overflow-x: auto; max-width: 100%; }
+  table { width: 100%; min-width: 44rem; border-collapse: collapse; font-size: var(--fs-13); }
+  th, td { padding: var(--sp-2) var(--sp-3); text-align: left; border-bottom: 1px solid var(--line-rule); vertical-align: middle; white-space: nowrap; }
+  thead th {
+    color: var(--text-soft);
+    font-size: var(--fs-11);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+  }
   tbody th { font-weight: var(--fw-bold, 700); }
   tfoot th { color: var(--text-soft); }
   .r { text-align: right; }
@@ -206,7 +213,15 @@
   .buffs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); gap: var(--sp-3); }
   .buff { background: var(--surface-3); border: 1px solid var(--line-rule); border-radius: var(--r-1); padding: var(--sp-3); }
   .buff.active { border-color: var(--brass-500); }
-  .buff h3 { margin: 0 0 var(--sp-2); }
+  .buff-label {
+    margin: 0 0 var(--sp-2);
+    font-family: var(--font-ui);
+    font-size: var(--fs-11);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--text-soft);
+  }
   .buff ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1); }
   .buff li { display: flex; justify-content: space-between; gap: var(--sp-2); }
 </style>

@@ -5,7 +5,7 @@
    * (guaranteed PvP rows, Azure's Attack-or-Defense pick, free rows from the type's pool). Details
    * mode (a tile is selected): edit quality, Amplify level (+0..+10), Oblivion grade and stat
    * values, socket it into the selected slot of the selected set, or remove it. Every edit commits
-   * to the store on `change`.
+   * to the store when its field is left (ui/NumberField) or changed (ui/Select).
    *
    * Props: realm ('base' | 'oblivion' - which pool), stones, setKey + setLabel (socket target set),
    * selectedSlot, selectedStoneId, onSelect(id | null).
@@ -18,6 +18,10 @@
   import { formatFlat } from '../../lib/format.js';
   import ConfirmButton from '../ConfirmButton.svelte';
   import Checkbox from '../ui/Checkbox.svelte';
+  import Select from '../ui/Select.svelte';
+  import NumberField from '../ui/NumberField.svelte';
+  import Stepper from '../ui/Stepper.svelte';
+  import Button from '../ui/Button.svelte';
 
   let { realm = 'base', stones, cls = null, setKey, setLabel, selectedSlot, canSocket = true, selectedStoneId = null, onSelect } = $props();
 
@@ -28,7 +32,7 @@
   // --- Add mode ---
   // The parent re-mounts this form per realm ({#key realm}), so the initial type is read once.
   let newType = $state(untrack(() => (realm === 'oblivion' ? 'OBLIVION' : 'PVE_ATTACK')));
-  let newQuality = $state('');
+  let newQuality = $state(null);
   let newActivated = $state(true);
   let newGrade = $state(1);
   let choiceStat = $state('');
@@ -56,8 +60,8 @@
   function submitAdd() {
     if (!canAdd) return;
     const order = [...recipe.guaranteed, ...(choiceStat ? [choiceStat] : []), ...freeKeys];
-    const stats = order.map((type) => ({ type, value: fromDisplay(type, values[type]) }));
-    const quality = parseInt(newQuality, 10);
+    const stats = order.map((type) => ({ type, value: fromDisplay(type, String(values[type] ?? '')) }));
+    const quality = newQuality == null ? NaN : Math.round(newQuality);
     const id = rosterStore.addEnchantStone(realm, {
       type: recipe.type,
       activated: newActivated,
@@ -65,7 +69,7 @@
       oblivionLevel: recipe.type === 'OBLIVION' ? Number(newGrade) : null,
       stats,
     });
-    newQuality = '';
+    newQuality = null;
     resetDraft();
     if (id) onSelect?.(id);
   }
@@ -74,13 +78,17 @@
   function patch(p) {
     if (selected) rosterStore.updateEnchantStone(realm, selected.id, p);
   }
-  function setStatValue(type, text) {
-    patch({ stats: selected.stats.map((s) => (s.type === type ? { ...s, value: fromDisplay(type, text) } : s)) });
+  function setStatValue(type, shown) {
+    patch({ stats: selected.stats.map((s) => (s.type === type ? { ...s, value: fromDisplay(type, String(shown)) } : s)) });
   }
-  function setQuality(text) {
-    const n = parseInt(text, 10);
-    patch({ quality: Number.isFinite(n) ? n : null });
+  function setQuality(n) {
+    patch({ quality: n == null ? null : Math.round(n) });
   }
+  const unitOf = (type) => (type === 'PVP_ATTACK' || type === 'PVP_DEFENSE' ? '' : '%');
+  const typeOptions = $derived(types.map((t) => ({ value: t.enum, label: t.name })));
+  const gradeOptions = OBLIVION_GRADES.map((g) => ({ value: g.level, label: `${g.level} - ${g.grade}` }));
+  const choiceOptions = $derived((recipe.choice ?? []).map((t) => ({ value: t, label: statLabel(t) })));
+  const freeSelectOptions = (i) => [{ value: '', label: 'Choose...' }, ...freeOptions(i).map((t) => ({ value: t, label: statLabel(t) }))];
   function typeName(t) {
     return STONE_TYPES.find((x) => x.enum === t)?.name ?? t;
   }
@@ -93,107 +101,55 @@
 
 {#if !selected}
   <div class="stone-form add-mode">
-    <p class="micro-label">Add stone</p>
-    <label class="field">
-      <span class="label">Type</span>
-      <select aria-label="Stone type" value={newType} onchange={(e) => pickType(e.currentTarget.value)}>
-        {#each types as t (t.enum)}
-          <option value={t.enum}>{t.name}</option>
-        {/each}
-      </select>
-    </label>
-    <label class="field">
-      <span class="label">Quality (1-100)</span>
-      <input type="number" aria-label="Stone quality" min="1" max="100" bind:value={newQuality} />
-    </label>
+    <p class="head-label">Add stone</p>
+    <Select label="Stone type" options={typeOptions} value={newType} onchange={pickType} />
+    <NumberField label="Quality (1-100)" nullable min={1} max={100} bind:value={newQuality} />
     <Checkbox bind:checked={newActivated} label="Activated" />
     {#if recipe.type === 'OBLIVION'}
-      <label class="field">
-        <span class="label">Grade</span>
-        <select aria-label="Oblivion grade" bind:value={newGrade}>
-          {#each OBLIVION_GRADES as g (g.level)}
-            <option value={g.level}>{g.level} - {g.grade}</option>
-          {/each}
-        </select>
-      </label>
+      <Select label="Oblivion grade" options={gradeOptions} bind:value={newGrade} />
       <p class="hint">Oblivion Power comes from quality and grade, so it is not entered.</p>
     {/if}
 
     {#each recipe.guaranteed as type (type)}
-      <label class="field">
-        <span class="label">{statLabel(type)}</span>
-        <input type="text" inputmode="decimal" aria-label={statLabel(type)} title={statHint(type)} bind:value={values[type]} />
-      </label>
+      <NumberField label={statLabel(type)} unit={unitOf(type)} value={values[type] ?? null} onchange={(n) => (values[type] = n)} />
     {/each}
 
     {#if recipe.choice}
-      <div class="field">
-        <span class="label">PvP stat (one of)</span>
-        <div class="pair">
-          <select aria-label="PvP stat" bind:value={choiceStat}>
-            {#each recipe.choice as type (type)}
-              <option value={type}>{statLabel(type)}</option>
-            {/each}
-          </select>
-          <input type="text" inputmode="decimal" aria-label="PvP stat value" title={statHint(choiceStat)} bind:value={values[choiceStat]} />
-        </div>
+      <div class="pair">
+        <Select label="PvP stat (one of)" options={choiceOptions} bind:value={choiceStat} />
+        <NumberField label="PvP stat value" value={values[choiceStat] ?? null} onchange={(n) => (values[choiceStat] = n)} />
       </div>
     {/if}
 
     {#each freeKeys as _, i (i)}
-      <div class="field">
-        <span class="label">Stat {i + 1}</span>
-        <div class="pair">
-          <select aria-label={`Free stat ${i + 1}`} bind:value={freeKeys[i]}>
-            <option value="">Choose...</option>
-            {#each freeOptions(i) as type (type)}
-              <option value={type}>{statLabel(type)}</option>
-            {/each}
-          </select>
-          <input
-            type="text"
-            inputmode="decimal"
-            aria-label={`Free stat ${i + 1} value`}
-            title={statHint(freeKeys[i])}
-            disabled={!freeKeys[i]}
-            bind:value={values[freeKeys[i]]}
-          />
-        </div>
+      <div class="pair">
+        <Select label="Free stat {i + 1}" options={freeSelectOptions(i)} bind:value={freeKeys[i]} />
+        <NumberField label="Free stat {i + 1} value" unit={unitOf(freeKeys[i])} disabled={!freeKeys[i]} value={values[freeKeys[i]] ?? null} onchange={(n) => (values[freeKeys[i]] = n)} />
       </div>
     {/each}
 
-    <button type="button" class="btn-gold add-btn" disabled={!canAdd} onclick={submitAdd}>Add stone</button>
+    <div class="actions">
+      <Button variant="primary" disabled={!canAdd} onclick={submitAdd}>Add stone</Button>
+    </div>
   </div>
 {:else}
   <div class="stone-form details-mode">
-    <p class="micro-label">{typeName(selected.type)}</p>
-    <label class="field">
-      <span class="label">Quality (1-100)</span>
-      <input type="number" aria-label="Stone quality" min="1" max="100" value={selected.quality ?? ''} onchange={(e) => setQuality(e.currentTarget.value)} />
-    </label>
+    <p class="head-label">{typeName(selected.type)}</p>
+    <NumberField label="Quality (1-100)" nullable min={1} max={100} value={selected.quality} onchange={setQuality} />
 
     <Checkbox checked={selected.activated} label="Activated" onchange={(v) => patch({ activated: v })} />
     {#if !selected.activated}<p class="hint">An inactive stone adds nothing to the build (stones.md §1), even when socketed.</p>{/if}
 
-    <div class="field">
-      <span class="label">Amplify (+0 to +{MAX_AMPLIFY_LEVEL})</span>
-      <div class="rank-controls">
-        <button type="button" aria-label="Amplify down" disabled={selected.amplifyLevel <= 0} onclick={() => patch({ amplifyLevel: selected.amplifyLevel - 1 })}>-</button>
-        <span class="mono amplify-level" data-testid="amplify-level">+{selected.amplifyLevel}</span>
-        <button type="button" aria-label="Amplify up" disabled={selected.amplifyLevel >= MAX_AMPLIFY_LEVEL} onclick={() => patch({ amplifyLevel: selected.amplifyLevel + 1 })}>+</button>
-        <span class="hint mono">x{multiplier.toFixed(2)} on every stat</span>
+    <div class="amplify">
+      <span class="label" id="amplify-label">Amplify (+0 to +{MAX_AMPLIFY_LEVEL})</span>
+      <div class="amplify-row">
+        <Stepper label="Amplify" min={0} max={MAX_AMPLIFY_LEVEL} value={selected.amplifyLevel} onchange={(n) => patch({ amplifyLevel: n })} />
+        <span class="hint mono"><span data-testid="amplify-level">+{selected.amplifyLevel}</span> · x{multiplier.toFixed(2)} on every stat</span>
       </div>
     </div>
 
     {#if selected.oblivionLevel}
-      <label class="field">
-        <span class="label">Oblivion grade</span>
-        <select aria-label="Oblivion grade" value={selected.oblivionLevel} onchange={(e) => patch({ oblivionLevel: Number(e.currentTarget.value) })}>
-          {#each OBLIVION_GRADES as g (g.level)}
-            <option value={g.level}>{g.level} - {g.grade}</option>
-          {/each}
-        </select>
-      </label>
+      <Select label="Oblivion grade" options={gradeOptions} value={selected.oblivionLevel} onchange={(v) => patch({ oblivionLevel: Number(v) })} />
       <p class="hint mono">
         Base {formatFlat(oblivionGrade(selected.oblivionLevel)?.baseAttack)} Attack / {formatFlat(oblivionGrade(selected.oblivionLevel)?.baseHp)} Health,
         Power x{oblivionGrade(selected.oblivionLevel)?.powerGradeMult}
@@ -201,23 +157,21 @@
     {/if}
 
     {#each selected.stats as s (s.type)}
-      <label class="field">
-        <span class="label">{statLabel(s.type)}</span>
-        <input type="text" inputmode="decimal" aria-label={statLabel(s.type)} title={statHint(s.type)} value={toDisplay(s.type, s.value)} onchange={(e) => setStatValue(s.type, e.currentTarget.value)} />
-      </label>
+      <NumberField label={statLabel(s.type)} unit={unitOf(s.type)} value={Number(toDisplay(s.type, s.value))} onchange={(n) => setStatValue(s.type, n)} />
+      <span class="hint mono">{statHint(s.type)}</span>
     {/each}
 
     <div class="actions">
       {#if !canSocket}
         <span class="hint">Select a base slot (not Belt, Gloves or Rift Core) to socket this stone.</span>
       {:else if socketedHere}
-        <button type="button" class="btn-ghost" onclick={() => rosterStore.unsocketStone(setKey, selectedSlot)}>Unsocket from {slotLabel(cls, selectedSlot)}</button>
+        <Button variant="ghost" onclick={() => rosterStore.unsocketStone(setKey, selectedSlot)}>Unsocket from {slotLabel(cls, selectedSlot)}</Button>
       {:else}
-        <button type="button" class="btn-gold" onclick={() => rosterStore.socketStone(setKey, selectedSlot, selected.id)}>Socket in {setLabel} {slotLabel(cls, selectedSlot)}</button>
+        <Button variant="primary" onclick={() => rosterStore.socketStone(setKey, selectedSlot, selected.id)}>Socket in {setLabel} {slotLabel(cls, selectedSlot)}</Button>
       {/if}
-      <button type="button" class="btn-ghost" onclick={() => onSelect?.(null)}>Done</button>
+      <Button variant="ghost" onclick={() => onSelect?.(null)}>Done</Button>
       <ConfirmButton
-        class="btn-danger"
+        variant="danger"
         label="Remove stone"
         confirmLabel="Confirm remove"
         prompt="Removes it from every set."
@@ -232,50 +186,20 @@
 {/if}
 
 <style>
-  .stone-form {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-  .stone-form .micro-label {
+  .stone-form { display: flex; flex-direction: column; gap: var(--sp-2); }
+  .head-label {
     margin: 0;
+    font-family: var(--font-ui);
+    font-size: var(--fs-11);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--text-soft);
   }
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-  }
-  .label {
-    font-size: 11px;
-    color: var(--color-dim);
-  }
-  .pair {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 6rem;
-    gap: var(--space-2);
-  }
-  .rank-controls {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  .amplify-level {
-    min-width: 2.5rem;
-    text-align: center;
-  }
-  .hint {
-    color: var(--color-muted);
-    font-size: 11.5px;
-    margin: 0;
-  }
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    margin-top: var(--space-2);
-  }
-  .add-btn {
-    align-self: flex-start;
-    margin-top: var(--space-2);
-  }
+  .label { font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }
+  .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(6rem, 8rem); gap: var(--sp-2); align-items: end; }
+  .amplify { display: grid; gap: 4px; }
+  .amplify-row { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+  .hint { color: var(--text-muted); font-size: var(--fs-12); margin: 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
 </style>

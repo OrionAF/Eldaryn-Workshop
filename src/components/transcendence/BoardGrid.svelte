@@ -15,6 +15,7 @@
    */
   import { canAllocateNode } from '../../lib/transcendence.js';
   import BoardNode from './BoardNode.svelte';
+  import Button from '../ui/Button.svelte';
 
   let { boardKey, nodes, allocatedIds = [], highlightStats = null, onSelect = null, onHover = null } = $props();
 
@@ -203,25 +204,24 @@
   </div>
 </div>
 <div class="tools" role="group" aria-label="Board view">
-  <button type="button" aria-label="Zoom in" onclick={() => zoomBy(1.25)}>+</button>
-  <button type="button" aria-label="Zoom out" onclick={() => zoomBy(1 / 1.25)}>−</button>
-  <button type="button" aria-label="Reset view" onclick={resetView}>⟲</button>
+  <Button variant="ghost" size="small" aria-label="Zoom in" onclick={() => zoomBy(1.25)}>+</Button>
+  <Button variant="ghost" size="small" aria-label="Zoom out" onclick={() => zoomBy(1 / 1.25)}>−</Button>
+  <Button variant="ghost" size="small" aria-label="Reset view" onclick={resetView}>⟲</Button>
 </div>
 </div>
 
 <style>
-  .board-wrap { position: relative; }
-  .tools { position: absolute; top: var(--space-2, 8px); right: var(--space-2, 8px); display: flex; gap: var(--space-1, 4px); }
-  .tools button { min-width: 32px; min-height: 32px; }
+  .board-wrap { position: relative; min-width: 0; }
+  .tools { position: absolute; top: var(--sp-2); right: var(--sp-2); display: flex; gap: var(--sp-1); background: var(--surface-1); border-radius: var(--r-1); }
   .viewport {
     position: relative;
     width: 100%;
     height: 65vh;
     min-height: 20rem;
     overflow: hidden;
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
+    background: var(--surface-0);
+    border: 1px solid var(--line-rule);
+    border-radius: var(--r-2);
     touch-action: none;
     cursor: grab;
   }

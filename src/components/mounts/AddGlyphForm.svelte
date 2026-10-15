@@ -7,6 +7,9 @@
   import { MAJOR_GLYPHS, MINOR_GLYPH_TYPES, MYTHIC_GLYPH_TYPES } from '../../lib/game/mountsGlyphs.js';
   import { FREE_GLYPH_RARITIES, glyphRarityOptions, majorGlyphAllowed } from '../../lib/model/glyphs.js';
   import { TIER_LABELS } from './mountsView.js';
+  import Select from '../ui/Select.svelte';
+  import Checkbox from '../ui/Checkbox.svelte';
+  import Button from '../ui/Button.svelte';
 
   let { playerClass = null, specs = [], onAdd } = $props();
 
@@ -24,6 +27,10 @@
   const rarities = $derived(selected ? glyphRarityOptions(selected) : FREE_GLYPH_RARITIES);
   const rarity = $derived(rarities.includes(rarityPick) ? rarityPick : rarities[0]);
 
+  const tierOptions = Object.entries(TIER_LABELS).map(([value, label]) => ({ value, label }));
+  const typeOptions = $derived(types.map((t) => ({ value: t.id, label: t.label })));
+  const rarityOptions = $derived(rarities.map((r) => ({ value: r, label: r })));
+
   function add() {
     if (!selected) return;
     onAdd({ glyphType: selected, rarity, sealed });
@@ -31,29 +38,11 @@
 </script>
 
 <div class="add-form">
-  <label>
-    <span class="micro-label">Tier</span>
-    <select aria-label="Glyph tier" bind:value={tier}>
-      {#each Object.entries(TIER_LABELS) as [key, label] (key)}<option value={key}>{label}</option>{/each}
-    </select>
-  </label>
-  <label class="grow">
-    <span class="micro-label">Glyph</span>
-    <select aria-label="Glyph type" value={selected} onchange={(e) => (glyphType = e.currentTarget.value)}>
-      {#each types as t (t.id)}<option value={t.id}>{t.label}</option>{/each}
-    </select>
-  </label>
-  <label>
-    <span class="micro-label">Rarity</span>
-    <select aria-label="Glyph rarity" value={rarity} disabled={rarities.length < 2} onchange={(e) => (rarityPick = e.currentTarget.value)}>
-      {#each rarities as r (r)}<option value={r}>{r}</option>{/each}
-    </select>
-  </label>
-  <label class="check">
-    <input type="checkbox" bind:checked={sealed} />
-    <span>Sealed</span>
-  </label>
-  <button type="button" class="btn-gold" disabled={!selected} onclick={add}>Add to inventory</button>
+  <Select label="Tier" options={tierOptions} bind:value={tier} />
+  <div class="grow"><Select label="Glyph" options={typeOptions} value={selected} onchange={(v) => (glyphType = v)} /></div>
+  <Select label="Rarity" options={rarityOptions} value={rarity} disabled={rarities.length < 2} onchange={(v) => (rarityPick = v)} />
+  <Checkbox bind:checked={sealed} label="Sealed" />
+  <Button variant="primary" disabled={!selected} onclick={add}>Add to inventory</Button>
 </div>
 
 {#if tier === 'major' && types.length === 0}
@@ -64,33 +53,15 @@
   .add-form {
     display: flex;
     align-items: flex-end;
-    gap: var(--space-2);
+    gap: var(--sp-2);
     flex-wrap: wrap;
-    padding: var(--space-3);
-    background: var(--color-panel);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-panel);
-    margin-bottom: var(--space-3);
+    padding: var(--sp-3);
+    background: var(--surface-1);
+    border: 1px solid var(--line-rule);
+    border-radius: var(--r-2);
+    margin-bottom: var(--sp-3);
+    min-width: 0;
   }
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-  }
-  label.grow {
-    flex: 1;
-    min-width: 180px;
-  }
-  label.check {
-    flex-direction: row;
-    align-items: center;
-    gap: var(--space-1);
-    font-size: 12px;
-    color: var(--color-soft);
-  }
-  .hint {
-    margin: 0 0 var(--space-2);
-    font-size: 11.5px;
-    color: var(--color-muted);
-  }
+  .grow { flex: 1; min-width: min(180px, 100%); }
+  .hint { margin: 0 0 var(--sp-2); font-size: var(--fs-12); color: var(--text-muted); }
 </style>

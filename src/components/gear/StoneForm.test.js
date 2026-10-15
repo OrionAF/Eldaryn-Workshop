@@ -2,6 +2,7 @@ import { it, expect, beforeEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import StoneForm from './StoneForm.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
+import { field, setField } from './fieldKit.js';
 
 let target;
 beforeEach(() => {
@@ -11,13 +12,8 @@ beforeEach(() => {
   document.body.appendChild(target);
 });
 
-const q = (label) => target.querySelector(`[aria-label="${label}"]`);
-function change(el, value) {
-  el.value = value;
-  el.dispatchEvent(new Event('change', { bubbles: true }));
-  el.dispatchEvent(new Event('input', { bubbles: true }));
-  flushSync();
-}
+const q = (label) => field(target, label);
+const change = setField;
 const button = (text) => [...target.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(text));
 
 function render(props = {}) {
@@ -71,7 +67,7 @@ it('Mythic: both PvP rows are fixed, 2 free rows must be chosen before Add enabl
   change(q('PVP Attack'), '12');
   change(q('PVP Defense'), '9');
   change(q('Free stat 1 value'), '1.5');
-  change(q('Stone quality'), '77');
+  change(q('Quality'), '77');
   button('Add stone').click();
   flushSync();
   const added = rosterStore.current.enchantStones.at(-1);
@@ -101,7 +97,7 @@ it('Azure takes exactly one PvP stat from the Attack / Defense pair', () => {
 it('details mode: amplify stepper clamps at +10, shows the multiplier, and persists', () => {
   const id = rosterStore.addEnchantStone('base', { type: 'PVE_ATTACK', quality: 50, stats: [{ type: 'CRIT_CHANCE', value: 1 }] });
   const app = render({ selectedStoneId: id });
-  const up = q('Amplify up');
+  const up = target.querySelector('[aria-label="Increase Amplify"]');
   for (let i = 0; i < 12; i++) {
     up.click();
     flushSync();
@@ -109,7 +105,7 @@ it('details mode: amplify stepper clamps at +10, shows the multiplier, and persi
   expect(rosterStore.current.enchantStones[0].amplifyLevel).toBe(10);
   expect(target.querySelector('[data-testid="amplify-level"]').textContent).toBe('+10');
   expect(target.textContent).toContain('x1.60');
-  expect(up.disabled).toBe(true);
+  expect(up.getAttribute('aria-disabled')).toBe('true');
   unmount(app);
 });
 
@@ -117,7 +113,7 @@ it('details mode: edit a stat value and quality; socket / unsocket into the sele
   const id = rosterStore.addEnchantStone('base', { type: 'PVE_ATTACK', quality: 50, stats: [{ type: 'CRIT_CHANCE', value: 1 }] });
   const app = render({ selectedStoneId: id });
   change(q('Crit Chance'), '2.1');
-  change(q('Stone quality'), '88');
+  change(q('Quality'), '88');
   expect(rosterStore.current.enchantStones[0]).toMatchObject({ quality: 88, stats: [{ type: 'CRIT_CHANCE', value: 2.1 }] });
   button('Socket in Set 1 Helmet').click();
   flushSync();

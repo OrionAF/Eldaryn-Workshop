@@ -18,6 +18,7 @@
   import Panel from '../ui/Panel.svelte';
   import NumberField from '../ui/NumberField.svelte';
   import Select from '../ui/Select.svelte';
+  import Stepper from '../ui/Stepper.svelte';
   import Button from '../ui/Button.svelte';
   import EmptyState from '../ui/EmptyState.svelte';
   import Modal from '../Modal.svelte';
@@ -41,6 +42,7 @@
   let levelDraft = $derived(altar.level);
   let editingIds = $state(new Set());
   const tierChoice = $derived(pendingTier ?? altar.tier);
+  const tierOptions = Array.from({ length: PET_MAX_TIER }, (_, i) => ({ value: i + 1, label: `Tier ${i + 1}` }));
 
   const usedBy = (petId) => character.presets.filter((p) => p.petId === petId).map((p) => p.name);
 
@@ -70,6 +72,7 @@
   }
 </script>
 
+<div class="page">
 <Panel title="Pet Altar" scope="character">
   {#snippet meta()}<span class="sub">the altar levels and tiers every pet together · a preset picks which pet it uses</span>{/snippet}
   <div class="altar-row">
@@ -82,26 +85,17 @@
           max={PET_MAX_LEVEL}
           onchange={(v) => rosterStore.setPetAltarLevel(v)}
         />
-        <div class="rank-controls">
-          <button type="button" disabled={altar.level <= 1} aria-label="Lower altar level" onclick={() => rosterStore.setPetAltarLevel(altar.level - 1)}>−</button>
-          <span class="rank-value" data-testid="altar-level">{altar.level}</span>
-          <button type="button" disabled={altar.level >= PET_MAX_LEVEL} aria-label="Raise altar level" onclick={() => rosterStore.setPetAltarLevel(altar.level + 1)}>+</button>
-        </div>
+        <Stepper label="Altar level" value={altar.level} min={1} max={PET_MAX_LEVEL} onchange={(n) => rosterStore.setPetAltarLevel(n)} />
       </div>
       <div class="level-slider">
         <Slider min={1} max={PET_MAX_LEVEL} step={1} value={altar.level} ariaLabel="Pet altar level" oninput={(v) => rosterStore.setPetAltarLevel(v)} />
-        <span class="hint">The slider is a quick way to get close; type the exact level in the field.</span>
+        <span class="hint">Level <span class="num" data-testid="altar-level">{altar.level}</span> of {PET_MAX_LEVEL}. The slider is a quick way to get close; type the exact level in the field.</span>
       </div>
     </div>
 
     <div class="altar-group">
       <div class="tier-row">
-        <label class="tier-label">
-          <span class="field-label">Pet altar tier</span>
-          <select value={tierChoice} aria-label="Pet altar tier" onchange={(e) => (pendingTier = Number(e.target.value))}>
-            {#each Array.from({ length: PET_MAX_TIER }, (_, i) => i + 1) as t (t)}<option value={t}>Tier {t}</option>{/each}
-          </select>
-        </label>
+        <Select label="Pet altar tier" options={tierOptions} value={tierChoice} onchange={(v) => (pendingTier = Number(v))} />
         {#if tierChoice !== altar.tier}
           <Button variant="danger" onclick={() => (wipeOpen = true)}>Change tier</Button>
           <Button variant="ghost" onclick={() => (pendingTier = null)}>Keep tier {altar.tier}</Button>
@@ -140,7 +134,7 @@
     <EmptyState title="No pets yet" text="Add one to start." />
   {/if}
 
-<div class="pet-grid">
+  <div class="pet-grid">
   {#each owned as pet (pet.id)}
     <PetCard
       {pet}
@@ -159,10 +153,14 @@
       onRemove={() => removePet(pet.id)}
     />
   {/each}
-</div>
+  </div>
 </Panel>
+</div>
 
 <style>
+  /* The panels size to their own width, never to the grids inside them: an auto-fill grid under a max-width is
+     measured as that many columns, which pushed the page past the viewport (min-width: 0 stops it). */
+  .page { display: grid; gap: var(--sp-4); min-width: 0; overflow-x: auto; }
   .sub { color: var(--text-muted); font-size: var(--fs-12); }
   .hint { color: var(--text-muted); font-size: var(--fs-12); }
   .altar-row { display: flex; gap: var(--sp-5); flex-wrap: wrap; }
@@ -170,15 +168,11 @@
   .level-row, .tier-row { display: flex; align-items: flex-end; gap: var(--sp-3); flex-wrap: wrap; }
   .level-row :global(.field) { width: 12rem; }
   .level-slider { width: 260px; max-width: 100%; display: grid; gap: var(--sp-1); }
-  .tier-label { display: grid; gap: 4px; }
-  .field-label { font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }
-  .rank-controls { display: flex; align-items: center; gap: 4px; }
-  .rank-value { min-width: 26px; text-align: center; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+  .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--text-ink); }
   .add-row { display: flex; align-items: flex-end; gap: var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-4); }
-  .add-row :global(.field) { min-width: 16rem; }
-  .pet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--sp-3); max-width: calc(4 * 300px); }
+  .add-row :global(.field) { min-width: min(16rem, 100%); }
+  .pet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); gap: var(--sp-3); min-width: 0; }
   .losses-head { margin: var(--sp-3) 0 var(--sp-1); font-weight: var(--fw-bold); }
   .losses { margin: 0; padding-left: var(--sp-5); }
   .losses .none { color: var(--text-muted); list-style: none; margin-left: calc(-1 * var(--sp-5)); }
-  @media (max-width: 700px) { .pet-grid { grid-template-columns: 1fr; } }
 </style>

@@ -2,6 +2,9 @@ import { it, expect, beforeEach, afterEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import TranscendenceScreen from './CharacterTranscendencePage.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
+import { inspector } from '../../lib/inspector.svelte.js';
+import InspectorOutlet from '../InspectorOutlet.svelte';
+import { setup } from '../ui/testkit.js';
 
 let target, app, statuses;
 
@@ -27,7 +30,27 @@ const node = (label) => target.querySelector(`button[aria-label*="${label}"]`);
 it('renders the whole board and starts empty', () => {
   render();
   expect(target.querySelectorAll('button.tnode')).toHaveLength(279);
-  expect(target.textContent).toContain('Ichor in use');
+});
+
+it('the totals live in the inspector, not the page body', () => {
+  render();
+  const outlet = setup(InspectorOutlet);
+  expect(target.textContent).not.toContain('Ichor in use');
+  expect(outlet.target.textContent).toContain('Ichor in use');
+  expect(outlet.target.textContent).toContain('information, not a budget');
+  expect(outlet.target.textContent).toContain('No nodes allocated');
+  node('at 0,-1').click();
+  flushSync();
+  expect(outlet.target.querySelector('.bonus-list')).not.toBeNull();
+  outlet.done();
+});
+
+it('clears the inspector when the page unmounts', () => {
+  render();
+  expect(inspector.current).not.toBeNull();
+  unmount(app);
+  expect(inspector.current).toBeNull();
+  render(); // afterEach unmounts this one
 });
 
 it('click allocates a reachable node and toasts on an unreachable one', () => {
@@ -35,7 +58,6 @@ it('click allocates a reachable node and toasts on an unreachable one', () => {
   node('at 0,-1').click();
   flushSync();
   expect(rosterStore.current.transcendence.presets[0].allocatedNodeIds).toEqual(['n_0,-1']);
-  expect(target.querySelector('.bonus-list')).not.toBeNull();
   node('at 4,-7').click();
   flushSync();
   expect(statuses).toContain('Allocate an adjacent node first');
@@ -69,8 +91,7 @@ it('Used by names linked presets and the presets that follow the active board', 
   expect(used0).toContain(p0.name);
 });
 
-it('has zoom and reset-view controls and says Ichor is information, not a budget', () => {
+it('has zoom and reset-view controls', () => {
   render();
   for (const l of ['Zoom in', 'Zoom out', 'Reset view']) expect(target.querySelector(`button[aria-label="${l}"]`)).not.toBeNull();
-  expect(target.textContent).toContain('information, not a budget');
 });

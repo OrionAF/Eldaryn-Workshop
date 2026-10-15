@@ -1,6 +1,7 @@
 import { it, expect, beforeEach, afterEach } from 'vitest';
 import { flushSync } from 'svelte';
 import CharacterSkillsPage from './CharacterSkillsPage.svelte';
+import pageSource from './CharacterSkillsPage.svelte?raw';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
 import { setup, click } from '../ui/testkit.js';
 
@@ -52,4 +53,14 @@ it('attunement bans are capped per class and the blocked chip says why', () => {
   click(chip());
   expect(rosterStore.current.attunementBans.length).toBe(1);
   expect(view.q('.chip.on')).not.toBeNull();
+});
+
+// jsdom does no layout, so the 390 px clipping (Cap column cut, "8 / 10" wrapping) is guarded at the source:
+// the table scrolls in its wrapper at a fixed minimum width and its cells never wrap.
+it('the skills table scrolls instead of clipping and keeps level cells on one line', () => {
+  const css = pageSource.split('<style>')[1];
+  const rule = (sel) => css.match(new RegExp(`${sel}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+  expect(rule('\\.table-wrap')).toContain('overflow-x: auto');
+  expect(rule('table')).toMatch(/min-width: \d+rem/);
+  expect(rule('th, td')).toContain('white-space: nowrap');
 });

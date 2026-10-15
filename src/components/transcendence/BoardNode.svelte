@@ -85,14 +85,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--color-field);
-    border: 1.5px solid var(--color-border-strong);
-    color: var(--color-muted);
+    background: var(--surface-3);
+    border: 1.5px solid var(--line-control);
+    color: var(--text-muted);
     cursor: not-allowed;
     transition: none;
   }
   .tnode:hover {
-    border-color: var(--color-border-strong);
+    border-color: var(--line-control);
   }
 
   /* Rarity shapes */
@@ -100,7 +100,7 @@
     border-radius: 50%;
   }
   .tnode.notable {
-    border-radius: 3px;
+    border-radius: var(--r-2);
     width: calc(var(--node-size, 24px) * 1.2);
     height: calc(var(--node-size, 24px) * 1.2);
   }
@@ -114,9 +114,9 @@
   }
   .tnode.start {
     border-radius: 50%;
-    border-color: var(--color-gold);
-    color: var(--color-gold-light);
-    background: rgba(217, 169, 75, 0.18);
+    border-color: var(--brass-400);
+    color: var(--brass-200);
+    background: var(--brass-tint);
   }
   .tnode.sigil {
     width: calc(var(--node-size, 24px) * 1.4);
@@ -130,28 +130,25 @@
     border-style: dashed;
   }
 
-  /* Distinct colors for "can select" vs "already selected", not just a
-     background fill on the same hue - moss-green for available, the
-     existing copper accent (used for selection/active state elsewhere in
-     the app) for already-unlocked. */
+  /* "Can select" and "already selected" differ in hue and fill, not only in fill: the up colour for
+     available, brass for allocated (design-system §4.29). */
   .tnode.unlockable {
     cursor: pointer;
-    border-color: var(--color-upgrade);
-    color: var(--color-upgrade);
+    border-color: var(--verdict-up);
+    color: var(--verdict-up);
   }
   .tnode.unlockable:hover {
-    background: var(--color-upgrade-soft);
+    background: var(--verdict-up-tint);
   }
 
   .tnode.unlocked {
     cursor: pointer;
-    background: rgba(217, 169, 75, 0.18);
-    border-color: var(--color-gold);
-    color: var(--color-gold-light);
+    background: var(--brass-400);
+    border-color: var(--brass-200);
+    color: var(--on-brass);
   }
   .tnode.unlocked:hover {
-    background: var(--color-gold);
-    color: var(--color-bg);
+    background: var(--brass-200);
   }
 
   /* Node-filter match ring - an outline (not the border) so it layers on
@@ -159,7 +156,7 @@
      Only common/uncommon nodes carry stats, so the clip-path shapes (glyph/
      sigil), which would clip an outline, never receive this class. */
   .tnode.highlighted {
-    outline: 2px solid var(--nav-transcendence-light);
+    outline: 2px solid var(--brass-200);
     outline-offset: 2px;
   }
 
