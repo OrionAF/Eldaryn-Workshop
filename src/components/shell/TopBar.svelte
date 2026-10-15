@@ -24,8 +24,8 @@
     <span class="mark" aria-hidden="true">◆</span>
     <span class="word">Eldaryn Workshop</span>
   </a>
-  <CharacterSwitcher />
-  <ContextControls />
+  <div class="who"><CharacterSwitcher /></div>
+  <div class="ctx"><ContextControls /></div>
   <span class="spacer"></span>
   <div class="jobs-slot" data-slot="jobs">{@render jobs?.()}</div>
   <SaveState />
@@ -75,6 +75,9 @@
   }
   .mark { color: var(--ember-500); }
   .spacer { flex: 1; }
+  .who { min-width: 0; }
+  .ctx { min-width: 0; display: contents; }
+  @media (max-width: 700px) { .ctx { display: block; } }
   .jobs-slot:empty { display: none; }
   .icon-btn {
     position: relative;
@@ -101,9 +104,21 @@
     .word, .import-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   }
   @media (max-width: 700px) {
-    .topbar { height: var(--topbar-h-phone); padding: 0 var(--sp-3); gap: var(--sp-2); }
+    /* two rows: [character . jobs bell settings] over [preset + realm], all reachable at 390 */
+    .topbar {
+      height: var(--topbar-h-phone);
+      flex-wrap: wrap;
+      align-content: center;
+      padding: var(--sp-1) var(--sp-3);
+      gap: var(--sp-1) var(--sp-2);
+    }
     .brand { display: none; }
     .spacer { display: none; }
+    .who { order: 1; flex: 1 1 0; min-width: 0; }
+    .jobs-slot { order: 2; }
+    .icon-btn { order: 3; }
+    .ctx { order: 4; flex: 1 1 100%; min-width: 0; }
+    .topbar :global(.save:not(.bad)) { display: none; }
     /* the Import action lives in the bottom tab bar */
     .topbar :global(.btn-primary) { display: none; }
   }
