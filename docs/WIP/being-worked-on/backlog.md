@@ -8,7 +8,7 @@
 | 2 | §11 Celestial Trial Optimiser target | S | Queued |
 | 3 | §6 Results say which pet, mount or glyph | S | Queued |
 | 4 | §1 Optimiser step list | S | Queued |
-| 5 | §3 Setup estimates | M | Not started |
+| 5 | §3 Setup estimates | M | Built on rebuild2/EST, not merged |
 | 6 | §9 Stat weights chart | M | Not started |
 | 7 | §2 Rankings profiles as PVP opponents (and Celestial partners) | M | Not started |
 | 8 | §10 Arena reward weighting | S | Needs §2 |
@@ -207,6 +207,11 @@ of fights to simulate.
   otherwise. Fights: a range from the race rules (the least when every arm resolves at the first
   look, up to the cap at maxN). Time: fights divided by the calibrated speed and the worker count.
 - Label every number as an estimate (decision Q5), and update it live as the setup changes.
+
+**Status.** Built on rebuild2/EST, not merged (2026-10-15). `search/estimate.js` `estimateRun` and the
+Estimate section of the setup (`components/optimiser/SetupEstimate.svelte`); it replaces the old
+interpolated Optimiser line under Effort. What is exact and what is assumed: simulation.md §Estimates.
+Push estimates the start rung's build search only.
 
 ## 9. Stat weights chart (like the v1 one)
 
