@@ -20,7 +20,7 @@ export const MULTIPLICITY = Object.freeze({ vsBaseline: 'holm', perChange: 'holm
 // Provenance of each target assumption (app labels for the assumption ids of objectives.js targets):
 // SERVER = the server decides and the client holds the value; UNRESOLVED = whether the server runs
 // it is unknown; APP = a value the app assumes or the user chose.
-const ASSUMPTION_TAG = { 'server-fight': 'UNRESOLVED', 'pvp-server': 'SERVER', 'world-boss-model': 'SERVER' };
+const ASSUMPTION_TAG = { 'server-fight': 'UNRESOLVED', 'pvp-server': 'SERVER', 'world-boss-model': 'SERVER', 'fortress-boss-model': 'SERVER' };
 
 const fin = (x) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
 
@@ -45,6 +45,7 @@ export function contrastOut(c) {
 export function targetOut(target) {
   return {
     ...target.spec,
+    ...(target.fortress ? { fortress: target.fortress } : {}),
     kind: target.kind, label: target.label, key: target.key, mode: target.mode, fidelity: target.fidelity,
     assumptions: (target.assumptions ?? []).map((a) => ({ id: a.id, label: a.label, value: a.value ?? '', tag: ASSUMPTION_TAG[a.id] ?? 'APP' })),
   };

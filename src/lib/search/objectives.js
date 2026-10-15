@@ -9,6 +9,8 @@
 //   {kind: 'raid', id: 'raid_1', step: 1..8}          village raid step, 5 mobs
 //   {kind: 'oblivion', floor: n, applyOutputCut?: false}   forces the Oblivion realm; power comes from the fighter
 //   {kind: 'worldBoss', affinity?: 'NONE'|'FORTIFIED'|'ENRAGED'}
+//   {kind: 'fortressBoss', group: 'TOP'|'BOTTOM'|'CORE', stars?: 1..5 (TOP, BOTTOM), aliveDefenders?: 0+, maxClanSize?: 50, kills?: 0+}
+//                                                     the clan-war Fortress boss, 60 s, dps only; the rest sets the credit multipliers
 //   {kind: 'custom', mob: MobSpec, seconds?: 60}      a user-entered mob
 //   {kind: 'pvp', opponentIds: string[], seats}       saved opponents (pvpObjective.js); needs `{character}`
 // An OBJECTIVE is what "better" means: {kind: 'dps'|'survival', seconds?} (survival: custom mobs only) or
@@ -22,13 +24,17 @@ import { chapterMobs, dungeonMobs, raidMobs, oblivionFloorMob, worldBossMob } fr
 import { raidById } from '../game/fortress.js';
 import { CLASSIC_DUNGEONS } from '../game/pveContent.js';
 import { WORLD_BOSS_AFFINITIES } from '../game/worldBoss.js';
+import { FORTRESS_STARS } from '../game/fortress.js';
+import {
+  fortressBossMob, fortressBossMultipliers, FORTRESS_BOSS_GROUPS, FORTRESS_BOSS_DEFAULT_CLAN_SIZE,
+} from '../engine/pve/fortressBoss.js';
 import { formatFlat } from '../format.js';
 import { setOf } from './sampler.js';
 import { resolvePvpTarget, makePvpObjective, PVP_TARGET_KIND, PVP_OBJECTIVE_KIND } from './pvpObjective.js';
 
 // The PVE kinds. The PVP pair is kept apart: it is only valid together and needs the character's opponents.
 export const OBJECTIVE_KINDS = ['dps', 'survival', 'win-rate'];
-export const TARGET_KINDS = ['dummy', 'chapter', 'dungeon', 'raid', 'oblivion', 'worldBoss', 'custom'];
+export const TARGET_KINDS = ['dummy', 'chapter', 'dungeon', 'raid', 'oblivion', 'worldBoss', 'fortressBoss', 'custom'];
 
 // The first kind is the target's default (the Optimiser picks it): win rate for content you clear.
 const COMPAT = {
@@ -38,6 +44,7 @@ const COMPAT = {
   raid: ['win-rate'],
   oblivion: ['win-rate'],
   worldBoss: ['dps'],
+  fortressBoss: ['dps'],
   custom: ['dps', 'win-rate', 'survival'],
   [PVP_TARGET_KIND]: [PVP_OBJECTIVE_KIND],
 };
@@ -95,6 +102,7 @@ function assumptionsOf(mode, { applyOutputCut } = {}) {
   }));
 }
 const SERVER_RUN = new Set(['server-fight', 'world-boss-model']);
+const nonNegInt = (v) => Number.isInteger(v) && v >= 0;
 
 /**
  * @returns {{kind: string, spec: Object, label: string, key: string, realm: 'base'|'oblivion'|null,
@@ -150,6 +158,28 @@ export function resolveTarget(raw = { kind: 'dummy' }, { character } = {}) {
     t.maxMs = mob.fightDurationMs;
     t.seconds = mob.fightDurationMs / 1000;
     t.label = `World Boss (${affinity.toLowerCase()})`;
+  } else if (kind === 'fortressBoss') {
+    const group = raw.group;
+    if (!FORTRESS_BOSS_GROUPS.includes(group)) throw new Error(`unknown Fortress boss group '${group}'`);
+    const core = group === 'CORE';
+    if (core && raw.stars != null) throw new Error('the Core Fortress has no stars');
+    const stars = core ? null : raw.stars ?? FORTRESS_STARS.default;
+    if (!core && !(Number.isInteger(stars) && stars >= 1 && stars <= FORTRESS_STARS.max)) {
+      throw new Error(`Fortress stars must be a whole number from 1 to ${FORTRESS_STARS.max}, got ${stars}`);
+    }
+    const aliveDefenders = raw.aliveDefenders ?? 0;
+    const maxClanSize = raw.maxClanSize ?? FORTRESS_BOSS_DEFAULT_CLAN_SIZE;
+    const kills = raw.kills ?? 0;
+    if (!nonNegInt(aliveDefenders)) throw new Error(`alive defenders must be a whole number from 0, got ${aliveDefenders}`);
+    if (!posInt(maxClanSize)) throw new Error(`max clan size must be a whole number from 1, got ${maxClanSize}`);
+    if (!nonNegInt(kills)) throw new Error(`kills must be a whole number from 0, got ${kills}`);
+    const mob = fortressBossMob(group);
+    t.spec = { kind, group, ...(core ? {} : { stars }), aliveDefenders, maxClanSize, kills };
+    t.fortress = fortressBossMultipliers({ group, stars, aliveDefenders, maxClanSize, kills });
+    t.enemy = mob;
+    t.maxMs = mob.fightDurationMs;
+    t.seconds = mob.fightDurationMs / 1000;
+    t.label = `Fortress boss (${group}${core ? '' : `, ${stars} star${stars === 1 ? '' : 's'}`})`;
   } else {
     const m = raw.mob;
     if (!m || !isNum(m.hp) || m.hp <= 0 || !isNum(m.attack) || m.attack < 0 || !isNum(m.attackSpeed) || m.attackSpeed < 0) {

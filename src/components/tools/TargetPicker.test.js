@@ -31,7 +31,7 @@ const optionsOf = (ui, label) =>
 it('lists the target kinds, with Oblivion only when unlocked and PVP disabled without opponents', () => {
   const { ui } = mountPicker();
   const kinds = [...ui.target.querySelectorAll('option')].map((o) => [o.value, o.disabled]);
-  expect(kinds.map(([v]) => v)).toEqual(['dummy', 'chapter', 'dungeon', 'raid', 'worldBoss', 'custom', 'pvp']);
+  expect(kinds.map(([v]) => v)).toEqual(['dummy', 'chapter', 'dungeon', 'raid', 'worldBoss', 'fortressBoss', 'custom', 'pvp']);
   expect(kinds.find(([v]) => v === 'pvp')[1]).toBe(true);
   expect(ui.q('[data-testid="pvp-hint"]').textContent).toMatch(/saved opponent/);
 });
