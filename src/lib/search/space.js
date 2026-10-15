@@ -14,7 +14,7 @@ import { sanitiseAllocation, pointsSpent } from '../model/talents.js';
 import {
   genericSigils, utilitySigils, ancientSigils, sigilConditionOptions, SELF_CONDITIONS, DEFAULT_CONDITION,
 } from '../model/sigils.js';
-import { glyphSocketable, activeMajorGlyphs, emptyMountSockets, MOUNT_GLYPH_SOCKETS } from '../model/mounts.js';
+import { glyphSocketable, activeMajorGlyphs, emptyMountSockets, mountEffectiveStats, MOUNT_GLYPH_SOCKETS } from '../model/mounts.js';
 import { glyphTypeInfo, glyphStatLabel, GLYPH_TIERS } from '../model/glyphs.js';
 import { PRESET_SIGIL_CAP } from '../model/presets.js';
 import {
@@ -225,6 +225,7 @@ export function createBuildSpace(character, presetOrId, { realm = 'base', mode =
   const owned = character.sigils?.owned ?? {};
   const glyphById = new Map((character.glyphs ?? []).map((g) => [g.id, g]));
   const mountIds = new Set((character.mounts ?? []).map((m) => m.id));
+  const mountStats = new Map((character.mounts ?? []).map((m) => [m.id, mountEffectiveStats(m)]));
   const petIds = new Set((character.pets?.owned ?? []).map((p) => p.id));
   const boardIds = (character.transcendence?.presets ?? []).map((p) => p.id);
   const classRelics = new Set(relicsForClass(cls).map((r) => r.id));
@@ -320,6 +321,35 @@ export function createBuildSpace(character, presetOrId, { realm = 'base', mode =
     return out;
   };
 
+  // --- mount dominance (simulation.md Build space / Blocks) -------------------------------------
+  /**
+   * Owned mounts a rival matches or beats on both effective attack and HP (mounts-glyphs.md §1, §5): every mount
+   * has the same sockets, so a dominated one can never improve an objective. Of equal twins the current mount,
+   * else the first owned, is kept. The candidate's own mount is kept as the baseline by `distinct`, not here.
+   * @returns {Map<string, string>} dominated mount id -> id of the mount that dominates it
+   */
+  const dominatedMounts = (currentId) => {
+    const ids = [...mountIds];
+    const ge = (a, b) => a.attackPercent >= b.attackPercent && a.hpPercent >= b.hpPercent;
+    const rank = (id) => (id === currentId ? -1 : ids.indexOf(id)); // equal twins: lowest rank is kept
+    const out = new Map();
+    for (const id of ids) {
+      const me = mountStats.get(id);
+      const by = ids.find((o) => {
+        if (o === id) return false;
+        const rv = mountStats.get(o);
+        if (!ge(rv, me)) return false;
+        return !ge(me, rv) || rank(o) < rank(id); // strictly better, or an equal twin that is kept
+      });
+      if (by) out.set(id, by);
+    }
+    return out;
+  };
+  const mountsToTry = (currentId) => {
+    const dom = dominatedMounts(currentId);
+    return [...mountIds].filter((id) => !dom.has(id));
+  };
+
   // --- block domains --------------------------------------------------------------------------
   const domains = {
     // Compound: the switch plus its legality bundle; the inner ascent over the spec's picks is the driver's.
@@ -371,9 +401,9 @@ export function createBuildSpace(character, presetOrId, { realm = 'base', mode =
     pet(c) {
       return [null, ...petIds].map((petId) => legalise({ ...c, petId }));
     },
-    // Compound: each mount with its saved sockets; the inner socket ascent is the driver's.
+    // Compound: each non-dominated mount with its saved sockets; the inner socket ascent is the driver's.
     mount(c) {
-      return [null, ...(mountsUnlocked(L) ? mountIds : [])].map((mountId) => legalise({ ...c, mountId, mountGlyphs: null }));
+      return [null, ...(mountsUnlocked(L) ? mountsToTry(c.mountId) : [])].map((mountId) => legalise({ ...c, mountId, mountGlyphs: null }));
     },
     transcendence(c) {
       if (L < UNLOCK_LEVELS.TRANSCENDENCE_PRESETS) return []; // linking needs level 58 (transcendence.md §9)
@@ -501,6 +531,8 @@ export function createBuildSpace(character, presetOrId, { realm = 'base', mode =
     /** False only when a Combat Power floor is set and the candidate's Power is below it. */
     admissible: (c) => floor == null || powerOf(c) >= floor,
     /** Per enabled block, the number of values (the current one included) given `c`. */
+    /** Owned mounts the mount block never tries because another owned mount dominates them: [{id, by}]. */
+    prunedMounts: (c) => (on.mount && mountsUnlocked(L) ? [...dominatedMounts(canon(c).mountId ?? null)].map(([id, by]) => ({ id, by })) : []),
     domainSizes: (c) => Object.fromEntries(blocks.filter((b) => b.enabled).map((b) => [b.id, b.domain(c).length + 1])),
   };
 }
