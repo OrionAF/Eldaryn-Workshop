@@ -4,27 +4,28 @@
 //
 // Domain contract (§3 "Normalisation layout"): partial-character functions, see model/index.js.
 import { AWAKENING_PATHS, AWAKENING_CONSTANTS } from '../game/awakening.js';
+import { awakeningPointsForLevel } from './legality.js';
 
 export function defaultAwakening() {
   return { awakening: { path: null, level: 0 } };
 }
 
-function build(pathRaw, levelRaw) {
+function build(pathRaw, levelRaw, playerLevel) {
   const key = typeof pathRaw === 'string' ? pathRaw.toUpperCase() : null;
   const path = key && AWAKENING_PATHS[key] ? key : null;
   const n = Math.floor(Number(levelRaw));
-  const level = path && Number.isFinite(n) ? Math.max(0, Math.min(AWAKENING_CONSTANTS.maxPoints, n)) : 0;
+  const cap = Math.min(AWAKENING_CONSTANTS.maxPoints, awakeningPointsForLevel(playerLevel));
+  const level = path && Number.isFinite(n) ? Math.max(0, Math.min(cap, n)) : 0;
   return { awakening: { path, level } };
 }
 
-// eslint-disable-next-line no-unused-vars
 export function normaliseAwakening(rawCharacter, ctx) {
-  return build(rawCharacter?.awakening?.path, rawCharacter?.awakening?.level);
+  return build(rawCharacter?.awakening?.path, rawCharacter?.awakening?.level, ctx?.level);
 }
 
 /** v1 `awakening{path, points}` -> `awakening{path, level}`. Nothing references it by id. */
 export function migrateAwakeningFromV1(v1Character) {
-  return { value: build(v1Character?.awakening?.path, v1Character?.awakening?.points), idMap: {} };
+  return { value: build(v1Character?.awakening?.path, v1Character?.awakening?.points, 100), idMap: {} };
 }
 
 // eslint-disable-next-line no-unused-vars

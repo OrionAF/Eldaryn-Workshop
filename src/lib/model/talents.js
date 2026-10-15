@@ -3,6 +3,7 @@
 // Pure; imports L1 only. Domain contract (§3 "Normalisation layout"): every function deals in a partial
 // character; normaliseTalents is idempotent and runs FIRST so ctx.spec can be derived from its result.
 import { TALENT_CONSTANTS, talentSpec, tierPointsRequired } from '../game/talents.js';
+import { talentPointsForLevel } from './legality.js';
 
 export const TALENT_SET_COUNT = 2;
 /** talents.md §2: points available at max level (cap per set; each set may use all of them). */
@@ -29,9 +30,10 @@ export function pointsSpent(allocation) {
 /**
  * Repair an allocation against one spec: unknown ids and other specs' talents dropped, ranks clamped
  * to maxRank, tiers whose threshold (points in all earlier KEPT tiers) is unmet cleared, and the total
- * trimmed to the cap. Idempotent.
+ * trimmed to `cap` (default: the max-level total; normalise passes the level's points). Tiers are walked
+ * low to high, so an over-cap allocation loses its highest tiers first. Idempotent.
  */
-export function sanitiseAllocation(rawAllocation, specKey) {
+export function sanitiseAllocation(rawAllocation, specKey, cap = TALENT_POINT_CAP) {
   const spec = talentSpec(specKey);
   if (!spec || !rawAllocation || typeof rawAllocation !== 'object') return {};
   const out = {};
@@ -41,7 +43,7 @@ export function sanitiseAllocation(rawAllocation, specKey) {
     for (const t of tier.talents) {
       const rank = Math.min(Math.floor(Number(rawAllocation[t.id]) || 0), t.maxRank);
       if (rank <= 0) continue;
-      const take = Math.min(rank, TALENT_POINT_CAP - spent);
+      const take = Math.min(rank, cap - spent);
       if (take <= 0) continue;
       out[t.id] = take;
       spent += take;
@@ -50,14 +52,15 @@ export function sanitiseAllocation(rawAllocation, specKey) {
   return out;
 }
 
-function normaliseSet(raw, cls) {
+function normaliseSet(raw, cls, cap) {
   const spec = typeof raw?.spec === 'string' && cls && talentSpec(raw.spec)?.class === cls ? raw.spec : null;
-  return { spec, allocation: spec ? sanitiseAllocation(raw?.allocation, spec) : {} };
+  return { spec, allocation: spec ? sanitiseAllocation(raw?.allocation, spec, cap) : {} };
 }
 
 export function normaliseTalents(rawCharacter, ctx) {
   const list = Array.isArray(rawCharacter?.talentSets) ? rawCharacter.talentSets : [];
-  return { talentSets: [normaliseSet(list[0], ctx?.class), normaliseSet(list[1], ctx?.class)] };
+  const cap = talentPointsForLevel(ctx?.level);
+  return { talentSets: [normaliseSet(list[0], ctx?.class, cap), normaliseSet(list[1], ctx?.class, cap)] };
 }
 
 // v1 spec keys -> v2 (plan §4 migration table)

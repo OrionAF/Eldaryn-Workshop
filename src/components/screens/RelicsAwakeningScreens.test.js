@@ -38,6 +38,7 @@ describe('Relics store + screen', () => {
   it('caps equip at 4 per preset and drops them on class change', () => {
     const war = relicsForClass('WARRIOR');
     const pid = rosterStore.current.presets[0].id;
+    for (const r of war.slice(0, 5)) rosterStore.setRelicLevel(r.id, 1); // only owned relics can be equipped
     for (const r of war.slice(0, 5)) rosterStore.togglePresetRelic(pid, r.id);
     expect(rosterStore.current.presets[0].relicIds).toHaveLength(4);
     rosterStore.setCharacterClass(rosterStore.current.id, 'MYSTIC');

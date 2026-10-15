@@ -18,7 +18,7 @@ describe('describeBuild', () => {
     expect(line(lines, 'Ancient sigil')).toBe('Flameborn');
     expect(line(lines, 'Mount')).toBe('Night Wolf (level 3)');
     expect(line(lines, 'Major glyphs')).toContain('Warhaste Emblem (Rare)');
-    expect(line(lines, 'Transcendence')).toBe('Default (10 nodes)');
+    expect(line(lines, 'Transcendence')).toBe('Default (77 nodes)');
     expect(lines.every((l) => typeof l.label === 'string' && typeof l.value === 'string')).toBe(true);
   });
 

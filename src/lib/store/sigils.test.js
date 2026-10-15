@@ -22,6 +22,15 @@ it('setSigilLevel clamps to 1..30, removes at 0 and ignores species of another c
   expect(sigils().owned).toEqual({});
 });
 
+it('setSigilLevel keeps the character-wide condition of a sigil that stays owned', () => {
+  rosterStore.setSigilLevel('CATACLYSM', 5);
+  expect(rosterStore.setSigilCondition('CATACLYSM', 'ENEMY_HP_BELOW_40')).not.toBe(false);
+  rosterStore.setSigilLevel('CATACLYSM', 9);
+  expect(sigils().owned.CATACLYSM).toEqual({ level: 9, condition: 'ENEMY_HP_BELOW_40' });
+  rosterStore.setSigilLevel('CATACLYSM', 0);
+  expect(sigils().owned.CATACLYSM).toBeUndefined();
+});
+
 it('Ancients are always level 1', () => {
   rosterStore.setSigilLevel('FLAMEBORN', 20);
   expect(sigils().owned.FLAMEBORN).toEqual({ level: 1 });
