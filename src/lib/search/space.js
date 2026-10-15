@@ -5,6 +5,7 @@
 // docs/Reference/simulation.md §Build space. Merging engine-identical values is search/effect.js.
 import { buildFighter } from '../build/fighter.js';
 import { applyResidual } from '../build/residual.js';
+import { presetPower } from '../build/power.js';
 import { relicsForClass, relicById } from '../game/relics.js';
 import { isSigilSpeciesActiveForSpec } from '../game/sigils.js';
 import { talentSpec } from '../game/talents.js';
@@ -206,11 +207,12 @@ export function conditionOptionsFor(species, spec, mode) {
  * The search space of one preset.
  * @param {Object} character  a normalised v2 Character
  * @param {Object|string} presetOrId
- * @param {{realm?: 'base'|'oblivion', mode?: 'pve'|'pvp', residual?: Object, toggles?: Object}} [o]
+ * @param {{realm?: 'base'|'oblivion', mode?: 'pve'|'pvp', residual?: Object, toggles?: Object, powerFloor?: number|null}} [o]
  *   `mode` follows the target (`target.kind === 'pvp'`); `residual` is the preset's sheet residual
- *   (build/residual.js), added to every candidate's computed stats
+ *   (build/residual.js), added to every candidate's computed stats; `powerFloor` is the Combat Power
+ *   guard (simulation.md §Build space): a candidate below it is not admissible
  */
-export function createBuildSpace(character, presetOrId, { realm = 'base', mode = 'pve', residual = {}, toggles } = {}) {
+export function createBuildSpace(character, presetOrId, { realm = 'base', mode = 'pve', residual = {}, toggles, powerFloor = null } = {}) {
   const preset = presetOf(character, presetOrId);
   const presetId = preset.id;
   const on = { ...SPACE_DEFAULTS };
@@ -229,6 +231,14 @@ export function createBuildSpace(character, presetOrId, { realm = 'base', mode =
 
   const canon = (c) => canonical(character, preset, c);
   const key = (c) => stableStringify(canon(c));
+  const floor = normalisePowerFloor(powerFloor);
+  const powerMemo = new Map();
+  /** Combat Power of the candidate's build (build/power.js), memoised by canonical key. */
+  const powerOf = (c) => {
+    const k = key(c);
+    if (!powerMemo.has(k)) powerMemo.set(k, presetPower(materialise(character, preset, canon(c)), presetId, { realm }).power);
+    return powerMemo.get(k);
+  };
   const specOf = (c) => character.talentSets?.[c.talentSet === 1 ? 1 : 0]?.spec ?? null;
   const allocOfCand = (c) => c.talentAllocation ?? character.talentSets?.[c.talentSet]?.allocation ?? {};
 
@@ -486,9 +496,18 @@ export function createBuildSpace(character, presetOrId, { realm = 'base', mode =
     specOf,
     fighterOf,
     describeArgs,
+    powerFloor: floor,
+    powerOf,
+    /** False only when a Combat Power floor is set and the candidate's Power is below it. */
+    admissible: (c) => floor == null || powerOf(c) >= floor,
     /** Per enabled block, the number of values (the current one included) given `c`. */
     domainSizes: (c) => Object.fromEntries(blocks.filter((b) => b.enabled).map((b) => [b.id, b.domain(c).length + 1])),
   };
+}
+
+/** A Combat Power floor: a positive whole number, else null (no guard). */
+export function normalisePowerFloor(v) {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 1 ? Math.floor(v) : null;
 }
 
 /** A relic's name (labels for changes). */

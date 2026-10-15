@@ -4,6 +4,7 @@
 // an Apply plan. No store, no DOM.
 import { forestDomain } from './forestScale.js';
 import { fmtCount } from './statsFormat.js';
+import { formatFlat } from '../format.js';
 import { resolveEffort } from '../search/search.js';
 import { SCOPES } from '../search/patch.js';
 
@@ -362,4 +363,26 @@ export function optimiserJobChips(result) {
   else chips.push({ text: 'Nothing beat the current build' });
   if (h.unresolved > 0) chips.push({ tone: 'warn', text: `${h.unresolved} too close to call` });
   return chips;
+}
+
+/** Why attribution kept a change (search/minimise.js attribute). */
+export const KEPT_BECAUSE_TEXT = Object.freeze({
+  'own-effect': 'Kept for its own effect',
+  interaction: 'Kept for its interaction with other changes',
+  'power-floor': 'Kept to stay at or above the Combat Power floor',
+});
+
+const powerNum = (v) => formatFlat(Math.abs(v));
+
+/**
+ * A row's Combat Power line, flat game style: the baseline's Power ("Power 250.969"), a build's change
+ * against it ("Power −1.240", "Power +310", "Power ±0"), or '' when either figure is missing (runs saved without Power).
+ */
+export function powerText(row, basePower) {
+  const p = row?.power;
+  if (typeof p !== 'number' || !Number.isFinite(p)) return '';
+  if (row.isBaseline) return `Power ${powerNum(p)}`;
+  if (typeof basePower !== 'number' || !Number.isFinite(basePower)) return '';
+  const d = Math.round(p - basePower);
+  return `Power ${d > 0 ? '+' : d < 0 ? '−' : '±'}${powerNum(d)}`;
 }

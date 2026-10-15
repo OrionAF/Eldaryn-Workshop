@@ -47,6 +47,9 @@
   import RunProgress from '../ui/RunProgress.svelte';
   import TargetPicker from '../tools/TargetPicker.svelte';
   import SpaceGroups from '../optimiser/SpaceGroups.svelte';
+  import PowerGuard from '../optimiser/PowerGuard.svelte';
+  import { presetPower } from '../../lib/build/power.js';
+  import { powerFloorText } from '../../lib/search/search.js';
   import OptimiserResults from '../optimiser/OptimiserResults.svelte';
   import ApplyReview from '../optimiser/ApplyReview.svelte';
   import RunHistoryTab from '../optimiser/RunHistoryTab.svelte';
@@ -85,11 +88,20 @@
     if (!allowedObjectives.includes(setup.objective.kind)) setup.objective = { kind: allowedObjectives[0] };
   });
   const objectiveOptions = $derived(allowedObjectives.map((k) => ({ value: k, label: OBJECTIVE_LABEL[k] })));
-  const targetLabel = $derived.by(() => {
+  const resolvedTarget = $derived.by(() => {
     try {
-      return resolveTarget($state.snapshot(setup.target), { character }).label;
+      return resolveTarget($state.snapshot(setup.target), { character });
     } catch {
-      return '';
+      return null;
+    }
+  });
+  const targetLabel = $derived(resolvedTarget?.label ?? '');
+  // the preset's Combat Power in the realm the fight uses (the guard compares candidates with the same figure)
+  const currentPower = $derived.by(() => {
+    try {
+      return preset ? presetPower(character, preset.id, { realm: resolvedTarget?.realm ?? 'base' }).power : null;
+    } catch {
+      return null;
     }
   });
   const relicCap = $derived(relicSlotCap(character.level, character.extraRelicSlots));
@@ -105,6 +117,12 @@
   // ---- blockers ----------------------------------------------------------------------------------
 
   const blockers = $derived.by(() => {
+    const floorBlock = setup.powerFloor != null && currentPower != null && currentPower < setup.powerFloor
+      ? [{ text: powerFloorText(currentPower, setup.powerFloor) }]
+      : [];
+    return [...floorBlock, ...fightBlockers()];
+  });
+  function fightBlockers() {
     if (!isPvp) return [];
     if (!opponents.length) return [{ text: 'PVP needs a saved opponent.', fix: 'Open Opponents', to: '#/tools/opponents' }];
     if (!pvpIds.length) return [{ text: 'Pick at least one opponent.' }];
@@ -119,7 +137,7 @@
       for (const m of missingStats(opponentFighter(o))) out.push({ text: `${o.name || 'Opponent'} has no ${m}.`, fix: 'Open Opponents', to: '#/tools/opponents' });
     }
     return out;
-  });
+  }
 
   // ---- the job -----------------------------------------------------------------------------------
 
@@ -329,6 +347,7 @@
         <section class="step">
           <h3><span class="n">IV</span> Allowed to change</h3>
           <SpaceGroups bind:space={setup.space} {relicCap} />
+          <PowerGuard bind:floor={setup.powerFloor} {currentPower} />
         </section>
 
         <section class="step">

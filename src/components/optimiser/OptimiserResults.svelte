@@ -74,7 +74,7 @@
     </div>
     {#if view.baseline}
       <div data-testid="baseline-row">
-        <ResultRank row={view.baseline} unit={view.unit} domain={view.domain} {presetName} {target} />
+        <ResultRank row={view.baseline} unit={view.unit} domain={view.domain} {presetName} {target} basePower={view.baseline.power ?? null} />
       </div>
     {/if}
   </div>
@@ -87,6 +87,7 @@
         domain={view.domain}
         {presetName}
         {target}
+        basePower={view.baseline?.power ?? null}
         unmeasured={unmeasured(row)}
         onrunmore={onrunmore && !busy ? onrunmore : null}
       >
