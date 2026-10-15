@@ -42,7 +42,7 @@ rolls, most fights and every random outcome.
 |---|---|---|
 | [`stats.md`](stats.md) | Stat catalogue, the full stat-aggregation pipeline, soft caps and the cap curve, combat ceilings, PVP rating to effect, Combat Power | `data/stats.json` |
 | [`classes.md`](classes.md) | The 4 classes and 8 specs, level cap and XP curve, class stat gating, class abilities, Necromancer minions | `data/classes.json` |
-| [`combat-pve.md`](combat-pve.md) | The PVE combat engine: ticks, swing order, damage, avoidance, crit/double hit, lifesteal, regen, buffs, enemy scaling, client vs server fights | `data/combat-pve.json` |
+| [`combat-pve.md`](combat-pve.md) | The PVE combat engine: ticks, swing order, damage, avoidance, crit/double hit, lifesteal, regen, buffs, enemy scaling, client vs server fights, the Celestial Trial party fight (§20) | `data/combat-pve.json` |
 | [`combat-pvp.md`](combat-pvp.md) | PVP resolution: the HP pool, PVP Attack/Defense, avoidance and penetration, Disruption, timeout rules, the bundled `simulateArenaPvP` | `data/combat-pvp.json` |
 | [`gear.md`](gear.md) | Slots, rarities, item level, primary and secondary stat formulas, conduits, Dual Equip, presets, Oblivion item caps | `data/gear.json` |
 | [`drops.md`](drops.md) | Rarity odds by level, the Oblivion drop model, Fortune / Midas Touch / Artisan, loot filter and Loot Bag | `data/drops.json` |
@@ -56,7 +56,7 @@ rolls, most fights and every random outcome.
 | [`awakening.md`](awakening.md) | Shadow/Radiant paths and per-class/spec point bundles | `data/awakening.json` |
 | [`transcendence.md`](transcendence.md) | The 6 boards, node values, Ichor costs, Transcendence Presets | `data/transcendence.json` |
 | [`clan-fortress.md`](clan-fortress.md) | Fortress group buffs and their class remap, clan wars, village raids | `data/clan-fortress.json` |
-| [`pve-content.md`](pve-content.md) | World map, chapters, dungeons, Crusade, Celestial, World Boss, Arcane Quarry, Oblivion prestige | `data/pve-content.json`, `data/world-boss.json` (World Boss) |
+| [`pve-content.md`](pve-content.md) | World map, chapters, dungeons, Crusade, Celestial, World Boss, Arcane Quarry, Oblivion prestige | `data/pve-content.json`, `data/world-boss.json` (World Boss), `data/celestial.json` (Celestial) |
 
 **Each fact lives in one document.** A document that needs a fact owned by
 another points to it (`see stats.md`) instead of copying it. The `data/*.json`

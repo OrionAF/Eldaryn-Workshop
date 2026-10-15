@@ -44,6 +44,7 @@ player's build:
 | **Oblivion dungeon** | **[SERVER]** `/oblivion-dungeon/floor-prepare`, `/floor-resolve` | `L1705095-1705146` |
 | **Crusade** (group boss) | **[SERVER]** `/crusade/start`, `/crusade/solo`; client plays `ticks` | `L1703354-1703422`, `L1843245-1843842` |
 | **Fortress boss** | **[SERVER]** `/fortress/boss-fight/start`; client plays `ticks` | `L1399614`, `L1639328-1639938` |
+| **Celestial Trial** (party of 2) | **[SERVER]**; the start response carries `celestialResult.ticks`, the client plays them; no client simulator (rules from server logs, §20) | `pve-content.md §6` |
 | **World boss** | **[SERVER]** `/world-boss/fight-start` returns `fightId, bossHp, damageDealt, fightDurationMs, playerDied, combatLog`; client decodes the log and replays it, then posts `{fightId, damageDealt}` to `/world-boss/fight-end` | `L1702891`, `L1702935`, `L1152196-1152442`, `L1748209-1748249` |
 | **Arena** | **[SERVER]** `/arena/fight` (`see combat-pvp.md`) | `L1101943` |
 
@@ -885,3 +886,176 @@ For maintainers: how the code compares with `combat-model.md`. "Confirms",
 | Tank "block negates the entire hit in PVE; mob penetration unknowable, assumed 0" (ASSUMED) | **Refuted for data**: mobs carry Penetration (campaign ch 9+: 18/40/48; hard 50-70; dungeon 6-10+), §15 |
 | Audit F4 overheal bias | The game clamps heals at missing HP (§5.3, §7); the remaining three biases (timing, conditionality, summing) are modelling issues, not game facts |
 | Audit F6, F15, F19, F28, F29 | Search / calibration findings about the optimiser; the game code has no bearing on them |
+
+## §20 Celestial Trial: the party fight
+
+The Celestial Trial fight is **[SERVER]**: the start response carries `celestialResult.ticks` and the
+client only replays them. No Celestial fight simulator exists in the bundle. The config (boss tables,
+level bands, the four boss spells, tactics) is **[CODE]** and summarised in `pve-content.md §6`. Every
+rule below that is not config was read from **five server logs of 2026-10-15** (HARD L85 win at 145 s,
+NORMAL L85 win at 75.3 s, HARD L85 loss with Overload at 72.57 s, NORMAL L85 win at 71.49 s, HARD L95
+win at 307.63 s; fixtures `src/lib/__fixtures__/real/celestial-*.json`). Those rules are **[DERIVED]
+from the 2026-10-15 server logs**: driven by each log's rolls, the app's engine
+(`engine/pve/celestial.js`) reproduces every logged event (14 008 of 14 008), every damage, boss HP,
+add HP, Block Fury, stack, Chrono Flux and Burden value, and 28 014 of 28 016 player HP values (the
+two misses are §20.9's unexplained tick). MYTHIC is not covered: its party-power HP scaling is
+**[SERVER]**.
+
+### §20.1 Clock and per-tick order
+
+**[DERIVED] from the 2026-10-15 server logs.** The clock starts at 500 ms with one `burden_update`
+per player (0 adds) and runs on 10 ms ticks. Every swing timer starts at 0 at 500 ms and gains 10 ms
+per tick; a swing fires when it reaches `round(1000 / attackSpeed)` and keeps the remainder (boss
+swing k lands at `ceil((500 + k*I)/10)*10`: 526 ms on HARD, 667 ms on NORMAL). A player's interval is
+recomputed every tick from the current attack speed. One tick, in order:
+
+```
+0  clocks: Block Fury decays, the boss's paralysis counts down, Judgment's timer advances (frozen while paralyzed)
+1  Halo Breach: an add spawns at 500 + k*interval -> add_spawn, burden_update per player, overload_start
+2  each living player in party order:
+   a  regen pulse (timestamps on the 100 ms grid)
+   b  the player's spell pass (casts, buff start and end, debuff application)  boss HP logged after the batch
+   c  the player's auto-attack (boss or add, by tactics) -> blind / paralyze procs, add_death + burden_update
+3  each player's DoTs on the boss (spell_debuff_tick / _expired)                boss HP logged after the batch
+4  enemy phase: boss swing, Judgment Strike, each add's swing (oldest first)
+5  one thorns_reflect with the tick's summed thorns
+6  end of tick: Chrono Flux charges, an Ancient transform fires, Sunder decays
+```
+
+`blockFuryStacks` and HP are running values; `bulwarkStacks`, `sunderStacks` and `chronoFlux` are the
+end-of-tick values on every row of the tick. A lifesteal heal shows from the next row on.
+
+### §20.2 Scaling level and enemy stats
+
+**[DERIVED] from the 2026-10-15 server logs:** the scaling level is the party's highest level
+(`highestLevel`; the L95 log's party was L85 + L95 and scaled at 95). With it the client's
+`getCelestialBossStats` / `getCelestialAddStats` **[CODE]** give the logged values exactly:
+
+| Difficulty, level | Boss HP | Boss attack | Add HP | Add attack |
+|---|---|---|---|---|
+| HARD 85 | 8 388 341 867 | 266 866 | 419 417 093 | 53 373 |
+| HARD 95 | 33 935 521 328 | 477 916 | 1 696 776 066 | 95 583 |
+| NORMAL 85 | 2 461 903 877 | 147 715 | 61 547 597 | 29 543 |
+
+The boss never crits. Adds swing once per 1000 ms; an add's first swing comes 30-990 ms after it
+spawns (about 50 samples, consistent with a uniform draw on the 10 ms grid; the rule itself is
+**[UNRESOLVED]**). Spawning continues whatever the living count (a 7th add came with 6 alive). Add ids
+count from 1.
+
+### §20.3 Gatekeeper's Burden
+
+The per-add config is **[CODE]** (`pve-content.md §6`). How it applies is **[DERIVED] from the
+2026-10-15 server logs**, with n the number of living adds (the logged `burdenStacks`):
+
+| Effect | Rule |
+|---|---|
+| Max HP base | `M0 = round(sheetHp * (1 - hpPerAdd*n))`; every `burden_update` (rise and fall) sets `HP = min(HP, M0)`, ignoring every bonus max HP |
+| Bonus max HP | `cap = floor(M0 * (1 + (buff HP% + Bulwark HP%)/100))` (Iron Bastion 44.4 %, Earthwarden 100 %, Bulwark 8 % per stack) |
+| Regen | a 100 ms pulse of `round(sheetHp * regen%/1000 * (1 - hpRegenPerAdd*n))`, from the **sheet** max HP, only while `HP < cap` |
+| Healing | lifesteal `floor(dmg * ls/100 * max(0, 1 - healingReductionPerAdd*n))`; Iron Bastion's cast heal `floor(HP*0.444) * max(0, 1 - healingReductionPerAdd*n)`, not floored again (HP becomes fractional) |
+| Damage taken | `round(A * m * (1 - D/100) * (1 + damageTakenPerAdd*n) * ovl)`, one rounding; `D = min(sheet DR + buff DR + Bulwark DR, 75) * (1 - damageReductionPerAdd*n)` |
+| Avoid | `(min(block + buff, 85) + miss) * (1 - blockChancePerAdd*n)` |
+| Player attack | NORMAL `round(atk * (1 + attackPerAdd*n))`; HARD has no per-add attack term |
+
+### §20.4 Player side
+
+**[DERIVED] from the 2026-10-15 server logs.**
+- **Targets.** The run's tactics `{focus, holdCount}` pick auto-attack targets: HOLD with holdCount H
+  hits the oldest living add while more than H live, else the boss. `getCelestialMaxHoldCount`
+  **[CODE]** bounds H to `[1, min(maxAlive, addsThreshold)]`. Spells and DoTs always hit the boss.
+- **Damage.** `A = round(atk' * (1 + 0.12 f))` on HARD (f = Block Fury), where `atk'` is the attack
+  after buffs (`floor`: Warborn Fury, Earthwarden) and Elusive stacks (`round`). A crit is
+  `round(A * critDamage)`. Double hits, Blind and Paralyze proc only on boss-targeted swings; the
+  second hit never crits. An add's HP floors at 0 and `add_death` names the last hitter.
+- **Spells** (the `§10.2` shape): `curAtk = round(sheetAtk * M)`, M the same Fury or per-add factor,
+  then `max(1, floor(floor(curAtk*pct/100) * (1 - bossSpellResist/100)))`; the boss's spell resist is
+  45 on HARD and 0 on NORMAL **[CODE]**. DoT stacks snapshot at cast.
+- **Block Fury (HARD).** A float party stack: +1 per block by the **tank** (not by another player's
+  avoid, not by blinds or paralyses), cap 60, minus 0.015 per tick (repeated subtraction, floored at
+  0), logged rounded. It keeps multiplying the survivor's attack after the tank dies.
+- **Death.** A dead player stays at 0 HP: no regen, swings, spells or Burden HP change.
+
+### §20.5 Enemy side
+
+**[DERIVED] from the 2026-10-15 server logs.**
+- **Targets.** The boss, the adds and Judgment Strike hit `tankIndex`. When the tank dies every enemy
+  swings at the survivor from its next swing on, timers kept. The killing hit is logged as
+  `player_death` with its full damage.
+- **Boss swing.** Paralyzed (1000 ms per proc): `boss_paralyze`; else blinded (one swing):
+  `boss_blind`; else the target rolls its avoid. Add swings ignore the boss's blind and paralysis.
+- **Judgment Strike** fires at `500 + 30000k + 990 * (paralyses before it)` (its timer freezes while
+  the boss is paralyzed), with `m = attackMultiplier` (5.5 HARD, 3 NORMAL **[CODE]**). It is never
+  avoided (0 of 16), takes DR including Bulwark's, burns no Bulwark stack, reflects no thorns, and
+  counts as a hit taken for Chrono Flux.
+- **Celestial Overload** starts in the spawn tick that brings the living adds to `addsThreshold`
+  (7 on HARD **[CODE]**), logged `overload_start` after that tick's Burden updates. While it is
+  active only the boss auto-attack is multiplied, by `1 + attackBuffMultiplier` (6 on HARD); add
+  swings are not.
+- **Avoids** of a player who is not the tank are logged `player_block` / `add_block` too.
+
+### §20.6 HP caps and transforms
+
+**[DERIVED] from the 2026-10-15 server logs.**
+- The bonus-HP clamp (`HP = min(HP, cap)`, with the stacks at the start of the enemy phase) runs only
+  on a tick where an enemy swing resolves against the player (hit, avoid or Judgment), before that
+  swing. A Bulwark stack lost to a hit does not clamp at once.
+- Iron Bastion's end clamps HP to `M0` when no other HP bonus is active (the shared engine's rule,
+  `§10`); Earthwarden's end with Bulwark stacks up does not.
+- Earthwarden (Ancient transform) adds no HP when cast; its attack is `floor(atk * 1.3)` and its Block
+  is the soft-capped gain on the sheet's Block (`§10.6`).
+
+### §20.7 The stack player, thorns and Chrono Flux
+
+**[DERIVED] from the 2026-10-15 server logs.**
+- Stack sigils (Bulwark of Thorns, Elusive Supremacy, Sunder Mark, Siegebreaker) run for **one**
+  player per fight; the logged `bulwarkStacks` / `sunderStacks` are that player's. The client's
+  unused `simulateCrusadeFight` **[CODE]** has the same shape (one `sigilState`, `stackPlayerIndex`,
+  one `createStackCombat`, `L1868835-1868870`). In all five logs it was the player who started the run
+  (player 0 in four; the L95 tank, who started it by autoStart, in the fifth). Another player's
+  Bulwark and Iron Bastion glyph thorns do nothing.
+- Bulwark: +1 per avoid, -1 per unblocked boss or add hit, DR +4 and max HP +8 % per stack, read at
+  the start of the enemy phase. Thorns per unblocked hit are `round(damageTaken * 7 * stacks / 100)`
+  with the running stacks (before this hit's loss); a tick's thorns are summed into one
+  `thorns_reflect` on the boss, even when an add was the attacker.
+- Elusive: +1 per own avoid; a hit burns stacks; per stack +3 % attack and +3 % attack speed.
+- Sunder: +1 per landed auto-attack of the stack player on the boss (hits on adds and the other
+  player's hits add none), decaying per tick (1.4/s with the Epic Enduring Brand glyph). It has no
+  effect here: the boss has no DR, block, miss or blind to strip.
+- Chrono Flux, per player and event: own landed hit `+(Flame + Dark)`, hit taken (Judgment included)
+  `+0.7*(Earthen + Dark)`, own avoid `+(Earthen + Dark)`, divided by `3^(transforms fired)`, no gain
+  while the transform runs, cap 7000. A full bar fires the Ancient at the end of the tick and resets.
+
+### §20.8 Fight end
+
+**[DERIVED] from the 2026-10-15 server logs.** A win ends on the killing tick with `boss_death`
+(`totalDuration` is that tick; the killing damage is not clamped). A loss ends on the tick the last
+living player dies (`success false`, `timedOut false`). `timeLimitMs` is 240 000 on NORMAL and
+360 000 on HARD **[CODE]**; no log timed out, so whether the limit counts from 0 or from 500 ms is
+**[UNRESOLVED]**. Dust ranges use the scaling level (`pve-content.md §6`).
+
+### §20.9 Open items
+
+**[UNRESOLVED]** (none of the five logs settles them):
+- Judgment Strike under Overload: no Judgment fell inside an Overload.
+- When Overload ends (`overload_end` exists as a tick type and was never logged), and whether the x6
+  drops at once.
+- Overload on NORMAL (threshold 5, never reached).
+- Who the stack player is in general: "the player who started the run" fits all five logs and is
+  unproven.
+- How many Elusive stacks one hit burns (one case: 1 to 0).
+- Whether a non-tank's avoid is a block or a miss (its label is `player_block` / `add_block`).
+- `controlFuryFraction` 0.7 (HARD config): neither a non-tank's avoid nor a blind paid any Fury.
+- Block Fury and `attackPerAdd` together (no difficulty has both).
+- The add first-swing phase rule (random-looking; 30-990 ms seen).
+- Whether adds are immune to Blind and Paralyze or simply never proc them (0 procs on 660
+  add-targeted swings).
+- Judgment Strike's target after the tank dies, the target choice with 3+ players, and whether the
+  tank keeps aggro when the other player dies first.
+- Whether spawning stops at `maxAlive` 12 (never reached).
+- The time-limit origin (0 or 500 ms) and key use on a loss.
+- One unexplained tick: in the L95 log Earthwarden fired at 66 790 ms in a tick where two add hits
+  (2 x 35 844) landed on the tank, and the cast rows, and every later row, carry the HP from before
+  those hits. The replay check lists the two cast rows and resets the HP after that tick.
+
+The app's engine fills the open items it needs with labelled assumptions (`CELESTIAL_ASSUMPTIONS`;
+`simulation.md` Target fidelity).

@@ -23,6 +23,15 @@ export const CLAN_WAR_SESSION_REWARDS = fortressData.clanWarSessionRewards;
 export const RAID_CONSTANTS = fortressData.raidConstants;
 export const RAIDS = fortressData.raids;
 
+/**
+ * The server's max clan size (`getClanMaxMembers`, clan-fortress.md §3.1): the per-server override, else
+ * the default 50. An unknown or missing server gives the default.
+ */
+export function clanCapForServer(server) {
+  const o = Number.isInteger(server) ? FORTRESS_CONSTANTS.maxMembersOverrides[String(server)] : undefined;
+  return o ?? FORTRESS_CONSTANTS.maxMembersDefault;
+}
+
 /** Village raid by id (e.g. 'raid_1'), or null. */
 export const raidById = (id) => RAIDS.find((r) => r.id === id) ?? null;
 

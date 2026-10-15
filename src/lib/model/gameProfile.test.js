@@ -182,7 +182,8 @@ describe('gameProfileToCharacter', () => {
   it('never carries the player id, clan, shop, quests or economy fields', () => {
     const text = JSON.stringify(raw) + JSON.stringify(c);
     for (const secret of RAW_SECRETS) expect(text).not.toContain(secret);
-    for (const key of ['playerId', 'clan', 'shop', 'questState', 'gems', 'server']) expect(text).not.toContain(`"${key}"`);
+    for (const key of ['playerId', 'clan', 'shop', 'questState', 'gems']) expect(text).not.toContain(`"${key}"`);
+    expect(c.server).toBe(9);
   });
 
   it('equipment: both sets, secondaries and conduit kept, Oblivion-only slots left out of base sets', () => {

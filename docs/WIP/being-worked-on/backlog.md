@@ -1,8 +1,153 @@
 # Backlog: features the user asked for
 
-> **Status:** queued. Start these after the current speed work (worker pool, engine speed pass,
-> CPU profile and calibration, the race's futility stop, and the stat-weight surrogate decision).
-> Added 2026-10-15.
+> **Order:** quickest first (2026-10-15). Section numbers are stable IDs that other files cite, not the order. Sizes are rough agent time: XS under an hour, S one to two hours, M about half a day, L a day or more.
+
+| Order | Item | Size | Status |
+|---|---|---|---|
+| 1 | §10 Push | XS | Merging (queue run wf_2c43327e-8d7) |
+| 2 | §13 Glyph dominance pruning | S | Building, alongside the queue (run wf_f4b445f6-df1) |
+| 3 | §10 Fortress boss shield fix | S | Queued: review and merge |
+| 4 | §12 Highest chance to win | M | Queued: resumes from branch `rebuild2/W3-wip` |
+| 5 | §15 Fortress boss fight from the server log | M | Queued |
+| 6 | §11 Celestial Trial Optimiser target | S | Queued |
+| 7 | §6 Results say which pet, mount or glyph | S | Queued |
+| 8 | §1 Optimiser step list | S | Queued |
+| 9 | §3 Setup estimates | M | Not started |
+| 10 | §9 Stat weights chart | M | Not started |
+| 11 | §2 Rankings profiles as PVP opponents (and Celestial partners) | M | Not started |
+| 12 | §10 Arena reward weighting | S | Needs §2 |
+| 13 | §7 PVE replay check | L | Not started; needs dungeon logs |
+| 14 | §10 Crusade (solo) | L | Not started |
+| 15 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Not started |
+| - | §11 Celestial open questions | - | Waits for more server logs |
+| Done | §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target; §11 Celestial engine | - | Merged |
+
+## 10. Optimiser objectives: trim, fix the target range, add Push, a Power guard and Crusade
+
+**Status (2026-10-15).** Done: retire kill time and survival, target range (slice O1); Combat Power and the Power guard (O2); Fortress boss target (O3). Fortress shield fix (O3b): two server siege snapshots show the shield divides alive defenders by the server's clan cap (30 on server 5), not the defending clan's size; implemented, awaiting review. Push (O4): merged (§Push in simulation.md). Not started: Crusade (solo), Arena reward weighting.
+
+**Ask** (2026-10-15): the user agreed to this review of the objectives.
+
+**Remove** (DONE 2026-10-15, slice O1; `simulation.md` §Objectives):
+- **Kill time (median and p90).** No content the app simulates pays for kill speed. Dungeon, raid
+  and Oblivion mobs each have a 20-minute cap that never runs out, chapters have no timer, and
+  hunting is a server roll with no fight (`combat-pve.md` §1, §14). Kill time also moves in steps of
+  about 3% (one swing), so races between near-equal builds run long. Win rate already rewards speed
+  where it matters, because a faster kill means less damage taken.
+- **Survival** on chapter, dungeon, raid, Oblivion and World Boss targets. With caps that never run
+  out, it equals win rate, and World Boss pays for damage, not for staying alive. Keep it for
+  custom mobs only.
+
+**Change** (DONE 2026-10-15, slice O1). Let the win-rate target go down to 10% and show "about N tries per clear" (1 / p) next to
+the rate. A loss costs no key or reward on most content: a failed chapter level restarts
+(`combat-pve.md` §14), an Oblivion floor keeps its key on defeat, and the dungeon text says only a
+clear spends a key (`pve-content.md` §4, §11). The default stays 95%.
+
+**Add, in this order:**
+1. **Push** (DONE 2026-10-15, slice O4; `simulation.md` §Push). Finds the deepest dungeon step, Oblivion floor, raid step or chapter level the build
+   clears at τ or better, and the build that does it. Difficulty only goes up with depth, so: start
+   at the current step, climb while the target is met, then bisect. Reuse each step's runs.
+2. **Combat Power guard.** (DONE 2026-10-15, slice O2: `engine/power.js` exact on two real profiles,
+   `stats.md` §8; the guard is in `simulation.md` §Build space.) Power has an exact client formula (`stats.md` §8). Crusade Hard, Mythic
+   and Mythic+ entry is gated on it: Mythic+N needs `round(13000 * 1.18^N)` (`pve-content.md` §5).
+   Show the Power change on every result row, and add an optional "keep Power ≥ X" whose default is
+   the user's current Mythic+ gate. It needs no simulation.
+3. **Crusade, solo.** The only content where kill speed decides the result: 300 s for the whole
+   run of 3 bosses, and a Mythic+ full clear guarantees 3 enchant stones, while a partial clear
+   rolls a smaller table (`pve-content.md` §5). The client ships `simulateCrusadeFight` (L1868835,
+   never called), so this is a port like the dungeon fight, labelled server-run. Objectives: full
+   clear rate, and expected stones per run.
+4. **Fortress boss** (clan war). A 60 s damage race like World Boss, with its stats in the client
+   (`clan-fortress.md` §1.4). The boss shield (alive defenders) is an input.
+5. **Arena reward weighting**, after the Rankings import (§2). Beating someone 3 places above pays
+   30 influence, 3 places below pays 5 (`combat-pvp.md` §13).
+
+**Spec and role.** The `spec` block only switches to the character's other talent set, and only
+when "Spec" is on under Allowed to change. It never respecs, which costs 10 gems. For solo content,
+picking Fury over Protection is a valid answer when it clears more often, because solo fights have
+no roles. Party content is different (the boss hits the tank holder), and the solo objectives cannot
+express that. See §11.
+
+## 13. Optimiser: glyph dominance pruning
+
+**Ask** (2026-10-15): "If I have 4 minor glyphs that give attack speed, 11%, 10%, 10% and 5%, never try a build with the 5% one, and never replace a 10% glyph with another 10% one."
+
+**Rule.** A minor glyph adds one secondary stat, and more of a stat never hurts, so these cuts are exact:
+- Within a stat, a row that uses m glyphs of that stat uses that stat's top m by value.
+- Glyphs with the same stat and value are interchangeable, so a swap between them is never raced.
+- A socket is never left empty while a usable glyph remains.
+- For majors, only the best copy of each type counts.
+
+For the user's Sentinel this cuts about 378 minor-glyph rows per visit to about 80. It replaces the earlier single-socket idea (branch `rebuild2/S1-wip`, now dropped). It follows §14's measured result: mount pruning alone cut the mounts from 11 to 2, but the Fortress run still did not finish in 10 minutes.
+
+**Status:** building (slice G1).
+
+## 12. PVE goal: highest chance to win
+
+**Ask** (2026-10-15): "Find me a build which gives me the highest % chance to win."
+
+**Plan.**
+- A new goal, "Highest chance to win", becomes the default for content you clear. It ranks on clear rate, and ties go to the fewest changes. "Reach a win rate" stays as an option, with its minimum lowered to 1%.
+- Fast decisions at low rates. When the leading build has wins, builds with none are dropped quickly. Only when no build wins does how far each one gets decide, and the result then says so plainly.
+- Measured problem: on Hard Forsaken Mines step 2, a race of 299 sigil sets ran 306,208 fights and dropped none.
+
+**Status:** paused mid-build; the work so far is on branch `rebuild2/W3-wip`.
+
+## 15. Fortress boss fight from the server log
+
+**Finding** (2026-10-15, a real `/fortress/boss-fight/start` log, fixture `fortress-boss-top-fight.json`): the server runs this fight with the Arena duel vocabulary (the player is the attacker, the boss the defender). The boss swings every 1 s for 500 ±15%, and the player's misses work (35 of 60 dodged). Elusive Supremacy never raised attack or speed: all 171 swings came at a steady 349 ms, and every hit was exactly the sheet attack. The real fight dealt 22.6M per second, against about 42M in the app's PVE-engine model. The app's Fortress sigil advice was therefore wrong.
+
+**Plan:** rebuild the fight on the right engine and replay-check it against the log tick by tick, then re-rank sigil sets for this target.
+
+## 11. Celestial Trial (party of 2), and party roles
+
+**Status (2026-10-15).** The Celestial engine is merged (slice C1), replay-checked against five server logs. The Optimiser target (C2: partner, tank, starter, tactics, difficulty, level) is paused. Open questions (Overload end and Judgment, NORMAL Overload, stack-player rule) wait for more logs.
+
+**Ask** (2026-10-15): can the Celestial Trial be simulated? The user supplied one server fight log
+(Hard, level 85, the user plus a tank partner). It stays outside the repo because it names another
+player. Facts and the log check are in `Game/pve-content.md` §6.
+
+**What we have.** The full client config per difficulty: boss tables, level bands, time limits,
+spell resist, and the four spells with their Hard overrides. The log matches it exactly on boss HP,
+add HP and timing, the Judgment Strike rhythm and the time limit. The log also has every tick, so a
+port can be checked tick by tick, like §7.
+
+**What's missing.**
+- There is no Celestial simulator in the client. The fight would be built from the config plus
+  the shared engine, then fitted to logs, so it carries a "built from logs" label and is less certain
+  than the client ports.
+- We need several more logs: other levels, Normal, and other partners.
+- The partner's build. The Rankings import (§2) gives their loadout and server sheet, so the pair
+  can be simulated.
+- Mythic's party-power HP scaling is server-side.
+
+**Objective.** Party clear rate within 360 s, with the user's build as the variable and the
+partner fixed. This is where tank versus damage spec gets judged properly. If the user is the
+tank, the boss and Judgment Strike hit them, and Block Fury matters. Crusade groups would use the
+same party machinery later.
+
+## 6. Optimiser results: say exactly which pet, mount or glyph
+
+**Ask.** Pets of the same species share a name, so "Pet: Iron Golem → Iron Golem" does not say which
+Iron Golem to equip. Show the suggested pet's secondary stats.
+
+**Notes**, from the same screenshot (Rank 1, dungeon, TTK median):
+- **Name owned instances unambiguously.** Wherever a result names something the user owns several of,
+  show what tells them apart:
+  - pet: rarity, level and secondary stats;
+  - mount: level and rolls;
+  - glyph: rarity and stat;
+  - stone: type and stats.
+  Apply this to change rows, the Apply review and the "Show full build" drawer. When two owned copies
+  are identical, say so ("either of your 2 identical copies").
+- **Raw stat keys leak** in the full-build drawer ("Quickstep (Common) healthPercent 4.5",
+  "critDamage 0.09"). Use the shared stat label formatter ("Health +4.5%", "Crit damage +9%").
+- **Talent changes list the whole allocation twice.** Show only the points that moved, e.g. "Essence
+  Siphon 2 → 0, Focused Casting 0 → 3".
+- **A baseline with no value shows "n/a".** On TTK the current build had no median because it
+  rarely wins, and the axis then reads "−0.00 s … 0.00 s". Say why instead: "Rarely clears: 18% win
+  rate; compared by win rate". Draw the axis on the basis actually used. Backlog §4 (Win rate)
+  removes most of these cases.
 
 ## 1. Optimiser: list the search steps
 
@@ -18,6 +163,42 @@ one it is on, e.g. "1. Gear set: done · 2. Talents: done · 3. Pets: done · 4.
 - UI: an expandable step list under RunProgress on the Optimiser page and in the Jobs tray
   (design-system.md §4.17).
 - The run history keeps the final list.
+
+## 3. Optimiser setup: estimates before you run
+
+**Ask.** A section of the setup shows the estimated time, the number of builds to try and the number
+of fights to simulate.
+
+**Notes.**
+- It builds on the speed calibration (fights per second on this device, per fight kind).
+- Builds: the space size per enabled block, exact when the space is enumerated, an estimate
+  otherwise. Fights: a range from the race rules (the least when every arm resolves at the first
+  look, up to the cap at maxN). Time: fights divided by the calibrated speed and the worker count.
+- Label every number as an estimate (decision Q5), and update it live as the setup changes.
+
+## 9. Stat weights chart (like the v1 one)
+
+**Ask** (2026-10-15): bring back the old stat-weight display, one chart that ranks every stat, not a
+weight table per piece of content.
+
+**What v1 did** (`src/lib/statWeights.js` and `SimulationScreen.svelte` before `f486ffc`): it added one
+game-sized step to each stat in turn (+100 Attack, +1 point of Attack %, +1% Crit, +10% Crit
+Multiplier...), re-scored the preset with the closed-form expected DPS, and drew the gain as a bar
+per stat, largest first. The tank and PVP goals added the defensive stats. The ranking came from a
+formula, not from fights.
+
+**Plan.**
+- The engine has no closed form now, so measure the weights in the client port. Use mean damage per
+  second against the training dummy (`metrics.js` `dpsVsDummyAsync`, the one Drop Check uses) and
+  common random numbers. The mean over a fixed duration is smooth, so it avoids the median-TTK
+  steps the 2026-10-15 experiment hit.
+- Defensive stats rank on survival against one fixed reference enemy (`survivalAsync`). Show it as a
+  second chart, because damage and survival are different units.
+- Probe the raw totals and apply the caps once (the rule v1 learned the hard way), so a stat past its
+  cap shows about 0. Use the v1 step sizes.
+- Each bar shows its interval. A stat whose interval spans 0 reads "no measurable effect", never a
+  rank.
+- It runs as a job, on the Character Stats page or in Tools, for the selected preset.
 
 ## 2. Import other players' profiles as PVP opponents
 
@@ -45,37 +226,31 @@ It has no talent allocation, Transcendence nodes, mount glyphs or awakening leve
 - Re-importing the same `playerId` updates that opponent instead of adding a duplicate.
 - Strip player and clan identifiers from any committed fixture.
 
-## 3. Optimiser setup: estimates before you run
+## 7. PVE replay check against server dungeon logs
 
-**Ask.** A section of the setup shows the estimated time, the number of builds to try and the number
-of fights to simulate.
+**Ask** (from a real dungeon log the user captured, 2026-10-15). The PVP side already has a replay
+check against a real `/arena/fight` log (`engine/pvp/replayCheck.js`). Build the same for PVE dungeon
+runs.
+
+**What one log shows** (a Mystic with Void Aegis; 3 mobs; died on mob 3 at 58.56 s):
+- 10 ms ticks: a DOT tick lands at 1,510 ms after the cast at 1,500 ms;
+- a 720 ms player swing and a ~1,665 ms mob swing;
+- spell cadence: Barrage every 1 s, Burst every 3 s, and the Runic Affliction cycle;
+- HP regen pulses of 461 every 100 ms;
+- heals land in the same tick as the cast, HP first;
+- with Void Aegis (`vampAlwaysRefills`) the WHOLE vamp heal also refills the shield, not just the
+  overflow;
+- regen pulses refill the shield while HP is full;
+- the shield cap (`playerShieldMax` 175,626).
 
 **Notes.**
-- It builds on the speed calibration (fights per second on this device, per fight kind).
-- Builds: the space size per enabled block, exact when the space is enumerated, an estimate
-  otherwise. Fights: a range from the race rules (the least when every arm resolves at the first
-  look, up to the cap at maxN). Time: fights divided by the calibrated speed and the worker count.
-- Label every number as an estimate (decision Q5), and update it live as the setup changes.
-
-## 4. PVE goal: win rate ("clear without dying")
-
-**Ask.** For dungeons, raids, chapters and Oblivion floors, the useful question is whether the
-build clears the content without dying, not how fast. Ten seconds and fifty are the same to the user.
-
-**Notes.**
-- Today's "Survival chance" measures surviving N seconds against an unkillable copy of the mob, and
-  the TTK goals measure speed. Neither is "clears the step".
-- New goal, **Win rate** (the user confirmed 2026-10-15: "basically the win rate"; same name and
-  intervals as PVP win rate): the share of fights in which the whole step is cleared before the
-  character dies or the time cap is reached (a proportion; Wilson/Newcombe intervals as for win
-  rate). The user sets the target, e.g. "at least 95%".
-- Search framing: find the build **with the fewest changes** that reaches the target. If the current
-  build already reaches it, say so and suggest nothing. If no build reaches it, maximise the win
-  rate and show how close each build gets.
-- At a 100% win rate builds tie, so the tie-break is fewest changes, then a safety margin (for
-  example the lowest HP fraction left across fights). The margin also gives the search, and stat
-  weights, a gradient where the win rate saturates.
-- Make it the default goal for these targets. Keep TTK as an option for players who farm for speed.
+- Only attack rows carry `playerShieldHp`. Spell rows carry `playerHpAfter` (the end-of-tick value),
+  so a checker has to reconstruct the shield between attack rows.
+- The rules to check: timing, swing intervals, spell cadence, heal → HP → shield, regen pulses, the
+  shield cap, and mob-to-mob transitions. Damage values can be checked too once the fight is run with
+  the logged character's stats.
+- Commit the log as a fixture next to `arena-fight-warrior.json`. It holds fight values only, no
+  player identifiers; check before committing.
 
 ## 5. Optimiser: let it change more than the loadout
 
@@ -107,54 +282,33 @@ options to:
   what gets written: stones per set, the board shared by presets, the character-wide Awakening, relic
   levels and ownership.
 
-## 6. Optimiser results: say exactly which pet, mount or glyph
+## 14. Optimiser: never try a mount another owned mount beats
 
-**Ask.** Pets of the same species share a name, so "Pet: Iron Golem → Iron Golem" does not say which
-Iron Golem to equip. Show the suggested pet's secondary stats.
+**Ask** (2026-10-15): the Optimiser should never test Common mounts when Epic ones are owned.
 
-**Notes**, from the same screenshot (Rank 1, dungeon, TTK median):
-- **Name owned instances unambiguously.** Wherever a result names something the user owns several of,
-  show what tells them apart:
-  - pet: rarity, level and secondary stats;
-  - mount: level and rolls;
-  - glyph: rarity and stat;
-  - stone: type and stats.
-  Apply this to change rows, the Apply review and the "Show full build" drawer. When two owned copies
-  are identical, say so ("either of your 2 identical copies").
-- **Raw stat keys leak** in the full-build drawer ("Quickstep (Common) healthPercent 4.5",
-  "critDamage 0.09"). Use the shared stat label formatter ("Health +4.5%", "Crit damage +9%").
-- **Talent changes list the whole allocation twice.** Show only the points that moved, e.g. "Essence
-  Siphon 2 → 0, Focused Casting 0 → 3".
-- **A baseline with no value shows "n/a".** On TTK the current build had no median because it
-  rarely wins, and the axis then reads "−0.00 s … 0.00 s". Say why instead: "Rarely clears: 18% win
-  rate; compared by win rate". Draw the axis on the basis actually used. Backlog §4 (Win rate)
-  removes most of these cases.
+**Rule.** A mount only adds attack % and HP % (each `round(base * (1 + 0.1*(level-1)))`), and every mount has the same sockets. So a mount that another owned mount matches or beats on both values can never help. This is pruned by Pareto dominance, not by rarity, because a level-5 Rare (up to 41 HP / 28 attack) can beat a level-1 Epic (34-39 / 24-27). For the user's Sentinel it cuts 11 mounts to 2.
 
-## 7. PVE replay check against server dungeon logs
+**Status:** done (slice M1, merged 828af25). The mount list dropped from 11 to 2. Measured on the Fortress run, 10-minute caps: 8,762 builds before vs 6,484 after; neither finished. The minor glyphs are the bigger cost (§13).
 
-**Ask** (from a real dungeon log the user captured, 2026-10-15). The PVP side already has a replay
-check against a real `/arena/fight` log (`engine/pvp/replayCheck.js`). Build the same for PVE dungeon
-runs.
+## 4. PVE goal: win rate ("clear without dying")
 
-**What one log shows** (a Mystic with Void Aegis; 3 mobs; died on mob 3 at 58.56 s):
-- 10 ms ticks: a DOT tick lands at 1,510 ms after the cast at 1,500 ms;
-- a 720 ms player swing and a ~1,665 ms mob swing;
-- spell cadence: Barrage every 1 s, Burst every 3 s, and the Runic Affliction cycle;
-- HP regen pulses of 461 every 100 ms;
-- heals land in the same tick as the cast, HP first;
-- with Void Aegis (`vampAlwaysRefills`) the WHOLE vamp heal also refills the shield, not just the
-  overflow;
-- regen pulses refill the shield while HP is full;
-- the shield cap (`playerShieldMax` 175,626).
+**Ask.** For dungeons, raids, chapters and Oblivion floors, the useful question is whether the
+build clears the content without dying, not how fast. Ten seconds and fifty are the same to the user.
 
 **Notes.**
-- Only attack rows carry `playerShieldHp`. Spell rows carry `playerHpAfter` (the end-of-tick value),
-  so a checker has to reconstruct the shield between attack rows.
-- The rules to check: timing, swing intervals, spell cadence, heal → HP → shield, regen pulses, the
-  shield cap, and mob-to-mob transitions. Damage values can be checked too once the fight is run with
-  the logged character's stats.
-- Commit the log as a fixture next to `arena-fight-warrior.json`. It holds fight values only, no
-  player identifiers; check before committing.
+- Today's "Survival chance" measures surviving N seconds against an unkillable copy of the mob, and
+  the TTK goals measure speed. Neither is "clears the step".
+- New goal, **Win rate** (the user confirmed 2026-10-15: "basically the win rate"; same name and
+  intervals as PVP win rate): the share of fights in which the whole step is cleared before the
+  character dies or the time cap is reached (a proportion; Wilson/Newcombe intervals as for win
+  rate). The user sets the target, e.g. "at least 95%".
+- Search framing: find the build **with the fewest changes** that reaches the target. If the current
+  build already reaches it, say so and suggest nothing. If no build reaches it, maximise the win
+  rate and show how close each build gets.
+- At a 100% win rate builds tie, so the tie-break is fewest changes, then a safety margin (for
+  example the lowest HP fraction left across fights). The margin also gives the search, and stat
+  weights, a gradient where the win rate saturates.
+- Make it the default goal for these targets. Keep TTK as an option for players who farm for speed.
 
 ## 8. Easier imports without HTTP Toolkit (phone-only capture guide)
 
@@ -181,96 +335,3 @@ Toolkit? Can the app ask the game server for it?
    fight in game, and share the response to Files, with no computer. Android needs root or a
    computer (apps ignore user certificates since Android 7), so say that plainly. Keep the steps
    short, with screenshots.
-
-## 9. Stat weights chart (like the v1 one)
-
-**Ask** (2026-10-15): bring back the old stat-weight display, one chart that ranks every stat, not a
-weight table per piece of content.
-
-**What v1 did** (`src/lib/statWeights.js` and `SimulationScreen.svelte` before `f486ffc`): it added one
-game-sized step to each stat in turn (+100 Attack, +1 point of Attack %, +1% Crit, +10% Crit
-Multiplier...), re-scored the preset with the closed-form expected DPS, and drew the gain as a bar
-per stat, largest first. The tank and PVP goals added the defensive stats. The ranking came from a
-formula, not from fights.
-
-**Plan.**
-- The engine has no closed form now, so measure the weights in the client port. Use mean damage per
-  second against the training dummy (`metrics.js` `dpsVsDummyAsync`, the one Drop Check uses) and
-  common random numbers. The mean over a fixed duration is smooth, so it avoids the median-TTK
-  steps the 2026-10-15 experiment hit.
-- Defensive stats rank on survival against one fixed reference enemy (`survivalAsync`). Show it as a
-  second chart, because damage and survival are different units.
-- Probe the raw totals and apply the caps once (the rule v1 learned the hard way), so a stat past its
-  cap shows about 0. Use the v1 step sizes.
-- Each bar shows its interval. A stat whose interval spans 0 reads "no measurable effect", never a
-  rank.
-- It runs as a job, on the Character Stats page or in Tools, for the selected preset.
-
-## 10. Optimiser objectives: trim, fix the target range, add Push, a Power guard and Crusade
-
-**Ask** (2026-10-15): the user agreed to this review of the objectives.
-
-**Remove** (DONE 2026-10-15, slice O1; `simulation.md` §Objectives):
-- **Kill time (median and p90).** No content the app simulates pays for kill speed. Dungeon, raid
-  and Oblivion mobs each have a 20-minute cap that never runs out, chapters have no timer, and
-  hunting is a server roll with no fight (`combat-pve.md` §1, §14). Kill time also moves in steps of
-  about 3% (one swing), so races between near-equal builds run long. Win rate already rewards speed
-  where it matters, because a faster kill means less damage taken.
-- **Survival** on chapter, dungeon, raid, Oblivion and World Boss targets. With caps that never run
-  out, it equals win rate, and World Boss pays for damage, not for staying alive. Keep it for
-  custom mobs only.
-
-**Change** (DONE 2026-10-15, slice O1). Let the win-rate target go down to 10% and show "about N tries per clear" (1 / p) next to
-the rate. A loss costs no key or reward on most content: a failed chapter level restarts
-(`combat-pve.md` §14), an Oblivion floor keeps its key on defeat, and the dungeon text says only a
-clear spends a key (`pve-content.md` §4, §11). The default stays 95%.
-
-**Add, in this order:**
-1. **Push.** Finds the deepest dungeon step, Oblivion floor, raid step or chapter level the build
-   clears at τ or better, and the build that does it. Difficulty only goes up with depth, so: start
-   at the current step, climb while the target is met, then bisect. Reuse each step's runs.
-2. **Combat Power guard.** (DONE 2026-10-15, slice O2: `engine/power.js` exact on two real profiles,
-   `stats.md` §8; the guard is in `simulation.md` §Build space.) Power has an exact client formula (`stats.md` §8). Crusade Hard, Mythic
-   and Mythic+ entry is gated on it: Mythic+N needs `round(13000 * 1.18^N)` (`pve-content.md` §5).
-   Show the Power change on every result row, and add an optional "keep Power ≥ X" whose default is
-   the user's current Mythic+ gate. It needs no simulation.
-3. **Crusade, solo.** The only content where kill speed decides the result: 300 s for the whole
-   run of 3 bosses, and a Mythic+ full clear guarantees 3 enchant stones, while a partial clear
-   rolls a smaller table (`pve-content.md` §5). The client ships `simulateCrusadeFight` (L1868835,
-   never called), so this is a port like the dungeon fight, labelled server-run. Objectives: full
-   clear rate, and expected stones per run.
-4. **Fortress boss** (clan war). A 60 s damage race like World Boss, with its stats in the client
-   (`clan-fortress.md` §1.4). The boss shield (alive defenders) is an input.
-5. **Arena reward weighting**, after the Rankings import (§2). Beating someone 3 places above pays
-   30 influence, 3 places below pays 5 (`combat-pvp.md` §13).
-
-**Spec and role.** The `spec` block only switches to the character's other talent set, and only
-when "Spec" is on under Allowed to change. It never respecs, which costs 10 gems. For solo content,
-picking Fury over Protection is a valid answer when it clears more often, because solo fights have
-no roles. Party content is different (the boss hits the tank holder), and the solo objectives cannot
-express that. See §11.
-
-## 11. Celestial Trial (party of 2), and party roles
-
-**Ask** (2026-10-15): can the Celestial Trial be simulated? The user supplied one server fight log
-(Hard, level 85, the user plus a tank partner). It stays outside the repo because it names another
-player. Facts and the log check are in `Game/pve-content.md` §6.
-
-**What we have.** The full client config per difficulty: boss tables, level bands, time limits,
-spell resist, and the four spells with their Hard overrides. The log matches it exactly on boss HP,
-add HP and timing, the Judgment Strike rhythm and the time limit. The log also has every tick, so a
-port can be checked tick by tick, like §7.
-
-**What's missing.**
-- There is no Celestial simulator in the client. The fight would be built from the config plus
-  the shared engine, then fitted to logs, so it carries a "built from logs" label and is less certain
-  than the client ports.
-- We need several more logs: other levels, Normal, and other partners.
-- The partner's build. The Rankings import (§2) gives their loadout and server sheet, so the pair
-  can be simulated.
-- Mythic's party-power HP scaling is server-side.
-
-**Objective.** Party clear rate within 360 s, with the user's build as the variable and the
-partner fixed. This is where tank versus damage spec gets judged properly. If the user is the
-tank, the boss and Judgment Strike hit them, and Block Fury matters. Crusade groups would use the
-same party machinery later.

@@ -35,10 +35,11 @@
 
   const AXIS_TITLE = { dps: 'Change in DPS vs current', ms: 'Time saved vs current (positive is faster)', p: 'Change in chance vs current' };
   // A PVE win-rate run (either win-rate goal): one axis in win-rate points and tries per clear on every row; a
-  // target goal adds a Meets / Below target chip per row.
-  const winRun = $derived(isWinRateKind(view.kind));
+  // target goal adds a Meets / Below target chip per row. A Push run's rows are win-rate rows measured on the
+  // step the build was found for (simulation.md §Push).
+  const winRun = $derived(isWinRateKind(view.kind) || view.kind === 'push');
   const maxRun = $derived(view.kind === 'win-chance');
-  const target = $derived(winRun ? (view.goal?.target ?? null) : null);
+  const target = $derived(winRun ? (view.goal?.target ?? view.push?.target ?? null) : null);
   const axisTitle = $derived(winRun ? 'Change in win rate vs current (percentage points)' : AXIS_TITLE[view.unit]);
   // The win rate the goal banners talk about (optimiserView.js goalWinRate).
   const goalTries = $derived(triesPerClear(goalWinRate(view)));

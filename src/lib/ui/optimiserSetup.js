@@ -1,7 +1,7 @@
 // ui/optimiserSetup.js - the Optimiser page's setup (preset, fight, objective, allowed-to-change toggles,
 // Combat Power floor, effort, seed): defaults, validation of a stored or re-run setup against the live character, and the
 // worker request it stands for. Pure. The setup is kept per character in the UI key (uiState.js).
-import { resolveTarget, objectiveKindsFor, goalRetired, WIN_RATE_TARGET } from '../search/objectives.js';
+import { resolveTarget, objectiveKindsFor, goalRetired, WIN_RATE_TARGET, PUSH_TARGET } from '../search/objectives.js';
 import { SPACE_DEFAULTS, normalisePowerFloor } from '../search/space.js';
 import { EFFORT_LEVELS } from '../search/search.js';
 import { PVP_MAX_OPPONENTS, PVP_SEATS } from '../search/pvpObjective.js';
@@ -60,7 +60,8 @@ export function normaliseSetup(raw, character, defaultEffort = 'standard') {
   out.objective = o && allowed.includes(o.kind) ? o : { kind: allowed[0] };
   if (out.objective.kind === 'survival' && !(Number.isFinite(out.objective.seconds) && out.objective.seconds >= 5)) delete out.objective.seconds;
   if (out.objective.kind === 'win-chance') out.objective = { kind: 'win-chance' }; // no target: it maximises the clear rate
-  if (out.objective.kind === 'win-rate' && !(Number.isFinite(out.objective.target) && out.objective.target >= WIN_RATE_TARGET.min && out.objective.target <= WIN_RATE_TARGET.max)) delete out.objective.target;
+  const bound = out.objective.kind === 'push' ? PUSH_TARGET : WIN_RATE_TARGET;
+  if ((out.objective.kind === 'win-rate' || out.objective.kind === 'push') && !(Number.isFinite(out.objective.target) && out.objective.target >= bound.min && out.objective.target <= bound.max)) delete out.objective.target;
 
   if (r.space && typeof r.space === 'object') {
     for (const k of Object.keys(SPACE_DEFAULTS)) if (typeof r.space[k] === 'boolean') out.space[k] = r.space[k];

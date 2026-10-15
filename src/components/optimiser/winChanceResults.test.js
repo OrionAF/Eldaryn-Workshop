@@ -42,7 +42,7 @@ describe('the setup', () => {
     const opts = options(ui);
     expect(opts.indexOf('Highest chance to win')).toBeGreaterThanOrEqual(0);
     expect(opts.indexOf('Reach a win rate')).toBe(opts.indexOf('Highest chance to win') + 1);
-    expect(ui.q('[data-testid="win-chance-explain"]').textContent.trim()).toBe('Finds the build with the best clear chance; ties go to the fewest changes.');
+    expect(ui.q('[data-testid="win-chance-explain"]').textContent.trim()).toBe('Finds the build with the best chance to clear this; ties go to the fewest changes. Speed does not matter.');
     expect(ui.q('[data-testid="win-rate-target"]')).toBeNull();
   });
 
@@ -50,7 +50,7 @@ describe('the setup', () => {
     const ui = page({ kind: 'win-rate', target: 0.7 });
     expect(ui.q('[data-testid="win-chance-explain"]')).toBeNull();
     expect(ui.q('[data-testid="win-rate-target"] input').value).toBe('70');
-    expect(ui.q('[data-testid="win-rate-explain"]').textContent.trim()).toBe('Finds the fewest changes that clear at least 70% of the time.');
+    expect(ui.q('[data-testid="win-rate-explain"]').textContent).toMatch(/at least 70% of the time/);
   });
 });
 

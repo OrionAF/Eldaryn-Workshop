@@ -145,7 +145,11 @@ table is HARD is **[DERIVED]** from a server log that matches it.
   general rule.
 
 The fight is server-run: the start response carries `celestialResult.ticks`, and the client only
-replays them. No Celestial fight simulator was found in the bundle.
+replays them. No Celestial fight simulator was found in the bundle. The fight's rules, read from five
+server logs of 2026-10-15 (scaling by the party's highest level, the Burden's effects, Block Fury,
+Judgment Strike, Overload, targeting, the stack player, the per-tick order) and the open items:
+`see combat-pve.md §20`. The config summarised here is in `data/celestial.json` (the per-level tables
+are left out: they follow from the bands).
 
 ---
 

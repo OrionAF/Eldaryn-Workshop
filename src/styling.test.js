@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const walk = (d) =>
@@ -42,7 +42,7 @@ describe('legacy styling remnants', () => {
   });
 
   it('every native <select> lives in ui/Select', () => {
-    const bad = svelte.filter((f) => /<select\b/.test(read(f)) && !f.endsWith('ui/Select.svelte')).map(rel);
+    const bad = svelte.filter((f) => /<select\b/.test(read(f)) && rel(f).split(sep).join('/') !== 'components/ui/Select.svelte').map(rel);
     expect(bad).toEqual([]);
   });
 

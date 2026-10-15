@@ -34,6 +34,7 @@ Character = {
   baseResidual: { attack, hp, attackSpeed, critChance, critDamage },   // tier-1 base
   skills: Record<skillId, level>,  attunementBans: SecondaryStatType[],
   fortress: { owned: ('TOP'|'BOTTOM'|'CORE')[] },
+  server: number | null,                    // the game server; sets the Fortress boss clan cap (clan-fortress.md §3.1)
   equipment: { set1: Equip, set2: Equip, oblivion: Equip },
      Equip = { items: Record<Slot, Item | null>,        // base 9 slots; oblivion 12
                enchantSlots: Record<BaseSlot, stoneId | null> }
@@ -135,7 +136,7 @@ search time. Dominion is derived (`totalDominion` from talents + transcendence +
   character's own step only warns (`itemWarnings`). Minor-glyph secondary quality is
   clamped to `GLYPH_QUALITY_BANDS[rarity]`; pet secondary values are only validated
   (finite, >= 0, 3 dp), the observed envelope being a UI hint and manual-entry clamp.
-- **Fortress is character-wide** (clan state), not per preset as in v1.
+- **Fortress is character-wide** (clan state), not per preset as in v1. So is `server` (whole number or null, default null; kept by the `fortress` domain): it only picks the clan cap of the Fortress boss target.
 - **Value units:** Attack Speed and Crit Damage are multiplier deltas, other
   percent stats are percentage points; flat stats print with "." as a thousands
   separator in the game UI while percentages use "." as a decimal point
@@ -322,6 +323,7 @@ stored or committed; only the mapped fields below survive, and `normaliseCharact
 | Profile | v2 | Note |
 |---|---|---|
 | `player.{name,class,level}` | core | player id, clan, quests, shop, currencies are never read |
+| `player.server` | `server` | whole number, else null |
 | `equipment` / `equipment2` + `enchantSlots(2)` | `equipment.set1` / `set2` | Oblivion-only slots are not in the base sets; `qualityBonus` is dropped, `quality` stays null |
 | `oblivionPrestige.oblivion.{equipment,enchantSlots,enchantStones,level}` | `equipment.oblivion`, `oblivionEnchantStones`, `oblivion.level` | `unlocked`, `activeRealm` too |
 | `enchantStones` | `enchantStones` | `OBLIVION_POWER` rows dropped (derived); `activated` kept, so a sealed stone adds nothing |

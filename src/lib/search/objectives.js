@@ -9,13 +9,14 @@
 //   {kind: 'raid', id: 'raid_1', step: 1..8}          village raid step, 5 mobs
 //   {kind: 'oblivion', floor: n, applyOutputCut?: false}   forces the Oblivion realm; power comes from the fighter
 //   {kind: 'worldBoss', affinity?: 'NONE'|'FORTIFIED'|'ENRAGED'}
-//   {kind: 'fortressBoss', group: 'TOP'|'BOTTOM'|'CORE', stars?: 1..5 (TOP, BOTTOM), aliveDefenders?: 0+, maxClanSize?: 50, kills?: 0+}
+//   {kind: 'fortressBoss', group: 'TOP'|'BOTTOM'|'CORE', stars?: 1..5 (TOP, BOTTOM), aliveDefenders?: 0+, server?: whole number|null (default the character's), shieldPercent?: 0..60, kills?: 0+}
 //                                                     the clan-war Fortress boss, 60 s, dps only; the rest sets the credit multipliers
 //   {kind: 'custom', mob: MobSpec, seconds?: 60}      a user-entered mob
 //   {kind: 'pvp', opponentIds: string[], seats}       saved opponents (pvpObjective.js); needs `{character}`
 // An OBJECTIVE is what "better" means: {kind: 'dps'|'survival', seconds?} (survival: custom mobs only) or
-// {kind: 'win-chance'} (the highest chance to clear the step before dying or the time cap) or
-// {kind: 'win-rate', target?: 0.01..1} (the fewest changes that clear it at least that often; default 0.95).
+// {kind: 'win-chance'} (the highest chance to clear the step before dying or the time cap),
+// {kind: 'win-rate', target?: 0.01..1} (the fewest changes that clear it at least that often; default 0.95) or
+// {kind: 'push', target?: 0.1..1} (the deepest rung of the target's ladder cleared at that rate; search/push.js runs it).
 import { fightRng } from '../engine/rng.js';
 import {
   stableStringify, meanInterval, wilsonInterval, pairedT, pairedProportion, binomialUpper,
@@ -25,16 +26,16 @@ import { chapterMobs, dungeonMobs, raidMobs, oblivionFloorMob, worldBossMob } fr
 import { raidById } from '../game/fortress.js';
 import { CLASSIC_DUNGEONS } from '../game/pveContent.js';
 import { WORLD_BOSS_AFFINITIES } from '../game/worldBoss.js';
-import { FORTRESS_STARS } from '../game/fortress.js';
+import { FORTRESS_STARS, clanCapForServer } from '../game/fortress.js';
 import {
-  fortressBossMob, fortressBossMultipliers, FORTRESS_BOSS_GROUPS, FORTRESS_BOSS_DEFAULT_CLAN_SIZE,
+  fortressBossMob, fortressBossMultipliers, FORTRESS_BOSS_GROUPS, MAX_SHIELD_PERCENT,
 } from '../engine/pve/fortressBoss.js';
 import { formatFlat } from '../format.js';
 import { setOf } from './sampler.js';
 import { resolvePvpTarget, makePvpObjective, PVP_TARGET_KIND, PVP_OBJECTIVE_KIND } from './pvpObjective.js';
 
 // The PVE kinds. The PVP pair is kept apart: it is only valid together and needs the character's opponents.
-export const OBJECTIVE_KINDS = ['dps', 'survival', 'win-chance', 'win-rate'];
+export const OBJECTIVE_KINDS = ['dps', 'survival', 'win-chance', 'win-rate', 'push'];
 
 /** The two win-rate goals (simulation.md §Win rate): 'win-chance' maximises the clear rate, 'win-rate' reaches a target. */
 export const isWinRateKind = (kind) => kind === 'win-chance' || kind === 'win-rate';
@@ -43,10 +44,10 @@ export const TARGET_KINDS = ['dummy', 'chapter', 'dungeon', 'raid', 'oblivion', 
 // The first kind is the target's default (the Optimiser picks it): the highest chance to win for content you clear.
 const COMPAT = {
   dummy: ['dps'],
-  chapter: ['win-chance', 'win-rate'],
-  dungeon: ['win-chance', 'win-rate'],
-  raid: ['win-chance', 'win-rate'],
-  oblivion: ['win-chance', 'win-rate'],
+  chapter: ['win-chance', 'win-rate', 'push'],
+  dungeon: ['win-chance', 'win-rate', 'push'],
+  raid: ['win-chance', 'win-rate', 'push'],
+  oblivion: ['win-chance', 'win-rate', 'push'],
   worldBoss: ['dps'],
   fortressBoss: ['dps'],
   custom: ['dps', 'win-chance', 'win-rate', 'survival'],
@@ -172,14 +173,22 @@ export function resolveTarget(raw = { kind: 'dummy' }, { character } = {}) {
       throw new Error(`Fortress stars must be a whole number from 1 to ${FORTRESS_STARS.max}, got ${stars}`);
     }
     const aliveDefenders = raw.aliveDefenders ?? 0;
-    const maxClanSize = raw.maxClanSize ?? FORTRESS_BOSS_DEFAULT_CLAN_SIZE;
+    const server = raw.server !== undefined ? raw.server : character?.server ?? null;
+    // a saved spec's explicit `maxClanSize` stays an explicit cap (it overrides the server's)
+    const maxClanSize = raw.maxClanSize ?? null;
+    const shieldPercent = raw.shieldPercent ?? null;
     const kills = raw.kills ?? 0;
     if (!nonNegInt(aliveDefenders)) throw new Error(`alive defenders must be a whole number from 0, got ${aliveDefenders}`);
-    if (!posInt(maxClanSize)) throw new Error(`max clan size must be a whole number from 1, got ${maxClanSize}`);
+    if (server !== null && !nonNegInt(server)) throw new Error(`server must be a whole number or null, got ${server}`);
+    if (maxClanSize !== null && !posInt(maxClanSize)) throw new Error(`max clan size must be a whole number from 1, got ${maxClanSize}`);
+    if (shieldPercent !== null && !(isNum(shieldPercent) && shieldPercent >= 0 && shieldPercent <= MAX_SHIELD_PERCENT)) {
+      throw new Error(`shield percent must be from 0 to ${MAX_SHIELD_PERCENT}, got ${shieldPercent}`);
+    }
+    const clanCap = maxClanSize ?? clanCapForServer(server);
     if (!nonNegInt(kills)) throw new Error(`kills must be a whole number from 0, got ${kills}`);
     const mob = fortressBossMob(group);
-    t.spec = { kind, group, ...(core ? {} : { stars }), aliveDefenders, maxClanSize, kills };
-    t.fortress = fortressBossMultipliers({ group, stars, aliveDefenders, maxClanSize, kills });
+    t.spec = { kind, group, ...(core ? {} : { stars }), aliveDefenders, server, ...(maxClanSize !== null ? { maxClanSize } : {}), ...(shieldPercent !== null ? { shieldPercent } : {}), kills };
+    t.fortress = { ...fortressBossMultipliers({ group, stars, aliveDefenders, clanCap, shieldPercent, kills }), clanCap };
     t.enemy = mob;
     t.maxMs = mob.fightDurationMs;
     t.seconds = mob.fightDurationMs / 1000;
@@ -328,7 +337,19 @@ export function winRateTarget(v) {
   return v;
 }
 
-const clamp01 = (x) => (Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 0);
+/** The default and the allowed range of a Push target (simulation.md §Push): it keeps the 10% floor. */
+export const PUSH_TARGET = Object.freeze({ default: WIN_RATE_TARGET.default, min: 0.1, max: 1 });
+
+/** A Push objective's target rate: the default when absent; throws outside [0.1, 1]. */
+export function pushTarget(v) {
+  if (v == null) return PUSH_TARGET.default;
+  if (!isNum(v) || v < PUSH_TARGET.min || v > PUSH_TARGET.max) {
+    throw new Error(`push target must be between ${PUSH_TARGET.min} and ${PUSH_TARGET.max}, got ${v}`);
+  }
+  return v;
+}
+
+const clamp01= (x) => (Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 0);
 // A loss never reaches 1, whatever the rounding of a nearly cleared step.
 const LOSS_CEILING = 1 - 1e-9;
 
@@ -464,6 +485,15 @@ export function makeObjective(raw = { kind: 'dps' }, target = resolveTarget({ ki
       },
       score: (s) => sumOf(s.main[0]) / Math.max(1, s.n),
     });
+  }
+
+  if (kind === 'push') {
+    // Push (simulation.md §Push) scores each rung with the win-rate objective; this echo names the goal
+    const w = makeObjective({ kind: 'win-rate', target: pushTarget(raw.target) }, target);
+    return {
+      ...w, kind, key: stableStringify({ kind, target: w.target }), spec: { kind, target: w.target },
+      label: `Push: deepest step at ${Math.round(w.target * 1000) / 10}%`,
+    };
   }
 
   if (isWinRateKind(kind)) {

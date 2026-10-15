@@ -20,16 +20,16 @@ function savedRun(objectiveKind, target = { kind: 'chapter', chapter: 1, level: 
 }
 
 describe('a saved setup with a retired objective', () => {
-  it.each(['ttk-median', 'ttk-p90'])('%s normalises to the target default (win rate on a dungeon)', (kind) => {
+  it.each(['ttk-median', 'ttk-p90'])('%s normalises to the target default (highest chance to win on a dungeon)', (kind) => {
     const s = normaliseSetup({ target: { kind: 'dungeon', id: 'dungeon_2_hard', step: 3 }, objective: { kind, seconds: 5 } }, character());
     expect(s.target).toEqual({ kind: 'dungeon', id: 'dungeon_2_hard', step: 3 });
-    expect(s.objective).toEqual({ kind: 'win-rate' });
+    expect(s.objective).toEqual({ kind: 'win-chance' });
   });
 
   it.each([
-    [{ kind: 'chapter', chapter: 2, level: 1 }, 'win-rate'],
-    [{ kind: 'raid', id: 'raid_1', step: 1 }, 'win-rate'],
-    [{ kind: 'oblivion', floor: 2 }, 'win-rate'],
+    [{ kind: 'chapter', chapter: 2, level: 1 }, 'win-chance'],
+    [{ kind: 'raid', id: 'raid_1', step: 1 }, 'win-chance'],
+    [{ kind: 'oblivion', floor: 2 }, 'win-chance'],
     [{ kind: 'worldBoss', affinity: 'ENRAGED' }, 'dps'],
   ])('survival on %j normalises to %s', (target, expected) => {
     const s = normaliseSetup({ target, objective: { kind: 'survival', seconds: 30 } }, character());
@@ -41,10 +41,12 @@ describe('a saved setup with a retired objective', () => {
     expect(normaliseSetup({ target, objective: { kind: 'survival' } }, character()).objective).toEqual({ kind: 'survival' });
   });
 
-  it('a win-rate target of 10 % is kept and 9 % falls back to the default', () => {
+  it('a win-rate target of 1 % is kept and 0.9 % falls back to the default; Push keeps its 10 % floor', () => {
     const target = { kind: 'dungeon', id: 'dungeon_1', step: 1 };
-    expect(normaliseSetup({ target, objective: { kind: 'win-rate', target: 0.1 } }, character()).objective).toEqual({ kind: 'win-rate', target: 0.1 });
-    expect(normaliseSetup({ target, objective: { kind: 'win-rate', target: 0.09 } }, character()).objective).toEqual({ kind: 'win-rate' });
+    expect(normaliseSetup({ target, objective: { kind: 'win-rate', target: 0.01 } }, character()).objective).toEqual({ kind: 'win-rate', target: 0.01 });
+    expect(normaliseSetup({ target, objective: { kind: 'push', target: 0.1 } }, character()).objective).toEqual({ kind: 'push', target: 0.1 });
+    expect(normaliseSetup({ target, objective: { kind: 'push', target: 0.09 } }, character()).objective).toEqual({ kind: 'push' });
+    expect(normaliseSetup({ target, objective: { kind: 'win-rate', target: 0.009 } }, character()).objective).toEqual({ kind: 'win-rate' });
   });
 });
 
@@ -84,6 +86,6 @@ describe('saved runs of a retired goal', () => {
 
   it('loading the settings of a retired run (were the button not disabled) lands on a valid setup', () => {
     const s = setupFromRun(savedRun('ttk-p90'), character());
-    expect(s.objective).toEqual({ kind: 'win-rate' });
+    expect(s.objective).toEqual({ kind: 'win-chance' });
   });
 });
