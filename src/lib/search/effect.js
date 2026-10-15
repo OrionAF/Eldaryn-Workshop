@@ -9,6 +9,7 @@
 import { metricKey } from '../engine/metrics.js';
 import { preparePveFighter } from '../engine/pve/fight.js';
 import { fighterDuelArgs } from '../engine/pvp/resolver.js';
+import { fortressPlayerDuelArgs } from '../engine/pve/fortressBoss.js';
 import { sigilBySpecies } from '../game/sigils.js';
 import { petDisplayName } from '../game/pets.js';
 import { mountBySpecies } from '../game/mountsGlyphs.js';
@@ -28,12 +29,14 @@ const PVE_UNCONDITIONED = new Set(['DAMAGE', 'DEBUFF', 'TRANSFORM']);
  * Fingerprint of everything the engine reads for this fighter. PVE: `preparePveFighter(f).inputs` (E1:
  * `fresh()` reads only these), with conditions the PVE spell pass ignores left out, plus the Oblivion
  * power an Oblivion fight reads from the stats. PVP: `fighterDuelArgs(f)` (the resolver's arguments).
+ * Fortress boss: `fortressPlayerDuelArgs(f)`, the duel arguments under the Fortress rules.
  * @param {import('../engine/types.js').Fighter} fighter
- * @param {'pve'|'pvp'} mode
+ * @param {'pve'|'pvp'|'fortress'} mode
  * @throws EngineInputError when the fighter cannot fight (engine/validate.js)
  */
 export function engineKey(fighter, mode) {
   if (mode === 'pvp') return metricKey('engine-pvp', fighterDuelArgs(fighter));
+  if (mode === 'fortress') return metricKey('engine-fortress', fortressPlayerDuelArgs(fighter));
   const { inputs } = preparePveFighter(fighter);
   const spells = inputs.spells.map((s) => {
     const { activationCondition, ...rest } = s;
@@ -214,7 +217,7 @@ export const addChange = (space, B, X, c) => space.canonical(withPart(space, B, 
  * Revert every change of X (relative to B) that leaves the engine inputs unchanged, one at a time,
  * until none does (A.5). A revert is kept only when the legalised result is legal and engine-identical.
  * @param {Object} space  createBuildSpace(...)
- * @param {{mode?: 'pve'|'pvp', keyOf?: (cand: Object) => string}} [o]
+ * @param {{mode?: 'pve'|'pvp'|'fortress', keyOf?: (cand: Object) => string}} [o]
  * @returns {{candidate: Object, inert: Object[]}}  `inert`: the changes reverted, in order
  */
 export function canonicalise(space, B, X0, { mode = space.mode, keyOf } = {}) {

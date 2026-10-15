@@ -245,7 +245,7 @@ export function runningSigils(character, cand) {
   return out;
 }
 
-/** Condition options a search mode explores (#51 #62): PVP every option; PVE only the self (MY_HP_BELOW) ones. */
+/** Condition options a search mode explores (#51 #62): PVP every option; PVE and the Fortress boss only the self (MY_HP_BELOW) ones. */
 export function conditionOptionsFor(species, spec, mode) {
   const all = sigilConditionOptions(species, spec);
   return mode === 'pvp' ? all : all.filter((o) => o === DEFAULT_CONDITION || SELF_CONDITIONS.includes(o));
@@ -255,7 +255,7 @@ export function conditionOptionsFor(species, spec, mode) {
  * The search space of one preset.
  * @param {Object} character  a normalised v2 Character
  * @param {Object|string} presetOrId
- * @param {{realm?: 'base'|'oblivion', mode?: 'pve'|'pvp', residual?: Object, toggles?: Object, powerFloor?: number|null}} [o]
+ * @param {{realm?: 'base'|'oblivion', mode?: 'pve'|'pvp'|'fortress', residual?: Object, toggles?: Object, powerFloor?: number|null}} [o]
  *   `mode` follows the target (`target.kind === 'pvp'`); `residual` is the preset's sheet residual
  *   (build/residual.js), added to every candidate's computed stats; `powerFloor` is the Combat Power
  *   guard (simulation.md §Build space): a candidate below it is not admissible

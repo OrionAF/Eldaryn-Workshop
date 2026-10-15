@@ -4,7 +4,7 @@
 
 | Order | Item | Size | Status |
 |---|---|---|---|
-| 1 | §15 Fortress boss fight from the server log | M | Queued |
+| 1 | §15 Fortress boss fight from the server log | M | Built on rebuild2/F2, not merged |
 | 2 | §11 Celestial Trial Optimiser target | S | Queued |
 | 3 | §6 Results say which pet, mount or glyph | S | Queued |
 | 4 | §1 Optimiser step list | S | Queued |
@@ -111,6 +111,25 @@ Measured on the user's Sentinel (`profile-sentinel-l85-oct15b.json`), Hard Forsa
 **Finding** (2026-10-15, a real `/fortress/boss-fight/start` log, fixture `fortress-boss-top-fight.json`): the server runs this fight with the Arena duel vocabulary (the player is the attacker, the boss the defender). The boss swings every 1 s for 500 ±15%, and the player's misses work (35 of 60 dodged). Elusive Supremacy never raised attack or speed: all 171 swings came at a steady 349 ms, and every hit was exactly the sheet attack. The real fight dealt 22.6M per second, against about 42M in the app's PVE-engine model. The app's Fortress sigil advice was therefore wrong.
 
 **Plan:** rebuild the fight on the right engine and replay-check it against the log tick by tick, then re-rank sigil sets for this target.
+
+**Status: built on rebuild2/F2, not merged.** The fight now runs on the arena duel engine with the Fortress rules the log shows (Game/clan-fortress.md §1.4; simulation.md, Fortress boss). The replay check (`engine/pve/fortressReplay.js`) passes every rule on the log. The app's dps for the logged attacker went from 41.7M to 22.2M; the log's 22.6M sits inside the model's one-fight range.
+
+**Sigil sets re-ranked** (the user's Sentinel, `profile-sentinel-l85-oct15b`, active preset, TOP 5 stars; every sigil set the sigil block can try, 299 sets, 200 fights each on common random numbers, seed 1; `src/lib/__fixtures__/real/fortressSigilRank.test.js`, run with `FORTRESS_RANK=1`). Dps is raw damage per second, before the clan multipliers.
+
+| Sigil set | Old engine (PVE) | New engine (duel) |
+|---|---|---|
+| Elusive Supremacy + Blinding Mark + Mist Veil | **#1** 34.98M | #188 22.14M |
+| Elusive Supremacy + Blinding Mark + Phantom Veil | **#2** 34.04M | #180 22.19M |
+| Ember Curse + Elusive Supremacy + Blinding Mark | **#3** 33.36M | #19 24.42M |
+| Elusive Supremacy + Mist Veil + Phantom Veil | **#4** 32.30M | #200 22.01M |
+| Venom Wound + Elusive Supremacy + Blinding Mark | **#5** 32.22M | #60 23.52M |
+| Venom Wound + Ember Curse + Elusive Supremacy (current) | #15 28.62M | **#1** 25.63M |
+| Venom Wound + Ember Curse + Siegebreaker Mark | #41 26.43M | **#2** 25.63M |
+| Venom Wound + Ember Curse + Hawk Focus | #45 26.09M | **#3** 25.30M |
+| Ember Curse + Elusive Supremacy + Siegebreaker Mark | #21 28.03M | **#4** 25.25M |
+| Ember Curse + Elusive Supremacy + Hawk Focus | #24 27.67M | **#5** 25.00M |
+
+The old engine's pick (Elusive Supremacy, Blinding Mark, Mist Veil) is the set the user fought the logged fight with. The new engine scores it 22.14M, close to the log's 22.6M. The optimiser itself (sigils only, Standard, seed 1) now keeps the current set ("No change measured better"); the old engine moved to that #1 set (+20%). Elusive Supremacy and Siegebreaker Mark tie because stack sigils do nothing here. Caveat: the new top sets lean on Venom Wound and Ember Curse damage. The boss's resist is a plain 20% (the game's "20% Spell resist", the engine's x0.8), but the log had no spell damage to check the rest of the spell path against. A Fortress log with a damage sigil would test it.
 
 ## 11. Celestial Trial (party of 2), and party roles
 
