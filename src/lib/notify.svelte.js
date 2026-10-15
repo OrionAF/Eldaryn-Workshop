@@ -62,11 +62,15 @@ export function dismissKey(key) {
 /**
  * On a route change: remove the info and success toasts that have been up for at least `minAgeMs`, so a
  * message about the page you left does not cover the next one. A toast raised just before the navigation
- * itself (an import that then opens its page) is younger than that and stays. Warnings and errors stay.
+ * itself (an import that then opens its page) is younger than that and stays for that one change. Warnings and errors stay.
  */
 export function dismissStale(minAgeMs = 1500) {
   const now = Date.now();
-  for (const t of toasts.filter((x) => !STICKY.has(x.kind) && now - x.at.getTime() >= minAgeMs)) dismiss(t.id);
+  for (const t of toasts.filter((x) => !STICKY.has(x.kind))) {
+    // A young toast survives the one navigation it announced; the next route change removes it.
+    if (t.carried || now - t.at.getTime() >= minAgeMs) dismiss(t.id);
+    else t.carried = true;
+  }
 }
 
 /** Hover or focus on a toast holds its timer; leaving restarts it. */

@@ -16,7 +16,7 @@
   import CIForest from './CIForest.svelte';
   import VerdictChip from './VerdictChip.svelte';
   import ScopeChip from './ScopeChip.svelte';
-  import { changeSummary, bundleText, dimensionLabel } from '../../lib/ui/optimiserView.js';
+  import { changeSummary, bundleText, dimensionLabel, onlyWith } from '../../lib/ui/optimiserView.js';
   import {
     fmtEstimate, fmtContrast, fmtContrastCi, fmtSigned, verdictText, nNeededText, verdictTone, fmtCount,
   } from '../../lib/ui/statsFormat.js';
@@ -99,28 +99,33 @@
       {#if row.changes.length}
         <p class="cap">Change · own effect (added alone to the current build, paired seeds) · same axis as above</p>
         {#each row.changes as c (c.id)}
+          {@const dep = onlyWith(c, row.changes)}
+          {@const eff = dep ? c.needed : c.own}
           <div class="abl">
             <span class="chg">{c.label}: {c.from} <span class="arrow">→</span> <b>{c.to}</b></span>
             <CIForest
               {domain}
-              est={c.own?.delta ?? null}
-              lo={c.own?.lo ?? null}
-              hi={c.own?.hi ?? null}
-              tone={c.own ? verdictTone(c.own) : 'est'}
-              label={sentence(c.own, c.label)}
+              est={eff?.delta ?? null}
+              lo={eff?.lo ?? null}
+              hi={eff?.hi ?? null}
+              tone={eff ? verdictTone(eff) : 'est'}
+              label={dep ? `${c.label}: only with ${dep}; without it ${fmtContrast(unit, eff)}` : sentence(c.own, c.label)}
             />
             <span class="delta">
-              {#if c.own}
+              {#if dep}
+                <span class="v {verdictTone(eff)}">{fmtContrast(unit, eff)}</span>
+                <span class="ci">Only with: {dep}</span>
+              {:else if c.own}
                 <span class="v {verdictTone(c.own)}">{fmtContrast(unit, c.own)}</span>
                 <span class="ci">{fmtContrastCi(unit, c.own)}</span>
               {:else}
                 <span class="ci">{unmeasured ? 'not measured' : 'no solo effect'}</span>
               {/if}
             </span>
-            <span class="verdict">{#if c.own}<VerdictChip verdict={c.own.verdict} />{/if}</span>
+            <span class="verdict">{#if c.own && !dep}<VerdictChip verdict={c.own.verdict} />{/if}</span>
             <span class="why">
               <ScopeChip scope={c.scope} target={targetOf(c)} sideEffects={c.sideEffects ?? []} />
-              {#if c.needed}
+              {#if c.needed && !dep}
                 <span>Without it: {fmtContrast(unit, c.needed)} {fmtContrastCi(unit, c.needed)}</span>
               {/if}
               {#if c.keptBecause}<span>{c.keptBecause === 'interaction' ? 'Kept for its interaction with other changes' : 'Kept for its own effect'}</span>{/if}

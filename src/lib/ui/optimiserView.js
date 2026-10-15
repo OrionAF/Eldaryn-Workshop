@@ -173,6 +173,18 @@ export function changeIdLabel(id, changes = []) {
   return DIMENSION_LABEL[kind] ?? 'Another change';
 }
 
+/**
+ * "Only with: X" for a change whose own effect is exactly zero because it works only together with another
+ * change (a talent allocation for the other set, minor glyphs on a newly chosen mount): the label of the
+ * change whose legality bundle forces it. Null for any other change. Its effect is `needed` (Without it).
+ */
+export function onlyWith(change, changes = []) {
+  const o = change?.own;
+  if (!o || !change.needed || o.delta !== 0 || o.lo !== 0 || o.hi !== 0) return null;
+  const driver = changes.find((x) => x.id !== change.id && (x.bundle ?? []).includes(change.id));
+  return driver ? driver.label : 'another change';
+}
+
 /** The "Comes with" text: the forced companions by name, every glyph socket counted together. */
 export function bundleText(bundle = [], changes = []) {
   const labels = [];
