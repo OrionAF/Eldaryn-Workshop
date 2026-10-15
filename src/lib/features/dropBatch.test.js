@@ -113,7 +113,7 @@ describe('prepareBatch and ranking', () => {
 
   it('with simulated results the best verdict carries the paired delta and its interval', async () => {
     const { request, rows, offsets } = prepareBatch(c, entries);
-    const { results, aborted } = await runSwapMetrics(request.items, { ...request, nSim: 8, seconds: 10 });
+    const { results, aborted } = await runSwapMetrics(request.items, { ...request, nSim: 8, seconds: 10, maxN: 8 });
     expect(aborted).toBe(false);
     const ranked = rankEntries(entries, rows, offsets, results);
     expect(ranked[0].entry.name).toBe('Big');
@@ -121,7 +121,7 @@ describe('prepareBatch and ranking', () => {
     expect(ranked[0].best.sim.delta).toMatchObject({ n: 8 });
     expect(ranked[0].best.sim.delta.lo).toBeGreaterThan(0);
     // the simulated numbers equal the single-drop view's: the same task on the same pair, no shared-before drift
-    const solo = await runSwapMetrics([{ presetId: request.items[0].presetId, before: request.items[0].before, after: request.items[0].after }], { nSim: 8, seconds: 10 });
+    const solo = await runSwapMetrics([{ presetId: request.items[0].presetId, before: request.items[0].before, after: request.items[0].after }], { nSim: 8, seconds: 10, maxN: 8 });
     expect(results[0].sim).toEqual(solo.results[0].sim);
   });
 
@@ -130,5 +130,61 @@ describe('prepareBatch and ranking', () => {
     const partial = [{ presetId: rows[0][0].presetId }];
     expect(entryResults(offsets, rows, 0, partial).every((x) => x === null)).toBe(true);
     expect(judgeEntry(rows[0], entryResults(offsets, rows, 0, partial)).basis).toBe('closed');
+  });
+});
+
+describe('judging per equipment set (#97, #100)', () => {
+  const sharedSet = () => {
+    const c = warrior();
+    c.presets[1].equipmentSet = 1; // both presets wear Set 1
+    return c;
+  };
+  const drop = parseDropBatch({ pendingItems: [bagItem({ name: 'Ring', slot: 'WEAPON', primaryStats: { attack: 20000, hp: 0 } })] }, sharedSet()).entries;
+  const res = (base, delta, verdict) => ({
+    sim: {
+      before: { mean: base }, after: { mean: base + delta },
+      delta: { delta, lo: delta - 1, hi: delta + 1, n: 64, zone: 1, verdict, significant: true },
+    },
+  });
+
+  it('presets on one set that disagree make the item mixed, not an upgrade (A +6 %, B -9 %)', () => {
+    const c = sharedSet();
+    const { rows, offsets } = prepareBatch(c, drop);
+    expect(rows[0].map((r) => r.setKey)).toEqual(['set1', 'set1']);
+    const results = [res(1000, 60, 'better'), res(1000, -90, 'worse')];
+    const best = judgeEntry(rows[0], results);
+    expect(best.verdict).toBe('mixed');
+    expect(best.setKey).toBe('set1');
+    expect(best.presetCount).toBe(2);
+    expect(best.upgrades).toBe(1);
+    expect(rankEntries(drop, rows, offsets, results)[0].best.verdict).toBe('mixed');
+  });
+
+  it('the best set wins: a clean upgrade for set 2 beats a mixed set 1', () => {
+    const c = warrior();
+    c.presets.push({ ...structuredClone(c.presets[0]), id: 'p3', name: 'Third', equipmentSet: 1 });
+    const { rows } = prepareBatch(c, drop);
+    expect(rows[0].map((r) => [r.presetId, r.setKey])).toEqual([['p1', 'set1'], ['p2', 'set2'], ['p3', 'set1']]);
+    const best = judgeEntry(rows[0], [res(1000, 60, 'better'), res(1000, 30, 'better'), res(1000, -90, 'worse')]);
+    expect(best.verdict).toBe('upgrade');
+    expect(best.setKey).toBe('set2');
+    expect(best.sets.map((s) => [s.setKey, s.verdict])).toEqual([['set1', 'mixed'], ['set2', 'upgrade']]);
+  });
+
+  it('carries the coverage of the verdict and the stats it did not judge', () => {
+    const c = sharedSet();
+    const hp = parseDropBatch({ pendingItems: [bagItem({ slot: 'WEAPON', primaryStats: { attack: 0, hp: 0 }, secondaryStats: [{ type: 'HEALTH_PERCENT', value: 20 }] })] }, c).entries;
+    const { rows } = prepareBatch(c, hp);
+    const best = judgeEntry(rows[0], [res(1000, 0, 'equivalent'), res(1000, 0, 'equivalent')]);
+    expect(best.verdict).toBe('sidegrade');
+    expect(best.coverage).toEqual(['dps']);
+    expect(best.coverageLabel).toBe('DPS only: defence not measured');
+    expect(best.notJudged).toContain('totalHealthPercent');
+  });
+
+  it('a metric unresolved at maxN ranks above a proven sidegrade and is labelled inconclusive', () => {
+    const c = sharedSet();
+    const { rows } = prepareBatch(c, drop);
+    expect(judgeEntry(rows[0], [res(1000, 1, 'unresolved'), res(1000, 0, 'equivalent')]).verdict).toBe('inconclusive');
   });
 });

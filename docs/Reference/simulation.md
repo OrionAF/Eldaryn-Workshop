@@ -199,3 +199,32 @@ missing indices (prefix extension; fight i depends on the stage seed and i alone
 one engine key share one entry. `compareSets` is the sequential comparator of §Statistics with the
 objective's own contrast at each look; `contrastSets` is one fixed-n contrast (confirm,
 attribution). Both return the Contrast shape plus `basis` and `higherIsBetter`.
+
+## Drop Check
+
+Code: `src/lib/features/swap.js` (`runSwapMetrics`, `contrastMetric`, `applyFamily`, `verdictFor`),
+`features/dropBatch.js`, worker task `tasks/dropCheck.js`.
+
+- **Metrics** (each after − before, same seed so fight i draws the same randomness on both sides):
+  `sim` DPS vs a training dummy (mean, paired t, δ relative), `survival` and `pvp` per opponent
+  (proportion, Tango, δ absolute). Each runs the sequential comparator from its first look
+  (`nSim`, `nSurvival`, `nPvp`) to `maxN`.
+- **Precision** (open decision Q4, `DROP_PRECISION`): Standard δ = 0.5 % DPS, 1 point for
+  proportions, `maxN` 32 768; Quick 1 % / 2 points / 8 192; Thorough 0.25 % / 0.5 point / 131 072.
+- **Family**: a preset's metrics share α = 0.05. Each comparator runs at α / metrics (so its shown
+  interval is Bonferroni-safe); `applyFamily` then applies Holm to the p-values (each times its
+  number of looks) and sets `delta.holmReject`, which can promote an `unresolved` metric.
+- **Verdict** (`verdictFor`): a metric is `up` / `down` only when better / worse **and** the effect
+  clears δ; `flat` when equivalent or inside δ; `unknown` when unresolved (unless Holm rejects).
+  `mixed` = up and down; else `inconclusive` if any metric is unknown ("too close to call"); else
+  `upgrade` / `downgrade` / `sidegrade`. `sidegrade` therefore means equivalence was shown.
+- **Coverage**: `coverage` lists the metrics measured and `notJudged` the changed stat keys no
+  measured metric can see (with survival and PVP off, every key outside `DPS_STAT_KEYS`), with
+  `coverageLabel` "DPS only: defence not measured".
+- **Batch**: applying a drop writes a whole equipment set, so `judgeEntry` aggregates the presets
+  wearing each set (`aggregateVerdict`) and ranks by the best set.
+- **Sources**: PVP opponents are `features/duel.js opponentFighter`, the Duel screen's own; an
+  opponent whose sheet lacks a required stat is skipped and listed (`dropOpponents`). Oblivion rows
+  anchor on the Oblivion sheet only for its owner preset (data-model.md §6); others recompute.
+- Without a simulation the verdict is the closed-form auto-attack estimate (`basis: 'closed'`,
+  `estimate: true`); it is never mixed with simulated results.

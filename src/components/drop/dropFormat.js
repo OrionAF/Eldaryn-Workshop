@@ -8,9 +8,10 @@ export const VERDICT_LABEL = {
   downgrade: 'Downgrade',
   sidegrade: 'Sidegrade',
   mixed: 'Mixed',
+  inconclusive: 'Too close to call',
   empty: '',
 };
-export const VERDICT_GLYPH = { upgrade: '▲', downgrade: '▼', sidegrade: '=', mixed: '±', empty: '' };
+export const VERDICT_GLYPH = { upgrade: '▲', downgrade: '▼', sidegrade: '=', mixed: '±', inconclusive: '?', empty: '' };
 
 /** 12345.6 -> "12.346" (the game's "." thousands separator; a dash for a non-number). */
 export function flat(n) {

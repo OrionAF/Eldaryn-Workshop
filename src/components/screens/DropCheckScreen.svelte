@@ -13,7 +13,7 @@
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { runOptimizerTask } from '../../lib/optimizerClient.js';
-  import { prepareSwap, groupBySet, buildEnemy, opponentFighter } from '../../lib/features/swap.js';
+  import { prepareSwap, groupBySet, buildEnemy, dropOpponents } from '../../lib/features/swap.js';
   import { dropHasStats } from '../../lib/model/drop.js';
   import { parseDropBatch, prepareBatch, rankEntries } from '../../lib/features/dropBatch.js';
   import { EQUIP_SETS } from '../../lib/model/equipment.js';
@@ -62,9 +62,9 @@
       : enemySpec.kind === 'oblivion' ? { kind: 'campaign', chapter: 1, level: 1 } : enemySpec,
   );
   const enemy = $derived(survivalOn ? buildEnemy(enemyEffective) : null);
-  const opponents = $derived(
-    (character.opponents ?? []).map((o) => ({ id: o.id, name: o.name, fighter: opponentFighter(o) })).filter((o) => o.fighter),
-  );
+  // The Duel screen's own opponent Fighters; one that cannot fight is listed as skipped (#93).
+  const opponentSet = $derived(dropOpponents(character));
+  const opponents = $derived(opponentSet.opponents);
   const chosenOpponents = $derived(pvpOn ? opponents.filter((o) => pvpIds.includes(o.id)) : []);
 
   const hasStats = $derived(drop ? dropHasStats(drop.item) : false);
@@ -336,13 +336,13 @@
 
           <label class="check">
             <input type="checkbox" bind:checked={simOn} />
-            <span>Simulated DPS (N={N_SIM}, {SECONDS} s)</span>
+            <span>Simulated DPS ({SECONDS} s, from N={N_SIM} until resolved)</span>
           </label>
 
           <div class="option-block">
             <label class="check">
               <input type="checkbox" bind:checked={survivalOn} />
-              <span>Survival vs an enemy (N={N_SURVIVAL})</span>
+              <span>Survival vs an enemy (from N={N_SURVIVAL} until resolved)</span>
             </label>
             {#if survivalOn}
               <EnemyPicker value={enemyEffective} {realm} playerLevel={character.level} onchange={(s) => (enemySpec = s)} />
@@ -352,7 +352,7 @@
           <div class="option-block">
             <label class="check">
               <input type="checkbox" bind:checked={pvpOn} />
-              <span>PVP win rate vs saved opponents (N={N_PVP})</span>
+              <span>PVP win rate vs saved opponents (from N={N_PVP} until resolved)</span>
             </label>
             {#if pvpOn}
               {#if opponents.length}
@@ -365,8 +365,11 @@
                   {/each}
                 </div>
               {:else}
-                <p class="hint">No saved opponents with a stat sheet yet. Add one on the Duel screen.</p>
+                <p class="hint">No saved opponents with a complete stat sheet yet. Add one on the Duel screen.</p>
               {/if}
+              {#each opponentSet.skipped as k (k.id)}
+                <p class="hint">{k.name} is skipped: its sheet lacks {k.missing.join(', ')}.</p>
+              {/each}
             {/if}
           </div>
         </div>

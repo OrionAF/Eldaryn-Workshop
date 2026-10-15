@@ -4,8 +4,10 @@
 //   prepareSwap()      main thread, synchronous: per preset, the stats before and after the swap, the
 //                      before/after Fighters and the closed-form auto-attack DPS (combat-pve.md §7).
 //   runSwapMetrics()   async, pure over engine/metrics.js (the worker task 'dropCheck' calls it):
-//                      sim DPS, survival and PVP win rate, each as a common-random-number paired delta.
-//   verdictFor()       upgrade / sidegrade / downgrade / mixed from those deltas and their intervals.
+//                      sim DPS, survival and PVP win rate, each a common-random-number paired contrast
+//                      resolved by the sequential comparator (engine/stats, simulation.md §Statistics).
+//   verdictFor()       upgrade / sidegrade / downgrade / mixed / inconclusive from those contrasts,
+//                      with the metrics it covers and the changed stats no metric judged.
 //
 // How the "after" stats are made. With a sheet (tier 2) the in-game numbers are authoritative, so the
 // item difference is added to them in raw space (engine/pipeline/anchoredDelta.js). Without a sheet the
@@ -13,11 +15,12 @@
 import { buildFighter } from '../build/fighter.js';
 import { computePresetStats } from '../build/stats.js';
 import { equipSetKey } from '../build/presetInputs.js';
-import { anchoredDelta } from '../engine/pipeline/anchoredDelta.js';
+import { anchoredDeltaDetailed } from '../engine/pipeline/anchoredDelta.js';
 import { sheetKeyMeta, toDisplay } from '../engine/pipeline/sheet.js';
 import {
-  dpsVsDummyAsync, survivalAsync, pvpWinRateAsync, pairedDelta,
+  dpsVsDummyAsync, survivalAsync, pvpWinRateAsync, meanCI, wilson, compareAsync, lookSchedule, holm,
 } from '../engine/metrics.js';
+import { opponentFighter, missingStats } from './duel.js';
 import { statByEnum } from '../game/stats.js';
 import { PVE_HARD_CHAPTER_OFFSET } from '../game/combatPve.js';
 import { raidById } from '../game/fortress.js';
@@ -33,6 +36,9 @@ const INERT = new Set(['PVP_ATTACK', 'PVP_DEFENSE']);
 const CONDUIT_KEY = { FLAME: 'totalFlameConduit', EARTHEN: 'totalEarthenConduit', DARK: 'totalDarkConduit' };
 
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+
+/** Display label of a ComputedStats key. */
+export const statKeyLabel = (key) => sheetKeyMeta(key)?.label ?? key;
 
 /** The ComputedStats key an item secondary feeds, or null when it feeds nothing. */
 export function secondaryKey(type) {
@@ -133,7 +139,8 @@ function withItem(character, setKey, slot, item) {
  *   `presetIds` null or omitted means every preset
  * @returns {Array<{
  *   presetId: string, name: string, setKey: 'set1'|'set2'|'oblivion', current: Object|null,
- *   source: 'sheet'|'computed', method: 'anchored'|'recomputed', rawDelta: Object<string, number>,
+ *   source: 'sheet'|'computed', method: 'anchored'|'recomputed', approx: boolean, errors: Object<string, number>,
+ *   sheetStatus: string, warnings: string[], rawDelta: Object<string, number>,
  *   before: Object, after: Object, statsBefore: Object, statsAfter: Object,
  *   closed: {before: number, after: number, delta: number, pct: number|null},
  * }>}  `before` / `after` are Fighters (plain data)
@@ -151,9 +158,13 @@ export function prepareSwap(character, { slot, item, realm = 'base', presetIds =
     const before = buildFighter(character, presetId, { realm });
     let after;
     let method;
+    let approx = false;
+    let errors = {};
     if (res.source === 'sheet') {
       method = 'anchored';
-      after = { ...before, stats: anchoredDelta(before.stats, rawDelta, { ...res.ctx, exact: res.exact }) };
+      const a = anchoredDeltaDetailed(before.stats, rawDelta, { ...res.ctx, exact: res.exact });
+      after = { ...before, stats: a.stats };
+      ({ approx, errors } = a);
     } else {
       method = 'recomputed';
       after = buildFighter(withItem(character, setKey, slot, item), presetId, { realm });
@@ -167,6 +178,10 @@ export function prepareSwap(character, { slot, item, realm = 'base', presetIds =
       current,
       source: res.source,
       method,
+      approx,
+      errors,
+      sheetStatus: res.sheetStatus,
+      warnings: res.warnings,
       rawDelta,
       before,
       after,
@@ -226,103 +241,198 @@ export function buildEnemy(spec) {
   return null;
 }
 
+
 /**
- * A saved opponent (rebuild-plan §3 `opponents[]`) as a Fighter for pvpWinRate. Its sheet is the stat
- * block. Opponents without a sheet cannot fight and give null.
+ * Saved opponents as Drop Check PVP targets. features/duel.js builds each Fighter, so Drop Check fights
+ * the same opponent the Duel screen does (Druid form and glyph gate included, #93). An opponent that
+ * cannot fight (a blank or partial sheet) is left out and listed with the required stats it lacks.
+ * @param {{opponents?: Object[]}} character
+ * @returns {{
+ *   opponents: Array<{id: string, name: string, fighter: Object}>,
+ *   skipped: Array<{id: string, name: string, missing: string[]}>,
+ * }}
  */
-export function opponentFighter(o) {
-  const stats = o?.sheet?.values ?? null;
-  if (!stats || typeof stats !== 'object') return null;
+export function dropOpponents(character) {
+  const opponents = [];
+  const skipped = [];
+  for (const o of character?.opponents ?? []) {
+    const fighter = opponentFighter(o);
+    const missing = missingStats(fighter);
+    if (missing.length) skipped.push({ id: o.id, name: o.name, missing });
+    else opponents.push({ id: o.id, name: o.name, fighter });
+  }
+  return { opponents, skipped };
+}
+
+// ---------------------------------------------------------------------------------------------
+// precision (open decision Q4, plan §F)
+
+/**
+ * Indifference zone and give-up size per comparison. `rel` is the relative DPS zone, `prob` the absolute
+ * survival / win-rate zone (docs/Reference/simulation.md §Statistics, sequential comparator).
+ */
+export const DROP_PRECISION = {
+  quick: { rel: 0.01, prob: 0.02, maxN: 8192 },
+  standard: { rel: 0.005, prob: 0.01, maxN: 32768 },
+  thorough: { rel: 0.0025, prob: 0.005, maxN: 131072 },
+};
+/** Family-wise level over the metrics of one preset. */
+export const FAMILY_ALPHA = 0.05;
+
+const precisionOf = (p) => DROP_PRECISION[p] ?? DROP_PRECISION.standard;
+
+const METRIC = {
+  dps: { statistic: 'mean', deltaKind: 'relative' },
+  survival: { statistic: 'proportion', deltaKind: 'absolute' },
+  pvp: { statistic: 'proportion', deltaKind: 'absolute' },
+};
+
+/** Value and interval of one side's samples, in the metric's own statistic. */
+function briefOf(kind, xs) {
+  if (kind === 'dps') {
+    const r = meanCI(xs);
+    return { mean: r.mean, lo: r.lo, hi: r.hi, n: r.n };
+  }
+  const w = wilson(xs.reduce((a, b) => a + b, 0), xs.length);
+  return { mean: w.p, lo: w.lo, hi: w.hi, n: w.n };
+}
+
+/**
+ * One metric: the after-minus-before contrast, resolved by the sequential comparator. `getBefore(n)` and
+ * `getAfter(n)` return the first n per-fight outcomes (same fight index, same random draws on both sides).
+ * `alpha` is already divided by the metric family (see applyFamily).
+ *
+ * @param {'dps'|'survival'|'pvp'} kind
+ * @param {{n0: number, maxN: number, alpha?: number, precision?: string, seed?: number}} o
+ * @returns {Promise<{before: Object, after: Object, delta: Object}>}  `delta.verdict` is
+ *   'better' | 'worse' | 'equivalent' | 'unresolved'; `delta.zone` the indifference zone in the metric's units
+ */
+export async function contrastMetric(kind, getBefore, getAfter, { n0, maxN, alpha = FAMILY_ALPHA, precision = 'standard', seed = 1 }) {
+  const prec = precisionOf(precision);
+  const spec = METRIC[kind];
+  const cap = Math.max(1, Math.floor(maxN));
+  const first = Math.min(Math.max(1, Math.floor(n0)), cap);
+  let lastBefore = [];
+  let lastAfter = [];
+  const r = await compareAsync(
+    async (n) => (lastAfter = await getAfter(n)),
+    async (n) => (lastBefore = await getBefore(n)),
+    { ...spec, delta: kind === 'dps' ? prec.rel : prec.prob, alpha, n0: first, maxN: cap, seed },
+  );
   return {
-    stats,
-    class: o.class,
-    spec: o.spec ?? null,
-    level: o.level,
-    sigils: o.sigils ?? [],
-    utility: o.utility ?? null,
-    ancient: o.ancient ?? null,
-    conditions: o.conditions ?? {},
-    glyphMods: o.majorGlyphs ?? [],
-    altarTier: o.altarTier ?? 1,
+    before: briefOf(kind, lastBefore.slice(0, r.n)),
+    after: briefOf(kind, lastAfter.slice(0, r.n)),
+    delta: {
+      delta: r.delta, lo: r.lo, hi: r.hi, n: r.n, significant: r.significant, verdict: r.verdict,
+      pct: r.pct, zone: r.zone, p: r.p, sd: r.sd, nNeeded: r.nNeeded, method: r.method,
+      alphaAdj: r.alphaAdj, looks: r.looks, nLooks: lookSchedule(first, cap).length, maxN: cap, seed,
+    },
   };
+}
+
+const contrastsOf = (res) => [res?.sim, res?.survival, ...(res?.pvp ?? [])].filter((m) => m?.delta);
+
+/**
+ * Holm step-down over one preset's metrics (the family). Each p-value is first multiplied by the number of
+ * looks its comparator spent (Bonferroni over looks). Adds `delta.pHolm` and `delta.holmReject` in place.
+ * @returns {Object} the same `res`
+ */
+export function applyFamily(res, alpha = FAMILY_ALPHA) {
+  const ms = contrastsOf(res);
+  if (!ms.length) return res;
+  const ps = ms.map((m) => Math.min(1, (m.delta.p ?? 1) * (m.delta.nLooks ?? 1)));
+  const h = holm(ps, alpha);
+  ms.forEach((m, i) => {
+    m.delta.pHolm = h.adjusted[i];
+    m.delta.holmReject = h.reject[i];
+  });
+  return res;
 }
 
 // ---------------------------------------------------------------------------------------------
 // metrics (pure over engine/metrics.js; runs in the worker)
 
-const brief = (r) => ({ mean: r.mean ?? r.p, lo: r.lo, hi: r.hi, n: r.n });
-
-/** Paired comparison of two runs that used the same seed and kept their samples. */
-function compare(a, b) {
-  const d = pairedDelta(a.samples, b.samples);
-  return { before: brief(a), after: brief(b), delta: { delta: d.delta, lo: d.lo, hi: d.hi, n: d.n, significant: d.significant } };
-}
+const ABORTED = Symbol('aborted');
 
 /**
  * Run the requested metrics for every item. Before and after use the same seed, so fight i sees the
- * same random draws on both sides (common random numbers) and the paired delta cancels most noise.
+ * same random draws on both sides (common random numbers). Each metric is a sequential comparison: it
+ * looks at n0, 2 n0, 4 n0 ... fights and stops when the contrast is better, worse or equivalent
+ * (within the precision zone), or at `maxN`, where it is reported `unresolved`. A preset's metrics share
+ * one family-wise level, split evenly (`alpha / metrics`) and re-checked with Holm (applyFamily).
  *
  * @param {Array<{presetId: string, before: Object, after: Object, baseKey?: string}>} items  Fighters, plain data;
- *   `baseKey` marks items whose `before` is identical so it is simulated once
+ *   `baseKey` marks items whose `before` is identical so its samples are drawn once and extended on demand
  * @param {{
  *   sim?: boolean, seconds?: number, nSim?: number,
  *   enemy?: {mobs: Object[], oblivion?: boolean}|null, survivalSeconds?: number, nSurvival?: number,
  *   opponents?: Array<{id: string, name?: string, fighter: Object}>, nPvp?: number, seed?: number,
- * }} o
+ *   precision?: 'quick'|'standard'|'thorough', maxN?: number,
+ * }} o  `nSim` / `nSurvival` / `nPvp` are the first look of each comparison, not its size
  * @param {{signal?: AbortSignal, onProgress?: Function}} [ctx]  progress is {done, total} in whole metrics
  * @returns {Promise<{results: Array<Object>, aborted: boolean}>}  cancelling returns what finished
  */
 export async function runSwapMetrics(items, o = {}, { signal, onProgress } = {}) {
   const {
     sim = true, seconds = 60, nSim = 32, enemy = null, survivalSeconds = 60, nSurvival = 200,
-    opponents = [], nPvp = 64, seed = 1,
+    opponents = [], nPvp = 64, seed = 1, precision = 'standard',
   } = o;
+  const maxN = o.maxN ?? precisionOf(precision).maxN;
   const perItem = (sim ? 1 : 0) + (enemy ? 1 : 0) + opponents.length;
   const total = items.length * perItem;
+  const alpha = FAMILY_ALPHA / Math.max(1, perItem);
   let done = 0;
   const step = () => onProgress?.({ done: ++done, total });
-  const common = { seed, signal, keepSamples: true };
+  const common = { seed, signal, keepSamples: true, cache: false };
   const results = [];
   let aborted = false;
-  // Items that share a `baseKey` have the same "before" Fighter (a batch of drops against one preset):
-  // its runs are done once and reused. Same seed, so the reuse changes no number.
-  const baselines = new Map();
-  const baseline = async (item, metric, run) => {
-    if (item.baseKey == null) return run();
-    const k = `${item.baseKey}|${metric}`;
-    if (!baselines.has(k)) baselines.set(k, await run());
-    return baselines.get(k);
-  };
 
-  outer: for (const item of items) {
-    const r = { presetId: item.presetId };
-    results.push(r);
-    if (sim) {
-      const a = await baseline(item, 'sim', () => dpsVsDummyAsync(item.before, { ...common, seconds, n: nSim }));
-      const b = await dpsVsDummyAsync(item.after, { ...common, seconds, n: nSim });
-      if (a.aborted || b.aborted || signal?.aborted) { aborted = true; break outer; }
-      r.sim = compare(a, b);
-      step();
-    }
-    if (enemy) {
-      const optsFor = (f) => (enemy.oblivion ? { oblivion: { power: f.stats?.totalOblivionPower ?? 0 } } : {});
-      const run = (f) => survivalAsync(f, enemy.mobs, { ...common, seconds: survivalSeconds, n: nSurvival, opts: optsFor(f) });
-      const a = await baseline(item, 'survival', () => run(item.before));
-      const b = await run(item.after);
-      if (a.aborted || b.aborted || signal?.aborted) { aborted = true; break outer; }
-      r.survival = compare(a, b);
-      step();
-    }
-    if (opponents.length) {
-      r.pvp = [];
-      for (const opp of opponents) {
-        const a = await baseline(item, `pvp:${opp.id}`, () => pvpWinRateAsync(item.before, opp.fighter, { ...common, n: nPvp }));
-        const b = await pvpWinRateAsync(item.after, opp.fighter, { ...common, n: nPvp });
-        if (a.aborted || b.aborted || signal?.aborted) { aborted = true; break outer; }
-        r.pvp.push({ opponentId: opp.id, name: opp.name ?? opp.id, ...compare(a, b) });
+  // Samples per side and metric, extended on demand (a longer run is a prefix-stable superset of a shorter
+  // one, so reusing a prefix changes no number). Items that share a `baseKey` have the same "before"
+  // Fighter (a batch of drops against one preset): its samples are drawn once.
+  const store = new Map();
+  const sampler = (key, run) => async (n) => {
+    const have = store.get(key);
+    if (have && have.length >= n) return have.length === n ? have : have.slice(0, n);
+    const r = await run(n);
+    if (r.aborted || signal?.aborted) throw ABORTED;
+    store.set(key, r.samples);
+    return r.samples;
+  };
+  const pair = (item, idx, metric, runFor) => [
+    sampler(item.baseKey == null ? `${idx}|before|${metric}` : `${item.baseKey}|${metric}`, runFor(item.before)),
+    sampler(`${idx}|after|${metric}`, runFor(item.after)),
+  ];
+  const contrast = (kind, [getBefore, getAfter], n0) => contrastMetric(kind, getBefore, getAfter, { n0, maxN, alpha, precision, seed });
+
+  try {
+    for (const [idx, item] of items.entries()) {
+      const r = { presetId: item.presetId };
+      results.push(r);
+      if (sim) {
+        r.sim = await contrast('dps', pair(item, idx, 'sim', (f) => (n) => dpsVsDummyAsync(f, { ...common, seconds, n })), nSim);
         step();
       }
+      if (enemy) {
+        const optsFor = (f) => (enemy.oblivion ? { oblivion: { power: f.stats?.totalOblivionPower ?? 0 } } : {});
+        const runFor = (f) => (n) => survivalAsync(f, enemy.mobs, { ...common, seconds: survivalSeconds, n, opts: optsFor(f) });
+        r.survival = await contrast('survival', pair(item, idx, 'survival', runFor), nSurvival);
+        step();
+      }
+      if (opponents.length) {
+        r.pvp = [];
+        for (const opp of opponents) {
+          const runFor = (f) => (n) => pvpWinRateAsync(f, opp.fighter, { ...common, n });
+          const c = await contrast('pvp', pair(item, idx, `pvp:${opp.id}`, runFor), nPvp);
+          r.pvp.push({ opponentId: opp.id, name: opp.name ?? opp.id, ...c });
+          step();
+        }
+      }
+      applyFamily(r);
     }
+  } catch (e) {
+    if (e !== ABORTED) throw e;
+    aborted = true;
   }
   return { results, aborted };
 }
@@ -330,57 +440,90 @@ export async function runSwapMetrics(items, o = {}, { signal, onProgress } = {})
 // ---------------------------------------------------------------------------------------------
 // verdict
 
-/** A DPS change smaller than this (percent) is a sidegrade even when the interval excludes zero. */
+/** The closed-form DPS change smaller than this (percent) is a sidegrade. It is an estimate, never a result. */
 export const NEUTRAL_PCT = 0.25;
-/** The same floor for survival / win-rate changes, in probability (0.005 = half a percentage point). */
-export const NEUTRAL_PROB = 0.005;
 
-/** 'up' | 'down' | 'flat' for a paired delta, from its interval and a minimum size. */
-export function signalOf(delta, minSize = 0) {
-  if (!delta || delta.delta == null) return 'flat';
-  if (Math.abs(delta.delta) < minSize) return 'flat';
-  if (delta.lo > 0) return 'up';
-  if (delta.hi < 0) return 'down';
-  return 'flat';
-}
+/** Stat keys the training-dummy DPS run can move (it has no defence, no damage dealt to the player). */
+export const DPS_STAT_KEYS = new Set([
+  'totalAttack', 'totalAttackPercent', 'totalAttackSpeed', 'totalCritChance', 'totalCritDamage', 'totalDoubleHit',
+  'totalSpellDamage', 'totalSpellCritChance', 'totalMinionAttack', 'totalMinionAttackSpeed', 'totalMinionCritChance',
+  'totalFlameConduit', 'totalEarthenConduit', 'totalDarkConduit',
+]);
+
+const COVERAGE_LABEL = { dps: 'DPS', survival: 'survival', pvp: 'PVP win rate' };
 
 /**
- * The DPS signal. With a sim result it is the paired CI relative to the starting DPS; without one it is
- * the closed-form change against NEUTRAL_PCT (no interval: the closed form is deterministic).
+ * 'up' | 'down' | 'flat' | 'unknown' for one contrast. An effect inside the indifference zone is flat even
+ * when its interval excludes zero; an unresolved contrast is unknown unless Holm rejects it.
  */
-export function dpsSignal(row, simResult) {
-  if (simResult?.sim) {
-    const base = simResult.sim.before.mean;
-    return signalOf(simResult.sim.delta, base > 0 ? (base * NEUTRAL_PCT) / 100 : 0);
+export function metricSignal(d) {
+  if (!d || !d.verdict) return 'unknown';
+  const small = Number.isFinite(d.zone) && Math.abs(d.delta) < d.zone;
+  if (d.verdict === 'equivalent') return 'flat';
+  if (d.verdict === 'better' || d.verdict === 'worse') {
+    if (small) return 'flat';
+    return d.verdict === 'better' ? 'up' : 'down';
   }
+  if (d.holmReject && !small && d.delta !== 0) return d.delta > 0 ? 'up' : 'down';
+  return 'unknown';
+}
+
+/** The closed-form signal: the deterministic auto-attack change against NEUTRAL_PCT. */
+function closedSignal(row) {
   const pct = row.closed.pct;
   if (pct == null || Math.abs(pct) < NEUTRAL_PCT) return 'flat';
   return pct > 0 ? 'up' : 'down';
 }
 
 /**
- * Verdict for one preset: 'upgrade' (something improves, nothing worsens), 'downgrade' (the reverse),
- * 'mixed' (both), 'sidegrade' (nothing moves beyond noise).
- * @param {{closed: {pct: number|null}}} row  a prepareSwap row
+ * Verdict for one preset.
+ *  'upgrade'      something improves, nothing worsens, nothing is unresolved
+ *  'downgrade'    the reverse
+ *  'mixed'        something improves and something worsens
+ *  'sidegrade'    every measured metric is equivalent within the precision zone
+ *  'inconclusive' a metric was still unresolved at its maxN ("too close to call") and nothing contradicts
+ * Without a simulation the closed-form estimate decides (`basis: 'closed'`, `estimate: true`).
+ *
+ * `coverage` names the metrics measured and `notJudged` the stat keys this item changes that no measured
+ * metric can see (HP% with survival and PVP off), so "Sidegrade" is never read as "defence is fine".
+ *
+ * @param {{closed: {pct: number|null}, rawDelta?: Object<string, number>}} row  a prepareSwap row
  * @param {Object|null} [simResult]  its runSwapMetrics result, when it has run
- * @returns {{verdict: 'upgrade'|'sidegrade'|'downgrade'|'mixed', basis: 'sim'|'closed', signals: Object}}
+ * @returns {{
+ *   verdict: 'upgrade'|'sidegrade'|'downgrade'|'mixed'|'inconclusive', basis: 'sim'|'closed', estimate: boolean,
+ *   signals: Object<string, string>, unresolved: string[], coverage: string[], coverageLabel: string, notJudged: string[],
+ * }}
  */
 export function verdictFor(row, simResult = null) {
-  const signals = { dps: dpsSignal(row, simResult) };
-  if (simResult?.survival) signals.survival = signalOf(simResult.survival.delta, NEUTRAL_PROB);
-  (simResult?.pvp ?? []).forEach((p, i) => { signals[`pvp${i}`] = signalOf(p.delta, NEUTRAL_PROB); });
+  const signals = {};
+  const coverage = [];
+  if (simResult?.sim) { signals.dps = metricSignal(simResult.sim.delta); coverage.push('dps'); }
+  if (simResult?.survival) { signals.survival = metricSignal(simResult.survival.delta); coverage.push('survival'); }
+  if (simResult?.pvp?.length) {
+    simResult.pvp.forEach((p, i) => { signals[`pvp${i}`] = metricSignal(p.delta); });
+    coverage.push('pvp');
+  }
+  const basis = Object.keys(signals).length ? 'sim' : 'closed';
+  if (basis === 'closed') signals.dps = closedSignal(row);
   const all = Object.values(signals);
   const up = all.includes('up');
   const down = all.includes('down');
-  const verdict = up && down ? 'mixed' : up ? 'upgrade' : down ? 'downgrade' : 'sidegrade';
-  return { verdict, basis: simResult?.sim ? 'sim' : 'closed', signals };
+  const unresolved = Object.keys(signals).filter((k) => signals[k] === 'unknown');
+  const verdict = up && down ? 'mixed' : unresolved.length ? 'inconclusive' : up ? 'upgrade' : down ? 'downgrade' : 'sidegrade';
+  const everything = coverage.includes('survival') || coverage.includes('pvp');
+  const notJudged = everything ? [] : Object.keys(row?.rawDelta ?? {}).filter((k) => !DPS_STAT_KEYS.has(k));
+  const coverageLabel = !coverage.length ? 'Closed-form auto-attack estimate'
+    : everything ? coverage.map((c) => COVERAGE_LABEL[c]).join(', ')
+      : 'DPS only: defence not measured';
+  return { verdict, basis, estimate: basis === 'closed', signals, unresolved, coverage, coverageLabel, notJudged };
 }
 
 /** Aggregate verdict of a set of preset verdicts (an Apply button writes to the whole set). */
 export function aggregateVerdict(verdicts) {
+  if (!verdicts.length) return 'empty';
   const up = verdicts.some((v) => v === 'upgrade' || v === 'mixed');
   const down = verdicts.some((v) => v === 'downgrade' || v === 'mixed');
-  if (!verdicts.length) return 'empty';
   if (verdicts.includes('mixed') || (up && down)) return 'mixed';
+  if (verdicts.includes('inconclusive')) return 'inconclusive';
   return up ? 'upgrade' : down ? 'downgrade' : 'sidegrade';
 }

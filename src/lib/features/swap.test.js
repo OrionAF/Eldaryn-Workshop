@@ -1,8 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import * as swap from './swap.js';
 import {
-  itemRawDelta, autoAttackDps, prepareSwap, groupBySet, buildEnemy, opponentFighter, runSwapMetrics,
-  signalOf, verdictFor, aggregateVerdict, statDeltas, secondaryKey, NEUTRAL_PCT,
+  itemRawDelta, autoAttackDps, prepareSwap, groupBySet, buildEnemy, dropOpponents, runSwapMetrics,
+  metricSignal, verdictFor, aggregateVerdict, statDeltas, secondaryKey, NEUTRAL_PCT,
+  contrastMetric, applyFamily,
 } from './swap.js';
+import { opponentFighter, missingStats } from './duel.js';
+import { normaliseOpponent } from '../model/opponents.js';
+import { SHEET_KEYS } from '../engine/pipeline/sheet.js';
+import { mulberry32 } from '../engine/rng.js';
+import profile from '../__fixtures__/real/profile-warrior-l72.json';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { computePresetStats, sheetInputsKey } from '../build/stats.js';
 import { buildFighter } from '../build/fighter.js';
@@ -195,12 +202,25 @@ describe('enemies and opponents', () => {
     expect(buildEnemy(null)).toBeNull();
   });
 
-  it('opponentFighter needs a sheet', () => {
-    expect(opponentFighter({ class: 'WARRIOR' })).toBeNull();
-    const f = opponentFighter({ class: 'WARRIOR', spec: 'WARRIOR_DPS', sheet: { values: { totalAttack: 5 } }, majorGlyphs: [{ glyphType: 'x', rarity: 'Common' }] });
-    expect(f.stats.totalAttack).toBe(5);
-    expect(f.glyphMods).toHaveLength(1);
-    expect(f.altarTier).toBe(1);
+  it('Drop Check has no opponent builder of its own: it uses the Duel screen fighter (#93)', () => {
+    expect(swap.opponentFighter).toBeUndefined();
+  });
+
+  it('a Druid opponent is the Duel fighter, form included; one that cannot fight is skipped with what it lacks', () => {
+    const full = {};
+    for (const k of SHEET_KEYS) if (typeof profile.computedStats[k] === 'number') full[k] = profile.computedStats[k];
+    const druid = normaliseOpponent({
+      name: 'Bear', class: 'MYSTIC', spec: 'MYSTIC_DRUID', sheet: { values: full },
+      utility: { species: 'DIRE_URSINE', level: 10 },
+      sigils: ['PRIMAL_INSTINCT', 'ARCANE_BURST', 'RUNIC_AFFLICTION'].map((species) => ({ species, level: 10 })), altarTier: 8,
+    });
+    const blank = normaliseOpponent({ name: 'Blank', class: 'WARRIOR', spec: 'WARRIOR_DPS', sheet: { values: { totalAttack: 5 } } });
+    const { opponents, skipped } = dropOpponents({ opponents: [druid, blank] });
+    expect(opponents.map((o) => o.id)).toEqual([druid.id]);
+    expect(opponents[0].fighter).toEqual(opponentFighter(druid));
+    expect(opponents[0].fighter.formKind).toBeTruthy();
+    expect(skipped).toEqual([{ id: blank.id, name: 'Blank', missing: missingStats(opponentFighter(blank)) }]);
+    expect(skipped[0].missing).toContain('HP');
   });
 });
 
@@ -237,11 +257,11 @@ describe('runSwapMetrics', () => {
   it('adds survival against an enemy and PVP against opponents when asked, and skips what is off', async () => {
     const enemy = buildEnemy({ kind: 'campaign', chapter: 1, level: 2 });
     const opp = { id: 'o1', name: 'Rival', fighter: plain(900) };
-    const { results } = await runSwapMetrics(items, { sim: false, enemy, nSurvival: 10, survivalSeconds: 30, opponents: [opp], nPvp: 8, seed: 2 });
+    const { results } = await runSwapMetrics(items, { sim: false, enemy, nSurvival: 10, survivalSeconds: 30, opponents: [opp], nPvp: 8, seed: 2, maxN: 10 });
     const r = results[0];
     expect(r.sim).toBeUndefined();
-    expect(r.survival.before.n).toBe(10);
-    expect(r.survival.delta.n).toBe(10);
+    expect(r.survival.before.n).toBeGreaterThanOrEqual(10);
+    expect(r.survival.delta.n).toBeLessThanOrEqual(10);
     expect(r.pvp).toHaveLength(1);
     expect(r.pvp[0].opponentId).toBe('o1');
     expect(r.pvp[0].after.mean).toBeGreaterThanOrEqual(r.pvp[0].before.mean);
@@ -268,38 +288,48 @@ describe('runSwapMetrics', () => {
 });
 
 describe('verdict', () => {
-  const row = (pct) => ({ closed: { pct } });
-  const ci = (delta, lo, hi) => ({ delta, lo, hi, n: 32, significant: lo > 0 || hi < 0 });
+  const row = (pct, rawDelta = {}) => ({ closed: { pct }, rawDelta });
+  const ci = (delta, lo, hi, zone = 0) => ({
+    delta, lo, hi, n: 32, zone, significant: lo > 0 || hi < 0,
+    verdict: lo > 0 ? 'better' : hi < 0 ? 'worse' : zone > 0 && -zone < lo && hi < zone ? 'equivalent' : 'unresolved',
+  });
   const sim = (base, d) => ({ sim: { before: { mean: base }, after: { mean: base + d.delta }, delta: d } });
 
-  it('signalOf needs the interval to exclude zero and the change to clear the floor', () => {
-    expect(signalOf(ci(5, 1, 9))).toBe('up');
-    expect(signalOf(ci(-5, -9, -1))).toBe('down');
-    expect(signalOf(ci(5, -1, 11))).toBe('flat');
-    expect(signalOf(ci(0.1, 0.05, 0.15), 1)).toBe('flat');
-    expect(signalOf(null)).toBe('flat');
+  it('metricSignal: better and worse need to clear the zone, equivalent is flat, unresolved is unknown', () => {
+    expect(metricSignal(ci(5, 1, 9))).toBe('up');
+    expect(metricSignal(ci(-5, -9, -1))).toBe('down');
+    expect(metricSignal(ci(0.1, 0.05, 0.15, 1))).toBe('flat');
+    expect(metricSignal(ci(0, -0.5, 0.5, 1))).toBe('flat');
+    expect(metricSignal(ci(5, -1, 11, 1))).toBe('unknown');
+    expect(metricSignal(null)).toBe('unknown');
   });
 
-  it('without a sim the closed form decides, with a sidegrade band', () => {
+  it('without a sim the closed form decides, as an estimate, with a sidegrade band', () => {
     expect(verdictFor(row(3)).verdict).toBe('upgrade');
     expect(verdictFor(row(-3)).verdict).toBe('downgrade');
     expect(verdictFor(row(NEUTRAL_PCT / 2)).verdict).toBe('sidegrade');
     expect(verdictFor(row(null)).verdict).toBe('sidegrade');
     expect(verdictFor(row(3)).basis).toBe('closed');
+    expect(verdictFor(row(3)).estimate).toBe(true);
   });
 
-  it('with a sim the interval decides, not the closed form', () => {
+  it('with a sim the contrast decides: sidegrade only when equivalence is shown, inconclusive when unresolved (#94)', () => {
     expect(verdictFor(row(5), sim(1000, ci(40, 10, 70))).verdict).toBe('upgrade');
-    expect(verdictFor(row(5), sim(1000, ci(2, -30, 34))).verdict).toBe('sidegrade');
+    expect(verdictFor(row(5), sim(1000, ci(1, -3, 5, 10))).verdict).toBe('sidegrade');
+    expect(verdictFor(row(5), sim(1000, ci(2, -30, 34, 10))).verdict).toBe('inconclusive');
     expect(verdictFor(row(5), sim(1000, ci(-40, -70, -10))).verdict).toBe('downgrade');
     expect(verdictFor(row(5), sim(1000, ci(40, 10, 70))).basis).toBe('sim');
+    expect(verdictFor(row(5), sim(1000, ci(40, 10, 70))).estimate).toBe(false);
   });
 
   it('is mixed when one metric improves and another worsens', () => {
     const r = { ...sim(1000, ci(40, 10, 70)), survival: { delta: ci(-0.1, -0.2, -0.02) } };
     expect(verdictFor(row(5), r).verdict).toBe('mixed');
-    const p = { ...sim(1000, ci(0, -5, 5)), pvp: [{ delta: ci(0.2, 0.1, 0.3) }] };
+    const p = { ...sim(1000, ci(0, -5, 5, 10)), pvp: [{ delta: ci(0.2, 0.1, 0.3) }] };
     expect(verdictFor(row(0), p).verdict).toBe('upgrade');
+    const u = { ...sim(1000, ci(40, 10, 70)), pvp: [{ delta: ci(0.02, -0.1, 0.14, 0.01) }] };
+    expect(verdictFor(row(0), u).verdict).toBe('inconclusive');
+    expect(verdictFor(row(0), u).unresolved).toEqual(['pvp0']);
   });
 
   it('aggregateVerdict combines presets sharing a set', () => {
@@ -308,5 +338,116 @@ describe('verdict', () => {
     expect(aggregateVerdict(['upgrade', 'downgrade'])).toBe('mixed');
     expect(aggregateVerdict(['downgrade', 'sidegrade'])).toBe('downgrade');
     expect(aggregateVerdict(['mixed'])).toBe('mixed');
+    expect(aggregateVerdict(['sidegrade', 'inconclusive'])).toBe('inconclusive');
+    expect(aggregateVerdict(['upgrade', 'inconclusive'])).toBe('inconclusive');
+  });
+
+  it('HP% item with survival and PVP off: coverage is DPS only and HP% is not judged (#100)', () => {
+    const c = warrior();
+    const hpItem = item({ secondaryStats: [{ type: 'HEALTH_PERCENT', value: 20 }] });
+    const [r] = prepareSwap(c, { slot: 'WEAPON', item: hpItem, presetIds: ['p1'] });
+    expect(r.rawDelta.totalHealthPercent).toBe(20);
+    const v = verdictFor(r, sim(1000, ci(0, -1, 1, 5)));
+    expect(v.coverage).toEqual(['dps']);
+    expect(v.coverageLabel).toBe('DPS only: defence not measured');
+    expect(v.notJudged).toContain('totalHealthPercent');
+    expect(v.notJudged).not.toContain('totalAttack');
+    const withSurvival = verdictFor(r, { ...sim(1000, ci(0, -1, 1, 5)), survival: { delta: ci(0, -0.005, 0.005, 0.01) } });
+    expect(withSurvival.coverage).toEqual(['dps', 'survival']);
+    expect(withSurvival.notJudged).toEqual([]);
+  });
+});
+
+describe('sequential contrasts and the metric family (#94, #102)', () => {
+  /** Paired outcomes of an item with no true effect: fight-level noise, mean difference zero. */
+  function nullOutcomes(seed, M) {
+    const r = mulberry32(seed);
+    const gauss = () => { let u = 0; while (!u) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); };
+    const dps = [[], []];
+    const surv = [[], []];
+    const pvp = [[], []];
+    for (let i = 0; i < M; i++) {
+      const x = 1000 + 100 * gauss();
+      dps[0].push(x); dps[1].push(x + 20 * gauss());
+      for (const side of [surv, pvp]) {
+        const w = r() < 0.5 ? 1 : 0;
+        side[0].push(w); side[1].push(r() < 0.1 ? 1 - w : w);
+      }
+    }
+    return { dps, survival: surv, pvp };
+  }
+
+  it('a near-null item is a false upgrade at most 5 % of 200 seeded runs (it was ~7 % on one 95 % test per metric)', async () => {
+    let upgrades = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      const o = nullOutcomes(seed, 512);
+      const run = (kind) => contrastMetric(kind, async (n) => o[kind][0].slice(0, n), async (n) => o[kind][1].slice(0, n),
+        { n0: 32, maxN: 512, alpha: 0.05 / 3, seed });
+      const [sim, survival, pvp] = await Promise.all([run('dps'), run('survival'), run('pvp')]);
+      const res = applyFamily({ sim, survival, pvp: [{ opponentId: 'o', ...pvp }] });
+      if (verdictFor({ closed: { pct: 0 }, rawDelta: {} }, res).verdict === 'upgrade') upgrades += 1;
+    }
+    expect(upgrades).toBeLessThanOrEqual(10);
+  });
+
+  it('stops at the first look that resolves, and reports unresolved at maxN', async () => {
+    const o = nullOutcomes(7, 256);
+    const wide = await contrastMetric('survival', async (n) => o.survival[0].slice(0, n), async (n) => o.survival[1].slice(0, n),
+      { n0: 16, maxN: 32, precision: 'thorough' });
+    expect(wide.delta).toMatchObject({ verdict: 'unresolved', n: 32, maxN: 32, nLooks: 2 });
+    expect(wide.delta.nNeeded).toBeGreaterThan(32);
+    const clear = await contrastMetric('dps', async (n) => Array(n).fill(1000), async (n) => Array(n).fill(1100),
+      { n0: 4, maxN: 64 });
+    expect(clear.delta).toMatchObject({ verdict: 'better', n: 4, looks: 1 });
+  });
+
+  it('Holm over the preset metrics lets a weaker metric through when a stronger one is rejected', () => {
+    const m = (delta, p, verdict) => ({ delta: { delta, lo: -1, hi: 9, n: 64, zone: 1, p, nLooks: 1, verdict } });
+    const res = applyFamily({ sim: m(5, 0.0001, 'better'), survival: m(5, 0.03, 'unresolved') });
+    expect(res.sim.delta.holmReject).toBe(true);
+    expect(res.survival.delta.pHolm).toBeCloseTo(0.03, 9);
+    expect(res.survival.delta.holmReject).toBe(true);
+    expect(metricSignal(res.survival.delta)).toBe('up');
+    const alone = applyFamily({ survival: m(5, 0.09, 'unresolved'), sim: m(1, 0.9, 'unresolved') });
+    expect(alone.survival.delta.holmReject).toBe(false);
+  });
+
+  it('runSwapMetrics reports the comparator fields and applies the family', async () => {
+    const plain = (attack) => ({
+      stats: {
+        totalHp: 40000, totalAttack: attack, totalAttackSpeed: 1, totalDoubleHit: 0, totalCritChance: 20, totalCritDamage: 1.5,
+        totalLifesteal: 0, totalHpRegen: 0, totalDamageReduction: 0, totalBlockChance: 0, totalMissChance: 0, totalBlindChance: 0,
+        totalParalyzeChance: 0, totalPenetration: 0, totalPvpAttack: 0, totalPvpDefense: 0,
+      },
+      class: 'WARRIOR', spec: null, sigils: [],
+    });
+    const { results } = await runSwapMetrics([{ presetId: 'p1', before: plain(1000), after: plain(1300) }], { nSim: 4, seconds: 10, maxN: 16 });
+    expect(results[0].sim.delta).toMatchObject({ verdict: 'better', n: 4, maxN: 16, nLooks: 3, holmReject: true });
+    expect(results[0].sim.delta.zone).toBeGreaterThan(0);
+  });
+});
+
+describe('Oblivion anchoring (#98)', () => {
+  it('an Oblivion sheet anchors only its owner preset; the others are recomputed from their own build', () => {
+    const c = warrior();
+    const truth = computePresetStats(c, 'p1', { realm: 'oblivion' }).computed;
+    c.oblivion.sheet = { values: truth, enteredAt: 'now', presetId: 'p1', inputsKey: sheetInputsKey(c, 'p1', { realm: 'oblivion' }) };
+    const cand = item({ primaryStats: { attack: 60000, hp: 0 } });
+    const rows = prepareSwap(c, { slot: 'BELT', item: cand, realm: 'oblivion' });
+    const by = Object.fromEntries(rows.map((r) => [r.presetId, r]));
+    expect(by.p1.method).toBe('anchored');
+    expect(by.p2.method).toBe('recomputed');
+    expect(by.p2.source).toBe('computed');
+    expect(by.p2.sheetStatus).toBe('stale');
+    expect(by.p2.warnings.join(' ')).toContain('another preset');
+  });
+
+  it('an anchored row says whether its numbers are approximate', () => {
+    const c = warrior();
+    c.presets[0].sheet = { values: computePresetStats(c, 'p1').computed, enteredAt: 'now' };
+    const [r] = prepareSwap(c, { slot: 'WEAPON', item: upgrade(), presetIds: ['p1'] });
+    expect(r.method).toBe('anchored');
+    expect(typeof r.approx).toBe('boolean');
+    expect(r.errors).toBeTypeOf('object');
   });
 });
