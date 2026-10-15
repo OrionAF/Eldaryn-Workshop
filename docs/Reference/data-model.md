@@ -61,7 +61,7 @@ Character = {
   drop: { realm, slot, item: Item } | null,
   opponents: [{ id, name, class, spec, sheet: Sheet, sigils, utility, ancient,
                 conditions, majorGlyphs, altarTier }],
-  runs: OptimiserRun[]        // byte-budgeted run history
+  runs: OptimiserRun[]        // byte-budgeted run history; `schema: 2` = an optimiser-result/2 (model/runs.js header)
 }
 
 Preset = { id, name, equipmentSet: 1|2, talentSet: 0|1, petId | null, mountId | null,

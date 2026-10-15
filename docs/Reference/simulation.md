@@ -373,9 +373,11 @@ Measured on the Warrior fixture (one thread, this machine; a 60 s dummy fight co
 
 The full run shared four cores with other jobs. Standard and Thorough cost more: n0 doubles, and a
 comparison inside δ can run to maxN. A PVP duel costs several times a dummy fight, per matchup.
-The Effort control prints these figures (U8 owns its final form). The screen has
-Cancel (provisional rows) but no Resume yet: the task accepts `resumeFrom`, and the Resume button
-arrives with the job store (U3) and the optimiser page (U8).
+The Effort control prints δ, the first look n0 and maxN per level and these measured figures
+(`ui/optimiserView.js` `MEASURED_COST`, `effortPlan`); no run is time-capped. The Optimiser page runs as
+a session job (U3): Cancel keeps the provisional rows and Resume re-starts the task with the job's
+checkpoint as `resumeFrom`. The page sends the character with `runs: []`, so saving a run does not change
+`characterKey` (Run more and the staleness marker compare it).
 
 ## Result
 

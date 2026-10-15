@@ -1,0 +1,1089 @@
+{
+ "schema": "optimiser-result/2",
+ "status": "done",
+ "aborted": false,
+ "error": null,
+ "request": {
+  "presetId": "p1",
+  "realm": "base",
+  "mode": "pve",
+  "target": {
+   "kind": "dummy",
+   "seconds": 10
+  },
+  "objective": {
+   "kind": "dps"
+  },
+  "space": {
+   "spec": false,
+   "equipmentSet": false,
+   "sigils": false,
+   "utility": false,
+   "ancient": false,
+   "conditions": false,
+   "relics": true,
+   "pet": false,
+   "mount": false,
+   "transcendence": false,
+   "minorGlyphs": false,
+   "majorGlyphs": false,
+   "talents": true
+  },
+  "seed": 2,
+  "seeds": {
+   "search": 307734373,
+   "minimise": 594273555,
+   "confirm": 1021242461
+  },
+  "effort": {
+   "level": "quick",
+   "delta": 0.01,
+   "deltaKind": "relative",
+   "alpha": 0.05,
+   "n0": 8,
+   "maxN": 32
+  },
+  "characterKey": "character:ij2uchase1zg:11985"
+ },
+ "target": {
+  "kind": "dummy",
+  "seconds": 10,
+  "label": "Training dummy, 10 s",
+  "key": "{\"kind\":\"dummy\",\"seconds\":10}",
+  "mode": "dummy",
+  "fidelity": "client",
+  "assumptions": []
+ },
+ "objective": {
+  "kind": "dps",
+  "label": "Damage per second",
+  "unit": "dps",
+  "higherIsBetter": true,
+  "statistic": "mean",
+  "q": null
+ },
+ "headline": {
+  "better": 3,
+  "equivalent": 0,
+  "unresolved": 0,
+  "worseHidden": 0,
+  "text": "3 builds measured better than the current preset."
+ },
+ "baseline": {
+  "rank": 0,
+  "tieGroup": null,
+  "isBaseline": true,
+  "provisional": false,
+  "key": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":null,\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+  "engineKey": "engine-pve:1afqgyx20oqm1:1466",
+  "candidate": {
+   "equipmentSet": 1,
+   "talentSet": 0,
+   "talentAllocation": null,
+   "petId": "pet-a",
+   "mountId": "mount-a",
+   "mountGlyphs": null,
+   "relicIds": [],
+   "sigilSpecies": [
+    "BERSERK_STANCE",
+    "WARBORN_FURY",
+    "CATACLYSM"
+   ],
+   "utilitySigilSpecies": null,
+   "ancientSigilSpecies": "FLAMEBORN",
+   "transcendencePresetId": "default",
+   "sigilConditions": {}
+  },
+  "value": {
+   "est": 516548.67500000005,
+   "lo": 448948.89663060365,
+   "hi": 584148.4533693965,
+   "n": 8,
+   "seed": 1021242461,
+   "level": 0.95,
+   "alphaAdj": 0.05,
+   "method": "t"
+  },
+  "aux": {},
+  "vsBaseline": null,
+  "changes": [],
+  "remainder": null,
+  "writes": [],
+  "runMore": null,
+  "lines": [
+   {
+    "label": "Gear set",
+    "value": "Set 1"
+   },
+   {
+    "label": "Talents",
+    "value": "Arms - Sharpened Blade 5/5, Quick Strikes 3/3, Precision 3/3, Brutality 5/5, Keen Edge 3/3, Combat Frenzy 3/3, Savage Blows 3/3, Relentless Assault 4/5"
+   },
+   {
+    "label": "Pet",
+    "value": "Hell Drake"
+   },
+   {
+    "label": "Mount",
+    "value": "Night Wolf (level 3)"
+   },
+   {
+    "label": "Minor glyphs",
+    "value": "Swift Edge (Common) critChance 1.5, Keen Eye (Uncommon) attackPercent 6.1"
+   },
+   {
+    "label": "Major glyphs",
+    "value": "Warhaste Emblem (Rare)"
+   },
+   {
+    "label": "Mythic glyph",
+    "value": "None"
+   },
+   {
+    "label": "Relics",
+    "value": "None"
+   },
+   {
+    "label": "Sigils",
+    "value": "Berserk Stance, Warborn Fury, Cataclysm"
+   },
+   {
+    "label": "Utility sigil",
+    "value": "None"
+   },
+   {
+    "label": "Ancient sigil",
+    "value": "Flameborn"
+   },
+   {
+    "label": "Conditions",
+    "value": "None"
+   },
+   {
+    "label": "Transcendence",
+    "value": "Default (77 nodes)"
+   }
+  ]
+ },
+ "rows": [
+  {
+   "rank": 1,
+   "tieGroup": 1,
+   "isBaseline": false,
+   "provisional": false,
+   "key": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":2,\"dps_t1_quick_strikes\":3,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":4,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":2,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+   "engineKey": "engine-pve:2tsrag1e5rgns:1465",
+   "candidate": {
+    "equipmentSet": 1,
+    "talentSet": 0,
+    "talentAllocation": {
+     "dps_t1_precision": 2,
+     "dps_t1_quick_strikes": 3,
+     "dps_t2_combat_frenzy": 3,
+     "dps_t2_keen_edge": 3,
+     "dps_t3_relentless_assault": 1,
+     "dps_t3_savage_blows": 3,
+     "dps_t4_executioner": 4,
+     "dps_t4_swift_fury": 2,
+     "dps_t5_berserkers_might": 2,
+     "dps_t5_lethality": 3,
+     "dps_t6_warlords_fury": 3
+    },
+    "petId": "pet-a",
+    "mountId": "mount-a",
+    "mountGlyphs": null,
+    "relicIds": [
+     "relic_swift_emblem",
+     "relic_war_charm"
+    ],
+    "sigilSpecies": [
+     "BERSERK_STANCE",
+     "WARBORN_FURY",
+     "CATACLYSM"
+    ],
+    "utilitySigilSpecies": null,
+    "ancientSigilSpecies": "FLAMEBORN",
+    "transcendencePresetId": "default",
+    "sigilConditions": {}
+   },
+   "value": {
+    "est": 739270.7750000001,
+    "lo": 672621.6965356931,
+    "hi": 805919.8534643071,
+    "n": 8,
+    "seed": 1021242461,
+    "level": 0.95,
+    "alphaAdj": 0.05,
+    "method": "t"
+   },
+   "aux": {},
+   "vsBaseline": {
+    "delta": 222722.09999999998,
+    "lo": 163025.31584527114,
+    "hi": 282418.88415472885,
+    "pct": 0.431173499767471,
+    "n": 8,
+    "seed": 1021242461,
+    "alphaAdj": 0.0005555555555555556,
+    "method": "paired-t",
+    "verdict": "better",
+    "significant": true,
+    "nNeeded": null,
+    "basis": null,
+    "higherIsBetter": true
+   },
+   "changes": [
+    {
+     "id": "talents:0",
+     "dimension": "talents",
+     "label": "Talents (set 1)",
+     "from": "Sharpened Blade 5, Quick Strikes 3, Precision 3, Brutality 5, Keen Edge 3, Combat Frenzy 3, Savage Blows 3, Relentless Assault 4",
+     "to": "Precision 2, Quick Strikes 3, Combat Frenzy 3, Keen Edge 3, Relentless Assault 1, Savage Blows 3, Executioner 4, Swift Fury 2, Berserker's Might 2, Lethality 3, Warlord's Fury 3",
+     "scope": "character",
+     "owner": {
+      "talentSet": 0
+     },
+     "sideEffects": [],
+     "bundle": [],
+     "own": {
+      "delta": 75096.21249999997,
+      "lo": 51775.511532072574,
+      "hi": 98416.91346792736,
+      "pct": 0.14538070879767517,
+      "n": 8,
+      "seed": 1021242461,
+      "alphaAdj": 0.025,
+      "method": "paired-t",
+      "verdict": "better",
+      "significant": true,
+      "nNeeded": null,
+      "basis": null,
+      "higherIsBetter": true
+     },
+     "needed": {
+      "delta": 103826.2875,
+      "lo": 78443.41977499533,
+      "hi": 129209.15522500468,
+      "pct": 0.16339159366773168,
+      "n": 8,
+      "seed": 1021242461,
+      "alphaAdj": 0.025,
+      "method": "paired-t",
+      "verdict": "better",
+      "significant": true,
+      "nNeeded": null,
+      "basis": null,
+      "higherIsBetter": true
+     },
+     "keptBecause": "own-effect"
+    },
+    {
+     "id": "relics",
+     "dimension": "relics",
+     "label": "Relics",
+     "from": "None",
+     "to": "Swift Emblem, War Charm",
+     "scope": "preset",
+     "owner": {
+      "presetId": "p1"
+     },
+     "sideEffects": [],
+     "bundle": [],
+     "own": {
+      "delta": 118895.81249999999,
+      "lo": 97929.20356338045,
+      "hi": 139862.42143661954,
+      "pct": 0.23017349236255416,
+      "n": 8,
+      "seed": 1021242461,
+      "alphaAdj": 0.025,
+      "method": "paired-t",
+      "verdict": "better",
+      "significant": true,
+      "nNeeded": null,
+      "basis": null,
+      "higherIsBetter": true
+     },
+     "needed": {
+      "delta": 147625.8875,
+      "lo": 112347.31873282319,
+      "hi": 182904.45626717684,
+      "pct": 0.24951772696590743,
+      "n": 8,
+      "seed": 1021242461,
+      "alphaAdj": 0.025,
+      "method": "paired-t",
+      "verdict": "better",
+      "significant": true,
+      "nNeeded": null,
+      "basis": null,
+      "higherIsBetter": true
+     },
+     "keptBecause": "own-effect"
+    }
+   ],
+   "remainder": {
+    "delta": 28730.075000000026,
+    "lo": 3583.2999190744376,
+    "hi": 53876.850080925615,
+    "method": "paired-t"
+   },
+   "writes": [
+    {
+     "scope": "character",
+     "title": "Talents (set 1)",
+     "owner": {
+      "talentSet": 0
+     },
+     "changeIds": [
+      "talents:0"
+     ],
+     "sideEffects": []
+    },
+    {
+     "scope": "preset",
+     "title": "Preset Main",
+     "owner": {
+      "presetId": "p1"
+     },
+     "changeIds": [
+      "relics"
+     ],
+     "sideEffects": []
+    }
+   ],
+   "runMore": null,
+   "lines": [
+    {
+     "label": "Gear set",
+     "value": "Set 1"
+    },
+    {
+     "label": "Talents",
+     "value": "Arms - Quick Strikes 3/3, Precision 2/3, Keen Edge 3/3, Combat Frenzy 3/3, Savage Blows 3/3, Relentless Assault 1/5, Executioner 4/5, Swift Fury 2/3, Lethality 3/3, Berserker's Might 2/3, Warlord's Fury 3/3"
+    },
+    {
+     "label": "Pet",
+     "value": "Hell Drake"
+    },
+    {
+     "label": "Mount",
+     "value": "Night Wolf (level 3)"
+    },
+    {
+     "label": "Minor glyphs",
+     "value": "Swift Edge (Common) critChance 1.5, Keen Eye (Uncommon) attackPercent 6.1"
+    },
+    {
+     "label": "Major glyphs",
+     "value": "Warhaste Emblem (Rare)"
+    },
+    {
+     "label": "Mythic glyph",
+     "value": "None"
+    },
+    {
+     "label": "Relics",
+     "value": "Swift Emblem, War Charm"
+    },
+    {
+     "label": "Sigils",
+     "value": "Berserk Stance, Warborn Fury, Cataclysm"
+    },
+    {
+     "label": "Utility sigil",
+     "value": "None"
+    },
+    {
+     "label": "Ancient sigil",
+     "value": "Flameborn"
+    },
+    {
+     "label": "Conditions",
+     "value": "None"
+    },
+    {
+     "label": "Transcendence",
+     "value": "Default (77 nodes)"
+    }
+   ]
+  },
+  {
+   "rank": 2,
+   "tieGroup": 1,
+   "isBaseline": false,
+   "provisional": false,
+   "key": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":2,\"dps_t1_quick_strikes\":3,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":5,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":1,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+   "engineKey": "engine-pve:1ujnib31fgrn6v:1464",
+   "candidate": {
+    "equipmentSet": 1,
+    "talentSet": 0,
+    "talentAllocation": {
+     "dps_t1_precision": 2,
+     "dps_t1_quick_strikes": 3,
+     "dps_t2_combat_frenzy": 3,
+     "dps_t2_keen_edge": 3,
+     "dps_t3_relentless_assault": 1,
+     "dps_t3_savage_blows": 3,
+     "dps_t4_executioner": 5,
+     "dps_t4_swift_fury": 2,
+     "dps_t5_berserkers_might": 1,
+     "dps_t5_lethality": 3,
+     "dps_t6_warlords_fury": 3
+    },
+    "petId": "pet-a",
+    "mountId": "mount-a",
+    "mountGlyphs": null,
+    "relicIds": [
+     "relic_swift_emblem",
+     "relic_war_charm"
+    ],
+    "sigilSpecies": [
+     "BERSERK_STANCE",
+     "WARBORN_FURY",
+     "CATACLYSM"
+    ],
+    "utilitySigilSpecies": null,
+    "ancientSigilSpecies": "FLAMEBORN",
+    "transcendencePresetId": "default",
+    "sigilConditions": {}
+   },
+   "value": {
+    "est": 738646.2499999999,
+    "lo": 671045.0492060201,
+    "hi": 806247.4507939797,
+    "n": 8,
+    "seed": 1021242461,
+    "level": 0.95,
+    "alphaAdj": 0.05,
+    "method": "t"
+   },
+   "aux": {},
+   "vsBaseline": {
+    "delta": 222097.57499999995,
+    "lo": 161663.52863289195,
+    "hi": 282531.62136710796,
+    "pct": 0.42996446559465074,
+    "n": 8,
+    "seed": 1021242461,
+    "alphaAdj": 0.0005555555555555556,
+    "method": "paired-t",
+    "verdict": "better",
+    "significant": true,
+    "nNeeded": null,
+    "basis": null,
+    "higherIsBetter": true
+   },
+   "changes": [
+    {
+     "id": "talents:0",
+     "dimension": "talents",
+     "label": "Talents (set 1)",
+     "from": "Sharpened Blade 5, Quick Strikes 3, Precision 3, Brutality 5, Keen Edge 3, Combat Frenzy 3, Savage Blows 3, Relentless Assault 4",
+     "to": "Precision 2, Quick Strikes 3, Combat Frenzy 3, Keen Edge 3, Relentless Assault 1, Savage Blows 3, Executioner 5, Swift Fury 2, Berserker's Might 1, Lethality 3, Warlord's Fury 3",
+     "scope": "character",
+     "owner": {
+      "talentSet": 0
+     },
+     "sideEffects": [],
+     "bundle": [],
+     "own": {
+      "delta": 73821.73749999996,
+      "lo": 50166.31188155338,
+      "hi": 97477.16311844654,
+      "pct": 0.1429134195339867,
+      "n": 8,
+      "seed": 1021242461,
+      "alphaAdj": 0.025,
+      "method": "paired-t",
+      "verdict": "better",
+      "significant": true,
+      "nNeeded": null,
+      "basis": null,
+      "higherIsBetter": true
+     },
+     "needed": {
+      "delta": 103201.76250000001,
+      "lo": 77868.89242628474,
+      "hi": 128534.63257371528,
+      "pct": 0.16240877768256665,
+      "n": 8,
+      "seed": 1021242461,
+      "alphaAdj": 0.025,
+      "method": "paired-t",
+      "verdict": "better",
+      "significant": true,
+      "nNeeded": null,
+      "basis": null,
+      "higherIsBetter": true
+     },
+     "keptBecause": "own-effect"
+    },
+    {
+     "id": "relics",
+     "dimension": "relics",
+     "label": "Relics",
+     "from": "None",
+     "to": "Swift Emblem, War Charm",
+     "scope": "preset",
+     "owner": {
+      "presetId": "p1"
+     },
+     "sideEffects": [],
+     "bundle": [],
+     "own": {
+      "delta": 118895.81249999999,
+      "lo": 97929.20356338045,
+      "hi": 139862.42143661954,
+      "pct": 0.23017349236255416,
+      "n": 8,
+      "seed": 1021242461,
+      "alphaAdj": 0.025,
+      "method": "paired-t",
+      "verdict": "better",
+      "significant": true,
+      "nNeeded": null,
+      "basis": null,
+      "higherIsBetter": true
+     },
+     "needed": {
+      "delta": 148275.83750000002,
+      "lo": 112272.86947349177,
+      "hi": 184278.80552650828,
+      "pct": 0.2511572977922569,
+      "n": 8,
+      "seed": 1021242461,
+      "alphaAdj": 0.025,
+      "method": "paired-t",
+      "verdict": "better",
+      "significant": true,
+      "nNeeded": null,
+      "basis": null,
+      "higherIsBetter": true
+     },
+     "keptBecause": "own-effect"
+    }
+   ],
+   "remainder": {
+    "delta": 29380.025000000038,
+    "lo": 3558.9695296918508,
+    "hi": 55201.080470308225,
+    "method": "paired-t"
+   },
+   "writes": [
+    {
+     "scope": "character",
+     "title": "Talents (set 1)",
+     "owner": {
+      "talentSet": 0
+     },
+     "changeIds": [
+      "talents:0"
+     ],
+     "sideEffects": []
+    },
+    {
+     "scope": "preset",
+     "title": "Preset Main",
+     "owner": {
+      "presetId": "p1"
+     },
+     "changeIds": [
+      "relics"
+     ],
+     "sideEffects": []
+    }
+   ],
+   "runMore": null,
+   "lines": [
+    {
+     "label": "Gear set",
+     "value": "Set 1"
+    },
+    {
+     "label": "Talents",
+     "value": "Arms - Quick Strikes 3/3, Precision 2/3, Keen Edge 3/3, Combat Frenzy 3/3, Savage Blows 3/3, Relentless Assault 1/5, Executioner 5/5, Swift Fury 2/3, Lethality 3/3, Berserker's Might 1/3, Warlord's Fury 3/3"
+    },
+    {
+     "label": "Pet",
+     "value": "Hell Drake"
+    },
+    {
+     "label": "Mount",
+     "value": "Night Wolf (level 3)"
+    },
+    {
+     "label": "Minor glyphs",
+     "value": "Swift Edge (Common) critChance 1.5, Keen Eye (Uncommon) attackPercent 6.1"
+    },
+    {
+     "label": "Major glyphs",
+     "value": "Warhaste Emblem (Rare)"
+    },
+    {
+     "label": "Mythic glyph",
+     "value": "None"
+    },
+    {
+     "label": "Relics",
+     "value": "Swift Emblem, War Charm"
+    },
+    {
+     "label": "Sigils",
+     "value": "Berserk Stance, Warborn Fury, Cataclysm"
+    },
+    {
+     "label": "Utility sigil",
+     "value": "None"
+    },
+    {
+     "label": "Ancient sigil",
+     "value": "Flameborn"
+    },
+    {
+     "label": "Conditions",
+     "value": "None"
+    },
+    {
+     "label": "Transcendence",
+     "value": "Default (77 nodes)"
+    }
+   ]
+  },
+  {
+   "rank": 3,
+   "tieGroup": 1,
+   "isBaseline": false,
+   "provisional": false,
+   "key": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":1,\"dps_t1_quick_strikes\":3,\"dps_t1_sharpened_blade\":1,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":4,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":2,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+   "engineKey": "engine-pve:14wbp1761fo4a:1465",
+   "candidate": {
+    "equipmentSet": 1,
+    "talentSet": 0,
+    "talentAllocation": {
+     "dps_t1_precision": 1,
+     "dps_t1_quick_strikes": 3,
+     "dps_t1_sharpened_blade": 1,
+     "dps_t2_combat_frenzy": 3,
+     "dps_t2_keen_edge": 3,
+     "dps_t3_relentless_assault": 1,
+     "dps_t3_savage_blows": 3,
+     "dps_t4_executioner": 4,
+     "dps_t4_swift_fury": 2,
+     "dps_t5_berserkers_might": 2,
+     "dps_t5_lethality": 3,
+     "dps_t6_warlords_fury": 3
+    },
+    "petId": "pet-a",
+    "mountId": "mount-a",
+    "mountGlyphs": null,
+    "relicIds": [
+     "relic_swift_emblem",
+     "relic_war_charm"
+    ],
+    "sigilSpecies": [
+     "BERSERK_STANCE",
+     "WARBORN_FURY",
+     "CATACLYSM"
+    ],
+    "utilitySigilSpecies": null,
+    "ancientSigilSpecies": "FLAMEBORN",
+    "transcendencePresetId": "default",
+    "sigilConditions": {}
+   },
+   "value": {
+    "est": 735558.0875000001,
+    "lo": 660882.1070968602,
+    "hi": 810234.0679031401,
+    "n": 8,
+    "seed": 1021242461,
+    "level": 0.95,
+    "alphaAdj": 0.05,
+    "method": "t"
+   },
+   "aux": {},
+   "vsBaseline": {
+    "delta": 219009.41249999998,
+    "lo": 130623.22212336597,
+    "hi": 307395.602876634,
+    "pct": 0.4239860115796444,
+    "n": 8,
+    "seed": 1021242461,
+    "alphaAdj": 0.0005555555555555556,
+    "method": "paired-t",
+    "verdict": "better",
+    "significant": true,
+    "nNeeded": null,
+    "basis": null,
+    "higherIsBetter": true
+   },
+   "changes": [
+    {
+     "id": "talents:0",
+     "dimension": "talents",
+     "label": "Talents (set 1)",
+     "from": "Sharpened Blade 5, Quick Strikes 3, Precision 3, Brutality 5, Keen Edge 3, Combat Frenzy 3, Savage Blows 3, Relentless Assault 4",
+     "to": "Precision 1, Quick Strikes 3, Sharpened Blade 1, Combat Frenzy 3, Keen Edge 3, Relentless Assault 1, Savage Blows 3, Executioner 4, Swift Fury 2, Berserker's Might 2, Lethality 3, Warlord's Fury 3",
+     "scope": "character",
+     "owner": {
+      "talentSet": 0
+     },
+     "sideEffects": [],
+     "bundle": [],
+     "own": {
+      "delta": 70727.1875,
+      "lo": 55489.88480732178,
+      "hi": 85964.49019267822,
+      "pct": 0.13692259979178148,
+      "n": 8,
+      "seed": 1021242461,
+      "alphaAdj": 0.025,
+      "method": "paired-t",
+      "verdict": "better",
+      "significant": true,
+      "nNeeded": null,
+      "basis": null,
+      "higherIsBetter": true
+     },
+     "needed": {
+      "delta": 100113.60000000002,
+      "lo": 73416.97217196913,
+      "hi": 126810.22782803091,
+      "pct": 0.1575489314477687,
+      "n": 8,
+      "seed": 1021242461,
+      "alphaAdj": 0.025,
+      "method": "paired-t",
+      "verdict": "better",
+      "significant": true,
+      "nNeeded": null,
+      "basis": null,
+      "higherIsBetter": true
+     },
+     "keptBecause": "own-effect"
+    },
+    {
+     "id": "relics",
+     "dimension": "relics",
+     "label": "Relics",
+     "from": "None",
+     "to": "Swift Emblem, War Charm",
+     "scope": "preset",
+     "owner": {
+      "presetId": "p1"
+     },
+     "sideEffects": [],
+     "bundle": [],
+     "own": {
+      "delta": 118895.81249999999,
+      "lo": 97929.20356338045,
+      "hi": 139862.42143661954,
+      "pct": 0.23017349236255416,
+      "n": 8,
+      "seed": 1021242461,
+      "alphaAdj": 0.025,
+      "method": "paired-t",
+      "verdict": "better",
+      "significant": true,
+      "nNeeded": null,
+      "basis": null,
+      "higherIsBetter": true
+     },
+     "needed": {
+      "delta": 148282.22500000003,
+      "lo": 112137.4224477582,
+      "hi": 184427.02755224187,
+      "pct": 0.25249160482906796,
+      "n": 8,
+      "seed": 1021242461,
+      "alphaAdj": 0.025,
+      "method": "paired-t",
+      "verdict": "better",
+      "significant": true,
+      "nNeeded": null,
+      "basis": null,
+      "higherIsBetter": true
+     },
+     "keptBecause": "own-effect"
+    }
+   ],
+   "remainder": {
+    "delta": 29386.41250000002,
+    "lo": 3796.6228599809183,
+    "hi": 54976.20214001912,
+    "method": "paired-t"
+   },
+   "writes": [
+    {
+     "scope": "character",
+     "title": "Talents (set 1)",
+     "owner": {
+      "talentSet": 0
+     },
+     "changeIds": [
+      "talents:0"
+     ],
+     "sideEffects": []
+    },
+    {
+     "scope": "preset",
+     "title": "Preset Main",
+     "owner": {
+      "presetId": "p1"
+     },
+     "changeIds": [
+      "relics"
+     ],
+     "sideEffects": []
+    }
+   ],
+   "runMore": null,
+   "lines": [
+    {
+     "label": "Gear set",
+     "value": "Set 1"
+    },
+    {
+     "label": "Talents",
+     "value": "Arms - Sharpened Blade 1/5, Quick Strikes 3/3, Precision 1/3, Keen Edge 3/3, Combat Frenzy 3/3, Savage Blows 3/3, Relentless Assault 1/5, Executioner 4/5, Swift Fury 2/3, Lethality 3/3, Berserker's Might 2/3, Warlord's Fury 3/3"
+    },
+    {
+     "label": "Pet",
+     "value": "Hell Drake"
+    },
+    {
+     "label": "Mount",
+     "value": "Night Wolf (level 3)"
+    },
+    {
+     "label": "Minor glyphs",
+     "value": "Swift Edge (Common) critChance 1.5, Keen Eye (Uncommon) attackPercent 6.1"
+    },
+    {
+     "label": "Major glyphs",
+     "value": "Warhaste Emblem (Rare)"
+    },
+    {
+     "label": "Mythic glyph",
+     "value": "None"
+    },
+    {
+     "label": "Relics",
+     "value": "Swift Emblem, War Charm"
+    },
+    {
+     "label": "Sigils",
+     "value": "Berserk Stance, Warborn Fury, Cataclysm"
+    },
+    {
+     "label": "Utility sigil",
+     "value": "None"
+    },
+    {
+     "label": "Ancient sigil",
+     "value": "Flameborn"
+    },
+    {
+     "label": "Conditions",
+     "value": "None"
+    },
+    {
+     "label": "Transcendence",
+     "value": "Default (77 nodes)"
+    }
+   ]
+  }
+ ],
+ "search": {
+  "strategy": "local",
+  "jointSize": 5270,
+  "blocks": [
+   {
+    "id": "spec",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "equipmentSet",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "sigils",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "utility",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "ancient",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "conditions",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "relics",
+    "enabled": true,
+    "domain": 31,
+    "status": "converged"
+   },
+   {
+    "id": "pet",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "mount",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "transcendence",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "minorGlyphs",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "majorGlyphs",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "talents",
+    "enabled": true,
+    "domain": 170,
+    "status": "unresolved"
+   }
+  ],
+  "starts": 2,
+  "optima": 2,
+  "evaluated": 1058,
+  "merged": {
+   "inert": 0,
+   "engineIdentical": 269,
+   "sampleIdentical": 32
+  },
+  "fights": {
+   "search": 19256,
+   "minimise": 1376,
+   "confirm": 1376,
+   "total": 22008
+  },
+  "converged": true,
+  "unresolved": [
+   {
+    "fromKey": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":2,\"dps_t1_quick_strikes\":3,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":5,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":1,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+    "toKey": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":2,\"dps_t1_quick_strikes\":3,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":5,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":1,\"dps_t5_lethality\":2,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+    "change": "Talents (set 1): Precision 2, Quick Strikes 3, Combat Frenzy 3, Keen Edge 3, Relentless Assault 1, Savage Blows 3, Executioner 5, Swift Fury 2, Berserker's Might 1, Lethality 3, Warlord's Fury 3 -> Precision 2, Quick Strikes 3, Combat Frenzy 3, Keen Edge 3, Relentless Assault 1, Savage Blows 3, Executioner 5, Swift Fury 2, Berserker's Might 1, Lethality 2, Warlord's Fury 3",
+    "contrast": {
+     "delta": -17664.387499999993,
+     "lo": -38597.49353372521,
+     "hi": 3268.718533725223,
+     "pct": -0.022194120787610298,
+     "n": 32,
+     "seed": 307734373,
+     "alphaAdj": 0.0001633986928104575,
+     "method": "paired-t",
+     "verdict": "unresolved",
+     "significant": false,
+     "nNeeded": 52,
+     "basis": null,
+     "higherIsBetter": true
+    }
+   },
+   {
+    "fromKey": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":2,\"dps_t1_quick_strikes\":3,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":5,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":1,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+    "toKey": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":1,\"dps_t1_quick_strikes\":3,\"dps_t1_sharpened_blade\":1,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":5,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":1,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+    "change": "Talents (set 1): Precision 2, Quick Strikes 3, Combat Frenzy 3, Keen Edge 3, Relentless Assault 1, Savage Blows 3, Executioner 5, Swift Fury 2, Berserker's Might 1, Lethality 3, Warlord's Fury 3 -> Precision 1, Quick Strikes 3, Sharpened Blade 1, Combat Frenzy 3, Keen Edge 3, Relentless Assault 1, Savage Blows 3, Executioner 5, Swift Fury 2, Berserker's Might 1, Lethality 3, Warlord's Fury 3",
+    "contrast": {
+     "delta": -1928.8125000000073,
+     "lo": -14864.39012042346,
+     "hi": 11006.765120423446,
+     "pct": -0.0024234238295357123,
+     "n": 32,
+     "seed": 307734373,
+     "alphaAdj": 0.0001633986928104575,
+     "method": "paired-t",
+     "verdict": "unresolved",
+     "significant": false,
+     "nNeeded": 98,
+     "basis": null,
+     "higherIsBetter": true
+    }
+   }
+  ]
+ },
+ "phases": [
+  {
+   "id": "screen",
+   "label": "Screen",
+   "state": "done",
+   "fights": 8,
+   "ms": 26
+  },
+  {
+   "id": "search",
+   "label": "Search",
+   "state": "done",
+   "fights": 19248,
+   "ms": 7730
+  },
+  {
+   "id": "minimise",
+   "label": "Minimise",
+   "state": "done",
+   "fights": 1376,
+   "ms": 523
+  },
+  {
+   "id": "confirm",
+   "label": "Confirm",
+   "state": "done",
+   "fights": 712,
+   "ms": 212
+  },
+  {
+   "id": "attribute",
+   "label": "Attribute",
+   "state": "done",
+   "fights": 664,
+   "ms": 442
+  }
+ ],
+ "multiplicity": {
+  "vsBaseline": "holm",
+  "perChange": "holm-within-row",
+  "racing": "bonferroni",
+  "looks": "bonferroni",
+  "alpha": 0.05
+ },
+ "warnings": [],
+ "baselineViolations": [],
+ "checkpoint": null,
+ "stats": {
+  "ms": 8941,
+  "workers": 1
+ }
+}
