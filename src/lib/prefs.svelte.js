@@ -25,6 +25,9 @@ export const prefs = {
   get cpuProfile() {
     return state.cpuProfile;
   },
+  get calibration() {
+    return state.calibration;
+  },
 };
 
 /** Change one or more preferences, apply them, and remember them on this device. */

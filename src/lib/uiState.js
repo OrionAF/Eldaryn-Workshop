@@ -5,15 +5,17 @@
 export const UI_KEY = 'eldaryn_ui_v1';
 
 import { CPU_PROFILES, DEFAULT_CPU_PROFILE } from './tasks/cpuProfile.js';
+import { normaliseCalibration } from './calibration.js';
 
 export const DENSITIES = ['comfortable', 'compact'];
 export const EFFORTS = ['quick', 'standard', 'thorough'];
 
 /**
  * Preferences (G6): density, reduced motion, the effort tools start with (plan Q4: Standard), and the
- * CPU profile that sizes a job's worker pool (tasks/cpuProfile.js workersFor).
+ * CPU profile that sizes a job's worker pool (tasks/cpuProfile.js workersFor), and the last speed calibration
+ * (calibration.js, null until the user runs it).
  */
-export const defaultPrefs = () => ({ density: 'comfortable', reduceMotion: false, defaultEffort: 'standard', cpuProfile: DEFAULT_CPU_PROFILE });
+export const defaultPrefs = () => ({ density: 'comfortable', reduceMotion: false, defaultEffort: 'standard', cpuProfile: DEFAULT_CPU_PROFILE, calibration: null });
 
 const defaults = () => ({ v: 1, lastHash: null, areaLast: {}, optimiserSetups: {}, prefs: defaultPrefs() });
 
@@ -25,11 +27,12 @@ export function normalisePrefs(raw) {
     if (typeof raw.reduceMotion === 'boolean') out.reduceMotion = raw.reduceMotion;
     if (EFFORTS.includes(raw.defaultEffort)) out.defaultEffort = raw.defaultEffort;
     if (CPU_PROFILES.includes(raw.cpuProfile)) out.cpuProfile = raw.cpuProfile;
+    out.calibration = normaliseCalibration(raw.calibration);
   }
   return out;
 }
 
-/** @returns {{v:1, lastHash:string|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string}}} */
+/** @returns {{v:1, lastHash:string|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string, calibration:object|null}}} */
 export function loadUi() {
   const ui = defaults();
   try {

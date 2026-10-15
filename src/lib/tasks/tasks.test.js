@@ -12,7 +12,7 @@ const fighter = (o = {}) => ({ stats: stats(o), class: 'WARRIOR', spec: null, si
 
 describe('task registry', () => {
   it('names the tasks', () => {
-    expect(Object.keys(TASKS).sort()).toEqual(['dropCheck', 'duel', 'oblivionFloors', 'optimize', 'optimizeMore']);
+    expect(Object.keys(TASKS).sort()).toEqual(['calibrate', 'dropCheck', 'duel', 'oblivionFloors', 'optimize', 'optimizeMore']);
     expect(hasTask('toString')).toBe(false);
   });
 
