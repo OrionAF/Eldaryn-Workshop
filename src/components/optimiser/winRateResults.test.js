@@ -27,12 +27,13 @@ const change = (input, v) => {
   flushSync();
 };
 
-it('the goal list leads with win rate for chapter, dungeon, raid and Oblivion, labelled as clearing without dying', () => {
-  for (const k of ['chapter', 'dungeon', 'raid', 'oblivion']) expect(objectiveKindsFor(k)[0]).toBe('win-rate');
-  expect(OBJECTIVE_LABEL['win-rate']).toBe('Win rate (clear without dying)');
+it("the goal list for chapter, dungeon, raid and Oblivion leads with 'Highest chance to win', then 'Reach a win rate' (W3)", () => {
+  for (const k of ['chapter', 'dungeon', 'raid', 'oblivion']) expect(objectiveKindsFor(k).slice(0, 2)).toEqual(['win-chance', 'win-rate']);
+  expect(OBJECTIVE_LABEL['win-chance']).toBe('Highest chance to win');
+  expect(OBJECTIVE_LABEL['win-rate']).toBe('Reach a win rate');
 });
 
-it('the Target field shows percent (default 95), clamps to 10-100 and explains itself with the target', () => {
+it('the Target field shows percent (default 95), clamps to 1-100 and explains itself with the target', () => {
   const state = { objective: { kind: 'win-rate' } };
   mounted = setup(WinRateTarget, {
     get objective() { return state.objective; },
@@ -43,20 +44,20 @@ it('the Target field shows percent (default 95), clamps to 10-100 and explains i
   expect(ui.q('label').textContent).toMatch(/Target/);
   expect(input.value).toBe('95');
   expect(ui.q('[data-testid="win-rate-explain"]').textContent.replace(/\s+/g, ' ').trim()).toBe(
-    'Finds the build with the fewest changes that clears this at least 95% of the time. Speed does not matter. A loss usually costs nothing but time (a chapter level restarts; an Oblivion floor keeps its key), so a lower target is fine for content you can retry.',
+    'Finds the fewest changes that clear at least 95% of the time.',
   );
   change(input, '80');
   expect(state.objective).toEqual({ kind: 'win-rate', target: 0.8 });
-  change(input, '10');
-  expect(state.objective.target).toBe(0.1);
-  change(input, '5'); // below 10 is refused with an error, the target stays
-  expect(state.objective.target).toBe(0.1);
+  change(input, '1');
+  expect(state.objective.target).toBe(0.01);
+  change(input, '0'); // below 1 is refused with an error, the target stays
+  expect(state.objective.target).toBe(0.01);
   expect(ui.q('.error, [id$="-err"]')?.textContent ?? '').toMatch(/minimum/i);
 });
 
 it('the explanation names the chosen target', () => {
   mounted = setup(WinRateTarget, { objective: { kind: 'win-rate', target: 0.8 } });
-  expect(mounted.q('[data-testid="win-rate-explain"]').textContent).toMatch(/at least 80% of the time/);
+  expect(mounted.q('[data-testid="win-rate-explain"]').textContent).toMatch(/clear at least 80% of the time/);
 });
 
 it('a win-rate contrast is shown in win-rate points, uncapped, keeping its verdict', () => {
@@ -149,10 +150,10 @@ it('every win rate carries "about N tries per clear": rows, baseline and the goa
   expect(already.q('[data-testid="baseline-row"]').textContent).toMatch(/about 1\.0 tries per clear/);
 });
 
-it('the Target field accepts 10 % and says a loss usually costs nothing but time', () => {
-  mounted = setup(WinRateTarget, { objective: { kind: 'win-rate', target: 0.1 } });
-  expect(mounted.q('input').value).toBe('10');
-  expect(mounted.q('[data-testid="win-rate-explain"]').textContent).toMatch(/A loss usually costs nothing but time/);
+it('the Target field accepts 1 %', () => {
+  mounted = setup(WinRateTarget, { objective: { kind: 'win-rate', target: 0.01 } });
+  expect(mounted.q('input').value).toBe('1');
+  expect(mounted.q('[data-testid="win-rate-explain"]').textContent).toMatch(/clear at least 1% of the time/);
 });
 
 it('a Fortress boss result shows raw and credited damage for the rows and the current build', () => {
