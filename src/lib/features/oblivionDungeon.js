@@ -48,3 +48,27 @@ export function runFloorScan(character, { presetId, from = 1, to = 30, n = 64, s
   const task = runOptimizerTask({ mode: 'oblivionFloors', fighter, from, to, n, seed, threshold, maxMs, applyOutputCut }, hooks);
   return { ...task, fighter };
 }
+
+/** Scan effort -> fights per floor (open decision Q4: Standard is the default). */
+export const FLOOR_EFFORT = { quick: 32, standard: 64, thorough: 256 };
+
+/**
+ * Worker request for a floor scan job (the request runFloorScan sends), so the job store can run it.
+ * @param {object} character  plain or $state character (JSON-cloned)
+ */
+export function floorScanRequest(character, { presetId, from = 1, to = 30, effort = 'standard', threshold = WIN_THRESHOLD, applyOutputCut = false } = {}) {
+  const plain = JSON.parse(JSON.stringify(character));
+  return {
+    mode: 'oblivionFloors', fighter: oblivionFighter(plain, presetId), from, to,
+    n: FLOOR_EFFORT[effort] ?? FLOOR_EFFORT.standard, seed: 1, threshold, applyOutputCut,
+  };
+}
+
+/**
+ * Everything a scan's result depends on, as one string: the built fighter plus the scan options. A job
+ * stores it at start; a differing current value means the result describes an older build or setup.
+ */
+export function floorScanInputs(character, opts = {}) {
+  const { fighter, ...scan } = floorScanRequest(character, opts);
+  return JSON.stringify([fighter, scan]);
+}
