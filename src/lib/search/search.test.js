@@ -74,7 +74,7 @@ describe('optimize: contract', { timeout: 120000 }, () => {
   it('rejects a request that cannot run', async () => {
     const character = fixtureCharacter('WARRIOR');
     await expect(optimize({})).rejects.toThrow(/character is required/);
-    await expect(optimize({ character, objective: { kind: 'ttk-median' } })).rejects.toThrow(/cannot score/);
+    await expect(optimize({ character, objective: { kind: 'ttk-median' } })).rejects.toThrow(/unknown objective/);
     await expect(optimize({ character: { ...character, presets: [] } })).rejects.toThrow(/no preset/);
   });
 });
@@ -329,23 +329,6 @@ describe('optimizeMore', { timeout: 120000 }, () => {
 });
 
 describe('objectives through the driver', { timeout: 120000 }, () => {
-  it('time to kill: values and contrasts are in ms of the ranked quantile, win rate alongside', async () => {
-    const r = await optimize({
-      character: relicless(), presetId: 'p1', target: { kind: 'custom', mob: { hp: 3e6, attack: 1, attackSpeed: 1 }, seconds: 600 },
-      objective: { kind: 'ttk-median' }, space: only('relics'), effort: TINY, seed: 1,
-    });
-    expect(r.objective).toMatchObject({ unit: 'ms', higherIsBetter: false, statistic: 'censored-quantile', q: 0.5 });
-    for (const row of [r.baseline, ...r.rows]) {
-      expect(row.value.lo).toBeLessThanOrEqual(row.value.est);
-      expect(row.value.hi).toBeGreaterThanOrEqual(row.value.est);
-      expect(row.aux.winRate.method).toBe('wilson');
-    }
-    for (const row of r.rows) {
-      expect(row.vsBaseline.method).toBe('paired-bootstrap');
-      expect(row.vsBaseline.delta).toBeLessThan(0); // faster
-    }
-  });
-
   it('the space follows the target mode', () => {
     const o = makeObjective({ kind: 'dps' }, resolveTarget(SHORT));
     expect(resolveEffort({ level: 'thorough' }, o)).toMatchObject({ level: 'thorough', n0: 32, maxN: 131072, delta: 0.0025 });

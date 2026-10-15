@@ -14,6 +14,8 @@
   import Button from '../ui/Button.svelte';
   import Banner from '../ui/Banner.svelte';
   import Drawer from '../ui/Drawer.svelte';
+  import { triesPerClear } from '../../lib/ui/winRateFormat.js';
+  import { goalWinRate } from '../../lib/ui/optimiserView.js';
   import { fmtSigned, fmtEstimate, fmtContrast, fmtContrastCi } from '../../lib/ui/statsFormat.js';
 
   let {
@@ -35,6 +37,8 @@
   const winRun = $derived(view.kind === 'win-rate');
   const target = $derived(winRun ? (view.goal?.target ?? null) : null);
   const axisTitle = $derived(winRun ? 'Change in win rate vs current (percentage points)' : AXIS_TITLE[view.unit]);
+  // The win rate the goal banners talk about (optimiserView.js goalWinRate).
+  const goalTries = $derived(triesPerClear(goalWinRate(view)));
   const pct = (x) => `${Math.round(x * 1000) / 10}%`;
   const showBuild = (row) => {
     buildRow = row;
@@ -47,18 +51,18 @@
   {#if view.goal?.status === 'already'}
     <div class="goal" data-testid="goal-already">
       <Banner variant="success" lead="Already clears the target.">
-        The current build wins at least {pct(view.goal.target)} of the time. No changes suggested.
+        The current build wins at least {pct(view.goal.target)} of the time{goalTries ? ` (${goalTries})` : ''}. No changes suggested.
       </Banner>
     </div>
   {:else if view.goal?.status === 'not-reached' && view.rows.length}
     <div class="goal" data-testid="goal-not-reached">
       <Banner variant="warn" lead="No build reached {pct(view.goal.target)}.">
-        These are the closest builds, and each row says how far it falls short.
+        These are the closest builds, and each row says how far it falls short.{goalTries ? ` The best wins ${goalTries}.` : ''}
       </Banner>
     </div>
   {:else if view.goal?.status === 'not-reached'}
     <div class="goal" data-testid="goal-not-reached">
-      <Banner variant="warn" lead="No build reached {pct(view.goal.target)}.">No change moved the win rate; the current build is the closest.</Banner>
+      <Banner variant="warn" lead="No build reached {pct(view.goal.target)}.">No change moved the win rate; the current build is the closest{goalTries ? ` (${goalTries})` : ''}.</Banner>
     </div>
   {/if}
   <div class="sticky">

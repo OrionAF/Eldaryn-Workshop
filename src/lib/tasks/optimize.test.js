@@ -37,7 +37,7 @@ describe("task 'optimize'", { timeout: 120000 }, () => {
 
   it('validates its request', async () => {
     await expect(runTask('optimize', {})).rejects.toThrow(/character is required/);
-    await expect(runTask('optimize', request({ objective: { kind: 'ttk-median' } }))).rejects.toThrow(/cannot score/);
+    await expect(runTask('optimize', request({ objective: { kind: 'ttk-median' } }))).rejects.toThrow(/unknown objective/);
   });
 
   it('the client facade runs it inline (no Worker in tests); cancel() resolves cancelled with a checkpoint', async () => {

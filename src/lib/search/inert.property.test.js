@@ -17,7 +17,8 @@ import { hashSeed } from '../engine/rng.js';
 
 const TARGETS = {
   dummy: { target: { kind: 'dummy', seconds: 8 }, effort: { level: 'quick', n0: 8, maxN: 16, randomStarts: 0 } },
-  chapter: { target: { kind: 'chapter', chapter: 3, level: 5 }, objective: { kind: 'ttk-median' }, effort: { level: 'quick', n0: 8, maxN: 16, randomStarts: 0 } },
+  // a chapter target now scores win rate only, which seldom resolves a row at quick effort; a custom mob exercises a PVE mob fight with dps
+  custom: { target: { kind: 'custom', mob: { hp: 3e6, attack: 1, attackSpeed: 1 }, seconds: 30 }, objective: { kind: 'dps' }, effort: { level: 'quick', n0: 8, maxN: 16, randomStarts: 0 } },
   worldBoss: { target: { kind: 'worldBoss', affinity: 'NONE' }, effort: { level: 'quick', n0: 8, maxN: 16, randomStarts: 0 } },
   pvp: {
     target: { kind: 'pvp', opponentIds: ['opp-a'], seats: 'attacker' },
