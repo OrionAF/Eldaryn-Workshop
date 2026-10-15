@@ -70,3 +70,20 @@ export const OBLIVION_PRESTIGE = gearData.oblivionPrestige;
 export const TOTAL_POWER_EQUIP = gearData.totalPowerEquip;
 export const FEATURE_UNLOCK_LEVELS = gearData.featureUnlockLevels;
 export const PRESET_CONSTANTS = gearData.presetConstants;
+
+// Item stat-level maths shared by the engine (Power quality) and the model (roll ceilings). It sits
+// here because L2 and L3 cannot import each other; it is a three-line lookup over the constants above.
+
+/** gear.md §6 ascensionEffectiveLevel. */
+export const ascensionEffectiveLevel = (L) => (L <= 100 ? L : 100 + (L - 100) * ASCENSION_ABOVE_HUNDRED_STAT_RATE);
+
+/** gear.md §3 itemStatLevel: an Oblivion-realm item counts at ITEM_LEVEL_SCALE of its level (realm in either case). */
+export const itemStatLevel = (itemLevel, realm) =>
+  (String(realm ?? '').toLowerCase() === 'oblivion' ? itemLevel * OBLIVION_PRESTIGE.ITEM_LEVEL_SCALE : itemLevel);
+
+/** gear.md §4 secondaryStatMaxValue, unrounded, for a pool entry `def`; callers round as the client does. */
+export function secondaryStatCeiling(def, statLevel) {
+  const frac = Math.min(statLevel, 100) / 100;
+  const base = def.minValue + (def.maxValue - def.minValue) * (0.5 + 0.5 * frac);
+  return statLevel > 100 ? (base * ascensionEffectiveLevel(statLevel)) / 100 : base;
+}

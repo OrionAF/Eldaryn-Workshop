@@ -4,16 +4,18 @@
    *
    * Parsing is format.js's, never a native number input: with a `statKey`, flat stats read "." as a
    * thousands separator ("48.124" is 48124) and percentage stats read it as a decimal point; without
-   * one the text is read as a plain decimal. While the field has focus a live echo shows how the
+   * one the text is read as a plain decimal, unless `flat` is set: then it is a flat figure (no stat
+   * behind it, e.g. Combat Power) read and shown like a flat stat. While the field has focus a live echo shows how the
    * text was read ("Read as 48.124"), so a wrongly typed separator is visible before it is saved.
    * The value commits on blur or Enter and the box then shows the formatted value. A value outside
    * [min, max] is not committed and shows an error linked by aria-describedby.
    */
-  import { parseStat, parsePct, formatStat, formatPct } from '../../lib/format.js';
+  import { parseStat, parsePct, parseFlat, formatStat, formatPct, formatFlat } from '../../lib/format.js';
 
   let {
     value = $bindable(null),
     statKey = null,
+    flat = false,
     label,
     unit = '',
     min = null,
@@ -25,8 +27,8 @@
   } = $props();
   const id = $props.id();
 
-  const fmt = (v) => (v == null ? '' : statKey ? formatStat(statKey, v) : formatPct(v));
-  const parse = (t) => (statKey ? parseStat(statKey, t) : parsePct(t));
+  const fmt = (v) => (v == null ? '' : statKey ? formatStat(statKey, v) : flat ? formatFlat(v) : formatPct(v));
+  const parse = (t) => (statKey ? parseStat(statKey, t) : flat ? parseFlat(t) : parsePct(t));
 
   let draft = $state(null); // null = not editing; show the formatted value
   let localError = $state('');

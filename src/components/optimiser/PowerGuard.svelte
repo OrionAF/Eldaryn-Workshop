@@ -28,8 +28,7 @@
   <Checkbox checked={on} label="Keep Combat Power at or above a floor" onchange={toggle} />
   {#if on}
     <div class="fields">
-      <!-- statKey: Power is a flat figure, so "." reads as a thousands separator like other flat stats -->
-      <NumberField label="Minimum Combat Power" statKey="totalAttack" min={1} value={floor} onchange={set} />
+      <NumberField label="Minimum Combat Power" flat min={1} value={floor} onchange={set} />
       <Select label="Quick pick" options={pickOptions} value="" onchange={(v) => v && set(Number(v))} />
     </div>
     <span class="hint" data-testid="power-guard-explain">
