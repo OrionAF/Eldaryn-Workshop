@@ -143,3 +143,59 @@ power in the Oblivion realm; PVP `fighterDuelArgs(f)`. `changesOf(space, B, X)` 
 `transcendence`, `condition:<species>`, `glyph:<mountId>:<tier>:<i>`) with scope, owner, side effects
 and legality bundle. `canonicalise` reverts every change whose legalised revert keeps the engineKey;
 `mergeByEngine` keeps one arm per engineKey (the one with the fewest changes).
+
+## Objectives
+
+Code: `src/lib/search/objectives.js` (targets, PVE objectives, ordering heuristics),
+`src/lib/search/pvpObjective.js` (PVP), `src/lib/search/sampler.js` (sample store, contrasts).
+Design record: plan §A.6.
+
+### Per-fight outcome, statistic, interval, contrast
+
+One definition per objective: the value ranked is the value shown is the value tested.
+
+| Objective | Per-fight outcome | Statistic θ | Interval | Paired contrast θ(X) − θ(Y) |
+|---|---|---|---|---|
+| `dps` | damage / window s; the mob cannot die inside the window | mean | t | paired t (`paired-t`); δ relative |
+| `ttk-median`, `ttk-p90` | time in ms if won, else +∞ | censored q-quantile of **all** fights (q = 0.5 / 0.9): the quantile of the wins at q/p, ∞ when p < q | order statistic | paired bootstrap of the quantile difference, in ms (`basis: 'quantile'`); when both builds are ∞ the quantiles cannot differ and the contrast is the paired win-rate difference (`basis: 'winRate'`, Tango, higher is better, absolute zone `WIN_RATE_DELTA` = 0.02 unless given) |
+| `survival` | 1 if alive at the window end | proportion | Wilson | Tango paired proportion; δ absolute |
+| `pvp-winrate` | 1 if my build wins the duel, one lane per (opponent, seat) | pooled proportion, equal N per lane | Wilson on the pool | stratified Tango, one stratum per lane; δ absolute |
+
+The TTK row also reports the win rate (Wilson) and the mean time of the wins; the PVP row reports
+per-matchup Wilson intervals, mean duel length and the timeout share. None of these rank anything:
+equal statistics are a tie (no effective-HP or duel-length tie-break).
+
+### Windows and compatibility
+
+- A target with its own length (dummy and custom: `seconds`, default 60; World Boss: its affinity's
+  fight duration) is the `dps` window and the default `survival` window. A sequence target (chapter,
+  dungeon, raid, Oblivion) has none: every mob keeps its own cap, and `survival` means alive when
+  the fight ends. An objective `seconds` overrides the survival window.
+- `survival` is refused for a target that cannot damage the player (no swing with attack > 0 and
+  speed > 0, no World Boss hit-back, no Oblivion instability): World Boss NONE and FORTIFIED, a
+  custom mob with no attack. `objectiveKindsFor(kind, target)` leaves it out of the picker.
+- Target kinds and their objectives: dummy `dps`; chapter, dungeon (normal and `_hard`), raid,
+  Oblivion `ttk-*`, `survival`; World Boss `dps`, `survival`; custom all four; pvp `pvp-winrate`.
+
+### Target fidelity
+
+Every resolved target carries its engine `mode` (`PVE_MODES` key, or `pvp`), the mode's labelled
+`assumptions` (`{id, label, value?}`; the Oblivion output-cut toggle gives `value` 'on'/'off',
+default off) and `fidelity`: `server-model` when the fight is server-run (dungeon, raid, Oblivion,
+World Boss, PVP), else `client`.
+
+### Residual
+
+The optimiser carries a preset's sheet residual onto candidates only when the sheet's status is
+`fresh` (data-model.md §6); an `unverified` or `stale` sheet is not carried and the run gets a
+`sheet-unverified` / `sheet-stale` warning (`residualFor`).
+
+### Sample store
+
+A sample set is `{main: number[][], side: Object<string, number[][]>, n}`: one lane per stratum,
+each n fights long. `createSampler(objective)` keys entries by `(engineKey, stage)`, a stage being
+`{id, seed}`; N is never part of the key. A request for more fights than held simulates only the
+missing indices (prefix extension; fight i depends on the stage seed and i alone), and builds with
+one engine key share one entry. `compareSets` is the sequential comparator of §Statistics with the
+objective's own contrast at each look; `contrastSets` is one fixed-n contrast (confirm,
+attribution). Both return the Contrast shape plus `basis` and `higherIsBetter`.
