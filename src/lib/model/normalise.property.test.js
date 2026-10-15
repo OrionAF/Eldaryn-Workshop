@@ -8,8 +8,7 @@ import {
   talentPointsForLevel, relicSlotCap, checkPreset, dualEquipUnlocked, dualTalentsUnlocked, mountsUnlocked,
 } from './legality.js';
 import { pointsSpent } from './talents.js';
-import { stonePoolOf } from './stones.js';
-import { STONE_STAT_DEFS } from './stones.js';
+import { stonePoolOf, STONE_STAT_DEFS } from './stones.js';
 import { conduitTypesFor, maxItemLevel, secondaryStatMaxValue, itemStatLevel } from './equipment.js';
 import { glyphQualityBand, MOUNT_GLYPH_SOCKETS } from './glyphs.js';
 import { isFormSigil, MAX_ALTAR_TIER } from './sigils.js';

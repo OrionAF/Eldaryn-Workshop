@@ -18,6 +18,15 @@ describe('game/sigils catalogue', () => {
     expect(SIGIL_UNLOCK_LEVEL_BY_CLASS).toEqual({ Warrior: 25, Sentinel: 25, Mystic: 17, Necromancer: 17 });
     expect(SIGIL_ALTAR_CONSTANTS.MAX_TIER).toBe(8);
   });
+  it('holds the catalogue invariants sigils.md §5 relies on', () => {
+    for (const s of SIGIL_CATALOGUE.filter((x) => x.spellType === 'DAMAGE')) expect(s.spell.baseDamage, s.species).toBe(0);
+    for (const s of SIGIL_CATALOGUE.filter((x) => x.spellType === 'DEBUFF')) {
+      const db = s.spell.debuff ?? {};
+      expect(s.spell.maxInitialAttackPercent, s.species).toBeDefined();
+      if ('regenReductionPercent' in db) expect(db.maxRegenReductionPercent, s.species).toBeDefined();
+      if ('damagePerTickPercent' in db) expect(db.maxDamagePerTickPercent, s.species).toBeDefined();
+    }
+  });
   it('utility slot spell type per class and spec', () => {
     expect(utilitySlotSpellType('NECROMANCER', 'NECROMANCER_DEATHLORD')).toBe('SUMMON');
     expect(utilitySlotSpellType('MYSTIC', 'MYSTIC_MAGE')).toBe('SHIELD');

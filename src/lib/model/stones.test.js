@@ -94,6 +94,9 @@ describe('stone legality (M2 #119)', () => {
   it('persists activated (default on for old saves)', () => {
     expect(normaliseStone({ id: 'u', type: 'PVE_ATTACK', activated: false, stats: [] }).activated).toBe(false);
     expect(normaliseStone({ id: 'v', type: 'PVE_ATTACK', stats: [] }).activated).toBe(true);
+    // the client skips any falsy flag (L1205747); only a missing flag defaults on
+    for (const falsy of [null, 0, '', false]) expect(normaliseStone({ id: 'w', type: 'PVE_ATTACK', activated: falsy, stats: [] }).activated).toBe(false);
+    expect(normaliseStone({ id: 'x', type: 'PVE_ATTACK', activated: 1, stats: [] }).activated).toBe(true);
   });
 });
 

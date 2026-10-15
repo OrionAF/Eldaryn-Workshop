@@ -72,4 +72,16 @@ describe('sequential comparator', () => {
     const as = await compareAsync(async (n) => x.slice(0, n), async (n) => y.slice(0, n), o);
     expect(as).toEqual(sync);
   });
+  it('rejects a non-finite sampler outcome instead of returning a poisoned interval', () => {
+    const ok = (n) => range(n, (i) => i % 3);
+    const bad = (n) => range(n, (i) => (i === 2 ? NaN : i % 3));
+    const inf = (n) => range(n, (i) => (i === 2 ? -Infinity : i % 3));
+    const o = { n0: 8, maxN: 16 };
+    expect(() => compare(bad, ok, o)).toThrow(RangeError);
+    expect(() => compare(ok, inf, o)).toThrow(/non-finite/);
+    // +Infinity is a censored loss, which only the quantile statistic understands
+    const lost = (n) => range(n, (i) => (i % 2 ? Infinity : i));
+    expect(() => compare(lost, ok, { ...o, statistic: 'mean' })).toThrow(RangeError);
+    expect(() => compare(lost, ok, { ...o, statistic: 'quantile' })).not.toThrow();
+  });
 });

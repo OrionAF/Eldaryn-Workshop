@@ -23,6 +23,13 @@ describe('sample sets', () => {
 });
 
 describe('createSampler (keyed by engine key and stage, never by N: #76)', () => {
+  it('appends a very long chunk without overflowing the call stack', async () => {
+    const N = 400000;
+    const sm = createSampler({ sample: (f, { from, to }) => ({ main: [new Array(to - from).fill(1)], side: { ms: [new Array(to - from).fill(2)] } }) });
+    const set = await sm.get('k', S1, fighter(), N);
+    expect(set.n).toBe(N);
+    expect(set.side.ms[0]).toHaveLength(N);
+  });
   it('raising N extends the stored prefix instead of restarting', async () => {
     const o = dps();
     const sm = createSampler(o);

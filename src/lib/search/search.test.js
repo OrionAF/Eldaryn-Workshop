@@ -130,6 +130,8 @@ describe('optimize: too close to call (A.8, A.9)', { timeout: 120000 }, () => {
       expect(row.tieGroup).toBe(0);
     }
     expect(r.headline.unresolved).toBe(open.length);
+    // the search summary states no convergence flag it cannot compute: open neighbours are listed instead
+    expect(r.search).not.toHaveProperty('converged');
     for (const row of r.rows.filter((x) => x.vsBaseline.verdict === 'better')) expect(row.runMore).toBeNull();
   });
 
@@ -318,6 +320,11 @@ describe('optimizeMore', { timeout: 120000 }, () => {
     for (const x of m.rows) if (x.vsBaseline.verdict !== 'better') expect(x.tieGroup).toBe(0);
     expect(m.rows.find((x) => x.key === r.rows[1].key).vsBaseline.n).toBe(64);
     expect(m.headline.better + m.headline.equivalent + m.headline.unresolved).toBe(m.rows.length);
+    // Run more is offered exactly while a re-measured row is still open, and asks for more than it has
+    for (const x of m.rows) {
+      expect(x.runMore != null).toBe(x.vsBaseline.verdict === 'unresolved' && x.key === r.rows[1].key);
+      if (x.runMore) expect(x.runMore.targetN).toBeGreaterThan(x.vsBaseline.n);
+    }
   });
 });
 

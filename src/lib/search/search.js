@@ -8,6 +8,7 @@
 import { hashSeed, mulberry32 } from '../engine/rng.js';
 import { metricKey } from '../engine/metrics.js';
 import { EngineInputError } from '../engine/validate.js';
+import { NEUTRAL_VALUE_TEXT } from '../engine/pvp/resolver.js';
 import { computePresetStats } from '../build/stats.js';
 import { resolvePreset } from '../build/presetInputs.js';
 import { describeBuild } from '../build/describe.js';
@@ -102,7 +103,7 @@ export function prepare(request) {
   if (target.opponents) {
     for (const o of target.opponents) {
       if (o.fighter.defaulted?.length) {
-        warnings.push({ code: 'opponent-defaulted', severity: 'warn', message: `${o.name || 'Opponent'}: ${o.fighter.defaulted.join(', ')} left blank in its sheet, so neutral values were used.` });
+        warnings.push({ code: 'opponent-defaulted', severity: 'warn', message: NEUTRAL_VALUE_TEXT.warning(o.name || 'Opponent', o.fighter.defaulted) });
       }
     }
   }
@@ -942,7 +943,6 @@ function searchSummary(s, st) {
     evaluated: st.evaluated.size,
     merged: { ...st.merged },
     fights: { search, minimise: f.minimise, confirm, total: search + f.minimise + confirm },
-    converged: true, // a finished search always ends at a fixed point (simulation.md §Result)
     unresolved: s.unresolved,
   };
 }

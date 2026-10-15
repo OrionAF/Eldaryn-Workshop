@@ -97,6 +97,66 @@ describe('lane rng', () => {
   });
 });
 
+describe('the minion has its own lane', () => {
+  /** An rng whose 'minion' lane records every draw. */
+  function recording(seed, i) {
+    const rng = fightRng(seed, i);
+    const drawn = [];
+    const orig = rng.lane;
+    rng.lane = (name) => {
+      const k = orig(name);
+      if (name !== 'minion') return k;
+      const tap = () => {
+        const v = k();
+        drawn.push(v);
+        return v;
+      };
+      tap.lane = k.lane;
+      return tap;
+    };
+    return { rng, drawn };
+  }
+  const run = (cls, rng) => {
+    const t = resolveTarget({ kind: 'dummy', seconds: 10 });
+    return simulatePve({ fighter: preparePveFighter(fighterOf(cls)), enemy: t.enemy, maxMs: t.maxMs, rng, ...t.opts });
+  };
+
+  it('Necromancer: every minion draw comes from the minion lane, in order, whatever the other lanes do', () => {
+    const quiet = recording(7, 3);
+    run('NECROMANCER', quiet.rng);
+    expect(quiet.drawn.length).toBeGreaterThan(0);
+    expect(quiet.drawn).toEqual(take(fightRng(7, 3).lane('minion'), quiet.drawn.length));
+    // a build that makes extra player-lane draws leaves the minion's draws untouched
+    const busy = recording(7, 3);
+    take(busy.rng.lane('player'), 57);
+    take(busy.rng.lane('enemy'), 31);
+    run('NECROMANCER', busy.rng);
+    const n = Math.min(quiet.drawn.length, busy.drawn.length);
+    expect(busy.drawn.slice(0, n)).toEqual(quiet.drawn.slice(0, n));
+  });
+
+  it('Mystic: no minion in the fixture build, so its minion lane is never drawn', () => {
+    const r = recording(7, 3);
+    run('MYSTIC', r.rng);
+    expect(r.drawn).toEqual([]);
+  });
+});
+
+describe('fightRng lanes', () => {
+  it('(seed, i) names one lane family: same everywhere, different per fight, independent per lane', () => {
+    const a = fightRng(5, 2);
+    const b = fightRng(5, 2);
+    expect(take(a.lane('player'), 5)).toEqual(take(b.lane('player'), 5));
+    expect(take(fightRng(5, 2).lane('enemy'), 5)).not.toEqual(take(fightRng(5, 3).lane('enemy'), 5));
+    // drawing the base stream or another lane does not move a lane
+    const c = fightRng(5, 2);
+    take(c, 10);
+    take(c.lane('enemy'), 10);
+    expect(take(c.lane('player'), 5)).toEqual(take(fightRng(5, 2).lane('player'), 5));
+    expect(take(fightRng(5, 2).lane('player'), 5)).not.toEqual(take(fightRng(5, 2).lane('enemy'), 5));
+  });
+});
+
 describe('lanes keep the distribution (marginal invariance)', () => {
   const N = process.env.HARNESS_DEEP ? 4000 : 300;
   for (const cls of CLASSES) {

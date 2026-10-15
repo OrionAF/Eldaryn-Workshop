@@ -13,6 +13,7 @@
   import { AREAS } from '../../lib/routes.js';
   import { navGroups } from '../navVisibility.js';
   import { areaHash } from '../../lib/router.svelte.js';
+  import NavIcon from './NavIcon.svelte';
 
   let { route, character, onImport = () => {} } = $props();
 
@@ -26,7 +27,8 @@
   });
 
   const idFor = (areaId) => `rail-head-${areaId}`;
-  const AREA_GLYPH = { character: '◈', builds: '▤', tools: '⚒' };
+  /** Phone strip labels that would not fit; the full label stays on the rail and is the link's name. */
+  const SHORT_LABEL = { 'tools/oblivion': 'Oblivion' };
 </script>
 
 <nav class="rail" aria-label="Main">
@@ -41,12 +43,18 @@
               href={`#/${page.id}`}
               data-tip={page.label}
               data-page={page.id}
+              aria-label={SHORT_LABEL[page.id] ? page.label : undefined}
               aria-current={route.kind === 'page' && route.id === page.id ? 'page' : undefined}
             >
-              <span class="glyph" aria-hidden="true">{page.glyph}</span>
-              <span class="label">{page.label}</span>
+              <span class="glyph"><NavIcon name={page.id} /></span>
+              {#if SHORT_LABEL[page.id]}
+                <span class="label label-full">{page.label}</span>
+                <span class="label label-short" aria-hidden="true">{SHORT_LABEL[page.id]}</span>
+              {:else}
+                <span class="label">{page.label}</span>
+              {/if}
               {#if locked}
-                <span class="tag lock"><span aria-hidden="true">⚿</span> locked</span>
+                <span class="tag lock"><NavIcon name="lock" size={12} /> locked</span>
               {:else if needsClass}
                 <span class="tag">needs class</span>
               {/if}
@@ -62,12 +70,12 @@
 <nav class="areas" aria-label="Areas">
   {#each AREAS as area (area.id)}
     <a class="tab" href={areaLinks[area.id]} aria-current={currentArea === area.id ? 'page' : undefined}>
-      <span class="glyph" aria-hidden="true">{AREA_GLYPH[area.id]}</span>
+      <span class="glyph"><NavIcon name={area.id} size={20} /></span>
       <span class="micro-label">{area.label}</span>
     </a>
   {/each}
   <button type="button" class="tab" onclick={onImport}>
-    <span class="glyph" aria-hidden="true">⇪</span>
+    <span class="glyph"><NavIcon name="import" size={20} /></span>
     <span class="micro-label">Import</span>
   </button>
 </nav>
@@ -113,7 +121,9 @@
     font-weight: var(--fw-bold);
     box-shadow: inset 3px 0 0 var(--ember-500);
   }
-  .glyph { width: 18px; text-align: center; color: var(--brass-400); }
+  .glyph { display: inline-flex; justify-content: center; width: 18px; color: var(--brass-400); }
+  .label-short { display: none; }
+  .lock { display: inline-flex; align-items: center; gap: 4px; }
   .tag {
     margin-left: auto;
     font-size: var(--fs-11);
@@ -180,6 +190,8 @@
     .item[aria-current='page'] { box-shadow: inset 0 -3px 0 var(--brass-400); background: none; }
     .item .label, .item .tag { position: static; width: auto; height: auto; clip-path: none; margin: 0; }
     .item .glyph { display: none; }
+    .item .label-full { display: none; }
+    .item .label-short { display: inline; }
     .item:hover::after, .item:focus-visible::after { content: none; }
     .areas {
       position: fixed;

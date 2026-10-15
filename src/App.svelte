@@ -19,6 +19,7 @@
   import { rosterStore } from './lib/rosterStore.svelte.js';
   import { router, go } from './lib/router.svelte.js';
   import { statusMessage } from './lib/notify.svelte.js';
+  import InspectorOutlet from './components/InspectorOutlet.svelte';
   import { AFTER_IMPORT_PAGE_ID, DEFAULT_PAGE_ID, pageById } from './lib/routes.js';
 
   const empty = $derived(rosterStore.roster.characters.length === 0);
@@ -47,6 +48,8 @@
     wasEmpty = empty;
   });
 </script>
+
+<a class="skip-link" href="#main">Skip to content</a>
 
 {#if empty}
   <WelcomeScreen />
@@ -77,7 +80,7 @@
               {/if}
             {/if}
           </main>
-          <aside id="shell-inspector" class="inspector" aria-label="Inspector"></aside>
+          <aside id="shell-inspector" class="inspector" aria-label="Inspector"><InspectorOutlet /></aside>
         </div>
       </div>
     </div>
@@ -88,6 +91,21 @@
 <NotificationStack />
 
 <style>
+  /* First Tab stop; off-screen until focused. */
+  .skip-link {
+    position: fixed;
+    top: var(--sp-2);
+    left: var(--sp-2);
+    z-index: var(--z-toast);
+    padding: var(--sp-2) var(--sp-4);
+    background: var(--surface-4);
+    border: 1px solid var(--line-control);
+    border-radius: var(--r-1);
+    color: var(--text-ink);
+    text-decoration: none;
+    transform: translateY(-200%);
+  }
+  .skip-link:focus { transform: none; }
   .app {
     display: flex;
     flex-direction: column;
