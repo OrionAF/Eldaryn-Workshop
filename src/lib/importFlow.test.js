@@ -52,13 +52,12 @@ describe('game profile', () => {
     expect(importFlow.open).toBe(false);
   });
 
-  it('defaults to Update when the name matches; Update keeps presets, opponents and runs, and Undo restores', () => {
+  it('defaults to Update when the name matches; Update brings the game presets, keeps opponents and runs, and Undo restores', () => {
     loadImportText(text(profile));
     const name = importFlow.plan.character.name;
     closeImport();
     const id = rosterStore.current.id;
     rosterStore.renameCharacter(id, name);
-    const presetNames = rosterStore.current.presets.map((p) => p.name);
     rosterStore.current.opponents.push({ id: 'o1', name: 'Rival', class: 'MYSTIC', spec: null, sheet: { values: { totalAttack: 1 }, enteredAt: 'x' }, sigils: [] });
     const snapshot = text(normaliseCharacter(JSON.parse(text(rosterStore.current)))); // the opponent above as the model holds it
 
@@ -70,7 +69,7 @@ describe('game profile', () => {
 
     expect(rosterStore.roster.characters).toHaveLength(count); // no new character
     expect(rosterStore.current.id).toBe(id);
-    expect(rosterStore.current.presets.map((p) => p.name)).toEqual(presetNames);
+    expect(rosterStore.current.presets.map((p) => p.name)).toEqual(profile.presets.map((p) => p.name)); // into the empty padding
     expect(rosterStore.current.opponents).toHaveLength(1);
     expect(rosterStore.current.level).toBe(profile.player.level);
     expect(importFlow.undo?.name).toBe(name);

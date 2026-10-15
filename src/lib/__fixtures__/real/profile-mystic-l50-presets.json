@@ -1,0 +1,1126 @@
+{
+ "equipment": {
+  "HEAD": {
+   "primaryStats": {
+    "attack": 3922,
+    "hp": 9533
+   },
+   "id": "ceec6b31-3a08-4a96-9478-af8d56827b7b",
+   "name": "Dragonforged Helmet",
+   "itemType": "DRAGONFORGED",
+   "slot": "HEAD",
+   "rarity": "MYTHIC",
+   "itemLevel": 45,
+   "secondaryStats": [
+    {
+     "type": "SPELL_RESIST",
+     "value": 3.4
+    },
+    {
+     "type": "SPELL_DAMAGE",
+     "value": 10.7
+    }
+   ],
+   "qualityBonus": 0,
+   "class": "MYSTIC"
+  },
+  "SHOULDERS": {
+   "primaryStats": {
+    "attack": 3289,
+    "hp": 8281
+   },
+   "id": "cb07b73b-6bf9-436c-aca9-84c7c79890b1",
+   "name": "Dragonforged Shoulderplates",
+   "itemType": "DRAGONFORGED",
+   "slot": "SHOULDERS",
+   "rarity": "MYTHIC",
+   "itemLevel": 43,
+   "secondaryStats": [
+    {
+     "type": "ATTACK_SPEED",
+     "value": 0.03
+    },
+    {
+     "type": "SPELL_VAMP",
+     "value": 6
+    }
+   ],
+   "qualityBonus": 0,
+   "class": "MYSTIC"
+  },
+  "CHEST": {
+   "primaryStats": {
+    "attack": 3414,
+    "hp": 9420
+   },
+   "id": "7ca38689-5c1c-487c-baa4-f945fcd0764c",
+   "name": "Dragonforged Chestplate",
+   "itemType": "DRAGONFORGED",
+   "slot": "CHEST",
+   "rarity": "MYTHIC",
+   "itemLevel": 10,
+   "secondaryStats": [
+    {
+     "type": "BLOCK_CHANCE",
+     "value": 1
+    },
+    {
+     "type": "SPELL_CRIT_CHANCE",
+     "value": 3.6
+    }
+   ],
+   "qualityBonus": 0,
+   "class": "MYSTIC"
+  },
+  "LEGGINGS": {
+   "primaryStats": {
+    "attack": 3352,
+    "hp": 9309
+   },
+   "id": "f833ed66-10a9-4156-9c52-120a79978e1a",
+   "name": "Celestial Leggings",
+   "itemType": "CELESTIAL",
+   "slot": "LEGGINGS",
+   "rarity": "MYTHIC",
+   "itemLevel": 32,
+   "secondaryStats": [
+    {
+     "type": "HP_REGEN",
+     "value": 2.2
+    },
+    {
+     "type": "SPELL_DAMAGE",
+     "value": 10.2
+    }
+   ],
+   "qualityBonus": 0,
+   "class": "MYSTIC"
+  },
+  "BOOTS": {
+   "primaryStats": {
+    "attack": 2818,
+    "hp": 6035
+   },
+   "id": "5c4d0d1e-d2b0-4bd4-ac7e-162368809435",
+   "name": "Dragonforged Boots",
+   "itemType": "DRAGONFORGED",
+   "slot": "BOOTS",
+   "rarity": "MYTHIC",
+   "itemLevel": 27,
+   "secondaryStats": [
+    {
+     "type": "ATTACK_SPEED",
+     "value": 0.1
+    },
+    {
+     "type": "SPELL_DAMAGE",
+     "value": 11.8
+    }
+   ],
+   "qualityBonus": 0,
+   "class": "MYSTIC"
+  },
+  "WEAPON": {
+   "primaryStats": {
+    "attack": 9891,
+    "hp": 2144
+   },
+   "id": "387fdd3e-38d2-4163-9159-06ccd5c5e576",
+   "name": "Celestial Staff",
+   "itemType": "CELESTIAL",
+   "slot": "WEAPON",
+   "rarity": "MYTHIC",
+   "itemLevel": 49,
+   "secondaryStats": [
+    {
+     "type": "LIFESTEAL",
+     "value": 3.8
+    },
+    {
+     "type": "SPELL_VAMP",
+     "value": 11.3
+    }
+   ],
+   "qualityBonus": 0,
+   "class": "MYSTIC"
+  },
+  "OFFHAND": {
+   "primaryStats": {
+    "attack": 2881,
+    "hp": 9307
+   },
+   "id": "89a4ccdd-3f47-4169-b3e1-e0c382f64a07",
+   "name": "Dragonforged Relic",
+   "itemType": "DRAGONFORGED",
+   "slot": "OFFHAND",
+   "rarity": "MYTHIC",
+   "itemLevel": 23,
+   "secondaryStats": [
+    {
+     "type": "SPELL_DAMAGE",
+     "value": 13
+    },
+    {
+     "type": "ATTACK_PERCENT",
+     "value": 8.8
+    }
+   ],
+   "qualityBonus": 0,
+   "class": "MYSTIC"
+  },
+  "RING": {
+   "primaryStats": {
+    "attack": 6288,
+    "hp": 624
+   },
+   "id": "69f7ef29-8f61-44d5-84b0-6d77e766dda6",
+   "name": "Dragonforged Ring",
+   "itemType": "DRAGONFORGED",
+   "slot": "RING",
+   "rarity": "MYTHIC",
+   "itemLevel": 35,
+   "secondaryStats": [
+    {
+     "type": "CRIT_CHANCE",
+     "value": 2
+    },
+    {
+     "type": "SPELL_DAMAGE",
+     "value": 4.9
+    }
+   ],
+   "qualityBonus": 0,
+   "class": "MYSTIC"
+  },
+  "TRINKET": {
+   "primaryStats": {
+    "attack": 3457,
+    "hp": 2810
+   },
+   "id": "0f2463f7-f3fb-45c0-9c48-2eac9d6cb617",
+   "name": "Dragonforged Amulet",
+   "itemType": "DRAGONFORGED",
+   "slot": "TRINKET",
+   "rarity": "MYTHIC",
+   "itemLevel": 11,
+   "secondaryStats": [
+    {
+     "type": "SPELL_DAMAGE",
+     "value": 4.4
+    },
+    {
+     "type": "SPELL_VAMP",
+     "value": 4.6
+    }
+   ],
+   "qualityBonus": 0,
+   "class": "MYSTIC"
+  },
+  "BELT": null,
+  "GLOVES": null,
+  "RIFT_CORE": null
+ },
+ "equipment2": {
+  "HEAD": null,
+  "SHOULDERS": null,
+  "CHEST": null,
+  "LEGGINGS": null,
+  "BOOTS": null,
+  "WEAPON": null,
+  "OFFHAND": null,
+  "RING": null,
+  "TRINKET": null,
+  "BELT": null,
+  "GLOVES": null,
+  "RIFT_CORE": null
+ },
+ "activeEquipmentSet": 1,
+ "skills": {
+  "huntingLevel": 6,
+  "luckLevel": 4,
+  "vitalityLevel": 6,
+  "petDiscountLevel": 5,
+  "masteryLevel": 3,
+  "sigilDiscountLevel": 5,
+  "miningChargesLevel": 4,
+  "crusadeDiscountLevel": 4,
+  "midasTouchLevel": 1,
+  "artisanLevel": 1,
+  "summonLuckLevel": 3,
+  "ascensionLevel": 1,
+  "attunementLevel": 1,
+  "keySaveLevel": 1
+ },
+ "excludedDropStats": [
+  "DAMAGE_REDUCTION"
+ ],
+ "talentState": {
+  "specialization": "MYSTIC_MAGE",
+  "allocation": {
+   "mage_t1_arcane_empowerment": 2,
+   "mage_t1_mystic_force": 3,
+   "mage_t1_essence_siphon": 2,
+   "mage_t2_runic_amplification": 3,
+   "mage_t3_sorcerous_might": 2,
+   "mage_t3_aether_drain": 3,
+   "mage_t4_arcane_supremacy": 5,
+   "mage_t4_soul_conduit": 3,
+   "mage_t5_unbound_power": 3,
+   "mage_t6_arcanum_ascendant": 3
+  },
+  "talentPointsSpent": 29,
+  "availablePoints": 0
+ },
+ "talentState2": {
+  "specialization": "MYSTIC_DRUID",
+  "allocation": {
+   "druid_t1_savage_strength": 5,
+   "druid_t2_blood_feast": 3,
+   "druid_t2_killer_instinct": 3,
+   "druid_t3_relentless_pursuit": 3,
+   "druid_t3_savage_execution": 1,
+   "druid_t4_feral_might": 5,
+   "druid_t4_taste_for_blood": 3,
+   "druid_t5_apex_predator": 3,
+   "druid_t6_fury_of_the_dire_wolf": 3
+  },
+  "talentPointsSpent": 29,
+  "availablePoints": 0
+ },
+ "activeTalentSet": 1,
+ "presets": [
+  {
+   "id": "default",
+   "name": "MAGE",
+   "icon": "shield",
+   "equipmentSet": 1,
+   "talentSet": 1,
+   "petId": "aea6da96-66fd-4ff9-a3de-8f2d0fab609c",
+   "mountId": "249cec27-bef5-47eb-969b-558fc12dbcf8",
+   "relicIds": [
+    "relic_runic_focus",
+    "relic_siphon_fang"
+   ],
+   "sigilSpecies": [
+    "RUNIC_AFFLICTION",
+    "ARCANE_BURST",
+    "ARCANE_BARRAGE"
+   ],
+   "utilitySigilSpecies": "VOID_AEGIS",
+   "transcendencePresetId": null,
+   "isDefault": true
+  },
+  {
+   "id": "d319d9b0-33da-4910-823c-43c1e3b15204",
+   "name": "CAT FORM",
+   "icon": "bolt",
+   "equipmentSet": 2,
+   "talentSet": 2,
+   "petId": "aea6da96-66fd-4ff9-a3de-8f2d0fab609c",
+   "mountId": "249cec27-bef5-47eb-969b-558fc12dbcf8",
+   "relicIds": [
+    "relic_runic_focus",
+    "relic_siphon_fang"
+   ],
+   "sigilSpecies": [
+    "ARCANE_BARRAGE",
+    "BLINDING_AFFLICTION",
+    "RUNIC_AFFLICTION"
+   ],
+   "utilitySigilSpecies": "LUPINE_FORM",
+   "transcendencePresetId": null,
+   "isDefault": false
+  }
+ ],
+ "activePresetId": "default",
+ "awakeningState": {
+  "path": "SHADOW",
+  "level": 6
+ },
+ "transcendence": {
+  "allocatedNodeIds": []
+ },
+ "transcendencePresets": [
+  {
+   "id": "default",
+   "name": "DEFAULT",
+   "icon": "core",
+   "allocatedNodeIds": [],
+   "isDefault": true
+  }
+ ],
+ "activeTranscendencePresetId": "default",
+ "enchantSlots": {
+  "HEAD": "f4ed36c3-0e27-4b1e-a9d8-8fc24099241c",
+  "SHOULDERS": "86cb3627-4263-4cdf-99a7-ad7c0b3a7e2f",
+  "CHEST": "1f3b406c-dfbe-4cf6-bb91-b54c6192f263",
+  "LEGGINGS": "509bb9fe-9a0a-42c6-8aac-6c6c405964be",
+  "BOOTS": "23417a06-4c0d-476b-9626-5e1298b6fcd5",
+  "WEAPON": "93533cd2-ad04-4237-a1bf-6246f0083f10",
+  "OFFHAND": "cd8acaa1-6803-4d67-8135-1bb9f9af6c12",
+  "RING": "d545456f-5828-480b-8db1-af30335c7d48",
+  "TRINKET": "60fe97cf-d875-4610-9078-6ae464b05a39",
+  "BELT": null,
+  "GLOVES": null,
+  "RIFT_CORE": null
+ },
+ "enchantSlots2": {
+  "HEAD": null,
+  "SHOULDERS": null,
+  "CHEST": null,
+  "LEGGINGS": null,
+  "BOOTS": null,
+  "WEAPON": null,
+  "OFFHAND": null,
+  "RING": null,
+  "TRINKET": null,
+  "BELT": null,
+  "GLOVES": null,
+  "RIFT_CORE": null
+ },
+ "enchantStones": [
+  {
+   "id": "f4ed36c3-0e27-4b1e-a9d8-8fc24099241c",
+   "type": "PVE_ATTACK",
+   "activated": true,
+   "stats": [
+    {
+     "type": "PENETRATION",
+     "value": 0.5
+    },
+    {
+     "type": "ATTACK_SPEED",
+     "value": 0.05
+    }
+   ],
+   "quality": 23
+  },
+  {
+   "id": "cd8acaa1-6803-4d67-8135-1bb9f9af6c12",
+   "type": "PVE_DEFENSE",
+   "activated": true,
+   "stats": [
+    {
+     "type": "HP_REGEN",
+     "value": 1.2
+    },
+    {
+     "type": "SPELL_RESIST",
+     "value": 2.9
+    }
+   ],
+   "quality": 61
+  },
+  {
+   "id": "1f3b406c-dfbe-4cf6-bb91-b54c6192f263",
+   "type": "PVE_DEFENSE",
+   "activated": true,
+   "stats": [
+    {
+     "type": "HEALTH_PERCENT",
+     "value": 3.5
+    },
+    {
+     "type": "SPELL_RESIST",
+     "value": 0.5
+    }
+   ],
+   "quality": 19
+  },
+  {
+   "id": "3dd6fcc3-2526-4fad-bb60-f0d9aa738ce4",
+   "type": "PVE_DEFENSE",
+   "activated": true,
+   "stats": [
+    {
+     "type": "HEALTH_PERCENT",
+     "value": 1.2
+    },
+    {
+     "type": "SPELL_RESIST",
+     "value": 0.9
+    }
+   ],
+   "quality": 8
+  },
+  {
+   "id": "23417a06-4c0d-476b-9626-5e1298b6fcd5",
+   "type": "PVP",
+   "activated": true,
+   "stats": [
+    {
+     "type": "PVP_DEFENSE",
+     "value": 14
+    },
+    {
+     "type": "SPELL_VAMP",
+     "value": 3.5
+    }
+   ],
+   "quality": 48
+  },
+  {
+   "id": "93f95f25-f07c-4d38-a58c-d04a4fed9b2b",
+   "type": "PVE_DEFENSE",
+   "activated": true,
+   "stats": [
+    {
+     "type": "BLOCK_CHANCE",
+     "value": 1.3
+    },
+    {
+     "type": "HP_REGEN",
+     "value": 0.4
+    }
+   ],
+   "quality": 30
+  },
+  {
+   "id": "509bb9fe-9a0a-42c6-8aac-6c6c405964be",
+   "type": "PVE_ATTACK",
+   "activated": true,
+   "stats": [
+    {
+     "type": "CRIT_CHANCE",
+     "value": 0.5
+    },
+    {
+     "type": "LIFESTEAL",
+     "value": 3.8
+    }
+   ],
+   "quality": 48
+  },
+  {
+   "id": "d545456f-5828-480b-8db1-af30335c7d48",
+   "type": "PVP",
+   "activated": true,
+   "stats": [
+    {
+     "type": "PVP_DEFENSE",
+     "value": 7
+    },
+    {
+     "type": "HEALTH_PERCENT",
+     "value": 3
+    }
+   ],
+   "quality": 22
+  },
+  {
+   "id": "93533cd2-ad04-4237-a1bf-6246f0083f10",
+   "type": "PVE_ATTACK",
+   "activated": true,
+   "stats": [
+    {
+     "type": "SPELL_CRIT_CHANCE",
+     "value": 1.2
+    },
+    {
+     "type": "CRIT_DAMAGE",
+     "value": 0.11
+    }
+   ],
+   "quality": 35
+  },
+  {
+   "id": "60fe97cf-d875-4610-9078-6ae464b05a39",
+   "type": "PVE_ATTACK",
+   "activated": true,
+   "stats": [
+    {
+     "type": "CRIT_DAMAGE",
+     "value": 0.16
+    },
+    {
+     "type": "SPELL_DAMAGE",
+     "value": 10
+    }
+   ],
+   "quality": 100,
+   "qualityBonus": 72
+  },
+  {
+   "id": "86cb3627-4263-4cdf-99a7-ad7c0b3a7e2f",
+   "type": "PVE_ATTACK",
+   "activated": true,
+   "stats": [
+    {
+     "type": "CRIT_CHANCE",
+     "value": 2.1
+    },
+    {
+     "type": "CRIT_DAMAGE",
+     "value": 0.15
+    }
+   ],
+   "quality": 86
+  },
+  {
+   "id": "27bdaa09-4698-43ea-8973-9358671f194c",
+   "type": "PVP",
+   "activated": true,
+   "stats": [
+    {
+     "type": "PVP_ATTACK",
+     "value": 17
+    },
+    {
+     "type": "SPELL_RESIST",
+     "value": 0.5
+    }
+   ],
+   "quality": 31
+  },
+  {
+   "id": "6bbbc084-8ec4-4288-984b-00c2c5c01131",
+   "type": "PVP",
+   "activated": true,
+   "stats": [
+    {
+     "type": "PVP_DEFENSE",
+     "value": 11
+    },
+    {
+     "type": "BLOCK_CHANCE",
+     "value": 1.7
+    }
+   ],
+   "quality": 60
+  },
+  {
+   "id": "b6a54793-b89c-4a59-9079-ef7d3152b3b8",
+   "type": "PVP",
+   "activated": true,
+   "stats": [
+    {
+     "type": "PVP_DEFENSE",
+     "value": 8
+    },
+    {
+     "type": "BLOCK_CHANCE",
+     "value": 0.5
+    }
+   ],
+   "quality": 11
+  },
+  {
+   "id": "cf53a1bb-4ba8-4b39-9507-12d1b3281ed9",
+   "type": "PVE_ATTACK",
+   "activated": true,
+   "stats": [
+    {
+     "type": "PENETRATION",
+     "value": 1.1
+    },
+    {
+     "type": "CRIT_CHANCE",
+     "value": 0.7
+    }
+   ],
+   "quality": 18
+  },
+  {
+   "id": "ca64bd83-2ad6-4f5d-b9be-640d28d75cbe",
+   "type": "PVE_DEFENSE",
+   "activated": true,
+   "stats": [
+    {
+     "type": "HEALTH_PERCENT",
+     "value": 2.7
+    },
+    {
+     "type": "BLOCK_CHANCE",
+     "value": 0.5
+    }
+   ],
+   "quality": 13
+  },
+  {
+   "id": "1e1062c8-8288-471b-b70b-580c384bd340",
+   "type": "PVP",
+   "activated": true,
+   "stats": [
+    {
+     "type": "PVP_DEFENSE",
+     "value": 9
+    },
+    {
+     "type": "SPELL_VAMP",
+     "value": 1.3
+    }
+   ],
+   "quality": 16
+  },
+  {
+   "id": "f5e7f1eb-d096-4476-97f4-2f6477e1a31e",
+   "type": "PVE_DEFENSE",
+   "activated": true,
+   "stats": [
+    {
+     "type": "DISRUPTION_CHANCE",
+     "value": 0.2
+    },
+    {
+     "type": "HP_REGEN",
+     "value": 1.6
+    }
+   ],
+   "quality": 51
+  },
+  {
+   "id": "cebed316-b6a3-4395-9130-a16665acde7c",
+   "type": "PVE_ATTACK",
+   "activated": true,
+   "stats": [
+    {
+     "type": "SPELL_DAMAGE",
+     "value": 9.4
+    },
+    {
+     "type": "ATTACK_SPEED",
+     "value": 0.02
+    }
+   ],
+   "quality": 53
+  }
+ ],
+ "computedStats": {
+  "totalAttack": 69784,
+  "totalHp": 135883,
+  "totalAttackSpeed": 1.39,
+  "totalDoubleHit": 0,
+  "totalCritChance": 7.6,
+  "totalCritDamage": 2.2,
+  "totalHpRegen": 3.4,
+  "totalLifesteal": 7.6,
+  "totalHealthPercent": 27,
+  "totalAttackPercent": 48.8,
+  "totalDamageReduction": 0,
+  "totalBlockChance": 0,
+  "totalMissChance": 0,
+  "totalBlindChance": 0,
+  "totalParalyzeChance": 0,
+  "totalPenetration": 3.5,
+  "totalPvpAttack": 15,
+  "totalPvpDefense": 21,
+  "totalSpellDamage": 169.2,
+  "totalSpellResist": 6.8,
+  "totalSpellCritChance": 7.8,
+  "totalSpellVamp": 48.5,
+  "totalDisruptionChance": 0,
+  "totalMinionAttack": 0,
+  "totalMinionHealth": 0,
+  "totalMinionCritChance": 0,
+  "totalMinionLifesteal": 0,
+  "totalSoulLink": 0,
+  "totalMinionAttackSpeed": 0,
+  "totalDominion": 0,
+  "totalOblivionPower": 0,
+  "totalFlameConduit": 0,
+  "totalEarthenConduit": 0,
+  "totalDarkConduit": 0,
+  "rawSpellVamp": 50.9
+ },
+ "totalPower": 17995,
+ "fortressBuffs": {
+  "ownedFortressIds": [
+   "TOP_1"
+  ]
+ },
+ "_note": "Stripped capture of a real 2.7.3 player profile (Mystic L50, two presets), one of the user's own characters, committed with the user's permission 2026-10-15. Game state plus the server's computedStats and totalPower: no name, player ids, clan, quests or economy.",
+ "player": {
+  "name": "Fixture Mystic L50, two presets",
+  "class": "MYSTIC",
+  "level": 50,
+  "glyphs": [
+   {
+    "id": "bd61bf21-6950-47ea-9fd7-730ba188fc76",
+    "tier": "MINOR",
+    "rarity": "COMMON",
+    "glyphType": "g-quick",
+    "sealed": false,
+    "secondary": {
+     "stat": "HEALTH_PERCENT",
+     "quality": 0.18999556639592485
+    }
+   },
+   {
+    "id": "e20b0e4f-38de-4025-bbce-4f945e50ba93",
+    "tier": "MINOR",
+    "rarity": "COMMON",
+    "glyphType": "g-quick",
+    "sealed": false,
+    "secondary": {
+     "stat": "CRIT_DAMAGE",
+     "quality": 0.15813758180616558
+    }
+   },
+   {
+    "id": "63893b6d-eb51-466f-ac45-099df6e4fc2d",
+    "tier": "MINOR",
+    "rarity": "COMMON",
+    "glyphType": "g-quick",
+    "sealed": false,
+    "secondary": {
+     "stat": "DAMAGE_REDUCTION",
+     "quality": 0.14050680597240683
+    }
+   },
+   {
+    "id": "3bc44d61-10d3-4b61-902f-7ba8e0bd63eb",
+    "tier": "MINOR",
+    "rarity": "COMMON",
+    "glyphType": "g-quick",
+    "sealed": false,
+    "secondary": {
+     "stat": "ATTACK_PERCENT",
+     "quality": 0.10700883892690145
+    }
+   },
+   {
+    "id": "21b8ee44-e4c6-469d-bbfc-5583c823e8c4",
+    "tier": "MINOR",
+    "rarity": "RARE",
+    "glyphType": "g-tough",
+    "sealed": false,
+    "secondary": {
+     "stat": "PENETRATION",
+     "quality": 0.5057818154882743
+    }
+   },
+   {
+    "id": "0b96d433-d331-4226-bd72-208b51116dbe",
+    "tier": "MINOR",
+    "rarity": "COMMON",
+    "glyphType": "g-swift",
+    "sealed": false,
+    "secondary": {
+     "stat": "SPELL_VAMP",
+     "quality": 0.13457990049845261
+    }
+   }
+  ]
+ },
+ "petState": {
+  "ownedPets": [
+   {
+    "id": "3ab8df46-56f7-4838-b8c5-6c25c6f1868a",
+    "species": "IRON_GOLEM",
+    "rarity": "EPIC",
+    "level": 1,
+    "xp": 0,
+    "secondaryStats": [
+     {
+      "type": "SPELL_RESIST",
+      "value": 3
+     },
+     {
+      "type": "SPELL_DAMAGE",
+      "value": 2.5
+     }
+    ]
+   },
+   {
+    "id": "aea6da96-66fd-4ff9-a3de-8f2d0fab609c",
+    "species": "IRON_GOLEM",
+    "rarity": "EPIC",
+    "level": 1,
+    "xp": 0,
+    "secondaryStats": [
+     {
+      "type": "ATTACK_SPEED",
+      "value": 0.15
+     },
+     {
+      "type": "CRIT_DAMAGE",
+      "value": 0.06
+     }
+    ]
+   },
+   {
+    "id": "536516c8-4d83-4148-9a63-29caadd95bf9",
+    "species": "VOID_SPIDER",
+    "rarity": "EPIC",
+    "level": 1,
+    "xp": 0,
+    "secondaryStats": [
+     {
+      "type": "LIFESTEAL",
+      "value": 1.5
+     },
+     {
+      "type": "ATTACK_SPEED",
+      "value": 0.05
+     }
+    ]
+   },
+   {
+    "id": "d1fbcbd1-1384-447a-a6c5-078e835a4082",
+    "species": "IRON_GOLEM",
+    "rarity": "EPIC",
+    "level": 1,
+    "xp": 0,
+    "secondaryStats": [
+     {
+      "type": "PENETRATION",
+      "value": 4.8
+     },
+     {
+      "type": "DISRUPTION_CHANCE",
+      "value": 0.2
+     }
+    ]
+   },
+   {
+    "id": "d87a9093-910c-4062-8df3-9997f73994de",
+    "species": "IRON_GOLEM",
+    "rarity": "EPIC",
+    "level": 1,
+    "xp": 0,
+    "secondaryStats": [
+     {
+      "type": "SPELL_VAMP",
+      "value": 4.7
+     },
+     {
+      "type": "DISRUPTION_CHANCE",
+      "value": 0.2
+     }
+    ]
+   },
+   {
+    "id": "9216dcd2-4cc4-4bd7-adc5-b400c427b16b",
+    "species": "IRON_GOLEM",
+    "rarity": "EPIC",
+    "level": 1,
+    "xp": 0,
+    "secondaryStats": [
+     {
+      "type": "ATTACK_PERCENT",
+      "value": 10.4
+     },
+     {
+      "type": "ATTACK_SPEED",
+      "value": 0.06
+     }
+    ]
+   },
+   {
+    "id": "a2a57152-9169-4b52-ac3d-eb53e187ac1b",
+    "species": "IRON_GOLEM",
+    "rarity": "EPIC",
+    "level": 1,
+    "xp": 0,
+    "secondaryStats": [
+     {
+      "type": "SPELL_VAMP",
+      "value": 2.1
+     },
+     {
+      "type": "HP_REGEN",
+      "value": 0.3
+     }
+    ]
+   }
+  ],
+  "equippedPetId": "aea6da96-66fd-4ff9-a3de-8f2d0fab609c",
+  "altar": {
+   "totalXp": 6300,
+   "tier": 1
+  }
+ },
+ "mountState": {
+  "ownedMounts": [
+   {
+    "id": "d65c39c9-909d-412a-9416-66e8d4d2ee27",
+    "species": "night_wolf",
+    "rarity": "COMMON",
+    "baseHp": 9,
+    "baseAtk": 8,
+    "level": 2,
+    "xp": 2,
+    "glyphs": {
+     "minor": [
+      null,
+      null,
+      null
+     ],
+     "major": [
+      null,
+      null
+     ],
+     "mythic": [
+      null
+     ]
+    }
+   },
+   {
+    "id": "3d3ef651-4983-45e5-a9f7-d4fab8e476a9",
+    "species": "frostfang_wolf",
+    "rarity": "COMMON",
+    "baseHp": 10,
+    "baseAtk": 5,
+    "level": 2,
+    "xp": 2,
+    "glyphs": {
+     "minor": [
+      null,
+      null,
+      null
+     ],
+     "major": [
+      null,
+      null
+     ],
+     "mythic": [
+      null
+     ]
+    }
+   },
+   {
+    "id": "249cec27-bef5-47eb-969b-558fc12dbcf8",
+    "species": "thundermaw",
+    "rarity": "UNCOMMON",
+    "baseHp": 16,
+    "baseAtk": 13,
+    "level": 1,
+    "xp": 0,
+    "glyphs": {
+     "minor": [
+      "bd61bf21-6950-47ea-9fd7-730ba188fc76",
+      "e20b0e4f-38de-4025-bbce-4f945e50ba93",
+      null
+     ],
+     "major": [
+      null,
+      null
+     ],
+     "mythic": [
+      null
+     ]
+    }
+   }
+  ],
+  "activeMountId": "249cec27-bef5-47eb-969b-558fc12dbcf8"
+ },
+ "sigilState": {
+  "ownedSigils": [
+   {
+    "species": "URSINE_FORM",
+    "rarity": "COMMON",
+    "level": 1
+   },
+   {
+    "species": "LUPINE_FORM",
+    "rarity": "COMMON",
+    "level": 1
+   },
+   {
+    "species": "ARCANE_SHARD",
+    "rarity": "COMMON",
+    "level": 11
+   },
+   {
+    "species": "ARCANE_EMPOWERMENT",
+    "rarity": "COMMON",
+    "level": 12
+   },
+   {
+    "species": "ARCANE_SURGE",
+    "rarity": "UNCOMMON",
+    "level": 5
+   },
+   {
+    "species": "PRIMAL_AWAKENING",
+    "rarity": "COMMON",
+    "level": 2
+   },
+   {
+    "species": "ARCANE_BARRIER",
+    "rarity": "COMMON",
+    "level": 11
+   },
+   {
+    "species": "ARCANE_BURST",
+    "rarity": "UNCOMMON",
+    "level": 5
+   },
+   {
+    "species": "VOID_AEGIS",
+    "rarity": "RARE",
+    "level": 2
+   },
+   {
+    "species": "RUNIC_AFFLICTION",
+    "rarity": "UNCOMMON",
+    "level": 5
+   },
+   {
+    "species": "AETHER_RENEWAL",
+    "rarity": "EPIC",
+    "level": 1
+   },
+   {
+    "species": "WITHERING_BRAND",
+    "rarity": "RARE",
+    "level": 2
+   },
+   {
+    "species": "NULL_PULSE",
+    "rarity": "RARE",
+    "level": 2
+   },
+   {
+    "species": "BLINDING_AFFLICTION",
+    "rarity": "RARE",
+    "level": 1
+   },
+   {
+    "species": "ARCANE_BARRAGE",
+    "rarity": "EPIC",
+    "level": 1
+   },
+   {
+    "species": "ARCANE_CORRUPTION",
+    "rarity": "EPIC",
+    "level": 1
+   }
+  ],
+  "equippedSpecies": [
+   "RUNIC_AFFLICTION",
+   "ARCANE_BURST",
+   "ARCANE_BARRAGE"
+  ],
+  "utilitySlotSpecies": "VOID_AEGIS",
+  "druidEquippedSpecies": [
+   "ARCANE_SURGE",
+   "PRIMAL_AWAKENING"
+  ],
+  "druidUtilitySlotSpecies": "LUPINE_FORM",
+  "altarTier": 1
+ },
+ "relicState": {
+  "ownedRelics": [
+   {
+    "relicId": "relic_runic_focus",
+    "level": 5
+   },
+   {
+    "relicId": "relic_siphon_fang",
+    "level": 3
+   }
+  ],
+  "equippedRelicIds": [
+   "relic_runic_focus",
+   "relic_siphon_fang"
+  ],
+  "extraSlotsPurchased": 0
+ },
+ "oblivionPrestige": {
+  "enabled": true,
+  "unlocked": false,
+  "activeRealm": "BASE",
+  "oblivion": null
+ }
+}

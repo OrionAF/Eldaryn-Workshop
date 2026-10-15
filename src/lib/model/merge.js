@@ -4,14 +4,16 @@
 // The profile is the game's state, so everything the game owns is replaced; everything the app owns
 // is kept. Character-wide data the profile carries (class, level, both gear sets, stones, talents,
 // pets, mounts, glyphs, sigils, relics, awakening, transcendence, skills, fortress, Oblivion) comes from
-// the profile. Kept from the existing character: id, name, presets and the active preset (a preset only
-// chooses sources, so references the new data no longer holds are repaired by normalisation), the
-// base residual, saved opponents, run history and the Drop Check state. The server's stat sheet goes
-// to the preset that is active now (the profile's live loadout is what the player wears now).
+// the profile. Kept from the existing character: id, name, the base residual, saved opponents, run
+// history and the Drop Check state. Presets are merged (mergePresets; rule in data-model.md §7.1).
 import { normaliseCharacter } from './index.js';
+import { MAX_PRESETS } from './presets.js';
 
-/** Fields the existing character keeps. Everything else is taken from the profile. */
-export const KEPT_ON_UPDATE = Object.freeze(['id', 'name', 'presets', 'activePresetId', 'baseResidual', 'opponents', 'runs', 'drop']);
+/** Fields the existing character keeps. `presets` / `activePresetId` are merged; everything else comes from the profile. */
+export const KEPT_ON_UPDATE = Object.freeze(['id', 'name', 'baseResidual', 'opponents', 'runs', 'drop']);
+
+/** Preset fields the game owns: everything but the id and the sheet. */
+const GAME_PRESET_FIELDS = ['name', 'equipmentSet', 'talentSet', 'petId', 'mountId', 'relicIds', 'sigilSpecies', 'utilitySigilSpecies', 'ancientSigilSpecies', 'transcendencePresetId'];
 
 const clone = (v) => JSON.parse(JSON.stringify(v));
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -21,10 +23,61 @@ function profileSheet(incoming) {
   return incoming.presets.find((p) => p.sheet)?.sheet ?? null;
 }
 
+/** The incoming preset that holds the live loadout: the sheet's owner (base, else Oblivion), else the game's selected one. */
+function liveIdOf(incoming) {
+  return incoming.presets.find((p) => p.sheet)?.id ?? incoming.oblivion?.sheet?.presetId ?? incoming.activePresetId;
+}
+
+/** Chooses nothing beyond its gear and talent set and holds no sheet: the two-preset padding, or a preset never filled in. */
+const holdsNothing = (p) =>
+  !p.petId && !p.mountId && !p.relicIds?.length && !p.sigilSpecies?.length && !p.utilitySigilSpecies && !p.ancientSigilSpecies && !p.transcendencePresetId && !p.sheet;
+
+/**
+ * The profile's presets laid over the existing ones (data-model.md §7.1). A game preset updates the app
+ * preset with its id (name and choices; the saved sheet stays). One with no match fills an app preset the
+ * game does not know that holds nothing (the padding), taking the game's id, else is appended up to
+ * MAX_PRESETS. An unmatched incoming preset that holds nothing is not brought over: it cannot be told apart
+ * from the padding normalisation adds to a one-preset profile. App-only presets are kept. The live preset
+ * takes the profile's sheet, and the game's selected preset becomes the active one.
+ * @returns {{presets: object[], activePresetId: string, liveId: string|null, changes: string[], dropped: string[]}}
+ */
+function mergePresets(existing, incoming) {
+  const presets = clone(existing.presets);
+  const gameIds = new Set(incoming.presets.map((p) => p.id));
+  const free = presets.filter((p) => !gameIds.has(p.id) && holdsNothing(p));
+  const changes = [];
+  const dropped = [];
+  for (const g of incoming.presets) {
+    let target = presets.find((p) => p.id === g.id);
+    if (target) {
+      if (target.name !== g.name) changes.push(`preset ${target.name} renamed ${g.name}`);
+      if (GAME_PRESET_FIELDS.some((k) => k !== 'name' && !same(target[k], g[k]))) changes.push(`preset ${g.name} changed`);
+    } else if (holdsNothing(g)) {
+      continue;
+    } else if ((target = free.shift())) {
+      changes.push(`preset ${target.name} becomes ${g.name}`);
+      target.id = g.id;
+    } else if (presets.length < MAX_PRESETS) {
+      target = { ...clone(g), sheet: null };
+      presets.push(target);
+      changes.push(`preset ${g.name} added`);
+    } else {
+      dropped.push(g.name);
+      continue;
+    }
+    for (const k of GAME_PRESET_FIELDS) target[k] = clone(g[k]);
+  }
+  const worn = liveIdOf(incoming);
+  const liveId = presets.some((p) => p.id === worn) ? worn : null;
+  const activePresetId = presets.some((p) => p.id === incoming.activePresetId) ? incoming.activePresetId : existing.activePresetId;
+  return { presets, activePresetId, liveId, changes, dropped };
+}
+
 /**
  * @param {object} existing  a normalised character (left untouched)
  * @param {object} incoming  a normalised character made from a game profile
- * @param {{report?: object[]}} [opts]  receives what normalising the merged character dropped or defaulted
+ * @param {{report?: object[]}} [opts]  receives what normalising the merged character dropped or defaulted,
+ *   plus a `dropped` presets entry when the game has more presets than the app can hold
  * @returns {object} a new normalised character
  */
 export function mergeProfileIntoCharacter(existing, incoming, { report } = {}) {
@@ -34,10 +87,14 @@ export function mergeProfileIntoCharacter(existing, incoming, { report } = {}) {
   }
   for (const key of KEPT_ON_UPDATE) if (!(key in merged)) merged[key] = clone(existing[key]);
 
-  const target = merged.presets.find((p) => p.id === merged.activePresetId) ?? merged.presets[0];
+  const { presets, activePresetId, liveId, dropped } = mergePresets(existing, incoming);
+  merged.presets = presets;
+  merged.activePresetId = activePresetId;
+  if (dropped.length) report?.push({ kind: 'dropped', what: 'presets', count: dropped.length, reason: `the app holds at most ${MAX_PRESETS}` });
+  const live = presets.find((p) => p.id === liveId);
   const sheet = profileSheet(incoming);
-  if (target && sheet) target.sheet = clone(sheet);
-  if (merged.oblivion?.sheet) merged.oblivion.sheet = target ? { ...merged.oblivion.sheet, presetId: target.id } : null;
+  if (live && sheet) live.sheet = clone(sheet);
+  if (merged.oblivion?.sheet) merged.oblivion.sheet = live ? { ...merged.oblivion.sheet, presetId: live.id } : null;
 
   return normaliseCharacter(merged, { report });
 }
@@ -85,10 +142,10 @@ export function describeProfileUpdate(existing, incoming) {
   for (const [key, label] of DOMAIN_LABELS) {
     if (!same(existing[key], incoming[key])) lines.push(`${label} changed`);
   }
-  const sheet = profileSheet(incoming);
-  if (sheet) {
-    const target = existing.presets.find((p) => p.id === existing.activePresetId) ?? existing.presets[0];
-    if (target) lines.push(`sheet updated for preset ${target.name}`);
-  }
+  const { presets, liveId, changes, dropped } = mergePresets(existing, incoming);
+  lines.push(...changes);
+  if (dropped.length) lines.push(`not added (the app holds at most ${MAX_PRESETS} presets): ${dropped.join(', ')}`);
+  const live = presets.find((p) => p.id === liveId);
+  if (live && profileSheet(incoming)) lines.push(`sheet updated for preset ${live.name}`);
   return { lines, unchanged: lines.length === 0 };
 }

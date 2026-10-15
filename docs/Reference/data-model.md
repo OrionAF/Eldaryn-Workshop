@@ -378,8 +378,15 @@ transcendence presets) and `defaulted` entries (item quality). A loot bag or fig
 Drop Check or the replay check (`importFlow.svelte.js` `takeHandoff`); it never touches the roster.
 
 `model/merge.js` `mergeProfileIntoCharacter(existing, incoming)` brings a profile into an existing
-character: everything the game owns is replaced, and `KEPT_ON_UPDATE` (id, name, presets and the active
-preset, base residual, opponents, runs, drop) is kept, then the result is normalised so a preset
-reference the new data no longer holds is repaired. The profile's sheet goes to the active preset.
+character: everything the game owns is replaced, and `KEPT_ON_UPDATE` (id, name, base residual,
+opponents, runs, drop) is kept, then the result is normalised so a preset reference the new data no
+longer holds is repaired. Presets are merged by id: a game preset updates the app preset with its id
+(the game's name and choices; that preset's saved sheet stays). One with no match fills an app preset
+the game does not know that holds nothing (no pet, mount, relics, sigils, board link or sheet: the
+two-preset padding), taking the game's id, else it is appended up to 8 (beyond that it is reported
+`dropped`). An unmatched incoming preset that holds nothing is not brought over, since it cannot be told
+apart from the padding of a one-preset profile. Presets made only in the app are kept. The profile's
+sheet goes to the preset the game wears (the sheet's owner in the imported character), and the game's
+selected preset becomes the active one.
 `rosterStore.updateCharacterFromProfile` returns the character as it was; `restoreCharacter` is the
 one-step undo (kept in memory only, so a reload ends it).

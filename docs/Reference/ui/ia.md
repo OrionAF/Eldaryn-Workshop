@@ -232,8 +232,8 @@ item list.
    "Add as a new character". Update shows a diff summary (gear changed in Set 1: 2 slots; +3 stones;
    talents unchanged; sheet updated for preset Farm build) and writes after confirm.
    An auto-backup of the replaced character is kept for one undo ("Undo update" in the notification
-   and in G5). *Requires a new model operation (merge profile into existing character, keeping
-   presets, opponents and runs); flag for the model owner.*
+   and in G5). The merge (`model/merge.js`, data-model.md §7.1) updates the game's presets by id
+   and keeps presets made in the app, opponents and runs.
 2. If the profile (or a separate loot-bag JSON) has pending items, the report offers
    "Check N drops" which opens **T1 Drop Check → Loot bag** and starts the batch as a job (G4).
 3. Batch list (results pane): ranked rows, each with simulated DPS delta, 95% CI and N first, best

@@ -75,7 +75,7 @@
             {:else}
               <ul>{#each plan.diff.lines as line (line)}<li>{line}</li>{/each}</ul>
             {/if}
-            <p class="muted">Presets, saved opponents and run history are kept. You can undo the update once, in Settings, Data.</p>
+            <p class="muted">Game presets update their app copies; presets made in the app, saved opponents and run history are kept. You can undo the update once, in Settings, Data.</p>
           </section>
         {:else}
           <section aria-label="What was read">
