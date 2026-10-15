@@ -216,5 +216,5 @@
     thead th { min-width: 140px; }
     tbody th.lbl { white-space: normal; min-width: 92px; max-width: 110px; }
   }
-  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .visually-hidden { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 </style>
