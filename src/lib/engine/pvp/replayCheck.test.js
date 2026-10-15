@@ -165,3 +165,36 @@ describe('replayCheck: each rule reports its own mismatch', () => {
     expect(rep.totalMismatches).toBeGreaterThan(MAX_PER_RULE);
   });
 });
+
+describe('replayCheck: a pass means the schedule was compared', () => {
+  it('takes one side\'s sheet: that side is held to it, the other only to the log', () => {
+    const rep = replayCheck(sample, { attacker: plainA });
+    expect(rep.mismatches).toEqual([]);
+    expect(status(rep, 'swing-times')).toBe('pass');
+    expect(status(rep, 'regen')).toBe('pass');
+    const bad = clone(sample);
+    for (const e of bad.result.ticks) if (e.type.startsWith('attacker_') && e.timestamp > 0) e.timestamp += 10;
+    bad.result.ticks.sort((x, y) => x.timestamp - y.timestamp);
+    expect(status(replayCheck(bad, { attacker: plainA }), 'swing-times')).toBe('fail');
+    expect(status(replayCheck(sample, { attacker: { ...plainA, stats: { ...plainA.stats, totalHpRegen: 1 } } }), 'regen')).toBe('fail');
+  });
+
+  it('reports swing-times and regen as skipped, not pass, when only the grid could be checked', () => {
+    const { log } = runDuel({ attacker: mystic, defender: warrior, rng: mulberry32(11), log: true });
+    const rep = replayCheck({ result: runDuel({ attacker: mystic, defender: warrior, rng: mulberry32(11), log: true }).result });
+    expect(log.length).toBeGreaterThan(0);
+    expect(status(rep, 'swing-times')).toBe('skipped');
+    expect(status(rep, 'regen')).toBe('skipped');
+    expect(rep.rules.find((r) => r.rule === 'swing-times').note).toMatch(/grid only/);
+  });
+
+  it('a skip never hides a mismatch found before it', () => {
+    const { result } = runDuel({ attacker: mystic, defender: warrior, rng: mulberry32(11), log: true });
+    const bad = clone(result);
+    const i = bad.ticks.findIndex((e, k) => e.timestamp > 0 && e.type.endsWith('_hit') && bad.ticks[k + 1].timestamp > e.timestamp + 3);
+    const swing = bad.ticks[i];
+    swing.timestamp += 3; // off the 10 ms grid
+    const rep = replayCheck(bad);
+    expect(status(rep, 'swing-times')).toBe('fail');
+  });
+});
