@@ -98,7 +98,7 @@
       <Button variant="ghost" size="small" disabled={absorbOpen || !absorbable} reason={absorbable ? '' : 'The model already matches the sheet on the five base stats.'} onclick={() => (absorbOpen = true)}>
         Absorb into base
       </Button>
-      <ConfirmButton class="btn-danger" label="Clear sheet" confirmLabel="Confirm clear" prompt="Clear this sheet?" disabled={!stats.sheet} onConfirm={() => writeSheet({})} />
+      <ConfirmButton variant="danger" size="small" label="Clear sheet" confirmLabel="Confirm clear" prompt="Clear this sheet?" disabled={!stats.sheet} onConfirm={() => writeSheet({})} />
     {/snippet}
 
     {#if realm === 'oblivion'}

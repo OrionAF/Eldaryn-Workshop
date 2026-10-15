@@ -14,6 +14,7 @@
   import Panel from '../ui/Panel.svelte';
   import Stepper from '../ui/Stepper.svelte';
   import Checkbox from '../ui/Checkbox.svelte';
+  import Radio from '../ui/Radio.svelte';
   import Button from '../ui/Button.svelte';
 
   // eslint-disable-next-line no-unused-vars
@@ -147,10 +148,7 @@
         <fieldset class="side">
           <legend>Wall</legend>
           {#each ['TOP', 'BOTTOM'] as group (group)}
-            <label class="radio">
-              <input type="radio" name="fortress-side" checked={owned.includes(group)} aria-label="Fortress {group}" onchange={() => pickSide(group)} />
-              <span>{group}</span>
-            </label>
+            <Radio name="fortress-side" value={group} label={group} ariaLabel="Fortress {group}" checked={owned.includes(group)} onchange={pickSide} />
           {/each}
           <Button variant="ghost" size="small" disabled={!side} onclick={clearSide}>Neither</Button>
         </fieldset>
@@ -209,7 +207,6 @@
   .fortress { display: flex; flex-wrap: wrap; gap: var(--sp-6); align-items: center; margin-bottom: var(--sp-3); }
   .side { border: 0; padding: 0; margin: 0; display: flex; gap: var(--sp-4); align-items: center; }
   .side legend { float: left; margin-right: var(--sp-3); color: var(--text-soft); font-size: var(--fs-12); font-weight: var(--fw-bold, 700); }
-  .radio { display: inline-flex; gap: var(--sp-2); align-items: center; }
   .buffs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); gap: var(--sp-3); }
   .buff { background: var(--surface-3); border: 1px solid var(--line-rule); border-radius: var(--r-1); padding: var(--sp-3); }
   .buff.active { border-color: var(--brass-500); }

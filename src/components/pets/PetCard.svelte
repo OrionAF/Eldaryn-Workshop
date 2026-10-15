@@ -34,7 +34,7 @@
   const addOptions = $derived([{ value: '', label: '+ add secondary…' }, ...typeOptions(null)]);
 </script>
 
-<div class="pet-card {rarityClass(pet.rarity)}" class:editing>
+<div class="pet-card rarity-card {rarityClass(pet.rarity)}" class:editing>
   {#if editing}
     <Select label="Species" options={speciesOptions} value={pet.species} onchange={(v) => onSpecies(v)} />
   {:else}
@@ -106,9 +106,6 @@
     gap: var(--sp-2);
     padding: var(--sp-3);
     min-width: 0;
-    border: 1px solid var(--rarity-border, var(--line-rule));
-    background: var(--rarity-bg, var(--surface-2));
-    border-radius: var(--r-2);
   }
   .pet-card.editing { outline: 1px solid var(--brass-400); outline-offset: -1px; }
   .card-title {
@@ -116,7 +113,7 @@
     font-family: var(--font-display);
     font-size: var(--fs-14);
     text-align: center;
-    color: var(--rarity-fg, var(--text-ink));
+    color: var(--r-up, var(--text-ink));
   }
   .pet-art { display: block; width: 84px; height: 84px; margin: 0 auto; object-fit: contain; border-radius: var(--r-2); }
   .base-stats { margin: 0; text-align: center; font-size: var(--fs-12); color: var(--text-soft); }

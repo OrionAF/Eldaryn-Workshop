@@ -21,6 +21,7 @@
   import { presetSpec } from '../../lib/build/presetInputs.js';
   import Panel from '../ui/Panel.svelte';
   import ScopeChip from '../ui/ScopeChip.svelte';
+  import Select from '../ui/Select.svelte';
   import { conditionLabel } from '../sigils/sigilView.js';
 
   let { character, preset } = $props();
@@ -78,57 +79,54 @@
   {#snippet meta()}<span class="note">Altar tier <span class="num">{tier}</span> (character-wide)</span>{/snippet}
   <div class="sigil-slots">
     {#each [0, 1, 2] as i (i)}
-      {@const unlocked = i < slots}
-      <label class="slot" class:locked={!unlocked}>
-        <span class="lbl">Sigil {i + 1}</span>
-        {#if unlocked}
-          {@const current = picks[i] ?? ''}
-          <select value={current} aria-label="Sigil slot {i + 1}" onchange={(e) => setGeneric(i, e.currentTarget.value)}>
-            <option value="">Empty</option>
-            {#each genericOptions as s (s.species)}
-              <option value={s.species} disabled={picks.includes(s.species) && current !== s.species}>{label(s)}</option>
-            {/each}
-          </select>
-        {:else}
+      {#if i < slots}
+        {@const current = picks[i] ?? ''}
+        <Select
+          label="Sigil {i + 1}"
+          value={current}
+          options={[{ value: '', label: 'Empty' }, ...genericOptions.map((s) => ({ value: s.species, label: label(s), disabled: picks.includes(s.species) && current !== s.species }))]}
+          onchange={(v) => setGeneric(i, v)}
+        />
+      {:else}
+        <div class="slot locked">
+          <span class="lbl">Sigil {i + 1}</span>
           <span class="lock">Unlocks at level {slotUnlockLevel(i + 1, cls)}</span>
-        {/if}
-      </label>
+        </div>
+      {/if}
     {/each}
 
     {#if utilityType}
-      <label class="slot" class:locked={slots === 0}>
-        <span class="lbl">{typeName} slot</span>
-        {#if slots > 0}
-          <select
-            value={preset.utilitySigilSpecies ?? ''}
-            aria-label="Utility sigil slot"
-            onchange={(e) => rosterStore.setPresetSigils(preset.id, { utility: e.currentTarget.value || null })}
-          >
-            <option value="">Empty</option>
-            {#each utilityOptions as s (s.species)}<option value={s.species}>{label(s)}</option>{/each}
-          </select>
-        {:else}
+      {#if slots > 0}
+        <Select
+          label="{typeName} slot"
+          value={preset.utilitySigilSpecies ?? ''}
+          options={[{ value: '', label: 'Empty' }, ...utilityOptions.map((s) => ({ value: s.species, label: label(s) }))]}
+          onchange={(v) => rosterStore.setPresetSigils(preset.id, { utility: v || null })}
+        />
+      {:else}
+        <div class="slot locked">
+          <span class="lbl">{typeName} slot</span>
           <span class="lock">Unlocks at level {slotUnlockLevel(1, cls)}</span>
-        {/if}
-      </label>
+        </div>
+      {/if}
     {/if}
 
-    <label class="slot" class:locked={slots === 0}>
-      <span class="lbl">Ancient</span>
-      {#if slots > 0}
-        <select
+    {#if slots > 0}
+      <div class="slot">
+        <Select
+          label="Ancient"
           value={preset.ancientSigilSpecies ?? ''}
-          aria-label="Ancient sigil slot"
-          onchange={(e) => rosterStore.setPresetSigils(preset.id, { ancient: e.currentTarget.value || null })}
-        >
-          <option value="">Empty</option>
-          {#each ancientOptions as s (s.species)}<option value={s.species}>{s.name}</option>{/each}
-        </select>
+          options={[{ value: '', label: 'Empty' }, ...ancientOptions.map((s) => ({ value: s.species, label: s.name }))]}
+          onchange={(v) => rosterStore.setPresetSigils(preset.id, { ancient: v || null })}
+        />
         {#if ancientOptions.length === 0}<span class="hint">Unlock an Ancient in <a href="#/character/sigils">Sigils</a> first</span>{/if}
-      {:else}
+      </div>
+    {:else}
+      <div class="slot locked">
+        <span class="lbl">Ancient</span>
         <span class="lock">Unlocks at level {slotUnlockLevel(1, cls)}</span>
-      {/if}
-    </label>
+      </div>
+    {/if}
   </div>
 
   <p class="totals">
@@ -147,16 +145,12 @@
         {@const options = sigilConditionOptions(sp, spec)}
         {#if options.length > 1}
           <div class="cond-row">
-            <label>
-              <span>{sigilBySpecies(sp).name}</span>
-              <select
-                value={owned[sp]?.condition ?? 'ON_COOLDOWN'}
-                aria-label="{sigilBySpecies(sp).name} activation condition"
-                onchange={(e) => rosterStore.setSigilCondition(sp, e.currentTarget.value === 'ON_COOLDOWN' ? null : e.currentTarget.value)}
-              >
-                {#each options as id (id)}<option value={id}>{conditionLabel(id)}</option>{/each}
-              </select>
-            </label>
+            <Select
+              label="{sigilBySpecies(sp).name} activation condition"
+              value={owned[sp]?.condition ?? 'ON_COOLDOWN'}
+              options={options.map((id) => ({ value: id, label: conditionLabel(id) }))}
+              onchange={(v) => rosterStore.setSigilCondition(sp, v === 'ON_COOLDOWN' ? null : v)}
+            />
             <ScopeChip scope="character" target={sigilBySpecies(sp).name} sideEffects={alsoEquippedIn(sp)} />
           </div>
         {/if}
@@ -176,6 +170,6 @@
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
   .conditions { display: grid; gap: var(--sp-2); border-top: 1px solid var(--line-hairline); padding-top: var(--sp-3); }
   h3 { margin: 0; font-size: var(--fs-13); font-weight: var(--fw-bold); color: var(--text-soft); }
-  .cond-row { display: flex; gap: var(--sp-3); align-items: center; flex-wrap: wrap; }
-  .cond-row label { display: flex; gap: var(--sp-2); align-items: center; font-size: var(--fs-13); }
+  .cond-row { display: flex; gap: var(--sp-3); align-items: flex-end; flex-wrap: wrap; }
+  .cond-row :global(.field) { min-width: min(20rem, 100%); }
 </style>

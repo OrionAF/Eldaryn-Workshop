@@ -119,7 +119,8 @@
                   onclick={() => rosterStore.duplicatePreset(p.id)}>Duplicate</Button
                 >
                 <ConfirmButton
-                  class="btn-danger"
+                  variant="danger"
+                  size="small"
                   label="Delete"
                   confirmLabel="Confirm delete"
                   prompt={`Delete ${p.name}?`}

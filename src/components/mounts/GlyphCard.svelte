@@ -33,7 +33,7 @@
   }
 </script>
 
-<div class="glyph-card {rarityClass(glyph.rarity)}" class:inert={info?.tier === 'major' && inertIn.length > 0} data-glyph-id={glyph.id}>
+<div class="glyph-card rarity-card {rarityClass(glyph.rarity)}" class:inert={info?.tier === 'major' && inertIn.length > 0} data-glyph-id={glyph.id}>
   <span class="badge">{glyph.rarity}</span>
   {#if art}<img class="glyph-art" src={art} alt="" loading="lazy" />{/if}
   <p class="glyph-name">{info?.name ?? glyph.glyphType} <span class="tier">{info ? TIER_LABELS[info.tier] : ''}</span></p>
@@ -76,24 +76,20 @@
     padding: var(--sp-2);
     text-align: center;
     min-width: 0;
-    border: 1px solid var(--rarity-border, var(--line-rule));
-    background: var(--rarity-bg, var(--surface-2));
-    border-radius: var(--r-2);
   }
   .glyph-card.inert { opacity: 0.7; }
   .badge {
     padding: 1px var(--sp-2);
-    border: 1px solid var(--rarity-border, var(--line-rule));
+    border: 1px solid var(--line-control);
     border-radius: var(--r-pill);
-    background: var(--rarity-bg, transparent);
-    color: var(--rarity-fg-strong, var(--text-muted));
+    color: var(--r-up, var(--text-muted));
     font-size: var(--fs-11);
     font-weight: var(--fw-bold);
     letter-spacing: var(--track-label);
     text-transform: uppercase;
   }
   .glyph-art { width: 48px; height: 48px; object-fit: contain; border-radius: var(--r-2); }
-  .glyph-name { margin: 0; font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--rarity-fg-strong, var(--text-ink)); }
+  .glyph-name { margin: 0; font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--r-up, var(--text-ink)); }
   .tier { display: block; font-size: var(--fs-11); font-weight: var(--fw-regular); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-muted); }
   .effect { margin: 0; font-size: var(--fs-12); color: var(--text-soft); }
   .sealed { color: var(--status-warn); }
