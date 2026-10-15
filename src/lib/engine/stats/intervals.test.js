@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   meanInterval, wilsonInterval, pairedT, pairedProportion, stratifiedPairedProportion, censoredQuantile,
-  quantileInterval, pairedBootstrap, pairedQuantileDiff, isBinary,
+  quantileInterval, pairedBootstrap, pairedQuantileDiff, isBinary, binomialUpper,
 } from './intervals.js';
-import { zCrit } from './tdist.js';
+import { zCrit, binomCdf } from './tdist.js';
 
 const range = (n, f = (i) => i) => Array.from({ length: n }, (_, i) => f(i));
 
@@ -25,6 +25,19 @@ describe('mean and proportion intervals', () => {
     expect(r.delta).toBe(2.25);
     expect(r.p).toBeLessThan(0.05);
     expect(r.method).toBe('paired-t');
+  });
+});
+
+describe('exact one-sided binomial upper bound (Clopper-Pearson)', () => {
+  it('k = 0 has the closed form 1 - alpha^(1/n); otherwise P(Bin(n, U) <= k) = alpha', () => {
+    expect(binomialUpper(0, 100, 0.05)).toBeCloseTo(1 - 0.05 ** 0.01, 12);
+    for (const [k, n] of [[1, 50], [5, 100], [30, 1000]]) {
+      const u = binomialUpper(k, n, 0.01);
+      expect(binomCdf(k, n, u)).toBeCloseTo(0.01, 8);
+      expect(u).toBeGreaterThan(k / n);
+    }
+    expect(binomialUpper(10, 10, 0.05)).toBe(1);
+    expect(binomialUpper(3, 1000, 0.05)).toBeLessThan(binomialUpper(4, 1000, 0.05));
   });
 });
 

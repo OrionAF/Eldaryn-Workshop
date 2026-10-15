@@ -32,7 +32,8 @@ export const TARGET_KIND_LABEL = Object.freeze({
 export const OBJECTIVE_LABEL = Object.freeze({
   dps: 'Damage per second',
   survival: 'Survival chance',
-  'win-rate': 'Win rate (clear without dying)',
+  'win-chance': 'Highest chance to win',
+  'win-rate': 'Reach a win rate',
   push: 'Push (deepest step)',
   'pvp-winrate': 'PVP win rate',
 });
@@ -99,7 +100,7 @@ export function viewResult(result) {
     unit,
     kind: result?.objective?.kind ?? null,
     fortress: result?.target?.fortress ?? null,
-    goal: result?.goal ? { status: result.goal.status, target: result.goal.target } : null,
+    goal: result?.goal ? { status: result.goal.status, target: result.goal.target, ...(result.goal.mode === 'max' ? { mode: 'max' } : {}) } : null,
     push: result?.push ?? null,
     higherIsBetter: hib,
     baseline: result?.baseline ? { changes: [], ...result.baseline } : null,
@@ -133,11 +134,13 @@ export function targetStanding(row, target) {
 
 /**
  * The win rate a goal's headline talks about: the current build's when it already clears, else the leading
- * row's (search.js goalOf: the first row, or the current build when there is none); null without a goal or a rate.
+ * row's (search.js goalOf: the first row, or the current build when there is none; for the highest chance to
+ * win, the first row shown better than the current build); null without a goal or a rate.
  */
 export function goalWinRate(view) {
   if (!view?.goal) return null;
-  const row = view.goal.status === 'already' ? view.baseline : (view.rows[0] ?? view.baseline);
+  const lead = view.goal.mode === 'max' ? view.rows.find((r) => r.vsBaseline?.verdict === 'better') : view.rows[0];
+  const row = view.goal.status === 'already' ? view.baseline : (lead ?? view.baseline);
   const rate = row?.aux?.winRate?.est;
   return finite(rate) ? rate : null;
 }

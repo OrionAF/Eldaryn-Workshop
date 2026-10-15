@@ -30,7 +30,7 @@
 // isBaseline, key, candidate, value: Estimate, aux, vsBaseline: Contrast|null, changes (each with own, needed,
 // keptBecause, sideEffects), remainder, lines}. Schema 1 runs (no `schema`) keep the RunEntry detail above and
 // show per-change effects as "not measured". `powerFloor` is the run's Combat Power guard (absent: none) and each
-// schema 2 Row keeps its Combat Power as `power` (absent on older runs). A PVE win-rate run also keeps `headline.goal` {status, target}, each
+// schema 2 Row keeps its Combat Power as `power` (absent on older runs). A PVE win-rate run also keeps `headline.goal` {status, target, mode?}, each
 // Row's `aux.meetsTarget` / `aux.target` and each Contrast's `winRate` {delta, lo, hi}. A Push run (simulation.md §Push)
 // keeps `headline.push` {status, target, ladder, start, baseline, reached, stop} (rung indexes and labels) and
 // `detail.push` {rungs: [{index, label, current, build}]} (the ladder strip). `applied` is {at, rank} once a row was written to the preset.
@@ -177,11 +177,20 @@ function normaliseHeadline(h) {
     significant: typeof x.significant === 'boolean' ? x.significant : null,
     n: num(x.n) ?? 0, evaluated: num(x.evaluated) ?? 0, changes: num(x.changes) ?? 0,
     text: str(x.text),
-    // A PVE win-rate run's verdict ('already' | 'reached' | 'not-reached') and its target share; null otherwise.
-    goal: isObj(x.goal) && ['already', 'reached', 'not-reached'].includes(x.goal.status) ? { status: x.goal.status, target: num(x.goal.target) } : null,
+    // A PVE win-rate run's verdict and its target share; null otherwise. Highest chance to win ({mode: 'max'}, no
+    // target): 'already' | 'best' | 'no-wins'; reach a win rate: 'already' | 'reached' | 'not-reached'.
+    goal: normaliseGoal(x.goal),
     // a Push run's block; absent on every other run
     ...(normalisePushHeadline(x.push) ? { push: normalisePushHeadline(x.push) } : {}),
   };
+}
+
+const GOAL_STATUSES = { target: ['already', 'reached', 'not-reached'], max: ['already', 'best', 'no-wins'] };
+function normaliseGoal(g) {
+  if (!isObj(g)) return null;
+  const max = g.mode === 'max';
+  if (!GOAL_STATUSES[max ? 'max' : 'target'].includes(g.status)) return null;
+  return max ? { mode: 'max', status: g.status, target: null } : { status: g.status, target: num(g.target) };
 }
 
 const PUSH_STATUSES = ['pushed', 'no-gain', 'none'];
@@ -311,7 +320,7 @@ function runFromResultV2(result, fields) {
       significant: top ? vs?.significant ?? null : null,
       n: (top ?? base)?.value?.n ?? 0, evaluated: result.search?.evaluated ?? 0, changes: top?.changes?.length ?? 0,
       text: result.headline?.text ?? '',
-      goal: result.goal ? { status: result.goal.status, target: result.goal.target } : null,
+      goal: normaliseGoal(result.goal),
       ...(result.push ? { push: result.push } : {}),
     },
     // Full describe lines are long text: only the baseline and the top RUN_DETAIL_FULL_LINES keep them.

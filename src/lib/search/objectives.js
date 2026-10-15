@@ -14,11 +14,12 @@
 //   {kind: 'custom', mob: MobSpec, seconds?: 60}      a user-entered mob
 //   {kind: 'pvp', opponentIds: string[], seats}       saved opponents (pvpObjective.js); needs `{character}`
 // An OBJECTIVE is what "better" means: {kind: 'dps'|'survival', seconds?} (survival: custom mobs only) or
-// {kind: 'win-rate', target?: 0.1..1} (clear the step before dying or the time cap; default target 0.95) or
-// {kind: 'push', target?} (the deepest rung of the target's ladder cleared at that rate; search/push.js runs it).
+// {kind: 'win-chance'} (the highest chance to clear the step before dying or the time cap),
+// {kind: 'win-rate', target?: 0.01..1} (the fewest changes that clear it at least that often; default 0.95) or
+// {kind: 'push', target?: 0.1..1} (the deepest rung of the target's ladder cleared at that rate; search/push.js runs it).
 import { fightRng } from '../engine/rng.js';
 import {
-  stableStringify, meanInterval, wilsonInterval, pairedT, pairedProportion,
+  stableStringify, meanInterval, wilsonInterval, pairedT, pairedProportion, binomialUpper,
 } from '../engine/metrics.js';
 import { preparePveFighter, simulatePve, trainingDummy, PVE_MODES } from '../engine/pve/fight.js';
 import { chapterMobs, dungeonMobs, raidMobs, oblivionFloorMob, worldBossMob } from '../engine/pve/enemies.js';
@@ -34,19 +35,22 @@ import { setOf } from './sampler.js';
 import { resolvePvpTarget, makePvpObjective, PVP_TARGET_KIND, PVP_OBJECTIVE_KIND } from './pvpObjective.js';
 
 // The PVE kinds. The PVP pair is kept apart: it is only valid together and needs the character's opponents.
-export const OBJECTIVE_KINDS = ['dps', 'survival', 'win-rate', 'push'];
+export const OBJECTIVE_KINDS = ['dps', 'survival', 'win-chance', 'win-rate', 'push'];
+
+/** The two win-rate goals (simulation.md §Win rate): 'win-chance' maximises the clear rate, 'win-rate' reaches a target. */
+export const isWinRateKind = (kind) => kind === 'win-chance' || kind === 'win-rate';
 export const TARGET_KINDS = ['dummy', 'chapter', 'dungeon', 'raid', 'oblivion', 'worldBoss', 'fortressBoss', 'custom'];
 
-// The first kind is the target's default (the Optimiser picks it): win rate for content you clear.
+// The first kind is the target's default (the Optimiser picks it): the highest chance to win for content you clear.
 const COMPAT = {
   dummy: ['dps'],
-  chapter: ['win-rate', 'push'],
-  dungeon: ['win-rate', 'push'],
-  raid: ['win-rate', 'push'],
-  oblivion: ['win-rate', 'push'],
+  chapter: ['win-chance', 'win-rate', 'push'],
+  dungeon: ['win-chance', 'win-rate', 'push'],
+  raid: ['win-chance', 'win-rate', 'push'],
+  oblivion: ['win-chance', 'win-rate', 'push'],
   worldBoss: ['dps'],
   fortressBoss: ['dps'],
-  custom: ['dps', 'win-rate', 'survival'],
+  custom: ['dps', 'win-chance', 'win-rate', 'survival'],
   [PVP_TARGET_KIND]: [PVP_OBJECTIVE_KIND],
 };
 
@@ -322,13 +326,25 @@ function proportionEstimate(xs, alpha) {
 // win bit is `score >= 1` and the same vector carries the safety margin.
 
 /** The default and the allowed range of a win-rate target. */
-export const WIN_RATE_TARGET = Object.freeze({ default: 0.95, min: 0.1, max: 1 });
+export const WIN_RATE_TARGET = Object.freeze({ default: 0.95, min: 0.01, max: 1 });
 
-/** A win-rate objective's target rate: the default when absent; throws outside [0.1, 1]. */
+/** A win-rate objective's target rate: the default when absent; throws outside [0.01, 1]. */
 export function winRateTarget(v) {
   if (v == null) return WIN_RATE_TARGET.default;
   if (!isNum(v) || v < WIN_RATE_TARGET.min || v > WIN_RATE_TARGET.max) {
     throw new Error(`win-rate target must be between ${WIN_RATE_TARGET.min} and ${WIN_RATE_TARGET.max}, got ${v}`);
+  }
+  return v;
+}
+
+/** The default and the allowed range of a Push target (simulation.md §Push): it keeps the 10% floor. */
+export const PUSH_TARGET = Object.freeze({ default: WIN_RATE_TARGET.default, min: 0.1, max: 1 });
+
+/** A Push objective's target rate: the default when absent; throws outside [0.1, 1]. */
+export function pushTarget(v) {
+  if (v == null) return PUSH_TARGET.default;
+  if (!isNum(v) || v < PUSH_TARGET.min || v > PUSH_TARGET.max) {
+    throw new Error(`push target must be between ${PUSH_TARGET.min} and ${PUSH_TARGET.max}, got ${v}`);
   }
   return v;
 }
@@ -359,40 +375,53 @@ export function meetsTarget(e, target, delta = 0) {
 }
 
 /**
- * The paired contrast of the capped win rate g = min(p_X, τ) − min(p_Y, τ) (simulation.md §Win rate).
- * Three intervals share alpha / 2 (Bonferroni): Tango on p_X − p_Y at alpha / 4 and a Wilson interval
- * per build at alpha / 8. Because min(·, τ) is monotone and 1-Lipschitz, g lies between 0 and p_X − p_Y,
- * and g > 0 needs p_Y < τ; the bounds below follow. When both builds are confidently below the target
- * the margin contrast (paired t at alpha / 2) is attached as `then`: the comparator reads it only when
- * g is `equivalent`. `thenPending` marks a contrast whose margin may still attach at a later look (the
- * futility rule keeps such an arm open).
+ * The paired contrast of the capped win rate g = min(p_X, τ) − min(p_Y, τ) (simulation.md §Win rate); the
+ * highest-chance goal (`max`) uses τ = 1, so g is the plain rate difference. The rate interval intersects
+ * five intervals at a joint alpha · 3/4 (Bonferroni): Tango on p_X − p_Y at alpha / 4, a Wilson interval
+ * per build at alpha / 8, and an exact one-sided bound on each discordant rate at alpha / 8 (p_X − p_Y is
+ * at most P(X wins and Y loses), and at least −P(Y wins and X loses)), which is what lets two builds that
+ * rarely or never win be shown equal on the rate after about ln(8 / alpha) / δ fights. Because min(·, τ)
+ * is monotone and 1-Lipschitz, g lies between 0 and p_X − p_Y, and g > 0 needs p_Y < τ; the bounds below
+ * follow. The progress score (paired t at alpha / 4) is attached as `then` when both builds are
+ * confidently below the target (target goal) or neither won a fight (`max`): the comparator reads it only
+ * once the rate is `equivalent`. `thenPending` marks a contrast whose margin may still attach at a later
+ * look (the futility rule keeps such an arm open); under `max` wins only accumulate, so it never does.
  */
-function cappedWinRateContrast(tau, x, y, alpha) {
+function cappedWinRateContrast(tau, x, y, alpha, max = false) {
   const xs = x.main[0];
   const ys = y.main[0];
   const n = Math.min(xs.length, ys.length);
   const bx = xs.slice(0, n).map(winBit);
   const by = ys.slice(0, n).map(winBit);
+  let b = 0;
+  let c = 0;
+  for (let i = 0; i < n; i++) {
+    if (bx[i] > by[i]) b++;
+    else if (bx[i] < by[i]) c++;
+  }
   const t = pairedProportion(bx, by, { alpha: alpha / 4 });
+  const uB = binomialUpper(b, n, alpha / 8);
+  const uC = binomialUpper(c, n, alpha / 8);
   const wx = wilsonInterval(sumOf(bx), n, { alpha: alpha / 8 });
   const wy = wilsonInterval(sumOf(by), n, { alpha: alpha / 8 });
   const cap = (p) => Math.min(p, tau);
   const delta = cap(wx.est) - cap(wy.est);
   const pairedLo = t.lo > 0 ? (wy.hi < tau ? Math.min(t.lo, tau - wy.hi) : 0) : t.lo;
   const pairedHi = t.hi < 0 ? (wx.hi < tau ? Math.max(t.hi, wx.hi - tau) : 0) : t.hi;
-  let lo = Math.max(pairedLo, cap(wx.lo) - cap(wy.hi));
-  let hi = Math.min(pairedHi, cap(wx.hi) - cap(wy.lo));
-  // the three intervals disagree (each holds at its own level): fall back to the weaker bounds
-  if (lo > hi) [lo, hi] = [Math.min(lo, hi), Math.max(lo, hi)];
-  const both = Math.max(wx.hi, wy.hi) < tau;
+  let lo = Math.max(pairedLo, cap(wx.lo) - cap(wy.hi), -uC);
+  let hi = Math.min(pairedHi, cap(wx.hi) - cap(wy.lo), uB);
+  // the intervals disagree (each holds at its own level): fall back to the Tango bounds alone
+  if (lo > hi) [lo, hi] = [Math.min(pairedLo, pairedHi), Math.max(pairedLo, pairedHi)];
+  const both = max ? sumOf(bx) + sumOf(by) === 0 : Math.max(wx.hi, wy.hi) < tau;
   const then = both
-    ? { ...pairedT(xs.slice(0, n), ys.slice(0, n), { alpha: alpha / 2 }), method: 'paired-t', basis: 'margin', higherIsBetter: true, ref: meanInterval(ys.slice(0, n)).est }
+    ? { ...pairedT(xs.slice(0, n), ys.slice(0, n), { alpha: alpha / 4 }), method: 'paired-t', basis: 'margin', higherIsBetter: true, ref: meanInterval(ys.slice(0, n)).est }
     : null;
+  const rate = { delta: t.delta, lo: Math.max(t.lo, -uC), hi: Math.min(t.hi, uB) };
   return {
     delta, lo, hi, p: t.p, sd: t.sd, method: 'capped-tango', basis: 'win-rate', higherIsBetter: true,
-    ref: cap(wy.est), winRate: { delta: t.delta, lo: t.lo, hi: t.hi }, then,
+    ref: cap(wy.est), winRate: rate.lo > rate.hi ? { delta: t.delta, lo: t.lo, hi: t.hi } : rate, then,
     // the margin may still attach at a later look: neither build is yet confidently at the target
-    thenPending: !both && Math.max(wx.lo, wy.lo) < tau,
+    thenPending: !max && !both && Math.max(wx.lo, wy.lo) < tau,
   };
 }
 
@@ -460,20 +489,23 @@ export function makeObjective(raw = { kind: 'dps' }, target = resolveTarget({ ki
 
   if (kind === 'push') {
     // Push (simulation.md §Push) scores each rung with the win-rate objective; this echo names the goal
-    const w = makeObjective({ kind: 'win-rate', target: raw.target }, target);
+    const w = makeObjective({ kind: 'win-rate', target: pushTarget(raw.target) }, target);
     return {
       ...w, kind, key: stableStringify({ kind, target: w.target }), spec: { kind, target: w.target },
       label: `Push: deepest step at ${Math.round(w.target * 1000) / 10}%`,
     };
   }
 
-  if (kind === 'win-rate') {
-    const tau = winRateTarget(raw.target);
+  if (isWinRateKind(kind)) {
+    // 'win-chance' is the same objective with the cap at 1 (every rate counts) and no target
+    const max = kind === 'win-chance';
+    const tau = max ? 1 : winRateTarget(raw.target);
     const rateOf = (s) => sumOf(s.main[0].map(winBit)) / Math.max(1, s.n);
     return withLegacy({
-      ...common, key: stableStringify({ kind, target: tau }), spec: { kind, target: tau },
-      label: `Win rate (target ${Math.round(tau * 1000) / 10}%)`, unit: 'p', higherIsBetter: true,
-      statistic: 'proportion', q: null, deltaKind: 'absolute', window: target.seconds || null, target: tau,
+      ...common, key: stableStringify(max ? { kind } : { kind, target: tau }), spec: max ? { kind } : { kind, target: tau },
+      label: max ? 'Highest chance to win' : `Win rate (target ${Math.round(tau * 1000) / 10}%)`, unit: 'p', higherIsBetter: true,
+      statistic: 'proportion', q: null, deltaKind: 'absolute', window: target.seconds || null,
+      target: max ? null : tau, goal: max ? 'max' : 'target',
       sample: pveSampler(target, { enemy: target.enemy, maxMs: target.maxMs }, (r, prepared) => winRateFightScore(r, prepared.inputs.player.maxHp)),
       /** The per-fight point a remainder is measured in: the win bit (win-rate points). */
       pointOf: winBit,
@@ -481,10 +513,10 @@ export function makeObjective(raw = { kind: 'dps' }, target = resolveTarget({ ki
         const m = meanInterval(s.main[0], { alpha });
         return {
           value: proportionEstimate(s.main[0].map(winBit), alpha),
-          aux: { margin: { est: m.est, lo: m.lo, hi: m.hi, n: s.n, level: level(alpha), alphaAdj: alpha, method: 't' }, target: tau },
+          aux: { margin: { est: m.est, lo: m.lo, hi: m.hi, n: s.n, level: level(alpha), alphaAdj: alpha, method: 't' }, target: max ? null : tau },
         };
       },
-      contrast: (x, y, { alpha = 0.05 } = {}) => cappedWinRateContrast(tau, x, y, alpha),
+      contrast: (x, y, { alpha = 0.05 } = {}) => cappedWinRateContrast(tau, x, y, alpha, max),
       /** The capped win rate alone (ranking: rows equal on it are ordered by fewest changes). */
       primary: (s) => Math.min(rateOf(s), tau),
       score: (s) => Math.min(rateOf(s), tau) * SCORE_SCALE + (meanInterval(s.main[0]).est ?? 0),

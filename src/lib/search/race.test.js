@@ -118,4 +118,29 @@ describe('race', () => {
       expect(r.eliminated.map((e) => e.i)).toEqual([1]);
     });
   });
+
+  it('two builds that never win: progress decides, an open margin is not a tie before maxN', async () => {
+    // a lexicographic objective whose rate is always `equivalent` (0 wins each) and whose progress
+    // margin is attached as `then` (simulation.md §Win rate)
+    const lex = {
+      higherIsBetter: true,
+      deltaKind: 'absolute',
+      score: (s) => mean(s.main[0]),
+      contrast: (x, y, { alpha }) => ({
+        delta: 0, lo: -0.001, hi: 0.001, basis: 'win-rate', higherIsBetter: true, ref: 0,
+        then: { ...pairedT(x.main[0], y.main[0], { alpha: alpha / 4 }), basis: 'margin', higherIsBetter: true, ref: meanInterval(y.main[0]).est },
+      }),
+    };
+    const g = {
+      getSet: async (a, n) => ({
+        main: [Array.from({ length: n }, (_, i) => 0.4 + a.effect + 0.3 * gauss(mulberry32(hashSeed('own', a.key, i))))],
+        side: {}, n,
+      }),
+    };
+    const arms = [arm('base', 0, { dist: 0 }), arm('far', 0.03, { dist: 1 })];
+    const r = await race(arms, { objective: lex, getSet: g.getSet, effort: effort({ delta: 0.01, deltaKind: 'absolute', maxN: 1 << 13 }), seed: 1 });
+    expect(r.looks).toBeGreaterThan(1);
+    expect(r.winner).toBe(1);
+    expect(r.eliminated.map((e) => e.i)).toEqual([0]);
+  });
 });

@@ -49,28 +49,28 @@ describe('win-rate objective: per-fight score', () => {
 });
 
 describe('win-rate objective: target and compatibility', () => {
-  it('is the default for chapters, dungeons, raids and Oblivion; an option for custom mobs', () => {
-    for (const k of ['chapter', 'dungeon', 'raid', 'oblivion']) expect(objectiveKindsFor(k)[0]).toBe('win-rate');
+  it('is offered for chapters, dungeons, raids and Oblivion (after the highest chance to win, W3); an option for custom mobs', () => {
+    for (const k of ['chapter', 'dungeon', 'raid', 'oblivion']) expect(objectiveKindsFor(k)[1]).toBe('win-rate');
     expect(objectiveKindsFor('custom')).toContain('win-rate');
     expect(objectiveKindsFor('dummy')).not.toContain('win-rate');
     expect(objectiveKindsFor('worldBoss')).not.toContain('win-rate');
-    expect(objectiveKindsFor('dungeon')).toEqual(['win-rate', 'push']); // Push (simulation.md §Push) climbs with this objective
+    expect(objectiveKindsFor('dungeon')).toEqual(['win-chance', 'win-rate', 'push']); // Push (simulation.md §Push) climbs with this objective
   });
 
-  it('takes a target between 0.1 and 1 (default 0.95) and keys on it', () => {
+  it('takes a target between 0.01 and 1 (default 0.95) and keys on it', () => {
     expect(winRateTarget(undefined)).toBe(WIN_RATE_TARGET.default);
-    expect(winRateTarget(0.1)).toBe(0.1);
+    expect(winRateTarget(0.01)).toBe(0.01);
     expect(winRateTarget(0.5)).toBe(0.5);
-    expect(() => winRateTarget(0.09)).toThrow(/between/);
+    expect(() => winRateTarget(0.009)).toThrow(/between/);
     expect(() => winRateTarget(1.01)).toThrow(/between/);
     const t = resolveTarget({ kind: 'dungeon', id: 'dungeon_4', step: 6 });
     expect(makeObjective({ kind: 'win-rate', target: 0.8 }, t).key).not.toBe(makeObjective({ kind: 'win-rate' }, t).key);
     expect(() => makeObjective({ kind: 'win-rate' }, resolveTarget({ kind: 'dummy' }))).toThrow(/cannot score/);
   });
 
-  it('the Optimiser setup defaults a dungeon to win rate and drops an out-of-range target', () => {
+  it('the Optimiser setup keeps a dungeon win-rate goal and drops an out-of-range target', () => {
     const character = fixtureCharacter('WARRIOR');
-    const s = normaliseSetup({ target: { kind: 'dungeon', id: 'dungeon_1', step: 1 } }, character);
+    const s = normaliseSetup({ target: { kind: 'dungeon', id: 'dungeon_1', step: 1 }, objective: { kind: 'win-rate' } }, character);
     expect(s.objective).toEqual({ kind: 'win-rate' });
     const bad = normaliseSetup({ target: { kind: 'dungeon', id: 'dungeon_1', step: 1 }, objective: { kind: 'win-rate', target: 3 } }, character);
     expect(bad.objective).toEqual({ kind: 'win-rate' });

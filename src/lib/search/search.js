@@ -21,7 +21,7 @@ import { formatFlat } from '../format.js';
 import { BLOCKS, createBuildSpace, normalisePowerFloor } from './space.js';
 import { candidateEngineKey, changesOf, canonicalise, mergeByEngine, writesOf } from './effect.js';
 import { legalityOf } from './legality.js';
-import { resolveTarget, makeObjective, residualFor, meetsTarget } from './objectives.js';
+import { resolveTarget, makeObjective, residualFor, meetsTarget, isWinRateKind } from './objectives.js';
 import { createSampler, compareSets, contrastSets, setOf, isAbort, AbortError } from './sampler.js';
 import { race } from './race.js';
 import { minimise, attribute, holmSequential, holmFixed } from './minimise.js';
@@ -390,7 +390,8 @@ function createRun(prep, hooks) {
 
   /**
    * Win rate: does the arm meet the target (simulation.md §Win rate)? Looks n0, 2n0, ... maxN on the
-   * stage, Wilson at alpha / looks, stopping once `meetsTarget` resolves (logged).
+   * stage, Wilson at alpha / looks, stopping once `meetsTarget` resolves (logged). The highest-chance goal
+   * checks against 1: a build that clears every try (within δ) cannot be beaten by δ.
    * @returns {Promise<{meets: boolean|null, n: number, value: Object}>}
    */
   function goalCheck(X, stage) {
@@ -399,7 +400,7 @@ function createRun(prep, hooks) {
       const alpha = effort.alpha / looks.length;
       for (let k = 0; k < looks.length; k++) {
         const value = objective.estimate(await getSet(X, stage, looks[k]), { alpha }).value;
-        const meets = meetsTarget(value, objective.target, effort.delta);
+        const meets = meetsTarget(value, objective.target ?? 1, effort.delta);
         if (meets != null || k === looks.length - 1) return { meets, n: looks[k], value };
       }
       throw new Error('unreachable');
@@ -720,9 +721,9 @@ async function searchPhase(prep, run) {
 function auxOf(prep, est, set, baseSet) {
   const aux = { ...est.aux };
   if (aux.winRate) aux.winRate = estimateOut(aux.winRate);
-  if (prep.objective.kind === 'win-rate') {
+  if (isWinRateKind(prep.objective.kind)) {
     aux.winRate = estimateOut(est.value);
-    aux.meetsTarget = meetsTarget(est.value, prep.objective.target, prep.effort.delta);
+    if (prep.objective.target != null) aux.meetsTarget = meetsTarget(est.value, prep.objective.target, prep.effort.delta);
     aux.margin = estimateOut(aux.margin);
   }
   if (aux.matchups) {
@@ -853,7 +854,7 @@ export async function optimize(request, hooks = {}) {
     await run.getSet(B, S1, effort.n0);
     // win rate: a baseline that already meets the target needs no change (the check is on S3, whose
     // baseline fights confirm reuses; the baseline is fixed, so no selection rides on it)
-    const goal = objective.kind === 'win-rate' ? await run.goalCheck(B, S3) : null;
+    const goal = isWinRateKind(objective.kind) ? await run.goalCheck(B, S3) : null;
     if (goal?.meets) return alreadyResult(prep, run, B, goal, await run.getSet(B, S3, goal.n), echo, S3, t0);
 
     run.setPhase('search');
@@ -1002,6 +1003,7 @@ export function powerFloorText(power, floor) {
 }
 
 const pctText = (p) => `${Math.round(p * 1000) / 10}%`;
+const countText = (n) => n.toLocaleString('en-US');
 const ciText = (e) => (e.lo == null || e.hi == null ? '' : ` (95% CI ${pctText(e.lo)}-${pctText(e.hi)})`);
 
 /**
@@ -1010,6 +1012,7 @@ const ciText = (e) => (e.lo == null || e.hi == null ? '' : ` (95% CI ${pctText(e
  * baseline, and how close it comes).
  */
 function goalOf(objective, baseline, rows, check) {
+  if (objective.goal === 'max') return chanceGoalOf(baseline, rows, check);
   const target = objective.target;
   const base = { winRate: baseline.aux.winRate, meetsTarget: baseline.aux.meetsTarget, check: { meets: check.meets, n: check.n, value: estimateOut(check.value) } };
   const reaching = rows.filter((r) => r.aux.meetsTarget === true);
@@ -1029,7 +1032,37 @@ function goalOf(objective, baseline, rows, check) {
   };
 }
 
-/** The result of a run whose baseline already meets the win-rate target: no search, no rows. */
+/**
+ * The highest-chance verdict (simulation.md §Win rate): 'best' names the build with the best clear chance
+ * (the first row shown better than the current build on the win rate, else the current build; a row
+ * better only on progress never heads it); 'no-wins' when no build
+ * won a single fight, with how far the build that gets furthest goes (its mean progress score, the share
+ * of the step's HP removed). 'already' is alreadyResult's.
+ */
+function chanceGoalOf(baseline, rows, check) {
+  const base = { winRate: baseline.aux.winRate, check: { meets: check.meets, n: check.n, value: estimateOut(check.value) } };
+  const better = rows.filter((r) => r.vsBaseline?.verdict === 'better');
+  const noWins = [baseline, ...rows].every((r) => r.aux.winRate.est === 0);
+  const best = (noWins ? better[0] : better.find((r) => r.vsBaseline.basis === 'win-rate')) ?? baseline;
+  const k = best.changes.length;
+  const who = best.isBaseline ? 'the current build' : `${k} change${k === 1 ? '' : 's'}`;
+  const w = best.aux.winRate;
+  if (noWins) {
+    const n = Math.max(baseline.aux.winRate.n, ...rows.map((r) => r.aux.winRate.n));
+    return {
+      mode: 'max', target: null, status: 'no-wins', baseline: base, bestKey: best.key, progress: best.aux.margin,
+      text: `No build won any of ${countText(n)} fights; the build that gets furthest (${who}) removes ${pctText(best.aux.margin.est)} of the step's HP.`,
+    };
+  }
+  return {
+    mode: 'max', target: null, status: 'best', baseline: base, bestKey: best.key,
+    text: best.isBaseline
+      ? `No change was shown to raise the chance to win. The current build wins ${pctText(w.est)}${ciText(w)}.`
+      : `Best chance to win: ${pctText(w.est)}${ciText(w)} with ${who}; the current build wins ${pctText(baseline.aux.winRate.est)}.`,
+  };
+}
+
+/** The result of a run whose baseline already meets the win-rate target (or clears every try): no search, no rows. */
 function alreadyResult(prep, run, B, goal, set, echo, S3, t0) {
   const { space, objective, warnings } = prep;
   // the decision's own interval (alpha / looks) on the same fights: the value shown is the value tested
@@ -1051,7 +1084,10 @@ function alreadyResult(prep, run, B, goal, set, echo, S3, t0) {
     error: null,
     ...echo,
     headline: { better: 0, equivalent: 0, unresolved: 0, worseHidden: 0, text },
-    goal: { target: objective.target, status: 'already', baseline: { winRate: value, meetsTarget: true, check: { meets: true, n: goal.n, value } }, bestKey: B.key, text },
+    goal: {
+      ...(objective.goal === 'max' ? { mode: 'max' } : {}), target: objective.target, status: 'already',
+      baseline: { winRate: value, ...(objective.goal === 'max' ? {} : { meetsTarget: true }), check: { meets: true, n: goal.n, value } }, bestKey: B.key, text,
+    },
     baseline,
     rows: [],
     search: null,

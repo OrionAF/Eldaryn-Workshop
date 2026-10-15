@@ -26,7 +26,7 @@ afterEach(() => {
 
 it('the goal list offers Push (deepest step) for chapters, dungeons, raids and Oblivion only', () => {
   expect(OBJECTIVE_LABEL.push).toBe('Push (deepest step)');
-  for (const k of ['chapter', 'dungeon', 'raid', 'oblivion']) expect(objectiveKindsFor(k)).toEqual(['win-rate', 'push']);
+  for (const k of ['chapter', 'dungeon', 'raid', 'oblivion']) expect(objectiveKindsFor(k)).toEqual(['win-chance', 'win-rate', 'push']);
   for (const k of ['dummy', 'worldBoss', 'custom']) expect(objectiveKindsFor(k)).not.toContain('push');
   const character = fixtureCharacter('WARRIOR');
   const s = normaliseSetup({ target: { kind: 'oblivion', floor: 4 }, objective: { kind: 'push', target: 0.6 } }, character);
