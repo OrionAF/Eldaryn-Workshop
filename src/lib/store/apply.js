@@ -1,0 +1,34 @@
+// store/apply.js (A2): the one mutator that writes an optimiser candidate (redesign plan A.11).
+// search/patch.js applyCandidate does the write; this normalises (which reconciles) and persists.
+// A full apply is refused when the candidate is not legal (search/legality.js), so a suggestion is
+// written exactly as it was scored; an apply with groups excluded relies on reconcile for the rest.
+import { normaliseCharacter } from '../model/index.js';
+import { applyCandidate as writeCandidate, SCOPES } from '../search/patch.js';
+import { legalityOf } from '../search/legality.js';
+
+export function createApplyStore(ctx) {
+  /**
+   * Write `cand` onto preset `presetId` of the current character.
+   * @param {string} presetId
+   * @param {Object} cand  a Candidate (search/space.js)
+   * @param {{include?: string[]}} [opts]  scopes to write ('preset', 'character', 'mount'); default all
+   * @returns {{ok: boolean, violations: Array<{gate: string, field: string, detail: string}>}}
+   */
+  function applyCandidate(presetId, cand, { include = SCOPES } = {}) {
+    const c = ctx.current();
+    if (!c || !ctx.findPreset(presetId, c)) return { ok: false, violations: [{ gate: 'structural', field: 'presetId', detail: `Unknown preset ${presetId}` }] };
+    const plain = JSON.parse(JSON.stringify(c)); // the roster is a reactive proxy
+    if (SCOPES.every((s) => include.includes(s))) {
+      const r = legalityOf(plain, presetId, cand);
+      if (!r.ok) return { ok: false, violations: r.violations };
+    }
+    const next = normaliseCharacter(writeCandidate(plain, presetId, cand, { include }));
+    const roster = ctx.roster();
+    const i = roster.characters.findIndex((x) => x.id === c.id);
+    roster.characters[i] = next;
+    ctx.persist();
+    return { ok: true, violations: [] };
+  }
+
+  return { applyCandidate };
+}
