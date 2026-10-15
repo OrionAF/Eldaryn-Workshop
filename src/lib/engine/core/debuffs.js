@@ -3,6 +3,8 @@
 // caller owns the array (one per target) and passes an injected rng. See Game/combat-pve.md §9.2.
 // Module 3966, L1092930-1094002.
 
+import { lane } from '../rng.js';
+
 /** @typedef {'BLEED'|'POISON'|'WOUND'|'SLOW'|'CRIT_DOWN'} DebuffType */
 
 export const DEBUFF_TYPES = Object.freeze({
@@ -319,7 +321,8 @@ export function processDebuffsTick(state, dtMs, timestamp, rng) {
       if (d.nextTickIn <= 0) {
         const base =
           d.stackDamages.length > 0 ? d.stackDamages.reduce((a, b) => a + b, 0) : d.damagePerTickFlat * d.stacks;
-        const crit = d.critChance > 0 && rng() * 100 < d.critChance;
+        // one lane per source and type (engine/rng.js laneRng); a plain rng is its own lanes
+        const crit = d.critChance > 0 && lane(rng, `debuff:${d.source?.species ?? ''}:${d.type}`)() * 100 < d.critChance;
         const dmg = crit ? Math.floor(base * d.critMult) : base;
         targetHpDelta -= dmg;
         const ev = {
