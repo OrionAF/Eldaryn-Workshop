@@ -4,20 +4,17 @@
 
 | Order | Item | Size | Status |
 |---|---|---|---|
-| 1 | §15 Fortress boss fight from the server log | M | Built on rebuild2/F2, not merged |
-| 2 | §11 Celestial Trial Optimiser target | S | Built on rebuild2/C2, not merged |
-| 3 | §6 Results say which pet, mount or glyph | S | Queued |
-| 4 | §1 Optimiser step list | S | Merged |
-| 5 | §3 Setup estimates | M | Merged |
-| 6 | §9 Stat weights chart | M | Not started |
-| 7 | §2 Rankings profiles as PVP opponents (and Celestial partners) | M | Not started |
-| 8 | §10 Arena reward weighting | S | Needs §2 |
-| 9 | §7 PVE replay check | L | Not started; needs dungeon logs |
-| 10 | §10 Crusade (solo) | L | Not started |
-| 11 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Not started |
+| 1 | §6 Results say which pet, mount or glyph (also the Drop Check Loot bag; interaction badge) | S | In progress (Drop Check session) |
+| 2 | §9 Stat weights chart | M | Not started |
+| 3 | §2 Rankings profiles as PVP opponents (and Celestial partners) | M | Not started |
+| 4 | §10 Arena reward weighting | S | Needs §2 |
+| 5 | §7 PVE replay check | L | Not started; needs dungeon logs |
+| 6 | §10 Crusade (solo) | L | Not started |
+| 7 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Not started |
 | - | §12 follow-up: a progress tolerance for builds that never win | S | Not started (see §12 open item) |
+| - | §11 follow-up: Push on the Celestial Trial | S | Not started |
 | - | §11 Celestial open questions | - | Waits for more server logs |
-| Done | §10 Push, Fortress shield fix; §12 highest chance to win; §13 glyph pruning; §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target; §11 Celestial engine | - | Merged |
+| Done | §15 Fortress boss on the duel engine; §11 Celestial engine and Optimiser target; §1 Optimiser step list; §3 setup estimates; §10 Push, Fortress shield fix; §12 highest chance to win; §13 glyph pruning; §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target | - | Merged |
 
 ## 10. Optimiser objectives: trim, fix the target range, add Push, a Power guard and Crusade
 
@@ -112,7 +109,7 @@ Measured on the user's Sentinel (`profile-sentinel-l85-oct15b.json`), Hard Forsa
 
 **Plan:** rebuild the fight on the right engine and replay-check it against the log tick by tick, then re-rank sigil sets for this target.
 
-**Status: built on rebuild2/F2, not merged.** The fight now runs on the arena duel engine with the Fortress rules the log shows (Game/clan-fortress.md §1.4; simulation.md, Fortress boss). The replay check (`engine/pve/fortressReplay.js`) passes every rule on the log. The app's dps for the logged attacker went from 41.7M to 22.2M; the log's 22.6M sits inside the model's one-fight range.
+**Status: merged (2026-10-15).** The fight now runs on the arena duel engine with the Fortress rules the log shows (Game/clan-fortress.md §1.4; simulation.md, Fortress boss). The replay check (`engine/pve/fortressReplay.js`) passes every rule on the log. The app's dps for the logged attacker went from 41.7M to 22.2M; the log's 22.6M sits inside the model's one-fight range.
 
 **Sigil sets re-ranked** (the user's Sentinel, `profile-sentinel-l85-oct15b`, active preset, TOP 5 stars; every sigil set the sigil block can try, 299 sets, 200 fights each on common random numbers, seed 1; `src/lib/__fixtures__/real/fortressSigilRank.test.js`, run with `FORTRESS_RANK=1`). Dps is raw damage per second, before the clan multipliers.
 
@@ -133,7 +130,7 @@ The old engine's pick (Elusive Supremacy, Blinding Mark, Mist Veil) is the set t
 
 ## 11. Celestial Trial (party of 2), and party roles
 
-**Status (2026-10-15).** The Celestial engine is merged (slice C1), replay-checked against five server logs. The Optimiser target (C2: partner from my other characters or my opponents, or solo; tank; starter; tactics; difficulty; level) is built on rebuild2/C2, not merged (simulation.md §Celestial Trial). Follow-up: Push on Celestial (the deepest level cleared at a target rate). Open questions (Overload end and Judgment, NORMAL Overload, stack-player rule) wait for more logs.
+**Status (2026-10-15).** The Celestial engine is merged (slice C1), replay-checked against five server logs. The Optimiser target (C2: partner from my other characters or my opponents, or solo; tank; starter; tactics; difficulty; level) is merged (2026-10-15; simulation.md §Celestial Trial). Follow-up: Push on Celestial (the deepest level cleared at a target rate). Open questions (Overload end and Judgment, NORMAL Overload, stack-player rule) wait for more logs.
 
 **Ask** (2026-10-15): can the Celestial Trial be simulated? The user supplied one server fight log
 (Hard, level 85, the user plus a tank partner). It stays outside the repo because it names another
@@ -196,7 +193,7 @@ one it is on, e.g. "1. Gear set: done · 2. Talents: done · 3. Pets: done · 4.
   (design-system.md §4.17).
 - The run history keeps the final list.
 
-**Status: built on rebuild2/STEPS, not merged.** Progress carries `searchSteps` (simulation.md §Progress), the result `search.steps`, a saved run `steps`. The list is a `StepList` (design-system.md §4.17) on the Optimiser page, in the Jobs tray and in a run's Details. Push shows its rungs as before and has no block list.
+**Status: merged (2026-10-15).** Progress carries `searchSteps` (simulation.md §Progress), the result `search.steps`, a saved run `steps`. The list is a `StepList` (design-system.md §4.17) on the Optimiser page, in the Jobs tray and in a run's Details. Push shows its rungs as before and has no block list.
 
 ## 3. Optimiser setup: estimates before you run
 
@@ -210,7 +207,7 @@ of fights to simulate.
   look, up to the cap at maxN). Time: fights divided by the calibrated speed and the worker count.
 - Label every number as an estimate (decision Q5), and update it live as the setup changes.
 
-**Status.** Built on rebuild2/EST, not merged (2026-10-15). `search/estimate.js` `estimateRun` and the
+**Status.** Merged (2026-10-15). `search/estimate.js` `estimateRun` and the
 Estimate section of the setup (`components/optimiser/SetupEstimate.svelte`); it replaces the old
 interpolated Optimiser line under Effort. What is exact and what is assumed: simulation.md §Estimates.
 Push estimates the start rung's build search only.
