@@ -9,6 +9,7 @@
   import { relicSlotCap, UNLOCK_LEVELS } from '../../lib/model/legality.js';
   import Panel from '../ui/Panel.svelte';
   import ItemTile from '../ui/ItemTile.svelte';
+  import { relicImage } from '../../lib/assets.js';
 
   let { character, preset } = $props();
 
@@ -47,7 +48,7 @@
         {@const lv = character.relics[def.id] ?? 0}
         {@const on = preset.relicIds.includes(def.id)}
         <div class="cell">
-          <ItemTile name={def.name} selected={on} disabled={lv === 0 && !on} onclick={() => toggle(def)}>
+          <ItemTile name={def.name} art={relicImage(def.tier)} selected={on} disabled={lv === 0 && !on} onclick={() => toggle(def)}>
             {#snippet meta()}Level {lv}{/snippet}
           </ItemTile>
           {#if lv === 0 && !on}<a class="hint" href="#/character/relics">Level 0: set on Relics</a>{/if}

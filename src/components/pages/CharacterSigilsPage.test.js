@@ -127,87 +127,14 @@ describe('altar', () => {
   });
 });
 
-describe('equip panel', () => {
-  const slot = (n) => target.querySelector(`select[aria-label="Sigil slot ${n}"]`);
-
-  it('offers only owned sigils and writes the pick to the preset', () => {
-    own('CATACLYSM', 3);
-    own('HAWK_FOCUS', 3); // Sentinel-only: never offered, not even ownable
-    const values = [...slot(1).options].map((o) => o.value);
-    expect(values).toEqual(['', 'CATACLYSM']);
-    slot(1).value = 'CATACLYSM';
-    slot(1).dispatchEvent(new Event('change', { bubbles: true }));
-    flushSync();
-    expect(preset().sigilSpecies).toEqual(['CATACLYSM']);
-    expect(card('Cataclysm').textContent).toContain(`Equipped in: ${preset().name}`);
-  });
-
-  it('locks slots the character level has not unlocked, and shows the unlock level', () => {
-    rosterStore.setCharacterLevel(28);
-    flushSync();
-    expect(slot(2)).not.toBeNull();
-    expect(slot(3)).toBeNull();
-    expect(target.textContent).toContain('Unlocks at level 32');
-  });
-
-  it('a Warrior has no utility slot; the Ancient slot lists unlocked Ancients', () => {
-    expect(target.querySelector('select[aria-label="Utility sigil slot"]')).toBeNull();
-    own('EARTHWARDEN', 1);
-    const a = target.querySelector('select[aria-label="Ancient sigil slot"]');
-    expect([...a.options].map((o) => o.value)).toEqual(['', 'EARTHWARDEN']);
-    a.value = 'EARTHWARDEN';
-    a.dispatchEvent(new Event('change', { bubbles: true }));
-    flushSync();
-    expect(preset().ancientSigilSpecies).toBe('EARTHWARDEN');
-  });
-
-  it('the flat total sums the equipped sigils at the altar tier', () => {
-    own('DEFENSE_STANCE', 5); // Common: Attack 166 * 1.4 -> 232, Health 1819
-    rosterStore.setPresetSigils(preset().id, { species: ['DEFENSE_STANCE'] });
-    flushSync();
-    expect(target.querySelector('[data-testid="equip-hp"]').textContent).toBe('1.819');
-  });
-
-  it('conditions need character level 54, then offer the spell family\'s options', () => {
-    own('CATACLYSM', 3);
-    rosterStore.setPresetSigils(preset().id, { species: ['CATACLYSM'] });
-    rosterStore.setCharacterLevel(50);
-    flushSync();
-    expect(target.querySelector('select[aria-label="Cataclysm activation condition"]')).toBeNull();
-    expect(target.textContent).toContain('Unlock at character level 54');
-    rosterStore.setCharacterLevel(54);
-    flushSync();
-    const sel = target.querySelector('select[aria-label="Cataclysm activation condition"]');
-    expect([...sel.options].map((o) => o.value)).toEqual(['ON_COOLDOWN', 'ENEMY_HP_BELOW_80', 'ENEMY_HP_BELOW_60', 'ENEMY_HP_BELOW_40', 'ENEMY_HP_BELOW_20']);
-    sel.value = 'ENEMY_HP_BELOW_40';
-    sel.dispatchEvent(new Event('change', { bubbles: true }));
-    flushSync();
-    expect(rosterStore.current.sigils.owned.CATACLYSM.condition).toBe('ENEMY_HP_BELOW_40');
-    sel.value = 'ON_COOLDOWN';
-    sel.dispatchEvent(new Event('change', { bubbles: true }));
-    flushSync();
-    expect(rosterStore.current.sigils.owned.CATACLYSM.condition).toBeUndefined();
-  });
-});
-
 describe('other classes', () => {
-  it('Mystic gets a Shield utility slot and its own catalogue; switching class clears Warrior sigils', () => {
+  it('Mystic gets its own catalogue; switching class clears Warrior sigils', () => {
     own('CATACLYSM', 3);
     rosterStore.setCharacterClass(rosterStore.current.id, 'MYSTIC');
     flushSync();
     expect(rosterStore.current.sigils.owned).toEqual({});
     expect(target.querySelectorAll('.sigil-card').length).toBe(ownableSigils('MYSTIC').length);
     own('ARCANE_BARRIER', 2);
-    const util = target.querySelector('select[aria-label="Utility sigil slot"]');
-    expect(util).not.toBeNull();
-    expect(target.textContent).toContain('Shield slot');
-    expect([...util.options].map((o) => o.value)).toEqual(['', 'ARCANE_BARRIER']);
-    util.value = 'ARCANE_BARRIER';
-    util.dispatchEvent(new Event('change', { bubbles: true }));
-    flushSync();
-    expect(preset().utilitySigilSpecies).toBe('ARCANE_BARRIER');
-    // the Shield sigil is utility-only: not offered in a generic slot
-    expect([...target.querySelector('select[aria-label="Sigil slot 1"]').options].map((o) => o.value)).toEqual(['']);
   });
 
   it('Form sigils are level-locked: an owned toggle, no level field, stored at level 1', () => {
@@ -258,5 +185,13 @@ describe('Equip in menu', () => {
     checked.click();
     flushSync();
     expect(preset().sigilSpecies).toEqual([]);
+  });
+});
+
+describe('equip panel moved to Builds', () => {
+  it('the Sigils page no longer edits a preset: no slot selects, a read-only summary instead', () => {
+    expect(target.querySelector('select[aria-label^="Sigil slot"]')).toBeNull();
+    expect(target.querySelector('[data-testid="equipped-summary"]')).not.toBeNull();
+    expect(target.querySelector('a[href="#/builds/loadout"]')).not.toBeNull();
   });
 });
