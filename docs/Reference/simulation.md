@@ -888,7 +888,12 @@ Code: `src/lib/features/swap.js` (`runSwapMetrics`, `contrastMetric`, `applyFami
   measured metric can see (with survival and PVP off, every key outside `DPS_STAT_KEYS`), with
   `coverageLabel` "DPS only: defence not measured".
 - **Batch**: applying a drop writes a whole equipment set, so `judgeEntry` aggregates the presets
-  wearing each set (`aggregateVerdict`) and ranks by the best set.
+  wearing each set (`aggregateVerdict`) and ranks by the best set. A ranked row's headline is that
+  set's lead preset, and its expanded cards are the same entry's (looked up by import index, not rank).
+  An entry applied to a set leaves the list (page view state); Check again re-runs only the rest.
+- **Sets compared** (pref `dropSets`, data-model.md UI key): `all` (default) or `set1`. With `set1`,
+  `prepareSwap` / `prepareBatch` leave out the presets wearing Set 2 (`setInScope`), so they are neither
+  simulated nor judged; Oblivion has one set either way.
 - **Sources**: PVP opponents are `features/duel.js opponentFighter`, the Duel screen's own; an
   opponent whose sheet lacks a required stat is skipped and listed (`dropOpponents`). Oblivion rows
   anchor on the Oblivion sheet only for its owner preset (data-model.md §6); others recompute.

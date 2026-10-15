@@ -256,7 +256,8 @@ View state lives apart from the roster under **`eldaryn_ui_v1`** (`src/lib/uiSta
 (route to reopen), `areaLast` (last page per area), `optimiserSetups` (per character: preset, fight, objective, toggles, `powerFloor` (the Combat Power guard,
 a positive whole number or null; `ui/optimiserSetup.js normaliseSetup`), effort, seed) and
 `prefs` (`density`, `reduceMotion`, `defaultEffort`, `cpuProfile`: `eco` | `balanced` (default) | `max`,
-the worker-pool size of a job, simulation.md §Worker pool). Every read and write is try/catch-guarded, a
+the worker-pool size of a job, simulation.md §Worker pool; `dropSets`: `all` (default) | `set1`, the gear
+sets Drop Check compares against, simulation.md §Drop Check). Every read and write is try/catch-guarded, a
 missing or broken value falls back to the defaults, and nothing in the roster depends on it. It is not
 exported with the roster. Session jobs (`lib/jobs.svelte.js`) are not persisted; the optional resume
 checkpoints use IndexedDB, opt-in.

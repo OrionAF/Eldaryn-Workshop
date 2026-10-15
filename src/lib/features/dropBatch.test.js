@@ -103,6 +103,13 @@ describe('prepareBatch and ranking', () => {
     expect(request.items[0].baseKey).toBe(request.items[c.presets.length].baseKey);
   });
 
+  it('Set 1 only requests and judges only the presets wearing Set 1', () => {
+    const { request, rows } = prepareBatch(c, entries, { sets: 'set1' });
+    expect(rows.every((r) => r.every((row) => row.setKey === 'set1'))).toBe(true);
+    expect(request.items).toHaveLength(2 * c.presets.filter((p) => p.equipmentSet !== 2).length);
+    expect(judgeEntry(rows[1]).sets.map((s) => s.setKey)).toEqual(['set1']);
+  });
+
   it('without a simulation, ranks on the closed form: the stronger drop first', () => {
     const { rows, offsets } = prepareBatch(c, entries);
     const ranked = rankEntries(entries, rows, offsets, []);

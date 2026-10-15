@@ -542,6 +542,11 @@ verdict is within noise offer `Run more (N 6,400)` with the N needed. Below the 
 instant estimate is labelled `ESTIMATE` and stated in muted text, never as a verdict. Summary bar
 above the list counts by verdict (▲ 3 upgrade · ◆ 1 sidegrade · ▼ 1 downgrade · 2 pending ·
 ! 1 skipped).
+A `Compare against` SegmentedControl (`Both sets` | `Set 1 only`, a remembered pref) sits in the Single
+drop Measure panel (base realm only) and the Loot bag panel; `Set 1 only` hides Set 2 cards, rows and the
+Presets entries wearing Set 2, and a finished run whose mode differs reads Stale. A Loot bag item applied to
+a set leaves the list (tab count and summary follow, a hint counts the removed items); Check again judges
+only the items left.
 
 ### 4.29 BoardGrid and Node (Transcendence)
 

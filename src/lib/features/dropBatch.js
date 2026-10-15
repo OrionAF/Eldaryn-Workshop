@@ -5,7 +5,7 @@
 // and ranks the verdicts the single-drop view already produces.
 //
 //   parseDropBatch(input, character)   JSON text or object -> {entries, skipped, source, error}
-//   prepareBatch(character, entries)   -> {request, rows, offsets}: the dropCheck request for all of them
+//   prepareBatch(character, entries, {sets})  -> {request, rows, offsets}: the dropCheck request for all of them
 //   entryResults(offsets, rows, i, results)  the slice of the task's results belonging to entry i
 //   judgeEntry(rows, results)          per equipment set (all presets wearing it), the best set's verdict
 //   rankEntries(...)                   best verdict first
@@ -86,16 +86,16 @@ export function parseDropBatch(input, character) {
 
 /**
  * The dropCheck task request for every entry against every preset (sim DPS only), plus the prepared
- * rows to judge with. The unchanged "before" of a preset is simulated once and shared (`baseKey`).
+ * rows to judge with. `sets: 'set1'` leaves out the presets wearing Set 2 (swap.js setInScope). The unchanged "before" of a preset is simulated once and shared (`baseKey`).
  * @returns {{request: object|null, rows: Array<Array<object>>, offsets: number[]}}
  *   `rows[i]` are entry i's prepareSwap rows; `offsets[i]` is where they start in the request's items
  */
-export function prepareBatch(character, entries) {
+export function prepareBatch(character, entries, { sets = 'all' } = {}) {
   const rows = [];
   const offsets = [];
   const items = [];
   for (const e of entries) {
-    const r = prepareSwap(character, { slot: e.slot, item: e.item, realm: e.realm });
+    const r = prepareSwap(character, { slot: e.slot, item: e.item, realm: e.realm, sets });
     offsets.push(items.length);
     rows.push(r);
     for (const row of r) items.push({ presetId: row.presetId, baseKey: `${e.realm}:${row.presetId}`, before: row.before, after: row.after });

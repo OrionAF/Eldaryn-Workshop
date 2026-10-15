@@ -4,7 +4,7 @@ import ToolsDropPage from './ToolsDropPage.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
 import { jobsStore, __resetJobs } from '../../lib/jobs.svelte.js';
 import { loadImportText, confirmImport, resetImportFlow, importFlow } from '../../lib/importFlow.svelte.js';
-import { setPrefs, applyPrefs } from '../../lib/prefs.svelte.js';
+import { prefs, setPrefs, applyPrefs } from '../../lib/prefs.svelte.js';
 import { APP_VERSION as ESTIMATE_VERSION } from '../../lib/calibration.js';
 import { field, setField } from '../gear/fieldKit.js';
 import lootBag from '../../lib/__fixtures__/real/drop-batch.json';
@@ -37,6 +37,7 @@ let target;
 let app;
 beforeEach(() => {
   localStorage.clear();
+  applyPrefs();
   calls = [];
   verdict = 'better';
   resetImportFlow();
@@ -173,6 +174,118 @@ it('Loot bag: the batch is a job, rows rank in one DPS table, and a gear edit ma
   rows[0].querySelector('.toggle').click();
   flushSync();
   expect(target.querySelectorAll('.expand [data-set]').length).toBeGreaterThan(0);
+});
+
+// Regression: the expanded cards of a ranked row once came from the entry at the row's RANK position, not the
+// row's own entry, so a row's headline matched neither of its set cards whenever ranking reordered the bag.
+it('Loot bag: a ranked row expands to its own item\'s set cards, whose figure matches the row headline', async () => {
+  __resetJobs({
+    run: (request) => {
+      calls.push(request);
+      // later items do better, so the ranking reverses the import order
+      const results = request.items.map((it, k) => {
+        const m = metric('better');
+        const d = 20 + 10 * k;
+        return { presetId: it.presetId, sim: { ...m, after: { ...m.after, mean: 1000 + d }, delta: { ...m.delta, delta: d, lo: d - 5, hi: d + 5 } } };
+      });
+      return { promise: Promise.resolve({ results, aborted: false }), cancel() {} };
+    },
+  });
+  open({ tab: 'bag' });
+  paste(lootBag);
+  await settle();
+  const rows = [...target.querySelectorAll('.trow.rank')];
+  expect(rows[0].querySelector('.name').textContent).toBe(lootBag.pendingItems.at(-1).name);
+  for (const row of rows) {
+    const headline = parseFloat(row.querySelector('.delta .v').textContent);
+    const setLabel = row.querySelector('.vd').textContent.split('·')[1].trim();
+    row.querySelector('.toggle').click();
+    flushSync();
+    const cardEl = [...target.querySelectorAll('.expand [data-set]')].find((c) => c.querySelector('h3').textContent === setLabel);
+    const figures = [...cardEl.querySelectorAll('.met .d')].map((d) => parseFloat(d.textContent));
+    expect(figures.some((f) => Math.abs(f - headline) < 0.06)).toBe(true);
+    row.querySelector('.toggle').click();
+    flushSync();
+  }
+});
+
+const pickSets = (label) => [...target.querySelectorAll('[role="group"][aria-label="Compare against"] button')]
+  .find((b) => b.textContent.includes(label));
+
+it('Compare against: Set 1 only simulates and shows only Set 1, and the choice is remembered', async () => {
+  open();
+  change(q('Attack'), '9.000');
+  expect(card('set2')).not.toBeNull();
+  pickSets('Set 1 only').click();
+  flushSync();
+  expect(prefs.dropSets).toBe('set1');
+  expect(card('set2')).toBeNull();
+  btn('Check drop').click();
+  flushSync();
+  await settle();
+  expect(calls[0].items.map((i) => i.presetId)).toEqual(rosterStore.current.presets.filter((p) => p.equipmentSet !== 2).map((p) => p.id));
+  expect(card('set1').dataset.verdict).toBe('better');
+  expect(card('set2')).toBeNull();
+  // remembered: a new page starts in Set 1 only
+  unmount(app);
+  open();
+  expect(card('set2')).toBeNull();
+  // back to both sets: the Set-1-only run is stale, and the next check covers Set 2 again
+  pickSets('Both sets').click();
+  flushSync();
+  expect(target.textContent).toContain('Stale.');
+  btn('Check drop').click();
+  flushSync();
+  await settle();
+  expect(calls.at(-1).items).toHaveLength(rosterStore.current.presets.length);
+  expect(card('set2').dataset.verdict).toBe('better');
+});
+
+it('Compare against on the Loot bag: Set 1 only marks the bag stale and Check again runs Set 1 alone', async () => {
+  open({ tab: 'bag' });
+  paste(lootBag);
+  await settle();
+  const all = calls[0].items.length;
+  pickSets('Set 1 only').click();
+  flushSync();
+  expect(target.textContent).toContain('Stale.');
+  btn('Check again').click();
+  flushSync();
+  await settle();
+  expect(calls[1].items.length).toBeLessThan(all);
+  expect(target.textContent).not.toContain('Stale.');
+  target.querySelector('.trow.rank .toggle').click();
+  flushSync();
+  expect(target.querySelector('.expand [data-set="set2"]')).toBeNull();
+  expect(target.querySelector('.expand [data-set="set1"]')).not.toBeNull();
+  for (const r of target.querySelectorAll('.trow.rank .vd')) expect(r.textContent).not.toContain('Set 2');
+});
+
+it('Loot bag: an item applied to a set leaves the list, and Check again judges only the rest', async () => {
+  open({ tab: 'bag' });
+  paste(lootBag);
+  await settle();
+  const names = () => [...target.querySelectorAll('.trow.rank .name')].map((n) => n.textContent);
+  expect(names()).toHaveLength(4);
+  const first = names()[0];
+  const entry = lootBag.pendingItems.find((i) => i.name === first);
+  target.querySelector('.trow.rank .toggle').click();
+  flushSync();
+  btn('Apply to Set 1…').click();
+  flushSync();
+  btn('Confirm apply').click();
+  flushSync();
+  expect(rosterStore.current.equipment.set1.items[entry.slot]).not.toBeNull();
+  expect(names()).toHaveLength(3);
+  expect(names()).not.toContain(first);
+  expect(target.querySelector('[data-testid="bag-applied"]').textContent).toContain('1 applied item removed');
+  expect(target.querySelector('.tabs-row').textContent).toContain('3');
+  btn('Check again').click();
+  flushSync();
+  await settle();
+  expect(calls.at(-1).items).toHaveLength(3 * rosterStore.current.presets.length);
+  expect(names()).toHaveLength(3);
+  expect(names()).not.toContain(first);
 });
 
 it('Loot bag: Run more at Thorough raises maxN, and the next step raises it again', async () => {
