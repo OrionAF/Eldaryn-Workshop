@@ -199,12 +199,12 @@ describe('sheet integrity (#90, #88, #17)', () => {
     const fresh = computePresetStats(c, 'p1');
     c.presets[0].petId = null;
     const r = computePresetStats(c, 'p1');
-    expect(r.effective.totalAttack).toBe(97330); // the stale sheet said 172 179
+    expect(r.effective.totalAttack).toBe(95237); // the stale sheet said 168 777
     expect(r.residual).toEqual({});
     expect(fresh.sheetStatus).toBe('fresh');
     expect(r.source).toBe('computed');
     expect(r.sheetStatus).toBe('stale');
-    expect(r.sheet.values.totalAttack).toBe(172179); // still shown, for re-entry
+    expect(r.sheet.values.totalAttack).toBe(168777); // still shown, for re-entry
     expect(r.warnings.some((w) => /out of date/i.test(w))).toBe(true);
   });
 
@@ -254,11 +254,11 @@ describe('sheet integrity (#90, #88, #17)', () => {
     const c = fixtureCharacter('SENTINEL');
     const at = { realm: 'oblivion' };
     const comp = computePresetStats(c, 'p1', at).computed;
-    expect(comp.rawCritChance).toBe(53.5);
-    const values = { totalCritChance: comp.totalCritChance };
+    expect(comp.rawPenetration).toBe(34);
+    const values = { totalPenetration: comp.totalPenetration };
     c.oblivion.sheet = { values, enteredAt: 'x', presetId: 'p1', inputsKey: keyOf(c, 'p1', 'oblivion') };
-    expect(computePresetStats(c, 'p1', at).effective.rawCritChance).toBe(53.5);
-    values.totalCritChance = comp.totalCritChance + 0.5; // disagrees: the computed raw describes another total
-    expect(computePresetStats(c, 'p1', at).effective.rawCritChance).toBeUndefined();
+    expect(computePresetStats(c, 'p1', at).effective.rawPenetration).toBe(34);
+    values.totalPenetration = comp.totalPenetration + 0.5; // disagrees: the computed raw describes another total
+    expect(computePresetStats(c, 'p1', at).effective.rawPenetration).toBeUndefined();
   });
 });
