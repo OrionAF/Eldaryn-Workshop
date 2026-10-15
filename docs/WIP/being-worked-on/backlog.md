@@ -10,7 +10,7 @@
 | 4 | §7 PVE replay check | L | Not started; needs dungeon logs |
 | 5 | §10 Crusade (solo) | L | Not started |
 | 6 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Not started |
-| - | §12 follow-up: a progress tolerance for builds that never win | S | Not started (see §12 open item) |
+| - | §12 follow-up: a progress tolerance for builds that never win | S | Built on rebuild2/TOL, not merged |
 | - | §11 follow-up: Push on the Celestial Trial | S | Not started |
 | - | §11 Celestial open questions | - | Waits for more server logs |
 | Done | §6 results name owned items (and the Loot bag stats, the interaction badge); §15 Fortress boss on the duel engine; §11 Celestial engine and Optimiser target; §1 Optimiser step list; §3 setup estimates; §10 Push, Fortress shield fix; §12 highest chance to win; §13 glyph pruning; §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target | - | Merged |
@@ -100,7 +100,22 @@ Measured on the user's Sentinel (`profile-sentinel-l85-oct15b.json`), Hard Forsa
 - The 306,208 fights above are 299 arms at 1,024 fights plus the 32-fight screen: a snapshot at the first full look, before any arm could leave. Both rules drop the zero-win arms at that look or the next.
 - On step 2 the leader wins 0.9%, so the old Tango interval already ruled the zero-win arms out at 1,024 fights. The new bound changes nothing there.
 - On step 6 almost nothing wins. Every arm ties with the leader within 1 point by 2,048 fights and the race ends there, cheaper than the old race. No build won on the minimise and confirm fights either, so those contrasts compare progress and run towards maxN in minimise (523,264 fights) and confirm (419,824 fights). The whole run costs twice the old one (368 s against 200 s).
-- Open: progress contrasts between builds that never win run to maxN when their progress is close. A progress tolerance (a δ for the margin) would stop them early.
+- Was open (built below, and the measurement does not bear out the diagnosis): progress contrasts between builds that never win run to maxN when their progress is close. A progress tolerance (a δ for the margin) would stop them early.
+
+**Progress tolerance (slice TOL, branch `rebuild2/TOL`, not merged).** Progress contrasts between builds that won no fight now tie inside δ_progress = √(δ / 2) of the step's HP (7.1 points at Standard), the finest gap the rate's own fights can settle (simulation.md §Win rate). Decisions with any win, the exact discordant bounds and Push's 10% floor are unchanged. On a synthetic never-win race of 5 arms within 1 point of progress, the race fell from 13,312 fights (4,096 per arm) to 5,120 (1,024 per arm).
+
+Re-measured on step 6 (same setup; `src/lib/__fixtures__/real/progressTolerance.test.js`, `PROGRESS_TOL=1`). Both runs took 279 s on the same machine, so the seconds below are wall-clock noise; the fights are exact.
+
+| Phase | Before: fights | Before: s | After: fights | After: s |
+|---|---|---|---|---|
+| Search (race) | 612,368 | 99.0 | 612,368 | 93.5 |
+| Minimise | 523,264 | 96.9 | 514,048 | 98.3 |
+| Confirm | 419,824 | 82.4 | 405,488 | 87.0 |
+| Whole run | 1,555,456 (199 rows) | 279 | 1,531,904 (197 rows) | 279 |
+
+- The saving is 1.5%: the open item's diagnosis was wrong. A log of every minimise test showed none ran to maxN. Of 298 finalists, 293 were decided at 1,024 fights and 5 at 2,048. Of the final checks against the baseline, 198 were decided at 2,048 and 2 at 4,096. Where progress mattered, the gaps were clear (up to 17 points, intervals well clear of 0), so they decide `better` before any tolerance is read.
+- The cost comes from the number of finalists. The race ties all 299 arms on the rate: the margin is attached only when neither build won, and on the race's own fights (S1) the leader evidently won at least once. So every arm goes on to minimise and confirm. Each one then pays the rate's floor of about ln(8 / alpha) / δ fights (1,024 to 2,048 at alpha / 299), and with one change minimise tests F against the baseline twice: as F without its change, then as the final check.
+- Not built (it would change decisions where a build wins): reading progress in the race when the leader's few wins are within δ, or not re-testing a single-change finalist against the baseline. Either would need its own slice and a guarantee argument.
 
 ## 15. Fortress boss fight from the server log
 

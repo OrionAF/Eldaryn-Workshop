@@ -94,7 +94,8 @@ vs baseline; attribution = Holm within a row's changes; Drop Check = Holm over i
   excludes 0 (direction by `higherIsBetter`); `equivalent` when it lies inside (−δ, δ); otherwise
   continue; at `maxN` `unresolved`. So the shown interval excludes 0 ⇔ `significant`.
 - δ is the indifference zone: `absolute` (points for proportions) or `relative` to |θ(Y)| at
-  that look (`deltaAbs`; 0 when θ(Y) is infinite, so equivalence is then impossible).
+  that look (`deltaAbs`; 0 when θ(Y) is infinite, so equivalence is then impossible). The win-rate
+  margin between builds that never won takes δ_progress instead (§Win rate).
 - A true effect inside (0, δ) may correctly resolve either `better` or `equivalent`; which one
   comes first depends on the sample path.
 - `nNeeded = ⌈((z(1 − α/2) + z(0.8)) · sd / max(|Δ|, δ))²⌉` with the look's α and the per-fight sd
@@ -319,6 +320,20 @@ time cap (each mob's own cap, or the custom window) is a loss.
   gradient where the rate saturates at 0 (a 0 % build that gets further is better) without letting
   a bigger change win on margin among builds that already reach the target. δ is absolute in both
   units. The combined false-claim rate per look is at most alpha.
+- **Progress tolerance δ_progress** (backlog §12 follow-up; `sampler.js` `progressDelta`). When neither
+  build won a fight in the sample, the margin is pure progress (each fight's share of the step's HP, in
+  [0, 1)) and its indifference zone is δ_progress = √(δ / 2), never below δ: 7.1 points of the step's HP
+  at Standard (δ 1 point), 10 at Quick, 5 at Thorough. Why that size: such a score has a per-fight sd of
+  at most ½ (and so has a paired difference under common random numbers once the fights correlate at
+  ½ or more; step 6 of Hard Forsaken Mines measured 0.03 to 0.11), and the exact discordant bound ties
+  the rates of two builds that never win at about n* = ln(8 / alpha) / δ fights. A paired-t interval
+  at that n has half-width at most z · ½ / √n* ≤ √(δ / 2), since z² ≤ 2 ln(8 / alpha) at the margin's
+  alpha / 4 (one-sided tail alpha / 8 ≤ ½ e^(−z²/2)). So δ_progress is the finest progress gap the
+  rate's own fights can settle: two builds whose progress differs by much less tie at the first look
+  that decides the rate, instead of buying more fights (up to maxN) for a tie-break. Nothing else changes: `better`/`worse` are
+  still read first (an interval that excludes 0 decides, however small the gap), the margin with any
+  win in the sample keeps δ, and the rate's own δ, the exact discordant bounds and Push's 10 % floor
+  are untouched. A gap inside (0, δ_progress) may resolve either way (§Sequential comparator).
 - **Fast drops at low rates.** When the leader has wins and an arm has none, the arm's b is 0, so its
   upper bound against the leader soon falls below +δ and it is `futile`. It is `worse` once the
   leader's own wins (c) push the Tango bound below 0. Either way it leaves on `basis: 'win-rate'`,
