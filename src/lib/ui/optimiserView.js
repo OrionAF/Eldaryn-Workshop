@@ -195,7 +195,7 @@ export function pushStopText(push) {
   if (!s) return '';
   const pct = (p) => `${Math.round((p ?? 0) * 1000) / 10}%`;
   if (s.reason === 'top') return 'The climb reached the top of the ladder.';
-  if (s.reason === 'screen') return `Stopped at ${s.label}: no build one change away came plausibly near ${pct(push.target)} (best seen ${pct(s.best?.est)}). Not reached at this effort; the Win rate goal on that step searches further.`;
+  if (s.reason === 'screen') return `Stopped at ${s.label}: no build one change away came plausibly near ${pct(push.target)} and no single change raised the rate (best seen ${pct(s.best?.est)}). Not reached at this effort; the Win rate goal on that step searches further.`;
   return `Stopped at ${s.label}: the search found no build that reaches ${pct(push.target)} (best ${pct(s.best?.est)}).`;
 }
 

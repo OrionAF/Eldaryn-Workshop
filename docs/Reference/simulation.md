@@ -531,33 +531,54 @@ so a step can be easier than the one before for some builds).
 
 **Stop rule (the screen).** Measured problem: on `dungeon_4_hard` step 6 every build is at 0 %, and a
 Quick full-space win-rate run spent its 30-minute limit and about 5 M fights without a verdict, because
-ties at 0 % need about z² / δ fights each (§Win rate, cost). Push would probe exactly such rungs. A5's
-race futility stop (§Racing) does not end that: an arm tied at 0 % is futile only once its capped-rate
-interval is inside δ, the same z² / δ fights. So before optimising rung r, Push screens the builds around
-which r would be searched (B, and the deepest build so far when it differs) and every build one change
-from them (each enabled block's domain; spec and mount values raw, not inner-optimised), m builds in all,
-at looks n0, 2n0, … maxN with a Wilson interval at α / (m × looks):
+ties at 0 % need about z² / δ fights each (§Win rate, cost), per comparison and for every comparison of
+the search. Push would probe exactly such rungs. A5's race futility stop (§Racing) does not end that: an
+arm tied at 0 % is futile only once its capped-rate interval is inside δ, the same z² / δ fights. So
+before optimising rung r, Push screens the neighbourhood the optimisation would start from: the centres
+(B, and the deepest build so far when it differs), every build one change from a centre (each enabled
+block's domain; spec and mount values raw, not inner-optimised), m builds in all, and every (centre,
+one-change build) pair, q pairs in all. Looks n0, 2n0, … maxN, each test at α / ((m + q) × looks):
 
-- a build leaves the screen once its upper bound is below τ (it is confidently below the target);
-- the screen says **go** (run the optimisation) as soon as one build meets τ (`meetsTarget` true), or
-  when any build is still open at maxN;
-- it says **stop** only when no build is left, every screened build's upper bound below τ. The rung is
-  reported "not reached at this effort" with the best rate seen (each build's estimate at the look that
-  decided it).
+- **rate**: a Wilson interval per build; a build is settled once its upper bound is below τ;
+- **direction**: Tango's interval on the paired win bits of each pair (build − centre, common fights);
+  a pair is settled once its upper bound is below δ, i.e. that change confidently raises the rate by
+  less than δ (it may lower it).
 
-Accuracy: the rule never stops while a screened build's interval still reaches τ, and by the union bound
-the chance that it stops although some screened build is truly at or above τ is at most α
-(`push.test.js` checks the rate over 200 seeds with one neighbour exactly at τ). The claim covers the
-screened builds only: a build that needs two or more changes at once, with no one-change step plausibly
-near τ, is not looked for. Hence the wording "at this effort", and the result points to the Win rate goal
-on that rung for a full search. On a 0 % rung the screen ends at the first look or two (with 0 wins the
-upper bound is about z² / (n + z²)): a few hundred fights instead of millions. The optimisation itself
+The screen says **go** (run the optimisation) as soon as one build meets τ (`meetsTarget` true,
+reason `meets`), as soon as one change confidently raises the rate (lower bound above 0, reason
+`gradient`), or when anything is still unsettled at maxN (`open`). It says **stop** only when every
+build and every pair is settled: every screened build confidently below τ and every single change from
+a centre confidently flat. The rung is reported "not reached at this effort" with the best rate seen
+(each build's estimate at its last look).
+
+Why the direction test: the usual Push rung is one the current build clears less often than τ, where
+reaching τ takes several changes that each help partly (B 60 %, two one-change builds 70 %, their
+combination 97 % at τ 90 %). Every one-change build is then below τ, but the changes are directions:
+the screen says `gradient` and the optimiser (§Search: coordinate ascent and multi-start) looks for the
+combination (`push.test.js`). A stop needs a flat neighbourhood, which is the measured 0 % case: there
+each pair settles once its Tango upper bound is below δ, about z² / δ fights once per build instead of
+once per comparison of a whole search. The direction is the win rate, not the margin (mean score s): at
+0 % the share of enemy HP removed differs between almost any two builds, so a margin test would send
+every 0 % rung to the optimiser and bring the stall back.
+
+Accuracy and what the claim covers. By the union bound over the m + q tests and the looks, the chance
+that the screen stops although some screened build is truly at or above τ, or some single change truly
+raises the rate by δ or more, is at most α (`push.test.js` checks the stop rate over 200 seeds with one
+neighbour at τ). So a stop states, at family level α: no build within one change of the centres reaches
+τ, and no single change from them raises the rate by δ. A build several changes away is reachable from
+there only across a plateau no single step climbs (changes that do nothing alone and a lot together),
+which the optimiser's coordinate ascent cannot cross either (it moves only on a better comparison); its
+random starts could, and the stop does not cover them. Hence the wording "at this effort", and the result
+points to the Win rate goal on that rung for a full search. When the stop does not fire, the optimisation
 keeps A5's futility stop.
 
 **Seeds.** Per probe, from the run seed and the rung key: climb `hashSeed('push-climb', seed, rungKey)`,
 screen `hashSeed('push-screen', …)`, confirm `hashSeed('push-confirm', …)`, common to every build on that
 rung; each optimisation uses its own S1-S3 (§Seeds and phases, keyed by the rung's target key). No data on
-the confirm seed decides which build or rung is reported.
+the confirm seed decides which build or rung is reported. Each role draws its own fights on purpose,
+although a build checked in the climb is sampled again in the screen or the confirm: the confirm must
+be fresh (data that decided the climb cannot report it), and the screen's family level holds only on
+fights no earlier decision looked at.
 
 **Multiplicity.** Each climb check, each screen and each optimisation is decided at its own level (α, the
 screen's family α, the optimiser's families). These decisions steer the climb; they are not the reported
@@ -595,8 +616,10 @@ without a confirmed claim), "Reaches step N (now: step M)", the rung the build's
 and why the climb stopped, then the build diff and Apply for the deepest build (`OptimiserResults.svelte`).
 
 **Cost.** Measured on the Warrior fixture (one thread, Quick with maxN 256, relics and pet): campaign from
-level 3-1 at 50 %, climbing and confirming levels 3-1 to 9-1 plus a screen stop at 9-2, about 1 600 fights
-in 1 s; from level 9-1 at 90 %, one optimisation (about 12 000 fights) and a screen stop, about 10 s.
+level 3-1 at 50 %, climbing and confirming levels 3-1 to 9-1, then a screen at 9-2 that finds a change
+raising the rate and an optimisation that does not reach 50 % (best 23 %): about 12 700 fights in 3 s;
+from level 9-1 at 90 %, two optimisations (9-1 reached, 9-2 not) and their screens, about 27 500 fights
+in 7 s. A flat 0 % rung stops at the screen after about z² / δ fights per screened build.
 
 ## Result
 

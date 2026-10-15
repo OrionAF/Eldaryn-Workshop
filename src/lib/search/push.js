@@ -7,7 +7,7 @@
 // neighbours of a build, a per-rung optimiser), so tests can drive it with synthetic clear rates;
 // `push` wires it to the real build space, objectives and `optimize`.
 import { hashSeed } from '../engine/rng.js';
-import { lookSchedule, wilsonInterval } from '../engine/stats/index.js';
+import { lookSchedule, wilsonInterval, pairedProportion } from '../engine/stats/index.js';
 import { stableStringify } from '../engine/metrics.js';
 import { EngineInputError } from '../engine/validate.js';
 import { PVE_CHAPTERS, PVE_HARD_CHAPTERS, PVE_HARD_CHAPTER_OFFSET, PVE_PROGRESS_CONSTANTS } from '../game/combatPve.js';
@@ -225,44 +225,68 @@ export async function pushCore(env, opts) {
   }
 
   /**
-   * The stop rule: the builds around which rung r is searched (the current build, the deepest build so
-   * far) and every build one change from them, each looked at n0, 2n0, … maxN with a Wilson interval at
-   * alpha / (builds × looks). A build leaves once its upper bound is below the target; the screen says
-   * 'go' as soon as one meets the target, or when any is still open at maxN, and 'stop' when none is left.
+   * The stop rule (simulation.md §Push, Stop rule): the builds around which rung r is searched (the current
+   * build, the deepest build so far), every build one change from them, and every (centre, one-change)
+   * pair, looked at n0, 2n0, … maxN at alpha / ((builds + pairs) × looks). Two questions per look: is any
+   * build plausibly at the target (Wilson), and does any one change plausibly raise the rate by δ or more
+   * (Tango on the paired win bits: a direction the optimiser's ascent could follow towards a build several
+   * changes away). 'go' (optimise) as soon as one build meets the target or one change confidently raises
+   * the rate, or when anything is still open at maxN; 'stop' only when every build is confidently below
+   * the target AND every change is confidently flat (raises the rate by less than δ).
    */
   async function screen(r, around) {
     setPhase('screen', r);
-    return step('screen', [rungs[r].key, ...around.map((b) => env.keyOf(b))], async () => {
-      const seen = new Set();
-      const cands = [];
+    return step('screen', ['flat', rungs[r].key, ...around.map((b) => env.keyOf(b))], async () => {
+      const seen = new Map();
+      const add = (c) => {
+        const k = env.keyOf(c);
+        if (!seen.has(k)) seen.set(k, { c, key: k, last: null, open: true });
+        return seen.get(k);
+      };
+      const pairs = [];
+      const pairSeen = new Set();
       for (const b of around) {
-        for (const c of [b, ...env.neighbours(b)]) {
-          const k = env.keyOf(c);
-          if (!seen.has(k)) {
-            seen.add(k);
-            cands.push(c);
+        const centre = add(b);
+        for (const c of env.neighbours(b)) {
+          const o = add(c);
+          const pk = `${centre.key}>${o.key}`;
+          if (o !== centre && !pairSeen.has(pk)) {
+            pairSeen.add(pk);
+            pairs.push({ from: centre, to: o, open: true });
           }
         }
       }
+      const all = [...seen.values()];
       const looks = lookSchedule(effort.n0, effort.maxN);
-      const a = alpha / (cands.length * looks.length);
+      const a = alpha / ((all.length + pairs.length) * looks.length);
       const stage = stageOf('screen', r);
-      let open = cands.map((c) => ({ c, key: env.keyOf(c), last: null }));
-      const all = open.slice();
-      // the best rate seen: each build's estimate at its last look (the one that decided it)
+      // the best rate seen: each build's estimate at its last look
       const best = () => all.reduce((m, o) => (o.last && (!m || o.last.est > m.est) ? o.last : m), null);
+      const out = (go, reason) => ({ go, reason, builds: all.length, pairs: pairs.length, best: best() });
       for (const n of looks) {
-        const still = [];
-        for (const o of open) {
-          const w = rateOf(await get(o.c, r, stage, n), a);
+        const need = new Set(all.filter((o) => o.open));
+        for (const p of pairs) if (p.open) need.add(p.from).add(p.to);
+        const bits = new Map();
+        for (const o of all) {
+          if (!need.has(o)) continue;
+          const set = await get(o.c, r, stage, n);
+          const xs = set.main[0].slice(0, n).map((v) => (v >= 1 ? 1 : 0));
+          bits.set(o, xs);
+          const w = wilsonInterval(xs.reduce((s, v) => s + v, 0), n, { alpha: a });
           o.last = { key: o.key, est: w.est, lo: w.lo, hi: w.hi, n, alphaAdj: a, method: 'wilson' };
-          if (meetsTarget(w, tau, effort.delta) === true) return { go: true, reason: 'meets', builds: cands.length, best: o.last };
-          if (!(w.hi < tau)) still.push(o);
+          if (!o.open) continue;
+          if (meetsTarget(w, tau, effort.delta) === true) return { ...out(true, 'meets'), best: o.last };
+          if (w.hi < tau) o.open = false;
         }
-        open = still;
-        if (!open.length) return { go: false, reason: 'below', builds: cands.length, best: best() };
+        for (const p of pairs) {
+          if (!p.open) continue;
+          const d = pairedProportion(bits.get(p.to), bits.get(p.from), { alpha: a });
+          if (d.lo > 0) return { ...out(true, 'gradient'), gradient: { from: p.from.key, to: p.to.key, est: d.delta, lo: d.lo, hi: d.hi, n } };
+          if (d.hi < effort.delta) p.open = false;
+        }
+        if (!all.some((o) => o.open) && !pairs.some((p) => p.open)) return out(false, 'below');
       }
-      return { go: true, reason: 'open', builds: cands.length, best: best() };
+      return out(true, 'open');
     });
   }
 
@@ -688,7 +712,7 @@ export function pushBlock(ladder, tau, core) {
   const startLabel = R[ladder.start].short;
   const now = bConf >= ladder.start ? R[bConf].short : `below ${startLabel}`;
   const stopText = core.stop?.reason === 'top' ? ' That is the top of the ladder.'
-    : core.stop?.reason === 'screen' ? ` ${cap1(R[stopRung].short)} is not reached at this effort: no build one change away comes plausibly near ${pctText(tau)} (best seen ${pctText(core.stop.best?.est ?? 0)}).`
+    : core.stop?.reason === 'screen' ? ` ${cap1(R[stopRung].short)} is not reached at this effort: no build one change away comes plausibly near ${pctText(tau)} and no single change raises the rate (best seen ${pctText(core.stop.best?.est ?? 0)}).`
       : core.stop?.reason === 'not-reached' ? ` ${cap1(R[stopRung].short)} was not reached: the best build wins ${pctText(core.stop.best?.est ?? 0)}.`
         : '';
   let status;

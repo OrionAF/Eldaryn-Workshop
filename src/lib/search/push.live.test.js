@@ -7,6 +7,10 @@ import { optimize } from './search.js';
 import { BLOCKS } from './space.js';
 import { runTask } from '../tasks/index.js';
 import { fixtureCharacter } from '../build/fixtures.js';
+import { viewResult, viewRun, ladderStrip } from '../ui/optimiserView.js';
+import { runFromResult } from '../model/runs.js';
+import { setup } from '../../components/ui/testkit.js';
+import PushLadder from '../../components/optimiser/PushLadder.svelte';
 
 const only = (...on) => Object.fromEntries(BLOCKS.map((b) => [b, on.includes(b)]));
 const timeless = (r) => ({ ...r, stats: { ...r.stats, ms: 0 }, phases: r.phases.map((p) => ({ ...p, ms: 0 })) });
@@ -36,6 +40,19 @@ describe('Push, live', () => {
     expect(full.phases.map((p) => p.id)).toEqual(['climb', 'screen', 'optimise', 'confirm']);
     expect(full.phases.find((p) => p.id === 'optimise').fights).toBeGreaterThan(0);
     expect(JSON.parse(JSON.stringify(full))).toEqual(full);
+
+    // the real result renders through the view, the ladder strip and a saved run
+    const view = viewResult(full);
+    const strip = ladderStrip(view.push);
+    expect(strip.map((c) => c.index)).toEqual(full.push.rungs.map((r) => r.index));
+    expect(strip.filter((c) => c.state === 'new').at(-1).index).toBe(full.push.reached.deepest);
+    if (full.push.stop?.index != null) expect(strip.find((c) => c.index === full.push.stop.index).state).toBe('stop');
+    expect(ladderStrip(viewRun(runFromResult(full, { presetName: 'Main' })).push)).toEqual(strip);
+    const ui = setup(PushLadder, { push: view.push });
+    expect(ui.qa('[data-testid="push-strip"] li').map((c) => c.dataset.state)).toEqual(strip.map((c) => c.state));
+    expect(ui.q('[data-testid="push-reached"]').textContent).toBe(full.push.reached.label);
+    expect(ui.q('[data-testid="push-stop"]').textContent).toMatch(/^(Stopped at|The climb reached)/);
+    ui.done();
 
     // cancel inside the per-step optimisation, then resume from the Push checkpoint
     const ctl = new AbortController();
