@@ -46,12 +46,14 @@ it('a backup over existing characters asks "Replace all characters?" with counts
   done();
 });
 
-it('an unrecognised text shows the reason on the choose step', () => {
+it('an unrecognised text keeps the dialog closed and the reason on the flow (shown by Settings > Import)', () => {
   const { q, done } = setup(ImportDialog);
   loadImportText('[1,2]');
   flushAll();
-  expect(q('[role="alert"]').textContent).toContain('Valid JSON, but not a roster backup');
+  expect(importFlow.error).toContain('Valid JSON, but not a roster backup');
+  expect(q('dialog[open]')).toBeNull();
   expect(q('.report')).toBeNull();
+  expect(q('input[type="file"]')).toBeNull(); // no file / paste step inside the dialog any more
   done();
 });
 
