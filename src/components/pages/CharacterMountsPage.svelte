@@ -7,6 +7,7 @@
    * card's "Ridden in" menu (every preset named) and in the Loadout page. Glyphs are inventory instances: sealed ones cannot be socketed, and major glyphs are limited
    * to the character's class and spec. Game facts: Game/mounts-glyphs.md.
    */
+  import { untrack } from 'svelte';
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { MOUNT_SPECIES } from '../../lib/game/mountsGlyphs.js';
   import { characterSpecs, glyphTier, glyphTypeInfo, FREE_GLYPH_RARITIES } from '../../lib/model/glyphs.js';
@@ -26,7 +27,11 @@
 
   let { setStatus = () => {}, onNavigate = () => {}, tab = null } = $props();
 
-  let view = $state(tab === 'glyphs' ? 'glyphs' : 'mounts');
+  // The hash tab picks the view on arrival and when it changes; the Tabs control owns it after that.
+  let view = $state(untrack(() => (tab === 'glyphs' ? 'glyphs' : 'mounts')));
+  $effect(() => {
+    if (tab === 'glyphs' || tab === 'mounts') view = tab;
+  });
   const SHOW = [
     { value: 'all', label: 'All glyphs' },
     { value: 'usable', label: 'Usable (not sealed)' },
@@ -79,6 +84,7 @@
 {#if !character}
   <p class="hint">No character selected.</p>
 {:else}
+  <div class="page">
   <Panel title="Mounts &amp; Glyphs" scope="character">
     {#snippet meta()}<span class="sub">unlock at level {UNLOCK_LEVELS.MOUNTS} · sockets: 3 minor, 2 major, 1 mythic · only the ridden mount counts</span>{/snippet}
     {#if !mountsUnlocked(character.level)}
@@ -127,7 +133,7 @@
         {/if}
         {#each groups as group (group.tier)}
           <div class="glyph-group">
-            <h4 class="micro-label">{TIER_LABELS[group.tier]}</h4>
+            <h4 class="group-label">{TIER_LABELS[group.tier]}</h4>
             <div class="glyph-grid">
               {#each group.items as glyph (glyph.id)}
                 <GlyphCard
@@ -144,6 +150,7 @@
       </div>
     {/if}
   </Panel>
+  </div>
 
   <GlyphPickerModal
     bind:open={picker.open}
@@ -160,16 +167,26 @@
 {/if}
 
 <style>
+  /* Panels size to their own width, never to the grids inside them. An auto-fill grid under a max-width is
+     measured as that many columns of its minimum, which pushed the page past 1440 (the fifth mount card was
+     cut off); min-width: 0 on every wrapper stops it, and the page scrolls inside itself as a last resort. */
+  .page { display: grid; gap: var(--sp-4); min-width: 0; overflow-x: auto; }
+  .page [role='tabpanel'] { min-width: 0; }
   .sub { color: var(--text-muted); font-size: var(--fs-12); }
   .hint { color: var(--text-muted); font-size: var(--fs-12); margin: 0; }
   .add-mount { display: flex; align-items: flex-end; gap: var(--sp-3); flex-wrap: wrap; margin: var(--sp-4) 0; }
-  .add-mount :global(.field) { min-width: 16rem; }
+  .add-mount :global(.field) { min-width: min(16rem, 100%); }
   .filter { max-width: 14rem; margin: var(--sp-3) 0; }
-  .mount-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--sp-3); max-width: calc(4 * 300px); }
-  .glyph-group { margin: var(--sp-4) 0; }
-  .glyph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--sp-2); margin-top: var(--sp-2); max-width: calc(8 * 190px); }
-  @media (max-width: 700px) {
-    .mount-grid { grid-template-columns: 1fr; }
-    .glyph-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+  .mount-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); gap: var(--sp-3); min-width: 0; }
+  .glyph-group { margin: var(--sp-4) 0; min-width: 0; }
+  .group-label {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: var(--fs-11);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--text-soft);
   }
+  .glyph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); gap: var(--sp-2); margin-top: var(--sp-2); min-width: 0; }
 </style>

@@ -2,6 +2,7 @@ import { it, expect, beforeEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import CharacterGearPage from './CharacterGearPage.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
+import { field, setField } from '../gear/fieldKit.js';
 
 let target;
 beforeEach(() => {
@@ -11,13 +12,9 @@ beforeEach(() => {
   document.body.appendChild(target);
 });
 
-const q = (label) => target.querySelector(`[aria-label="${label}"]`);
+const q = (label) => field(target, label);
 const slotBtn = (s) => target.querySelector(`[data-slot="${s}"]`);
-function change(el, value) {
-  el.value = value;
-  el.dispatchEvent(new Event('change', { bubbles: true }));
-  flushSync();
-}
+const change = setField;
 const tab = (text) => [...target.querySelectorAll('[role="tab"]')].find((b) => b.textContent.trim().startsWith(text));
 const press = (el) => {
   el.click();

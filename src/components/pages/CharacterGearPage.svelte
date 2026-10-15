@@ -6,6 +6,7 @@
    * edits its single 12-slot loadout and its own stone pool (gear.md §1/§8, stones.md §4). The
    * `realm` prop pins the realm and hides the set tabs.
    */
+  import { untrack } from 'svelte';
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { EQUIP_SETS } from '../../lib/model/equipment.js';
   import { dropAscension } from '../../lib/model/drop.js';
@@ -76,7 +77,7 @@
   ]);
 
   // Switching sets inside a realm keeps the stone selection (the pool is shared); switching realms cannot.
-  let lastRealm = realm;
+  let lastRealm = untrack(() => realm);
   $effect(() => {
     if (realm !== lastRealm) {
       lastRealm = realm;

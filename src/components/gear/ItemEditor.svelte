@@ -6,11 +6,16 @@
    * Props: value (Item | null), realm ('base' | 'oblivion'), slot, class (the character class; gates
    * the secondary pool), onchange(item | null). The editor never normalises: it emits the edited
    * item and the receiver (store mutator / model/equipment.js normaliseItem) trims it. Inputs commit
-   * on `change` (blur / Enter), so a half-typed number is never clamped under the cursor.
+   * on blur / Enter (ui/NumberField), so a half-typed number is never clamped under the cursor.
+   * Lowering the item level lowers every secondary's highest roll, and the model clamps to it; the
+   * editor names each stat that will drop before it happens.
    */
   import { RARITIES, secondaryPoolFor, SECONDARY_STAT_POOL, CONDUIT } from '../../lib/game/gear.js';
   import { emptyItem, maxItemLevel, secondarySlots, conduitAllowed, secondaryStatMaxValue, itemStatLevel, itemWarnings } from '../../lib/model/equipment.js';
-  import { slotLabel, toDisplay, fromDisplay, parseFlat, flatFieldText, rarityColor } from './gearFormat.js';
+  import { slotLabel, statLabel, toDisplay, fromDisplay } from './gearFormat.js';
+  import Select from '../ui/Select.svelte';
+  import NumberField from '../ui/NumberField.svelte';
+  import Button from '../ui/Button.svelte';
 
   // `ascension` (optional) is the character's Ascension step: an item above what it drops gets a warning.
   let { value = null, realm = 'base', slot, class: cls = null, ascension = null, onchange } = $props();
@@ -24,10 +29,16 @@
     flags = {};
   });
   const flag = (key, msg) => (flags = { ...flags, [key]: msg });
+  // A clamped value leaves the field showing what was typed; remounting it shows the stored value again.
+  let epoch = $state({});
+  const bump = (key) => (epoch = { ...epoch, [key]: (epoch[key] ?? 0) + 1 });
 
   const item = $derived(value ?? emptyItem());
   const pool = $derived(cls ? secondaryPoolFor(cls) : SECONDARY_STAT_POOL);
   const rowCount = $derived(secondarySlots(item.rarity));
+  const typeOptions = (i) => [{ value: '', label: 'None' }, ...optionsFor(i).map((s) => ({ value: s.type, label: s.label }))];
+  const rarityOptions = [{ value: '', label: 'Unknown' }, ...RARITIES.map((r) => ({ value: r.id, label: r.name }))];
+  const conduitOptions = [{ value: '', label: 'None' }, ...CONDUIT.types.map((t) => ({ value: t, label: t.charAt(0) + t.slice(1).toLowerCase() }))];
   const rows = $derived(
     Array.from({ length: rowCount }, (_, i) => item.secondaryStats[i] ?? { type: '', value: '' }),
   );
@@ -51,27 +62,43 @@
     const max = secondaryStatMaxValue(type, itemStatLevel(item.itemLevel ?? levelMax, realm));
     return max == null ? null : max;
   }
-  function setRowValue(i, text) {
+  function setRowValue(i, shown) {
     const next = rows.map((r) => ({ ...r }));
     if (!next[i].type) return;
-    let v = fromDisplay(next[i].type, text);
+    let v = fromDisplay(next[i].type, String(shown));
     const max = secondaryMax(next[i].type);
     if (max != null && v > max) {
       flag(`sec${i}`, `${toDisplay(next[i].type, v)} is above the highest roll at this item level; set to ${toDisplay(next[i].type, max)}.`);
       v = max;
+      bump(`sec${i}`);
     } else flag(`sec${i}`, '');
     next[i] = { ...next[i], value: v };
     setRows(next);
   }
-  function setBounded(key, text, lo, hi) {
-    const n = intOrNull(text);
+  function setBounded(key, n, lo, hi) {
     if (n == null) {
       flag(key, '');
       return null;
     }
     const clamped = Math.min(hi, Math.max(lo, Math.floor(n)));
     flag(key, clamped !== n ? `${n} is outside ${lo} to ${hi}; set to ${clamped}.` : '');
+    if (clamped !== n) bump(key);
     return clamped;
+  }
+  /** Secondaries whose current roll is above the highest roll at `level`: the model will clamp them. */
+  function clampedByLevel(level) {
+    return item.secondaryStats
+      .map((s) => {
+        const max = secondaryStatMaxValue(s.type, itemStatLevel(level, realm));
+        return max != null && s.value > max ? `${statLabel(s.type)} ${toDisplay(s.type, s.value)} to ${toDisplay(s.type, max)}` : null;
+      })
+      .filter(Boolean);
+  }
+  function setItemLevel(n) {
+    const level = setBounded('itemLevel', n, 1, levelMax);
+    const drops = level == null ? [] : clampedByLevel(level);
+    flag('itemLevelSec', drops.length ? `Item level ${level} lowers the highest roll: ${drops.join('; ')}.` : '');
+    emit({ itemLevel: level });
   }
   function optionsFor(i) {
     const taken = new Set(rows.filter((_, j) => j !== i).map((r) => r.type));
@@ -83,114 +110,59 @@
     return def && max != null ? `${toDisplay(type, def.minValue)} to ${toDisplay(type, max)} at item level ${item.itemLevel ?? levelMax}` : '';
   }
   const warnings = $derived(itemWarnings(item, { realm, ascension }));
-  function intOrNull(text) {
-    const t = String(text).trim();
-    return t === '' ? null : Number(t);
-  }
 </script>
 
 <div class="item-editor" data-slot={slot}>
   <div class="editor-head">
-    <p class="micro-label">{slotLabel(cls, slot)}</p>
-    <button type="button" class="btn-ghost" disabled={!value} onclick={() => onchange?.(null)}>Clear slot</button>
+    <p class="head-label">{slotLabel(cls, slot)}</p>
+    <Button variant="ghost" size="small" disabled={!value} onclick={() => onchange?.(null)}>Clear slot</Button>
   </div>
 
   <div class="grid">
-    <label class="field">
-      <span class="label">Rarity</span>
-      <select
-        aria-label="Rarity"
-        value={item.rarity ?? ''}
-        style="color: {rarityColor(item.rarity)}"
-        onchange={(e) => emit({ rarity: e.currentTarget.value || null })}
-      >
-        <option value="">Unknown</option>
-        {#each RARITIES as r (r.id)}
-          <option value={r.id}>{r.name}</option>
-        {/each}
-      </select>
-    </label>
+    <Select label="Rarity" options={rarityOptions} value={item.rarity ?? ''} onchange={(v) => emit({ rarity: v || null })} />
 
-    <label class="field">
-      <span class="label">Item level (1-{levelMax})</span>
-      <input
-        type="number"
-        aria-label="Item level"
-        min="1"
-        max={levelMax}
-        value={item.itemLevel ?? ''}
-        aria-describedby="{uid}-il"
-        onchange={(e) => emit({ itemLevel: setBounded('itemLevel', e.currentTarget.value, 1, levelMax) })}
-      />
-      <span class="range" id="{uid}-il">Range 1 to {levelMax}</span>
-      {#if flags.itemLevel}<span class="flag" role="alert">{flags.itemLevel}</span>{/if}
-    </label>
+    {#key epoch.itemLevel}
+      <div class="cell">
+        <NumberField label="Item level (1-{levelMax})" nullable value={item.itemLevel} onchange={setItemLevel} />
+        <span class="range" id="{uid}-il">Range 1 to {levelMax}</span>
+        {#if flags.itemLevel}<span class="flag" role="alert">{flags.itemLevel}</span>{/if}
+      </div>
+    {/key}
 
-    <label class="field">
-      <span class="label">Quality (1-100)</span>
-      <input
-        type="number"
-        aria-label="Quality"
-        min="1"
-        max="100"
-        value={item.quality ?? ''}
-        aria-describedby="{uid}-q"
-        onchange={(e) => emit({ quality: setBounded('quality', e.currentTarget.value, 1, 100) })}
-      />
-      <span class="range" id="{uid}-q">Range 1 to 100</span>
-      {#if flags.quality}<span class="flag" role="alert">{flags.quality}</span>{/if}
-    </label>
+    {#key epoch.quality}
+      <div class="cell">
+        <NumberField label="Quality (1-100)" nullable value={item.quality} onchange={(n) => emit({ quality: setBounded('quality', n, 1, 100) })} />
+        <span class="range" id="{uid}-q">Range 1 to 100</span>
+        {#if flags.quality}<span class="flag" role="alert">{flags.quality}</span>{/if}
+      </div>
+    {/key}
 
-    <label class="field">
-      <span class="label">Attack</span>
-      <input
-        type="text"
-        inputmode="decimal"
-        aria-label="Attack"
-        value={flatFieldText(item.primaryStats.attack)}
-        onchange={(e) => emit({ primaryStats: { ...item.primaryStats, attack: parseFlat(e.currentTarget.value) } })}
-      />
-    </label>
-
-    <label class="field">
-      <span class="label">Health</span>
-      <input
-        type="text"
-        inputmode="decimal"
-        aria-label="Health"
-        value={flatFieldText(item.primaryStats.hp)}
-        onchange={(e) => emit({ primaryStats: { ...item.primaryStats, hp: parseFlat(e.currentTarget.value) } })}
-      />
-    </label>
+    <NumberField label="Attack" statKey="totalAttack" value={item.primaryStats.attack} onchange={(n) => emit({ primaryStats: { ...item.primaryStats, attack: n } })} />
+    <NumberField label="Health" statKey="totalHp" value={item.primaryStats.hp} onchange={(n) => emit({ primaryStats: { ...item.primaryStats, hp: n } })} />
   </div>
 
   {#each warnings as w (w.kind)}
     <p class="flag" role="status">Item level {w.itemLevel} is above what your Ascension step drops (up to {w.cap}).</p>
   {/each}
+  {#if flags.itemLevelSec}<p class="flag" role="status">{flags.itemLevelSec}</p>{/if}
 
-  <h3 class="subheading">Secondary stats ({item.secondaryStats.length}/{rowCount})</h3>
+  <h3 class="sub-head">Secondary stats ({item.secondaryStats.length}/{rowCount})</h3>
   {#if rowCount === 0}
     <p class="hint">A {item.rarity ? RARITIES.find((r) => r.id === item.rarity)?.name : ''} item has no secondary stats.</p>
   {:else}
     <div class="secondary-rows">
       {#each rows as row, i (i)}
         <div class="secondary-row">
-          <select aria-label={`Secondary ${i + 1} stat`} value={row.type} onchange={(e) => setRowType(i, e.currentTarget.value)}>
-            <option value="">None</option>
-            {#each optionsFor(i) as s (s.type)}
-              <option value={s.type}>{s.label}</option>
-            {/each}
-          </select>
-          <input
-            type="text"
-            inputmode="decimal"
-            aria-label={`Secondary ${i + 1} value`}
-            title={rangeHint(row.type)}
-            disabled={!row.type}
-            value={row.type ? toDisplay(row.type, row.value) : ''}
-            onchange={(e) => setRowValue(i, e.currentTarget.value)}
-          />
-          <span class="unit">%</span>
+          <Select label="Secondary {i + 1} stat" options={typeOptions(i)} value={row.type} onchange={(v) => setRowType(i, v)} />
+          {#key epoch[`sec${i}`]}
+            <NumberField
+              label="Secondary {i + 1} value"
+              unit="%"
+              disabled={!row.type}
+              value={row.type ? Number(toDisplay(row.type, row.value)) : null}
+              onchange={(n) => setRowValue(i, n)}
+            />
+          {/key}
         </div>
         {#if row.type}<span class="range">Range {rangeHint(row.type)}</span>{/if}
         {#if flags[`sec${i}`]}<span class="flag" role="alert">{flags[`sec${i}`]}</span>{/if}
@@ -199,91 +171,43 @@
   {/if}
 
   {#if showConduit}
-    <h3 class="subheading">Conduit</h3>
+    <h3 class="sub-head">Conduit</h3>
     <div class="secondary-row">
-      <select
-        aria-label="Conduit type"
+      <Select
+        label="Conduit type"
+        options={conduitOptions}
         value={item.conduit?.type ?? ''}
-        onchange={(e) => emit({ conduit: e.currentTarget.value ? { type: e.currentTarget.value, value: item.conduit?.value ?? 0 } : null })}
-      >
-        <option value="">None</option>
-        {#each CONDUIT.types as t (t)}
-          <option value={t}>{t.charAt(0) + t.slice(1).toLowerCase()}</option>
-        {/each}
-      </select>
-      <input
-        type="text"
-        inputmode="decimal"
-        aria-label="Conduit value"
-        disabled={!item.conduit}
-        value={item.conduit ? item.conduit.value : ''}
-        onchange={(e) => item.conduit && emit({ conduit: { ...item.conduit, value: Number(e.currentTarget.value) || 0 } })}
+        onchange={(v) => emit({ conduit: v ? { type: v, value: item.conduit?.value ?? 0 } : null })}
       />
-      <span class="unit"></span>
+      <NumberField
+        label="Conduit value"
+        disabled={!item.conduit}
+        value={item.conduit ? item.conduit.value : null}
+        onchange={(n) => item.conduit && emit({ conduit: { ...item.conduit, value: n } })}
+      />
     </div>
   {/if}
 </div>
 
 <style>
-  .item-editor {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-  .editor-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .editor-head .micro-label {
+  .item-editor { display: flex; flex-direction: column; gap: var(--sp-2); }
+  .editor-head { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); }
+  .head-label,
+  .sub-head {
     margin: 0;
+    font-family: var(--font-ui);
+    font-size: var(--fs-11);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--text-soft);
   }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
-    gap: var(--space-2) var(--space-4);
-  }
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    min-width: 0;
-  }
-  .label {
-    font-size: 11px;
-    color: var(--color-dim);
-  }
-  .subheading {
-    margin: var(--space-3) 0 var(--space-1);
-  }
-  .secondary-rows {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-  .secondary-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 6rem 1rem;
-    gap: var(--space-2);
-    align-items: center;
-  }
-  .unit {
-    color: var(--color-muted);
-    font-size: 11px;
-  }
-  .hint {
-    color: var(--color-muted);
-    font-size: 12px;
-    margin: 0;
-  }
-  .range {
-    color: var(--text-muted, var(--color-muted));
-    font-size: 11px;
-    font-family: var(--font-data);
-  }
-  .flag {
-    color: var(--status-warn, var(--color-gold-light));
-    font-size: 11.5px;
-    margin: 0;
-  }
+  .sub-head { margin: var(--sp-3) 0 var(--sp-1); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(9rem, 100%), 1fr)); gap: var(--sp-2) var(--sp-4); }
+  .cell { display: grid; gap: 3px; min-width: 0; align-content: start; }
+  .secondary-rows { display: flex; flex-direction: column; gap: var(--sp-2); }
+  .secondary-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(6rem, 8rem); gap: var(--sp-2); align-items: end; }
+  .hint { color: var(--text-muted); font-size: var(--fs-12); margin: 0; }
+  .range { color: var(--text-muted); font-size: var(--fs-11); font-family: var(--font-data); }
+  .flag { color: var(--status-warn); font-size: var(--fs-12); margin: 0; }
 </style>

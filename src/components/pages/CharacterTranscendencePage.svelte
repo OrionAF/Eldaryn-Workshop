@@ -5,6 +5,7 @@
    * with no link follows the active board here (legality.resolveTranscendencePreset), and "Used by" says so.
    * Ichor is information only, never a gate (docs/Reference/Game/transcendence.md §1, §6, §9).
    * Graph rules live in lib/transcendence.js; the stat sums here are display of the same bonuses.
+   * The totals (nodes, Ichor, per-side progress, allocated bonuses) are the page's inspector content.
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { classLabel } from '../../lib/game/classes.js';
@@ -19,6 +20,8 @@
   import Panel from '../ui/Panel.svelte';
   import EmptyState from '../ui/EmptyState.svelte';
   import Button from '../ui/Button.svelte';
+  import Tabs from '../ui/Tabs.svelte';
+  import { inspector } from '../../lib/inspector.svelte.js';
   import { boardUsers } from '../../lib/build/usage.js';
   import { statLabel, formatNodeStat, KIND_LABEL } from '../transcendence/statLabels.js';
 
@@ -48,6 +51,11 @@
   const filterSet = $derived(new Set(filterStats));
   const filterOptions = $derived(board ? [...new Set(board.nodes.flatMap((n) => n.stats.map((s) => s.stat)))] : []);
   const toggleFilter = (key) => (filterStats = filterStats.includes(key) ? filterStats.filter((k) => k !== key) : [...filterStats, key]);
+
+  // Registered while the page shows a board; the release clears the slot when the page goes away.
+  $effect(() => (character.class && board ? inspector.set(totals) : undefined));
+
+  const presetTabs = $derived(t.presets.map((p) => ({ id: p.id, label: p.name })));
 
   let renaming = $state(false);
   let renameDraft = $state('');
@@ -107,6 +115,27 @@
   }
 </script>
 
+{#snippet totals()}
+  <Panel title="Board totals">
+    <dl class="totals">
+      <div><dt>Nodes</dt><dd class="num">{ids.length}</dd></div>
+      <div><dt>Ichor in use</dt><dd class="num">{spent}</dd></div>
+      <div><dt>Offense</dt><dd class="num">{attack.got}/{attack.total}</dd></div>
+      <div><dt>Defense</dt><dd class="num">{defense.got}/{defense.total}</dd></div>
+    </dl>
+    <p class="hint">Ichor is information, not a budget.</p>
+    {#if bonuses.length}
+      <ul class="bonus-list" aria-label="Allocated bonuses">
+        {#each bonuses as [stat, value] (stat)}
+          <li><span>{statLabel(stat)}</span> <strong class="num">{formatNodeStat(stat, value)}</strong></li>
+        {/each}
+      </ul>
+    {:else}
+      <p class="hint">No nodes allocated yet.</p>
+    {/if}
+  </Panel>
+{/snippet}
+
 {#if !character.class}
   <EmptyState title="Choose a class first" text="Transcendence boards depend on the character's class.">
     {#snippet action()}<Button onclick={() => onNavigate('character/overview')}>Go to Overview</Button>{/snippet}
@@ -122,40 +151,26 @@
     </span>
   {/snippet}
 
-  <div class="preset-bar" role="tablist" aria-label="Transcendence presets">
-    {#each t.presets as p (p.id)}
-      <button
-        type="button"
-        role="tab"
-        class="preset-tab"
-        class:active={p.id === active.id}
-        aria-selected={p.id === active.id}
-        onclick={() => rosterStore.setActiveTranscendencePreset(p.id)}
-      >
-        {p.name}
-      </button>
-    {/each}
-    <button type="button" class="btn-ghost" disabled={t.presets.length >= MAX_TRANSCENDENCE_PRESETS} onclick={addPreset}>
-      + Board
-    </button>
-  </div>
+  <Tabs items={presetTabs} value={active.id} label="Transcendence presets" idPrefix="tr" onchange={(id) => rosterStore.setActiveTranscendencePreset(id)} />
 
   <div class="preset-actions">
+    <Button variant="ghost" size="small" disabled={t.presets.length >= MAX_TRANSCENDENCE_PRESETS} onclick={addPreset}>+ Board</Button>
     {#if renaming}
       <input
         type="text"
+        class="name-input"
         aria-label="Preset name"
         maxlength={18}
         bind:value={renameDraft}
         onkeydown={(e) => e.key === 'Enter' && commitRename()}
       />
-      <button type="button" class="btn-gold" onclick={commitRename}>Save</button>
-      <button type="button" class="btn-ghost" onclick={() => (renaming = false)}>Cancel</button>
+      <Button variant="primary" size="small" onclick={commitRename}>Save</Button>
+      <Button variant="ghost" size="small" onclick={() => (renaming = false)}>Cancel</Button>
     {:else}
-      <button type="button" class="btn-ghost" onclick={() => { renameDraft = active.name; renaming = true; }}>Rename</button>
-      <ConfirmButton class="btn-ghost" label="Reset board" confirmLabel="Reset" onConfirm={() => rosterStore.resetTranscendencePreset(active.id)} disabled={ids.length === 0} />
+      <Button variant="ghost" size="small" onclick={() => { renameDraft = active.name; renaming = true; }}>Rename</Button>
+      <ConfirmButton variant="ghost" size="small" label="Reset board" confirmLabel="Reset" onConfirm={() => rosterStore.resetTranscendencePreset(active.id)} disabled={ids.length === 0} />
       {#if active.id !== DEFAULT_TRANSCENDENCE_ID}
-        <ConfirmButton class="btn-danger" label="Delete preset" confirmLabel="Delete" onConfirm={() => rosterStore.deleteTranscendencePreset(active.id)} />
+        <ConfirmButton variant="danger" size="small" label="Delete preset" confirmLabel="Delete" onConfirm={() => rosterStore.deleteTranscendencePreset(active.id)} />
       {/if}
     {/if}
     <span class="hint" data-testid="board-used-by">
@@ -163,15 +178,8 @@
     </span>
   </div>
 
-  <div class="header-bar">
-    <span class="readout">Nodes: <strong>{ids.length}</strong></span>
-    <span class="readout">Ichor in use: <strong>{spent}</strong> <span class="hint">(information, not a budget)</span></span>
-    <span class="readout">Offense: <strong>{attack.got}/{attack.total}</strong></span>
-    <span class="readout">Defense: <strong>{defense.got}/{defense.total}</strong></span>
-  </div>
-
   <div class="node-filter">
-    <span class="micro-label">Node Filter</span>
+    <span class="filter-label">Node Filter</span>
     <div class="filter-chips">
       {#each filterOptions as key (key)}
         <button type="button" class="filter-chip" class:active={filterSet.has(key)} aria-pressed={filterSet.has(key)} onclick={() => toggleFilter(key)}>
@@ -187,14 +195,6 @@
   {#key boardKey}
     <BoardGrid {boardKey} nodes={board.nodes} allocatedIds={ids} highlightStats={filterSet} {onSelect} {onHover} />
   {/key}
-
-  {#if bonuses.length}
-    <ul class="bonus-list" aria-label="Allocated bonuses">
-      {#each bonuses as [stat, value] (stat)}
-        <li><span>{statLabel(stat)}</span> <strong>{formatNodeStat(stat, value)}</strong></li>
-      {/each}
-    </ul>
-  {/if}
 
   {#if hovered && !isMobile}
     <div class="tooltip" style="left: {hovered.x + 14}px; top: {hovered.y + 14}px;">
@@ -226,135 +226,61 @@
 {/if}
 
 <style>
-  /* Body text matches the other screens (12-12.5px); the browser default is 16px. */
-  .empty-hint {
-    color: var(--color-muted);
-    font-size: 12px;
-    padding-top: var(--space-6);
+  .hint { font-size: var(--fs-12); color: var(--text-muted); margin: 0; }
+  .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+  .preset-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin: var(--sp-3) 0; }
+  .name-input {
+    height: 28px;
+    padding: 0 var(--sp-2);
+    background: var(--surface-3);
+    border: 1px solid var(--line-control);
+    border-radius: var(--r-1);
+    color: var(--text-ink);
+    font: inherit;
+    font-size: var(--fs-13);
   }
-  .header-row {
-    margin-bottom: var(--space-2);
+  .node-filter { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+  .filter-label {
+    font-size: var(--fs-11);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--text-soft);
   }
-  .hint {
-    font-size: 11px;
-    color: var(--color-muted);
-    margin: 0;
-  }
-  .preset-bar,
-  .preset-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-    margin-bottom: var(--space-3);
-  }
-  .preset-tab {
-    padding: 0.2rem 0.75rem;
-    border-radius: 999px;
-    background: var(--color-field);
-    border: 1px solid var(--color-border-strong);
-    color: var(--color-muted);
-    cursor: pointer;
-  }
-  .preset-tab.active {
-    background: var(--nav-transcendence-tint);
-    border-color: var(--nav-transcendence);
-    color: var(--nav-transcendence-light);
-  }
-  .header-bar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2) var(--space-6);
-    margin-bottom: var(--space-3);
-  }
-  .readout {
-    color: var(--color-muted);
-    font-size: 12.5px;
-  }
-  .readout strong {
-    color: var(--color-ink);
-    font-family: var(--font-data);
-    font-variant-numeric: tabular-nums;
-  }
-  .node-filter {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-3);
-    margin-bottom: var(--space-3);
-  }
-  .filter-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
+  .filter-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
   .filter-chip,
   .filter-clear {
-    font-size: 0.75rem;
-    padding: 0.15rem 0.55rem;
-    border-radius: 999px;
-    background: var(--color-field);
-    border: 1px solid var(--color-border-strong);
-    color: var(--color-muted);
+    font-size: var(--fs-12);
+    padding: 2px var(--sp-2);
+    border-radius: var(--r-pill);
+    background: var(--surface-3);
+    border: 1px solid var(--line-control);
+    color: var(--text-soft);
     cursor: pointer;
   }
-  .filter-chip:hover {
-    border-color: var(--nav-transcendence);
-    color: var(--color-ink);
-  }
-  .filter-chip.active {
-    background: var(--nav-transcendence-tint);
-    border-color: var(--nav-transcendence);
-    color: var(--nav-transcendence-light);
-  }
-  .filter-clear {
-    background: none;
-    border-style: dashed;
-  }
-  .bonus-list {
-    list-style: none;
-    padding: 0;
-    margin: var(--space-4) 0 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
-    gap: var(--space-1) var(--space-4);
-  }
-  .bonus-list li {
-    display: flex;
-    justify-content: space-between;
-    color: var(--color-muted);
-    font-size: 12.5px;
-  }
-  .bonus-list strong {
-    color: var(--color-ink);
-    font-family: var(--font-data);
-    font-variant-numeric: tabular-nums;
-  }
+  .filter-chip:hover { border-color: var(--brass-400); color: var(--text-ink); }
+  .filter-chip.active { background: var(--brass-tint); border-color: var(--brass-400); color: var(--brass-200); }
+  .filter-clear { background: none; border-style: dashed; }
+  .totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2) var(--sp-4); margin: 0; }
+  .totals div { display: grid; gap: 2px; }
+  .totals dt { font-size: var(--fs-11); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-soft); }
+  .totals dd { margin: 0; font-size: var(--fs-16); color: var(--text-ink); }
+  .bonus-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--sp-1); }
+  .bonus-list li { display: flex; justify-content: space-between; gap: var(--sp-3); color: var(--text-soft); font-size: var(--fs-13); }
+  .bonus-list strong { color: var(--text-ink); }
   .tooltip {
     position: fixed;
-    z-index: 20;
-    background: var(--color-panel);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-field);
-    padding: 0.5rem 0.65rem;
+    z-index: var(--z-tooltip);
+    background: var(--surface-4);
+    border: 1px solid var(--line-control);
+    border-radius: var(--r-2);
+    padding: var(--sp-2) var(--sp-3);
     pointer-events: none;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--elev-2);
     max-width: 15rem;
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
-  .tooltip-title {
-    font-family: var(--font-heading);
-    font-weight: 700;
-    font-size: 13px;
-    color: var(--color-gold-light);
-    margin-bottom: 0.2rem;
-  }
-  .tooltip-stat {
-    font-size: 12px;
-    color: var(--color-ink);
-  }
-  .tooltip-cost {
-    font-size: 11.5px;
-    color: var(--color-muted);
-    margin-top: 0.2rem;
-  }
+  .tooltip-title { font-family: var(--font-display); font-size: var(--fs-13); color: var(--brass-200); margin-bottom: var(--sp-1); }
+  .tooltip-stat { color: var(--text-ink); }
+  .tooltip-cost { color: var(--text-muted); margin-top: var(--sp-1); }
 </style>

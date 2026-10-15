@@ -41,9 +41,9 @@
   );
 </script>
 
-<div class="mount-card rarity-card {rarityClass(mount.rarity)}" data-mount-id={mount.id}>
-  <h3 class="rarity-title">{species?.name ?? mount.species}</h3>
-  <span class="rarity-badge badge">{mount.rarity}</span>
+<div class="mount-card {rarityClass(mount.rarity)}" data-mount-id={mount.id}>
+  <h3 class="card-title">{species?.name ?? mount.species}</h3>
+  <span class="badge">{mount.rarity}</span>
 
   {#if art}
     <img class="mount-art" src={art} alt="" loading="lazy" />
@@ -99,7 +99,7 @@
   <p class="ridden-by" data-testid="ridden-in">Ridden in: {riddenBy.length ? riddenBy.join(', ') : 'no preset'}</p>
   <div class="card-foot">
     <PresetMenu label="Ridden in" items={rideItems} onselect={(id) => onRide(id)} />
-    <ConfirmButton class="btn-danger" label="Remove" confirmLabel="Confirm remove" onConfirm={onRemove} />
+    <ConfirmButton variant="danger" size="small" label="Remove" confirmLabel="Confirm remove" onConfirm={onRemove} />
   </div>
 </div>
 
@@ -107,107 +107,54 @@
   .mount-card {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
-    padding: var(--space-3);
+    gap: var(--sp-2);
+    padding: var(--sp-3);
+    min-width: 0;
+    border: 1px solid var(--rarity-border, var(--line-rule));
+    background: var(--rarity-bg, var(--surface-2));
+    border-radius: var(--r-2);
   }
+  .card-title { margin: 0; font-family: var(--font-display); font-size: var(--fs-14); text-align: center; color: var(--rarity-fg, var(--text-ink)); }
   .badge {
     align-self: center;
+    padding: 1px var(--sp-2);
+    border: 1px solid var(--rarity-border, var(--line-rule));
+    border-radius: var(--r-pill);
+    background: var(--rarity-bg, transparent);
+    color: var(--rarity-fg-strong, var(--text-muted));
+    font-size: var(--fs-11);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
   }
-  .mount-art {
-    display: block;
-    width: 96px;
-    height: 96px;
-    margin: 0 auto;
-    object-fit: contain;
-    border-radius: var(--radius-field);
-  }
-  .stat-block {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .stat-label,
-  .effective {
-    font-size: 11.5px;
-    color: var(--color-soft);
-    margin: 0;
-  }
-  .stat-num {
-    font-family: var(--font-data);
-    font-variant-numeric: tabular-nums;
-    color: var(--color-ink);
-  }
-  .slider-row {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-  }
-  .slider-row :global(.slider) {
-    flex: 1;
-    min-width: 0;
-  }
-  .bound {
-    font-family: var(--font-data);
-    font-variant-numeric: tabular-nums;
-    font-size: 10px;
-    color: var(--color-dim);
-    min-width: 18px;
-    text-align: center;
-  }
-  .sockets {
-    display: flex;
-    gap: var(--space-1);
-    justify-content: center;
-    padding-top: var(--space-2);
-    border-top: 2px solid var(--frame-mount);
-  }
+  .mount-art { display: block; width: 96px; height: 96px; margin: 0 auto; object-fit: contain; border-radius: var(--r-2); }
+  .stat-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .effective { font-size: var(--fs-12); color: var(--text-soft); margin: 0; }
+  .stat-num { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--text-ink); }
+  .slider-row { display: flex; align-items: center; gap: 2px; min-width: 0; }
+  .slider-row :global(.slider) { flex: 1; min-width: 0; }
+  .bound { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: var(--fs-11); color: var(--text-muted); min-width: 18px; text-align: center; }
+  .sockets { display: flex; flex-wrap: wrap; gap: var(--sp-1); justify-content: center; padding-top: var(--sp-2); border-top: 2px solid var(--frame-mount); }
   .socket {
     width: 32px;
     height: 32px;
     padding: 0;
-    border-radius: var(--radius-field);
-    border: 1px dashed var(--color-border-strong);
-    background: var(--color-inset);
+    border-radius: var(--r-2);
+    border: 1px dashed var(--line-control);
+    background: var(--surface-1);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
     cursor: pointer;
   }
-  .socket:hover {
-    border-color: var(--color-gold);
-  }
-  .socket.filled {
-    border-style: solid;
-    border-color: var(--color-gold);
-  }
-  .socket img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-  .socket-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: var(--radius-pill);
-    background: var(--color-gold);
-  }
-  .card-foot {
-    display: flex;
-    gap: var(--space-2);
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-  }
-  .ridden-by {
-    margin: 0;
-    font-size: 10.5px;
-    color: var(--color-muted);
-  }
+  .socket:hover { border-color: var(--brass-400); }
+  .socket.filled { border-style: solid; border-color: var(--brass-400); }
+  .socket img { width: 100%; height: 100%; object-fit: contain; }
+  .socket-dot { width: 10px; height: 10px; border-radius: var(--r-pill); background: var(--brass-400); }
+  .card-foot { display: flex; gap: var(--sp-2); align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  .ridden-by { margin: 0; font-size: var(--fs-11); color: var(--text-muted); }
   @media (max-width: 700px) {
-    .socket {
-      width: 40px;
-      height: 40px;
-    }
+    .socket { width: var(--hit); height: var(--hit); }
   }
 </style>
