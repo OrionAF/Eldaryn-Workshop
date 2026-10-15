@@ -31,13 +31,18 @@ export function dropHasStats(item) {
   );
 }
 
+/** The Ascension level that caps a drop's item level (gear.md §6); an unbought skill is step 1. */
+export function dropAscension(character) {
+  return Number(character?.skills?.ascension) || 0;
+}
+
 /** Any value -> a valid drop or null. Idempotent. An unknown slot for the realm discards the drop. */
 export function normaliseDrop(rawCharacter, ctx) {
   const raw = rawCharacter?.drop;
   if (!raw || typeof raw !== 'object') return defaultDrop();
   const realm = raw.realm === 'oblivion' ? 'oblivion' : 'base';
   if (!slotsForRealm(realm).includes(raw.slot)) return defaultDrop();
-  const item = normaliseItem(raw.item, { cls: ctx?.class ?? null, realm }) ?? emptyItem();
+  const item = normaliseItem(raw.item, { cls: ctx?.class ?? null, realm, ascension: dropAscension(rawCharacter), report: ctx?.report ?? null, slot: raw.slot }) ?? emptyItem();
   return { drop: { realm, slot: raw.slot, item } };
 }
 

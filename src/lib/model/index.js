@@ -119,9 +119,9 @@ export function newCharacter(name = 'New Character', cls = null) {
 }
 
 /** Any object -> a valid v2 Character (fresh object; never trusts `raw`'s shape). */
-export function normaliseCharacter(raw) {
+export function normaliseCharacter(raw, { report = null } = {}) {
   const c = normaliseCore(raw);
-  const ctx = { class: c.class, spec: null };
+  const ctx = { class: c.class, spec: null, report };
   const talentsFirst = DOMAINS[0];
   Object.assign(c, talentsFirst.normalise(raw, ctx));
   ctx.spec = c.talentSets?.[activeTalentSetIndex(raw)]?.spec ?? null;

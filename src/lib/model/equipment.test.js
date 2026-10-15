@@ -140,6 +140,18 @@ describe('normaliseItem', () => {
     expect(itemWarnings(item, { realm: 'base', ascension: 5 })).toEqual([]);
   });
 
+  it('ascension option caps a drop item level at the character step', () => {
+    expect(normaliseItem({ ...legendary, itemLevel: 240 }, { ascension: 1 }).itemLevel).toBe(100);
+    expect(normaliseItem({ ...legendary, itemLevel: 240 }, { ascension: 3 }).itemLevel).toBe(160);
+    expect(normaliseItem({ ...legendary, itemLevel: 240 }).itemLevel).toBe(240);
+  });
+
+  it('Oblivion ETERNAL keeps DARK and drops FLAME', () => {
+    const at = (type) => normaliseItem({ ...legendary, rarity: 'ETERNAL', conduit: { type, value: 45 } }, { realm: 'oblivion' }).conduit?.type ?? null;
+    expect(at('DARK')).toBe('DARK');
+    expect(at('FLAME')).toBeNull();
+  });
+
   it('rejects non-objects and cleans a bad rarity to null', () => {
     expect(normaliseItem(null)).toBeNull();
     expect(normaliseItem('x')).toBeNull();
@@ -154,6 +166,22 @@ describe('normaliseItem', () => {
 });
 
 describe('through the character', () => {
+  it('records clamps and drops in a report passed to normaliseCharacter', () => {
+    const c = newCharacter('A', 'WARRIOR');
+    c.equipment.set1.items.HEAD = { ...legendary, rarity: 'ETERNAL', secondaryStats: [{ type: 'CRIT_CHANCE', value: 9 }], conduit: { type: 'DARK', value: 45 } };
+    const report = [];
+    normaliseCharacter(JSON.parse(JSON.stringify(c)), { report });
+    expect(report.map((r) => r.kind).sort()).toEqual(['conduitDropped', 'secondaryClamped']);
+  });
+
+  it('a saved drop is capped by the character Ascension', () => {
+    const c = newCharacter('A', 'WARRIOR');
+    c.drop = { realm: 'base', slot: 'WEAPON', item: { ...legendary, itemLevel: 240 } };
+    expect(normaliseCharacter(JSON.parse(JSON.stringify(c))).drop.item.itemLevel).toBe(100);
+    c.skills = { ...c.skills, ascension: 3 };
+    expect(normaliseCharacter(JSON.parse(JSON.stringify(c))).drop.item.itemLevel).toBe(160);
+  });
+
   it('re-gating on a class change drops class-invalid secondaries', () => {
     const c = newCharacter('A', 'SENTINEL');
     c.equipment.set1.items.WEAPON = { ...legendary, secondaryStats: [{ type: 'MISS_CHANCE', value: 2 }, { type: 'CRIT_CHANCE', value: 2 }] };
