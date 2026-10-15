@@ -14,11 +14,10 @@
 import { ARENA_CONSTANTS } from '../../game/combatPvp.js';
 import { pvpRatingToFraction, REGEN_PULSE_MS } from './attack.js';
 import { createDuelState } from './reactions.js';
-import { fighterDuelArgs } from './resolver.js';
+import { fighterDuelArgs, completeDuelStats } from './resolver.js';
 import { parseEventType } from './events.js';
 import { initSpellRuntimes } from '../core/spells.js';
 import { sigilBySpecies } from '../../game/sigils.js';
-import { completeDuelStats } from './resolver.js';
 import { openingSummonWindowMs } from '../core/minions.js';
 
 /** @typedef {import('./events.js').DuelEvent} DuelEvent */

@@ -31,16 +31,21 @@ export function sliceSet(s, n) {
   return { main: cut(s.main), side: Object.fromEntries(Object.entries(s.side).map(([k, v]) => [k, cut(v)])), n };
 }
 
+// `dst.push(...src)` overflows the call stack on a long chunk, so append in a loop.
+const pushAll = (dst, src) => {
+  for (let i = 0; i < src.length; i++) dst.push(src[i]);
+};
+
 function append(entry, chunk) {
   chunk.main.forEach((l, j) => {
     if (!entry.main[j]) entry.main[j] = [];
-    entry.main[j].push(...l);
+    pushAll(entry.main[j], l);
   });
   for (const [k, lanes] of Object.entries(chunk.side ?? {})) {
     if (!entry.side[k]) entry.side[k] = [];
     lanes.forEach((l, j) => {
       if (!entry.side[k][j]) entry.side[k][j] = [];
-      entry.side[k][j].push(...l);
+      pushAll(entry.side[k][j], l);
     });
   }
   entry.n = entry.main[0]?.length ?? 0;

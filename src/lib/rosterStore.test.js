@@ -145,6 +145,14 @@ describe('presets', () => {
     expect(store.current.presets.map((p) => p.id)).toEqual([a, b]);
   });
 
+  it('deletePreset leaves no dangling owner on the Oblivion sheet', () => {
+    const c = store.addPreset('C');
+    store.current.oblivion.sheet = { values: {}, enteredAt: 'x', inputsKey: null, presetId: c };
+    expect(store.deletePreset(c)).toBe(true);
+    expect(store.current.oblivion.sheet?.presetId ?? null).toBeNull();
+    expect(saved().characters.find((x) => x.id === store.current.id).oblivion.sheet?.presetId ?? null).toBeNull();
+  });
+
   it('duplicatePreset copies with a fresh id right after the source', () => {
     const [a] = store.current.presets.map((p) => p.id);
     for (const id of WR) store.setRelicLevel(id, 1); // a preset can only equip owned relics
@@ -251,7 +259,7 @@ describe('sheets', () => {
     expect(store.current.presets[0].sheet.values.totalAttack).toBe(5100);
   });
 
-  it('the Oblivion sheet belongs to the preset it was entered for; a deleted owner applies it nowhere and loads ownerless', () => {
+  it('the Oblivion sheet belongs to the preset it was entered for; a deleted owner is ownerless at once, not only after a reload', () => {
     const [a, b] = store.current.presets.map((p) => p.id);
     store.setOblivionSheet({ totalAttack: 5000 }, a);
     expect(store.current.oblivion.sheet.presetId).toBe(a);
@@ -265,8 +273,13 @@ describe('sheets', () => {
     expect(oblivion(b).sheetStatus).toBe('fresh');
     store.addPreset('Third');
     store.deletePreset(b);
-    for (const p of store.current.presets) expect(oblivion(p.id).source).toBe('computed');
-    expect(normaliseCharacter(JSON.parse(JSON.stringify(store.current))).oblivion.sheet.presetId).toBeNull();
+    // the owner is gone: no preset is named by the sheet, and a reload changes nothing about where it counts
+    expect(store.current.oblivion.sheet.presetId).toBeNull();
+    const reloaded = normaliseCharacter(JSON.parse(JSON.stringify(store.current)));
+    expect(reloaded.oblivion.sheet.presetId).toBeNull();
+    for (const p of store.current.presets) {
+      expect(computePresetStats(reloaded, p.id, { realm: 'oblivion' }).source).toBe(oblivion(p.id).source);
+    }
   });
 });
 

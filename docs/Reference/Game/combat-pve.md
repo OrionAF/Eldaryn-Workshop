@@ -647,14 +647,13 @@ countdown. `simulateDungeonStep` calls `elapseMinionRespawn(minion, 500)` before
 included (`L1671080-1671084`, §14). Only `simulateBossFight` calls `carryMinionIntoNewFight`
 (`L1863431`), which ends empower and frenzy and resummons a living minion at full HP.
 
-The
-enemy rolls a crit draw when hitting the minion (`L1087238-1087245`) even at 0 % crit and never
+**Enemy hits on the minion [CODE].** The enemy rolls a crit draw when hitting the minion (`L1087238-1087245`) even at 0 % crit and never
 rolls Block/Miss against it. Enemy lifesteal is `floor(dmg*ls/100)` clamped to `enemy.maxHp`
 with no heal budget; its base is the damage the minion actually took (`L1087270`) or
 `round(effectiveDamage)` against the player.
 
 The player is untouched while a minion lives. Minion cast times and per-species
-numbers `see sigils.md`.
+numbers: see sigils.md.
 
 ## §13 Shield — **[CODE]** `L1095542-1095712`, `L1085790-1085855`
 

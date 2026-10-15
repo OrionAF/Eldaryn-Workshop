@@ -137,8 +137,8 @@ Per spell type, which fields scale [CODE] L1067622-1068264:
 | spellType | Scaled fields (with their cap) | Not scaled |
 |---|---|---|
 | AURA | `bonusValue` (no cap; `toFixed(2)` instead of 1 when `bonusStat == ATTACK_SPEED`) | |
-| DAMAGE | `baseDamage` (floored unconditionally, so a spell with no `baseDamage` would give NaN; every catalogued DAMAGE spell has 0), `attackPercent` (cap `maxAttackPercent`), `damagePerTick` (floored), `slow.attackSpeedReductionPercent`, `wound.regenReductionPercent`, `critDown.critChanceReduction` (each with its own `max*`) | cooldown, duration, tick interval, paralyze/fear/silence ms |
-| DEBUFF | `initialAttackPercent` (cap; scales uncapped when no max), `debuff.regenReductionPercent` and `debuff.damagePerTickPercent` (each scaled only when its `max*` sibling exists, otherwise left at the level-1 value; the shipped catalogue has all the maxes) | cooldown, duration, maxStacks, tick interval |
+| DAMAGE | `baseDamage` (floored unconditionally, so a spell with no `baseDamage` would give NaN; catalogue invariant [DERIVED]: every DAMAGE entry in `data/sigils.json` carries `baseDamage` 0), `attackPercent` (cap `maxAttackPercent`), `damagePerTick` (floored), `slow.attackSpeedReductionPercent`, `wound.regenReductionPercent`, `critDown.critChanceReduction` (each with its own `max*`) | cooldown, duration, tick interval, paralyze/fear/silence ms |
+| DEBUFF | `initialAttackPercent` (cap; scales uncapped when no max), `debuff.regenReductionPercent` and `debuff.damagePerTickPercent` (each scaled only when its `max*` sibling exists, otherwise left at the level-1 value; catalogue invariant [DERIVED]: every DEBUFF entry in `data/sigils.json` carries those maxes, so the level-1 fallback is never taken) | cooldown, duration, maxStacks, tick interval |
 | BUFF | each `effects[i].value` (cap `maxValue`, `toFixed(1)`), `thornsPercent`, `minionEmpower.*`, `minionFrenzy.*` | duration, cooldown |
 | HEAL | `healPercentPerTick` (no cap) | tick interval, duration, cooldown |
 | SHIELD | `shieldHpPercent` (cap `maxShieldHpPercent`) | |

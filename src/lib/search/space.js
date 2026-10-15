@@ -72,7 +72,8 @@ function arrangeRow(savedRow, desired, size) {
 
 const allocEntries = (a) => Object.entries(a ?? {}).filter(([, r]) => r > 0).sort(([x], [y]) => byString(x, y));
 const allocOf = (a) => Object.fromEntries(allocEntries(a));
-const sameAlloc = (a, b) => JSON.stringify(allocEntries(a)) === JSON.stringify(allocEntries(b));
+/** Two talent allocations spend the same ranks (zero ranks and key order do not count). */
+export const sameAlloc = (a, b) => JSON.stringify(allocEntries(a)) === JSON.stringify(allocEntries(b));
 
 /** Saved sockets of a mount (empty sockets for an unknown mount). */
 export function savedSockets(character, mountId) {

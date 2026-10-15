@@ -66,6 +66,7 @@
   .jobs-pill:hover { border-color: var(--line-control-hover); background: var(--surface-3); }
   .jobs-pill[aria-expanded='true'] { border-color: var(--ember-500); background: var(--surface-3); }
   .jobs-ring { width: 18px; height: 18px; flex: none; }
+  .jobs-lbl { max-width: 6ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .jobs-ring circle { fill: none; stroke-width: 2.5; }
   .track { stroke: var(--line-rule); }
   .arc { stroke: var(--ember-500); stroke-linecap: round; transform-origin: center; animation: jobs-spin 1.4s linear infinite; }

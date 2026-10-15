@@ -41,6 +41,7 @@ export function createPresetsStore(ctx) {
       if (idx === -1) return false;
       c.presets.splice(idx, 1);
       if (c.activePresetId === presetId) c.activePresetId = c.presets[0].id;
+      ctx.reconcile(c); // a preset that owned the Oblivion sheet must not stay named by it
       return true;
     });
   }

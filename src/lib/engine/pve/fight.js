@@ -44,8 +44,8 @@ export const DEFAULT_DT_MS = 100;
 /** `SHIELD_MITIGATION` of the campaign and dungeon constants (combat-pve.md §13). */
 export const PVE_SHIELD_MITIGATION = PVE_PROGRESS_CONSTANTS.shieldMitigation;
 // DUNGEON_CONSTANTS (L1062719) are not in the synced catalogue, so their two combat values sit here
-const DUNGEON_TICK_MS = 10;
-const DUNGEON_SHIELD_MITIGATION = 0.5;
+export const DUNGEON_TICK_MS = 10;
+export const DUNGEON_SHIELD_MITIGATION = 0.5;
 /** simulateDungeonStep's wait before every mob, the first included (L1671080-1671084). */
 export const INTER_MOB_GAP_MS = 500;
 
@@ -58,11 +58,11 @@ const note = (key, text) => Object.freeze({ key, text });
 export const PVE_ASSUMPTIONS = Object.freeze({
   serverFight: note('server-fight', "Server-run fight: simulated with the client's shared engine; whether the server runs it is unresolved."),
   campaignCap: note('campaign-cap', 'The campaign loop has no time limit; a fight past 20 minutes is reported as timed out.'),
-  raidShield: note('raid-shield', 'Raid shield mitigation 0.5 assumed (the dungeon value): the raid constants carry none.'),
-  oblivionConstants: note('oblivion-constants', 'Oblivion floors assume the dungeon tick (10 ms), shield mitigation (0.5) and 500 ms start gap: the floor config carries none.'),
+  raidShield: note('raid-shield', `Raid shield mitigation ${DUNGEON_SHIELD_MITIGATION} assumed (the dungeon value): the raid constants carry none.`),
+  oblivionConstants: note('oblivion-constants', `Oblivion floors assume the dungeon tick (${DUNGEON_TICK_MS} ms), shield mitigation (${DUNGEON_SHIELD_MITIGATION}) and ${INTER_MOB_GAP_MS} ms start gap: the floor config carries none.`),
   oblivionOutputCut: note('oblivion-output-cut', 'The instability output cut is off unless switched on: the client fight never applies it, and where the server does is unresolved.'),
   worldBossModel: note('world-boss-model', 'World Boss hit-back, ramp and rebound are modelled from the affinity record; the fight itself is server-run.'),
-  customShield: note('custom-shield', 'Shield mitigation 0.5 assumed (the campaign and dungeon value).'),
+  customShield: note('custom-shield', `Shield mitigation ${PVE_SHIELD_MITIGATION} assumed (the campaign and dungeon value).`),
 });
 
 const A = PVE_ASSUMPTIONS;
@@ -929,27 +929,13 @@ export const trainingDummy = (hp = 1e15) => ({ id: 'dummy', hp, attack: 0, attac
  * @property {boolean} [log=false]
  */
 
-/**
- * @typedef {Object} PveRunResult
- * @property {boolean} won            every mob died
- * @property {number} timeMs          timestamp the run ended (gaps and summon windows included)
- * @property {number} damageDealt
- * @property {number} damageTaken
- * @property {number} hpLeft
- * @property {number} enemyHpLeft
- * @property {number} mobsDefeated
- * @property {boolean} timedOut       a cap or the window ended the run with the player alive
- * @property {string} mode            the PVE_MODES key used
- * @property {Array<Object>} [log]
- */
-
 // the client's shared fight, run per mode (simulateDungeonStep L1671071-1671135 for the dungeon family,
 // the live progress loop L1077281-1077640 for the campaign), wrapped for the metrics (rebuild-plan §2.3)
 /**
  * One PVE fight (or a sequence of mobs) between a Fighter and a MobSpec. World Boss mobs (those carrying
  * an `affinity`) get their hit-back from `worldBossHooks`.
  * @param {PveOptions} o
- * @returns {PveRunResult}
+ * @returns {import('../types.js').PveResult}
  */
 export function simulatePve(o) {
   const mobs = Array.isArray(o.enemy) ? o.enemy : [o.enemy];
@@ -965,6 +951,9 @@ export function simulatePve(o) {
   const modeId = pveModeOf(o, mobs[0]);
   const mode = PVE_MODES[modeId];
   const { rng, log = false } = o;
+  // a NaN / infinite window or a non-positive tick would end the fight at once or never (plan I9)
+  if (o.dtMs != null) assertPositive('options', o, ['dtMs']);
+  if (o.maxMs != null) assertFiniteEntity('options', o, ['maxMs']);
   const dtMs = o.dtMs ?? mode.dtMs;
   const opening = o.opening ?? (mode.liveLoop ? 'half' : 'zero');
   const liveSpellResist = o.liveSpellResist ?? mode.liveLoop;

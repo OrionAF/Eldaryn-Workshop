@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { simulateArenaPvP, runDuel, fighterDuelArgs, completeDuelStats } from './resolver.js';
+import { simulateArenaPvP, runDuel, fighterDuelArgs, completeDuelStats, NEUTRAL_VALUE_TEXT } from './resolver.js';
 import { applyPvpHpBuff } from './hpBuff.js';
 import { parseEventType, duelEvent, SIDE_EVENT_KINDS } from './events.js';
 import { mulberry32, scripted } from '../rng.js';
@@ -311,5 +311,13 @@ describe('the opening clock with minions (L1455934-1456047)', () => {
     expect(timeMs).toBe(60000 + window);
     expect(attackerSwing(log)).toBe(window + 1000);
     expect(defenderSwing(log)).toBe(window + 500);
+  });
+});
+
+describe('the neutral-value wording', () => {
+  it('is one text for the banner, the cell hint and the result warning', () => {
+    expect(NEUTRAL_VALUE_TEXT.bannerLead).toBe('Blank rows use neutral values.');
+    expect(NEUTRAL_VALUE_TEXT.cellHint).toContain('neutral value');
+    expect(NEUTRAL_VALUE_TEXT.warning('Rival', ['Crit Chance', 'Lifesteal'])).toBe('Rival: Crit Chance, Lifesteal left blank in its sheet, so neutral values were used.');
   });
 });

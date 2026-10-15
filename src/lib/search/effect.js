@@ -16,7 +16,8 @@ import { specsForClass } from '../game/classes.js';
 import { talentById } from '../game/talents.js';
 import { DEFAULT_CONDITION } from '../model/sigils.js';
 import { GLYPH_TIERS, MOUNT_GLYPH_SOCKETS } from '../model/glyphs.js';
-import { savedSockets, conditionOf, relicName, glyphLabel } from './space.js';
+import { EngineInputError } from '../engine/validate.js';
+import { savedSockets, conditionOf, relicName, glyphLabel, sameAlloc } from './space.js';
 import { legalityOf } from './legality.js';
 
 // PVE casts DAMAGE and DEBUFF spells on cooldown whatever their condition (combat-pve.md §10.1), and a
@@ -80,10 +81,6 @@ const boardLabel = (character, id) => (character.transcendence?.presets ?? []).f
 // --- changes ------------------------------------------------------------------------------------
 const setEq = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
 const allocFor = (character, c, set) => (c.talentSet === set && c.talentAllocation ? c.talentAllocation : character.talentSets?.[set]?.allocation ?? {});
-const sameAlloc = (a, b) => {
-  const e = (x) => JSON.stringify(Object.entries(x ?? {}).filter(([, r]) => r > 0).sort(([p], [q]) => (p < q ? -1 : 1)));
-  return e(a) === e(b);
-};
 /** Sockets of mount `m` in candidate `c` (its saved sockets unless `c` rides `m` with an override). */
 const socketsOn = (character, c, m) => (c.mountId === m && c.mountGlyphs ? c.mountGlyphs : savedSockets(character, m));
 
@@ -250,7 +247,13 @@ export function mergeByEngine(space, arms, { mode = space.mode, base = space.sta
   const best = new Map();
   const order = [];
   for (const a of arms) {
-    const k = candidateEngineKey(space, a, mode);
+    let k;
+    try {
+      k = candidateEngineKey(space, a, mode);
+    } catch (e) {
+      if (!(e instanceof EngineInputError)) throw e;
+      k = `unfightable:${order.length}`; // nothing to compare it with: its own arm
+    }
     const n = changesOf(space, base, a, { bundles: false }).length;
     const prev = best.get(k);
     if (!prev) {

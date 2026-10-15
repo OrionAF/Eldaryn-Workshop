@@ -6,7 +6,6 @@
    * "Restore a backup" and "Start manually" (name and class required, level optional).
    */
   import ImportSource from './import/ImportSource.svelte';
-  import ImportDialog from './import/ImportDialog.svelte';
   import Panel from './ui/Panel.svelte';
   import Select from './ui/Select.svelte';
   import NumberField from './ui/NumberField.svelte';
@@ -36,7 +35,7 @@
   }
 </script>
 
-<div class="welcome-shell">
+<main id="main" class="welcome-shell" tabindex="-1">
   <div class="welcome-card">
     <header class="hero">
       <div class="brand">ELDARYN<br />WORKSHOP</div>
@@ -98,8 +97,7 @@
       100% local: everything runs in your browser and saves to this device only. No data or telemetry is ever sent to a server.
     </p>
   </div>
-  <ImportDialog />
-</div>
+</main>
 
 <style>
   .welcome-shell {

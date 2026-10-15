@@ -320,13 +320,15 @@
  * Produced by engine/pve/fight.js simulatePve. With several mobs: `won` = all defeated, the damage and
  * time are summed, `enemyHpLeft` includes the mobs not reached, `hpLeft` is the player's final HP.
  * @typedef {Object} PveResult
- * @property {boolean} won  player killed the enemy
- * @property {number} timeMs  fight length
+ * @property {boolean} won  every mob died
+ * @property {number} timeMs  timestamp the run ended (inter-mob gaps and summon windows included)
  * @property {number} damageDealt  enemy HP lost (swings, spells, DoTs, minion, thorns; no overkill)
  * @property {number} damageTaken  incoming swing damage after DR and shield, plus Oblivion strain damage
  * @property {number} hpLeft  player HP at the end
  * @property {number} enemyHpLeft
  * @property {number} mobsDefeated
+ * @property {boolean} timedOut  a cap or the window ended the run with the player alive
+ * @property {string} mode  the PVE_MODES key used
  * @property {Array<Object>} [log]  event log, only when options.log is true
  */
 
