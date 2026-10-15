@@ -25,6 +25,7 @@ describe('resolveTarget', () => {
       { kind: 'raid', id: 'raid_3', step: 4 },
       { kind: 'oblivion', floor: 10 },
       { kind: 'worldBoss', affinity: 'ENRAGED' },
+      { kind: 'fortressBoss', group: 'TOP' },
       { kind: 'custom', mob: { hp: 5e5, attack: 800, attackSpeed: 1 } },
     ];
     expect(specs.map((s) => s.kind).sort()).toEqual([...TARGET_KINDS, 'chapter'].sort());
