@@ -50,3 +50,11 @@ it('tone: only significant verdicts take up/down', () => {
   expect(verdictTone({ verdict: 'equivalent' })).toBe('side');
   expect(verdictTone(null)).toBe('side');
 });
+
+it('a DPS contrast prints its CI in the same percent as the headline', () => {
+  const c = { delta: 500, lo: 250, hi: 750, pct: 0.05, n: 800, verdict: 'better' };
+  expect(fmtContrast('dps', c)).toBe('+5.00%');
+  expect(fmtContrastCi('dps', c)).toBe('95% CI +2.50% to +7.50%');
+  // no relative figure to scale by: the absolute CI stays as it was
+  expect(fmtContrastCi('dps', { delta: 500, lo: 250, hi: 750, pct: null })).toBe('95% CI +250 to +750');
+});

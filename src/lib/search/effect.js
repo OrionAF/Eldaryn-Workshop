@@ -56,10 +56,12 @@ export function candidateEngineKey(space, cand, mode = space.mode) {
 const NONE = 'None';
 const sigilName = (sp) => (sp ? sigilBySpecies(sp)?.name ?? sp : NONE);
 const listLabel = (list, name) => (list.length ? list.map(name).join(', ') : NONE);
+/** The Presets page's names for the two talent sets (components/builds/presetLabels.js). */
+const setLetter = (set) => (set === 0 ? 'Set A' : 'Set B');
 function specLabel(character, set) {
   const spec = character.talentSets?.[set]?.spec ?? null;
   const name = spec ? specsForClass(character.class).find((s) => s.key === spec)?.name ?? spec : 'No spec';
-  return `Set ${set + 1} (${name})`;
+  return `${setLetter(set)} · ${name}`;
 }
 function allocLabel(alloc) {
   const parts = Object.entries(alloc ?? {}).filter(([, r]) => r > 0).map(([id, r]) => `${talentById(id)?.name ?? id} ${r}`);
@@ -117,8 +119,8 @@ export function changesOf(space, B0, X0, { bundles = true } = {}) {
     const from = allocFor(character, B, set);
     const to = allocFor(character, X, set);
     if (sameAlloc(from, to)) continue;
-    push(`talents:${set}`, 'talents', `Talents (set ${set + 1})`, allocLabel(from), allocLabel(to), 'character', { talentSet: set },
-      otherPresets(space, (p) => (p.talentSet === 1 ? 1 : 0) === set, `also uses talent set ${set + 1}`));
+    push(`talents:${set}`, 'talents', `Talents (${setLetter(set)})`, allocLabel(from), allocLabel(to), 'character', { talentSet: set },
+      otherPresets(space, (p) => (p.talentSet === 1 ? 1 : 0) === set, `also uses Talent ${setLetter(set)}`));
   }
   if (X.petId !== B.petId) push('pet', 'pet', 'Pet', petLabel(character, B.petId), petLabel(character, X.petId), 'preset', presetOwner);
   if (X.mountId !== B.mountId) push('mount', 'mount', 'Mount', mountLabel(character, B.mountId), mountLabel(character, X.mountId), 'preset', presetOwner);

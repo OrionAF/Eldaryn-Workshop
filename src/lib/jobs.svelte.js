@@ -265,11 +265,13 @@ export const jobsStore = {
   get list() {
     return jobs;
   },
+  // A job whose Cancel was pressed no longer counts: it only winds down (posts its checkpoint) until the
+  // worker answers, and the Jobs pill must drop at once.
   get running() {
-    return jobs.filter((j) => j.status === 'running').length;
+    return jobs.filter((j) => j.status === 'running' && !j.cancelRequested).length;
   },
   get active() {
-    return jobs.filter((j) => j.status === 'running' || j.status === 'queued').length;
+    return jobs.filter((j) => (j.status === 'running' && !j.cancelRequested) || j.status === 'queued').length;
   },
   get persistCheckpoints() {
     return persistCheckpoints;

@@ -124,21 +124,21 @@
   .sticky { position: sticky; top: var(--topbar-h, 0); z-index: 2; background: var(--surface-2); border-bottom: 1px solid var(--line-rule); }
   .head {
     display: grid;
-    grid-template-columns: minmax(130px, 1.9fr) minmax(150px, 1.3fr) 96px 150px;
-    column-gap: 10px;
+    grid-template-columns: minmax(calc(var(--sp-10) * 3.25), 1.9fr) minmax(calc(var(--sp-10) * 3.75), 1.3fr) calc(var(--sp-10) * 2.4) calc(var(--sp-10) * 3.75);
+    column-gap: calc(var(--sp-1) * 2.5);
     align-items: end;
     padding: 0 var(--sp-4);
   }
-  .lbl { font-size: var(--fs-11); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-muted); padding-bottom: 4px; }
+  .lbl { font-size: var(--fs-11); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-muted); padding-bottom: var(--sp-1); }
   .lbl.right { text-align: right; }
   .note { margin: 0; padding: var(--sp-1) var(--sp-4) var(--sp-1) var(--sp-8); font-size: var(--fs-12); color: var(--text-soft); }
   .actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-8); }
   .matchups { margin: var(--sp-2) var(--sp-4) var(--sp-2) var(--sp-8); border-collapse: collapse; font-size: var(--fs-12); color: var(--text-soft); }
-  .matchups caption { text-align: left; padding-bottom: 4px; color: var(--text-muted); }
-  .matchups th, .matchups td { text-align: left; padding: 2px var(--sp-3) 2px 0; font-weight: var(--fw-medium); }
+  .matchups caption { text-align: left; padding-bottom: var(--sp-1); color: var(--text-muted); }
+  .matchups th, .matchups td { text-align: left; padding: calc(var(--sp-1) * 0.5) var(--sp-3) calc(var(--sp-1) * 0.5) 0; font-weight: var(--fw-medium); }
   .matchups .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
   .lines { margin: 0; display: grid; gap: var(--sp-2); }
-  .lines div { display: grid; gap: 2px; }
+  .lines div { display: grid; gap: calc(var(--sp-1) * 0.5); }
   .lines dt { font-size: var(--fs-11); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-muted); }
   .lines dd { margin: 0; color: var(--text-ink); font-size: var(--fs-13); }
   .inactive { color: var(--status-warn); }

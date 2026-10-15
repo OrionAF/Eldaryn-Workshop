@@ -6,7 +6,11 @@
    * and one sample duel. The Verify tab checks an exported fight log. Reads the character; writes
    * nothing. The result lives in the job store, so it survives navigation (plan U3).
    */
+  import { untrack } from 'svelte';
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
+  import { prefs } from '../../lib/prefs.svelte.js';
+  import { importFlow, takeHandoff } from '../../lib/importFlow.svelte.js';
+  import { getDuelSetup, setDuelSetup } from '../../lib/duelSetup.svelte.js';
   import { go } from '../../lib/router.svelte.js';
   import { formatHash } from '../../lib/routes.js';
   import { startJob, cancelJob, resumeJob, isStale, jobsStore, jobSignature } from '../../lib/jobs.svelte.js';
@@ -51,10 +55,17 @@
   const readOnly = (id) => [{ value: id, label: id }];
 
   let tabId = $state('duel'); // follows the route's tab segment (effect below)
-  let presetPick = $state(null);
-  let opponentPick = $state(null);
-  let seat = $state('both');
-  let effort = $state('standard');
+  const kept = untrack(() => getDuelSetup(character.id));
+  let presetPick = $state(kept?.presetPick ?? null);
+  let opponentPick = $state(kept?.opponentPick ?? null);
+  let seat = $state(kept?.seat ?? 'both');
+  let effort = $state(kept?.effort ?? untrack(() => prefs.defaultEffort));
+  let logHandoff = $state(null); // {text, n}: a fight log from the import dialog, for the Verify tab
+  let handoffCount = 0;
+  // The setup is kept for the session, so leaving the page and coming back finds it as it was.
+  $effect(() => {
+    setDuelSetup(character.id, { presetPick, opponentPick, seat, effort });
+  });
   let jobId = $state(jobsStore.list.filter((j) => j.tool === 'duel').at(-1)?.id ?? null);
   let reroll = $state(null); // {jobId, trace, traceResult}
   let rerolling = $state(false);
@@ -115,12 +126,14 @@
   const busy = $derived(job?.status === 'queued' || job?.status === 'running');
   const stale = $derived(job ? isStale(job) : false);
   const seats = $derived(job?.result && meta ? seatsFromResult(job.result, meta.seat) : null);
-  const verdict = $derived(winRateVerdict(seats?.total));
+  // A Both-seats run stopped before both seats had samples says so instead of judging from one seat.
+  const partial = $derived(!!seats && meta?.seat === 'both' && !(seats.attack && seats.defend));
+  const verdict = $derived(partial ? null : winRateVerdict(seats?.total));
   const tableRows = $derived.by(() => {
     if (!seats?.total) return [];
     const rows = [];
     if (meta.seat === 'both') {
-      rows.push({ id: 'total', label: 'Both seats', summary: seats.total });
+      if (!partial) rows.push({ id: 'total', label: 'Both seats', summary: seats.total });
       if (seats.attack) rows.push({ id: 'attack', label: 'I attack', summary: seats.attack });
       if (seats.defend) rows.push({ id: 'defend', label: 'I defend', summary: seats.defend });
     } else {
@@ -182,6 +195,19 @@
     tabId = tab === 'verify' ? 'verify' : 'duel';
   });
 
+  // A fight log handed over by the import dialog: on mount and whenever another one arrives, take it,
+  // show the Verify tab and let it check the log.
+  $effect(() => {
+    importFlow.handoffSeq;
+    untrack(() => {
+      const text = takeHandoff('fightLog');
+      if (text == null) return;
+      logHandoff = { text, n: ++handoffCount };
+      tabId = 'verify';
+      go(formatHash('tools/duel', 'verify'), { replace: true });
+    });
+  });
+
   const columns = $derived(opponent && !blockers.length ? simulatedColumns(mine, theirs) : []);
   const verifyFighters = $derived(
     opponent && !blockers.length
@@ -208,7 +234,7 @@
 
 {#if tabId === 'verify'}
   <div role="tabpanel" id="duel-panel-verify">
-    <VerifyFightLog fighters={verifyFighters} />
+    <VerifyFightLog fighters={verifyFighters} handoff={logHandoff} />
   </div>
 {:else}
   <div role="tabpanel" id="duel-panel-duel" class="panes">
@@ -287,10 +313,15 @@
           {/if}
           {#if tableRows.length}
             <div class="headline" data-testid="duel-result">
-              <h3>{duelHeadline(verdict, meta.myName)}</h3>
-              <p data-testid="duel-verdict">{duelVerdictText(verdict)}</p>
+              {#if partial}
+                <h3 data-testid="duel-partial">Inconclusive / partial</h3>
+                <p>Only one seat has duels so far. The Both-seats result and its verdict appear once both seats finish.</p>
+              {:else}
+                <h3>{duelHeadline(verdict, meta.myName)}</h3>
+                <p data-testid="duel-verdict">{duelVerdictText(verdict)}</p>
+              {/if}
             </div>
-            <WinRateTable rows={tableRows} />
+            <WinRateTable rows={tableRows} {partial} />
             <dl class="facts">
               <div><dt>Mean duration</dt><dd>{seats.total.meanMs != null ? `${(seats.total.meanMs / 1000).toFixed(1)} s` : 'n/a'}</dd></div>
               <div><dt>Timeouts</dt><dd>{seats.total.timeoutShare != null ? `${(seats.total.timeoutShare * 100).toFixed(1)}%` : 'n/a'}</dd></div>
@@ -341,18 +372,22 @@
 
 <style>
   .page-tabs { margin-bottom: var(--sp-4); }
-  .panes { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+  .panes { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+  .panes > * { min-width: 0; }
   @media (max-width: 1100px) { .panes { grid-template-columns: minmax(0, 1fr); } }
   .stack { display: grid; gap: var(--sp-4); min-width: 0; }
-  .field { display: grid; gap: 4px; }
+  .field { display: grid; gap: var(--sp-1); min-width: 0; }
+  /* The segmented Seat and Effort controls fill the panel and wrap their segments instead of overflowing it. */
+  .field :global(.seg) { display: flex; flex-wrap: wrap; width: 100%; max-width: 100%; box-sizing: border-box; }
+  .field :global(.seg button) { flex: 1 1 auto; justify-content: center; white-space: normal; min-width: 0; }
   .lbl { font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }
-  .hint, .note { color: var(--text-muted); font-size: var(--fs-12); margin: 0; }
+  .hint, .note { color: var(--text-muted); font-size: var(--fs-12); margin: 0; overflow-wrap: anywhere; }
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
   .headline h3 { margin: 0; font-family: var(--font-display); font-size: var(--fs-20); }
   .headline p { margin: var(--sp-1) 0 0; color: var(--text-soft); font-size: var(--fs-13); }
   .facts { display: flex; flex-wrap: wrap; gap: var(--sp-5); margin: 0; }
-  .facts div { display: grid; gap: 2px; }
-  .facts dt { color: var(--text-muted); font-size: var(--fs-11); text-transform: uppercase; letter-spacing: 0.08em; }
+  .facts div { display: grid; gap: var(--sp-1); }
+  .facts dt { color: var(--text-muted); font-size: var(--fs-11); text-transform: uppercase; letter-spacing: var(--track-label); }
   .facts dd { margin: 0; font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--text-ink); }
   .more { display: flex; gap: var(--sp-2); }
 </style>

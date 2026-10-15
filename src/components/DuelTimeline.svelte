@@ -27,14 +27,14 @@
 
   const COLORS = {
     damage: 'var(--nav-pvp)',
-    heal: 'var(--color-hps)',
+    heal: 'var(--verdict-up)',
     spell: 'var(--nav-sigils)',
-    avoid: 'var(--color-dps)',
-    status: 'var(--color-warning)',
-    lost: 'var(--color-muted)',
+    avoid: 'var(--status-info)',
+    status: 'var(--status-warn)',
+    lost: 'var(--text-muted)',
     minion: 'var(--nav-pets)',
-    death: 'var(--color-danger)',
-    other: 'var(--color-dim)',
+    death: 'var(--verdict-down)',
+    other: 'var(--text-muted)',
   };
   const LEGEND = [
     ['damage', '▍ damage'],
@@ -66,15 +66,15 @@
 
 <div class="duel-timeline" data-testid="duel-timeline">
   <div class="lane-labels">
-    <span class="micro-label">Top: {attackerName}</span>
-    <span class="micro-label">Bottom: {defenderName}</span>
+    <span class="cap-label">Top: {attackerName}</span>
+    <span class="cap-label">Bottom: {defenderName}</span>
   </div>
   <svg viewBox="0 0 {W} {H}" role="img" aria-label="Duel timeline" preserveAspectRatio="none">
-    <line x1="0" y1={LANE_Y.attacker} x2={W} y2={LANE_Y.attacker} stroke="var(--color-border)" stroke-width="1" />
-    <line x1="0" y1={LANE_Y.defender} x2={W} y2={LANE_Y.defender} stroke="var(--color-border)" stroke-width="1" />
+    <line x1="0" y1={LANE_Y.attacker} x2={W} y2={LANE_Y.attacker} stroke="var(--line-hairline)" stroke-width="1" />
+    <line x1="0" y1={LANE_Y.defender} x2={W} y2={LANE_Y.defender} stroke="var(--line-hairline)" stroke-width="1" />
     {#each marks as m, i (i)}
       {#if m.mark === 'end'}
-        <line x1={x(m.ev.timestamp)} y1="0" x2={x(m.ev.timestamp)} y2={H} stroke="var(--color-border-strong)" stroke-dasharray="3 3">
+        <line x1={x(m.ev.timestamp)} y1="0" x2={x(m.ev.timestamp)} y2={H} stroke="var(--line-control)" stroke-dasharray="3 3">
           <title>{title(m)}</title>
         </line>
       {:else}
@@ -112,10 +112,11 @@
 </div>
 
 <style>
+  .cap-label { font-size: var(--fs-11); font-weight: var(--fw-heavy); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-soft); }
   .duel-timeline {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--sp-1);
     min-width: 0;
   }
   svg {
@@ -131,14 +132,14 @@
     display: flex;
     justify-content: space-between;
     font-size: 10px;
-    color: var(--color-muted);
+    color: var(--text-muted);
   }
   .legend {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-3);
+    gap: var(--sp-3);
     font-size: 10px;
     margin: 0;
-    color: var(--color-muted);
+    color: var(--text-muted);
   }
 </style>

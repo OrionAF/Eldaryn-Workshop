@@ -66,3 +66,9 @@ it('Apply asks first, naming the set and the presets it changes', () => {
   click([...t.qa('button')].find((b) => b.textContent.includes('Confirm apply')));
   expect(onapply).toHaveBeenCalledWith('set1');
 });
+
+it('a too-close-to-call set card carries the neutral inconclusive treatment', () => {
+  t = setup(DropSetCard, { card: card({ verdict: 'inconclusive', unresolved: true, nNeeded: 90000 }), onapply: () => {} });
+  expect(t.q('.card').classList.contains('inconclusive')).toBe(true);
+  expect(t.q('.vchip.up, .vchip.down')).toBeNull();
+});

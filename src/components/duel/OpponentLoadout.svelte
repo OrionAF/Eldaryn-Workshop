@@ -2,7 +2,7 @@
   /**
    * OpponentLoadout.svelte - the combat loadout of one saved opponent: generic, utility and Ancient
    * sigils with a level and an activation condition each, the major glyphs of its ridden mount (an
-   * opponent has no mount to own them), and the sigil altar tier. The stat block is in the opponent library page.
+   * opponent has no mount to own them), and the sigil altar tier. The stat block is in the OpponentPanel, which renders this loadout under it.
    * Every write goes through rosterStore.updateOpponent, which re-normalises (illegal picks vanish).
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
@@ -19,6 +19,8 @@
   import { OPPONENT_SIGIL_CAP } from '../../lib/model/opponents.js';
   import { FREE_GLYPH_RARITIES, MOUNT_GLYPH_SOCKETS } from '../../lib/model/glyphs.js';
   import Chip from '../Chip.svelte';
+  import Select from '../ui/Select.svelte';
+  import NumberField from '../ui/NumberField.svelte';
 
   let { opponent } = $props();
 
@@ -37,6 +39,9 @@
 
   const patch = (p) => rosterStore.updateOpponent(opponent.id, p);
   const conditionLabel = (c) => c.replace(/_/g, ' ').toLowerCase();
+  const conditionOptions = (e) => sigilConditionOptions(e.species, opponent.spec).map((c) => ({ value: c, label: conditionLabel(c) }));
+  const rarityOptions = FREE_GLYPH_RARITIES.map((r) => ({ value: r, label: r }));
+  const tierOptions = Array.from({ length: MAX_ALTAR_TIER }, (_, i) => ({ value: i + 1, label: `Tier ${i + 1}` }));
 
   function toggleGeneric(species) {
     const has = opponent.sigils.some((s) => s.species === species);
@@ -65,7 +70,7 @@
 
 <div class="loadout" data-testid="opponent-loadout">
   <div class="group">
-    <span class="micro-label">Sigils - {opponent.sigils.length}/{OPPONENT_SIGIL_CAP} generic</span>
+    <span class="cap-label">Sigils - {opponent.sigils.length}/{OPPONENT_SIGIL_CAP} generic</span>
     <div class="chip-list">
       {#each generic as def (def.species)}
         <Chip
@@ -77,7 +82,7 @@
       {/each}
     </div>
     {#if utility.length}
-      <span class="micro-label sub">Utility</span>
+      <span class="cap-label sub">Utility</span>
       <div class="chip-list">
         {#each utility as def (def.species)}
           <Chip label={def.name} size="compact" selected={opponent.utility?.species === def.species} onClick={() => pickSlot('utility', def.species)} />
@@ -85,7 +90,7 @@
       </div>
     {/if}
     {#if ancient.length}
-      <span class="micro-label sub">Ancient</span>
+      <span class="cap-label sub">Ancient</span>
       <div class="chip-list">
         {#each ancient as def (def.species)}
           <Chip label={def.name} size="compact" selected={opponent.ancient?.species === def.species} onClick={() => pickSlot('ancient', def.species)} />
@@ -96,32 +101,23 @@
 
   {#if equipped.length}
     <div class="group">
-      <span class="micro-label">Level and condition</span>
+      <span class="cap-label">Level and condition</span>
       {#each equipped as e (e.species)}
-        <div class="equipped-row">
+        <div class="equipped-row" role="group" aria-label={e.name}>
           <span class="name">{e.name}</span>
-          <input
-            type="number"
-            class="mono lvl"
-            min="1"
-            max={MAX_SIGIL_LEVEL}
-            aria-label={`${e.name} level`}
-            value={e.level}
-            disabled={e.slot === 'ancient'}
-            onchange={(ev) => setLevel(e, ev.currentTarget.value)}
-          />
-          <select aria-label={`${e.name} condition`} value={opponent.conditions[e.species]} onchange={(ev) => setCondition(e.species, ev.currentTarget.value)}>
-            {#each sigilConditionOptions(e.species, opponent.spec) as c (c)}
-              <option value={c}>{conditionLabel(c)}</option>
-            {/each}
-          </select>
+          <div class="lvl">
+            <NumberField label="Level" value={e.level} min={1} max={MAX_SIGIL_LEVEL} disabled={e.slot === 'ancient'} onchange={(n) => setLevel(e, n)} />
+          </div>
+          <div class="cond">
+            <Select label="Condition" options={conditionOptions(e)} value={opponent.conditions[e.species]} onchange={(v) => setCondition(e.species, v)} />
+          </div>
         </div>
       {/each}
     </div>
   {/if}
 
   <div class="group">
-    <span class="micro-label">Major glyphs - {opponent.majorGlyphs.length}/{MOUNT_GLYPH_SOCKETS.major} (inert without their sigil)</span>
+    <span class="cap-label">Major glyphs - {opponent.majorGlyphs.length}/{MOUNT_GLYPH_SOCKETS.major} (inert without their sigil)</span>
     <div class="chip-list">
       {#each majors as def (def.id)}
         <Chip label={def.name} size="compact" selected={!!glyph(def.id)} onClick={() => toggleGlyph(def.id)} />
@@ -130,27 +126,25 @@
     {#each opponent.majorGlyphs as g (g.glyphType)}
       <div class="equipped-row">
         <span class="name">{majors.find((d) => d.id === g.glyphType)?.name ?? g.glyphType}</span>
-        <select aria-label="Glyph rarity" value={g.rarity} onchange={(ev) => setRarity(g.glyphType, ev.currentTarget.value)}>
-          {#each FREE_GLYPH_RARITIES as r (r)}<option value={r}>{r}</option>{/each}
-        </select>
+        <div class="cond">
+          <Select label="Glyph rarity" options={rarityOptions} value={g.rarity} onchange={(v) => setRarity(g.glyphType, v)} />
+        </div>
       </div>
     {/each}
   </div>
 
   <div class="group">
-    <label class="micro-label" for={`altar-${opponent.id}`}>Sigil altar tier</label>
-    <select id={`altar-${opponent.id}`} value={opponent.altarTier} onchange={(ev) => patch({ altarTier: Number(ev.currentTarget.value) })}>
-      {#each Array.from({ length: MAX_ALTAR_TIER }, (_, i) => i + 1) as t (t)}<option value={t}>Tier {t}</option>{/each}
-    </select>
+    <Select label="Sigil altar tier" options={tierOptions} value={opponent.altarTier} onchange={(v) => patch({ altarTier: Number(v) })} />
   </div>
 </div>
 
 <style>
-  .loadout { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px 22px; }
-  .group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-  .micro-label.sub { margin-top: var(--space-2); }
-  .chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
-  .equipped-row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-  .equipped-row .name { flex: 1; min-width: 100px; font-size: 12px; color: var(--color-soft); }
-  .lvl { width: 56px; }
+  .loadout { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: var(--sp-4) var(--sp-5); min-width: 0; }
+  .group { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+  .cap-label.sub { margin-top: var(--sp-2); }
+  .chip-list { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+  .equipped-row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+  .equipped-row .name { flex: 1 1 100%; font-size: var(--fs-12); color: var(--text-soft); }
+  .lvl { flex: 0 0 calc(var(--sp-10) * 2); min-width: 0; }
+  .cond { flex: 1 1 0; min-width: 0; }
 </style>

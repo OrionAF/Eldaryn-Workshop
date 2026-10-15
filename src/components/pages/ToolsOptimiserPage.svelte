@@ -31,7 +31,7 @@
   } from '../../lib/ui/optimiserSetup.js';
   import {
     viewResult, progressSegments, progressLine, effortPlan, enabledCount, toggleTotal, optimiserJobChips,
-    fmtDuration, OBJECTIVE_LABEL, MEASURED_COST,
+    fmtDuration, viewRun, OBJECTIVE_LABEL, MEASURED_COST,
   } from '../../lib/ui/optimiserView.js';
   import { fmtCount } from '../../lib/ui/statsFormat.js';
   import Panel from '../ui/Panel.svelte';
@@ -158,6 +158,7 @@
 
   function run() {
     if (live || blockers.length || !preset) return;
+    openRunId = null;
     const s = { ...$state.snapshot(setup), presetId: preset.id };
     if (isPvp) s.target = { ...s.target, opponentIds: [...pvpIds] };
     start(requestOf(s, character), { characterId: character.id, presetId: preset.id, presetName: preset.name, mode: 'optimize' }, {
@@ -242,7 +243,19 @@
   ]);
   const onTab = (id) => go(formatHash('tools/optimiser', id === 'history' ? 'history' : null), { replace: true });
 
+  // A saved run opened from the history: its stored result shows in Setup & results, read-only.
+  let openRunId = $state(null);
+  const savedRun = $derived((character.runs ?? []).find((r) => r.id === openRunId) ?? null);
+  const savedView = $derived(savedRun ? viewRun(savedRun) : null);
+  const showSaved = $derived(!!savedRun && !live);
+  function openRun(r) {
+    openRunId = r.id;
+    tabId = 'setup';
+    go(formatHash('tools/optimiser'));
+  }
+
   function rerun(r) {
+    openRunId = null;
     setup = setupFromRun(r, character, prefs.defaultEffort);
     go(formatHash('tools/optimiser'));
     notify('Settings loaded from the run. Press Optimise to measure again.', { kind: 'info' });
@@ -255,7 +268,7 @@
 
 {#if tabId === 'history'}
   <div role="tabpanel" id="opt-panel-history">
-    <RunHistoryTab onrerun={rerun} />
+    <RunHistoryTab onrerun={rerun} onopen={openRun} />
   </div>
 {:else}
   <div role="tabpanel" id="opt-panel-setup" class="panes">
@@ -333,7 +346,25 @@
     </div>
 
     <div class="stack" data-testid="optimiser-output">
-      {#if !result && !live && !failedJob}
+      {#if showSaved}
+        <Panel title={savedRun.name} level="primary" scope="tool">
+          {#snippet meta()}
+            <Button variant="ghost" size="small" onclick={() => (openRunId = null)}>Close</Button>
+          {/snippet}
+          <Banner variant="info" lead="Saved run.">
+            Opened from Run history ({new Date(savedRun.at).toLocaleString()}). It is read-only: Apply and Run more are off.
+            {#snippet action()}<Button variant="ghost" size="small" onclick={() => rerun(savedRun)}>Re-run with settings</Button>{/snippet}
+          </Banner>
+          {#if savedRun.headline.text}
+            <div class="headline" role="status"><h3>{savedRun.headline.text}</h3></div>
+          {/if}
+          {#if savedView}
+            <OptimiserResults view={savedView} presetName={savedRun.presetName || 'the preset'} unmeasured={() => savedRun.schema !== 2} />
+          {:else}
+            <p class="hint" data-testid="saved-compacted">Detail compacted to keep storage small; the headline above is kept. Pin a run to keep its detail.</p>
+          {/if}
+        </Panel>
+      {:else if !result && !live && !failedJob}
         <Panel title="Results" level="primary" scope="tool">
           <EmptyState title="No run yet" text="Choose what to improve and what to fight, then press Optimise. Builds appear here with the change in your preset's result and a 95% interval." />
         </Panel>
@@ -432,18 +463,22 @@
 
 <style>
   .page-tabs { margin-bottom: var(--sp-4); }
-  .panes { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+  .panes { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+  .panes > * { min-width: 0; }
   @media (max-width: 1100px) { .panes { grid-template-columns: minmax(0, 1fr); } }
   .stack { display: grid; gap: var(--sp-4); min-width: 0; }
-  .step { display: grid; gap: var(--sp-3); padding-bottom: var(--sp-3); border-bottom: 1px solid var(--line-hairline); }
+  /* Segmented Effort control and fields fill the panel and wrap instead of overflowing it. */
+  .step :global(.seg) { display: flex; flex-wrap: wrap; width: 100%; max-width: 100%; box-sizing: border-box; }
+  .step :global(.seg button) { flex: 1 1 auto; justify-content: center; white-space: normal; min-width: 0; }
+  .step { min-width: 0; display: grid; gap: var(--sp-3); padding-bottom: var(--sp-3); border-bottom: 1px solid var(--line-hairline); }
   .step:last-of-type { border-bottom: 0; }
   .step h3 { margin: 0; display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-14); color: var(--text-ink); }
   .n {
-    display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 4px;
+    display: inline-grid; place-items: center; min-width: calc(var(--sp-1) * 5.5); height: calc(var(--sp-1) * 5.5); padding: 0 var(--sp-1);
     border: 1px solid var(--brass-500); border-radius: var(--r-1); color: var(--brass-200);
     font-family: var(--font-data); font-size: var(--fs-11);
   }
-  .hint { margin: 0; color: var(--text-muted); font-size: var(--fs-12); }
+  .hint { margin: 0; color: var(--text-muted); font-size: var(--fs-12); overflow-wrap: anywhere; }
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
   .meta { color: var(--text-soft); font-size: var(--fs-12); }
   .headline h3 { margin: 0; font-family: var(--font-display); font-size: var(--fs-20); }
