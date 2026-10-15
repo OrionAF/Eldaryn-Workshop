@@ -82,13 +82,13 @@ export async function minimise(ctx, F0, { alpha, alphaFinal }) {
 // ---------------------------------------------------------------------------------------------
 // attribution (S3)
 
-/** Per-fight values pooled over lanes (PVP matchups weigh equally). */
-function perFight(set) {
+/** Per-fight values pooled over lanes (PVP matchups weigh equally), in the objective's own points. */
+function perFight(set, pointOf = (v) => v) {
   const n = set.n;
   const out = new Array(n);
   for (let i = 0; i < n; i++) {
     let s = 0;
-    for (const lane of set.main) s += lane[i];
+    for (const lane of set.main) s += pointOf(lane[i]);
     out[i] = s / set.main.length;
   }
   return out;
@@ -104,9 +104,10 @@ const finiteOr = (x) => (Number.isFinite(x) ? x : null);
 export function remainderOf(objective, F, Bs, own, { alpha = 0.05, seed = 1, B = 2000 } = {}) {
   const n = Math.min(F.n, Bs.n, ...own.map((s) => s.n));
   if (objective.statistic !== 'censored-quantile') {
-    const f = perFight(F);
-    const b = perFight(Bs);
-    const o = own.map(perFight);
+    const pt = objective.pointOf;
+    const f = perFight(F, pt);
+    const b = perFight(Bs, pt);
+    const o = own.map((s) => perFight(s, pt));
     const r = new Array(n);
     for (let i = 0; i < n; i++) r[i] = f[i] - b[i] - o.reduce((s, x) => s + x[i] - b[i], 0);
     const m = meanInterval(r, { alpha });

@@ -3,7 +3,7 @@ import { mount, unmount, flushSync } from 'svelte';
 import ToolsDropPage from './ToolsDropPage.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
 import { jobsStore, __resetJobs } from '../../lib/jobs.svelte.js';
-import { loadImportText, confirmImport, resetImportFlow } from '../../lib/importFlow.svelte.js';
+import { loadImportText, confirmImport, resetImportFlow, importFlow } from '../../lib/importFlow.svelte.js';
 import { setPrefs, applyPrefs } from '../../lib/prefs.svelte.js';
 import { APP_VERSION as ESTIMATE_VERSION } from '../../lib/calibration.js';
 import { field, setField } from '../gear/fieldKit.js';
@@ -137,14 +137,24 @@ it('Apply names its scope first and writes only after the confirm', async () => 
   expect(setStatus).toHaveBeenCalledWith(expect.stringContaining('Applied to Set 2'));
 });
 
+// A loot bag arrives through Settings > Import (the shared flow), never through a box on this page.
 const paste = (json) => {
-  const box = [...target.querySelectorAll('label')].filter((l) => l.textContent === 'Loot-bag JSON').map((l) => document.getElementById(l.htmlFor))[0];
-  box.value = JSON.stringify(json);
-  box.dispatchEvent(new Event('input', { bubbles: true }));
-  flushSync();
-  btn('Check these drops').click();
+  loadImportText(JSON.stringify(json));
+  confirmImport();
   flushSync();
 };
+
+it('Loot bag: no drop zone or paste box, only a pointer to Settings > Import that asks for focus', () => {
+  open({ tab: 'bag' });
+  expect(target.querySelector('#dc-panel-bag input[type="file"]')).toBeNull();
+  expect(target.querySelector('#dc-panel-bag textarea')).toBeNull();
+  const link = target.querySelector('[data-testid="import-pointer"] a');
+  expect(link.getAttribute('href')).toBe('#/settings');
+  expect(link.textContent).toContain('Import a loot bag in Settings');
+  const before = importFlow.focusSeq;
+  link.click();
+  expect(importFlow.focusSeq).toBe(before + 1);
+});
 
 it('Loot bag: the batch is a job, rows rank in one DPS table, and a gear edit marks it stale', async () => {
   open({ tab: 'bag' });

@@ -186,28 +186,96 @@ Design record: plan §A.6.
 
 One definition per objective: the value ranked is the value shown is the value tested.
 
+**Retired (2026-10-15, backlog §10).** Kill time (`ttk-median`, `ttk-p90`) is gone: no content the app
+simulates pays for kill speed (every dungeon, raid and Oblivion mob has a 20-minute cap that never runs
+out, chapters have no timer, hunting is a server roll; combat-pve.md §1, §14), and it moved in steps of
+about 3 % (one swing), so races between near-equal builds ran long. `survival` stays for custom mobs only:
+with caps that never run out it equals win rate on a sequence target, and World Boss pays for damage, not
+for staying alive. Drop Check keeps its own survival metric (§Drop Check). A saved setup whose objective is
+retired normalises to the target's default; a saved run of a retired goal is kept and viewable, and its
+Re-run with settings, Run more and Resume are off with the reason "This goal was retired."
+(`goalRetired`, `retiredGoalBlock`). The engine's censored-quantile statistics stay (`engine/stats`),
+unused by any objective.
+
 | Objective | Per-fight outcome | Statistic θ | Interval | Paired contrast θ(X) − θ(Y) |
 |---|---|---|---|---|
 | `dps` | damage / window s; the mob cannot die inside the window | mean | t | paired t (`paired-t`); δ relative |
-| `ttk-median`, `ttk-p90` | time in ms if won, else +∞ | censored q-quantile of **all** fights (q = 0.5 / 0.9): the quantile of the wins at q/p, ∞ when p < q | order statistic | paired bootstrap of the quantile difference, in ms (`basis: 'quantile'`); when both builds are ∞ the quantiles cannot differ and the contrast is the paired win-rate difference (`basis: 'winRate'`, Tango, higher is better, absolute zone `WIN_RATE_DELTA` = 0.02 unless given) |
 | `survival` | 1 if alive at the window end | proportion | Wilson | Tango paired proportion; δ absolute |
+| `win-rate` | 1 + HP left / max HP if the whole step is cleared, else the share of the step's enemy HP removed (< 1); the win bit is score ≥ 1 | proportion of wins | Wilson | capped win rate, then the margin (§Win rate); δ absolute |
 | `pvp-winrate` | 1 if my build wins the duel, one lane per (opponent, seat) | pooled proportion, equal N per lane | Wilson on the pool | stratified Tango, one stratum per lane; δ absolute |
 
-The TTK row also reports the win rate (Wilson) and the mean time of the wins; the PVP row reports
-per-matchup Wilson intervals, mean duel length and the timeout share. None of these rank anything:
+The PVP row reports per-matchup Wilson intervals, mean duel length and the timeout share. None of these rank anything:
 equal statistics are a tie (no effective-HP or duel-length tie-break).
 
 ### Windows and compatibility
 
 - A target with its own length (dummy and custom: `seconds`, default 60; World Boss: its affinity's
-  fight duration) is the `dps` window and the default `survival` window. A sequence target (chapter,
-  dungeon, raid, Oblivion) has none: every mob keeps its own cap, and `survival` means alive when
-  the fight ends. An objective `seconds` overrides the survival window.
-- `survival` is refused for a target that cannot damage the player (no swing with attack > 0 and
-  speed > 0, no World Boss hit-back, no Oblivion instability): World Boss NONE and FORTIFIED, a
-  custom mob with no attack. `objectiveKindsFor(kind, target)` leaves it out of the picker.
-- Target kinds and their objectives: dummy `dps`; chapter, dungeon (normal and `_hard`), raid,
-  Oblivion `ttk-*`, `survival`; World Boss `dps`, `survival`; custom all four; pvp `pvp-winrate`.
+  fight duration) is the `dps` window and the default `survival` window (custom mobs). A sequence
+  target (chapter, dungeon, raid, Oblivion) has none: every mob keeps its own cap. An objective
+  `seconds` overrides the survival window.
+- `survival` (custom mobs only) is refused for a mob that cannot damage the player (no swing with
+  attack > 0 and speed > 0). `objectiveKindsFor(kind, target)` leaves it out of the picker.
+- Target kinds and their objectives (the first is the default): dummy `dps`; chapter, dungeon (normal
+  and `_hard`), raid, Oblivion `win-rate`; World Boss `dps`; custom `dps`, `win-rate`, `survival`
+  (`dps` stays the default); pvp `pvp-winrate`. Anything else is a retired goal.
+
+### Win rate
+
+The goal for content the player clears (backlog §4): **the build with the fewest changes that clears
+the step at least a target share of the time**. 10 s and 50 s are the same; dying or reaching the
+fight's time cap (each mob's own cap, or the custom window) is a loss. Spec `{kind: 'win-rate',
+target}`, `target` in [0.1, 1], default 0.95 (`WIN_RATE_TARGET`).
+
+- **Per fight** one score s: a win scores 1 + HP left / max HP (in [1, 2]), a loss the share of the
+  step's enemy HP removed, `damageDealt / (damageDealt + enemyHpLeft)`, kept below 1. The win bit is
+  s ≥ 1, so one vector carries both the rate and the margin. `pointOf` (the win bit) puts the
+  attribution remainder in win-rate points.
+- **Main criterion: the capped rate** g(X, Y) = min(p_X, τ) − min(p_Y, τ). Every build at or above
+  τ is equally good on it. Its interval combines three intervals at a joint level (Bonferroni, alpha /
+  2 in all): Tango on p_X − p_Y at alpha / 4 and a Wilson interval per build at alpha / 8. Since
+  min(·, τ) is monotone and 1-Lipschitz, g lies between 0 and p_X − p_Y and g > 0 needs p_Y < τ, so
+  lo = max(L, min(lo_X, τ) − min(hi_Y, τ)) with L = min(lo_Δ, τ − hi_Y) when lo_Δ > 0 and hi_Y < τ,
+  0 when lo_Δ > 0 otherwise, else lo_Δ; hi mirrors it. Two builds that both reach τ are therefore
+  `equivalent` once the intervals are inside δ, never `better`. `basis: 'win-rate'`, method
+  `capped-tango`; the uncapped Tango interval is reported beside it as `winRate: {delta, lo, hi}`.
+- **Second criterion: the margin**, mean s, paired t at alpha / 2 (`basis: 'margin'`). It is
+  attached only when both builds are confidently below τ (both Wilson upper bounds < τ) and the
+  comparator reads it only once g is `equivalent`: `better`/`worse` on the margin decide; while it is
+  open the comparison continues; at maxN the tie on g stands (`equivalent`). This gives the search a
+  gradient where the rate saturates at 0 (a 0 % build that gets further is better) without letting
+  a bigger change win on margin among builds that already reach the target. δ is absolute in both
+  units. The combined false-claim rate per look is at most alpha.
+- **Score** (race leader, row order): min(p̂, τ) × 10⁶ + mean s, lexicographic for n ≤ 131 072.
+  Racing then picks, among the leader and its ties, the arm nearest the baseline: of the builds that
+  reach the target, the one with the fewest changes. `primary` (the capped p̂) orders `better` rows
+  first, then fewest changes, then the score.
+- **Meets the target** (`meetsTarget(estimate, τ, δ)`): true when the Wilson lower bound is at
+  least τ − δ, false when the upper bound is below τ, else null.
+- **Already clears**: after the screen look the baseline is checked on S3 at looks n0, 2n0, … maxN,
+  Wilson at alpha / looks, until `meetsTarget` resolves. If it meets, the run stops: no search, no
+  rows, headline "Already clears at N% (95% CI lo-hi). No change needed." (the decision interval,
+  coverage at least 95 %). The baseline is fixed, so checking and reporting on S3 carries no
+  selection. Otherwise the search runs as usual and maximises the capped rate; `goal.status` is
+  `reached` when a row meets the target (the first such row has the fewest changes) or
+  `not-reached`, with the best build's rate in the headline.
+- **Range.** The target goes down to 10 %: a loss usually costs nothing but time (a failed chapter level
+  restarts, an Oblivion floor keeps its key on defeat, and only a dungeon clear spends a key;
+  combat-pve.md §14, pve-content.md §4, §11), so a low target is a sensible goal for content the player
+  can retry. Every win rate on screen carries "about N tries per clear" = 1 / p (`ui/winRateFormat.js`
+  `triesPerClear`: one decimal below 10 tries, whole from 10, p = 1 "clears every try", p = 0 "no
+  clears"). A low target resolves faster: a build well above τ is shown to meet it (the Wilson lower
+  bound reaching τ − δ) after few fights, and only builds close to τ need the large N.
+- Cost: equivalence on a proportion with no discordant pair needs roughly z²/δ fights (about 1 000-2 000
+  at Standard), so builds tied at 0 % or at 100 % are resolved slowly; the cost is precision, never a cap.
+
+**On screen** (Optimiser page, `WinRateTarget.svelte`, `OptimiserResults.svelte`): the goal list leads with
+"Win rate (clear without dying)" for chapters, dungeons, raids and Oblivion, with a Target field (percent,
+10-100, default 95). Rows show the win rate with its 95 % CI, its tries per clear and a Meets / Below
+target chip (below the target, how many points short). The table has one axis in win-rate points: every contrast, a change's own
+effect included, is drawn as its uncapped `winRate` difference, while the verdict stays the capped-rate or
+margin one, and a note under the row names which decided it. `goal.status` 'already' shows a success banner
+and no rows; 'not-reached' lists the closest builds with their gaps. Drop Check and Oblivion Floors offer no
+objective choice, so they carry no win-rate goal.
 
 ### Target fidelity
 
@@ -270,7 +338,11 @@ every other arm's paired contrast against the leader, at α / (arms × looks), d
 - `equivalent` (inside ±δ): a tie; it stays.
 - **futile**: the interval's bound on the winning side does not reach δ (higher is better:
   `hi < δ`; lower is better: `lo > −δ`; δ in the statistic's units, `deltaAbs` as for the verdict,
-  the win-rate zone on a win-rate fallback), so the arm cannot beat the leader by δ. If it is no
+  the win-rate zone on a win-rate fallback), so the arm cannot beat the leader by δ. On the
+  lexicographic win-rate objective (§Win rate) the arm must be unable to win on either criterion:
+  the capped rate's `hi < δ` and, when the margin contrast is attached, the margin's `hi < δ` too;
+  while the margin may still attach at a later look (neither build's Wilson lower bound reaches τ,
+  `thenPending`) the arm is not futile. If it is no
   nearer the baseline than the leader (`dist` ≥ the leader's) it leaves at once (`futile`, with
   its contrast); a futile arm nearer the baseline stays until it resolves `equivalent` (a tie it
   then wins) or `worse`.
@@ -292,8 +364,11 @@ this rule (A5) an arm only left as `worse` or `equivalent`, so arms a little wor
 (inside δ) ran on towards maxN; on synthetic arms 0.4δ worse the futility stop cuts the fights per
 arm by about 5.5× (`race.calibration.test.js`, which also checks over 400 seeded races that a 2δ
 better arm wins, and that with all arms equal the baseline-nearest wins, each in at least 1 − α of
-races). `effort.futility: false` restores the old rule (benchmarks only). In code: every
-`sampler.js` contrast carries `futile` (boolean); `compareSets(..., {futility: true})` also stops with
+races). The guarantee is against the leader at the look that drops the arm: if the leader later
+changes to one the dropped arm is nearer than, that arm could have tied it, so in that rare case the
+rule can lose a fewest-changes tie (never a gain of δ or more). `effort.futility: false` restores the
+old rule (benchmarks only; it is part of the request key and the race step key). In code: a
+`sampler.js` contrast that is `unresolved` or `futile` carries `futile` (boolean); `compareSets(..., {futility: true})` also stops with
 verdict `futile` (used only by the accept compare below; a race keeps the plain verdicts). Confirm and attribute
 are unchanged (strict contrasts on fresh seeds).
 
@@ -399,8 +474,11 @@ Measured on the Warrior fixture (one thread, this machine; a 60 s dummy fight co
 | relics + pet | Quick | exhaustive | 62 | 624 | 1.2 s |
 | every block | Quick | local (4 starts) | 8 437 | 138 920 | 249 s |
 
-The full run shared four cores with other jobs. Standard and Thorough cost more: n0 doubles, and a
-comparison inside δ can run to maxN. A PVP duel costs several times a dummy fight, per matchup.
+The full run shared four cores with other jobs, and both rows predate the futility stop (A5), so they
+are upper figures: since A5 an arm or challenger that cannot beat the leader or incumbent by δ stops
+early (about 5.5× fewer fights per slightly-worse arm on synthetic arms, §Racing), and only a
+contrast that could still go either way by δ, or a futile arm nearer the baseline than the leader,
+runs on towards maxN. Standard and Thorough cost more: n0 doubles. A PVP duel costs several times a dummy fight, per matchup.
 The Effort control prints δ, the first look n0 and maxN per level and these measured figures
 (`ui/optimiserView.js` `MEASURED_COST`, `effortPlan`); no run is time-capped. The Optimiser page runs as
 a session job (U3): Cancel keeps the provisional rows and Resume re-starts the task with the job's
@@ -425,13 +503,18 @@ checkpoint as `resumeFrom`. The page sends the character with `runs: []`, so sav
   timeoutShare, matchups: [{opponentId, name, seat, value, vsBaseline}], defaulted?: [{opponentId,
   keys}]}` (a matchup's `vsBaseline` is unadjusted). `runMore` is `{targetN, reason: 'unresolved'}`
   when the row is too close to call (`targetN`: the next doubling of n reaching `nNeeded`), else null.
-  `lines` is `describeBuild` (display only).
+  `lines` is `describeBuild` (display only). Win rate: `aux` is `{winRate: Estimate, meetsTarget:
+  true|false|null, margin: Estimate (mean score), target}` and the result has `goal: {target, status:
+  'already'|'reached'|'not-reached', baseline: {winRate, meetsTarget, check: {meets, n, value}},
+  bestKey, text}`; `headline.text` is `goal.text`. Run more re-derives `goal` from the re-measured rows (the baseline check stays the run's).
 - **Change**: `effect.changesOf`'s `{id, dimension, label, from, to, scope, owner, sideEffects,
   bundle}` plus `own: Contrast|null`, `needed: Contrast|null` (null only for a change that cannot be
   dropped alone) and `keptBecause`. **WriteGroup** (`writes`): `effect.writesOf`.
 - **Estimate** `{est, lo, hi, n, seed, level: 0.95, alphaAdj, method}`; **Contrast** `{delta, lo, hi,
   pct, n, seed, alphaAdj, method, verdict, significant, nNeeded, basis, higherIsBetter}` (`basis`
-  `'winRate'` when a TTK contrast fell back to win rate; `n` per lane).
+  `'winRate'` when a TTK contrast fell back to win rate; `'win-rate'` or `'margin'` for the win-rate
+  objective, which also adds `winRate: {delta, lo, hi}`, the uncapped paired difference in win-rate
+  points, on every contrast including a change's `own`; `n` per lane).
 - `search: {strategy, jointSize, blocks: [{id, enabled, domain, status: 'converged'|'unresolved'|
   'disabled'|'not-reached'}], starts, optima, evaluated, merged, fights: {search, minimise, confirm,
   total}, unresolved: [{fromKey, toKey, change, contrast}]}`. There is no `converged` flag: with no

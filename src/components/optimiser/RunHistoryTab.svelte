@@ -9,7 +9,7 @@
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { viewRun } from '../../lib/ui/optimiserView.js';
-  import { runApplyBlock } from '../../lib/ui/optimiserSetup.js';
+  import { runApplyBlock, retiredGoalBlock } from '../../lib/ui/optimiserSetup.js';
   import { fmtScalar, fmtCount } from '../../lib/ui/statsFormat.js';
   import ConfirmAction from '../tools/ConfirmAction.svelte';
   import Button from '../ui/Button.svelte';
@@ -89,7 +89,7 @@
                 <span class="lbl">Name</span>
                 <input type="text" value={run.name} aria-label="Run name" onchange={(e) => rosterStore.setRunName(run.id, e.currentTarget.value)} />
               </label>
-              <Button variant="secondary" size="small" onclick={() => onrerun(run)}>Re-run with settings</Button>
+              <Button variant="secondary" size="small" disabled={!!retiredGoalBlock(run)} reason={retiredGoalBlock(run)} onclick={() => onrerun(run)}>Re-run with settings</Button>
               <ConfirmAction label="Delete" confirmLabel="Confirm delete" onConfirm={() => rosterStore.deleteRun(run.id)} />
             </div>
             <Textarea label="Notes" rows={2} value={run.notes} oninput={(v) => rosterStore.setRunNotes(run.id, v)} />

@@ -9,6 +9,7 @@ import { loadImportText, confirmImport, resetImportFlow } from '../../lib/import
 import { resetDuelSetup } from '../../lib/duelSetup.svelte.js';
 import fightLog from '../../lib/__fixtures__/real/arena-fight-warrior.json';
 import SampleDuel from '../duel/SampleDuel.svelte';
+import VerifyFightLog from '../duel/VerifyFightLog.svelte';
 import { setPrefs as setEstimatePrefs, applyPrefs as resetEstimatePrefs } from '../../lib/prefs.svelte.js';
 import { APP_VERSION as ESTIMATE_VERSION } from '../../lib/calibration.js';
 
@@ -133,21 +134,28 @@ it('the result survives leaving the page and an edited opponent marks it stale',
 
 it('Verify: an unrecognised log shows rules as skipped, not passed', () => {
   window.location.hash = '#/tools/duel/verify';
-  view = setup(ToolsDuelPage, { tab: 'verify' });
-  const ta = view.q('textarea');
-  type(ta, '{}');
-  click(buttonByText(/^Check log$/));
+  view = setup(VerifyFightLog, { handoff: { text: '{}', n: 1 } });
+  flushSync();
   const rows = view.qa('[data-testid="replay-rules"] tbody tr');
   expect(rows.length).toBeGreaterThan(3);
   expect(rows.filter((r) => /Skipped/.test(r.textContent)).length).toBeGreaterThan(0);
   expect(view.q('[data-testid="replay-skipped"]').textContent).toContain('not counted as passes');
 });
 
-it('Verify: invalid JSON is reported without throwing', () => {
-  view = setup(ToolsDuelPage, { tab: 'verify' });
-  type(view.q('textarea'), '{nope');
-  click(buttonByText(/^Check log$/));
+it('Verify: a handed-over log that is not JSON is reported without throwing', () => {
+  view = setup(VerifyFightLog, { handoff: { text: '{nope', n: 1 } });
+  flushSync();
   expect(view.q('[role="alert"]').textContent).toMatch(/not valid JSON/);
+});
+
+it('Verify: no drop zone or paste box, only a pointer to Settings > Import', () => {
+  view = setup(ToolsDuelPage, { tab: 'verify' });
+  expect(view.q('#duel-panel-verify input[type="file"]')).toBeNull();
+  expect(view.q('#duel-panel-verify textarea')).toBeNull();
+  const link = view.q('[data-testid="import-pointer"] a');
+  expect(link.getAttribute('href')).toBe('#/settings');
+  expect(link.textContent).toContain('Import a fight log in Settings');
+  expect(view.q('[data-testid="log-state"]').textContent).toContain('No fight log');
 });
 
 it('a cancelled Both-seats run with one seat shows no verdict and no Both-seats row, only a partial label', async () => {
@@ -194,7 +202,7 @@ it('Import dialog handoff: a fight log lands on Verify and is checked at once', 
   expect(confirmImport()).toBe(true);
   view = setup(ToolsDuelPage);
   expect(view.q('#duel-panel-verify')).not.toBeNull();
-  expect(view.q('textarea').value).toContain('ticks');
+  expect(view.q('[data-testid="log-state"]').textContent).toContain('loaded');
   expect(view.qa('[data-testid="replay-rules"] tbody tr').length).toBeGreaterThan(3);
 });
 

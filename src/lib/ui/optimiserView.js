@@ -7,7 +7,10 @@ import { fmtCount } from './statsFormat.js';
 import { resolveEffort } from '../search/search.js';
 import { SCOPES } from '../search/patch.js';
 
-/** Measured cost of the Quick level on the Warrior fixture (simulation.md §Cost); no run is time-capped. */
+/**
+ * Measured cost of the Quick level on the Warrior fixture (simulation.md §Cost: measured before the A5
+ * futility stop, so upper figures); no run is time-capped.
+ */
 export const MEASURED_COST = Object.freeze({
   small: { space: 'relics and pet', time: 'about 1 s' },
   full: { space: 'every block', time: 'about 4 minutes' },
@@ -26,9 +29,8 @@ export const TARGET_KIND_LABEL = Object.freeze({
 
 export const OBJECTIVE_LABEL = Object.freeze({
   dps: 'Damage per second',
-  'ttk-median': 'Time to kill, median',
-  'ttk-p90': 'Time to kill, slow end (P90)',
   survival: 'Survival chance',
+  'win-rate': 'Win rate (clear without dying)',
   'pvp-winrate': 'PVP win rate',
 });
 
@@ -37,7 +39,8 @@ const neg = (v) => (finite(v) ? -v : null);
 
 /**
  * A Contrast for display: score space (positive = better) in the objective's own unit. A time-to-kill
- * contrast is `θ(X) − θ(Y)` in ms, so a faster build has a negative raw delta; it is flipped here. A TTK
+ * contrast is `θ(X) − θ(Y)` in ms, so a faster build has a negative raw delta; it is flipped here (kill time
+ * is retired, but saved runs of it stay viewable). A TTK
  * contrast that fell back to win rate (`basis: 'winRate'`) is in a different unit from the table, so its
  * numbers move to `winRate` and the table cells stay empty.
  */
@@ -45,6 +48,11 @@ export function orientContrast(c) {
   if (!c) return null;
   if (c.basis === 'winRate') {
     return { ...c, delta: null, lo: null, hi: null, pct: null, winRate: { delta: c.delta, lo: c.lo, hi: c.hi } };
+  }
+  if ((c.basis === 'win-rate' || c.basis === 'margin') && c.winRate) {
+    // PVE win-rate goal: the table axis is win-rate points, so show the uncapped paired difference. The verdict
+    // is still the capped-rate (or margin) one, said under the row (simulation.md §Win rate).
+    return { ...c, delta: c.winRate.delta, lo: c.winRate.lo, hi: c.winRate.hi, pct: null };
   }
   if (c.higherIsBetter === false) {
     return { ...c, delta: neg(c.delta), lo: neg(c.hi), hi: neg(c.lo), pct: neg(c.pct) };
@@ -86,12 +94,37 @@ export function viewResult(result) {
   }
   return {
     unit,
+    kind: result?.objective?.kind ?? null,
+    goal: result?.goal ? { status: result.goal.status, target: result.goal.target } : null,
     higherIsBetter: hib,
     baseline: result?.baseline ? { changes: [], ...result.baseline } : null,
     rows,
     withheld: all.length - rows.length,
     domain: forestDomain(items),
   };
+}
+
+/**
+ * The win-rate goal's standing of one row against its target: a chip verdict ('meets' | 'below' | 'open' for
+ * a target not yet resolved, null when the row has none) and how far short it is, in points.
+ */
+export function targetStanding(row, target) {
+  const m = row?.aux?.meetsTarget;
+  if (target == null || typeof m !== 'boolean' && m !== null) return { verdict: null, gap: '' };
+  const est = row.aux.winRate?.est;
+  const gap = m !== true && finite(est) && est < target ? `${((target - est) * 100).toFixed(1)} pts below target` : '';
+  return { verdict: m === true ? 'meets' : m === false ? 'below' : 'open', gap };
+}
+
+/**
+ * The win rate a goal's headline talks about: the current build's when it already clears, else the leading
+ * row's (search.js goalOf: the first row, or the current build when there is none); null without a goal or a rate.
+ */
+export function goalWinRate(view) {
+  if (!view?.goal) return null;
+  const row = view.goal.status === 'already' ? view.baseline : (view.rows[0] ?? view.baseline);
+  const rate = row?.aux?.winRate?.est;
+  return finite(rate) ? rate : null;
 }
 
 /** A saved schema 1 run's entries as rows: positive-is-better deltas, no per-change effects ("not measured"). */
@@ -123,7 +156,10 @@ export function viewRun(run) {
   const hib = run.headline?.higherIsBetter !== false;
   if (!run.detail) return null;
   if (run.schema === 2) {
-    return viewResult({ objective: { unit, higherIsBetter: hib }, baseline: run.detail.baseline, rows: run.detail.rows });
+    return viewResult({
+      objective: { unit, higherIsBetter: hib, kind: run.objective?.kind }, goal: run.headline?.goal ?? null,
+      baseline: run.detail.baseline, rows: run.detail.rows,
+    });
   }
   const { baseline, rows } = legacyRows(run.detail, unit);
   return { ...viewResult({ objective: { unit, higherIsBetter: true }, baseline, rows }), legacy: true };
@@ -234,7 +270,7 @@ export function progressLine(progress) {
 
 /** The numbers an effort level means for an objective, as printed on the Effort control. */
 export function effortPlan(level, objective) {
-  const relative = objective?.kind === 'dps' || String(objective?.kind).startsWith('ttk');
+  const relative = objective?.kind === 'dps';
   const e = resolveEffort(level, { deltaKind: relative ? 'relative' : 'absolute' });
   const zone = relative ? `${+(e.delta * 100).toFixed(2)}%` : `${+(e.delta * 100).toFixed(1)} points`;
   return { ...e, zone, relative, sub: `δ ${zone}` };
@@ -321,6 +357,10 @@ export function optimiserJobChips(result) {
   if (result.status === 'failed') return [{ tone: 'warn', text: 'Could not run' }];
   const h = result.headline ?? {};
   const chips = [];
+  if (result.goal) {
+    const g = result.goal.status;
+    return [g === 'already' ? { tone: 'up', text: 'Already clears' } : g === 'reached' ? { tone: 'up', text: 'Target reached' } : { tone: 'warn', text: 'Target not reached' }];
+  }
   if (h.better > 0) chips.push({ tone: 'up', text: `${h.better} better` });
   else chips.push({ text: 'Nothing beat the current build' });
   if (h.unresolved > 0) chips.push({ tone: 'warn', text: `${h.unresolved} too close to call` });

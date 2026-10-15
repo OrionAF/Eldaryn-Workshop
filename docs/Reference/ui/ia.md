@@ -28,7 +28,7 @@ Ids (C/B/T/G) are used in the flows and the parity table.
 GLOBAL (top bar, not an area)
   G1  Character switcher          (menu: switch, new, rename, class, delete)
   G2  Preset + realm context      (active preset, Base/Oblivion realm)
-  G3  Import                      (one drop zone for every JSON kind)
+  G3  Import                      (Settings > Data > Import: one drop zone / paste / picker for every JSON kind)
   G4  Jobs tray                   (running and finished simulations)
   G5  Activity log                (every status message of the session)
   G6  Data & Settings page        (export, storage, preferences, danger zone)
@@ -67,7 +67,7 @@ TOOLS  (simulations; read the character, write only through an explicit Apply)
 | G0 Welcome | WelcomeScreen (create first character, import roster/profile, privacy note); adds paste, drag-drop, capture help |
 | G1 Character switcher | Sidebar "⇄ Change character" picker, ✎ edit panel (rename, class, delete), "+ New Character", banner avatar/name/class |
 | G2 Context | Banner context line; the hidden "active preset" that Mounts, Relics, Awakening, Transcendence and Sigils silently depend on; Oblivion screen's global realm toggle (`oblivion.activeRealm`) |
-| G3 Import | Sidebar Import, Welcome "Import from file", Drop Check "Load .json file"/paste, Duel replay file/paste: one entry point that detects the JSON kind and routes it |
+| G3 Import | Sidebar Import, Welcome "Import from file", Drop Check "Load .json file"/paste, Duel replay file/paste: one entry point that detects the JSON kind and routes it. **Now lives only in Settings > Data > Import** (P9): no top-bar button, no phone tab, no import box on Welcome, Drop Check or Duel; those show a link to it |
 | G4 Jobs tray | Optimiser progress bar/Cancel, Duel progress/Cancel, Drop Check "Simulating (done/total)", batch "Checking done/total", Oblivion "floor N: done/n"/Cancel |
 | G5 Activity log | The banner toast pill (all setStatus messages), with history |
 | G6 Data & Settings | SettingsPanel (Reset all data, RESET confirm), Sidebar Export, privacy note, storage behaviour from storage.js |
@@ -124,7 +124,7 @@ Nothing else is removed. Every control in the inventory is mapped in §5.
 | Centre | **G2 Context**: `Preset ▾ Farm build` and realm segmented control `Base | Oblivion` | Sets `activePresetId` and `oblivion.activeRealm` (both persisted, character-wide). Realm control only enabled when Oblivion is unlocked (disabled with tooltip "Unlock Oblivion on Overview"). This is the one place the active preset and realm are changed, and it is always visible |
 | Right | **G4 Jobs tray**: rune icon with a count; ring progress while any job runs | Popover lists jobs: tool, target, `done/total`, elapsed, Cancel, "Open result". Finished jobs stay until dismissed or reload |
 | Right | Save state: "Saved" (with time on hover) / "Not saved: storage unavailable" (red, sticky) | Surfaces the silent `saveRoster` failure and the no-localStorage case |
-| Right | **G3 Import** (gold button) | Opens the import dialog (§3.1). Also: dropping a `.json` anywhere on the window opens it |
+| Right | ~~G3 Import button~~ | Removed (P9). Import is Settings > Data > Import; the top bar keeps activity and settings |
 | Right | **G5 Activity** bell, **G6** cog | Activity drawer (session log); Data & Settings page |
 
 **Left rail** (grouped nav): three section headers CHARACTER / BUILDS / TOOLS (Cinzel small caps,
@@ -178,7 +178,7 @@ warnings sticky with a close button; every message is also written to G5.
 
 - Top bar 52 px: avatar (opens G1 as a sheet), preset chip (opens G2 sheet with realm control),
   jobs ring, overflow menu (Import, Activity, Data & Settings).
-- Bottom tab bar, 4 items: **Character, Builds, Tools, Import**. Picking an area opens its last-used
+- Bottom tab bar, 3 items: **Character, Builds, Tools** (Import moved to Settings, P9). Picking an area opens its last-used
   page; the area's pages are a horizontally scrollable tab strip under the top bar (so all of C1-C10
   are one swipe away, not buried in "More").
 - 44 px minimum targets, StarRating 40 px pitch, Modal close 44 px (all kept from today).
@@ -190,6 +190,15 @@ warnings sticky with a close button; every message is also written to G5.
 ## 3. Key flows
 
 ### 3.1 First run (empty roster)
+
+> **P9 amendment.** Importing of every kind (profile, roster backup, loot bag, fight log) happens only
+> in Settings > Data > Import, under this disclaimer: importing game data is possible but finicky;
+> the game has no export button, so its JSON must be captured from network traffic with another app
+> (for example HTTP Catcher on iPhone) or a PC running HTTP Toolkit; Android usually needs root;
+> backups exported from this app always import normally. Welcome keeps "Start manually" and links to
+> `#/settings`, which works with an empty roster; the import report dialog is unchanged (steps 3-5
+> below). Drop Check's Loot bag tab and Duel's Verify tab show "Import a loot bag / fight log in
+> Settings → Import" and still show what was handed over. The text below describes the pre-P9 Welcome.
 
 1. **G0 Welcome**, full screen over a dark stone backdrop with the crest. Primary panel:
    "Import your game profile". A large drop zone accepts a file, drag-drop or pasted JSON. Under it,

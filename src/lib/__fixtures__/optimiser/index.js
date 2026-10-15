@@ -79,3 +79,57 @@ export function legacyRun(id = 'legacy-1') {
     detail: { baseline: entry(0), results: [entry(1)] },
   };
 }
+
+
+// ---- PVE win-rate goal (backlog §4; simulation.md §Win rate) ----------------------------------
+
+const wr = (delta, lo, hi, verdict, basis = 'win-rate', uncapped = {}) =>
+  contrast(delta, lo, hi, verdict, { basis, method: basis === 'margin' ? 't' : 'capped-tango', winRate: { delta, lo, hi, ...uncapped } });
+const wrAux = (p, lo, hi, meets) => ({ winRate: est(p, lo, hi, 2048), meetsTarget: meets, margin: est(1.2, 1.1, 1.3, 2048), target: 0.95 });
+
+/** A win-rate result in one of the three goal states: 'reached' (default), 'not-reached' or 'already'. */
+export function winRateResult(status = 'reached') {
+  const r = clone(dps);
+  r.objective = { kind: 'win-rate', label: 'Win rate (target 95%)', unit: 'p', higherIsBetter: true, statistic: 'proportion', q: null };
+  r.target = { ...r.target, kind: 'dungeon', label: 'Dungeon Forsaken Mines, step 3' };
+  r.rows = r.rows.slice(0, 2);
+  const [a, b] = r.rows;
+  a.tieGroup = null;
+  b.tieGroup = null;
+  a.rank = 1;
+  b.rank = 2;
+  r.baseline.value = est(0.7, 0.68, 0.72, 2048);
+  r.baseline.aux = wrAux(0.7, 0.68, 0.72, false);
+  if (status === 'already') {
+    r.baseline.value = est(0.99, 0.98, 1, 2048);
+    r.baseline.aux = wrAux(0.99, 0.98, 1, true);
+    r.rows = [];
+    r.search = null;
+    r.goal = { target: 0.95, status, baseline: { winRate: r.baseline.value, meetsTarget: true, check: { meets: true, n: 2048, value: r.baseline.value } }, bestKey: r.baseline.key, text: 'Already clears at 99% (95% CI 98%-100%). No change needed.' };
+    r.headline = { better: 0, equivalent: 0, unresolved: 0, worseHidden: 0, text: r.goal.text };
+    return r;
+  }
+  const reached = status === 'reached';
+  a.value = est(reached ? 0.96 : 0.82, reached ? 0.95 : 0.8, reached ? 0.97 : 0.84, 2048);
+  a.aux = wrAux(a.value.est, a.value.lo, a.value.hi, reached);
+  a.vsBaseline = wr(reached ? 0.25 : 0.12, reached ? 0.2 : 0.09, reached ? 0.3 : 0.15, 'better', 'win-rate', reached ? { delta: 0.26, lo: 0.21, hi: 0.31 } : {});
+  a.changes.forEach((c) => {
+    c.own = wr(0.1, 0.05, 0.15, 'better');
+    c.needed = wr(0.08, 0.03, 0.13, 'better');
+  });
+  a.remainder = { delta: 0.02, lo: null, hi: null, method: 'difference' };
+  b.value = est(0.75, 0.73, 0.77, 2048);
+  b.aux = wrAux(0.75, 0.73, 0.77, false);
+  b.vsBaseline = wr(0.02, -0.01, 0.05, 'better', 'margin', { delta: 0.05, lo: 0.03, hi: 0.07 });
+  b.changes.forEach((c) => {
+    c.own = wr(0.02, -0.01, 0.05, 'unresolved', 'margin');
+    c.needed = null;
+  });
+  b.remainder = null;
+  r.goal = {
+    target: 0.95, status, baseline: { winRate: r.baseline.value, meetsTarget: false, check: { meets: false, n: 2048, value: r.baseline.value } }, bestKey: a.key,
+    text: reached ? '1 build reaches 95%. Fewest changes: 1 change, win rate 96% (95% CI 95%-97%).' : 'No build was shown to reach 95%. The best build wins 82% (95% CI 80%-84%).',
+  };
+  r.headline = { better: 2, equivalent: 0, unresolved: 0, worseHidden: 0, text: r.goal.text };
+  return r;
+}

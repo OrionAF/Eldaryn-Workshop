@@ -37,6 +37,7 @@ export function contrastOut(c) {
     delta: fin(c.delta), lo: fin(c.lo), hi: fin(c.hi), pct: fin(c.pct), n: c.n ?? 0, seed: c.seed ?? null,
     alphaAdj: c.alphaAdj ?? null, method: c.method, verdict: c.verdict, significant: c.verdict === 'better' || c.verdict === 'worse',
     nNeeded: fin(c.nNeeded), basis: c.basis ?? null, higherIsBetter: c.higherIsBetter ?? null,
+    ...(c.winRate ? { winRate: { delta: fin(c.winRate.delta), lo: fin(c.winRate.lo), hi: fin(c.winRate.hi) } } : {}),
   };
 }
 
@@ -115,9 +116,16 @@ export function assertRow(space, B, row, o) {
   if (v.length) throw new Error(`Optimiser invariant violated on row ${row.rank}: ${v.join('; ')}`);
 }
 
-/** Rank rows: better by estimate (best first), then equivalent and unresolved by fewest changes. */
-export function rankRows(rows, scoreOf) {
-  const better = rows.filter((r) => r.vsBaseline?.verdict === 'better').sort((a, b) => scoreOf(b) - scoreOf(a) || a.changes.length - b.changes.length || (a.key < b.key ? -1 : 1));
+/**
+ * Rank rows: better by estimate (best first), then equivalent and unresolved by fewest changes. With
+ * `primaryOf` (win rate: the capped rate) better rows are ordered by it, then by fewest changes, then
+ * by the score, so of the builds that reach the target the one with the fewest changes leads.
+ */
+export function rankRows(rows, scoreOf, { primaryOf = null } = {}) {
+  const prim = primaryOf ?? (() => 0);
+  const better = rows.filter((r) => r.vsBaseline?.verdict === 'better')
+    .sort((a, b) => prim(b) - prim(a) || (primaryOf ? a.changes.length - b.changes.length : 0) || scoreOf(b) - scoreOf(a)
+      || a.changes.length - b.changes.length || (a.key < b.key ? -1 : 1));
   const rest = rows.filter((r) => r.vsBaseline?.verdict !== 'better')
     .sort((a, b) => a.changes.length - b.changes.length || scoreOf(b) - scoreOf(a) || (a.key < b.key ? -1 : 1));
   return [...better, ...rest].map((r, i) => ({ ...r, rank: i + 1 }));

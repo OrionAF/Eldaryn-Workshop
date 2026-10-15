@@ -33,12 +33,12 @@ describe('normaliseSetup', () => {
     expect(normaliseSetup({ target: { kind: 'chapter', chapter: 99, level: 1 } }, character()).target.kind).toBe('dummy');
     const s = normaliseSetup({ target: { kind: 'chapter', chapter: 3, level: 2 }, objective: { kind: 'dps' } }, character());
     expect(s.target).toEqual({ kind: 'chapter', chapter: 3, level: 2 });
-    expect(s.objective.kind).toBe('ttk-median');
+    expect(s.objective.kind).toBe('win-rate');
   });
   it('accepts a hard dungeon target', () => {
-    const s = normaliseSetup({ target: { kind: 'dungeon', id: 'dungeon_2_hard', step: 3 }, objective: { kind: 'ttk-p90' } }, character());
+    const s = normaliseSetup({ target: { kind: 'dungeon', id: 'dungeon_2_hard', step: 3 }, objective: { kind: 'win-rate', target: 0.8 } }, character());
     expect(s.target).toEqual({ kind: 'dungeon', id: 'dungeon_2_hard', step: 3 });
-    expect(s.objective.kind).toBe('ttk-p90');
+    expect(s.objective).toEqual({ kind: 'win-rate', target: 0.8 });
   });
   it('deleted opponents drop out of a PVP target', () => {
     const c = withOpponent();

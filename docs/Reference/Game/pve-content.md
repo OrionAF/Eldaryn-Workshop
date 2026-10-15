@@ -124,6 +124,29 @@ partyProxy = max over members of atk*aspd*(1+crit%*(critDmg-1))*(1+doubleHit%)*r
 Glyph drops (levels interpolated from anchors), dust ranges `avg = baseAvg + max(0,L-ref)*perLevel` (Normal 1.5/0.5 at 40; Hard 5/0.5; Mythic 45/1.55 at ref 1). Season rewards ranks capped at 50. Mythic resonance: player attacks and sigil spells scale with own **Oblivion Power** (display `+round(coef*sqrt(power)*100)%` = +200 % at 100, +400 % at 400); tank Oblivion Power raises Block Fury. **[CODE]**
 `celestialCommittedScalingLevel(OL) = round(intercept + perOblivionLevel*max(1,OL))`; NORMAL 78.7 + 0.324*OL, HARD 81.5 + 0.262*OL (table in source JSON). Which level the server uses for the party is **[UNRESOLVED]**.
 
+Per difficulty **[CODE]** (module 4150, around L1160337-1160430): NORMAL time limit 240000 ms, boss
+spell resist 0; HARD 360000 ms, spell resist 45, unlock `CELESTIAL_TRIAL_HARD` 60; MYTHIC 360000 ms,
+spell resist 45. `bossStatMultiplier` is 1 on all three. Boss tables: NORMAL 1.6e7 HP / 5640 attack /
+1.5 speed, HARD 4.4e7 / 13000 / 1.9, both from reference level 40 with their own level bands;
+MYTHIC 1.25e10 / 75000 / 1.9 from level 1. HARD overrides the NORMAL spells: Halo Breach every
+10000 ms, `addHpFraction` 0.05, `maxAlive` 12; Judgment Strike `attackMultiplier` 5.5; Celestial
+Overload `addsThreshold` 7; Gatekeeper's Burden turns into a Block Fury variant (`attackPerBlockStack`
+0.12, `maxBlockStacks` 60, `blockFuryDecayPerSec` 1.5, `controlFuryFraction` 0.7, per add: regen 0.05,
+HP 0.04, damage taken 0.1, healing reduction 0.2). The decompiler lost the table keys. That this
+table is HARD is **[DERIVED]** from a server log that matches it.
+
+**Server log check (2026-10-15, one HARD fight, party of 2, level 85) [DERIVED]:**
+- `bossMaxHp` 8,388,341,867 equals `round(4.4e7 * hpMult(85))` over the HARD bands from level 40,
+  exactly.
+- Adds spawn every 10 s from 10.5 s, each with 419,417,093 HP (`round(bossHp * 0.05)`).
+- Judgment Strike lands about every 30 s, always on `tankIndex`.
+- `timeLimitMs` is 360000.
+- `celestialScalingLevel` 85 equals the party's `highestLevel`. One fight does not settle the
+  general rule.
+
+The fight is server-run: the start response carries `celestialResult.ticks`, and the client only
+replays them. No Celestial fight simulator was found in the bundle.
+
 ---
 
 ## §7 World Boss

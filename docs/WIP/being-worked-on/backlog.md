@@ -129,3 +129,147 @@ Iron Golem to equip. Show the suggested pet's secondary stats.
   rarely wins, and the axis then reads "−0.00 s … 0.00 s". Say why instead: "Rarely clears: 18% win
   rate; compared by win rate". Draw the axis on the basis actually used. Backlog §4 (Win rate)
   removes most of these cases.
+
+## 7. PVE replay check against server dungeon logs
+
+**Ask** (from a real dungeon log the user captured, 2026-10-15). The PVP side already has a replay
+check against a real `/arena/fight` log (`engine/pvp/replayCheck.js`). Build the same for PVE dungeon
+runs.
+
+**What one log shows** (a Mystic with Void Aegis; 3 mobs; died on mob 3 at 58.56 s):
+- 10 ms ticks: a DOT tick lands at 1,510 ms after the cast at 1,500 ms;
+- a 720 ms player swing and a ~1,665 ms mob swing;
+- spell cadence: Barrage every 1 s, Burst every 3 s, and the Runic Affliction cycle;
+- HP regen pulses of 461 every 100 ms;
+- heals land in the same tick as the cast, HP first;
+- with Void Aegis (`vampAlwaysRefills`) the WHOLE vamp heal also refills the shield, not just the
+  overflow;
+- regen pulses refill the shield while HP is full;
+- the shield cap (`playerShieldMax` 175,626).
+
+**Notes.**
+- Only attack rows carry `playerShieldHp`. Spell rows carry `playerHpAfter` (the end-of-tick value),
+  so a checker has to reconstruct the shield between attack rows.
+- The rules to check: timing, swing intervals, spell cadence, heal → HP → shield, regen pulses, the
+  shield cap, and mob-to-mob transitions. Damage values can be checked too once the fight is run with
+  the logged character's stats.
+- Commit the log as a fixture next to `arena-fight-warrior.json`. It holds fight values only, no
+  player identifiers; check before committing.
+
+## 8. Easier imports without HTTP Toolkit (phone-only capture guide)
+
+**Status (2026-10-15): replaced.** The capture-guide idea is dropped. Instead every import entry point
+moved to Settings > Data > Import, behind one disclaimer: importing is possible but finicky, it needs
+another app (HTTP Catcher on iPhone) or a PC with HTTP Toolkit, Android usually needs root, and this
+app's own backups always import. The notes below stay as the research record.
+
+**Ask** (2026-10-15): can users capture the profile and fight JSON from their phones without HTTP
+Toolkit? Can the app ask the game server for it?
+
+**Findings.**
+- The game client talks to `https://api.eldaryn.solmeron.com` with the player's login token
+  (`Authorization: Bearer …`). Own state: `GET /player/full-state`. Another player:
+  `GET /leaderboard/player/<id>`. `/arena/fight` is a POST that starts a real fight.
+- Calling it from this app would mean handling the user's token, getting past the browser's
+  cross-site block (it would need a proxy), and very likely breaking the game's Terms of Service.
+  Rejected.
+- There is no web version of the game: eldaryn.live is the wiki, so DevTools capture is out.
+
+**Plan.**
+1. **Phone-only capture guide** inside the Import dialog. On iPhone, an on-device HTTPS capture app
+   (Proxyman for iOS, HTTP Catcher, Stream) lets you trust its certificate, open the profile or
+   fight in game, and share the response to Files, with no computer. Android needs root or a
+   computer (apps ignore user certificates since Android 7), so say that plainly. Keep the steps
+   short, with screenshots.
+
+## 9. Stat weights chart (like the v1 one)
+
+**Ask** (2026-10-15): bring back the old stat-weight display, one chart that ranks every stat, not a
+weight table per piece of content.
+
+**What v1 did** (`src/lib/statWeights.js` and `SimulationScreen.svelte` before `f486ffc`): it added one
+game-sized step to each stat in turn (+100 Attack, +1 point of Attack %, +1% Crit, +10% Crit
+Multiplier...), re-scored the preset with the closed-form expected DPS, and drew the gain as a bar
+per stat, largest first. The tank and PVP goals added the defensive stats. The ranking came from a
+formula, not from fights.
+
+**Plan.**
+- The engine has no closed form now, so measure the weights in the client port. Use mean damage per
+  second against the training dummy (`metrics.js` `dpsVsDummyAsync`, the one Drop Check uses) and
+  common random numbers. The mean over a fixed duration is smooth, so it avoids the median-TTK
+  steps the 2026-10-15 experiment hit.
+- Defensive stats rank on survival against one fixed reference enemy (`survivalAsync`). Show it as a
+  second chart, because damage and survival are different units.
+- Probe the raw totals and apply the caps once (the rule v1 learned the hard way), so a stat past its
+  cap shows about 0. Use the v1 step sizes.
+- Each bar shows its interval. A stat whose interval spans 0 reads "no measurable effect", never a
+  rank.
+- It runs as a job, on the Character Stats page or in Tools, for the selected preset.
+
+## 10. Optimiser objectives: trim, fix the target range, add Push, a Power guard and Crusade
+
+**Ask** (2026-10-15): the user agreed to this review of the objectives.
+
+**Remove** (DONE 2026-10-15, slice O1; `simulation.md` §Objectives):
+- **Kill time (median and p90).** No content the app simulates pays for kill speed. Dungeon, raid
+  and Oblivion mobs each have a 20-minute cap that never runs out, chapters have no timer, and
+  hunting is a server roll with no fight (`combat-pve.md` §1, §14). Kill time also moves in steps of
+  about 3% (one swing), so races between near-equal builds run long. Win rate already rewards speed
+  where it matters, because a faster kill means less damage taken.
+- **Survival** on chapter, dungeon, raid, Oblivion and World Boss targets. With caps that never run
+  out, it equals win rate, and World Boss pays for damage, not for staying alive. Keep it for
+  custom mobs only.
+
+**Change** (DONE 2026-10-15, slice O1). Let the win-rate target go down to 10% and show "about N tries per clear" (1 / p) next to
+the rate. A loss costs no key or reward on most content: a failed chapter level restarts
+(`combat-pve.md` §14), an Oblivion floor keeps its key on defeat, and the dungeon text says only a
+clear spends a key (`pve-content.md` §4, §11). The default stays 95%.
+
+**Add, in this order:**
+1. **Push.** Finds the deepest dungeon step, Oblivion floor, raid step or chapter level the build
+   clears at τ or better, and the build that does it. Difficulty only goes up with depth, so: start
+   at the current step, climb while the target is met, then bisect. Reuse each step's runs.
+2. **Combat Power guard.** Power has an exact client formula (`stats.md` §8). Crusade Hard, Mythic
+   and Mythic+ entry is gated on it: Mythic+N needs `round(13000 * 1.18^N)` (`pve-content.md` §5).
+   Show the Power change on every result row, and add an optional "keep Power ≥ X" whose default is
+   the user's current Mythic+ gate. It needs no simulation.
+3. **Crusade, solo.** The only content where kill speed decides the result: 300 s for the whole
+   run of 3 bosses, and a Mythic+ full clear guarantees 3 enchant stones, while a partial clear
+   rolls a smaller table (`pve-content.md` §5). The client ships `simulateCrusadeFight` (L1868835,
+   never called), so this is a port like the dungeon fight, labelled server-run. Objectives: full
+   clear rate, and expected stones per run.
+4. **Fortress boss** (clan war). A 60 s damage race like World Boss, with its stats in the client
+   (`clan-fortress.md` §1.4). The boss shield (alive defenders) is an input.
+5. **Arena reward weighting**, after the Rankings import (§2). Beating someone 3 places above pays
+   30 influence, 3 places below pays 5 (`combat-pvp.md` §13).
+
+**Spec and role.** The `spec` block only switches to the character's other talent set, and only
+when "Spec" is on under Allowed to change. It never respecs, which costs 10 gems. For solo content,
+picking Fury over Protection is a valid answer when it clears more often, because solo fights have
+no roles. Party content is different (the boss hits the tank holder), and the solo objectives cannot
+express that. See §11.
+
+## 11. Celestial Trial (party of 2), and party roles
+
+**Ask** (2026-10-15): can the Celestial Trial be simulated? The user supplied one server fight log
+(Hard, level 85, the user plus a tank partner). It stays outside the repo because it names another
+player. Facts and the log check are in `Game/pve-content.md` §6.
+
+**What we have.** The full client config per difficulty: boss tables, level bands, time limits,
+spell resist, and the four spells with their Hard overrides. The log matches it exactly on boss HP,
+add HP and timing, the Judgment Strike rhythm and the time limit. The log also has every tick, so a
+port can be checked tick by tick, like §7.
+
+**What's missing.**
+- There is no Celestial simulator in the client. The fight would be built from the config plus
+  the shared engine, then fitted to logs, so it carries a "built from logs" label and is less certain
+  than the client ports.
+- We need several more logs: other levels, Normal, and other partners.
+- The partner's build. The Rankings import (§2) gives their loadout and server sheet, so the pair
+  can be simulated.
+- Mythic's party-power HP scaling is server-side.
+
+**Objective.** Party clear rate within 360 s, with the user's build as the variable and the
+partner fixed. This is where tank versus damage spec gets judged properly. If the user is the
+tank, the boss and Judgment Strike hit them, and Block Fury matters. Crusade groups would use the
+same party machinery later.

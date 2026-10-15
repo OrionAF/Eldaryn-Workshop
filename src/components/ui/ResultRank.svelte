@@ -12,11 +12,14 @@
    * Props: row, unit, domain (the table's forestDomain), presetName, expanded ($bindable),
    * onrunmore(row), footer snippet, unmeasured (per-change effects were never measured for this
    * row: a run saved before the attribution pass, or a row not yet confirmed; the cells say so).
+   * `target` is the PVE win-rate goal's share (a fraction) or null: the row then carries a Meets / Below target
+   * chip and, below the target, how many points short it is.
    */
+  import { triesPerClear } from '../../lib/ui/winRateFormat.js';
   import CIForest from './CIForest.svelte';
   import VerdictChip from './VerdictChip.svelte';
   import ScopeChip from './ScopeChip.svelte';
-  import { changeSummary, bundleText, dimensionLabel, onlyWith } from '../../lib/ui/optimiserView.js';
+  import { changeSummary, bundleText, dimensionLabel, onlyWith, targetStanding } from '../../lib/ui/optimiserView.js';
   import {
     fmtEstimate, fmtContrast, fmtContrastCi, fmtSigned, verdictText, nNeededText, verdictTone, fmtCount,
   } from '../../lib/ui/statsFormat.js';
@@ -29,6 +32,7 @@
     expanded = $bindable(false),
     onrunmore = null,
     unmeasured = false,
+    target = null,
     footer,
   } = $props();
   const id = $props.id();
@@ -38,10 +42,9 @@
   const tone = $derived(row.isBaseline ? 'base' : pending ? 'side' : verdictTone(vs));
   const chipVerdict = $derived(pending ? 'pending' : (vs?.verdict ?? 'unresolved'));
   const rankText = $derived(row.isBaseline ? 'NOW' : row.tieGroup != null ? `${row.rank}=` : String(row.rank));
+  const standing = $derived(targetStanding(row, target));
   const summary = $derived(
-    row.isBaseline
-      ? 'Current build'
-      : changeSummary(row.changes),
+    [row.isBaseline ? 'Current build' : changeSummary(row.changes), standing.gap, target != null ? triesPerClear(row.aux?.winRate?.est) : ''].filter(Boolean).join(' · '),
   );
 
   function sentence(c, name) {
@@ -82,6 +85,9 @@
       {/if}
     </span>
     <span class="verdict">
+      {#if standing.verdict && !pending}
+        <span data-testid="target-chip"><VerdictChip verdict={standing.verdict} /></span>
+      {/if}
       {#if !row.isBaseline}
         <VerdictChip verdict={chipVerdict} />
         {#if vs?.verdict === 'unresolved' && !pending}
