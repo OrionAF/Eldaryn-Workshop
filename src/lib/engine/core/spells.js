@@ -4,6 +4,7 @@
 // Game rules: docs/Reference/Game/combat-pve.md §10, sigils.md §5-§9.
 import { applyCombatCeiling, ceilingFor, capConfig, softCapGainFromSheet } from './caps.js';
 import { DEBUFF_TYPES } from './debuffs.js';
+import { lane } from '../rng.js';
 
 // ---------------------------------------------------------------------------------------------
 // Module 3965 (L1092725-1092929): cast order and opening delays
@@ -306,9 +307,10 @@ export function processSpellsTick(runtimes, input, rng) {
   const currentSpellCrit = () => applyCombatCeiling(
     (spellCritChance ?? 0) + activeSpellStatBuff('SPELL_CRIT') + mom().spellCritPoints, SPELL_CRIT_CEILING);
   // rollSpellCrit L1090962-1090982
-  const rollSpellCrit = () => {
+  // one lane per spell species (engine/rng.js laneRng); a plain rng is its own lanes
+  const rollSpellCrit = (rt) => {
     const chance = currentSpellCrit();
-    return chance > 0 && rng() * 100 < chance;
+    return chance > 0 && lane(rng, `spell:${rt.config.species}`)() * 100 < chance;
   };
   // wound on a spell heal (L1091276-1091289 and its copies)
   const wounded = (heal) => (healReductionPercent > 0
@@ -371,7 +373,7 @@ export function processSpellsTick(runtimes, input, rng) {
       rt.nextTickIn -= dtMs;
       rt.effectRemaining -= dtMs;
       if (spell.spellType === 'DAMAGE' && spell.isDoT && rt.nextTickIn <= 0 && rt.effectRemaining > 0) {
-        const crit = rollSpellCrit();
+        const crit = rollSpellCrit(rt);
         const base = spell.attackPercent ? Math.floor((attack * spell.attackPercent) / 100) : spell.damagePerTick ?? 0;
         dealSpellDamage(base, crit, 'spell_dot_tick', spellRef);
         if (spell.blindOnTick) blinded = true;
@@ -431,7 +433,7 @@ export function processSpellsTick(runtimes, input, rng) {
           if (spell.wound) timedDebuff(DEBUFF_TYPES.WOUND, spell, 'regenReductionPercent', spell.wound.regenReductionPercent, spellRef);
           if (spell.critDown) timedDebuff(DEBUFF_TYPES.CRIT_DOWN, spell, 'critChanceReduction', spell.critDown.critChanceReduction, spellRef);
         } else {
-          const crit = rollSpellCrit();
+          const crit = rollSpellCrit(rt);
           const base = spell.attackPercent ? Math.floor((attack * spell.attackPercent) / 100) : spell.baseDamage;
           const dmg = dealSpellDamage(base, crit, 'spell_damage', spellRef);
           if (spell.selfHealPercent && dmg > 0) {
@@ -496,7 +498,7 @@ export function processSpellsTick(runtimes, input, rng) {
       case 'DEBUFF': { // L1091570-1091707
         push('spell_cast', 0, spellRef);
         if (spell.initialAttackPercent > 0 && attack > 0) {
-          const crit = rollSpellCrit();
+          const crit = rollSpellCrit(rt);
           dealSpellDamage(Math.floor((attack * spell.initialAttackPercent) / 100), crit, 'spell_damage', spellRef);
         }
         if (spell.paralyzeMs && spell.paralyzeMs > paralyzeMs) paralyzeMs = spell.paralyzeMs;

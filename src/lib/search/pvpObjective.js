@@ -10,9 +10,9 @@
 //   higher absolute HP, an exact tie to the defender: Game/combat-pvp.md §10), so from my defender
 //   seat my win is its complement. No tie-break on duel length: equal win rates are equal.
 //
-// Common random numbers: duel i of a matchup uses mulberry32(hashSeed(hashSeed(seed, opponentId, seat), i)),
-// the same for every build. Sampling is async (it yields every 25 ms) so a worker 'abort' lands.
-import { mulberry32, hashSeed } from '../engine/rng.js';
+// Common random numbers: duel i of a matchup uses fightRng(hashSeed(seed, opponentId, seat), i), the same
+// lanes for every build (simulation.md §Common random numbers). Sampling is async (it yields every 25 ms) so a worker 'abort' lands.
+import { hashSeed, fightRng } from '../engine/rng.js';
 import { wilsonInterval, stratifiedPairedProportion, stableStringify } from '../engine/metrics.js';
 import { runDuel, fighterDuelArgs } from '../engine/pvp/resolver.js';
 import { opponentFighter, duelFighter, missingStats } from '../features/duel.js';
@@ -114,7 +114,7 @@ export function makePvpObjective(raw, target, { closedFormDps, ehpProxy }) {
       for (let i = from; i < to; i++) {
         if (signal?.aborted) return { main, side: { ms, timedOut }, aborted: true };
         lanes.forEach((m, j) => {
-          const rng = mulberry32(hashSeed(hashSeed(seed, m.opponentId, m.seat), i));
+          const rng = fightRng(hashSeed(seed, m.opponentId, m.seat), i);
           const r = m.seat === 'attacker' ? runDuel({ attacker: me, defender: m.args, rng }) : runDuel({ attacker: m.args, defender: me, rng });
           main[j].push(r.attackerWon === (m.seat === 'attacker') ? 1 : 0);
           ms[j].push(r.timeMs);

@@ -1,5 +1,8 @@
 // Per-swing random rolls and the flat damage-reduction step. Every roll takes the rng as its last
-// argument and draws in the client's order (draw order is behaviour, rebuild-plan §6).
+// argument and draws in the client's order (draw order is behaviour, rebuild-plan §6). Each draw
+// reads its purpose's lane of that rng ('crit', 'double', 'disrupt'); a plain rng is its own lanes.
+
+import { lane } from '../rng.js';
 
 // Status constants: L1089570-1089584 (module 3963); values in Game/combat-pve.md §8.1.
 export const DISRUPTION_SILENCE_MS = 3000;
@@ -30,9 +33,9 @@ export function applyDamageReduction(damage, damageReductionPercent) {
  * @returns {{damage:number, isCrit:boolean, isDoubleHit:boolean, doubleHitDamage:number}}
  */
 export function rollAttackDamage(e, rng) {
-  const isCrit = rng() * 100 < e.critChance;
+  const isCrit = lane(rng, 'crit')() * 100 < e.critChance;
   const damage = isCrit ? Math.round(e.attack * e.critDamage) : e.attack;
-  const isDoubleHit = e.doubleHit > 0 ? rng() * 100 < e.doubleHit : false;
+  const isDoubleHit = e.doubleHit > 0 ? lane(rng, 'double')() * 100 < e.doubleHit : false;
   return { damage, isCrit, isDoubleHit, doubleHitDamage: isDoubleHit ? e.attack : 0 };
 }
 
@@ -42,7 +45,7 @@ export function rollAttackDamage(e, rng) {
  * Draws once only when critChance > 0.
  */
 export function rollPenetrationCritMult(e, rng) {
-  if (e.critChance > 0 && rng() * 100 < e.critChance) return e.critDamage;
+  if (e.critChance > 0 && lane(rng, 'crit')() * 100 < e.critChance) return e.critDamage;
   return 1;
 }
 
@@ -63,7 +66,7 @@ export function rollDisruption(e, silencedMs, staggerStacks, fearedMs, rng) {
   const effect = e.disruptionEffect;
   if (effect === 'SILENCE' && silencedMs > 0) return none;
   if (effect === 'FEAR' && fearedMs > 0) return none;
-  if (rng() * 100 >= e.disruptionChance) return none;
+  if (lane(rng, 'disrupt')() * 100 >= e.disruptionChance) return none;
   if (effect === 'SILENCE') {
     return { procced: 'SILENCE', silencedMs: DISRUPTION_SILENCE_MS, staggerStacks, fearedMs, staggerStunned: false };
   }

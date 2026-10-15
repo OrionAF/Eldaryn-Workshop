@@ -8,6 +8,9 @@
 //   enemy swing:   (status branches: none) | minion target: crit (always)
 //                  | player target: negate (iff block+miss > 0) -> crit (always)
 //                  [negated: penetration crit (iff enemy crit > 0)]
+// That order holds for a plain rng. A lane rng (engine/rng.js laneRng) splits the draws by actor
+// ('player', 'minion', 'enemy') and purpose ('avoid', 'crit', 'double', 'blind', 'paralyze',
+// 'disrupt'), so the order within each lane is the order above.
 // Silence has no consumer in the PVE engine: it is stored, counted down and returned, but nothing in
 // processCombatTick or the shared fight loop reads it (the spell pass is fed silencedMs 0).
 import {
@@ -20,6 +23,7 @@ import {
   FEAR_DURATION_MS,
 } from '../core/rolls.js';
 import { absorbWithShield, regenShieldRefillAmount, spendHealBudget } from '../core/shield.js';
+import { lane } from '../rng.js';
 import {
   minionSwing,
   mitigateMinionHit,
@@ -188,10 +192,11 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
 
   if (attackerTimerAcc >= playerInterval) {
     attackerTimer = attackerTimerAcc - playerInterval;
+    const P = lane(rng, 'player');
     const negate = enemy.blockChance + enemy.missChance;
-    const negated = negate > 0 ? rng() * 100 < negate : false;
+    const negated = negate > 0 ? lane(P, 'avoid')() * 100 < negate : false;
     if (!negated) {
-      const roll = rollAttackDamage(player, rng);
+      const roll = rollAttackDamage(player, P);
       const d1 = cut(applyDamageReduction(roll.damage, enemy.damageReduction));
       const d2 = cut(applyDamageReduction(roll.doubleHitDamage, enemy.damageReduction));
       const s1 = absorbWithShield(defShield, d1);
@@ -214,16 +219,16 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
         atkHp = lifestealHeal(atkHp, d2);
         events.push({ timestamp, type: 'attacker_hit', damage: d2, attackerHp: atkHp, defenderHp: defHp, doubleHit: true });
       }
-      if (player.blindChance > 0 && !blinded && defHp > 0 && rng() * 100 < player.blindChance) {
+      if (player.blindChance > 0 && !blinded && defHp > 0 && lane(P, 'blind')() * 100 < player.blindChance) {
         events.push({ timestamp, type: 'defender_blinded', damage: 0, attackerHp: atkHp, defenderHp: defHp });
         blinded = true;
       }
-      if (player.paralyzeChance > 0 && paralyzedMs <= 0 && defHp > 0 && rng() * 100 < player.paralyzeChance) {
+      if (player.paralyzeChance > 0 && paralyzedMs <= 0 && defHp > 0 && lane(P, 'paralyze')() * 100 < player.paralyzeChance) {
         paralyzedMs = PARALYZE_DURATION_MS;
         events.push({ timestamp, type: 'defender_paralyzed', damage: 0, attackerHp: atkHp, defenderHp: defHp });
       }
       if (player.disruptionChance > 0 && defHp > 0) {
-        const rd = rollDisruption(player, silencedMs, staggerStacks, feared, rng);
+        const rd = rollDisruption(player, silencedMs, staggerStacks, feared, P);
         if (rd?.procced) {
           silencedMs = rd.silencedMs;
           staggerStacks = rd.staggerStacks;
@@ -255,7 +260,7 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
       let shown = 0;
       if (player.penetration > 0 && enemy.missChance === 0) {
         const base = Math.round((player.attack * player.penetration) / 100);
-        const mult = rollPenetrationCritMult(player, rng);
+        const mult = rollPenetrationCritMult(player, P);
         const d = cut(mitigateInline(Math.round(base * mult), enemy.damageReduction));
         const s = absorbWithShield(defShield, d);
         defShield = s.shieldHp;
@@ -278,7 +283,7 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
 
   // --- minion swing (L1086910-1086950): after the player, before the enemy
   if (minion && minion.alive && defHp > 0) {
-    const sw = minionSwing(minion, dtMs, rng);
+    const sw = minionSwing(minion, dtMs, lane(rng, 'minion'));
     if (sw) {
       const dmg = cut(mitigateMinionHit(sw.damage, enemy.damageReduction));
       const s = absorbWithShield(defShield, dmg);
@@ -306,6 +311,7 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
   const finish = () => result({ timers: { attackerTimer, defenderTimer, regenTimer } });
   if (defenderTimerAcc >= enemyInterval) {
     defenderTimer = defenderTimerAcc - enemyInterval;
+    const E = lane(rng, 'enemy');
     const status = (type) => events.push({ timestamp, type, damage: 0, attackerHp: atkHp, defenderHp: defHp });
     if (paralyzedMs > 0) {
       status('defender_paralyze');
@@ -316,7 +322,7 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
       blinded = false;
     } else if (minion && minion.alive) {
       // the enemy hits the minion (L1087238-1087328); the crit draw happens even at 0% crit
-      const isCrit = rng() * 100 < enemy.critChance;
+      const isCrit = lane(E, 'crit')() * 100 < enemy.critChance;
       const raw = isCrit ? Math.round(enemy.attack * enemy.critDamage) : enemy.attack;
       const r = damageMinion(minion, raw);
       defHp = enemyLifesteal(defHp, r.dealt);
@@ -332,10 +338,10 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
       }
     } else {
       const negate = player.blockChance + player.missChance;
-      const negated = negate > 0 ? rng() * 100 < negate : false;
+      const negated = negate > 0 ? lane(E, 'avoid')() * 100 < negate : false;
       const mitigation = player.shieldMitigation == null ? 0 : player.shieldMitigation;
       if (!negated) {
-        const isCrit = rng() * 100 < enemy.critChance;
+        const isCrit = lane(E, 'crit')() * 100 < enemy.critChance;
         const raw = isCrit ? Math.round(enemy.attack * enemy.critDamage) : enemy.attack;
         const d = mitigateInline(raw, player.damageReduction);
         const s = absorbWithShield(atkShield, d, mitigation);
@@ -357,7 +363,7 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
         let newHp = atkHp;
         if (enemy.penetration > 0 && player.missChance === 0) {
           const base = Math.round((enemy.attack * enemy.penetration) / 100);
-          const mult = rollPenetrationCritMult(enemy, rng);
+          const mult = rollPenetrationCritMult(enemy, E);
           const d = mitigateInline(Math.round(base * mult), player.damageReduction);
           const s = absorbWithShield(atkShield, d, mitigation);
           atkShield = s.shieldHp;

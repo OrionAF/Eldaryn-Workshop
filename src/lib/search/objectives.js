@@ -12,7 +12,7 @@
 //   {kind: 'custom', mob: MobSpec, seconds?: 60}      a user-entered mob
 //   {kind: 'pvp', opponentIds: string[], seats}       saved opponents (pvpObjective.js); needs `{character}`
 // An OBJECTIVE is what "better" means: {kind: 'dps'|'ttk-median'|'ttk-p90'|'survival', seconds?}.
-import { mulberry32, hashSeed } from '../engine/rng.js';
+import { fightRng } from '../engine/rng.js';
 import {
   stableStringify, meanInterval, wilsonInterval, quantileInterval, censoredQuantile, pairedT, pairedProportion,
   pairedQuantileDiff,
@@ -240,8 +240,8 @@ function optsFor(target, fighter) {
 }
 
 /**
- * A synchronous PVE sampler: fight i (from <= i < to) uses rng mulberry32(hashSeed(seed, i)), the
- * same stream for every build (simulation.md §Statistics, sampling unit).
+ * A synchronous PVE sampler: fight i (from <= i < to) uses rng fightRng(seed, i), the same lanes for
+ * every build (simulation.md §Statistics, sampling unit; §Common random numbers).
  */
 function pveSampler(target, { enemy, maxMs }, outcome) {
   return (fighter, { seed, from = 0, to, signal }) => {
@@ -250,7 +250,7 @@ function pveSampler(target, { enemy, maxMs }, outcome) {
     const out = [];
     for (let i = from; i < to; i++) {
       if (signal?.aborted) return { main: [out], side: {}, aborted: true };
-      const r = simulatePve({ fighter: prepared, enemy, maxMs, rng: mulberry32(hashSeed(seed, i)), ...opts });
+      const r = simulatePve({ fighter: prepared, enemy, maxMs, rng: fightRng(seed, i), ...opts });
       out.push(outcome(r));
     }
     return { main: [out], side: {}, aborted: false };
