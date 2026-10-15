@@ -6,8 +6,11 @@ import { buildFighter } from '../build/fighter.js';
 import { classOfSpec } from '../game/classes.js';
 import { sigilBySpecies } from '../game/sigils.js';
 import { parseEventType, TIME_UP } from '../engine/pvp/events.js';
-import { completeDuelStats } from '../engine/pvp/resolver.js';
-import { normaliseSheetValues } from '../engine/pipeline/sheet.js';
+import { completeDuelStats, fighterDuelArgs } from '../engine/pvp/resolver.js';
+import { normaliseSheetValues, sheetKeyMeta, SHEET_KEYS, toDisplay } from '../engine/pipeline/sheet.js';
+import { nNeeded } from '../engine/stats/index.js';
+import { wilson } from '../engine/metrics.js';
+import { formatFlat, formatPct } from '../format.js';
 import { normaliseOpponent } from '../model/opponents.js';
 import { glyphTypeInfo } from '../model/glyphs.js';
 
@@ -174,4 +177,96 @@ export function traceSummary(log) {
     }
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------------------------
+// U10: what the Duel page shows (interval and nNeeded: docs/Reference/simulation.md §Statistics)
+
+/** "Needs: HP, Attack, Attack Speed", read from REQUIRED_STATS so the text cannot drift from the gate. */
+export const requiredStatsText = () => `Needs: ${REQUIRED_STATS.map(([, label]) => label).join(', ')}`;
+
+/** Sheet label of a stat key (the `defaulted` lists carry keys). */
+export const statLabel = (key) => sheetKeyMeta(key)?.label ?? key;
+export const defaultedLabels = (keys) => (keys ?? []).map(statLabel);
+
+/** Smallest edge over even the verdict text promises to resolve: 3 points. */
+export const MIN_EDGE = 0.03;
+
+/**
+ * Verdict of a win-rate summary against even. Favoured / unfavoured when the Wilson interval clears
+ * 0.5; otherwise unresolved with the N that would resolve the observed edge (at least `minEdge`) at
+ * 80 % power, never fewer fights than already run.
+ * @param {{p: number, lo: number, hi: number, n: number}|null} s
+ */
+export function winRateVerdict(s, { minEdge = MIN_EDGE } = {}) {
+  if (!s || !(s.n > 0) || s.p == null) return null;
+  const edge = s.p - 0.5;
+  const verdict = s.lo > 0.5 ? 'better' : s.hi < 0.5 ? 'worse' : 'unresolved';
+  let need = null;
+  if (verdict === 'unresolved') {
+    const raw = nNeeded({ sd: Math.sqrt(s.p * (1 - s.p)), delta: edge, deltaMin: minEdge });
+    need = raw == null ? null : Math.max(raw, s.n + 1);
+  }
+  return { verdict, edge, n: s.n, nNeeded: need, edgePts: Math.max(Math.abs(edge), minEdge) * 100 };
+}
+
+/**
+ * Seats seen from my side, pooled into one proportion with a Wilson interval over the total N.
+ * A missing or empty side is skipped.
+ */
+export function combineSeats(...seats) {
+  const live = seats.filter((s) => s && s.n > 0 && s.p != null);
+  if (!live.length) return null;
+  const n = live.reduce((a, s) => a + s.n, 0);
+  const k = live.reduce((a, s) => a + Math.round(s.p * s.n), 0);
+  const w = wilson(k, n);
+  const weighted = (key) => (live.every((s) => s[key] != null) ? live.reduce((a, s) => a + s[key] * s.n, 0) / n : null);
+  return {
+    p: w.p, lo: w.lo, hi: w.hi, n,
+    meanMs: weighted('meanMs'), p90Ms: null, timeoutShare: weighted('timeoutShare'),
+    aborted: live.some((s) => s.aborted),
+  };
+}
+
+/**
+ * The two stat blocks exactly as the resolver reads them (completed, HP x8), side by side, with the
+ * rows each side left blank marked. Only numeric sheet keys appear, in sheet order.
+ * @returns {Array<{key: string, label: string, mine: number|null, theirs: number|null, mineDefaulted: boolean, theirsDefaulted: boolean}>}
+ */
+export function simulatedColumns(mine, theirs) {
+  const sim = (f) => ({
+    stats: fighterDuelArgs(f).stats,
+    defaulted: new Set(f.defaulted ?? completeDuelStats(f.stats, f.class, f.form ?? f.formKind ?? null).defaulted),
+  });
+  const a = sim(mine);
+  const b = sim(theirs);
+  return SHEET_KEYS.filter((k) => !sheetKeyMeta(k).isRaw && (typeof a.stats[k] === 'number' || typeof b.stats[k] === 'number')).map((k) => ({
+    key: k,
+    label: k === 'totalHp' ? 'Health (x8 PVP buff applied)' : statLabel(k),
+    mine: a.stats[k] ?? null,
+    theirs: b.stats[k] ?? null,
+    mineDefaulted: a.defaulted.has(k),
+    theirsDefaulted: b.defaulted.has(k),
+  }));
+}
+
+/**
+ * A finished duel task result as win-rate summaries from MY side, per seat.
+ * `seat` is where the request put me: 'attacker', 'defender', or 'both' (attacker first, then the
+ * swapped run that `both: true` adds as `result.swapped`). `total` pools the seats that ran.
+ * @returns {{attack: Object|null, defend: Object|null, total: Object|null}}
+ */
+export function seatsFromResult(result, seat = 'attacker') {
+  if (!result) return { attack: null, defend: null, total: null };
+  const { swapped, trace, traceResult, ...first } = result; // eslint-disable-line no-unused-vars
+  const attack = seat === 'defender' ? null : first;
+  const defend = seat === 'attacker' ? null : fromMySide(seat === 'defender' ? first : swapped, 'defender');
+  const ran = [attack, defend].filter((s) => s && s.n > 0);
+  return { attack: attack?.n > 0 ? attack : null, defend: defend?.n > 0 ? defend : null, total: ran.length > 1 ? combineSeats(...ran) : ran[0] ?? null };
+}
+
+/** A stat value as the game's sheet prints it: flat with "." thousands, percentages as shown. */
+export function displayStat(key, v) {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return '-';
+  return sheetKeyMeta(key)?.kind === 'integer' ? formatFlat(v) : formatPct(toDisplay(key, v));
 }
