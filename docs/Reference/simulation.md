@@ -643,6 +643,39 @@ a session job (U3): Cancel keeps the provisional rows and Resume re-starts the t
 checkpoint as `resumeFrom`. The page sends the character with `runs: []`, so saving a run does not change
 `characterKey` (Run more and the staleness marker compare it).
 
+### Estimates
+
+Code: `src/lib/search/estimate.js` `estimateRun(request, {calibration})`; UI: the Estimate section of the
+Optimiser setup (`components/optimiser/SetupEstimate.svelte`), recomputed on every setup change. It runs
+`prepare` and reads the build space, never simulates, and returns builds, fights and time, each as
+`lo` / `likely` / `hi` with its basis. Every figure is shown as an estimate (decision Q5).
+
+- **Builds (exact).** When the search will be exhaustive (§Strategy) and the joint space holds at most
+  `LIVE_ENUMERATE_MAX` = 1 000 builds, the count is the search's own list (`search.js enumerateJoint`, the
+  domains after legality, glyph and mount dominance) less the builds below the Combat Power floor. It is
+  the run's `search.evaluated` unless builds equal in engine inputs merge (§Builds equal in effect). Between
+  1 000 and `EXHAUSTIVE_MAX` the product of the block sizes stands in (the list can differ from it).
+- **Builds (local, assumed).** One pass of the coordinate ascent races every value of each enabled block
+  (`domainSizes` at the current build), a spec or mount switch plus its inner ascent, and the two-point
+  talent moves (`twoPointMoves`) once per ascent. `lo` is one start converging in one pass; `likely` every
+  start (§Strategy: the baseline, other specs, other gear sets, the talent fill, `randomStarts`) at 3 passes
+  with one inner pass; `hi` every start at 8 outer and 8 inner passes. How many passes an ascent takes
+  depends on what it finds, so 8 is an assumption, not a bound. Domain sizes are taken at the current build.
+- **Fights.** Fights are counted per build, stage and lane (§Progress), so the race rules give the range:
+  `lo` = builds `lo` × n0 × lanes (every arm resolved at the first look, no change found, so no minimise or
+  confirm), plus the goal check of a win-rate goal; `likely` = builds `likely` × 2 n0 × lanes (§Cost:
+  about 2 × n0 per build); `hi` = every comparison at maxN for builds `hi`, the baseline, and every possible
+  finalist (exhaustive: every other build; local: each start's last pass) with its minimise builds
+  (1 + m(m + 1) / 2) and confirm and attribution builds (2 + 2m), m the most changes the enabled blocks
+  allow. PVP lanes are its matchups.
+- **Time.** fights / the calibrated speed of the target's fight kind (§Speed calibration). The calibrated
+  speed is the whole pool's, so it is not divided by the workers again. Kinds (an assumption, labelled):
+  dummy, World Boss and custom mob are dummy-kind windows, scaled by the window over the 60 s calibration
+  fight; chapter, dungeon, raid and Oblivion are dungeon-kind; the Fortress boss (duel engine) and PVP
+  are duel-kind (an unmeasured duel counts at the slowest measured speed). A target kind not in
+  `FIGHT_KIND_OF`, or no calibration, shows builds and fights and says why there is no time.
+- **Push** runs this search at its start rung; the estimate covers that one search and says so.
+
 ## Push
 
 Code: `src/lib/search/push.js` (`pushCore`, the algorithm over an environment; `push`, wired to the build
@@ -882,8 +915,7 @@ per-device prefs (`lib/calibration.js`); `version` is the build id (package vers
 `define`). The calibration is stale when the profile or the build id differs; it keeps giving estimates,
 labelled as old. Tool pages show "About N min on this device (estimate)" under Effort, from fights by
 kind over those rates: Duel exact, Drop Check and Oblivion Floors an upper bound (every comparison to
-maxN, every floor scanned), Optimiser a rough figure (builds interpolated between the two measured points
-of §Cost, about 2 x n0 fights per build; a comparison that runs on to maxN is not counted). The Jobs
+maxN, every floor scanned). The Optimiser shows its own Estimate section instead (§Estimates). The Jobs
 tray prints the pool size a running job started with.
 
 ## Drop Check
