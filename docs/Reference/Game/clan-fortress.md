@@ -164,7 +164,7 @@ Example: 4★ gives 1 + 500/100 = 6.0×. 2★ gives 1.5×.
 ```
 shield% = calculateBossShield(aliveDefenders, startingDefenders, maxClanSize)
     if startingDefenders <= 0 or maxClanSize <= 0: 0
-    ratio = min(1, max(0, aliveDefenders) / maxClanSize)
+    ratio = min(1, max(0, aliveDefenders) / maxClanSize)    # maxClanSize = getClanMaxMembers(server)
     piecewise-linear interpolation of BOSS_SHIELD.CONTROL_POINTS over ratio     # L1224322-1224392
 shieldToMultiplier(s)       = max(0, 1 - s/100)                                 # L1224162
 calculateContributionBonus(kills) = min(2, 1 + 0.05*kills)                      # L1224176, CONTRIBUTION_BONUS
@@ -172,9 +172,9 @@ effectiveDamage = round(raw * shieldMult * contributionBonus * max(0, fatigue)) 
 ```
 CONTROL_POINTS (ratio → shield%): 1→60, 0.8→50, 0.6→40, 0.5→30, 0.4→20, 0.2→10, 0.1→0, 0→0. `MAX_SHIELD_PERCENT` is 60 (L1223949-1223967). [CODE]
 
-The argument order of `calculateBossShield` (`a0` alive, `a1` guard, `a2` divisor) is read from the bytecode. I assumed `a1` is the starting defender count. [DERIVED]
+The argument order of `calculateBossShield` (`a0` alive, `a1` guard, `a2` divisor) is read from the bytecode. Two server siege snapshots (2026-10-15, server 5, both TOP fortresses active, `fortressStars` 5, `bossVulnerabilityPercent` 1000) confirm it: TOP_1 had 26 of 26 defenders alive, TOP_2 26 of 27, and both report `bossCurrentShieldPercent` 53.333333333333336. That is exactly 26/30 through the control points, where 30 is server 5's `getClanMaxMembers`. The defending clan's size would give 58.1% (26/27) or 60% (26/26), so the divisor is the server's cap and `totalDefenders` only acts as the `startingDefenders > 0` guard. 5 stars is +1000% (x11), as `DMG_AMP_PERCENT_BY_STARS` says. [DERIVED] from server data, 2026-10-15.
 
-The app's Fortress boss target (simulation.md, Fortress boss) passes `startingDefenders` as `maxClanSize` (so the zero guard only fires on a non-positive clan size) and takes the fatigue factor as 1. Both only scale the displayed credit. [DERIVED]
+The app's Fortress boss target (simulation.md, Fortress boss) divides by the server's cap (or takes a shield percent read off the siege screen), treats the guard as met and takes the fatigue factor as 1. These only scale the displayed credit. [DERIVED]
 
 The guide says the divisor is the server's max clan size (L910334). `getClanMaxMembers` returns `maxMembersDefault` 50, or `maxMembersOverrides[serverId]` (5:30, 6-10:18, 99:20) (L1045076-1045092, L1045703-1045706). [CODE]
 
@@ -315,7 +315,7 @@ War Pact is a **skill**, not a clan feature. `crusadeDiscount` ("War Pact", cate
 - `raidConstants`, `raids[]`: each has `{id, name, requiredPlayerLevel, source, stepMultipliers[], roster[], steps[{stepNumber, influenceReward, mobIds[], mobHp[], mobAttack[]}]}`
 
 ## §10 App comparison
-The app models Fortress Buffs as three checkboxes with fixed stat blocks (`src/lib/totals.js` `FORTRESS_BUFF_STATS`, `fortressBuffsContribution`). The Optimiser also has a `fortressBoss` target (`src/lib/engine/pve/fortressBoss.js`; contract in simulation.md §Fortress boss): the 60 s boss race, with the §3.1 shield, contribution bonus and §2.5 star multipliers shown as the clan's credited damage. Nothing else from this system is modelled.
+The app models Fortress Buffs as three checkboxes with fixed stat blocks (`src/lib/totals.js` `FORTRESS_BUFF_STATS`, `fortressBuffsContribution`). The Optimiser also has a `fortressBoss` target (`src/lib/engine/pve/fortressBoss.js`; contract in simulation.md §Fortress boss): the 60 s boss race, with the §3.1 shield, contribution bonus and §2.5 star multipliers shown as the clan's credited damage. Its shield divides alive defenders by the cap of the character's server (`server`, imported from a game profile; unknown gives 50), or takes a shield percent typed in from the siege screen. Nothing else from this system is modelled.
 
 Disagreements:
 1. **BOTTOM class remap is missing, and miss/blind are double counted.** The app BOTTOM block gives `dmg_reduction 5 + miss_chance 5` and `block_chance 3 + blind_chance 3` at once. The game gives each class only one set (§2.2). Warrior gets DR and block, Sentinel gets miss and blind, Mystic gets lifesteal 5 and hpRegen +3, and Necromancer gets health% +5 and hpRegen +3.
