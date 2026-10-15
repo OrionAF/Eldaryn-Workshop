@@ -153,7 +153,7 @@ value of the block given the rest of `c` (legalised, canonical, without `c` itse
   unsealed instance, identical twins included;
 - mounts: only owned mounts no other owned mount dominates. A mount adds only `attackPercent += effAtk` and
   `hpPercent += effHp` (`mountEffectiveStats`; Game/mounts-glyphs.md §1, §5) and every mount has the same sockets
-  (§8), so a mount another one matches or beats on both stats can never improve any objective: pruning is exact.
+  (§8), so (mount stats being realm-independent) a mount another one matches or beats on both stats can never improve any objective: pruning is exact.
   Dominance is on (effAtk, effHp), not rarity (a level-5 Rare can beat a level-1 Epic on HP and lose on attack).
   Of equal twins the ridden one, else the first owned, is kept. The candidate's current mount stays the baseline
   even when dominated, and switching to its dominator stays offered. `space.prunedMounts(c)` lists `{id, by}`;

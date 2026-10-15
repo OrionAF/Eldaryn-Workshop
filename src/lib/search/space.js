@@ -530,9 +530,13 @@ export function createBuildSpace(character, presetOrId, { realm = 'base', mode =
     powerOf,
     /** False only when a Combat Power floor is set and the candidate's Power is below it. */
     admissible: (c) => floor == null || powerOf(c) >= floor,
-    /** Per enabled block, the number of values (the current one included) given `c`. */
     /** Owned mounts the mount block never tries because another owned mount dominates them: [{id, by}]. */
-    prunedMounts: (c) => (on.mount && mountsUnlocked(L) ? [...dominatedMounts(canon(c).mountId ?? null)].map(([id, by]) => ({ id, by })) : []),
+    prunedMounts: (c) => {
+      if (!(on.mount && mountsUnlocked(L))) return [];
+      const cur = canon(c).mountId ?? null; // a dominated current mount stays the baseline, so it is not reported
+      return [...dominatedMounts(cur)].filter(([id]) => id !== cur).map(([id, by]) => ({ id, by }));
+    },
+    /** Per enabled block, the number of values (the current one included) given `c`. Mount stats do not depend on realm. */
     domainSizes: (c) => Object.fromEntries(blocks.filter((b) => b.enabled).map((b) => [b.id, b.domain(c).length + 1])),
   };
 }

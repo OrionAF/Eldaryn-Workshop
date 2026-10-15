@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createBuildSpace } from './space.js';
+import { createBuildSpace, BLOCKS } from './space.js';
+import { optimize } from './search.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { normaliseCharacter } from '../model/index.js';
 
@@ -41,5 +42,22 @@ describe('mount dominance pruning', () => {
     expect(space.start.mountId).toBe('weak');
     expect(tried(space)).toEqual([null, 'strong']);
     expect(space.domainSizes(space.start).mount).toBe(3);
+  });
+
+  it('the pruned-current-mount baseline is not reported as pruned', () => {
+    const space = withMounts([mk('weak', 1, 10, 8), mk('strong', 1, 30, 20), mk('weak2', 1, 5, 5)], 'weak');
+    expect(space.prunedMounts(space.start).map((p) => p.id)).toEqual(['weak2']);
+  });
+
+  it('a search never races a dominated mount and reports it as pruned', { timeout: 120000 }, async () => {
+    const c = normaliseCharacter(JSON.parse(JSON.stringify(fixtureCharacter('WARRIOR'))));
+    const mounts = [mk('com', 2, 10, 8, 'Common'), mk('epic', 2, 37, 25, 'Epic')];
+    const character = { ...c, mounts, presets: c.presets.map((p) => (p.id === 'p1' ? { ...p, mountId: null } : p)) };
+    const space = Object.fromEntries(BLOCKS.map((b) => [b, b === 'mount']));
+    const r = await optimize({ character, presetId: 'p1', target: { kind: 'dummy', seconds: 10 }, space, effort: { level: 'quick', n0: 8, maxN: 32, randomStarts: 0 }, seed: 2 });
+    const raced = [r.baseline, ...r.rows].map((x) => x.candidate.mountId ?? null);
+    expect(raced).not.toContain('com');
+    expect(r.search.blocks.find((b) => b.id === 'mount').pruned).toEqual([{ id: 'com', by: 'epic' }]);
+    expect(r.search.blocks.find((b) => b.id === 'mount').domain).toBe(2);
   });
 });
