@@ -7,6 +7,7 @@
    */
   import WelcomeScreen from './components/WelcomeScreen.svelte';
   import TopBar from './components/shell/TopBar.svelte';
+  import JobsPill from './components/shell/JobsPill.svelte';
   import Rail from './components/shell/Rail.svelte';
   import ContextHeader from './components/shell/ContextHeader.svelte';
   import NotificationStack from './components/shell/NotificationStack.svelte';
@@ -51,7 +52,9 @@
   <WelcomeScreen />
 {:else}
   <div class="app">
-    <TopBar onImport={openImport} />
+    <TopBar onImport={openImport}>
+      {#snippet jobs()}<JobsPill />{/snippet}
+    </TopBar>
     <div class="body">
       <Rail {route} {character} onImport={openImport} />
       <div class="content">
