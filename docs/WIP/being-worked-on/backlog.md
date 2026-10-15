@@ -75,3 +75,33 @@ build clears the content without dying, not how fast. Ten seconds and fifty are 
   example the lowest HP fraction left across fights). The margin also gives the search, and stat
   weights, a gradient where the clear chance saturates.
 - Make it the default goal for these targets. Keep TTK as an option for players who farm for speed.
+
+## 5. Optimiser: let it change more than the loadout
+
+**Ask.** Today the optimiser only switches things the user owns (sets, sigils, relics, pet, mount,
+board choice, glyph sockets) and keeps gear, stones, levels, Awakening and pet/mount rolls fixed. Add
+options to:
+
+| Option | What it searches | Cost in game | Default |
+|---|---|---|---|
+| Re-slot stones | Which owned enchant stones sit in which gear slots, per gear set | Free | On |
+| Re-arrange Transcendence | A new node allocation for a board, within its point budget and the graph rules | Reset is free; a 2nd board is expensive | On |
+| Reset Awakening | Path and point allocation | Very expensive | Off |
+| Upgrade owned relics | Higher levels for relics already owned | Costs resources | Off |
+| Buy new relics | Relics the character does not own yet | Costs resources | Off |
+
+**Notes.**
+- Stones: check `Reference/Game/stones.md` for which stone types each slot and realm accepts. The
+  search is an assignment of stones to slots. Most of a stone's value is stats, so the stat-weight
+  surrogate can order it, with simulation to confirm.
+- Transcendence: use the board-graph rules in `src/lib/transcendence.js`, the point budget, and the
+  Ancient sigil's node (decision Q3). Search an allocation, not only the saved boards. Applying it
+  re-allocates that board, which every preset linked to it shares, so show the side effects. Never
+  suggest buying a second board.
+- Awakening, relic upgrades and relic purchases cost resources. Each result row shows what it would
+  cost, in the game's own currency, from the catalogue where the client has the cost, and the results
+  keep free changes apart from paid ones. Relic levels respect the class pool and level caps
+  (`Reference/Game/relics.md`).
+- Each option is a toggle under "Allowed to change". The scope chips and Apply review say exactly
+  what gets written: stones per set, the board shared by presets, the character-wide Awakening, relic
+  levels and ownership.
