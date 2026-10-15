@@ -4,15 +4,15 @@
 
 | Order | Item | Size | Status |
 |---|---|---|---|
-| 1 | §16 Exact dominance pruning for talents, relics, pets and sigil slots | M | In progress (rebuild2/PRUNE, continued from WIP e041d99) |
-| 2 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Queued (after §16: it builds on §16's dominance rules) |
-| 3 | §10 Arena reward weighting | S | Not started (§2 is merged) |
-| 4 | §10 Crusade (solo) | L | Paused by the user (WIP 08c51c3 on rebuild2/CRUSADE, not reviewed); a client port labelled unverified |
-| 5 | §10 Crusade (group) | M | Not started; needs the solo port. Hell Crusade: Normal needs 1 player, Hard 2, Mythic and Mythic+ 3 (client `minPlayers`); partners as on the Celestial target; the boss always hits the Tank holder (else Control), a lethal hit goes to the healthiest other player, no holder means highest HP (client `BOSS_TARGETING` and `resolveCrusadeFocus`, unconfirmed against the server) |
-| 6 | §10 Crusade replay check against the user's solo Crusade log | S | Last. Log outside the repo (soloCrusade.json: 3 bosses, 2,770 ms, 510 ms from a boss's death to the next boss's first tick); strip and commit it with the user's OK |
+| 1 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Next (builds on §16's dominance rules) |
+| 2 | §10 Arena reward weighting | S | Not started (§2 is merged) |
+| 3 | §10 Crusade (solo) | L | Paused by the user (WIP 08c51c3 on rebuild2/CRUSADE, not reviewed); a client port labelled unverified |
+| 4 | §10 Crusade (group) | M | Not started; needs the solo port. Hell Crusade: Normal needs 1 player, Hard 2, Mythic and Mythic+ 3 (client `minPlayers`); partners as on the Celestial target; the boss always hits the Tank holder (else Control), a lethal hit goes to the healthiest other player, no holder means highest HP (client `BOSS_TARGETING` and `resolveCrusadeFocus`, unconfirmed against the server) |
+| 5 | §10 Crusade replay check against the user's solo Crusade log | S | Last. Log outside the repo (soloCrusade.json: 3 bosses, 2,770 ms, 510 ms from a boss's death to the next boss's first tick); strip and commit it with the user's OK |
 | - | §12 open item: the finalist count and the repeated baseline test | S | Not started (see §12) |
+| - | §16 follow-up: measure a Celestial run's fights before/after the pruning | S | Deferred by the user |
 | - | §11 Celestial open questions | - | Waits for more server logs |
-| Done | §7 PVE replay check (the engine agrees with the real dungeon log on every rule); §9 stat weights chart; §2 Rankings profiles as opponents and Celestial partners; §12 progress tolerance; §11 Push on the Celestial Trial; §6 results name owned items (and the Loot bag stats, the interaction badge); §15 Fortress boss on the duel engine; §11 Celestial engine and Optimiser target; §1 Optimiser step list; §3 setup estimates; §10 Push, Fortress shield fix; §12 highest chance to win; §13 glyph pruning; §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target | - | Merged |
+| Done | §16 dominance pruning for talents, relics, pets and sigils (Celestial fight-count measurement deferred); §7 PVE replay check (the engine agrees with the real dungeon log on every rule); §9 stat weights chart; §2 Rankings profiles as opponents and Celestial partners; §12 progress tolerance; §11 Push on the Celestial Trial; §6 results name owned items (and the Loot bag stats, the interaction badge); §15 Fortress boss on the duel engine; §11 Celestial engine and Optimiser target; §1 Optimiser step list; §3 setup estimates; §10 Push, Fortress shield fix; §12 highest chance to win; §13 glyph pruning; §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target | - | Merged |
 
 ## 16. Optimiser: exact dominance pruning for talents, relics, pets and sigil slots
 
@@ -27,7 +27,7 @@
 
 **Measured** per visit, at the active preset (scratch measurement 2026-10-15): talents Sentinel 146 to 51 (13 on attack stats only), Warrior 162 to 78 (8); relics Warrior 163 to 36 (2), Sentinel 16 to 1; minor glyphs on attack stats only 78 to 36 and 61 to 11; sigils 299 to 220 with full slots.
 
-**Status: done (slice PRUNE, branch `rebuild2/PRUNE2`).** The rules are in simulation.md §Build space (relics, pet, stat dominance items 1-4); the filter is `search/dominance.js`, used by `space.js` for `sigils`, `utility`, `conditions`, `relics`, `pet` and `talents`. Differences from the ask:
+**Status: merged (2026-10-15; slice PRUNE).** The rules are in simulation.md §Build space (relics, pet, stat dominance items 1-4); the filter is `search/dominance.js`, used by `space.js` for `sigils`, `utility`, `conditions`, `relics`, `pet` and `talents`. Differences from the ask:
 - Sigil slots are not filled by rule: one sigil can weaken another (debuffs of one type share one instance, so a weaker POISON or BLEED overwrites a stronger stack; Sunder Mark replaces Siegebreaker; a Form changes the stat pipeline). Sigils still get the exact stat filter and the damage-only rule, which makes heal and shield sigils interchangeable.
 - Thorns: skipped, not the heuristic. While a thorns source runs (the player's or the Celestial partner's) the hit-taken stats must be equal; while a PVP opponent has one every stat must be equal. The pruning stays exact.
 - Dominance compares the engine's inputs built from each candidate's computed totals, not the totals alone: a stat the mode ignores never blocks a prune, and anything else the engine reads (spells, shield, minion, glyph effects) must be equal.
