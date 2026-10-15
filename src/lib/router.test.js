@@ -3,6 +3,10 @@ import { router, go, areaHash, syncRouter } from './router.svelte.js';
 import { UI_KEY, loadUi, saveUi, defaultPrefs } from './uiState.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 10));
+// history.back()/forward() are async in jsdom; under a loaded full run 10ms is not enough.
+const until = async (fn) => {
+  for (let i = 0; i < 100 && !fn(); i++) await tick();
+};
 
 beforeEach(() => {
   localStorage.clear();
@@ -46,10 +50,10 @@ describe('router', () => {
     go('character/pets');
     expect(router.route.id).toBe('character/pets');
     history.back();
-    await tick();
+    await until(() => router.route.id === 'tools/optimiser');
     expect(router.route.id).toBe('tools/optimiser');
     history.forward();
-    await tick();
+    await until(() => router.route.id === 'character/pets');
     expect(router.route.id).toBe('character/pets');
     go('settings', { replace: true });
     expect(router.route.kind).toBe('settings');
