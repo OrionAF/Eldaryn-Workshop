@@ -59,6 +59,11 @@ describe('planImport', () => {
     expect(again.diff.lines.length).toBeGreaterThan(0);
   });
 
+  it('describes the applied live loadout with the preset name and changed fields', () => {
+    const e = { kind: 'liveLoadoutApplied', presetId: 'p', presetName: 'BOSS', fields: ['sigilSpecies', 'utilitySigilSpecies', 'petId'] };
+    expect(describeReportEntry(e)).toEqual({ tone: 'info', text: 'Updated BOSS to match what you are wearing: sigils, pet.' });
+  });
+
   it('a profile reports what normalisation dropped (a mount the catalogue does not know)', () => {
     const p = structuredClone(profile);
     p.mountState.ownedMounts.push({ ...p.mountState.ownedMounts[0], species: 'no_such_mount', id: 'zzz' });

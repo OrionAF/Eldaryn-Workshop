@@ -26,6 +26,30 @@ describe('real profile capture (Warrior L72)', () => {
   });
 });
 
+describe('real profile with a stale selected preset (the Sentinel case)', () => {
+  it('applies the worn loadout to the selected preset, adds none, and the server sheet still matches the app', () => {
+    const f = structuredClone(profile);
+    const sel = f.presets.find((p) => p.id === f.activePresetId);
+    const worn = { sigilSpecies: [...sel.sigilSpecies], petId: sel.petId };
+    sel.sigilSpecies = []; // the preset stored in the game differs from what is worn
+    sel.petId = null;
+    sel.mountId = null;
+    const report = [];
+    const character = normaliseCharacter(gameProfileToCharacter(f, { report }));
+    expect(character.presets).toHaveLength(f.presets.length);
+    expect(character.presets.some((p) => p.name === 'Live loadout')).toBe(false);
+    const preset = character.presets.find((p) => p.id === f.activePresetId);
+    expect(preset.name).toBe(sel.name);
+    expect(character.activePresetId).toBe(f.activePresetId);
+    expect(preset.sheet).not.toBeNull();
+    expect(report.find((e) => e.kind === 'liveLoadoutApplied')?.presetId).toBe(f.activePresetId);
+    const { computed } = computePresetStats(character, character.activePresetId, { realm: 'base' });
+    for (const key of Object.keys(f.computedStats)) {
+      expect(Math.abs(computed[key] - f.computedStats[key]), key).toBeLessThanOrEqual(1e-9);
+    }
+  });
+});
+
 describe('real arena fight capture (Warrior)', () => {
   const rule = (report, name) => report.rules.find((r) => r.rule === name);
   // the attacker is the profile's character: its server computedStats are the sheet the fight used

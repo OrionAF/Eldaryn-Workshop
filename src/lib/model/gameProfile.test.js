@@ -64,7 +64,7 @@ function fixture() {
       },
       {
         id: 'preset-2', name: 'DPS', equipmentSet: 2, talentSet: 1, petId: null, mountId: 'mount-b',
-        relicIds: [], sigilSpecies: ['ARROWSTORM'], utilitySigilSpecies: null, transcendencePresetId: null,
+        relicIds: [], sigilSpecies: ['ARROWSTORM'], utilitySigilSpecies: null, transcendencePresetId: 'tp2',
       },
     ],
     activePresetId: 'preset-2',
@@ -431,35 +431,49 @@ describe('M3 import integrity', () => {
     return { c: normaliseCharacter(raw), report };
   };
 
-  it('a clean profile adds no Live preset', () => {
+  it('a clean profile changes nothing', () => {
     const { c, report } = imp(fixture());
     expect(c.presets.map((p) => p.id)).toEqual(['default', 'preset-2']);
     expect(report).toEqual([]);
   });
 
-  it('a dirty live loadout (set 2 live, preset on set 1) becomes a Live loadout preset holding the sheet (#111)', () => {
+  it('a dirty live loadout updates the selected preset in place (no Live loadout preset) and it takes the sheet', () => {
     const f = fixture();
     f.activePresetId = 'default'; // TANK: set 1, talent set 2, pet-2, mount-a ...
-    // live stays DPS-like (set 2), so it differs from the active TANK preset
+    // live stays DPS-like (set 2), so it differs from the selected TANK preset
     const { c, report } = imp(f);
-    expect(c.presets).toHaveLength(3);
-    const live = c.presets[2];
-    expect(live.name).toBe('Live loadout');
-    expect(live).toMatchObject({ equipmentSet: 2, talentSet: 0, petId: null, mountId: 'mount-b', sigilSpecies: ['ARROWSTORM'] });
-    expect(live.sheet.values.totalAttack).toBe(123456);
-    expect(c.presets[0].sheet).toBeNull();
+    expect(c.presets).toHaveLength(2);
+    expect(c.presets.some((p) => p.name === 'Live loadout' || p.id === 'live-loadout')).toBe(false);
+    const tank = c.presets[0];
+    expect(tank).toMatchObject({ id: 'default', name: 'TANK', equipmentSet: 2, talentSet: 0, petId: null, mountId: 'mount-b', sigilSpecies: ['ARROWSTORM'], relicIds: [] });
+    expect(tank.sheet.values.totalAttack).toBe(123456);
+    expect(c.presets[1].sheet).toBeNull();
     expect(c.activePresetId).toBe('default');
-    expect(report).toEqual([{ kind: 'liveLoadout', presetId: live.id }]);
+    expect(report).toHaveLength(1);
+    expect(report[0]).toMatchObject({ kind: 'liveLoadoutApplied', presetId: 'default', presetName: 'TANK' });
+    expect(report[0].fields).toEqual(expect.arrayContaining(['equipmentSet', 'talentSet', 'petId', 'mountId', 'relicIds', 'sigilSpecies']));
   });
 
-  it('a dirty profile at the preset cap drops the sheet with a report entry instead of a Live preset', () => {
+  it('a selected preset missing from the profile falls back to one appended Live loadout preset', () => {
+    const f = fixture();
+    f.activePresetId = 'gone';
+    f.presets[0].mountId = 'mount-a'; // list[0] is TANK: differs from the live loadout
+    const { c, report } = imp(f);
+    expect(c.presets).toHaveLength(3);
+    expect(c.presets[2].name).toBe('Live loadout');
+    expect(c.presets[2].sheet.values.totalAttack).toBe(123456);
+    expect(report).toEqual([]);
+  });
+
+  it('at the preset cap with the selected preset present, it is still updated and keeps the sheet', () => {
     const f = fixture();
     f.presets = Array.from({ length: 8 }, (_, i) => ({ id: `p${i}`, name: `P${i}`, equipmentSet: 1, talentSet: 1, relicIds: [], sigilSpecies: [] }));
     f.activePresetId = 'p3';
     const { c, report } = imp(f);
     expect(c.presets).toHaveLength(8);
-    expect(c.presets.every((p) => p.sheet === null)).toBe(true);
-    expect(report).toEqual([{ kind: 'liveLoadoutSheetDropped' }]);
+    expect(c.presets[3].equipmentSet).toBe(2);
+    expect(c.presets[3].sheet).not.toBeNull();
+    expect(report[0]).toMatchObject({ kind: 'liveLoadoutApplied', presetId: 'p3', presetName: 'P3' });
   });
 
   it('a Mystic Druid profile without presets keeps the live Druid sigils, not the Mage arrays (#113)', () => {
@@ -498,7 +512,8 @@ describe('M3 import integrity', () => {
     expect(clean.oblivion.sheet.presetId).toBe('preset-2');
     f.activePresetId = 'default';
     const dirty = imp(f).c;
-    expect(dirty.oblivion.sheet.presetId).toBe(dirty.presets[2].id);
+    expect(dirty.oblivion.sheet.presetId).toBe('default');
+    expect(dirty.presets).toHaveLength(2);
   });
 
   it('the active board is imported, so an unlinked preset resolves to it (#110)', () => {
