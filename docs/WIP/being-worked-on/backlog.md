@@ -226,7 +226,7 @@ the rate. A loss costs no key or reward on most content: a failed chapter level 
 clear spends a key (`pve-content.md` §4, §11). The default stays 95%.
 
 **Add, in this order:**
-1. **Push.** Finds the deepest dungeon step, Oblivion floor, raid step or chapter level the build
+1. **Push** (DONE 2026-10-15, slice O4; `simulation.md` §Push). Finds the deepest dungeon step, Oblivion floor, raid step or chapter level the build
    clears at τ or better, and the build that does it. Difficulty only goes up with depth, so: start
    at the current step, climb while the target is met, then bisect. Reuse each step's runs.
 2. **Combat Power guard.** Power has an exact client formula (`stats.md` §8). Crusade Hard, Mythic
