@@ -57,7 +57,8 @@ player's build:
   for any of these was found** in the client (`grep` for the names returns only
   definitions and export lines). **[CODE]** `L1087661`, `L1670939`, `L1862921`,
   `L1868835`. They document the server's fight rules but whether the server runs
-  exactly this code is **[UNRESOLVED]**.
+  exactly this code is **[UNRESOLVED]**. One server dungeon log matches `simulateDungeonStep` in every
+  point it shows (§21).
 - Progress fights use unseeded `Math.random()` (`L1086004`, `L1086029`); there
   is no deterministic replay.
 - The server's validation of `/progress/complete` and of the world-boss
@@ -683,7 +684,7 @@ else: absorbed = min(shield, dmg) ; shield -= absorbed ; hpDamage = dmg - absorb
 At `m = 0.5` every shield point absorbs **2** damage. **[DERIVED]**
 
 The app stamps the value per mode (`engine/pve/fight.js` `PVE_MODES`): campaign and dungeon 0.5
-(client constants), World Boss the affinity record's 0; raid, Oblivion and custom mobs 0.5, the
+(client constants; a server dungeon log shows 0.5, §21), World Boss the affinity record's 0; raid, Oblivion and custom mobs 0.5, the
 dungeon value, labelled as an assumption because the server fight is **[SERVER]**.
 - The live progress loop applies the shield after `processCombatTick`, by walking
   the returned events (`L1076008-1076190`); shield refills from lifesteal / regen
@@ -722,7 +723,8 @@ dungeon value, labelled as an assumption because the server fight is **[SERVER]*
   safety stop reported as a timeout since the loop itself has none), and keeps one shared window
   only when the caller gives one (dps and survival windows, World Boss, custom mobs).
 - Dungeon / raid / boss outcomes are **[SERVER]**; the replay ends with
-  `defender_dead` (mob) or `attacker_dead` (player).
+  `defender_dead` (mob) or `attacker_dead` (player). A server dungeon log follows this step shape
+  (500 ms gaps, timers from 0 per mob, HP and shield carried; §21).
 
 ## §15 Enemy stat generation (campaign)
 
@@ -1059,3 +1061,61 @@ living player dies (`success false`, `timedOut false`). `timeLimitMs` is 240 000
 
 The app's engine fills the open items it needs with labelled assumptions (`CELESTIAL_ASSUMPTIONS`;
 `simulation.md` Target fidelity).
+
+## §21 Dungeon step: what a server log showed
+
+The dungeon fight is **[SERVER]** (§1). One server log of 2026-10-15 shows how it runs: dungeon_4 step 8
+(Obsidian Sentinel, Iron Colossus, Elder Dragon), fought by the user's level-50 Mystic Mage with Runic
+Affliction, Arcane Burst, Arcane Barrage and Void Aegis, lost on mob 3 at 58 560 ms (fixture
+`src/lib/__fixtures__/real/dungeon-run-mystic-d4s8.json`). Its rows are `mapFightTicks` output
+(`L1670515-1670925`): `player_*` / `mob_*` types (§17), `playerHpAfter`, `mobHpAfter`, `mobIndex`, and
+`playerShieldHp` where the engine event carried a shield. With the player's computed sheet and the
+catalogue mobs, every point below matches `simulateDungeonStep` and the shared `simulateFight` (§2, §4,
+§10, §13, §14). The app's replay check (`engine/pve/dungeonReplay.js`) passes all of its rules on this log
+and on the app's own runs of the step. Each point is **[DERIVED] from the 2026-10-15 server log**.
+
+- **Clock.** 10 ms ticks. The first fight starts at 500 ms, each later one 500 ms after the previous
+  mob's `mob_death` row. Spell timers (cooldowns, DoT timers) advance only inside a fight, so the gap
+  does not count: Burst cast at 22 500, mob 2 started at 25 000, the next Burst came at 26 000.
+- **Swings.** Every timer starts at 0 when a fight starts (the shared engine's opening, not the live
+  loop's half interval), so both sides first swing one full interval in (mob 1: 500 + 1 670 = 2 170).
+  The interval is `round(1000 / attackSpeed)` with the remainder carried: the player's 719 ms (Attack
+  Speed 1.39) gives swings 720 ms apart with a 710 every ninth; the mobs' are 1 667, 2 500 and 1 429 ms.
+- **Spells.** DAMAGE spells first cast 1 000 ms into fight time, then on cooldown (Barrage 1 s, Burst
+  3 s). Runic Affliction (DoT, duration and cooldown 10 s, 1 s ticks) ticks on the tick after its cast,
+  then every 1 000 ms; no tick lands when the duration runs out, and `spell_end` and the recast share
+  that tick. A tick's spell rows follow the runtime order (equip order here) and all carry the HP values
+  after the whole spell pass.
+- **Spell damage.** `max(1, floor(base * (1 + spellDamage/100) * (1 - R/100)))` with
+  `base = floor(attack * pct/100)`; a crit multiplies the base by the swing's crit damage (2.2) first.
+- **Heals.** Each spell hit is followed in its tick by a `spell_heal_tick` of
+  `floor(damage * spellVamp/100)` (48.5 %). The tick's heals land in the spell pass, before the swings:
+  HP first (clamped to max HP), then the shield.
+- **Void Aegis** (`vampAlwaysRefills`) refills the shield with the whole vamp heal, not only the
+  overflow: at 38 000 the heals (97 578) lifted HP 51 412 to max and the shield still gained 97 578.
+- **Lifesteal** from swings (7.6 %) heals HP only; it never refills the shield, Void Aegis or not.
+- **Regen.** A pulse of `round(maxHp * hpRegen / 1000)` (461 here) every 100 ms of each fight; the timer
+  restarts with each mob. A `player_regen` row (damage 0) appears only while HP is below max. At full HP
+  the whole pulse refills the shield; a pulse that tops HP up sends the rest there (52 700: +417 HP,
+  +44 shield). A tick in which a spell kills the mob has no pulse.
+- **Shield.** It starts full at `floor(maxHp * 129.6/100)` = 175 626 (`playerShieldMax`), carries over
+  between mobs without a refill, and never exceeds that value. Mob hits use the dungeon's 0.5 shield
+  mitigation, and the row's damage is `round(effectiveDamage)`, the shield spent plus the HP lost: 93 000
+  for a 186 000 hit on a full shield; 155 439 when a 310 000 hit breaks a 154 561 shield and 878 reaches HP.
+- **Blocks.** A player swing the mob blocks (`mob_block`, the mob's 10 % Block) pierces for
+  `round(attack * 3.5/100)` = 2 440 (the player's Penetration; the mobs have no Miss).
+- **End.** A mob dies on `mob_death` (HP 0). The loss ends on `player_death` with the killing hit's
+  effective damage, HP 0 and shield 0; `totalDuration` is that tick, `mobsDefeated` counts the
+  `mob_death` rows and `playerHpRemaining` is 0.
+
+The app's dungeon fight (`engine/pve/fight.js`, mode `dungeon`) follows every point above; the replay check
+found no disagreement, so no engine rule changed.
+
+**[UNRESOLVED]** (the log does not settle them):
+- The spell resist path (§10.2): all three mobs have spell resist 0 and DR 0, so the live loop's `R`
+  (spell resist) and the shared engine's (spell resist + DR) give the same numbers.
+- Whether a row's `playerShieldHp` is the value after its own event or at the end of the tick (the
+  shared engine stamps the end-of-tick value, `L1088990-1089030`): no tick had two combat rows that
+  change the shield.
+- Crit pierces, double hits, Blind, Paralyze and Disruption (the Mystic has none of them), and how a
+  summon, stack sigil, self buff, debuff or transform runs in a server dungeon fight.
