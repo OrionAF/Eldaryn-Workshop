@@ -89,6 +89,7 @@ export function rowViolations(space, B, row, { decided = null } = {}) {
   const legal = legalityOf(space.character, space.presetId, X);
   if (!legal.ok) out.push(`I1 illegal: ${legal.violations.map((v) => `${v.gate} (${v.detail})`).join('; ')}`);
   if (!row.isBaseline && !row.changes.length) out.push('I1 a non-baseline row has no changes');
+  if (space.admissible && !space.admissible(X)) out.push(`I1 below the Combat Power floor of ${space.powerFloor}`);
   const bundled = new Set(row.changes.flatMap((c) => c.bundle ?? []));
   const key = space.key(X);
   const ek = candidateEngineKey(space, X);
@@ -98,6 +99,7 @@ export function rowViolations(space, B, row, { decided = null } = {}) {
       if (!bundled.has(c.id)) out.push(`I2 change ${c.id} cannot be reverted and is in no bundle`);
       continue;
     }
+    if (space.admissible && !space.admissible(Y)) continue; // held by the Combat Power guard: needed for legality
     let same = false;
     try {
       same = candidateEngineKey(space, Y) === ek;

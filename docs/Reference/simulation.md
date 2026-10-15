@@ -159,6 +159,29 @@ takes back changed major glyphs that would be inert. `spec` and `mount` values a
 switch plus its legality bundle; the inner ascent over the new spec's picks or the mount's sockets
 is the driver's.
 
+### Combat Power guard
+
+An optional floor (`request.powerFloor`, a positive whole number; setup step IV "Keep Combat Power at or
+above") is a legality rule of the build space, not a score: Combat Power gates Crusade entry
+(Game/pve-content.md §5), so a suggestion must never drop the player below it.
+
+- A candidate's Power is the client formula (Game/stats.md §8) on the materialised preset in the run's
+  realm: `space.powerOf(c)` (`build/power.js presetPower`), memoised by canonical key.
+  `space.admissible(c)` is false only when a floor is set and the Power is below it.
+- An inadmissible arm is never sampled: the search drops it before any race (its `simulable` check),
+  `canonicalise` does not revert a change whose revert falls below the floor, minimise cannot drop such
+  a change (it is kept with `keptBecause: 'power-floor'`), and attribution does not measure a change
+  added alone when that build is below the floor (`own` null, no remainder for the row). Block domains
+  are not filtered, so the talent fill used for starts may pass through low builds; only admissible
+  starts are kept.
+- I1 also fails a row below the floor; I2 and I3 skip a change whose revert is below the floor (it is
+  needed for legality, like a bundle).
+- A baseline below the floor cannot run: setup shows a blocker, and `optimize` returns `failed` with
+  `baselineViolations: [{gate: 'powerFloor'}]`.
+- Turning it on starts at the highest Crusade gate the preset meets (Hard, Mythic or Mythic+N), else
+  at its current Power. Quick picks: the current Power, that gate when above Mythic+10, Crusade Hard,
+  Mythic and Mythic+1..10 (`game/pveContent.js crusadePowerRequirement`, `ui/optimiserSetup.js`).
+
 ### Legality oracle
 
 `legalityOf(character, presetId, cand)` → `{ok, violations, warnings}`: structural checks; round-trip
@@ -452,8 +475,9 @@ checkpoint as `resumeFrom`. The page sends the character with `runs: []`, so sav
 `search/result.js`; schema `'optimiser-result/2'`. Plain JSON: a non-finite bound is null.
 
 - `status` `'done'|'cancelled'|'failed'`, `aborted` (= cancelled), `error` (`{message}` or null).
-- `request`: `{presetId, realm, mode, target, objective, space, seed, seeds: {search, minimise,
-  confirm}, effort: {level, delta, deltaKind, alpha, n0, maxN}, characterKey}`;
+- `request`: `{presetId, realm, mode, target, objective, space, powerFloor?, seed, seeds: {search, minimise,
+  confirm}, effort: {level, delta, deltaKind, alpha, n0, maxN}, characterKey}` (`powerFloor` only when a
+  floor is set, so the request keys of runs without one are unchanged);
   `characterKey = metricKey('character', character)` (staleness and Run more).
 - `target`: the target spec plus `{kind, label, key, mode, fidelity, assumptions: [{id, label, value,
   tag}]}`; `tag` is `UNRESOLVED` for a server-run fight, `SERVER` for PVP and the World Boss model,
@@ -461,7 +485,8 @@ checkpoint as `resumeFrom`. The page sends the character with `runs: []`, so sav
 - `headline: {better, equivalent, unresolved, worseHidden, text}`.
 - `baseline` (rank 0) and `rows` (rank 1…), each a **Row**: `{rank, tieGroup, isBaseline,
   provisional, key, engineKey, candidate, value: Estimate, aux, vsBaseline: Contrast|null, changes,
-  remainder, writes, runMore, lines}`. `aux`: TTK `{winRate: Estimate, meanMs}`; PVP `{meanMs,
+  power, remainder, writes, runMore, lines}`; `power` is the row's Combat Power (shown as its change
+  against the baseline's). `aux`: TTK `{winRate: Estimate, meanMs}`; PVP `{meanMs,
   timeoutShare, matchups: [{opponentId, name, seat, value, vsBaseline}], defaulted?: [{opponentId,
   keys}]}` (a matchup's `vsBaseline` is unadjusted). `runMore` is `{targetN, reason: 'unresolved'}`
   when the row is too close to call (`targetN`: the next doubling of n reaching `nNeeded`), else null.
@@ -471,15 +496,16 @@ checkpoint as `resumeFrom`. The page sends the character with `runs: []`, so sav
   bestKey, text}`; `headline.text` is `goal.text`. Run more re-derives `goal` from the re-measured rows (the baseline check stays the run's).
 - **Change**: `effect.changesOf`'s `{id, dimension, label, from, to, scope, owner, sideEffects,
   bundle}` plus `own: Contrast|null`, `needed: Contrast|null` (null only for a change that cannot be
-  dropped alone) and `keptBecause`. **WriteGroup** (`writes`): `effect.writesOf`.
+  dropped alone) and `keptBecause` (`'own-effect'`, `'interaction'` or `'power-floor'`). **WriteGroup** (`writes`): `effect.writesOf`.
 - **Estimate** `{est, lo, hi, n, seed, level: 0.95, alphaAdj, method}`; **Contrast** `{delta, lo, hi,
   pct, n, seed, alphaAdj, method, verdict, significant, nNeeded, basis, higherIsBetter}` (`basis`
   `'winRate'` when a TTK contrast fell back to win rate; `'win-rate'` or `'margin'` for the win-rate
   objective, which also adds `winRate: {delta, lo, hi}`, the uncapped paired difference in win-rate
   points, on every contrast including a change's `own`; `n` per lane).
 - `search: {strategy, jointSize, blocks: [{id, enabled, domain, status: 'converged'|'unresolved'|
-  'disabled'|'not-reached'}], starts, optima, evaluated, merged, fights: {search, minimise, confirm,
-  total}, unresolved: [{fromKey, toKey, change, contrast}]}`. There is no `converged` flag: with no
+  'disabled'|'not-reached'}], starts, optima, evaluated, merged, belowFloor, fights: {search, minimise, confirm,
+  total}, unresolved: [{fromKey, toKey, change, contrast}]}` (`belowFloor`: distinct builds the Combat
+  Power guard kept out). There is no `converged` flag: with no
   pass cap an ascent only ends when a pass accepts nothing, so every finished search is at a fixed
   point. Whether that optimum is resolved is `unresolved` (open neighbours, distinct pairs) and the
   blocks' `status`.

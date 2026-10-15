@@ -240,3 +240,21 @@ describe('write groups survive the save (a saved run can be applied)', () => {
     expect(Array.isArray(run.detail.rows[1].writes)).toBe(true);
   });
 });
+
+describe('Combat Power on saved runs', () => {
+  it('keeps the floor and each row\'s Power; older runs read null; power-floor is a kept-because reason', () => {
+    const res = richResult();
+    res.request = { ...res.request, powerFloor: 13000 };
+    res.baseline.power = 20000;
+    res.rows[0].power = 21500;
+    res.rows[0].changes[0].keptBecause = 'power-floor';
+    const r = runFromResult(res, { id: 'p', at: '2026-10-01T00:00:00.000Z' });
+    expect(r.powerFloor).toBe(13000);
+    expect(r.detail.baseline.power).toBe(20000);
+    expect(r.detail.rows[0].power).toBe(21500);
+    expect(r.detail.rows[1]).not.toHaveProperty('power');
+    expect(r.detail.rows[0].changes[0].keptBecause).toBe('power-floor');
+    expect('powerFloor' in normaliseRun({ ...r, powerFloor: -3 })).toBe(false);
+    expect('powerFloor' in runFromResult(richResult(), { id: 'q' })).toBe(false);
+  });
+});

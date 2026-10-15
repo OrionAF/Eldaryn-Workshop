@@ -669,7 +669,7 @@
    "EPIC": 1500,
    "LEGENDARY": 2900,
    "ANCIENT": 1000,
-   "_note": "COMMON=150 is register-traced; ANCIENT=1000 reads out of order vs LEGENDARY=2900 - verify"
+   "_note": "COMMON=150 is read from a register (straight-line code); ANCIENT=1000 is a literal not yet confirmed by a capture; see stats.md section 8"
   },
   "SIGIL_MAX_LEVEL": 30,
   "ALTAR_TIER_BASE": 3,

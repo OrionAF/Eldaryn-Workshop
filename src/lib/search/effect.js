@@ -227,6 +227,7 @@ export function canonicalise(space, B, X0, { mode = space.mode, keyOf } = {}) {
     for (const c of changesOf(space, B, X, { bundles: false })) {
       const Y = space.legalise(revert(space, B, X, c));
       if (space.key(Y) === space.key(X)) continue;
+      if (space.admissible && !space.admissible(Y)) continue; // the Combat Power guard holds it
       if (!legalityOf(space.character, space.presetId, Y, { roundTrip: false }).ok) continue;
       if (key(Y) !== target) continue;
       inert.push(c);

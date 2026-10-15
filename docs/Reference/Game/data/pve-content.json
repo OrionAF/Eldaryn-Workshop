@@ -3571,5 +3571,14 @@
     "influenceReward"
    ]
   }
- ]
+ ],
+ "crusadePowerRequirement": {
+  "hell": {
+   "NORMAL": 0,
+   "HARD": 11000,
+   "MYTHIC": 13000
+  },
+  "mythicPlusGrowthPerLevel": 1.18,
+  "citation": "getCrusadePowerRequirement L1701736-1701800; table L1702277-1702305"
+ }
 }

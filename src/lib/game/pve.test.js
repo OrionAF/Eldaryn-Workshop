@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { PVE_CHAPTERS, PVE_HARD_CHAPTERS, pveChapter, pveHardChapter, chapterLabel, PVE_PROGRESS_CONSTANTS } from './combatPve.js';
 import {
   OBLIVION_XP_CURVE, OBLIVION_FLOORS, CLASSIC_DUNGEONS, PROGRESS_CHAPTERS, oblivionFloor, classicDungeon,
+  crusadePowerRequirement,
 } from './pveContent.js';
 import {
   ARENA_RANKS, PVP_RATING_K, PVP_COMBAT_CEILINGS, STACK_SIGIL_DEFS, arenaRank,
@@ -48,5 +49,15 @@ describe('game/combatPvp catalogue', () => {
     expect(PVP_RATING_K).toBe(200);
     expect(PVP_COMBAT_CEILINGS.CRIT_CHANCE).toBe(95);
     expect(STACK_SIGIL_DEFS.length).toBeGreaterThan(0);
+  });
+});
+
+describe('Hell Crusade Combat Power gates (pve-content.md §5)', () => {
+  it('Normal 0, Hard 11 000, Mythic 13 000 and Mythic+L = round(13 000 * 1.18^L)', () => {
+    expect([crusadePowerRequirement('NORMAL'), crusadePowerRequirement('HARD'), crusadePowerRequirement('MYTHIC')]).toEqual([0, 11000, 13000]);
+    expect(crusadePowerRequirement('MYTHIC', 1)).toBe(15340);
+    expect(crusadePowerRequirement('MYTHIC', 10)).toBe(Math.round(13000 * 1.18 ** 10));
+    expect(crusadePowerRequirement('HARD', 3)).toBe(11000); // the plus level applies to Mythic only
+    expect(crusadePowerRequirement('NOPE')).toBe(0);
   });
 });

@@ -85,7 +85,7 @@ calculateItemQuality(item) = round(mean over item.secondaryStats of calculateSta
                              # returns null when the item has no secondary stats                  [CODE] L677261
 ```
 
-Quality is relative to the *item's own level ceiling* (a roll at max for its level is Q100). The loot filters ("Q91+") use this (see `drops.md`). Whether the server stores `item.quality` with the same function is **[UNRESOLVED]** (the Total Power calculation reads `item.quality` as supplied, L1187237).
+Quality is relative to the *item's own level ceiling* (a roll at max for its level is Q100). The loot filters ("Q91+") use this (see `drops.md`). Server items carry no quality field; Combat Power's hook computes `calculateItemQuality(item)` itself (`useTotalPower`, L1186678-1187190), and two real profiles' server `totalPower` match that exactly (`see stats.md` §8) **[DERIVED]**.
 
 ## §6 Item level, Ascension and Oblivion caps
 
@@ -136,7 +136,7 @@ equipPower = sum over equipped items of
 EQUIP_RARITY_POWER = Common 5, Uncommon 12, Rare 28, Epic 65, Legendary 150, Mythic 340, Ancient 750, Divine 1600, Eternal 3400, Oblivion 7000
 ```
 
-Other components (sigils, enchants, transcendence, pet, mount, relics, talents, awakening, level) belong to their systems.
+`item.quality` here is the hook's `calculateItemQuality(item)` (§5). The full formula and its inputs: `see stats.md` §8.
 
 ## §12 Contribution to character stats
 

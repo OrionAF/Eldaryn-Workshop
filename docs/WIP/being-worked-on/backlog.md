@@ -229,7 +229,8 @@ clear spends a key (`pve-content.md` §4, §11). The default stays 95%.
 1. **Push.** Finds the deepest dungeon step, Oblivion floor, raid step or chapter level the build
    clears at τ or better, and the build that does it. Difficulty only goes up with depth, so: start
    at the current step, climb while the target is met, then bisect. Reuse each step's runs.
-2. **Combat Power guard.** Power has an exact client formula (`stats.md` §8). Crusade Hard, Mythic
+2. **Combat Power guard.** (DONE 2026-10-15, slice O2: `engine/power.js` exact on two real profiles,
+   `stats.md` §8; the guard is in `simulation.md` §Build space.) Power has an exact client formula (`stats.md` §8). Crusade Hard, Mythic
    and Mythic+ entry is gated on it: Mythic+N needs `round(13000 * 1.18^N)` (`pve-content.md` §5).
    Show the Power change on every result row, and add an optional "keep Power ≥ X" whose default is
    the user's current Mythic+ gate. It needs no simulation.
