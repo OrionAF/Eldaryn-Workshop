@@ -50,7 +50,11 @@ export async function race(arms, { objective, getSet, effort, seed, onLook }) {
   let k = 0;
   for (; k < looks.length; k++) {
     const n = looks[k];
-    for (const i of [...alive].sort((a, b) => a - b)) sets[i] = await getSet(arms[i], n);
+    // every arm's look is requested at once (a worker pool samples them in parallel); the decision
+    // below reads them in arm order only once all are in
+    const order = [...alive].sort((a, b) => a - b);
+    const got = await Promise.all(order.map((i) => getSet(arms[i], n)));
+    order.forEach((i, j) => { sets[i] = got[j]; });
     const score = (i) => objective.score(sets[i]);
     leader = [...alive].sort((a, b) => score(b) - score(a) || arms[a].dist - arms[b].dist || a - b)[0];
     open = new Map();

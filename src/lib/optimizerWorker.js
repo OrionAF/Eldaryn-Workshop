@@ -11,9 +11,23 @@
  *               { type: 'checkpoint', checkpoint }
  *               { type: 'done', result }
  *               { type: 'error', message }
+ *
+ * `request.workers` (> 1) gives the task a pool of that many nested engine workers (poolWorker.js,
+ * tasks/pool.js; simulation.md §Worker pool). With one, or where a worker cannot create Workers,
+ * the fights run in this worker as before.
  */
 
 import { runTask } from './tasks/index.js';
+import { createPool, inlinePool } from './tasks/pool.js';
+
+const spawnPoolWorker = () => new Worker(new URL('./poolWorker.js', import.meta.url), { type: 'module' });
+
+/** The pool factory for a job of `workers` engine workers. */
+export function poolFactory(workers, spawn = spawnPoolWorker) {
+  const size = Number.isInteger(workers) && workers > 1 ? workers : 1;
+  if (size === 1 || (spawn === spawnPoolWorker && typeof Worker === 'undefined')) return inlinePool;
+  return (kind, setup) => createPool({ kind, setup, size, spawn });
+}
 
 /** Builds the onmessage handler; `post` is injected so tests can drive it without a Worker. */
 export function createWorkerHandler(post) {
@@ -31,6 +45,7 @@ export function createWorkerHandler(post) {
     try {
       const result = await runTask(request?.mode, request, {
         signal: controller.signal,
+        pool: poolFactory(request?.workers),
         onProgress: (progress) => post({ type: 'progress', progress }),
         onCheckpoint: (checkpoint) => post({ type: 'checkpoint', checkpoint }),
       });

@@ -244,7 +244,8 @@ user-typed sigil damage values. Class `Warrior`/`Sentinel` becomes
 
 View state lives apart from the roster under **`eldaryn_ui_v1`** (`src/lib/uiState.js`): `v`, `lastHash`
 (route to reopen), `areaLast` (last page per area), `optimiserSetups` (per character and preset) and
-`prefs` (`density`, `reduceMotion`, `defaultEffort`). Every read and write is try/catch-guarded, a
+`prefs` (`density`, `reduceMotion`, `defaultEffort`, `cpuProfile`: `eco` | `balanced` (default) | `max`,
+the worker-pool size of a job, simulation.md §Worker pool). Every read and write is try/catch-guarded, a
 missing or broken value falls back to the defaults, and nothing in the roster depends on it. It is not
 exported with the roster. Session jobs (`lib/jobs.svelte.js`) are not persisted; the optional resume
 checkpoints use IndexedDB, opt-in.

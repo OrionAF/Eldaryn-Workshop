@@ -6,6 +6,7 @@
 //   compare(X, Y, alpha) -> Contrast        sequential, on the minimise stage (S2)
 //   contrastAt(X, Y, n, alpha) -> Contrast  fixed n, on the confirm stage (S3)
 //   getSet(arm, n) -> sample set            on the confirm stage (S3)
+//   prefetch?(arms, n?)                     optional: draw the fights the next tests will read, in parallel
 import { hashSeed, mulberry32 } from '../engine/rng.js';
 import { meanInterval, censoredQuantile } from '../engine/stats/index.js';
 import { changesOf, revert, addChange, canonicalise } from './effect.js';
@@ -64,6 +65,7 @@ export async function minimise(ctx, F0, { alpha, alphaFinal }) {
     if (F.key === B.key) return { arm: B, decided: {}, dropped, vsBaseline: null };
     const C = changesOf(space, B.cand, F.cand);
     const tests = C.map((c) => ({ c, Y: without(ctx, F, c) })).filter((t) => t.Y);
+    await ctx.prefetch?.([F, ...tests.map((t) => t.Y)]);
     const res = await holmSequential(tests, alpha, (t, a) => ctx.compare(F, t.Y, a));
     decided = Object.fromEntries(tests.map((t, i) => [t.c.id, res[i]]));
     const droppable = tests.map((t, i) => ({ ...t, r: res[i], i })).filter((t) => t.r.verdict !== 'better');
@@ -155,6 +157,7 @@ export async function attribute(ctx, F, n, { alpha, seed }) {
   const C = changesOf(space, B.cand, F.cand);
   const withOnly = C.map((c) => ctx.armOf(canonicalise(space, B.cand, space.legalise(addChange(space, B.cand, F.cand, c))).candidate));
   const minus = C.map((c) => without(ctx, F, c));
+  await ctx.prefetch?.([F, B, ...withOnly, ...minus.filter(Boolean)], n);
   const own = await holmFixed(withOnly.map((X) => [X, B]), alpha, ctx.contrastAt, n);
   const testable = minus.map((Y, i) => [Y, i]).filter(([Y]) => Y);
   const neededT = await holmFixed(testable.map(([Y]) => [F, Y]), alpha, ctx.contrastAt, n);
