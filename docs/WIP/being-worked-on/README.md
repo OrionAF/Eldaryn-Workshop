@@ -4,28 +4,21 @@ What is in hand right now.
 
 ## Contents
 
-**`rebuild-plan.md`** — the architecture, persisted model v2 and slice plan for the 2026-10-14
-rebuild. Built; kept here until the branch is merged, then it moves to `Reference/Notes/` (the
-decision record) or the archive.
+**`rebuild-plan.md`**: the architecture, persisted model v2 and slice plan for the 2026-10-14
+rebuild. About 50 code comments cite its §2 to §8 (layers and the persisted model). Those sections
+still describe the code. Its §5 (the tiered beam search) is superseded by
+`Reference/simulation.md`. Once the citations are moved to `Reference/data-model.md` and
+`CLAUDE.md`, this file goes to the archive.
 
-**`rebuild-progress.md`** — what was built, wave by wave, the doc findings the port produced, and
-what is still open.
+**`rebuild-progress.md`**: the 2026-10-14 rebuild log. It goes to the archive with `rebuild-plan.md`.
 
-**`github-issues-2026-07-29.md`** — triage of the 10 GitHub issues open on
-2026-07-29, against the v1 app. The rebuild replaced every component those issues name, so
-each issue needs re-checking against the new app before it is fixed or closed (closing them on
-GitHub is the user's call). The UI issues (#1, #2, #4, #5, #7, #8)
-still stand. Re-check the data issues against the extracted catalogues
-before trusting this file's proposed patches:
-- **#6 and #10:** probably answered. `Reference/Game/sigils.md` gives the real
-  spell values, which can be derived from sigil level, and the per-stat caps.
-- **#3 (forge tier):** not settled by `sigils.md`.
-- **#9 (the missing major glyph):** "Festering Coil" does not appear by that
-  name in `mounts-glyphs.md`'s 42-glyph catalogue.
+**`github-issues-2026-07-29.md`**: triage of the 10 GitHub issues open on 2026-07-29, written
+against the v1 app. The 2026-10-15 redesign replaced every component they name, so re-check each
+issue against the current app before fixing or closing it. Closing them on GitHub is the user's call.
 
-## Retired from this queue on 2026-10-14
+## Finished on 2026-10-15
 
-- `combat-audit-2026-07-28.md` and its open item, the PVP survivability
-  factor's shape. The factor was a stand-in for a fight model we could not see.
-  The client ships the real one (`Reference/Game/combat-pvp.md`). Archived.
-- `comment-to-docs-migration.md` — finished. Archived.
+The accuracy-first simulator and UI redesign is built and merged. Its plan, audit findings and
+summary are archived in `Archive/outdated-notes/redesign-2026-10-15/`. The contracts it produced are
+in `Reference/simulation.md`, `Reference/data-model.md` and `Reference/ui/`. Decisions it left open
+are in `../needs-user-input/redesign-decisions.md`.

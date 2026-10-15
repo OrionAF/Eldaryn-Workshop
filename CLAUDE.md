@@ -59,19 +59,32 @@ Seven layers; lower layers never import upper ones (design: `docs/WIP/being-work
 Full rationale in the `src/app.css` header comment — that file is authoritative.
 
 - Design tokens (colors, spacing, radii, fonts) live in `:root` custom properties in `app.css`
-  (from `docs/WIP/being-worked-on/redesign/tokens.css`; `design-system.md` is the spec). Always
+  (spec: `docs/Reference/ui/design-system.md`, with the IA in `ia.md` beside it). Always
   reference these; never hardcode hex/px. Fonts are self-hosted woff2 in `src/assets/fonts/`
   (Grenze, Alegreya Sans, Red Hat Mono); no Google Fonts URL. Build pages from `components/ui/`
-  primitives; the legacy classes below remain as aliases for ~30 older components (alias removal deferred, see redesign/plan.md U12 note).
+  primitives; the legacy classes below remain only as aliases for older components that are not yet ported. Do not use them in new code.
 - **All numeric data renders in tabular monospace** (`--font-data`,
   `font-variant-numeric: tabular-nums`). Add new numeric fields to the existing selector list
   in `app.css`, not via ad hoc inline styles.
 - Reuse the recurring classes rather than inventing new ones: `.btn-gold`, `.btn-ghost`,
   `.btn-danger` (has an `.is-confirming` state), `.rank-controls button` (± steppers),
   `.subheading`, `.micro-label`.
-- Mobile breakpoint is `700px` (rail → bottom tab bar). Check
-  `docs/Reference/Notes/design-review-fixes.md` and `-2.md` for established layout/spacing
-  values before introducing new panel patterns.
+- Breakpoints, panel levels, focus rules and every component's states are in
+  `docs/Reference/ui/design-system.md`. Check it before introducing a new pattern. Mobile breakpoint is
+  `700px` (rail → bottom tab bar).
+
+## Agents and token use
+
+The user's standing rule: when you spin up agents or workflows, use the right model and effort level
+for the job, and save tokens. Never use Opus on max for reading tasks.
+- Haiku (low effort): mechanical or doc-only edits, and grouping or deduplicating text.
+- Sonnet (low or medium): reading and searching, reviews, merges, smoke tests, and code with a clear
+  spec. Use Sonnet high only when the spec is large.
+- Opus (medium): client ports, statistics and game-rule work. Opus high only for the hardest
+  algorithm work.
+- Give agents file paths to read instead of pasting large data into prompts. Do not resume workflows
+  whose agents run in parallel: their cache keys depend on start order, so the resume re-runs
+  finished work. Relaunch only the unfinished items instead.
 
 ## One repo
 

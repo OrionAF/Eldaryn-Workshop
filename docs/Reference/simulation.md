@@ -1,8 +1,7 @@
 # Simulation contracts
 
 How the app measures builds: the statistics every tool shares, the optimiser's search and its
-result shape. App contracts only; game facts are in `Game/`. Design record:
-`docs/WIP/being-worked-on/redesign/plan.md` §A.6-§A.12.
+result shape. App contracts only; game facts are in `Game/`. This file is the contract; the code cites it.
 
 ## Statistics
 
