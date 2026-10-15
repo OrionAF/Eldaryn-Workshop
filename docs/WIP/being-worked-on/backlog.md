@@ -4,16 +4,27 @@
 
 | Order | Item | Size | Status |
 |---|---|---|---|
-| 1 | §9 Stat weights chart | M | Built on rebuild2/STATW, not merged |
-| 2 | §2 Rankings profiles as PVP opponents (and Celestial partners) | M | Not started |
-| 3 | §10 Arena reward weighting | S | Needs §2 |
-| 4 | §7 PVE replay check | L | Not started; needs dungeon logs |
-| 5 | §10 Crusade (solo) | L | Not started |
-| 6 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Not started |
-| - | §12 follow-up: a progress tolerance for builds that never win | S | Built on rebuild2/TOL, not merged |
-| - | §11 follow-up: Push on the Celestial Trial | S | Not started |
+| 1 | §16 Exact dominance pruning for talents, relics, pets and sigil slots | M | Queued (wave 3, first) |
+| 2 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Queued (wave 3, after §16: it builds on §16's dominance rules) |
+| 3 | §10 Arena reward weighting | S | Not started (§2 is merged) |
+| 4 | §7 PVE replay check | L | Queued (wave 3); fixtures committed (dungeon log and its Mystic) |
+| 5 | §10 Crusade (solo) | L | Queued (wave 3); a client port labelled unverified (no solo Crusade log) |
+| - | §12 open item: the finalist count and the repeated baseline test | S | Not started (see §12) |
 | - | §11 Celestial open questions | - | Waits for more server logs |
-| Done | §6 results name owned items (and the Loot bag stats, the interaction badge); §15 Fortress boss on the duel engine; §11 Celestial engine and Optimiser target; §1 Optimiser step list; §3 setup estimates; §10 Push, Fortress shield fix; §12 highest chance to win; §13 glyph pruning; §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target | - | Merged |
+| Done | §9 stat weights chart; §2 Rankings profiles as opponents and Celestial partners; §12 progress tolerance; §11 Push on the Celestial Trial; §6 results name owned items (and the Loot bag stats, the interaction badge); §15 Fortress boss on the duel engine; §11 Celestial engine and Optimiser target; §1 Optimiser step list; §3 setup estimates; §10 Push, Fortress shield fix; §12 highest chance to win; §13 glyph pruning; §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target | - | Merged |
+
+## 16. Optimiser: exact dominance pruning for talents, relics, pets and sigil slots
+
+**Ask** (2026-10-15): after a slow Celestial run (NORMAL L50 with a partner: 1.58M fights in 16 min, still on pass 9; sigils and talents were 94% of the fights) the user asked what else can be pruned, like the mount (§14) and glyph (§13) rules.
+
+**Rules**, each exact under the glyph rule of simulation.md §Build space (more of a stat never hurts; a heuristic while a thorns source is active):
+- Talents are pure linear stat bonuses (Game/talents.md §5; 133 talents, no negative value), so drop any talent move another candidate of the same visit (or the incumbent) matches or beats on every stat.
+- Relics are pure stat bonuses (Game/relics.md §1, §7): only full sets (a free slot is never better than one more relic), and drop any set another set matches or beats on every stat.
+- Pets have no ability or skill (Game/pets.md, overview): the same dominance, and never "no pet" while a pet is owned.
+- Sigils: never leave a slot empty (no sigil in the catalogue has a negative value), only once the combat docs confirm that one spell never delays or weakens another; say which rule the check rests on.
+- Targets that cannot hurt the player (the training dummy; the Fortress boss while the player's HP exceeds the boss's 60 s maximum and no thorns source is active): dominance on the attacking stats only, and heal or shield sigils become interchangeable. Each condition is checked per run, not assumed.
+
+**Measured** per visit, at the active preset (scratch measurement 2026-10-15): talents Sentinel 146 to 51 (13 on attack stats only), Warrior 162 to 78 (8); relics Warrior 163 to 36 (2), Sentinel 16 to 1; minor glyphs on attack stats only 78 to 36 and 61 to 11; sigils 299 to 220 with full slots.
 
 ## 10. Optimiser objectives: trim, fix the target range, add Push, a Power guard and Crusade
 
@@ -102,7 +113,7 @@ Measured on the user's Sentinel (`profile-sentinel-l85-oct15b.json`), Hard Forsa
 - On step 6 almost nothing wins. Every arm ties with the leader within 1 point by 2,048 fights and the race ends there, cheaper than the old race. No build won on the minimise and confirm fights either, so those contrasts compare progress and run towards maxN in minimise (523,264 fights) and confirm (419,824 fights). The whole run costs twice the old one (368 s against 200 s).
 - Was open (built below, and the measurement does not bear out the diagnosis): progress contrasts between builds that never win run to maxN when their progress is close. A progress tolerance (a δ for the margin) would stop them early.
 
-**Progress tolerance (slice TOL, branch `rebuild2/TOL`, not merged).** Progress contrasts between builds that won no fight now tie inside δ_progress = √(δ / 2) of the step's HP (7.1 points at Standard), the finest gap the rate's own fights can settle (simulation.md §Win rate). Decisions with any win, the exact discordant bounds and Push's 10% floor are unchanged. On a synthetic never-win race of 5 arms within 1 point of progress, the race fell from 13,312 fights (4,096 per arm) to 5,120 (1,024 per arm).
+**Progress tolerance (slice TOL, merged 2026-10-15).** Progress contrasts between builds that won no fight now tie inside δ_progress = √(δ / 2) of the step's HP (7.1 points at Standard), the finest gap the rate's own fights can settle (simulation.md §Win rate). Decisions with any win, the exact discordant bounds and Push's 10% floor are unchanged. On a synthetic never-win race of 5 arms within 1 point of progress, the race fell from 13,312 fights (4,096 per arm) to 5,120 (1,024 per arm).
 
 Re-measured on step 6 (same setup; `src/lib/__fixtures__/real/progressTolerance.test.js`, `PROGRESS_TOL=1`). Both runs took 279 s on the same machine, so the seconds below are wall-clock noise; the fights are exact.
 
@@ -144,7 +155,7 @@ The old engine's pick (Elusive Supremacy, Blinding Mark, Mist Veil) is the set t
 
 ## 11. Celestial Trial (party of 2), and party roles
 
-**Status (2026-10-15).** The Celestial engine is merged (slice C1), replay-checked against five server logs. The Optimiser target (C2: partner from my other characters or my opponents, or solo; tank; starter; tactics; difficulty; level) is merged (2026-10-15; simulation.md §Celestial Trial). Push on Celestial (the deepest level cleared at a target rate) is built on rebuild2/PUSHC, not merged (2026-10-15; simulation.md §Push, §Celestial Trial). Open questions (Overload end and Judgment, NORMAL Overload, stack-player rule) wait for more logs.
+**Status (2026-10-15).** The Celestial engine is merged (slice C1), replay-checked against five server logs. The Optimiser target (C2: partner from my other characters or my opponents, or solo; tank; starter; tactics; difficulty; level) is merged (2026-10-15; simulation.md §Celestial Trial). Push on Celestial (the deepest level cleared at a target rate) is merged (2026-10-15; simulation.md §Push, §Celestial Trial). Open questions (Overload end and Judgment, NORMAL Overload, stack-player rule) wait for more logs.
 
 **Ask** (2026-10-15): can the Celestial Trial be simulated? The user supplied one server fight log
 (Hard, level 85, the user plus a tank partner). It stays outside the repo because it names another
@@ -236,7 +247,7 @@ Push estimates the start rung's build search only.
 
 ## 9. Stat weights chart (like the v1 one)
 
-**Status (2026-10-15).** Built on `rebuild2/STATW`, not merged: a Stat weights panel on the Stat Sheet
+**Status (2026-10-15).** Merged: a Stat weights panel on the Stat Sheet
 page (B3) runs a job for the active preset; contract in `simulation.md` §Stat weights. The survival
 chart's reference enemy has its Attack tuned per run so the preset survives about half the time (a
 fixed Attack measured nothing for most builds).
@@ -265,7 +276,7 @@ formula, not from fights.
 
 ## 2. Import other players' profiles as PVP opponents
 
-**Status (2026-10-15).** Built on rebuild2/RANK, not merged. Import kind `opponent` (`importPlan.js`), `opponents[].imported {playerId, level, importedAt}`, re-import by playerId updates in place, the Opponents page shows the source and points to re-import, and a Rankings opponent is a Celestial partner with its real level. Details: data-model.md (Rankings opponents), simulation.md §Celestial Trial. The player id and name field names in the real file are assumed (`playerId`, `name`); check against a real capture.
+**Status (2026-10-15).** Merged. Import kind `opponent` (`importPlan.js`), `opponents[].imported {playerId, level, importedAt}`, re-import by playerId updates in place, the Opponents page shows the source and points to re-import, and a Rankings opponent is a Celestial partner with its real level. Details: data-model.md (Rankings opponents), simulation.md §Celestial Trial. The player id and name field names in the real file are assumed (`playerId`, `name`); check against a real capture.
 
 **Ask.** Import the profile JSON that the game returns when you open another player from Rankings,
 and save it as a PVP opponent.
