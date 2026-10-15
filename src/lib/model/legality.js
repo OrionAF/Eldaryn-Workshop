@@ -150,8 +150,18 @@ export function checkPreset(character, preset) {
   return out;
 }
 
+/** Features that stay saved but stop counting below their unlock level, ascending (classes.md §3). */
+const LEVEL_GATES = [
+  ['Set 2', UNLOCK_LEVELS.DUAL_EQUIP],
+  ['Set B', UNLOCK_LEVELS.DUAL_TALENTS],
+  ['Mounts', UNLOCK_LEVELS.MOUNTS],
+  ['Transcendence', UNLOCK_LEVELS.TRANSCENDENCE],
+  ['Transcendence presets', UNLOCK_LEVELS.TRANSCENDENCE_PRESETS],
+];
+
 /**
  * What changing the level to `newLevel` would drop, for the confirm dialog (ia.md §4.1).
+ * `inert` names the gates the change falls below: nothing is deleted for them, they just stop counting.
  * `normalise` is normaliseCharacter, injected because model/index.js imports this file.
  */
 export function previewLevelChange(character, newLevel, normalise) {
@@ -168,5 +178,6 @@ export function previewLevelChange(character, newLevel, normalise) {
     sigilsDropped: equippedOf(character).filter((k) => !kept.has(k)),
     relicsDropped: Math.max(0, relicCount(character) - relicCount(after)),
     awakeningPointsLost: Math.max(0, (character.awakening?.level ?? 0) - (after.awakening?.level ?? 0)),
+    inert: LEVEL_GATES.filter(([, at]) => lvl(character.level) >= at && after.level < at).map(([name]) => name),
   };
 }
