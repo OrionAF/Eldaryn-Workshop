@@ -324,7 +324,7 @@ stored or committed; only the mapped fields below survive, and `normaliseCharact
 | `oblivionPrestige.oblivion.{equipment,enchantSlots,enchantStones,level}` | `equipment.oblivion`, `oblivionEnchantStones`, `oblivion.level` | `unlocked`, `activeRealm` too |
 | `enchantStones` | `enchantStones` | `OBLIVION_POWER` rows dropped (derived); `activated` kept, so a sealed stone adds nothing |
 | `talentState` / `talentState2`, preset `talentSet` 1\|2 | `talentSets[0\|1]`, `talentSet` 0\|1 | |
-| `presets[]` | `presets` (max 8) | none: one preset from the live loadout (active sets, equipped pet/mount/relics/sigils). A live loadout that differs from the active preset is appended as "Live loadout" and takes the sheet; at 8 presets the sheet is dropped (report `liveLoadoutSheetDropped`) |
+| `presets[]` | `presets` (max 8) | none: one preset from the live loadout (active sets, equipped pet/mount/relics/sigils, transcendence preset). A live loadout that differs from the game's selected preset (`activePresetId`) UPDATES that preset (id, name and icon kept; report `liveLoadoutApplied`) and it takes the sheet. Fallback when the profile has no such preset: the live loadout is appended once as "Live loadout" (at 8 presets the sheet has no owner) |
 | `sigilState` live lists | the live preset's sigils | Mystic Druid (active talent set `MYSTIC_DRUID`) reads `druidEquippedSpecies` / `druidUtilitySlotSpecies`, every other class `equippedSpecies` / `utilitySlotSpecies` |
 | `sigilState.ownedSigils`, `altarTier` | `sigils` | per-sigil `activationCondition` becomes `owned[species].condition`; an Ancient in `sigilSpecies` moves to `ancientSigilSpecies` |
 | `petState` | `pets` | Attack Speed / Crit Damage / Minion Attack Speed secondaries x100 (pets keep percent points); altar level from `totalXp` + `tier` (Game/pets.md §6) |
@@ -332,10 +332,10 @@ stored or committed; only the mapped fields below survive, and `normaliseCharact
 | `relicState.ownedRelics`, `extraSlotsPurchased`, `awakeningState`, `transcendencePresets` | `relics`, `extraRelicSlots`, `awakening`, `transcendence` | `activeTranscendencePresetId` kept |
 | `skills.<id>Level` | `skills.<id>` | `excludedDropStats` becomes `attunementBans` |
 | `fortressBuffs.ownedFortressIds` | `fortress.owned` | null means none |
-| `computedStats` | the live-loadout preset's `sheet` (the active preset when clean) | the Oblivion sheet when the rift is the active realm, with `presetId` = that same preset; only finite `total*`/`raw*` numbers; sheets arrive unverified (no `inputsKey`, §6) |
+| `computedStats` | the selected (active) preset's `sheet`, after the live loadout was applied to it | the Oblivion sheet when the rift is the active realm, with `presetId` = that same preset; only finite `total*`/`raw*` numbers; sheets arrive unverified (no `inputsKey`, §6) |
 
-`gameProfileToCharacter(profile, {report})` appends `{kind: 'liveLoadout', presetId}` /
-`{kind: 'liveLoadoutSheetDropped'}` to `report`; `importJson(text, roster, {report})` also passes it to
+`gameProfileToCharacter(profile, {report})` appends `{kind: 'liveLoadoutApplied', presetId, presetName, fields}` (`fields` = the changed preset
+field names) to `report`; `importJson(text, roster, {report})` also passes it to
 `normaliseCharacter` (M1/M2 `dropped`/`defaulted` entries), and `rosterStore.importFromJson` returns it.
 
 **One glyph, several mounts.** The game lets one glyph id sit in the sockets of more than one mount and
