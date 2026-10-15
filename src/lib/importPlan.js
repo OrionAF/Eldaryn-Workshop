@@ -53,13 +53,24 @@ export function characterCounts(c) {
   ];
 }
 
+const LIVE_FIELD_LABEL = {
+  equipmentSet: 'gear set',
+  talentSet: 'talent set',
+  petId: 'pet',
+  mountId: 'mount',
+  relicIds: 'relics',
+  sigilSpecies: 'sigils',
+  utilitySigilSpecies: 'sigils',
+  transcendencePresetId: 'transcendence',
+};
+
 /** Plain-language lines for one report entry (model M1/M2/M3 kinds; unknown kinds are shown as their kind). */
 export function describeReportEntry(e) {
   switch (e.kind) {
-    case 'liveLoadout':
-      return { tone: 'info', text: 'The gear and talents worn in the game differ from the active preset, so they are saved as a preset called "Live loadout".' };
-    case 'liveLoadoutSheetDropped':
-      return { tone: 'warn', text: 'The stat sheet was not loaded: there is no room for a "Live loadout" preset (8 presets at most).' };
+    case 'liveLoadoutApplied': {
+      const names = [...new Set((e.fields ?? []).map((f) => LIVE_FIELD_LABEL[f] ?? f))];
+      return { tone: 'info', text: `Updated ${e.presetName ?? 'the selected preset'} to match what you are wearing${names.length ? `: ${names.join(', ')}` : ''}.` };
+    }
     case 'conditionConflict':
       return { tone: 'warn', text: `Sigil ${e.species}: two conditions were set, kept "${e.kept}".` };
     case 'secondaryClamped':
