@@ -458,9 +458,14 @@ function cappedWinRateContrast(tau, x, y, alpha, max = false) {
   let hi = Math.min(pairedHi, cap(wx.hi) - cap(wy.lo), uB);
   // the intervals disagree (each holds at its own level): fall back to the Tango bounds alone
   if (lo > hi) [lo, hi] = [Math.min(pairedLo, pairedHi), Math.max(pairedLo, pairedHi)];
-  const both = max ? sumOf(bx) + sumOf(by) === 0 : Math.max(wx.hi, wy.hi) < tau;
+  const noWins = sumOf(bx) + sumOf(by) === 0;
+  const both = max ? noWins : Math.max(wx.hi, wy.hi) < tau;
+  // with no win on either side the margin is pure progress and takes the progress tolerance (δ_progress)
   const then = both
-    ? { ...pairedT(xs.slice(0, n), ys.slice(0, n), { alpha: alpha / 4 }), method: 'paired-t', basis: 'margin', higherIsBetter: true, ref: meanInterval(ys.slice(0, n)).est }
+    ? {
+      ...pairedT(xs.slice(0, n), ys.slice(0, n), { alpha: alpha / 4 }), method: 'paired-t', basis: 'margin', higherIsBetter: true,
+      ref: meanInterval(ys.slice(0, n)).est, ...(noWins ? { deltaKind: 'progress' } : {}),
+    }
     : null;
   const rate = { delta: t.delta, lo: Math.max(t.lo, -uC), hi: Math.min(t.hi, uB) };
   return {
