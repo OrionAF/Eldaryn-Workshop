@@ -4,9 +4,26 @@
 
 export const UI_KEY = 'eldaryn_ui_v1';
 
-const defaults = () => ({ v: 1, lastHash: null, areaLast: {} });
+export const DENSITIES = ['comfortable', 'compact'];
+export const EFFORTS = ['quick', 'standard', 'thorough'];
 
-/** @returns {{v:1, lastHash:string|null, areaLast:Record<string,string>}} */
+/** Preferences (G6): density, reduced motion, the effort tools start with (plan Q4: Standard). */
+export const defaultPrefs = () => ({ density: 'comfortable', reduceMotion: false, defaultEffort: 'standard' });
+
+const defaults = () => ({ v: 1, lastHash: null, areaLast: {}, prefs: defaultPrefs() });
+
+/** Any value -> valid preferences; a field that is missing or not one of the allowed values keeps its default. */
+export function normalisePrefs(raw) {
+  const out = defaultPrefs();
+  if (raw && typeof raw === 'object') {
+    if (DENSITIES.includes(raw.density)) out.density = raw.density;
+    if (typeof raw.reduceMotion === 'boolean') out.reduceMotion = raw.reduceMotion;
+    if (EFFORTS.includes(raw.defaultEffort)) out.defaultEffort = raw.defaultEffort;
+  }
+  return out;
+}
+
+/** @returns {{v:1, lastHash:string|null, areaLast:Record<string,string>, prefs:{density:string, reduceMotion:boolean, defaultEffort:string}}} */
 export function loadUi() {
   const ui = defaults();
   try {
@@ -16,6 +33,7 @@ export function loadUi() {
       if (raw.areaLast && typeof raw.areaLast === 'object') {
         for (const [k, v] of Object.entries(raw.areaLast)) if (typeof v === 'string') ui.areaLast[k] = v;
       }
+      ui.prefs = normalisePrefs(raw.prefs);
     }
   } catch {
     // no storage, blocked storage or junk: defaults
@@ -27,7 +45,7 @@ export function loadUi() {
 export function saveUi(patch) {
   try {
     const cur = loadUi();
-    const next = { ...cur, ...patch, areaLast: { ...cur.areaLast, ...(patch.areaLast ?? {}) }, v: 1 };
+    const next = { ...cur, ...patch, areaLast: { ...cur.areaLast, ...(patch.areaLast ?? {}) }, prefs: normalisePrefs({ ...cur.prefs, ...(patch.prefs ?? {}) }), v: 1 };
     localStorage.setItem(UI_KEY, JSON.stringify(next));
     return true;
   } catch {

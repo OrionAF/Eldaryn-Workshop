@@ -2,7 +2,8 @@
 import { newCharacter, normaliseCharacter } from '../model/index.js';
 import { normaliseClass, normaliseLevel, normaliseBaseResidual } from '../model/character.js';
 import { previewLevelChange as previewLevel } from '../model/legality.js';
-import { importJson, downloadRoster } from '../storage.js';
+import { importJson, downloadRoster, downloadCharacter } from '../storage.js';
+import { mergeProfileIntoCharacter } from '../model/merge.js';
 
 export function createCharactersStore(ctx) {
   /** @returns {string} the new character's id (it becomes the current character). */
@@ -109,8 +110,43 @@ export function createCharactersStore(ctx) {
     return { kind, name: character?.name ?? null, report };
   }
 
+  /**
+   * "Update <name>" (ia.md §3.2): bring a game profile's character (normalised, from importPlan) into the
+   * existing character `id`, keeping its presets, opponents and runs (model/merge.js). Returns the character
+   * as it was, for restoreCharacter (the one-step undo), or null when `id` is unknown.
+   * @returns {{before: object, report: object[]}|null}
+   */
+  function updateCharacterFromProfile(id, incoming) {
+    const roster = ctx.roster();
+    const idx = roster.characters.findIndex((ch) => ch.id === id);
+    if (idx === -1) return null;
+    const before = JSON.parse(JSON.stringify(roster.characters[idx]));
+    const report = [];
+    roster.characters[idx] = mergeProfileIntoCharacter(before, incoming, { report });
+    roster.currentId = id;
+    ctx.persist();
+    return { before, report };
+  }
+
+  /** Put back a character exactly as `snapshot` held it (undo of updateCharacterFromProfile). */
+  function restoreCharacter(snapshot) {
+    const roster = ctx.roster();
+    const idx = roster.characters.findIndex((ch) => ch.id === snapshot?.id);
+    if (idx === -1) return false;
+    roster.characters[idx] = normaliseCharacter(snapshot);
+    roster.currentId = snapshot.id;
+    ctx.persist();
+    return true;
+  }
+
   function exportDownload() {
     downloadRoster(ctx.roster());
+  }
+
+  /** Download one character as a one-character roster file (it imports back as a backup). */
+  function exportCharacterDownload(id = ctx.current()?.id) {
+    const c = ctx.findCharacter(id);
+    if (c) downloadCharacter(ctx.roster(), c);
   }
 
   return {
@@ -124,6 +160,9 @@ export function createCharactersStore(ctx) {
     setBaseResidual,
     setOblivionUnlocked,
     importFromJson,
+    updateCharacterFromProfile,
+    restoreCharacter,
     exportDownload,
+    exportCharacterDownload,
   };
 }

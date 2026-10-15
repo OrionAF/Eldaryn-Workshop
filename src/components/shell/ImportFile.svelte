@@ -1,49 +1,31 @@
 <script>
   /**
-   * ImportFile.svelte - the hidden file input behind the top-bar Import button and the phone Import
-   * tab. This is the interim G3: pick a file, import it through the store, report through notify().
-   * The kind-detecting dialog with the import report replaces it (U4). A game profile lands on
-   * Overview (ia.md §5.1); a bad file shows the specific error and leaves the roster untouched.
+   * ImportFile.svelte - the shell's single import entry (G3): hosts the import dialog, opens it from the
+   * top-bar Import button and the phone Import tab (`open()`), and opens it for a .json file dropped
+   * anywhere on the window (ia.md §2.1). The dialog itself is components/import/ImportDialog.svelte.
    */
-  import { rosterStore } from '../../lib/rosterStore.svelte.js';
-  import { ImportError } from '../../lib/storage.js';
-  import { notify } from '../../lib/notify.svelte.js';
-  import { go } from '../../lib/router.svelte.js';
-  import { AFTER_IMPORT_PAGE_ID } from '../../lib/routes.js';
+  import ImportDialog from '../import/ImportDialog.svelte';
+  import { openImport, loadImportFile } from '../../lib/importFlow.svelte.js';
 
-  let input = $state(null);
-
-  /** Open the file picker. */
+  /** Open the import dialog. */
   export function open() {
-    input?.click();
+    openImport();
   }
 
-  function readFileAsText(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsText(file);
-    });
+  const hasFile = (e) => [...(e.dataTransfer?.types ?? [])].includes('Files');
+
+  function onDragOver(e) {
+    if (hasFile(e)) e.preventDefault(); // allow the drop
   }
 
-  async function onFile(e) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
+  function onDrop(e) {
+    if (e.defaultPrevented || !hasFile(e)) return;
+    const file = e.dataTransfer?.files?.[0];
     if (!file) return;
-    try {
-      const result = rosterStore.importFromJson(await readFileAsText(file));
-      if (result.kind === 'profile') {
-        notify(`Imported ${result.name} from a game profile`, { kind: 'success' });
-        go(AFTER_IMPORT_PAGE_ID);
-      } else {
-        notify('Imported the roster', { kind: 'success' });
-      }
-    } catch (err) {
-      const reason = err instanceof ImportError ? err.message : 'not a valid roster file or game profile.';
-      notify(`Import failed: ${reason}`, { kind: 'error' });
-    }
+    e.preventDefault();
+    loadImportFile(file);
   }
 </script>
 
-<input type="file" accept="application/json" bind:this={input} onchange={onFile} hidden aria-label="Import file" />
+<svelte:window ondragover={onDragOver} ondrop={onDrop} />
+<ImportDialog />

@@ -149,6 +149,16 @@ function syntaxErrorLine(text) {
   return at === null ? null : text.slice(0, at).split('\n').length;
 }
 
+/** JSON.parse that fails with an ImportError naming the line of the syntax error. */
+export function parseJsonText(jsonText) {
+  try {
+    return JSON.parse(jsonText);
+  } catch (e) {
+    const line = syntaxErrorLine(String(jsonText));
+    throw new ImportError(`This is not valid JSON${line ? ` (line ${line})` : ''}: ${e.message}`, { line, cause: e });
+  }
+}
+
 /** Serialise the roster to a pretty JSON string for export. */
 export function exportRoster(roster) {
   return JSON.stringify(roster, null, 2);
@@ -170,13 +180,7 @@ export function importRoster(jsonText) {
  * @returns {{kind: 'profile'|'roster', roster: object, character: object|null}}
  */
 export function importJson(jsonText, roster = emptyRoster(), { now, report } = {}) {
-  let parsed;
-  try {
-    parsed = JSON.parse(jsonText);
-  } catch (e) {
-    const line = syntaxErrorLine(String(jsonText));
-    throw new ImportError(`This is not valid JSON${line ? ` (line ${line})` : ''}: ${e.message}`, { line, cause: e });
-  }
+  const parsed = parseJsonText(jsonText);
   if (!isGameProfile(parsed)) {
     const imported = normaliseRoster(parsed);
     if (imported.characters.length === 0) {
@@ -209,7 +213,22 @@ export function defaultExportFilename(roster) {
 
 /** Trigger a browser download of the roster as a .json file. */
 export function downloadRoster(roster, filename = defaultExportFilename(roster)) {
-  const blob = new Blob([exportRoster(roster)], { type: 'application/json' });
+  saveTextFile(exportRoster(roster), filename);
+}
+
+/** A roster holding only `character`: what "Export this character" writes. Restoring it replaces the roster. */
+export function characterRoster(roster, character) {
+  return { schemaVersion: roster.schemaVersion, characters: [character], currentId: character.id };
+}
+
+/** Download one character as a one-character roster file. */
+export function downloadCharacter(roster, character) {
+  const one = characterRoster(roster, character);
+  saveTextFile(exportRoster(one), defaultExportFilename(one));
+}
+
+function saveTextFile(text, filename) {
+  const blob = new Blob([text], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

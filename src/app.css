@@ -244,6 +244,21 @@
   }
 }
 
+/* Preferences (G6, lib/prefs.svelte.js): the same reduction on request, and a denser row and control height
+   for fine pointers only (touch keeps the 44px hit size). */
+:root[data-reduce-motion='true'] { --dur-1: 0.01ms; --dur-2: 0.01ms; --dur-3: 0.01ms; }
+:root[data-reduce-motion='true'] *,
+:root[data-reduce-motion='true'] *::before,
+:root[data-reduce-motion='true'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+@media (pointer: fine) {
+  :root[data-density='compact'] { --row-h: 28px; --control-h: 28px; }
+}
+
 /* ── Base elements ─────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
