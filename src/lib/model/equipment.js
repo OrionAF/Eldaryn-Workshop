@@ -120,12 +120,13 @@ export function emptyItem() {
 /**
  * Any value -> a valid Item or null. `cls` gates the secondary pool (game/classes available());
  * a null class applies no class gating. Idempotent. Secondary values above the item-level ceiling are
- * clamped and illegal conduits dropped; both push an entry to `report` (an array) when given.
+ * clamped and illegal conduits dropped; `ascension` (Drop Check callers) caps the item level at the
+ * character's own step, owned gear leaves it null (top step, see itemWarnings); both push an entry to `report` (an array) when given.
  */
-export function normaliseItem(raw, { cls = null, realm = 'base', report = null, slot = null } = {}) {
+export function normaliseItem(raw, { cls = null, realm = 'base', report = null, slot = null, ascension = null } = {}) {
   if (!raw || typeof raw !== 'object') return null;
   const rarity = RARITY_IDS.includes(raw.rarity) ? raw.rarity : null;
-  const itemLevel = intIn(raw.itemLevel, 1, maxItemLevel(realm));
+  const itemLevel = intIn(raw.itemLevel, 1, maxItemLevel(realm, ascension));
   const pool = new Set((cls ? secondaryPoolFor(cls) : SECONDARY_STAT_POOL).map((s) => s.type));
   const seen = new Set();
   const secondaryStats = [];
