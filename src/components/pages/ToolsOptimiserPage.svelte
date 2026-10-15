@@ -339,6 +339,9 @@
             />
             <span class="hint">Empty means the whole fight.</span>
           {/if}
+          {#if setup.objective.kind === 'win-chance'}
+            <span class="hint" data-testid="win-chance-explain">Finds the build with the best clear chance; ties go to the fewest changes.</span>
+          {/if}
           {#if setup.objective.kind === 'win-rate'}
             <WinRateTarget bind:objective={setup.objective} />
           {/if}

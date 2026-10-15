@@ -53,6 +53,24 @@ export function wilsonInterval(k, n, { alpha = 0.05 } = {}) {
   return { est: w.p, lo: w.lo, hi: w.hi, n, alphaAdj: alpha, method: 'wilson' };
 }
 
+/**
+ * One-sided Clopper-Pearson upper bound: the p with P(Bin(n, p) <= k) = alpha, so a true rate at or above
+ * it shows k or fewer events with probability at most alpha. Exact, no normal approximation; k = 0 gives
+ * 1 - alpha^(1/n). `alpha` is one-sided here.
+ */
+export function binomialUpper(k, n, alpha) {
+  if (n <= 0 || k >= n) return 1;
+  if (k <= 0) return 1 - alpha ** (1 / n);
+  let lo = k / n;
+  let hi = 1;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if (binomCdf(k, n, mid) > alpha) lo = mid;
+    else hi = mid;
+  }
+  return hi;
+}
+
 /** Paired t on the differences x[i] - y[i] (shared prefix when lengths differ). */
 export function pairedT(x, y, { alpha = 0.05 } = {}) {
   const n = Math.min(x.length, y.length);

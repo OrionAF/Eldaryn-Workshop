@@ -59,6 +59,7 @@ export function normaliseSetup(raw, character, defaultEffort = 'standard') {
   const o = r.objective && typeof r.objective === 'object' ? strip(r.objective, OBJECTIVE_ECHO) : null;
   out.objective = o && allowed.includes(o.kind) ? o : { kind: allowed[0] };
   if (out.objective.kind === 'survival' && !(Number.isFinite(out.objective.seconds) && out.objective.seconds >= 5)) delete out.objective.seconds;
+  if (out.objective.kind === 'win-chance') out.objective = { kind: 'win-chance' }; // no target: it maximises the clear rate
   if (out.objective.kind === 'win-rate' && !(Number.isFinite(out.objective.target) && out.objective.target >= WIN_RATE_TARGET.min && out.objective.target <= WIN_RATE_TARGET.max)) delete out.objective.target;
 
   if (r.space && typeof r.space === 'object') {
