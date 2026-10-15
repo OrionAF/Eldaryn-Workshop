@@ -12,6 +12,10 @@ still describe the code. Its §5 (the tiered beam search) is superseded by
 
 **`rebuild-progress.md`**: the 2026-10-14 rebuild log. It goes to the archive with `rebuild-plan.md`.
 
+**`backlog.md`**: features the user asked for, queued after the current speed work: the optimiser step
+list, PVP opponents imported from Rankings profiles, setup estimates, and a "Clear without dying"
+PVE goal.
+
 **`github-issues-2026-07-29.md`**: triage of the 10 GitHub issues open on 2026-07-29, written
 against the v1 app. The 2026-10-15 redesign replaced every component they name, so re-check each
 issue against the current app before fixing or closing it. Closing them on GitHub is the user's call.
