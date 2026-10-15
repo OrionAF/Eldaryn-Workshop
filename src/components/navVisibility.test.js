@@ -1,19 +1,27 @@
 import { it, expect } from 'vitest';
-import { NAV_ITEMS, isNavVisible, visibleNav } from './navVisibility.js';
+import { NAV_ITEM_COUNT, isLocked, navGroups, needsClass } from './navVisibility.js';
 
-it('hides Oblivion unless character.oblivion.unlocked is exactly true', () => {
-  expect(isNavVisible('oblivion', undefined)).toBe(false);
-  expect(isNavVisible('oblivion', {})).toBe(false);
-  expect(isNavVisible('oblivion', { oblivion: {} })).toBe(false);
-  expect(isNavVisible('oblivion', { oblivion: { unlocked: 'yes' } })).toBe(false);
-  expect(isNavVisible('oblivion', { oblivion: { unlocked: true } })).toBe(true);
+it('lists 18 pages in three groups, with Oblivion always present', () => {
+  const groups = navGroups({});
+  expect(groups.map((g) => g.area.label)).toEqual(['Character', 'Builds', 'Tools']);
+  expect(groups.map((g) => g.items.length)).toEqual([10, 3, 5]);
+  expect(NAV_ITEM_COUNT).toBe(18);
+  expect(groups[2].items.map((i) => i.page.id)).toContain('tools/oblivion');
 });
 
-it('shows every other item regardless of character', () => {
-  expect(visibleNav({}).map((i) => i.id)).toEqual(NAV_ITEMS.filter((i) => i.id !== 'oblivion').map((i) => i.id));
-  expect(visibleNav({ oblivion: { unlocked: true } })).toHaveLength(14);
+it('locks Oblivion Floors unless character.oblivion.unlocked is exactly true', () => {
+  expect(isLocked('tools/oblivion', undefined)).toBe(true);
+  expect(isLocked('tools/oblivion', {})).toBe(true);
+  expect(isLocked('tools/oblivion', { oblivion: {} })).toBe(true);
+  expect(isLocked('tools/oblivion', { oblivion: { unlocked: 'yes' } })).toBe(true);
+  expect(isLocked('tools/oblivion', { oblivion: { unlocked: true } })).toBe(false);
+  expect(isLocked('tools/duel', {})).toBe(false);
 });
 
-it('has the four mobile main slots in order', () => {
-  expect(NAV_ITEMS.filter((i) => i.mobileMain).map((i) => i.id)).toEqual(['presets', 'drop', 'optimiser', 'duel']);
+it('marks every page except Overview as needing a class when the character has none', () => {
+  const flagged = navGroups({ class: null }).flatMap((g) => g.items).filter((i) => i.needsClass);
+  expect(flagged).toHaveLength(17);
+  expect(flagged.some((i) => i.page.id === 'character/overview')).toBe(false);
+  expect(navGroups({ class: 'WARRIOR' }).flatMap((g) => g.items).some((i) => i.needsClass)).toBe(false);
+  expect(needsClass({ needsClass: false }, { class: null })).toBe(false);
 });

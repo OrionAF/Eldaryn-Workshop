@@ -1,30 +1,26 @@
-// Final navigation (rebuild-plan §2.5) and per-item visibility. Pure: takes
-// plain objects so it is testable without the store.
+// Per-item state of the rail (ia.md §1 removals, §5.1). Pure: takes plain objects so it is testable
+// without the store. Every page is always listed; nothing is hidden. Oblivion Floors is shown locked
+// until the character unlocks Oblivion (its page carries the inline unlock), and pages that cannot
+// work without a class say "needs class" instead of going blank.
+import { AREAS, PAGES, pagesOfArea } from '../lib/routes.js';
 
-/** @type {{id:string,label:string,color:string,mobileMain?:boolean}[]} */
-export const NAV_ITEMS = [
-  { id: 'character', label: 'Character', color: 'character' },
-  { id: 'presets', label: 'Presets', color: 'presets', mobileMain: true },
-  { id: 'drop', label: 'Drop Check', color: 'drop', mobileMain: true },
-  { id: 'gear', label: 'Gear', color: 'gear' },
-  { id: 'talents', label: 'Talents', color: 'talents' },
-  { id: 'sigils', label: 'Sigils', color: 'sigils' },
-  { id: 'pets', label: 'Pets', color: 'pets' },
-  { id: 'mounts', label: 'Mounts', color: 'mounts' },
-  { id: 'relics', label: 'Relics', color: 'relics' },
-  { id: 'awakening', label: 'Awakening', color: 'awakening' },
-  { id: 'transcendence', label: 'Transcendence', color: 'transcendence' },
-  { id: 'optimiser', label: 'Optimiser', color: 'optimiser', mobileMain: true },
-  { id: 'duel', label: 'Duel', color: 'duel', mobileMain: true },
-  { id: 'oblivion', label: 'Oblivion', color: 'oblivion' },
-];
-
-/** Oblivion shows only once the character has unlocked it (false on the v1 store). */
-export function isNavVisible(id, character) {
-  if (id === 'oblivion') return character?.oblivion?.unlocked === true;
-  return true;
+/** Oblivion Floors is the one page gated on the character (unlocked is exactly `true`). */
+export function isLocked(pageId, character) {
+  return pageId === 'tools/oblivion' && character?.oblivion?.unlocked !== true;
 }
 
-export function visibleNav(character) {
-  return NAV_ITEMS.filter((i) => isNavVisible(i.id, character));
+export function needsClass(page, character) {
+  return page.needsClass === true && !character?.class;
 }
+
+/** @returns {{page: import('../lib/routes.js').PageDef, locked: boolean, needsClass: boolean}} */
+export function navItem(page, character) {
+  return { page, locked: isLocked(page.id, character), needsClass: needsClass(page, character) };
+}
+
+/** The rail: three groups of items in route-table order. */
+export function navGroups(character) {
+  return AREAS.map((area) => ({ area, items: pagesOfArea(area.id).map((p) => navItem(p, character)) }));
+}
+
+export const NAV_ITEM_COUNT = PAGES.length;

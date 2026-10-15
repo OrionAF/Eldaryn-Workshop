@@ -1,229 +1,144 @@
 <script>
-  import Sidebar from './components/Sidebar.svelte';
+  /**
+   * App.svelte - the shell (ia.md §2, plan U1): top bar, grouped rail, context header, the routed
+   * page, the inspector region and the notification stack. The page is the hash route
+   * (lib/router.svelte.js); each route mounts one file from components/pages/, which for now
+   * adapts the pre-redesign screen. An empty roster shows the Welcome page instead.
+   */
   import WelcomeScreen from './components/WelcomeScreen.svelte';
-  import CharacterScreen from './components/screens/CharacterScreen.svelte';
-  import PresetsScreen from './components/screens/PresetsScreen.svelte';
-  import DropCheckScreen from './components/screens/DropCheckScreen.svelte';
-  import GearScreen from './components/screens/GearScreen.svelte';
-  import TalentsScreen from './components/screens/TalentsScreen.svelte';
-  import SigilsScreen from './components/screens/SigilsScreen.svelte';
-  import PetsScreen from './components/screens/PetsScreen.svelte';
-  import MountsScreen from './components/screens/MountsScreen.svelte';
-  import RelicsScreen from './components/screens/RelicsScreen.svelte';
-  import AwakeningScreen from './components/screens/AwakeningScreen.svelte';
-  import TranscendenceScreen from './components/screens/TranscendenceScreen.svelte';
-  import OptimiserScreen from './components/screens/OptimiserScreen.svelte';
-  import DuelScreen from './components/screens/DuelScreen.svelte';
-  import OblivionScreen from './components/screens/OblivionScreen.svelte';
-  import { isNavVisible } from './components/navVisibility.js';
+  import TopBar from './components/shell/TopBar.svelte';
+  import Rail from './components/shell/Rail.svelte';
+  import ContextHeader from './components/shell/ContextHeader.svelte';
+  import NotificationStack from './components/shell/NotificationStack.svelte';
+  import ImportFile from './components/shell/ImportFile.svelte';
+  import SettingsPage from './components/pages/SettingsPage.svelte';
+  import { PAGE_COMPONENTS } from './components/pages/index.js';
+  import EmptyState from './components/ui/EmptyState.svelte';
+  import Button from './components/ui/Button.svelte';
   import { rosterStore } from './lib/rosterStore.svelte.js';
-  import { classLabel } from './lib/game/classes.js';
+  import { router, go } from './lib/router.svelte.js';
+  import { statusMessage } from './lib/notify.svelte.js';
+  import { AFTER_IMPORT_PAGE_ID, DEFAULT_PAGE_ID, pageById } from './lib/routes.js';
 
-  // Placeholder screens carry no per-screen banner scope yet; screen owners add entries.
-  const SCREEN_CONTEXT = {
-    presets: (c) => `${c.presets.length} preset${c.presets.length === 1 ? '' : 's'}`,
-  };
-
-  const SCREENS = {
-    character: CharacterScreen,
-    presets: PresetsScreen,
-    drop: DropCheckScreen,
-    gear: GearScreen,
-    talents: TalentsScreen,
-    sigils: SigilsScreen,
-    pets: PetsScreen,
-    mounts: MountsScreen,
-    relics: RelicsScreen,
-    awakening: AwakeningScreen,
-    transcendence: TranscendenceScreen,
-    optimiser: OptimiserScreen,
-    duel: DuelScreen,
-    oblivion: OblivionScreen,
-  };
-
-  // View-only, not persisted.
-  let activeScreen = $state('presets');
-  let statusMessage = $state('');
-
+  const empty = $derived(rosterStore.roster.characters.length === 0);
   const character = $derived(rosterStore.current);
-  const profileReady = $derived(!!character.class);
-  const AVATAR_ICONS = { WARRIOR: 'swords', SENTINEL: 'bow', MYSTIC: 'star', NECROMANCER: 'skull' };
-  const avatarIcon = $derived(AVATAR_ICONS[character.class] ?? null);
-  const contextSub = $derived.by(() => {
-    const cls = character.class ? classLabel(character.class) : 'No class';
-    const suffix = SCREEN_CONTEXT[activeScreen]?.(character) ?? '';
-    return suffix ? `${cls} · ${suffix}` : cls;
+  const route = $derived(router.route);
+  const page = $derived(route.kind === 'page' ? pageById(route.id) : null);
+  const Page = $derived(route.kind === 'page' ? PAGE_COMPONENTS[route.id] : null);
+  const classBlocked = $derived(!!page?.needsClass && !character?.class);
+
+  let importer = $state(null);
+  const openImport = () => importer?.open();
+
+  // Old screens still call setStatus(msg) / onNavigate(id); both are app services now.
+  const setStatus = (msg) => statusMessage(msg);
+  const onNavigate = (target) => go(target);
+
+  // Empty roster -> Welcome (G0); the first character created or imported opens Overview (C1).
+  let wasEmpty = null;
+  $effect(() => {
+    if (empty) {
+      if (route.kind !== 'welcome') go('welcome', { replace: true });
+    } else {
+      if (wasEmpty === true) go(AFTER_IMPORT_PAGE_ID, { replace: true });
+      else if (route.kind === 'welcome') go(DEFAULT_PAGE_ID, { replace: true });
+    }
+    wasEmpty = empty;
   });
-
-  function selectScreen(id) {
-    activeScreen = id;
-    statusMessage = ''; // a screen switch silently dismisses the toast
-  }
-
-  function setStatus(msg) {
-    statusMessage = msg;
-  }
 </script>
 
-{#if rosterStore.roster.characters.length === 0}
+{#if empty}
   <WelcomeScreen />
 {:else}
-  <div class="shell">
-    <Sidebar {activeScreen} onSelectScreen={selectScreen} onStatus={setStatus} />
-
-    <main>
-      <div class="banner">
-        <div class="avatar" aria-hidden="true">
-          {#if avatarIcon === 'swords'}
-            <svg viewBox="0 0 24 24" class="avatar-icon" aria-hidden="true">
-              <!-- sword \ -->
-              <path d="M19.5 3 9.5 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-              <path d="M6.5 10 12 15.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              <path d="M9.5 13 5.5 17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              <circle cx="4.5" cy="18.5" r="1.1" fill="currentColor" />
-              <!-- sword / (mirrored) -->
-              <path d="M4.5 3 14.5 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-              <path d="M17.5 10 12 15.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              <path d="M14.5 13 18.5 17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              <circle cx="19.5" cy="18.5" r="1.1" fill="currentColor" />
-            </svg>
-          {:else if avatarIcon === 'bow'}
-            <svg viewBox="0 0 24 24" class="avatar-icon" aria-hidden="true">
-              <!-- bow stave -->
-              <path d="M8 3c-3 3-3 15 0 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-              <!-- drawn string -->
-              <path d="M8 3 13 12 8 21" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" />
-              <!-- arrow shaft -->
-              <path d="M13 12h8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
-              <!-- arrowhead -->
-              <path d="M18.5 9 21 12 18.5 15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-              <!-- fletching -->
-              <path d="M13 12 10.5 10.5M13 12 10.5 13.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
-            </svg>
-          {:else if avatarIcon === 'star'}
-            <svg viewBox="0 0 24 24" class="avatar-icon" aria-hidden="true">
-              <!-- four-point arcane star -->
-              <path d="M12 2.5 14 10 21.5 12 14 14 12 21.5 10 14 2.5 12 10 10Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
-              <circle cx="12" cy="12" r="1.3" fill="currentColor" />
-            </svg>
-          {:else if avatarIcon === 'skull'}
-            <svg viewBox="0 0 24 24" class="avatar-icon" aria-hidden="true">
-              <!-- skull -->
-              <path d="M12 3c-4.4 0-7.5 3-7.5 7 0 2.4 1.1 4.2 2.8 5.2V19h9.4v-3.8c1.7-1 2.8-2.8 2.8-5.2 0-4-3.1-7-7.5-7Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
-              <circle cx="9.2" cy="11" r="1.5" fill="currentColor" />
-              <circle cx="14.8" cy="11" r="1.5" fill="currentColor" />
-              <path d="M10.5 19v-2M13.5 19v-2" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
-            </svg>
-          {/if}
+  <div class="app">
+    <TopBar onImport={openImport} />
+    <div class="body">
+      <Rail {route} {character} onImport={openImport} />
+      <div class="content">
+        <ContextHeader {route} {character} />
+        <div class="page">
+          <main id="main" tabindex="-1">
+            {#if route.kind === 'settings'}
+              <SettingsPage {setStatus} />
+            {:else if page}
+              {#if classBlocked}
+                <EmptyState title="Choose a class first" text="This page depends on the character's class. Pick one on Overview.">
+                  {#snippet action()}
+                    <Button variant="secondary" onclick={() => go(AFTER_IMPORT_PAGE_ID)}>Open Overview</Button>
+                  {/snippet}
+                </EmptyState>
+              {:else}
+                {#key route.id}
+                  <Page {setStatus} {onNavigate} tab={route.tab} />
+                {/key}
+              {/if}
+            {/if}
+          </main>
+          <aside id="shell-inspector" class="inspector" aria-label="Inspector"></aside>
         </div>
-        <div class="banner-text">
-          <div class="character-name">{character.name}</div>
-          <div class="context-sub">{contextSub}</div>
-        </div>
-        {#if statusMessage}
-          <div class="status-pill" role="status">{statusMessage}</div>
-        {/if}
       </div>
-
-      {#if !profileReady}
-        <p class="onboarding-hint">
-          Choose a class for this character to get started — open ⇄ Change character in the rail,
-          click the ✎ next to the character, and pick a class.
-        </p>
-      {:else if activeScreen === 'oblivion' && !isNavVisible('oblivion', character)}
-        <CharacterScreen />
-      {:else}
-        {@const Screen = SCREENS[activeScreen] ?? PresetsScreen}
-        <Screen {setStatus} onNavigate={selectScreen} />
-      {/if}
-    </main>
+    </div>
   </div>
 {/if}
 
+<ImportFile bind:this={importer} />
+<NotificationStack />
+
 <style>
-  .shell {
-    display: grid;
-    grid-template-columns: 212px 1fr;
+  .app {
+    display: flex;
+    flex-direction: column;
     min-height: 100vh;
-    max-width: none;
+  }
+  .body {
+    display: grid;
+    grid-template-columns: var(--rail-w) minmax(0, 1fr);
+    flex: 1;
+  }
+  .content {
+    min-width: 0;
+  }
+  .page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--sp-4);
+    max-width: var(--content-max);
+    margin: 0 auto;
+    padding: var(--page-pad);
   }
   main {
-    padding: 18px 26px 34px;
-    min-width: 0;
-    max-width: var(--content-max-width);
-  }
-  /* Rail -> bottom tab bar (Sidebar.svelte) at the same breakpoint - the
-     shell drops to one column and reserves space at the bottom so page
-     content doesn't sit underneath the fixed bar. */
-  @media (max-width: 700px) {
-    .shell {
-      grid-template-columns: 1fr;
-    }
-    main {
-      padding: 12px 12px calc(64px + env(safe-area-inset-bottom, 0px));
-    }
-  }
-  .banner {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    margin-bottom: var(--space-6);
-  }
-  .avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 2px solid var(--color-gold);
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-gold-light);
-    background: radial-gradient(circle at 35% 30%, #2a2550, #1a1733 70%);
-  }
-  .avatar:not(:has(.avatar-icon)) {
-    background: repeating-linear-gradient(45deg, var(--color-border-hairline), var(--color-border-hairline) 4px, #1a1733 4px, #1a1733  8px);
-  }
-  .avatar-icon {
-    width: 62%;
-    height: 62%;
-  }
-  .banner-text {
-    flex: 1 1 0;
     min-width: 0;
   }
-  .character-name {
-    font-size: 15px;
-    font-weight: 600;
+  main:focus-visible {
+    outline: none;
   }
-  .context-sub {
-    font-size: 11px;
-    color: var(--color-muted);
+  /* Pages render their selection detail here; an empty region takes no space. */
+  .inspector {
+    width: var(--inspector-w);
+    min-width: 0;
   }
-  /* A long toast wraps inside its own bounds rather than forcing the banner (and the page) wider;
-     on the phone layout it drops to its own row so the character name keeps the full width. */
-  .status-pill {
-    font-size: 11px;
-    padding: 4px 10px;
-    border-radius: var(--radius-pill);
-    background: var(--color-gold-tint);
-    color: var(--color-gold-light);
-    max-width: 50%;
-    overflow-wrap: anywhere;
+  .inspector:empty {
+    display: none;
+  }
+  @media (max-width: 1279px) {
+    .body {
+      grid-template-columns: var(--rail-w-icon) minmax(0, 1fr);
+    }
+  }
+  @media (max-width: 1100px) {
+    .page {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .inspector {
+      width: auto;
+    }
   }
   @media (max-width: 700px) {
-    .banner {
-      flex-wrap: wrap;
+    .body {
+      grid-template-columns: minmax(0, 1fr);
     }
-    .status-pill {
-      flex: 1 1 100%;
-      max-width: none;
-      border-radius: var(--radius-mini-chip);
+    .page {
+      padding: var(--page-pad-phone) var(--page-pad-phone) calc(56px + var(--sp-6) + env(safe-area-inset-bottom, 0px));
     }
-  }
-  .onboarding-hint {
-    color: var(--color-muted);
-    padding-top: var(--space-6);
-    max-width: 32rem;
   }
 </style>
