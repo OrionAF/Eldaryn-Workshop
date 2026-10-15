@@ -253,6 +253,15 @@ target}`, `target` in [0.5, 1], default 0.95 (`WIN_RATE_TARGET`).
 - Cost: equivalence on a proportion with no discordant pair needs roughly z²/δ fights (about 1 000-2 000
   at Standard), so builds tied at 0 % or at 100 % are resolved slowly; the cost is precision, never a cap.
 
+**On screen** (Optimiser page, `WinRateTarget.svelte`, `OptimiserResults.svelte`): the goal list leads with
+"Win rate (clear without dying)" for chapters, dungeons, raids and Oblivion, with a Target field (percent,
+50-100, default 95). Rows show the win rate with its 95 % CI and a Meets / Below target chip (below the
+target, how many points short). The table has one axis in win-rate points: every contrast, a change's own
+effect included, is drawn as its uncapped `winRate` difference, while the verdict stays the capped-rate or
+margin one, and a note under the row names which decided it. `goal.status` 'already' shows a success banner
+and no rows; 'not-reached' lists the closest builds with their gaps. Drop Check and Oblivion Floors offer no
+objective choice, so they carry no win-rate goal.
+
 ### Target fidelity
 
 Every resolved target carries its engine `mode` (`PVE_MODES` key, or `pvp`), the mode's labelled

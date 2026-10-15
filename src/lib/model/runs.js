@@ -29,7 +29,8 @@
 // `text` and the verdict counts, and `detail` is {baseline: Row, rows: Row[]} with Row = {rank, tieGroup,
 // isBaseline, key, candidate, value: Estimate, aux, vsBaseline: Contrast|null, changes (each with own, needed,
 // keptBecause, sideEffects), remainder, lines}. Schema 1 runs (no `schema`) keep the RunEntry detail above and
-// show per-change effects as "not measured". `applied` is {at, rank} once a row was written to the preset.
+// show per-change effects as "not measured". A PVE win-rate run also keeps `headline.goal` {status, target}, each
+// Row's `aux.meetsTarget` / `aux.target` and each Contrast's `winRate` {delta, lo, hi}. `applied` is {at, rank} once a row was written to the preset.
 //
 // Budget (single localStorage key, so overflow is prevented up front; storage.js also reports a failed save):
 // detail drops oldest-first until the history fits RUN_BYTE_BUDGET, then whole rows beyond
@@ -83,6 +84,7 @@ function normaliseContrast(c) {
     alphaAdj: num(c.alphaAdj), method: str(c.method), verdict, significant: verdict === 'better' || verdict === 'worse',
     nNeeded: num(c.nNeeded), basis: typeof c.basis === 'string' ? c.basis : null,
     higherIsBetter: typeof c.higherIsBetter === 'boolean' ? c.higherIsBetter : null,
+    ...(isObj(c.winRate) ? { winRate: { delta: num(c.winRate.delta), lo: num(c.winRate.lo), hi: num(c.winRate.hi) } } : {}),
   };
 }
 
@@ -131,6 +133,7 @@ function normaliseRow(r) {
     value: normaliseEstimate(r.value),
     aux: {
       winRate: normaliseEstimate(aux.winRate), meanMs: num(aux.meanMs), timeoutShare: num(aux.timeoutShare),
+      ...(typeof aux.meetsTarget === 'boolean' || aux.target != null ? { meetsTarget: typeof aux.meetsTarget === 'boolean' ? aux.meetsTarget : null, target: num(aux.target) } : {}),
       matchups: (Array.isArray(aux.matchups) ? aux.matchups : []).map(normaliseMatchup).filter(Boolean),
     },
     vsBaseline: normaliseContrast(r.vsBaseline),
@@ -166,6 +169,8 @@ function normaliseHeadline(h) {
     significant: typeof x.significant === 'boolean' ? x.significant : null,
     n: num(x.n) ?? 0, evaluated: num(x.evaluated) ?? 0, changes: num(x.changes) ?? 0,
     text: str(x.text),
+    // A PVE win-rate run's verdict ('already' | 'reached' | 'not-reached') and its target share; null otherwise.
+    goal: isObj(x.goal) && ['already', 'reached', 'not-reached'].includes(x.goal.status) ? { status: x.goal.status, target: num(x.goal.target) } : null,
   };
 }
 
@@ -268,6 +273,7 @@ function runFromResultV2(result, fields) {
       significant: top ? vs?.significant ?? null : null,
       n: (top ?? base)?.value?.n ?? 0, evaluated: result.search?.evaluated ?? 0, changes: top?.changes?.length ?? 0,
       text: result.headline?.text ?? '',
+      goal: result.goal ? { status: result.goal.status, target: result.goal.target } : null,
     },
     // Full describe lines are long text: only the baseline and the top RUN_DETAIL_FULL_LINES keep them.
     detail: { baseline: base, rows: (result.rows ?? []).map((r, i) => (i < RUN_DETAIL_FULL_LINES ? r : { ...r, lines: [] })) },
