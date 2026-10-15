@@ -496,7 +496,7 @@ it('§3: the estimate updates live when an allowed-to-change toggle changes', ()
   click(btn(/^None$/));
   flushSync();
   expect(builds()).toMatch(/^Builds to try 1 exactly/);
-  click(chip('Pet'));
+  click(chip('Mount'));
   flushSync();
   expect(builds()).toMatch(/^Builds to try 2 exactly/);
   click(chip('Talent points'));

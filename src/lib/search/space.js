@@ -24,12 +24,26 @@ import {
 } from '../model/legality.js';
 import { applyCandidate, candidateWrites } from './patch.js';
 import { subsetsUpTo } from './combinatorics.js';
+import { engineView, paretoFilter } from './dominance.js';
+import { EngineInputError } from '../engine/validate.js';
 
 /** Search blocks in their fixed order (A.3). */
 export const BLOCKS = Object.freeze([
   'spec', 'equipmentSet', 'sigils', 'utility', 'ancient', 'conditions', 'relics', 'pet', 'mount',
   'transcendence', 'minorGlyphs', 'majorGlyphs', 'talents',
 ]);
+
+/** Blocks whose values the stat-dominance filter prunes (simulation.md §Build space, Dominance). */
+export const DOMINANCE_BLOCKS = Object.freeze(['sigils', 'utility', 'conditions', 'relics', 'pet', 'talents']);
+
+/** The part of a candidate a block changes (what a pruned entry names). */
+const BLOCK_VALUE = {
+  sigils: (c) => c.sigilSpecies, utility: (c) => c.utilitySigilSpecies, conditions: (c) => c.sigilConditions,
+  relics: (c) => c.relicIds, pet: (c) => c.petId, talents: (c) => c.talentAllocation,
+};
+
+/** No dominance assumption: every stat compared, no damage-only projection (search/dominance.js dominanceContextOf). */
+const NO_DOMINANCE_CONTEXT = Object.freeze({ harmless: false, fortressMaxDamage: null, otherThorns: null });
 
 /** Block toggles (all on by default). */
 export const SPACE_DEFAULTS = Object.freeze(Object.fromEntries(BLOCKS.map((b) => [b, true])));
@@ -256,12 +270,16 @@ export function conditionOptionsFor(species, spec, mode) {
  * The search space of one preset.
  * @param {Object} character  a normalised v2 Character
  * @param {Object|string} presetOrId
- * @param {{realm?: 'base'|'oblivion', mode?: 'pve'|'pvp'|'fortress', residual?: Object, toggles?: Object, powerFloor?: number|null}} [o]
+ * @param {{realm?: 'base'|'oblivion', mode?: 'pve'|'pvp'|'fortress', residual?: Object, toggles?: Object, powerFloor?: number|null,
+ *   dominance?: Object}} [o]
  *   `mode` follows the target (`target.kind === 'pvp'`); `residual` is the preset's sheet residual
  *   (build/residual.js), added to every candidate's computed stats; `powerFloor` is the Combat Power
- *   guard (simulation.md §Build space): a candidate below it is not admissible
+ *   guard (simulation.md §Build space): a candidate below it is not admissible; `dominance` is the target's
+ *   dominance context (search/dominance.js dominanceContextOf), default: no target assumption
  */
-export function createBuildSpace(character, presetOrId, { realm = 'base', mode = 'pve', residual = {}, toggles, powerFloor = null } = {}) {
+export function createBuildSpace(character, presetOrId, {
+  realm = 'base', mode = 'pve', residual = {}, toggles, powerFloor = null, dominance = NO_DOMINANCE_CONTEXT,
+} = {}) {
   const preset = presetOf(character, presetOrId);
   const presetId = preset.id;
   const on = { ...SPACE_DEFAULTS };
@@ -445,10 +463,13 @@ export function createBuildSpace(character, presetOrId, { realm = 'base', mode =
     relics(c) {
       if (relicCap === 0) return [];
       const pool = relicsForClass(cls).map((r) => r.id).filter((id) => character.relics?.[id] > 0);
-      return subsetsUpTo(pool, relicCap).map((relicIds) => legalise({ ...c, relicIds }));
+      // full sets only: every relic bonus is a positive stat (Game/relics.md §2, §7), so a free slot never beats one more relic
+      const full = Math.min(relicCap, pool.length);
+      return subsetsUpTo(pool, full).filter((s) => s.length === full).map((relicIds) => legalise({ ...c, relicIds }));
     },
     pet(c) {
-      return [null, ...petIds].map((petId) => legalise({ ...c, petId }));
+      // never "no pet" while one is owned: a pet adds positive flat Attack and HP and has no ability (Game/pets.md §4)
+      return (petIds.size ? [...petIds] : [null]).map((petId) => legalise({ ...c, petId }));
     },
     // Compound: each non-dominated mount with its saved sockets; the inner socket ascent is the driver's.
     mount(c) {
@@ -534,11 +555,45 @@ export function createBuildSpace(character, presetOrId, { realm = 'base', mode =
     return out;
   }
 
+  // --- stat dominance (simulation.md Build space / Dominance) -------------------------------------
+  const viewMemo = new Map();
+  /** The engine's view of a candidate (search/dominance.js engineView), null when it cannot fight. */
+  const viewOf = (c) => {
+    const k = key(c);
+    if (!viewMemo.has(k)) {
+      let v = null;
+      try {
+        v = engineView(fighterOf(c), mode);
+      } catch (e) {
+        if (!(e instanceof EngineInputError)) throw e;
+      }
+      viewMemo.set(k, v);
+    }
+    return viewMemo.get(k);
+  };
+  const domainMemo = new Map();
+  /** A block's values for `c` after the dominance filter, and what it dropped: {values, pruned}. */
+  const visit = (id, c) => {
+    const mk = `${id}|${key(c)}`;
+    if (!domainMemo.has(mk)) {
+      const values = distinct(c, domains[id](canon(c)));
+      if (!DOMINANCE_BLOCKS.includes(id) || values.length === 0) domainMemo.set(mk, { values, pruned: [] });
+      else {
+        // an illegal incumbent (a saved preset legality would repair) dominates nothing
+        const incumbent = key(legalise(c)) === key(c) ? viewOf(c) : null;
+        const { kept, pruned } = paretoFilter(values.map((v) => ({ value: v, view: viewOf(v) })), incumbent, dominance);
+        const name = BLOCK_VALUE[id];
+        domainMemo.set(mk, { values: kept, pruned: pruned.map((p) => ({ id: name(p.value), by: p.by ? name(p.by) : null, reason: 'dominated' })) });
+      }
+    }
+    return domainMemo.get(mk);
+  };
+
   const blocks = BLOCKS.map((id) => ({
     id,
     enabled: on[id],
     scope: BLOCK_SCOPE[id],
-    domain: (c) => (on[id] ? distinct(c, domains[id](canon(c))) : []),
+    domain: (c) => (on[id] ? visit(id, c).values : []),
   }));
 
   // --- fighter ----------------------------------------------------------------------------------
@@ -586,6 +641,19 @@ export function createBuildSpace(character, presetOrId, { realm = 'base', mode =
       if (!(on.mount && mountsUnlocked(L))) return [];
       const cur = canon(c).mountId ?? null; // a dominated current mount stays the baseline, so it is not reported
       return [...dominatedMounts(cur)].filter(([id]) => id !== cur).map(([id, by]) => ({ id, by }));
+    },
+    /**
+     * Values a block's visit at `c` never tries because another value of the visit, or `c` itself (`by: null`),
+     * dominates them: [{id, by, reason: 'dominated'}], `id`/`by` the block's part of the candidate. Mounts:
+     * prunedMounts' entries with the same reason.
+     */
+    pruned: (blockId, c) => {
+      if (blockId === 'mount') {
+        if (!(on.mount && mountsUnlocked(L))) return [];
+        const cur = canon(c).mountId ?? null;
+        return [...dominatedMounts(cur)].filter(([id]) => id !== cur).map(([id, by]) => ({ id, by, reason: 'dominated' }));
+      }
+      return on[blockId] && DOMINANCE_BLOCKS.includes(blockId) ? visit(blockId, c).pruned : [];
     },
     /** Per enabled block, the number of values (the current one included) given `c`. Mount stats do not depend on realm. */
     domainSizes: (c) => Object.fromEntries(blocks.filter((b) => b.enabled).map((b) => [b.id, b.domain(c).length + 1])),
