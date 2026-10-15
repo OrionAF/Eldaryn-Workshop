@@ -29,8 +29,10 @@ export async function oblivionFloors(request, { signal, onProgress } = {}) {
   const power = Math.round(Number(fighter.stats?.totalOblivionPower) || 0);
   const assumptions = [
     ...PVE_MODES.oblivion.assumptions,
+    // No engine note carries the per-fight cap in minutes (campaign-cap is campaign-only), so it is built here.
     { key: 'fight-cap', text: `Each fight is cut off at ${(maxMs ?? FIGHT_CAP_MS) / 60000} minutes; a fight still running then is a timeout, not a loss.` },
-    { key: 'output-cut', text: applyOutputCut ? 'The instability output cut is applied.' : 'The instability output cut is not applied.' },
+    // The 'not applied' wording is the engine's own (oblivion-output-cut, already in the mode list).
+    ...(applyOutputCut ? [{ key: 'output-cut-applied', text: 'The instability output cut is applied to this scan.' }] : []),
   ];
   const rows = [];
   let aborted = signal?.aborted === true;

@@ -15,12 +15,26 @@ describe('oblivionFloors', () => {
   it('splits wins, deaths and timeouts and reports assumptions', async () => {
     const r = await oblivionFloors({ fighter: fighter(), floors: [1], n: 4 });
     expect(r.rows[0]).toMatchObject({ wins: 4, deaths: 0, timeouts: 0, n: 4 });
-    expect(r.assumptions.map((a) => a.key)).toEqual(expect.arrayContaining(['fight-cap', 'output-cut']));
+    expect(r.assumptions.map((a) => a.key)).toEqual(expect.arrayContaining(['fight-cap', 'oblivion-output-cut']));
   });
   it('is not stopped by timeouts and uses the 20-minute cap', async () => {
     const r = await oblivionFloors({ fighter: stall(), floors: [1, 2, 3], n: 1, stopAfter: 2 });
     expect(r.rows).toHaveLength(3);
     expect(r.rows.every((x) => x.timeouts === 1 && x.deaths === 0)).toBe(true);
+  });
+  it('notes the output cut only when it is applied', async () => {
+    const keys = async (o) => (await oblivionFloors({ fighter: fighter(), floors: [1], n: 1, ...o })).assumptions.map((a) => a.key);
+    expect(await keys({})).not.toContain('output-cut-applied');
+    expect(await keys({ applyOutputCut: true })).toContain('output-cut-applied');
+  });
+  it('a 6-15 minute kill wins under the default 20-minute cap and times out under maxMs 300000', async () => {
+    const slow = fighter({ totalAttack: 4e4, totalHp: 1e12, totalDamageReduction: 0.99 });
+    const r = await oblivionFloors({ fighter: slow, floors: [1], n: 1 });
+    expect(r.rows[0]).toMatchObject({ wins: 1, timeouts: 0 });
+    expect(r.rows[0].medianMs).toBeGreaterThan(300000);
+    const c = await oblivionFloors({ fighter: slow, floors: [1], n: 1, maxMs: 300000 });
+    expect(c.rows[0]).toMatchObject({ wins: 0, timeouts: 1 });
+    expect(c.assumptions.find((a) => a.key === 'fight-cap').text).toContain('5 minutes');
   });
   it('stops after floors with neither wins nor timeouts', async () => {
     const weak = fighter({ totalAttack: 1, totalHp: 1 });
