@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { simulateArenaPvP, runDuel, fighterDuelArgs } from './resolver.js';
+import { simulateArenaPvP, runDuel, fighterDuelArgs, completeDuelStats } from './resolver.js';
 import { applyPvpHpBuff } from './hpBuff.js';
 import { parseEventType, duelEvent, SIDE_EVENT_KINDS } from './events.js';
 import { mulberry32, scripted } from '../rng.js';
@@ -224,5 +224,92 @@ describe('events.js', () => {
       timestamp: 10, type: 'attacker_hit', damage: 5, attackerHpAfter: 0, defenderHpAfter: 4,
     });
     expect(duelEvent(10, 'time_up', 0, { hp: -3 }, { hp: 4 }, false).attackerHpAfter).toBe(-3);
+  });
+});
+
+describe('the input boundary (plan I9)', () => {
+  it('throws an EngineInputError naming the side and key when a stat is not finite', () => {
+    const good = sheet();
+    for (const [bad, key] of [[{ totalCritDamage: NaN }, 'critDamage'], [{ totalHpRegen: Infinity }, 'hpRegen'], [{ totalAttackSpeed: undefined }, 'attackSpeed']]) {
+      let err = null;
+      try { bare(good, sheet(bad), { rng: noCrit }); } catch (e) { err = e; }
+      expect(err?.name, key).toBe('EngineInputError');
+      expect(err).toMatchObject({ kind: 'defender', key });
+    }
+  });
+
+  it('completeDuelStats fills every neutral base, keeps what is given and lists the defaulted keys', () => {
+    const { stats, defaulted } = completeDuelStats({ totalHp: 5, totalAttack: 2, totalAttackSpeed: 1.2, totalBlockChance: 30 }, 'WARRIOR');
+    expect(stats).toMatchObject({ totalBlockChance: 30, totalMissChance: 0, totalCritDamage: 1.5, totalHpRegen: 0, disruptionEffect: 'SILENCE' });
+    expect(defaulted).toContain('totalCritDamage');
+    expect(defaulted).not.toContain('totalBlockChance');
+    expect(completeDuelStats({ totalDisruptionChance: 10 }, 'NECROMANCER').stats.disruptionEffect).toBe('FEAR');
+    expect(completeDuelStats({ disruptionEffect: 'STAGGER' }, 'WARRIOR').stats.disruptionEffect).toBe('STAGGER');
+  });
+
+  it('fighterDuelArgs completes an opponent-shaped sheet (blank Miss, Crit Damage, Regen) and derives the effect', () => {
+    const f = { class: 'NECROMANCER', spec: 'NECROMANCER_DEATHLORD', sigils: [], stats: { totalHp: 1000, totalAttack: 50, totalAttackSpeed: 1, totalBlockChance: 30 } };
+    const a = fighterDuelArgs(f);
+    expect(a.stats).toMatchObject({ totalHp: 8000, totalMissChance: 0, totalCritDamage: 1.5, totalHpRegen: 0, disruptionEffect: 'FEAR' });
+    const r = runDuel({ attacker: f, defender: f, rng: mulberry32(3) });
+    expect(Number.isFinite(r.defenderHpLeft) && Number.isFinite(r.attackerHpLeft)).toBe(true);
+  });
+
+  it('a sparse sheet still blocks: Block 30 with Miss blank avoids about 28% of swings (hit-path with an opponent-shaped fighter)', () => {
+    const tank = { class: 'WARRIOR', spec: 'WARRIOR_TANK', sigils: [], stats: { totalHp: 1e7, totalAttack: 10, totalAttackSpeed: 1, totalBlockChance: 30 } };
+    const hitter = { class: 'WARRIOR', spec: 'WARRIOR_DPS', sigils: [], stats: sheet({ totalHp: 1e7, totalAttack: 10 }) };
+    let blocks = 0;
+    let swings = 0;
+    for (let seed = 1; seed <= 20; seed++) {
+      const { log } = runDuel({ attacker: hitter, defender: tank, rng: mulberry32(seed), log: true });
+      for (const e of log) {
+        if (e.type === 'defender_block') { blocks++; swings++; } else if (e.type === 'attacker_hit' || e.type === 'attacker_crit') swings++;
+      }
+    }
+    expect(blocks / swings).toBeGreaterThan(0.24);
+    expect(blocks / swings).toBeLessThan(0.34);
+  });
+});
+
+describe('the opening clock with minions (L1455934-1456047)', () => {
+  const summoner = (o = {}) => ({
+    class: 'NECROMANCER', spec: 'NECROMANCER_DEATHLORD', sigils: [], utility: { species: 'BONE_SERVANT', level: 5 },
+    stats: sheet({ totalAttack: 0, totalMinionAttack: 0, totalMinionHealth: 0, totalMinionAttackSpeed: 0, ...o }),
+  });
+  const plainFoe = (o = {}) => ({ class: 'WARRIOR', spec: 'WARRIOR_DPS', sigils: [], stats: sheet({ totalAttack: 0, ...o }) });
+  const calm = () => 0.99;
+  const firstOf = (log, ...types) => log.find((e) => types.includes(e.type))?.timestamp;
+  // a swing at a side that has a minion lands on the minion
+  const attackerSwing = (log) => firstOf(log, 'attacker_hit', 'defender_minion_damaged');
+  const defenderSwing = (log) => firstOf(log, 'defender_hit', 'attacker_minion_damaged');
+
+  it('one side: the summon row is at t = 0, swings start after the window at max(interval, 400), a timeout ends at 60000 + window', () => {
+    const { log, result, timeMs, timedOut } = runDuel({ attacker: summoner(), defender: plainFoe(), rng: calm, log: true });
+    const window = log[0].summonReadyMs;
+    expect(log[0]).toMatchObject({ timestamp: 0, type: 'attacker_minion_summoned' });
+    expect(window).toBeGreaterThan(0);
+    expect(attackerSwing(log)).toBe(window + 1000); // interval 1000 >= 400
+    expect(defenderSwing(log)).toBe(window + 1000);
+    expect(timedOut).toBe(true);
+    expect(timeMs).toBe(60000 + window);
+    expect(result.totalDuration).toBe(60000 + window);
+  });
+
+  it('a swing interval under 400 ms still waits 400 ms after the window', () => {
+    const { log } = runDuel({ attacker: summoner({ totalAttackSpeed: 4 }), defender: plainFoe(), rng: calm, log: true });
+    const window = log[0].summonReadyMs;
+    expect(attackerSwing(log)).toBe(window + 400);
+    expect(defenderSwing(log)).toBe(window + 1000);
+  });
+
+  it('both sides summon: both rows at t = 0 and the longer cast is the window for everyone', () => {
+    const { log, timeMs } = runDuel({ attacker: summoner(), defender: summoner({ totalAttackSpeed: 2 }), rng: calm, log: true });
+    const rows = log.filter((e) => e.timestamp === 0);
+    expect(rows.map((e) => e.type)).toEqual(['attacker_minion_summoned', 'defender_minion_summoned']);
+    expect(rows[0].summonReadyMs).toBe(rows[1].summonReadyMs);
+    const window = rows[0].summonReadyMs;
+    expect(timeMs).toBe(60000 + window);
+    expect(attackerSwing(log)).toBe(window + 1000);
+    expect(defenderSwing(log)).toBe(window + 500);
   });
 });

@@ -216,6 +216,15 @@ apply the delta, re-apply the soft cap, and split Attack/HP into flat and percen
 parts (`engine/pipeline/anchoredDelta.js`). Details and the layer map:
 `WIP/being-worked-on/rebuild-plan.md` §2 and §4.
 
+**Opponent sheets are sparse.** The editor saves only the rows the class sheet shows, and the user may
+leave rows blank. At the PVP boundary (`completeDuelStats`, applied in `opponentFighter` and again in
+`fighterDuelArgs`) every key the duel reads that is absent takes its neutral value: 0 for chances,
+ratings, regen and Damage Reduction, 1.5 for Crit Damage (`Game/stats.md` §2). The keys it filled are
+listed in the fighter's `defaulted` so the UI can say so. HP, Attack and Attack Speed have no neutral
+value: `missingStats` reports them and `simulateArenaPvP` throws an `EngineInputError` for a
+non-finite entity field. `disruptionEffect` is never stored in a sheet; it comes from class and form
+(`engine/core/disruption.js`, `Game/stats.md` §3.2) for computed, sheet, typed and cloned fighters alike.
+
 ---
 
 ## 7. Game profile import

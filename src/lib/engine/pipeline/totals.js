@@ -2,6 +2,7 @@
 // docs/Reference/Game/stats.md §3). Pure; takes the already-aggregated source bonus objects.
 import { capConfig, applySoftCap } from '../core/caps.js';
 import { SLOT_ORDER } from '../../game/gear.js';
+import { disruptionEffectFor } from '../core/disruption.js';
 
 // Accumulator names (acc.<name>) used by the field tables below. Each table row is
 // [accumulator, sourceField] or [accumulator, sourceField, divisor].
@@ -240,13 +241,8 @@ export function calculateTotalStats(
   if (playerClass === 'MYSTIC' && ctx?.activeSpec !== 'MYSTIC_MAGE') acc.spellCritChance = 0;
   if (formConfig) acc.attackSpeed *= formConfig.attackSpeedMult ?? 1;
 
-  let disruptionEffect = 'SILENCE';
-  if (playerClass === 'MYSTIC' && formConfig) {
-    if (formConfig.form === 'BEAR') disruptionEffect = 'STAGGER';
-    else if (formConfig.form === 'WOLF') disruptionEffect = 'FEAR';
-  }
+  const disruptionEffect = disruptionEffectFor(playerClass, formConfig?.form);
   acc.disruptionChance += acc.fearChance;
-  if (playerClass === 'NECROMANCER') disruptionEffect = 'FEAR';
 
   const passive = formConfig?.passiveEffects ?? formConfig?.effects;
   if (passive) {
@@ -300,8 +296,8 @@ export function calculateTotalStats(
   out.totalEarthenConduit = Math.round(acc.earthen);
   out.totalDarkConduit = Math.round(acc.dark);
 
-  // 7. raw* only when raw exceeds the soft cap (L1217495-1217870). Same toFixed rounding as totals
-  // (stats.md §3.2 step 7 says round(); the code is parseFloat(toFixed), see docFindings).
+  // 7. raw* only when raw exceeds the soft cap (L1217495-1217870), rounded like the totals
+  // (stats.md §3.2 step 7).
   for (const [key, a, rawKey, digits] of [...CAPPED_HEAD, ...CAPPED_B, ...CAPPED_C, ...CAPPED_D]) {
     if (acc[a] > capConfig(key).soft) out[rawKey] = fix(acc[a], digits);
   }
