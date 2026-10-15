@@ -815,6 +815,7 @@ const strictDefault = () => {
  * @param {{signal?: AbortSignal, onProgress?: Function, onCheckpoint?: Function, strict?: boolean}} [hooks]
  */
 export async function optimize(request, hooks = {}) {
+  if (request?.objective?.kind === 'push') throw new Error("optimize: a Push request runs through search/push.js 'push'");
   const prep = prepare(request);
   const { space, objective, effort, seeds, target, warnings } = prep;
   const strict = hooks.strict ?? strictDefault();

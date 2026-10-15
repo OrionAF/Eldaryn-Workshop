@@ -248,7 +248,7 @@ equal statistics are a tie (no effective-HP or duel-length tie-break).
 - `survival` (custom mobs only) is refused for a mob that cannot damage the player (no swing with
   attack > 0 and speed > 0). `objectiveKindsFor(kind, target)` leaves it out of the picker.
 - Target kinds and their objectives (the first is the default): dummy `dps`; chapter, dungeon (normal
-  and `_hard`), raid, Oblivion `win-rate`; World Boss `dps`; Fortress boss `dps`; custom `dps`, `win-rate`, `survival`
+  and `_hard`), raid, Oblivion `win-rate`, `push` (§Push); World Boss `dps`; Fortress boss `dps`; custom `dps`, `win-rate`, `survival`
   (`dps` stays the default); pvp `pvp-winrate`. Anything else is a retired goal.
 
 ### Win rate
@@ -554,6 +554,142 @@ The Effort control prints δ, the first look n0 and maxN per level and these mea
 a session job (U3): Cancel keeps the provisional rows and Resume re-starts the task with the job's
 checkpoint as `resumeFrom`. The page sends the character with `runs: []`, so saving a run does not change
 `characterKey` (Run more and the staleness marker compare it).
+
+## Push
+
+Code: `src/lib/search/push.js` (`pushCore`, the algorithm over an environment; `push`, wired to the build
+space, objectives and `optimize`; `ladderOf`; `pushBlock`). The worker task `optimize` routes a request
+whose objective is `{kind: 'push', target?}` here (`optimize()` itself refuses it). Backlog §10 item 1.
+
+**Goal.** For ladder content, the deepest rung the player clears at the win-rate target τ (§Win rate:
+same per-fight score, same `meetsTarget`, τ in [0.1, 1], default 0.95), and the build with the fewest
+changes from the current one that clears it.
+
+**Ladders** (`ladderOf`; the target the user picks is the start rung). A classic dungeon's steps 1-8
+(normal or `_hard`, one id), a village raid's steps 1-8 (one id), Oblivion floors 1-60 (the floor table;
+the output-cut toggle carries to every floor), and a campaign track: chapters 1-11 or the hard chapters
+12-22, each level 1-10 in order (the track of the start chapter; an app choice, not a game fact: hard
+chapter 1 is scaled from normal chapter 1, pve-content.md §3, so the ladder stays inside one track
+rather than assume where the hard track sits against the normal one). The character model records no progress on any of
+these, so the start is the user's pick in the target picker.
+
+**Assumption, stated on every run: difficulty rises along the ladder**, so a build that clears rung k
+clears every rung below it. The data are not trusted to agree: every probe of a build is kept, and any
+build that met τ on a deeper rung and was shown below it on a shallower one is listed in
+`push.contradictions` with a `ladder-not-monotone` warning (dungeon and raid rosters rotate between steps,
+so a step can be easier than the one before for some builds).
+
+**Procedure** (each decision a logged step):
+
+1. **Climb** the current build B: check the start rung, then gallop up (k + 1, k + 3, k + 7, …) while it
+   clears, then bisect between the last rung cleared and the first not cleared. A **check** is W1's
+   "already clears" test on fresh fights of that rung: looks n0, 2n0, … maxN, Wilson at α / looks, stop
+   once `meetsTarget` resolves; only `true` counts as clearing (`false`, and still open at maxN, do not).
+2. At rung r = (deepest so far) + 1, the **screen** (the stop rule below). If it stops, the climb ends at r.
+3. **Optimise** at r: the win-rate optimiser (§Search) on that rung, from the current build B (fewest
+   changes from B, never from an earlier suggestion). `reached`: its fewest-changes row C (the goal's
+   `bestKey`) is climbed from r (r is known cleared) to its deepest rung; `already` (B meets r on the
+   optimisation's own S3 check): B is climbed from r; `not-reached`: the climb ends at r with the best
+   rate the optimisation saw.
+4. Repeat 2-3 from the new deepest rung. Every round goes at least one rung deeper, so the loop ends at
+   the top of the ladder, at a screen stop or at an optimisation that does not reach τ.
+5. **Confirm** on fresh fights: for B and for the deepest build D (when it is not B), a fixed-sequence
+   test from the start rung upwards, each rung a check at α / 2 (α when D is B), stopping at the first rung
+   not shown to clear. The reported rung of each build is its last confirmed one. When D confirms less
+   than its climb found, the run says so (`push-unconfirmed`); when D does not confirm deeper than B, there
+   is no suggestion (`status: 'no-gain'`).
+
+**Stop rule (the screen).** Measured problem: on `dungeon_4_hard` step 6 every build is at 0 %, and a
+Quick full-space win-rate run spent its 30-minute limit and about 5 M fights without a verdict, because
+ties at 0 % need about z² / δ fights each (§Win rate, cost), per comparison and for every comparison of
+the search. Push would probe exactly such rungs. A5's race futility stop (§Racing) does not end that: an
+arm tied at 0 % is futile only once its capped-rate interval is inside δ, the same z² / δ fights. So
+before optimising rung r, Push screens the neighbourhood the optimisation would start from: the centres
+(B, and the deepest build so far when it differs), every build one change from a centre (each enabled
+block's domain; spec and mount values raw, not inner-optimised), m builds in all, and every (centre,
+one-change build) pair, q pairs in all. Looks n0, 2n0, … maxN, each test at α / ((m + q) × looks):
+
+- **rate**: a Wilson interval per build; a build is settled once its upper bound is below τ;
+- **direction**: Tango's interval on the paired win bits of each pair (build − centre, common fights);
+  a pair is settled once its upper bound is below δ, i.e. that change confidently raises the rate by
+  less than δ (it may lower it).
+
+The screen says **go** (run the optimisation) as soon as one build meets τ (`meetsTarget` true,
+reason `meets`), as soon as one change confidently raises the rate (lower bound above 0, reason
+`gradient`), or when anything is still unsettled at maxN (`open`). It says **stop** only when every
+build and every pair is settled: every screened build confidently below τ and every single change from
+a centre confidently flat. The rung is reported "not reached at this effort" with the best rate seen
+(each build's estimate at its last look).
+
+Why the direction test: the usual Push rung is one the current build clears less often than τ, where
+reaching τ takes several changes that each help partly (B 60 %, two one-change builds 70 %, their
+combination 97 % at τ 90 %). Every one-change build is then below τ, but the changes are directions:
+the screen says `gradient` and the optimiser (§Search: coordinate ascent and multi-start) looks for the
+combination (`push.test.js`). A stop needs a flat neighbourhood, which is the measured 0 % case: there
+each pair settles once its Tango upper bound is below δ, about z² / δ fights once per build instead of
+once per comparison of a whole search. The direction is the win rate, not the margin (mean score s): at
+0 % the share of enemy HP removed differs between almost any two builds, so a margin test would send
+every 0 % rung to the optimiser and bring the stall back.
+
+Accuracy and what the claim covers. By the union bound over the m + q tests and the looks, the chance
+that the screen stops although some screened build is truly at or above τ, or some single change truly
+raises the rate by δ or more, is at most α (`push.test.js` checks the stop rate over 200 seeds with one
+neighbour at τ). So a stop states, at family level α: no build within one change of the centres reaches
+τ, and no single change from them raises the rate by δ. A build several changes away is reachable from
+there only across a plateau no single step climbs (changes that do nothing alone and a lot together),
+which the optimiser's coordinate ascent cannot cross either (it moves only on a better comparison); its
+random starts could, and the stop does not cover them. Hence the wording "at this effort", and the result
+points to the Win rate goal on that rung for a full search. When the stop does not fire, the optimisation
+keeps A5's futility stop.
+
+**Seeds.** Per probe, from the run seed and the rung key: climb `hashSeed('push-climb', seed, rungKey)`,
+screen `hashSeed('push-screen', …)`, confirm `hashSeed('push-confirm', …)`, common to every build on that
+rung; each optimisation uses its own S1-S3 (§Seeds and phases, keyed by the rung's target key). No data on
+the confirm seed decides which build or rung is reported. Each role draws its own fights on purpose,
+although a build checked in the climb is sampled again in the screen or the confirm: the confirm must
+be fresh (data that decided the climb cannot report it), and the screen's family level holds only on
+fights no earlier decision looked at.
+
+**Multiplicity.** Each climb check, each screen and each optimisation is decided at its own level (α, the
+screen's family α, the optimiser's families). These decisions steer the climb; they are not the reported
+claims. The reported claims are the two confirmed rungs, "B clears every rung from the start to M" and "D
+clears every rung from the start to N" (at τ − δ, `meetsTarget`): each is a fixed-sequence family at α / 2,
+so both hold together with probability at least 1 − α. "Rung N + 1 is not reached" is a separate claim at
+the level of the step that ended the climb (the screen's α, or the optimisation's), not covered by the
+joint statement. The build's row (changes, own effects, contrasts) keeps the optimiser's own families on
+the rung where it was found.
+
+**Progress, cancel and resume.** Progress has the §Search shape with Push's phases (`climb`, `screen`,
+`optimise`, `confirm`), `block` the rung being worked on (plus the optimisation's phase), fight counts that
+include the running optimisation, and `steps`: one `{id, label, state, text}` per rung from the start
+(backlog §1's step list). The checkpoint is `{schema: 'push-checkpoint/1', requestKey, characterKey, log,
+inner}`: `log` replays every finished step without fights, and `inner` is `{rung, checkpoint}` of an
+optimisation cancelled mid-run, which resumes from its own checkpoint (§Progress, cancel and resume), so
+cancel + resume equals the uninterrupted run apart from wall-clock fields (`push.test.js`,
+`push.live.test.js`).
+
+**Result.** An `optimiser-result/2` (§Result) with `objective.kind` 'push', no `goal`, `search` null,
+`phases` the four Push phases, `rows` = [the deepest build's row from the optimisation that found it] when
+it confirms deeper than B (else empty), `baseline` that optimisation's baseline row (else B on its last
+confirmed rung), and `push: {target, status: 'pushed'|'no-gain'|'none', ladder: {kind, label, size},
+start, baseline: {deepest, label, searched}, reached: {deepest, label, key, foundAt, foundLabel,
+searched}, stop: {index, label, reason: 'top'|'screen'|'not-reached', best: Estimate|null}|null, rungs:
+[{index, label, key, current, build}] (each 'clears'|'fails'|'open'|null, the confirm probe when there is
+one), contradictions, text}`. `headline.text` = `push.text`, "Reaches step N (now: step M) at τ." Warnings
+add `ladder-not-monotone` and `push-unconfirmed`. A saved run keeps the block (`model/runs.js`).
+
+**On screen.** The goal list offers "Push (deepest step)" for chapters, dungeons, raids and Oblivion, with
+the Target field of §Win rate and a line naming the start rung (`WinRateTarget.svelte`). While it runs, the
+Optimiser page lists the rungs climbed. The result (`PushLadder.svelte`) shows the ladder strip (rungs the
+current build clears, rungs only the suggested build clears, the first rung not reached, rungs climbed
+without a confirmed claim), "Reaches step N (now: step M)", the rung the build's changes were measured on
+and why the climb stopped, then the build diff and Apply for the deepest build (`OptimiserResults.svelte`).
+
+**Cost.** Measured on the Warrior fixture (one thread, Quick with maxN 256, relics and pet): campaign from
+level 3-1 at 50 %, climbing and confirming levels 3-1 to 9-1, then a screen at 9-2 that finds a change
+raising the rate and an optimisation that does not reach 50 % (best 23 %): about 12 700 fights in 3 s;
+from level 9-1 at 90 %, two optimisations (9-1 reached, 9-2 not) and their screens, about 27 500 fights
+in 7 s. A flat 0 % rung stops at the screen after about z² / δ fights per screened build.
 
 ## Result
 

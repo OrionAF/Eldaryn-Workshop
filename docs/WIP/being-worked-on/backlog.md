@@ -4,21 +4,22 @@
 
 | Order | Item | Size | Status |
 |---|---|---|---|
-| 1 | §14 Mount pruning | XS | Running |
-| 2 | §10 Push (merge only) | XS | Built and reviewed; merge queued after §14 |
-| 3 | §10 Fortress boss shield fix | S | Implemented; review and merge queued after §14 |
-| 4 | §11 Celestial Trial Optimiser target | S | Paused; the engine is merged |
-| 5 | §6 Results say which pet, mount or glyph | S | Not started |
-| 6 | §1 Optimiser step list | S | Not started |
-| 7 | §12 Highest chance to win | M | Paused mid-build (branch `rebuild2/W3-wip`) |
-| 8 | §3 Setup estimates | M | Not started |
-| 9 | §13 Lean glyph neighbourhoods | M | Paused (branch `rebuild2/S1-wip`); decide after §14's measured gain |
-| 10 | §9 Stat weights chart | M | Not started |
-| 11 | §2 Rankings profiles as PVP opponents (and Celestial partners) | M | Not started |
-| 12 | §10 Arena reward weighting | S | Needs §2 |
-| 13 | §7 PVE replay check | L | Not started; needs dungeon logs |
-| 14 | §10 Crusade (solo) | L | Not started |
-| 15 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Not started |
+| 1 | §14 Mount pruning | XS | Merging |
+| 2 | §10 Push (merge only) | XS | Queued (run wf_2c43327e-8d7) |
+| 3 | §10 Fortress boss shield fix | S | Queued: review and merge |
+| 4 | §12 Highest chance to win | M | Queued: resumes from branch `rebuild2/W3-wip` |
+| 5 | §15 Fortress boss fight from the server log | M | Queued |
+| 6 | §11 Celestial Trial Optimiser target | S | Queued |
+| 7 | §6 Results say which pet, mount or glyph | S | Queued |
+| 8 | §1 Optimiser step list | S | Queued |
+| 9 | §3 Setup estimates | M | Not started |
+| 10 | §13 Lean glyph neighbourhoods | M | Paused (branch `rebuild2/S1-wip`); decide after §14's measured gain |
+| 11 | §9 Stat weights chart | M | Not started |
+| 12 | §2 Rankings profiles as PVP opponents (and Celestial partners) | M | Not started |
+| 13 | §10 Arena reward weighting | S | Needs §2 |
+| 14 | §7 PVE replay check | L | Not started; needs dungeon logs |
+| 15 | §10 Crusade (solo) | L | Not started |
+| 16 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Not started |
 | - | §11 Celestial open questions | - | Waits for more server logs |
 | Done | §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target; §11 Celestial engine | - | Merged |
 
@@ -30,9 +31,15 @@
 
 **Status:** running (slice M1).
 
+## 15. Fortress boss fight from the server log
+
+**Finding** (2026-10-15, a real `/fortress/boss-fight/start` log, fixture `fortress-boss-top-fight.json`): the server runs this fight with the Arena duel vocabulary (the player is the attacker, the boss the defender). The boss swings every 1 s for 500 ±15%, and the player's misses work (35 of 60 dodged). Elusive Supremacy never raised attack or speed: all 171 swings came at a steady 349 ms, and every hit was exactly the sheet attack. The real fight dealt 22.6M per second, against about 42M in the app's PVE-engine model. The app's Fortress sigil advice was therefore wrong.
+
+**Plan:** rebuild the fight on the right engine and replay-check it against the log tick by tick, then re-rank sigil sets for this target.
+
 ## 10. Optimiser objectives: trim, fix the target range, add Push, a Power guard and Crusade
 
-**Status (2026-10-15).** Done: retire kill time and survival, target range (slice O1); Combat Power and the Power guard (O2); Fortress boss target (O3). Fortress shield fix (O3b): two server siege snapshots show the shield divides alive defenders by the server's clan cap (30 on server 5), not the defending clan's size; implemented, awaiting review. Push (O4): built and reviewed, awaiting merge. Not started: Crusade (solo), Arena reward weighting.
+**Status (2026-10-15).** Done: retire kill time and survival, target range (slice O1); Combat Power and the Power guard (O2); Fortress boss target (O3). Fortress shield fix (O3b): two server siege snapshots show the shield divides alive defenders by the server's clan cap (30 on server 5), not the defending clan's size; implemented, awaiting review. Push (O4): merged (§Push in simulation.md). Not started: Crusade (solo), Arena reward weighting.
 
 **Ask** (2026-10-15): the user agreed to this review of the objectives.
 
@@ -52,7 +59,7 @@ the rate. A loss costs no key or reward on most content: a failed chapter level 
 clear spends a key (`pve-content.md` §4, §11). The default stays 95%.
 
 **Add, in this order:**
-1. **Push.** Finds the deepest dungeon step, Oblivion floor, raid step or chapter level the build
+1. **Push** (DONE 2026-10-15, slice O4; `simulation.md` §Push). Finds the deepest dungeon step, Oblivion floor, raid step or chapter level the build
    clears at τ or better, and the build that does it. Difficulty only goes up with depth, so: start
    at the current step, climb while the target is met, then bisect. Reuse each step's runs.
 2. **Combat Power guard.** (DONE 2026-10-15, slice O2: `engine/power.js` exact on two real profiles,

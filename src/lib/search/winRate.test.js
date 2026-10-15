@@ -54,7 +54,7 @@ describe('win-rate objective: target and compatibility', () => {
     expect(objectiveKindsFor('custom')).toContain('win-rate');
     expect(objectiveKindsFor('dummy')).not.toContain('win-rate');
     expect(objectiveKindsFor('worldBoss')).not.toContain('win-rate');
-    expect(objectiveKindsFor('dungeon')).toEqual(['win-rate']);
+    expect(objectiveKindsFor('dungeon')).toEqual(['win-rate', 'push']); // Push (simulation.md §Push) climbs with this objective
   });
 
   it('takes a target between 0.1 and 1 (default 0.95) and keys on it', () => {
