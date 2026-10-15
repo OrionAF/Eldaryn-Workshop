@@ -180,4 +180,12 @@ describe('Import section', () => {
     await Promise.resolve();
     expect(document.activeElement).toBe(h);
   });
+
+  it('a pointer request made before Settings mounts still focuses the heading', async () => {
+    requestImportFocus();
+    ui = setup(SettingsPage);
+    flushSync();
+    await Promise.resolve();
+    expect(document.activeElement).toBe(ui.target.querySelector('#settings-import-h'));
+  });
 });

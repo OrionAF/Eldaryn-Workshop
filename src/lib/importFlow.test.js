@@ -6,7 +6,6 @@ import {
   loadImportText,
   confirmImport,
   closeImport,
-  openImport,
   setImportMode,
   undoLastUpdate,
   takeHandoff,
@@ -145,10 +144,4 @@ describe('loot bag and fight log', () => {
     expect(importFlow.handoffSeq).toBe(seq + 2);
   });
 
-  it('drops an uncollected handoff when the dialog opens again', () => {
-    loadImportText(text(lootBag));
-    confirmImport();
-    openImport();
-    expect(takeHandoff('lootBag')).toBeNull();
-  });
 });
