@@ -228,18 +228,20 @@ it('a screen calling setStatus raises a toast (setStatus -> notify)', () => {
   expect(q('div[aria-label="Notifications"]').textContent).toContain('collection cleared');
 });
 
-it('phone area bar: Character / Builds / Tools / Import, the current area marked', () => {
+it('phone area bar: Character / Builds / Tools (no Import tab), the current area marked', () => {
   open('#/tools/duel');
   const tabs = qa('nav[aria-label="Areas"] .tab');
-  expect(tabs.map((t) => t.querySelector('.micro-label').textContent.trim())).toEqual(['Character', 'Builds', 'Tools', 'Import']);
+  expect(tabs.map((t) => t.querySelector('.micro-label').textContent.trim())).toEqual(['Character', 'Builds', 'Tools']);
+  expect(q('header.topbar').textContent).not.toMatch(/Import/);
+  expect(q('header.topbar [aria-label="Import"]')).toBeNull();
   expect(tabs.filter((t) => t.getAttribute('aria-current') === 'page').map((t) => t.querySelector('.micro-label').textContent.trim())).toEqual(['Tools']);
   expect(tabs[2].getAttribute('href')).toBe('#/tools/duel'); // last-used page of the area
 });
 
-it('Import: junk shows the specific reason in the dialog and changes nothing; a profile is reported, then created', async () => {
-  open('#/builds/presets');
+it('Import (Settings): junk shows the specific reason in the section and changes nothing; a profile is reported, then created', async () => {
+  open('#/settings');
   const before = JSON.stringify(rosterStore.roster);
-  const input = q('dialog input[type="file"]');
+  const input = q('[data-testid="import-section"] input[type="file"]');
   const send = (text) => {
     Object.defineProperty(input, 'files', { value: [new File([text], 'x.json', { type: 'application/json' })], configurable: true });
     input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -247,7 +249,8 @@ it('Import: junk shows the specific reason in the dialog and changes nothing; a 
   send('{nope');
   await vi.waitFor(() => {
     flushSync();
-    expect(q('dialog [role="alert"]').textContent).toContain('not valid JSON');
+    expect(q('[data-testid="import-section"] [role="alert"]').textContent).toContain('not valid JSON');
+    expect(qa('dialog[open]')).toHaveLength(0);
   });
   expect(JSON.stringify(rosterStore.roster)).toBe(before);
 
@@ -271,6 +274,8 @@ it('Import: junk shows the specific reason in the dialog and changes nothing; a 
 it('Settings route renders Data, Preferences and the RESET danger zone', () => {
   open('#/settings');
   expect(q('h1').textContent).toBe('Data & Settings');
+  expect(q('[data-testid="import-disclaimer"]').textContent).toMatch(/finicky|network traffic/i);
+  expect(q('[data-testid="import-section"]').textContent).toContain('HTTP Toolkit');
   expect(q('[aria-label="Danger Zone"]')).not.toBeNull();
   expect(byText('button', 'Export all characters')).toBeTruthy();
   expect(byText('button', 'Export Aria')).toBeTruthy();

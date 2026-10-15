@@ -2,7 +2,7 @@
   /**
    * TopBar.svelte - the global chrome (ia.md §2.1, design-system §4.1): brand, G1 character switcher,
    * G2 preset + realm, the Jobs pill slot (filled by the job store slice), save state, G5 activity
-   * bell, G6 settings and the G3 Import button. Sticky, one row; collapses by CSS only.
+   * bell and G6 settings (import lives in Settings, Data). Sticky, one row; collapses by CSS only.
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { notifications } from '../../lib/notify.svelte.js';
@@ -10,9 +10,8 @@
   import ContextControls from './ContextControls.svelte';
   import SaveState from './SaveState.svelte';
   import ActivityDrawer from './ActivityDrawer.svelte';
-  import Button from '../ui/Button.svelte';
 
-  let { onImport = () => {}, jobs } = $props();
+  let { jobs } = $props();
 
   let activityOpen = $state(false);
   const unread = $derived(notifications.unread);
@@ -40,9 +39,6 @@
     {#if unread > 0}<span class="unread" aria-hidden="true"></span>{/if}
   </button>
   <a class="icon-btn" href="#/settings" aria-label="Data and settings"><span aria-hidden="true">⚙</span></a>
-  <Button variant="primary" onclick={onImport} aria-label="Import">
-    <span aria-hidden="true">⇪</span><span class="import-label">Import</span>
-  </Button>
 </header>
 
 <ActivityDrawer bind:open={activityOpen} />
@@ -101,7 +97,7 @@
     .topbar { gap: var(--sp-3); }
   }
   @media (max-width: 1023px) {
-    .word, .import-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   }
   @media (max-width: 700px) {
     /* two rows: [character . jobs bell settings] over [preset + realm], all reachable at 390 */
@@ -119,7 +115,5 @@
     .icon-btn { order: 3; }
     .ctx { order: 4; flex: 1 1 100%; min-width: 0; }
     .topbar :global(.save:not(.bad)) { display: none; }
-    /* the Import action lives in the bottom tab bar */
-    .topbar :global(.btn-primary) { display: none; }
   }
 </style>

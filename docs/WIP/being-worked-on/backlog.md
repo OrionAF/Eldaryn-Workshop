@@ -158,6 +158,11 @@ runs.
 
 ## 8. Easier imports without HTTP Toolkit (phone-only capture guide)
 
+**Status (2026-10-15): replaced.** The capture-guide idea is dropped. Instead every import entry point
+moved to Settings > Data > Import, behind one disclaimer: importing is possible but finicky, it needs
+another app (HTTP Catcher on iPhone) or a PC with HTTP Toolkit, Android usually needs root, and this
+app's own backups always import. The notes below stay as the research record.
+
 **Ask** (2026-10-15): can users capture the profile and fight JSON from their phones without HTTP
 Toolkit? Can the app ask the game server for it?
 

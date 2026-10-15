@@ -38,7 +38,7 @@
   import ItemEditor from '../gear/ItemEditor.svelte';
   import { slotLabel } from '../gear/gearFormat.js';
   import EnemyPicker from '../drop/EnemyPicker.svelte';
-  import DropImport from '../drop/DropImport.svelte';
+  import ImportPointer from '../import/ImportPointer.svelte';
   import DropSetCard from '../drop/DropSetCard.svelte';
   import DropMetricTables from '../drop/DropMetricTables.svelte';
   import { itemSummary, signedPct, dropStatRows } from '../drop/dropFormat.js';
@@ -467,9 +467,10 @@
       <div id="dc-panel-bag" role="tabpanel" class="stack">
         <Panel title="Loot bag" scope="tool">
           <p class="hint">
-            Load the loot-bag response (or a full game profile) as a .json file, or paste it. Every item is tried in every gear set. Items of another class are skipped.
+            Every item of an imported loot bag (or a full game profile) is tried in every gear set. Items of another class are skipped.
           </p>
-          <DropImport onimport={importDrops} error={batchError} busy={bagBusy} />
+          <ImportPointer what="a loot bag" />
+          {#if batchError}<Banner variant="error">{batchError}</Banner>{/if}
           <div class="row">
             <span class="cap-label">Effort</span>
             <SegmentedControl label="Effort" bind:value={precision} options={EFFORT} />

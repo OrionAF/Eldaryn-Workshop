@@ -1,7 +1,7 @@
 /**
  * importFlow.svelte.js - the state machine behind the G3 import dialog (ia.md §3.1, §3.2, §5.4).
  *
- * One flow for every entry point (top bar, rail, Welcome, a file dropped on the window): the text goes
+ * One flow for the single entry point (Settings > Data > Import): the text goes
  * through planImport (importPlan.js), the dialog shows what it is and what will happen, and only
  * `confirmImport` writes. Junk never reaches the roster: a failed plan sets `error` and nothing else.
  * Loot bags and fight logs are not imported here; they are handed to their tool page, which collects
@@ -27,6 +27,8 @@ let state = $state({
   backupFirst: true,
   /** bumped when a loot bag / fight log is handed over, so a tool page that is already open can react */
   handoffSeq: 0,
+  /** bumped by a pointer link so Settings focuses its Import section */
+  focusSeq: 0,
 });
 
 /** The last "Update <name>": the character as it was, for the one-step undo. */
@@ -60,6 +62,9 @@ export const importFlow = {
   get handoffSeq() {
     return state.handoffSeq;
   },
+  get focusSeq() {
+    return state.focusSeq;
+  },
   /** {name, at} of the update that can still be undone, or null. */
   get undo() {
     return lastUpdate ? { name: lastUpdate.name, at: lastUpdate.at } : null;
@@ -72,6 +77,11 @@ export function setImportMode(mode) {
 
 export function setBackupFirst(on) {
   state.backupFirst = !!on;
+}
+
+/** Ask the Settings page to scroll to and focus its Import section (the pointer links on the tool pages). */
+export function requestImportFocus() {
+  state.focusSeq += 1;
 }
 
 /** Open the dialog at the file / paste step. */

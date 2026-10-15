@@ -7,8 +7,7 @@
    */
   import { replayCheck } from '../../lib/engine/pvp/replayCheck.js';
   import Panel from '../ui/Panel.svelte';
-  import DropZone from '../ui/DropZone.svelte';
-  import Textarea from '../ui/Textarea.svelte';
+  import ImportPointer from '../import/ImportPointer.svelte';
   import Checkbox from '../ui/Checkbox.svelte';
   import Button from '../ui/Button.svelte';
   import Banner from '../ui/Banner.svelte';
@@ -20,7 +19,6 @@
   let useFighters = $state(false);
   let report = $state(null);
   let error = $state('');
-  let fileError = $state('');
 
   const STATUS = { pass: ['✓', 'Pass'], fail: ['✕', 'Fail'], skipped: ['–', 'Skipped'] };
   const skipped = $derived(report ? report.rules.filter((r) => r.status === 'skipped') : []);
@@ -51,23 +49,15 @@
     check(handoff.text);
   });
 
-  async function onfile(file) {
-    fileError = '';
-    try {
-      text = await file.text();
-    } catch {
-      fileError = 'That file could not be read.';
-    }
-  }
 </script>
 
 <div class="panes" data-testid="replay-check">
   <Panel title="Fight log" level="primary" scope="tool">
-    <DropZone {onfile} label="Drop a fight log or click to choose" hint="JSON from /arena/fight" error={fileError} />
-    <Textarea label="Pasted log" rows={6} placeholder="paste the fight response here" bind:value={text} />
+    <ImportPointer what="a fight log" />
+    <p class="note" data-testid="log-state">{text.trim() ? 'A fight log is loaded.' : 'No fight log imported yet.'}</p>
     <Checkbox bind:checked={useFighters} disabled={!fighters} label={fighters ? `Hold the simulator to these fighters: ${fighters.label}` : 'Hold the simulator to the fighters (pick a runnable duel first)'} />
     {#snippet footer()}
-      <Button variant="primary" size="block" disabled={!text.trim()} onclick={() => check()}>Check log</Button>
+      <Button variant="primary" size="block" disabled={!text.trim()} onclick={() => check()}>Check log again</Button>
     {/snippet}
   </Panel>
 
