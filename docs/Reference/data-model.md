@@ -229,8 +229,16 @@ user-typed sigil damage values. Class `Warrior`/`Sentinel` becomes
   removed is the user-confirmed hard reset in Settings.
 - JSON export/import is routed through `normaliseRoster`; import accepts v1 and v2 JSON, and a
   game profile JSON (§7), which is added to the roster as a new character instead of replacing it.
+- `importJson` throws `ImportError` (with the JSON `line` for a syntax error) for text that is neither a
+  profile nor a roster with at least one character; the roster is then untouched. `loadRoster` keeps
+  its empty fallback for a corrupt stored blob.
 - Every store mutator ends with an explicit `persist()`, so save timing is
   deterministic around character switches and downloads.
+- `saveRoster` returns `{ok, error, trimmed, dropped}` and the store exposes it as `saveState`
+  (`{ok, error, at, trimmed, dropped}`), so a failed write (quota, private mode) is shown, not swallowed.
+  Before writing, run history is trimmed across **all** characters to `ROSTER_RUN_BYTE_BUDGET`
+  (`model/runs.js` `enforceRosterRunsBudget`: oldest unpinned detail first, then oldest unpinned rows,
+  one pass by per-run size estimates); the per-character budget still applies on normalise.
 
 ---
 
@@ -304,16 +312,21 @@ stored or committed; only the mapped fields below survive, and `normaliseCharact
 | `player.{name,class,level}` | core | player id, clan, quests, shop, currencies are never read |
 | `equipment` / `equipment2` + `enchantSlots(2)` | `equipment.set1` / `set2` | Oblivion-only slots are not in the base sets; `qualityBonus` is dropped, `quality` stays null |
 | `oblivionPrestige.oblivion.{equipment,enchantSlots,enchantStones,level}` | `equipment.oblivion`, `oblivionEnchantStones`, `oblivion.level` | `unlocked`, `activeRealm` too |
-| `enchantStones` | `enchantStones` | `OBLIVION_POWER` rows dropped (derived) |
+| `enchantStones` | `enchantStones` | `OBLIVION_POWER` rows dropped (derived); `activated` kept, so a sealed stone adds nothing |
 | `talentState` / `talentState2`, preset `talentSet` 1\|2 | `talentSets[0\|1]`, `talentSet` 0\|1 | |
-| `presets[]` | `presets` (max 8) | none: one preset from the live loadout (active sets, equipped pet/mount/relics/sigils) |
+| `presets[]` | `presets` (max 8) | none: one preset from the live loadout (active sets, equipped pet/mount/relics/sigils). A live loadout that differs from the active preset is appended as "Live loadout" and takes the sheet; at 8 presets the sheet is dropped (report `liveLoadoutSheetDropped`) |
+| `sigilState` live lists | the live preset's sigils | Mystic Druid (active talent set `MYSTIC_DRUID`) reads `druidEquippedSpecies` / `druidUtilitySlotSpecies`, every other class `equippedSpecies` / `utilitySlotSpecies` |
 | `sigilState.ownedSigils`, `altarTier` | `sigils` | per-sigil `activationCondition` becomes `owned[species].condition`; an Ancient in `sigilSpecies` moves to `ancientSigilSpecies` |
 | `petState` | `pets` | Attack Speed / Crit Damage / Minion Attack Speed secondaries x100 (pets keep percent points); altar level from `totalXp` + `tier` (Game/pets.md §6) |
 | `mountState`, `player.glyphs` | `mounts`, `glyphs` | species upper-cased; glyph rarity Title case; glyph secondary stat enum becomes the pool key |
 | `relicState.ownedRelics`, `extraSlotsPurchased`, `awakeningState`, `transcendencePresets` | `relics`, `extraRelicSlots`, `awakening`, `transcendence` | `activeTranscendencePresetId` kept |
 | `skills.<id>Level` | `skills.<id>` | `excludedDropStats` becomes `attunementBans` |
 | `fortressBuffs.ownedFortressIds` | `fortress.owned` | null means none |
-| `computedStats` | the active preset's `sheet` | the Oblivion sheet when the rift is the active realm; only finite `total*`/`raw*` numbers |
+| `computedStats` | the live-loadout preset's `sheet` (the active preset when clean) | the Oblivion sheet when the rift is the active realm, with `presetId` = that same preset; only finite `total*`/`raw*` numbers; sheets arrive unverified (no `inputsKey`, §6) |
+
+`gameProfileToCharacter(profile, {report})` appends `{kind: 'liveLoadout', presetId}` /
+`{kind: 'liveLoadoutSheetDropped'}` to `report`; `importJson(text, roster, {report})` also passes it to
+`normaliseCharacter` (M1/M2 `dropped`/`defaulted` entries), and `rosterStore.importFromJson` returns it.
 
 **One glyph, several mounts.** The game lets one glyph id sit in the sockets of more than one mount and
 the server counts it for the ridden mount (`Game/mounts-glyphs.md` §8). The v2 model allows the same

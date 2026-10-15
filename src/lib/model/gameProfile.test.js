@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { isGameProfile, gameProfileToCharacter, importedCharacterName, altarLevelFromXp } from './gameProfile.js';
 import { normaliseCharacter, normaliseRoster, newRoster, SCHEMA_VERSION } from './index.js';
+import { resolveTranscendencePreset } from './legality.js';
 
 // A small hand-written profile in the shape of the player-profile response. Every value is invented.
 // Ids and secrets (player id, clan, shop, economy) exist only to prove they are never copied.
@@ -42,7 +43,7 @@ function fixture() {
     equipment2: {
       WEAPON: { rarity: 'LEGENDARY', itemLevel: 60, primaryStats: { attack: 5000, hp: 800 }, secondaryStats: [{ type: 'DOUBLE_HIT', value: 3 }] },
     },
-    activeEquipmentSet: 1,
+    activeEquipmentSet: 2, // live loadout = preset-2 (DPS), so the profile is clean
     enchantSlots: { HEAD: 'stone-a', CHEST: 'stone-missing', BELT: null },
     enchantSlots2: { WEAPON: 'stone-b' },
     enchantStones: [
@@ -52,7 +53,7 @@ function fixture() {
 
     talentState: { specialization: 'WARRIOR_DPS', allocation: { dps_t1_sharpened_blade: 2 } },
     talentState2: { specialization: 'WARRIOR_TANK', allocation: { tank_t1_fortitude: 4, tank_t1_thick_skin: 3 } },
-    activeTalentSet: 2,
+    activeTalentSet: 1,
 
     presets: [
       {
@@ -73,7 +74,7 @@ function fixture() {
         { id: 'pet-1', species: 'FLAME_TOAD', rarity: 'COMMON', level: 1, xp: 0, secondaryStats: [{ type: 'CRIT_DAMAGE', value: 0.2 }] },
         { id: 'pet-2', species: 'THORNBACK_LIZARD', rarity: 'UNCOMMON', secondaryStats: [{ type: 'ATTACK_SPEED', value: 0.12 }, { type: 'HEALTH_PERCENT', value: 5.5 }] },
       ],
-      equippedPetId: 'pet-2',
+      equippedPetId: null,
       altar: { totalXp: 500, tier: 1 },
     },
     mountState: {
@@ -82,7 +83,7 @@ function fixture() {
         { id: 'mount-b', species: 'scorpion_hound', rarity: 'UNCOMMON', baseHp: 16, baseAtk: 12, level: 2, glyphs: { minor: ['gl-minor-a', 'gl-sealed', null], major: [null, null], mythic: [null] } },
         { id: 'mount-x', species: 'not_a_mount', baseHp: 1, baseAtk: 1, level: 1, glyphs: {} },
       ],
-      activeMountId: 'mount-a',
+      activeMountId: 'mount-b',
     },
     sigilState: {
       ownedSigils: [
@@ -92,7 +93,7 @@ function fixture() {
         { species: 'REJUVENATION', rarity: 'UNCOMMON', level: 2, activationCondition: 'MY_HP_BELOW_80' },
         { species: 'EARTHWARDEN', rarity: 'ANCIENT', level: 1 },
       ],
-      equippedSpecies: ['IRON_BASTION'],
+      equippedSpecies: ['ARROWSTORM'],
       utilitySlotSpecies: null,
       altarTier: 3,
     },
@@ -101,7 +102,7 @@ function fixture() {
         { relicId: 'relic_swift_emblem', level: 6, acquiredAt: 1 },
         { relicId: 'relic_guardian_signet', level: 3, acquiredAt: 2 },
       ],
-      equippedRelicIds: ['relic_swift_emblem'],
+      equippedRelicIds: [],
       extraSlotsPurchased: 1,
     },
     awakeningState: { path: 'RADIANT', level: 9 },
@@ -374,6 +375,9 @@ describe('robustness', () => {
     delete f.activePresetId;
     f.activeEquipmentSet = 2;
     f.activeTalentSet = 2;
+    f.petState.equippedPetId = 'pet-2';
+    f.mountState.activeMountId = 'mount-a';
+    f.relicState.equippedRelicIds = ['relic_swift_emblem'];
     f.sigilState.equippedSpecies = ['IRON_BASTION'];
     const c = normaliseCharacter(gameProfileToCharacter(f, { now: 'T' }));
     const active = c.presets.find((p) => p.id === c.activePresetId);
@@ -416,5 +420,104 @@ describe('round trip through normaliseRoster', () => {
   it('the raw mapping is stable under normalisation (normaliseCharacter is idempotent on it)', () => {
     const c = normaliseCharacter(gameProfileToCharacter(fixture(), { now: 'T' }));
     expect(normaliseCharacter(c)).toEqual(c);
+  });
+});
+
+describe('M3 import integrity', () => {
+  const now = 'T';
+  const imp = (f, opts = {}) => {
+    const report = [];
+    const raw = gameProfileToCharacter(f, { now, report, ...opts });
+    return { c: normaliseCharacter(raw), report };
+  };
+
+  it('a clean profile adds no Live preset', () => {
+    const { c, report } = imp(fixture());
+    expect(c.presets.map((p) => p.id)).toEqual(['default', 'preset-2']);
+    expect(report).toEqual([]);
+  });
+
+  it('a dirty live loadout (set 2 live, preset on set 1) becomes a Live loadout preset holding the sheet (#111)', () => {
+    const f = fixture();
+    f.activePresetId = 'default'; // TANK: set 1, talent set 2, pet-2, mount-a ...
+    // live stays DPS-like (set 2), so it differs from the active TANK preset
+    const { c, report } = imp(f);
+    expect(c.presets).toHaveLength(3);
+    const live = c.presets[2];
+    expect(live.name).toBe('Live loadout');
+    expect(live).toMatchObject({ equipmentSet: 2, talentSet: 0, petId: null, mountId: 'mount-b', sigilSpecies: ['ARROWSTORM'] });
+    expect(live.sheet.values.totalAttack).toBe(123456);
+    expect(c.presets[0].sheet).toBeNull();
+    expect(c.activePresetId).toBe('default');
+    expect(report).toEqual([{ kind: 'liveLoadout', presetId: live.id }]);
+  });
+
+  it('a dirty profile at the preset cap drops the sheet with a report entry instead of a Live preset', () => {
+    const f = fixture();
+    f.presets = Array.from({ length: 8 }, (_, i) => ({ id: `p${i}`, name: `P${i}`, equipmentSet: 1, talentSet: 1, relicIds: [], sigilSpecies: [] }));
+    f.activePresetId = 'p3';
+    const { c, report } = imp(f);
+    expect(c.presets).toHaveLength(8);
+    expect(c.presets.every((p) => p.sheet === null)).toBe(true);
+    expect(report).toEqual([{ kind: 'liveLoadoutSheetDropped' }]);
+  });
+
+  it('a Mystic Druid profile without presets keeps the live Druid sigils, not the Mage arrays (#113)', () => {
+    const f = fixture();
+    f.player.class = 'MYSTIC';
+    delete f.presets;
+    delete f.activePresetId;
+    f.talentState = { specialization: 'MYSTIC_DRUID', allocation: {} };
+    f.activeTalentSet = 1;
+    f.sigilState = {
+      ownedSigils: [{ species: 'ARCANE_SHARD', rarity: 'RARE', level: 3 }, { species: 'URSINE_FORM', rarity: 'RARE', level: 3 }],
+      equippedSpecies: ['ARCANE_SHARD'],
+      druidEquippedSpecies: ['ARCANE_BURST'],
+      utilitySlotSpecies: null,
+      druidUtilitySlotSpecies: 'URSINE_FORM',
+      altarTier: 1,
+    };
+    const raw = gameProfileToCharacter(f, { now });
+    const p = raw.presets[0];
+    expect(p.sigilSpecies).toEqual(['ARCANE_BURST']);
+    expect(p.utilitySigilSpecies).toBe('URSINE_FORM');
+  });
+
+  it('an imported unactivated stone stays unactivated (M2 note)', () => {
+    const f = fixture();
+    f.enchantStones[0].activated = false;
+    const { c } = imp(f);
+    expect(c.enchantStones.find((s) => s.id === 'stone-a').activated).toBe(false);
+    expect(c.enchantStones.find((s) => s.id === 'stone-b').activated).toBe(true);
+  });
+
+  it('the Oblivion sheet is owned by the preset that holds the live loadout (S1)', () => {
+    const f = fixture();
+    f.oblivionPrestige = { unlocked: true, activeRealm: 'OBLIVION', oblivion: { level: 3, equipment: {}, enchantSlots: {}, enchantStones: [] } };
+    const clean = imp(f).c;
+    expect(clean.oblivion.sheet.presetId).toBe('preset-2');
+    f.activePresetId = 'default';
+    const dirty = imp(f).c;
+    expect(dirty.oblivion.sheet.presetId).toBe(dirty.presets[2].id);
+  });
+
+  it('the active board is imported, so an unlinked preset resolves to it (#110)', () => {
+    const f = fixture();
+    f.transcendencePresets.push({ id: 'x', name: 'X', allocatedNodeIds: ['n_0,-1', 'n_0,-2'] });
+    f.activeTranscendencePresetId = 'x';
+    f.presets[1].transcendencePresetId = null;
+    const { c } = imp(f);
+    expect(c.transcendence.activePresetId).toBe('x');
+    expect(resolveTranscendencePreset(c, c.presets[1]).id).toBe('x');
+  });
+
+  it('extraSlotsPurchased 0 caps relics at 2 per preset', () => {
+    const f = fixture();
+    f.relicState.extraSlotsPurchased = 0;
+    f.relicState.ownedRelics.push({ relicId: 'relic_crimson_edge', level: 1 }, { relicId: 'relic_phoenix_feather', level: 1 });
+    f.presets[0].relicIds = ['relic_swift_emblem', 'relic_guardian_signet', 'relic_crimson_edge', 'relic_phoenix_feather'];
+    const { c } = imp(f);
+    expect(c.extraRelicSlots).toBe(0);
+    expect(c.presets[0].relicIds).toHaveLength(2);
   });
 });

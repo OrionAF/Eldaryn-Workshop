@@ -33,17 +33,25 @@ import { createApplyStore } from './store/apply.js';
 function createRosterStore() {
   let roster = $state(loadRoster());
   const current = $derived(getCurrent(roster));
+  let saveState = $state({ ok: true, error: null, at: null, trimmed: 0, dropped: 0 });
 
   const ctx = createContext({
     getRoster: () => roster,
     setRoster: (r) => {
       roster = r;
     },
-    persist: () => saveRoster(roster),
+    persist: () => {
+      const res = saveRoster(roster);
+      saveState = { ok: res.ok, error: res.error, at: res.ok ? new Date().toISOString() : saveState.at, trimmed: res.trimmed, dropped: res.dropped };
+    },
   });
 
   return mergeStores(
     {
+      /** Outcome of the last save: {ok, error, at (last good save), trimmed/dropped run history}. */
+      get saveState() {
+        return saveState;
+      },
       get roster() {
         return roster;
       },

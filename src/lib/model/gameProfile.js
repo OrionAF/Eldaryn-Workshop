@@ -79,6 +79,7 @@ function mapStone(raw) {
   return {
     id: str(raw.id),
     type: raw.type,
+    activated: raw.activated, // an unactivated stone adds nothing (stones.md §1); only a missing flag defaults to on
     quality: num(raw.quality),
     amplifyLevel: num(raw.amplifyLevel) ?? 0,
     oblivionLevel: num(raw.oblivionLevel),
@@ -211,31 +212,66 @@ function sheetValues(computedStats) {
   return values;
 }
 
+const LIVE_NAME = 'Live loadout';
+
+/** Druid sigils live in their own client lists, so the live loadout reads them when the active talent set is Druid. */
+function isDruid(profile) {
+  if (String(profile.player.class).toUpperCase() !== 'MYSTIC') return false;
+  const active = profile.activeTalentSet === 2 ? profile.talentState2 : profile.talentState;
+  return active?.specialization === 'MYSTIC_DRUID';
+}
+
+/** The sigil lists the player actually runs: {species, utility} (either may be undefined when the profile omits it). */
+function liveSigils(profile) {
+  const s = profile.sigilState;
+  return isDruid(profile)
+    ? { species: s?.druidEquippedSpecies, utility: s?.druidUtilitySlotSpecies }
+    : { species: s?.equippedSpecies, utility: s?.utilitySlotSpecies };
+}
+
 /**
- * A profile with no presets (the Presets feature unlocks at level 41) still has a live loadout: the
- * active equipment and talent sets, the equipped pet, mount, relics and sigils. It becomes one preset.
+ * The live loadout as a (client-shaped) preset: the active equipment and talent sets, the equipped pet,
+ * mount, relics and sigils. A profile with no presets (the Presets feature unlocks at level 41) is
+ * exactly this one preset; a profile whose live state differs from its active preset gets it appended.
  */
-function implicitPreset(profile) {
-  const sigils = profile.sigilState;
+function livePreset(profile, id, name) {
+  const sigils = liveSigils(profile);
   return {
-    id: 'default',
-    name: 'Default',
+    id,
+    name,
     equipmentSet: profile.activeEquipmentSet,
     talentSet: profile.activeTalentSet,
     petId: profile.petState?.equippedPetId,
     mountId: profile.mountState?.activeMountId,
     relicIds: profile.relicState?.equippedRelicIds,
-    sigilSpecies: sigils?.equippedSpecies,
-    utilitySigilSpecies: sigils?.utilitySlotSpecies,
+    sigilSpecies: sigils.species,
+    utilitySigilSpecies: sigils.utility,
     transcendencePresetId: null,
   };
 }
 
-function mapPresets(profile, sheet) {
-  let list = arr(profile.presets).filter(isObj).slice(0, MAX_PRESETS);
-  if (list.length === 0) list = [implicitPreset(profile)];
-  const activeId = list.some((p) => p.id === profile.activePresetId) ? profile.activePresetId : list[0]?.id;
-  const presets = list.map((p) => ({
+const sameSet = (a, b) => {
+  const x = new Set(a);
+  const y = new Set(b);
+  return x.size === y.size && [...x].every((v) => y.has(v));
+};
+
+/** True when a live field the profile carries differs from the preset's; a field the profile omits never counts. */
+function liveDiffers(profile, preset) {
+  const live = livePreset(profile, null, null);
+  const setOf = (n) => (n === 2 ? 2 : 1);
+  if (live.equipmentSet !== undefined && setOf(live.equipmentSet) !== setOf(preset.equipmentSet)) return true;
+  if (live.talentSet !== undefined && setOf(live.talentSet) !== setOf(preset.talentSet)) return true;
+  if (live.petId !== undefined && str(live.petId) !== str(preset.petId)) return true;
+  if (live.mountId !== undefined && str(live.mountId) !== str(preset.mountId)) return true;
+  if (Array.isArray(live.relicIds) && !sameSet(live.relicIds.filter((x) => typeof x === 'string'), arr(preset.relicIds))) return true;
+  if (Array.isArray(live.sigilSpecies) && !sameSet(live.sigilSpecies.filter((x) => typeof x === 'string'), arr(preset.sigilSpecies))) return true;
+  if (live.utilitySigilSpecies !== undefined && str(live.utilitySigilSpecies) !== str(preset.utilitySigilSpecies)) return true;
+  return false;
+}
+
+function mapPreset(p, sheet) {
+  return {
     id: str(p.id),
     name: str(p.name),
     equipmentSet: p.equipmentSet === 2 ? 2 : 1,
@@ -245,9 +281,36 @@ function mapPresets(profile, sheet) {
     relicIds: arr(p.relicIds).filter((x) => typeof x === 'string'),
     ...mapPresetSigils(p),
     transcendencePresetId: str(p.transcendencePresetId),
-    sheet: p.id === activeId ? sheet : null,
-  }));
-  return { presets, activePresetId: activeId ?? null };
+    sheet,
+  };
+}
+
+/**
+ * -> {presets, activePresetId, liveId}. `liveId` is the preset that holds the live loadout (and so the
+ * server's computedStats sheet): the active preset when the loadout matches it, else an appended "Live
+ * loadout" preset, or null when the cap of 8 leaves no room (the sheet is then dropped, with a report entry).
+ */
+function mapPresets(profile, sheet, report) {
+  let list = arr(profile.presets).filter(isObj).slice(0, MAX_PRESETS);
+  const implicit = list.length === 0;
+  if (implicit) list = [livePreset(profile, 'default', 'Default')];
+  const activeId = list.some((p) => p.id === profile.activePresetId) ? profile.activePresetId : list[0]?.id;
+  const presets = list.map((p) => mapPreset(p, null));
+  let liveId = str(activeId);
+  if (!implicit && liveDiffers(profile, list.find((p) => p.id === activeId) ?? list[0])) {
+    if (list.length < MAX_PRESETS) {
+      liveId = 'live-loadout';
+      while (list.some((p) => p.id === liveId)) liveId += '_';
+      presets.push(mapPreset(livePreset(profile, liveId, LIVE_NAME), null));
+      report?.push({ kind: 'liveLoadout', presetId: liveId });
+    } else {
+      liveId = null;
+      if (sheet) report?.push({ kind: 'liveLoadoutSheetDropped' });
+    }
+  }
+  const owner = presets.find((p) => p.id === liveId);
+  if (owner) owner.sheet = sheet;
+  return { presets, activePresetId: activeId ?? null, liveId };
 }
 
 function mapTranscendence(profile) {
@@ -288,16 +351,17 @@ function mapFortress(fortressBuffs) {
  * Game profile -> raw v2 character. Does not generate an id (normaliseCharacter does) and does not
  * validate: normaliseCharacter drops whatever no longer resolves against the catalogues.
  * @param {object} profile  a value for which isGameProfile() holds
- * @param {{now?: string}} [opts]  `now` stamps the sheet's enteredAt (default: current time)
+ * @param {{now?: string, report?: object[]}} [opts]  `now` stamps the sheet's enteredAt (default: current time);
+ *   `report` receives {kind: 'liveLoadout'|'liveLoadoutSheetDropped'} entries (data-model.md §7)
  */
-export function gameProfileToCharacter(profile, { now = new Date().toISOString() } = {}) {
+export function gameProfileToCharacter(profile, { now = new Date().toISOString(), report } = {}) {
   const player = profile.player;
   const oblivionPrestige = isObj(profile.oblivionPrestige) ? profile.oblivionPrestige : {};
   const hero = isObj(oblivionPrestige.oblivion) ? oblivionPrestige.oblivion : null;
   const oblivionActive = oblivionPrestige.unlocked === true && oblivionPrestige.activeRealm === 'OBLIVION';
   const values = sheetValues(profile.computedStats);
   const sheet = Object.keys(values).length ? { values, enteredAt: now } : null;
-  const { presets, activePresetId } = mapPresets(profile, oblivionActive ? null : sheet);
+  const { presets, activePresetId, liveId } = mapPresets(profile, oblivionActive ? null : sheet, report);
   const baseSlots = [...BASE_SLOTS];
   const allSlots = [...BASE_SLOTS, ...OBLIVION_ONLY_SLOTS];
   const { mounts, glyphs } = mapMountsAndGlyphs(profile.mountState, player.glyphs);
@@ -333,7 +397,8 @@ export function gameProfileToCharacter(profile, { now = new Date().toISOString()
       unlocked: oblivionPrestige.unlocked === true,
       level: hero?.level,
       activeRealm: oblivionActive ? 'oblivion' : 'base',
-      sheet: oblivionActive ? sheet : null,
+      // the sheet's owner is the preset that holds the live loadout (model/oblivion.js)
+      sheet: oblivionActive && sheet ? { ...sheet, presetId: liveId } : null,
     },
     presets,
     activePresetId,
