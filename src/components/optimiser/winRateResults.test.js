@@ -44,7 +44,7 @@ it('the Target field shows percent (default 95), clamps to 1-100 and explains it
   expect(ui.q('label').textContent).toMatch(/Target/);
   expect(input.value).toBe('95');
   expect(ui.q('[data-testid="win-rate-explain"]').textContent.replace(/\s+/g, ' ').trim()).toBe(
-    'Finds the fewest changes that clear at least 95% of the time.',
+    'Finds the build with the fewest changes that clears this at least 95% of the time. Speed does not matter. A loss usually costs nothing but time (a chapter level restarts; an Oblivion floor keeps its key), so a lower target is fine for content you can retry.',
   );
   change(input, '80');
   expect(state.objective).toEqual({ kind: 'win-rate', target: 0.8 });
@@ -57,7 +57,7 @@ it('the Target field shows percent (default 95), clamps to 1-100 and explains it
 
 it('the explanation names the chosen target', () => {
   mounted = setup(WinRateTarget, { objective: { kind: 'win-rate', target: 0.8 } });
-  expect(mounted.q('[data-testid="win-rate-explain"]').textContent).toMatch(/clear at least 80% of the time/);
+  expect(mounted.q('[data-testid="win-rate-explain"]').textContent).toMatch(/at least 80% of the time/);
 });
 
 it('a win-rate contrast is shown in win-rate points, uncapped, keeping its verdict', () => {
@@ -153,7 +153,7 @@ it('every win rate carries "about N tries per clear": rows, baseline and the goa
 it('the Target field accepts 1 %', () => {
   mounted = setup(WinRateTarget, { objective: { kind: 'win-rate', target: 0.01 } });
   expect(mounted.q('input').value).toBe('1');
-  expect(mounted.q('[data-testid="win-rate-explain"]').textContent).toMatch(/clear at least 1% of the time/);
+  expect(mounted.q('[data-testid="win-rate-explain"]').textContent).toMatch(/at least 1% of the time/);
 });
 
 it('a Fortress boss result shows raw and credited damage for the rows and the current build', () => {

@@ -35,6 +35,7 @@
   } from '../../lib/ui/optimiserView.js';
   import { triesPerClear } from '../../lib/ui/winRateFormat.js';
   import WinRateTarget from '../optimiser/WinRateTarget.svelte';
+  import PushLadder from '../optimiser/PushLadder.svelte';
   import { fmtCount } from '../../lib/ui/statsFormat.js';
   import Panel from '../ui/Panel.svelte';
   import Tabs from '../ui/Tabs.svelte';
@@ -340,10 +341,11 @@
             <span class="hint">Empty means the whole fight.</span>
           {/if}
           {#if setup.objective.kind === 'win-chance'}
-            <span class="hint" data-testid="win-chance-explain">Finds the build with the best clear chance; ties go to the fewest changes.</span>
+            <span class="hint" data-testid="win-chance-explain">Finds the build with the best chance to clear this; ties go to the fewest changes. Speed does not matter.</span>
           {/if}
-          {#if setup.objective.kind === 'win-rate'}
-            <WinRateTarget bind:objective={setup.objective} />
+          {#if setup.objective.kind === 'win-rate' || setup.objective.kind === 'push'}
+            <WinRateTarget bind:objective={setup.objective} start={targetLabel} />
+
           {/if}
         </section>
 
@@ -409,6 +411,7 @@
               {#if savedTries}<p data-testid="headline-tries">Best win rate: {savedTries}.</p>{/if}
             </div>
           {/if}
+          {#if savedView?.push}<PushLadder push={savedView.push} />{/if}
           {#if savedView}
             <OptimiserResults
               view={savedView}
@@ -439,6 +442,13 @@
           {/if}
           {#if live}
             <p class="hint num" data-testid="progress-line">{progressLine(live.progress)}</p>
+            {#if live.progress?.steps?.length}
+              <ol class="rung-steps" data-testid="push-steps" aria-label="Steps climbed">
+                {#each live.progress.steps as st (st.id)}
+                  <li class:current={st.state === 'current'}>{st.label}{st.text ? `: ${st.text}` : ''}</li>
+                {/each}
+              </ol>
+            {/if}
           {/if}
           {#if failedJob}
             <Banner variant="error" lead="The run failed.">
@@ -476,6 +486,7 @@
               {#if liveTries}<p data-testid="headline-tries">Best win rate: {liveTries}.</p>{/if}
               {#if result.headline.worseHidden > 0}<p>{result.headline.worseHidden} build{result.headline.worseHidden === 1 ? '' : 's'} measured worse and {result.headline.worseHidden === 1 ? 'is' : 'are'} hidden.</p>{/if}
             </div>
+            {#if view.push}<PushLadder push={view.push} />{/if}
             {#if view.withheld > 0}
               <Banner variant="error" lead="Rows withheld.">{view.withheld} result{view.withheld === 1 ? '' : 's'} listed no change to the preset and {view.withheld === 1 ? 'was' : 'were'} not shown.</Banner>
             {/if}
@@ -543,5 +554,7 @@
   .headline h3 { margin: 0; font-family: var(--font-display); font-size: var(--fs-20); }
   .headline p { margin: var(--sp-1) 0 0; color: var(--text-soft); font-size: var(--fs-13); }
   .violations { margin: 0; padding-left: var(--sp-5); color: var(--text-soft); font-size: var(--fs-13); }
+  .rung-steps { margin: 0; padding-left: var(--sp-5); display: grid; gap: 2px; color: var(--text-muted); font-size: var(--fs-12); max-height: calc(var(--sp-5) * 8); overflow-y: auto; }
+  .rung-steps .current { color: var(--text-ink); }
   .read { margin: 0; padding-left: var(--sp-5); display: grid; gap: var(--sp-2); color: var(--text-soft); font-size: var(--fs-13); }
 </style>

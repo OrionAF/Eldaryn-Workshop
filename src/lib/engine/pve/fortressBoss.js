@@ -6,7 +6,6 @@ import {
 } from '../../game/fortress.js';
 
 export const FORTRESS_BOSS_GROUPS = Object.freeze(Object.keys(FORTRESS_BOSSES));
-export const FORTRESS_BOSS_DEFAULT_CLAN_SIZE = FORTRESS_CONSTANTS.maxMembersDefault;
 export const MAX_SHIELD_PERCENT = 60;
 
 /** The boss fight as the engine plays it: one mob, the 60 s window (`fightDurationMs`). */
@@ -21,11 +20,12 @@ export function fortressBossMob(group) {
 
 /**
  * Boss shield percent (module 4305 `calculateBossShield`, clan-fortress.md §3.1): the control points
- * interpolated piecewise-linearly over alive defenders / max clan size, 0 when the size is not positive.
+ * interpolated piecewise-linearly over alive defenders / the server's max clan size (`clanCapForServer`; confirmed by
+ * two server snapshots), 0 when the cap is not positive. The client's `startingDefenders` guard is taken as met.
  */
-export function calculateBossShield(aliveDefenders, maxClanSize) {
-  if (!(maxClanSize > 0)) return 0;
-  const ratio = Math.min(1, Math.max(0, aliveDefenders) / maxClanSize);
+export function calculateBossShield(aliveDefenders, clanCap) {
+  if (!(clanCap > 0)) return 0;
+  const ratio = Math.min(1, Math.max(0, aliveDefenders) / clanCap);
   const pts = [...BOSS_SHIELD_CONTROL_POINTS].sort((a, b) => a.ratio - b.ratio);
   for (let i = 1; i < pts.length; i++) {
     const lo = pts[i - 1];
@@ -51,9 +51,12 @@ export function calculateStarVulnerability(stars) {
   return 1 + pct / 100;
 }
 
-/** The credit multipliers of a resolved fortress-boss spec (CORE has no stars: 1x). */
-export function fortressBossMultipliers({ group, stars, aliveDefenders, maxClanSize, kills }) {
-  const shieldPercent = calculateBossShield(aliveDefenders, maxClanSize);
+/**
+ * The credit multipliers of a resolved fortress-boss spec (CORE has no stars: 1x). `shieldPercent`, when given
+ * (read off the siege screen), is used directly instead of the alive-defenders / `clanCap` interpolation.
+ */
+export function fortressBossMultipliers({ group, stars, aliveDefenders, clanCap, shieldPercent: given = null, kills }) {
+  const shieldPercent = given == null ? calculateBossShield(aliveDefenders, clanCap) : Math.min(MAX_SHIELD_PERCENT, Math.max(0, given));
   const shieldMultiplier = shieldToMultiplier(shieldPercent);
   const contributionBonus = calculateContributionBonus(kills);
   const starVulnerability = group === 'CORE' ? 1 : calculateStarVulnerability(stars);

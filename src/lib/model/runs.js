@@ -31,7 +31,9 @@
 // keptBecause, sideEffects), remainder, lines}. Schema 1 runs (no `schema`) keep the RunEntry detail above and
 // show per-change effects as "not measured". `powerFloor` is the run's Combat Power guard (absent: none) and each
 // schema 2 Row keeps its Combat Power as `power` (absent on older runs). A PVE win-rate run also keeps `headline.goal` {status, target, mode?}, each
-// Row's `aux.meetsTarget` / `aux.target` and each Contrast's `winRate` {delta, lo, hi}. `applied` is {at, rank} once a row was written to the preset.
+// Row's `aux.meetsTarget` / `aux.target` and each Contrast's `winRate` {delta, lo, hi}. A Push run (simulation.md §Push)
+// keeps `headline.push` {status, target, ladder, start, baseline, reached, stop} (rung indexes and labels) and
+// `detail.push` {rungs: [{index, label, current, build}]} (the ladder strip). `applied` is {at, rank} once a row was written to the preset.
 //
 // Budget (single localStorage key, so overflow is prevented up front; storage.js also reports a failed save):
 // detail drops oldest-first until the history fits RUN_BYTE_BUDGET, then whole rows beyond
@@ -153,7 +155,8 @@ function normaliseDetail2(d) {
   const rows = (Array.isArray(d.rows) ? d.rows : []).map(normaliseRow).filter(Boolean).slice(0, RUN_DETAIL_RESULTS);
   const baseline = normaliseRow(d.baseline);
   if (!baseline && rows.length === 0) return null;
-  return { baseline, rows };
+  const push = normalisePushDetail(d.push);
+  return { baseline, rows, ...(push ? { push } : {}) };
 }
 
 function normaliseDetail(d, schema = 1) {
@@ -177,6 +180,8 @@ function normaliseHeadline(h) {
     // A PVE win-rate run's verdict and its target share; null otherwise. Highest chance to win ({mode: 'max'}, no
     // target): 'already' | 'best' | 'no-wins'; reach a win rate: 'already' | 'reached' | 'not-reached'.
     goal: normaliseGoal(x.goal),
+    // a Push run's block; absent on every other run
+    ...(normalisePushHeadline(x.push) ? { push: normalisePushHeadline(x.push) } : {}),
   };
 }
 
@@ -186,6 +191,32 @@ function normaliseGoal(g) {
   const max = g.mode === 'max';
   if (!GOAL_STATUSES[max ? 'max' : 'target'].includes(g.status)) return null;
   return max ? { mode: 'max', status: g.status, target: null } : { status: g.status, target: num(g.target) };
+}
+
+const PUSH_STATUSES = ['pushed', 'no-gain', 'none'];
+const PUSH_STOPS = ['top', 'screen', 'not-reached'];
+const OUTCOMES = ['clears', 'fails', 'open'];
+const int = (v) => (Number.isInteger(v) && v >= 0 ? v : null);
+const rungRef = (r) => (isObj(r) ? { index: int(r.index ?? r.deepest), label: typeof r.label === 'string' ? r.label : null } : { index: null, label: null });
+
+/** A Push run's headline block: where each build reached and where the climb stopped; null otherwise. */
+function normalisePushHeadline(p) {
+  if (!isObj(p) || !PUSH_STATUSES.includes(p.status)) return null;
+  const stop = isObj(p.stop) && PUSH_STOPS.includes(p.stop.reason) ? { ...rungRef(p.stop), reason: p.stop.reason, best: normaliseEstimate(p.stop.best) } : null;
+  return {
+    status: p.status, target: num(p.target),
+    ladder: { kind: str(p.ladder?.kind), label: str(p.ladder?.label), size: int(p.ladder?.size) ?? 0 },
+    start: rungRef(p.start), baseline: rungRef(p.baseline),
+    reached: { ...rungRef(p.reached), foundLabel: typeof p.reached?.foundLabel === 'string' ? p.reached.foundLabel : null },
+    stop,
+  };
+}
+
+/** A Push run's ladder strip (detail). */
+function normalisePushDetail(p) {
+  if (!isObj(p) || !Array.isArray(p.rungs)) return null;
+  const outcome = (v) => (OUTCOMES.includes(v) ? v : null);
+  return { rungs: p.rungs.filter(isObj).map((r) => ({ index: int(r.index) ?? 0, label: str(r.label), current: outcome(r.current), build: outcome(r.build) })) };
 }
 
 /** One raw run -> a valid run, or null when it has no usable id. */
@@ -290,9 +321,13 @@ function runFromResultV2(result, fields) {
       n: (top ?? base)?.value?.n ?? 0, evaluated: result.search?.evaluated ?? 0, changes: top?.changes?.length ?? 0,
       text: result.headline?.text ?? '',
       goal: normaliseGoal(result.goal),
+      ...(result.push ? { push: result.push } : {}),
     },
     // Full describe lines are long text: only the baseline and the top RUN_DETAIL_FULL_LINES keep them.
-    detail: { baseline: base, rows: (result.rows ?? []).map((r, i) => (i < RUN_DETAIL_FULL_LINES ? r : { ...r, lines: [] })) },
+    detail: {
+      baseline: base, rows: (result.rows ?? []).map((r, i) => (i < RUN_DETAIL_FULL_LINES ? r : { ...r, lines: [] })),
+      ...(result.push ? { push: { rungs: result.push.rungs } } : {}),
+    },
   });
 }
 

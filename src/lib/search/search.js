@@ -701,6 +701,7 @@ async function searchPhase(prep, run) {
     id,
     enabled: enabled.has(id),
     domain: enabled.has(id) ? sizes[id] ?? 1 : 1,
+    ...(id === 'mount' && enabled.has(id) ? { pruned: space.prunedMounts(B.cand) } : {}),
     status: !enabled.has(id) ? 'disabled' : status.get(id) ?? 'not-reached',
   }));
   const optimaKeys = new Set(out.optima.map((a) => a.key));
@@ -815,6 +816,7 @@ const strictDefault = () => {
  * @param {{signal?: AbortSignal, onProgress?: Function, onCheckpoint?: Function, strict?: boolean}} [hooks]
  */
 export async function optimize(request, hooks = {}) {
+  if (request?.objective?.kind === 'push') throw new Error("optimize: a Push request runs through search/push.js 'push'");
   const prep = prepare(request);
   const { space, objective, effort, seeds, target, warnings } = prep;
   const strict = hooks.strict ?? strictDefault();
