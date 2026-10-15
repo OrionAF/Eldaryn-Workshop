@@ -250,6 +250,8 @@ formula, not from fights.
 
 ## 2. Import other players' profiles as PVP opponents
 
+**Status (2026-10-15).** Built on rebuild2/RANK, not merged. Import kind `opponent` (`importPlan.js`), `opponents[].imported {playerId, level, importedAt}`, re-import by playerId updates in place, the Opponents page shows the source and points to re-import, and a Rankings opponent is a Celestial partner with its real level. Details: data-model.md (Rankings opponents), simulation.md §Celestial Trial. The player id and name field names in the real file are assumed (`playerId`, `name`); check against a real capture.
+
 **Ask.** Import the profile JSON that the game returns when you open another player from Rankings,
 and save it as a PVP opponent.
 

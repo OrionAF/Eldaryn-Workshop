@@ -3,12 +3,10 @@
 // tier and the active major glyphs, but no talent allocation, so the sheet is used as is and no
 // talent-driven mechanic is modelled (see Game/combat-pve.md §20 for what the Celestial logs show).
 import { sigilBySpecies } from '../game/sigils.js';
+import { isRankingsProfile } from '../model/opponents.js';
 
 /** True for a /leaderboard/player profile: a server sheet plus the worn sigils, no presets. */
-export function isLeaderboardProfile(json) {
-  return json != null && typeof json === 'object' && json.computedStats != null
-    && Array.isArray(json.equippedSigils) && !Array.isArray(json.presets);
-}
+export const isLeaderboardProfile = isRankingsProfile;
 
 /**
  * @param {Object} profile  a /leaderboard/player profile

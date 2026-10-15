@@ -13,6 +13,7 @@ import { ImportError } from './storage.js';
 import { notify } from './notify.svelte.js';
 import { go } from './router.svelte.js';
 import { AFTER_IMPORT_PAGE_ID } from './routes.js';
+import { MAX_OPPONENTS } from './model/opponents.js';
 
 let state = $state({
   open: false,
@@ -120,7 +121,7 @@ export function loadImportText(text) {
   state.open = true;
   state.text = text;
   try {
-    const plan = planImport(text, rosterStore.roster);
+    const plan = planImport(text, rosterStore.roster, { character: rosterStore.current });
     state.plan = plan;
     state.error = '';
     state.stage = 'report';
@@ -182,6 +183,14 @@ export function confirmImport() {
       }
       closeImport();
       go(AFTER_IMPORT_PAGE_ID);
+      return true;
+    }
+    if (plan.kind === 'opponent') {
+      const res = rosterStore.saveRankingsOpponent(plan.opponent);
+      if (!res) throw new ImportError(`At most ${MAX_OPPONENTS} saved opponents. Remove one on the Opponents page first.`);
+      notify(`${res.updated ? 'Updated' : 'Saved'} opponent ${plan.opponent.name} from Rankings`, { kind: 'success' });
+      closeImport();
+      go('tools/opponents');
       return true;
     }
     if (plan.kind === 'roster') {

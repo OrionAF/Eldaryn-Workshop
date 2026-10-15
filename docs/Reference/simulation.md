@@ -402,7 +402,7 @@ null | {source: 'character', characterId, presetId} | {source: 'opponent', oppon
 number from 1 to `celestialMaxHoldCount(difficulty)`; the tactics default to the catalogue's finder tactics for the
 difficulty (`CELESTIAL_FINDER_DEFAULT_TACTICS`, Game/pve-content.md §6). `level` defaults to the engine's rule, the
 party's highest level, read once at resolve time from my character and a roster partner's Fighter; an opponent
-partner's typed sheet has no level, so it never sets the scaling. Tank or starter 'partner' needs a partner.
+partner's typed sheet has no level, so it never sets the scaling, but one imported from Rankings carries the player's real level (`imported.level`), which does. Tank or starter 'partner' needs a partner.
 Label: "Celestial Trial (HARD, L85, with <partner name>)", or "solo". Objectives: the win-rate family only
 (`win-chance` the default, `win-rate`); Push and survival are not offered (backlog §11).
 
@@ -420,8 +420,9 @@ resolved where the request is built (`ui/optimiserSetup.js` `requestOf`, via `re
 built with `build/fighter.js`) and sent as plain JSON in `request.partner`, since the worker never sees the roster; a
 pool worker gets it in its setup. An opponent partner is resolved inside `resolveTarget` from `character.opponents`
 (`features/duel.js` `opponentFighter`): its typed sheet is taken as given. The target's assumptions are the
-`CELESTIAL_ASSUMPTIONS` labels plus one (`celestial-partner`) saying what the partner is. A Rankings profile (backlog
-§2) is meant to become a third source beside these two.
+`CELESTIAL_ASSUMPTIONS` labels plus one (`celestial-partner`) saying what the partner is. A Rankings profile (backlog §2) is saved as an opponent (data-model.md §3, Rankings opponents), so it is the
+'opponent' source: its server sheet, worn sigils, altar tier and glyphs are taken as given (no talents modelled), its
+level sets the party scaling, and the assumption label says "imported from Rankings (level N)".
 
 Keys. The target key carries the resolved level and a hash of the partner's Fighter (`partnerKey`), and the run
 echoes `partnerKey` in `request`, so the seeds, the run key and the caches change whenever the partner's build does,

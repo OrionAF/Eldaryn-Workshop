@@ -203,7 +203,7 @@ function mapTalentSet(state) {
 }
 
 /** Sheet values: the finite, non-negative `total*` / `raw*` numbers of the server's computedStats. */
-function sheetValues(computedStats) {
+export function sheetValues(computedStats) {
   const values = {};
   if (!isObj(computedStats)) return values;
   for (const [k, v] of Object.entries(computedStats)) {

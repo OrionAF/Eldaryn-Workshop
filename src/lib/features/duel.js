@@ -49,7 +49,8 @@ export function opponentFighter(opp) {
     defaulted,
     class: o.class,
     spec: o.spec,
-    level: 100,
+    // a typed sheet has no level (100 is a placeholder); a Rankings import carries the real one
+    level: o.imported?.level ?? 100,
     sigils: o.sigils,
     utility: o.utility,
     ancient: o.ancient,
