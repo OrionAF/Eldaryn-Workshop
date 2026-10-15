@@ -15,7 +15,7 @@ import { poolScope } from '../tasks/pool.js';
 const EFFORT = { level: 'quick', n0: 8, maxN: 24, randomStarts: 0 };
 const TARGETS = [
   { target: { kind: 'dummy', seconds: 8 } },
-  { target: { kind: 'chapter', chapter: 2, level: 3 }, objective: { kind: 'ttk-median' } },
+  { target: { kind: 'chapter', chapter: 2, level: 3 }, objective: { kind: 'win-rate', target: 1 } },
   { target: { kind: 'worldBoss', affinity: 'NONE' } },
 ];
 /** A result without its run metadata (wall clock, pool size); everything else is a function of the request. */

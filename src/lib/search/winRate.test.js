@@ -54,13 +54,14 @@ describe('win-rate objective: target and compatibility', () => {
     expect(objectiveKindsFor('custom')).toContain('win-rate');
     expect(objectiveKindsFor('dummy')).not.toContain('win-rate');
     expect(objectiveKindsFor('worldBoss')).not.toContain('win-rate');
-    expect(objectiveKindsFor('dungeon')).toEqual(expect.arrayContaining(['ttk-median', 'ttk-p90', 'survival']));
+    expect(objectiveKindsFor('dungeon')).toEqual(['win-rate']);
   });
 
-  it('takes a target between 0.5 and 1 (default 0.95) and keys on it', () => {
+  it('takes a target between 0.1 and 1 (default 0.95) and keys on it', () => {
     expect(winRateTarget(undefined)).toBe(WIN_RATE_TARGET.default);
+    expect(winRateTarget(0.1)).toBe(0.1);
     expect(winRateTarget(0.5)).toBe(0.5);
-    expect(() => winRateTarget(0.4)).toThrow(/between/);
+    expect(() => winRateTarget(0.09)).toThrow(/between/);
     expect(() => winRateTarget(1.01)).toThrow(/between/);
     const t = resolveTarget({ kind: 'dungeon', id: 'dungeon_4', step: 6 });
     expect(makeObjective({ kind: 'win-rate', target: 0.8 }, t).key).not.toBe(makeObjective({ kind: 'win-rate' }, t).key);

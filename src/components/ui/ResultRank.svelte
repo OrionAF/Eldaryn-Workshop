@@ -15,6 +15,7 @@
    * `target` is the PVE win-rate goal's share (a fraction) or null: the row then carries a Meets / Below target
    * chip and, below the target, how many points short it is.
    */
+  import { triesPerClear } from '../../lib/ui/winRateFormat.js';
   import CIForest from './CIForest.svelte';
   import VerdictChip from './VerdictChip.svelte';
   import ScopeChip from './ScopeChip.svelte';
@@ -43,7 +44,7 @@
   const rankText = $derived(row.isBaseline ? 'NOW' : row.tieGroup != null ? `${row.rank}=` : String(row.rank));
   const standing = $derived(targetStanding(row, target));
   const summary = $derived(
-    [row.isBaseline ? 'Current build' : changeSummary(row.changes), standing.gap].filter(Boolean).join(' · '),
+    [row.isBaseline ? 'Current build' : changeSummary(row.changes), standing.gap, target != null ? triesPerClear(row.aux?.winRate?.est) : ''].filter(Boolean).join(' · '),
   );
 
   function sentence(c, name) {
