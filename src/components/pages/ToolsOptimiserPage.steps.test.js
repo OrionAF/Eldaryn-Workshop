@@ -56,6 +56,22 @@ it('search steps: a running run lists the blocks done and the one it is on, behi
   expect(view.q('.steplist').textContent).toContain('turned off under Allowed to change');
 });
 
+it('phase help: a collapsed disclosure explains the five steps next to the progress bar', () => {
+  __resetJobs({
+    run: (request, hooks) => {
+      hooks.onProgress({ phases: [{ id: 'search', label: 'Search', state: 'current' }], counts: { evaluated: 3, fights: 40 }, block: 'relics', searchSteps: STEPS });
+      return { promise: new Promise(() => {}), cancel() {} };
+    },
+  });
+  mountPage();
+  click(btn(/^Optimise Main/));
+  const help = view.q('[data-testid="phase-help"]');
+  expect(help.tagName).toBe('DETAILS');
+  expect(help.open).toBe(false);
+  expect(help.querySelector('summary').textContent).toBe('What the steps mean');
+  expect([...help.querySelectorAll('dt')].map((d) => d.textContent)).toEqual(['Screen', 'Search', 'Minimise', 'Confirm', 'Attribute']);
+});
+
 it('search steps: a finished run keeps its list, in the history too', async () => {
   const r = richResult();
   r.search = { ...r.search, steps: DONE };

@@ -59,7 +59,7 @@
 </div>
 
 <style>
-  .tabs { display: flex; gap: var(--sp-1); border-bottom: 1px solid var(--line-hairline); overflow-x: auto; }
+  .tabs { display: flex; gap: var(--sp-1); box-shadow: inset 0 -1px 0 var(--line-hairline); overflow-x: auto; overflow-y: hidden; }
   .tab {
     position: relative;
     height: 36px;
@@ -83,7 +83,7 @@
     position: absolute;
     left: var(--sp-2);
     right: var(--sp-2);
-    bottom: -1px;
+    bottom: 0;
     height: 3px;
     background: var(--brass-400);
   }

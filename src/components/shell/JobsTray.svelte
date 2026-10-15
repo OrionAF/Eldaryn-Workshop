@@ -234,5 +234,5 @@
   .acts { display: flex; gap: var(--sp-2); }
   .keep { display: flex; gap: var(--sp-2); align-items: center; padding: var(--sp-2) var(--sp-4); font-size: var(--fs-12); color: var(--text-soft); border-top: 1px solid var(--line-hairline); }
   .tray-foot { padding: var(--sp-2) var(--sp-4); font-size: var(--fs-12); color: var(--text-muted); border-top: 1px solid var(--line-hairline); }
-  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .sr-only { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 </style>

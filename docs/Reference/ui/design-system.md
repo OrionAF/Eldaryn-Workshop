@@ -348,7 +348,8 @@ aria-labelledby>` the title.
 
 Underline tabs for page sections and in-panel sets. Anatomy: label + optional mono count or
 muted meta ("Set 1 Farm, Boss"). Selected: **brass-400 3 px underline**, ink 700. Hover: ink. Focus:
-the ring (outside on desktop, inset in the phone scroller). Disabled: muted, tooltip why. a11y: `role="tablist"`, roving tabindex, arrow keys,
+the ring (outside on desktop, inset in the phone scroller). Disabled: muted, tooltip why. The hairline under the row is an inset shadow and the underline sits at the row's bottom edge, so the
+scrolling row has no vertical overflow and no vertical scrollbar. a11y: `role="tablist"`, roving tabindex, arrow keys,
 `aria-selected`, panels `role="tabpanel"`.
 
 ### 4.5 SegmentedControl
@@ -459,6 +460,10 @@ Re-measure `4/6` · Ablation `queued`. Done = brass fill; current = ember fill +
 dashed outline. Results above the current segment are labelled **Provisional** in the headline.
 Under reduced motion, no animation, the counts still update. a11y: `role="progressbar"` per
 segment with `aria-valuetext` ("Re-measure, 4 of 6").
+
+Each Optimiser phase label (Screen, Search, Minimise, Confirm, Attribute) carries a one-sentence explanation as its `title`
+and the bar's `aria-description` (`lib/ui/runPhases.js`); other tools' phase ids get none. The Optimiser page also has a
+collapsed `<details class="phases">` "What the steps mean" with the same text, for touch screens.
 
 **StepList** (`components/ui/StepList.svelte`): the disclosure under a RunProgress that lists the steps
 of the Search segment, one per build-space block ("1. Gear set: done", "4. Relics: in progress", detail:
