@@ -60,6 +60,8 @@
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   @media (max-width: 700px) {
     .realm .micro-label { display: none; }
-    .preset { min-width: 0; flex: 1 1 auto; }
+    /* the preset name must stay readable: a floor wide enough for a few characters, then it grows */
+    .context { flex: 1 1 auto; }
+    .preset { min-width: 7rem; flex: 1 1 7rem; max-width: none; }
   }
 </style>

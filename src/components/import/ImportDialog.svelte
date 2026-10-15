@@ -11,6 +11,7 @@
   import Checkbox from '../ui/Checkbox.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
   import ImportSource from './ImportSource.svelte';
+  import { unitFor } from './importUnits.js';
   import { classLabel } from '../../lib/game/classes.js';
   import { describeReportEntry } from '../../lib/importPlan.js';
   import {
@@ -81,7 +82,7 @@
           <section aria-label="What was read">
             <h3>What was read</h3>
             <ul class="counts">
-              {#each plan.counts.filter((c) => c.count > 0) as c (c.id)}<li><span>{c.label}</span><b>{c.count}</b> <span class="muted">{c.unit}</span></li>{/each}
+              {#each plan.counts.filter((c) => c.count > 0) as c (c.id)}<li><span>{c.label}</span><b>{c.count}</b> <span class="muted">{unitFor(c.count, c.unit)}</span></li>{/each}
             </ul>
             {#if plan.sheet}
               <p>The game's stat sheet is loaded into preset <b>{plan.sheet.presetName}</b>.</p>

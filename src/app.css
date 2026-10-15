@@ -355,7 +355,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 :root {
   /* Legacy aliases: the pre-redesign names, mapped onto the new tokens so
      screens not yet ported keep rendering. Each slice that ports a screen
-     stops using them; U-final deletes this block. */
+     stops using them; U-final deletes this block.
+     DELETE at integration, once
+       grep -rE "var\(--color-|btn-gold|btn-ghost|rank-controls|subheading|micro-label" src
+     finds nothing outside app.css: this alias block, and the legacy classes .btn-gold, .btn-ghost,
+     .btn-danger (legacy form), .rank-controls button, .subheading and .micro-label. */
   --color-bg: var(--surface-0);
   --color-rail: var(--surface-1);
   --color-panel: var(--surface-2);
