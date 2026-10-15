@@ -11,6 +11,7 @@
  */
 
 import { emptyRoster, normaliseRoster, normaliseCharacter, getCurrent } from './model/index.js';
+import { enforceRosterRunsBudget } from './model/runs.js';
 import { isGameProfile, gameProfileToCharacter, importedCharacterName } from './model/gameProfile.js';
 
 export const KEY = 'eldaryn_optimiser_state_v2';
@@ -39,14 +40,113 @@ export function loadRoster() {
   }
 }
 
-/** Persist the roster to localStorage. */
-export function saveRoster(roster) {
-  if (!hasLocalStorage) return;
+/**
+ * Persist the roster to localStorage. Run history is first trimmed roster-wide to the byte budget
+ * (model/runs.js; mutates `roster`). A failed write is never thrown, but it is reported so the UI can
+ * say the work is not saved (store `saveState`).
+ * @returns {{ok: boolean, error: string|null, trimmed: number, dropped: number}}
+ */
+export function saveRoster(roster, { runsBudget } = {}) {
+  if (!hasLocalStorage) return { ok: false, error: 'Browser storage is unavailable', trimmed: 0, dropped: 0 };
   try {
+    const { trimmed, dropped } = enforceRosterRunsBudget(roster.characters ?? [], runsBudget ? { byteBudget: runsBudget } : undefined);
     localStorage.setItem(KEY, JSON.stringify(roster));
-  } catch {
-    // quota / private-mode failures are non-fatal
+    return { ok: true, error: null, trimmed, dropped };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e), trimmed: 0, dropped: 0 };
   }
+}
+
+/** A rejected import. `line` is the 1-based line of a JSON syntax error. */
+export class ImportError extends Error {
+  constructor(message, { line = null, cause } = {}) {
+    super(message, { cause });
+    this.name = 'ImportError';
+    this.line = line;
+  }
+}
+
+/**
+ * Offset of the first syntax error in JSON `text` (null when it is valid). Engines word their messages
+ * differently (some give no position), so a small recursive-descent scan finds it.
+ */
+function jsonErrorOffset(text) {
+  let i = 0;
+  const ws = () => {
+    while (i < text.length && ' \t\n\r'.includes(text[i])) i++;
+  };
+  const fail = () => {
+    throw i;
+  };
+  const lit = (word) => {
+    if (!text.startsWith(word, i)) fail();
+    i += word.length;
+  };
+  const string = () => {
+    i++; // opening quote
+    while (i < text.length && text[i] !== '"') {
+      if (text[i] === '\\') i++;
+      else if (text[i] < ' ') fail();
+      i++;
+    }
+    if (i >= text.length) fail();
+    i++;
+  };
+  const value = () => {
+    ws();
+    const ch = text[i];
+    if (ch === '{') {
+      i++;
+      ws();
+      if (text[i] === '}') return void i++;
+      for (;;) {
+        ws();
+        if (text[i] !== '"') fail();
+        string();
+        ws();
+        if (text[i] !== ':') fail();
+        i++;
+        value();
+        ws();
+        if (text[i] === ',') i++;
+        else if (text[i] === '}') return void i++;
+        else fail();
+      }
+    } else if (ch === '[') {
+      i++;
+      ws();
+      if (text[i] === ']') return void i++;
+      for (;;) {
+        value();
+        ws();
+        if (text[i] === ',') i++;
+        else if (text[i] === ']') return void i++;
+        else fail();
+      }
+    } else if (ch === '"') string();
+    else if (ch === 't') lit('true');
+    else if (ch === 'f') lit('false');
+    else if (ch === 'n') lit('null');
+    else {
+      const m = /^-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?/.exec(text.slice(i));
+      if (!m) fail();
+      i += m[0].length;
+    }
+  };
+  try {
+    value();
+    ws();
+    if (i < text.length) fail();
+    return null;
+  } catch (at) {
+    return typeof at === 'number' ? at : null;
+  }
+}
+
+/** 1-based line of the first syntax error in `text`, or null. */
+function syntaxErrorLine(text) {
+  const at = jsonErrorOffset(text);
+  return at === null ? null : text.slice(0, at).split('\n').length;
 }
 
 /** Serialise the roster to a pretty JSON string for export. */
@@ -63,13 +163,28 @@ export function importRoster(jsonText) {
  * Import any supported JSON text into `roster` (the current one, which a game profile is added to).
  *  - game profile: a NEW character is appended and selected; its name gets " (imported)" when taken;
  *  - app export (v1 or v2): replaces the roster, as before.
- * Pure: returns a new roster and leaves `roster` untouched. Throws on unparseable JSON.
+ * Pure: returns a new roster and leaves `roster` untouched. Throws ImportError on unparseable JSON, and on
+ * JSON that is neither a profile nor a roster with at least one character (it never yields an empty roster).
+ * `report` (array) receives the notes of the profile mapping (gameProfileToCharacter) and of normalising the
+ * imported character (`defaulted`/`dropped` entries of the model).
  * @returns {{kind: 'profile'|'roster', roster: object, character: object|null}}
  */
-export function importJson(jsonText, roster = emptyRoster(), { now } = {}) {
-  const parsed = JSON.parse(jsonText);
-  if (!isGameProfile(parsed)) return { kind: 'roster', roster: normaliseRoster(parsed), character: null };
-  const character = normaliseCharacter(gameProfileToCharacter(parsed, now ? { now } : undefined));
+export function importJson(jsonText, roster = emptyRoster(), { now, report } = {}) {
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch (e) {
+    const line = syntaxErrorLine(String(jsonText));
+    throw new ImportError(`This is not valid JSON${line ? ` (line ${line})` : ''}: ${e.message}`, { line, cause: e });
+  }
+  if (!isGameProfile(parsed)) {
+    const imported = normaliseRoster(parsed);
+    if (imported.characters.length === 0) {
+      throw new ImportError('This JSON is neither a game profile nor an Eldaryn export with a character, so nothing was imported.');
+    }
+    return { kind: 'roster', roster: imported, character: null };
+  }
+  const character = normaliseCharacter(gameProfileToCharacter(parsed, { ...(now ? { now } : {}), report }), { report });
   character.name = importedCharacterName(character.name, roster.characters.map((c) => c.name));
   const characters = [...roster.characters, character];
   return { kind: 'profile', roster: { schemaVersion: roster.schemaVersion, characters, currentId: character.id }, character };

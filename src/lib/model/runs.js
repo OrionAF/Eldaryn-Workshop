@@ -24,9 +24,10 @@
 //   }
 //   RunEntry = {rank, isBaseline, key, candidate, value, lo, hi, n, score, vsBaseline, changes, lines}
 //
-// Budget (single localStorage key, storage.js swallows quota errors, so overflow is prevented up front):
+// Budget (single localStorage key, so overflow is prevented up front; storage.js also reports a failed save):
 // detail drops oldest-first until the history fits RUN_BYTE_BUDGET, then whole rows beyond
-// RUN_MAX_ROWS (pinned runs are exempt from both).
+// RUN_MAX_ROWS (pinned runs are exempt from both). storage.js saveRoster applies the roster-wide
+// ROSTER_RUN_BYTE_BUDGET across every character with enforceRosterRunsBudget.
 
 export const RUN_KIND = 'optimise';
 export const RUN_DETAIL_LIMIT = 50;      // runs that keep their detail (pinned exempt)
@@ -34,6 +35,7 @@ export const RUN_DETAIL_RESULTS = 10;    // entries kept in a detail
 export const RUN_DETAIL_FULL_LINES = 3;  // of those, entries that also keep their full describe lines
 export const RUN_BYTE_BUDGET = 1_500_000;
 export const RUN_MAX_ROWS = 2000;
+export const ROSTER_RUN_BYTE_BUDGET = 3_000_000; // all characters together; localStorage holds about 5M characters in total
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
@@ -169,6 +171,45 @@ export function enforceRunsBudget(runs, { byteBudget = RUN_BYTE_BUDGET, maxRows 
   }
   let rows = 0;
   return runs.filter((r) => r.pinned || ++rows <= maxRows);
+}
+
+/**
+ * The roster is one localStorage value, so the per-history budget above is not enough on its own: with
+ * several characters the sum can still overflow the quota. One pass over every unpinned run of every
+ * character, oldest first (by `at`), drops detail by per-run size estimates until the roster-wide run
+ * total fits `byteBudget`, then whole unpinned rows. Pinned runs are never touched. Mutates the runs.
+ * @param {{runs?: object[]}[]} characters
+ * @returns {{trimmed: number, dropped: number}} runs that lost their detail / rows removed
+ */
+export function enforceRosterRunsBudget(characters, { byteBudget = ROSTER_RUN_BYTE_BUDGET } = {}) {
+  const rows = [];
+  let total = 0;
+  for (const c of characters) {
+    for (const r of Array.isArray(c?.runs) ? c.runs : []) {
+      const detail = r.detail ? JSON.stringify(r.detail).length : 0;
+      const size = JSON.stringify({ ...r, detail: null }).length + detail;
+      total += size;
+      if (!r.pinned) rows.push({ c, r, detail, size });
+    }
+  }
+  const out = { trimmed: 0, dropped: 0 };
+  if (total <= byteBudget) return out;
+  rows.sort((a, b) => (a.r.at < b.r.at ? -1 : a.r.at > b.r.at ? 1 : 0));
+  for (const row of rows) {
+    if (total <= byteBudget) break;
+    if (row.detail === 0) continue;
+    row.r.detail = null;
+    total -= row.detail;
+    row.size -= row.detail;
+    out.trimmed++;
+  }
+  for (const row of rows) {
+    if (total <= byteBudget) break;
+    row.c.runs = row.c.runs.filter((x) => x !== row.r);
+    total -= row.size;
+    out.dropped++;
+  }
+  return out;
 }
 
 // --- domain contract -----------------------------------------------------------------------
