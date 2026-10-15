@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  createBuildSpace, candidateOf, canonical, materialise, BLOCKS, SPACE_DEFAULTS, conditionOptionsFor, glyphLabel,
+  createBuildSpace, candidateOf, canonical, materialise, BLOCKS, SPACE_DEFAULTS, conditionOptionsFor, glyphLabel, runningSigils,
 } from './space.js';
 import { legalityOf } from './legality.js';
 import { fixtureCharacter } from '../build/fixtures.js';
@@ -198,10 +198,24 @@ describe('block domains', () => {
     expect(block(space, 'ancient').domain(bare)).toEqual([]);
   });
 
+  it('below 55 the Ancient is never offered, even on a board that allocates its node; the fighter agrees', () => {
+    const offered = (level) => {
+      const space = createBuildSpace(fixture('WARRIOR', (r) => { r.level = level; }), 'p1');
+      return block(space, 'ancient').domain({ ...space.start, ancientSigilSpecies: null }).map((a) => a.ancientSigilSpecies);
+    };
+    expect(offered(55)).toContain('FLAMEBORN');
+    expect(offered(54)).not.toContain('FLAMEBORN');
+    const c = fixture('WARRIOR', (r) => { r.level = 54; });
+    const space = createBuildSpace(c, 'p1');
+    expect(runningSigils(c, space.start)).not.toContain('FLAMEBORN');
+    expect(space.fighterOf(space.start).sigils).toEqual(buildFighter(c, 'p1').sigils);
+  });
+
   it('below level 58 the board is not searched; set 2 and talent set 2 follow their unlock levels', () => {
     const c = fixture('WARRIOR', (r) => {
       r.level = 27;
       r.presets[0].mountId = null; // mounts unlock at 40: a mount here would be an illegal baseline
+      r.presets[0].ancientSigilSpecies = null; // and no board counts below 55, so neither does the Ancient
       r.transcendence.presets.push({ id: 'bare', name: 'Bare', allocatedNodeIds: [] });
     });
     const space = createBuildSpace(c, 'p1');

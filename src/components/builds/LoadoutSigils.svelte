@@ -16,7 +16,7 @@
     sigilConditionOptions,
     SIGIL_CONDITIONS_LEVEL,
   } from '../../lib/model/sigils.js';
-  import { sigilSlotCap, ancientActive, resolveTranscendencePreset } from '../../lib/model/legality.js';
+  import { sigilSlotCap, ancientActive, effectiveTranscendencePreset } from '../../lib/model/legality.js';
   import { getSigilBonusAttack, getSigilBonusHp } from '../../lib/engine/sources/sigilScale.js';
   import { presetSpec } from '../../lib/build/presetInputs.js';
   import Panel from '../ui/Panel.svelte';
@@ -41,7 +41,7 @@
   const picks = $derived(preset.sigilSpecies);
   const equipped = $derived([...picks, preset.utilitySigilSpecies, preset.ancientSigilSpecies].filter(Boolean));
   const ancientOn = $derived(
-    !preset.ancientSigilSpecies || ancientActive(preset.ancientSigilSpecies, resolveTranscendencePreset(character, preset)),
+    !preset.ancientSigilSpecies || ancientActive(preset.ancientSigilSpecies, effectiveTranscendencePreset(character, preset)),
   );
 
   const totals = $derived(

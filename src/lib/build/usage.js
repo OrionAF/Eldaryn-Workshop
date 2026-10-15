@@ -1,7 +1,7 @@
 // build/usage.js (L4): "who uses this?" lookups for the Character pages (C6-C10). Pure; read-only.
 // Pages name presets explicitly instead of hinting at a hidden active one (ia.md §4.1).
 import { buildFighter } from './fighter.js';
-import { resolveTranscendencePreset } from '../model/legality.js';
+import { effectiveTranscendencePreset } from '../model/legality.js';
 import { activeMajorGlyphs } from '../model/mounts.js';
 import { petDisplayName } from '../game/pets.js';
 
@@ -19,13 +19,13 @@ export function tierChangeLosses(character) {
 
 /**
  * Presets that run a transcendence board, split by how: `linked` chose it, `following` has no (valid)
- * link and so uses the active board (resolveTranscendencePreset, transcendence.md §9).
+ * link (or is below level 58) and so uses the active board; none below 55 (effectiveTranscendencePreset, transcendence.md §1, §9).
  * @returns {{linked: string[], following: string[]}}
  */
 export function boardUsers(character, boardId) {
   const out = { linked: [], following: [] };
   for (const p of character.presets ?? []) {
-    if (resolveTranscendencePreset(character, p)?.id !== boardId) continue;
+    if (effectiveTranscendencePreset(character, p)?.id !== boardId) continue;
     (p.transcendencePresetId === boardId ? out.linked : out.following).push(p.name);
   }
   return out;

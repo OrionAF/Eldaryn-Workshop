@@ -10,7 +10,7 @@ import { petSpeciesById } from '../game/pets.js';
 import { mountBySpecies } from '../game/mountsGlyphs.js';
 import { relicById } from '../game/relics.js';
 import { pointsSpent } from '../model/talents.js';
-import { resolveTranscendencePreset } from '../model/legality.js';
+import { effectiveTranscendencePreset } from '../model/legality.js';
 import { resolvePreset, equipSetKey } from './presetInputs.js';
 
 const upper = (s) => (typeof s === 'string' ? s.toUpperCase() : null);
@@ -61,7 +61,7 @@ export function powerInputs(character, presetId, { realm = 'base' } = {}) {
       sigils,
       sigilAltarTier: character.sigils?.altarTier ?? 1,
       enchants,
-      transcendenceNodeCount: resolveTranscendencePreset(character, preset)?.allocatedNodeIds?.length ?? 0,
+      transcendenceNodeCount: effectiveTranscendencePreset(character, preset)?.allocatedNodeIds?.length ?? 0,
       pet: pet ? { rarity: upper(petSpeciesById(pet.species)?.rarity), altarLevel: altar.level, tier: altar.tier } : null,
       mount: mount ? { rarity: upper(mountBySpecies(mount.species)?.rarity), stars: mount.level ?? 1 } : null,
       relics,

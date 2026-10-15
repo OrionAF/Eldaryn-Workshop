@@ -175,14 +175,46 @@ describe('checkPreset', () => {
     expect(v.some((x) => x.gate === 'altarTier' && x.warn)).toBe(true);
   });
 
-  it('below 55 only a link to another board than the unlinked one breaks the Transcendence gate', () => {
+  it('below 58 a link to another board is advisory (the build ignores it); a no-op link is not reported', () => {
     const c = fixtureCharacter('WARRIOR');
     c.transcendence.presets.push({ id: 'bare', name: 'Bare', allocatedNodeIds: [] });
-    c.level = 38;
     const p = { ...c.presets[1], transcendencePresetId: 'default' }; // the active board: a no-op link
-    expect(L.checkPreset(c, p).map((x) => x.gate)).not.toContain('transcendence');
+    const link = (level) => L.checkPreset({ ...c, level }, p).filter((x) => x.gate === 'transcendenceLink');
+    expect(link(38)).toEqual([]);
     p.transcendencePresetId = 'bare';
-    expect(L.checkPreset(c, p).map((x) => x.gate)).toContain('transcendence');
+    for (const level of [38, 56, 57]) expect(link(level)).toEqual([expect.objectContaining({ warn: true })]);
+    expect(link(58)).toEqual([]);
+  });
+
+  it('below 55 an allocated board is reported as not counting, never as a violation', () => {
+    const c = fixtureCharacter('WARRIOR'); // the default board allocates nodes
+    const tr = (level, preset = c.presets[0]) => L.checkPreset({ ...c, level }, preset).filter((x) => x.gate.startsWith('transcendence'));
+    expect(tr(54)).toEqual([expect.objectContaining({ gate: 'transcendence', warn: true })]);
+    expect(tr(55)).toEqual([]);
+    c.transcendence.presets[0].allocatedNodeIds = [];
+    expect(tr(54)).toEqual([]);
+  });
+});
+
+describe('effectiveTranscendencePreset: the board the stats run on (transcendence.md §1, §9)', () => {
+  it('none below 55, the unlinked board at 55-57 whatever the link, the link from 58', () => {
+    const c = fixtureCharacter('WARRIOR');
+    c.transcendence.presets.push({ id: 'bare', name: 'Bare', allocatedNodeIds: [] });
+    const p = { ...c.presets[0], transcendencePresetId: 'bare' };
+    const at = (level) => L.effectiveTranscendencePreset({ ...c, level }, p)?.id ?? null;
+    expect(at(54)).toBeNull();
+    expect(at(55)).toBe('default');
+    expect(at(57)).toBe('default');
+    expect(at(58)).toBe('bare');
+    expect(at(undefined)).toBe('bare'); // no level is the max level
+  });
+
+  it('an Ancient is ignored below 55 even when the board allocates its node', () => {
+    const c = fixtureCharacter('WARRIOR');
+    const p = c.presets[0]; // FLAMEBORN on a board that allocates its node
+    const ancient = (level) => L.checkPreset({ ...c, level }, p).filter((x) => x.gate === 'ancientBoard');
+    expect(ancient(55)).toEqual([]);
+    expect(ancient(54)).toEqual([expect.objectContaining({ warn: true })]);
   });
 });
 
@@ -224,24 +256,32 @@ describe('level change', () => {
   });
 });
 
-describe('previewLevelChange inert gates', () => {
-  const inertAt = (from, to) => {
+describe('previewLevelChange gates', () => {
+  const previewAt = (from, to) => {
     const c = fixtureCharacter('WARRIOR');
     c.level = from;
-    return storeFor(c).characters.previewLevelChange(to).inert;
+    return storeFor(c).characters.previewLevelChange(to);
   };
+  const inertAt = (from, to) => previewAt(from, to).inert;
+  const flaggedAt = (from, to) => previewAt(from, to).flagged;
 
-  it('names each gate the new level falls below, which stays saved but stops counting', () => {
-    expect(inertAt(100, 27)).toEqual(['Set 2', 'Set B', 'Mounts', 'Transcendence', 'Transcendence presets']);
+  it('inert: the Transcendence gates the new level falls below, kept but ignored by the build', () => {
+    expect(inertAt(100, 27)).toEqual(['Transcendence', 'Transcendence presets']);
     expect(inertAt(100, 57)).toEqual(['Transcendence presets']);
     expect(inertAt(100, 54)).toEqual(['Transcendence', 'Transcendence presets']);
-    expect(inertAt(100, 39)).toEqual(['Mounts', 'Transcendence', 'Transcendence presets']);
-    expect(inertAt(100, 37)).toEqual(['Set B', 'Mounts', 'Transcendence', 'Transcendence presets']);
+  });
+
+  it('flagged: Set 2, Set B and Mounts still count in the build, so checkPreset reports them instead', () => {
+    expect(flaggedAt(100, 27)).toEqual(['Set 2', 'Set B', 'Mounts']);
+    expect(flaggedAt(100, 39)).toEqual(['Mounts']);
+    expect(flaggedAt(100, 37)).toEqual(['Set B', 'Mounts']);
+    expect(flaggedAt(100, 54)).toEqual([]);
   });
 
   it('lists nothing when no gate is crossed, including a level that is already below it', () => {
-    expect(inertAt(100, 58)).toEqual([]);
-    expect(inertAt(30, 29)).toEqual([]);
-    expect(inertAt(20, 10)).toEqual([]);
+    for (const [from, to] of [[100, 58], [30, 29], [20, 10]]) {
+      expect(inertAt(from, to)).toEqual([]);
+      expect(flaggedAt(from, to)).toEqual([]);
+    }
   });
 });

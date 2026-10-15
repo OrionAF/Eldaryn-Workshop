@@ -130,7 +130,7 @@ export function normaliseCharacter(raw, { report } = {}) {
   Object.assign(c, talentsFirst.normalise(raw, ctx));
   ctx.spec = c.talentSets?.[activeTalentSetIndex(raw)]?.spec ?? null;
   for (const d of DOMAINS.slice(1)) Object.assign(c, d.normalise(raw, ctx));
-  Object.assign(c, normalisePresets(raw));
+  Object.assign(c, normalisePresets(raw, c.level));
   return reconcileCharacter(c);
 }
 

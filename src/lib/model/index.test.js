@@ -13,6 +13,7 @@ import {
 } from './index.js';
 import { migratePresetsFromV1, reconcilePresets, normalisePresets, defaultPresets, MAX_PRESETS, MIN_PRESETS } from './presets.js';
 import { normaliseSheet, normaliseBaseResidual, normaliseClass } from './character.js';
+import { checkPreset } from './legality.js';
 import { CLASSES } from '../game/classes.js';
 
 const V1_CHARACTER = {
@@ -122,6 +123,23 @@ describe('presets', () => {
     const d = defaultPresets();
     expect(d.presets.map((p) => [p.equipmentSet, p.talentSet])).toEqual([[1, 0], [2, 1]]);
     expect(d.activePresetId).toBe(d.presets[0].id);
+  });
+
+  it('padding below Dual equip (28) / Dual talents (38) uses set 1 / talent set 0, so the padded preset passes checkPreset', () => {
+    const padded = (level) => {
+      const c = normaliseCharacter({ class: 'WARRIOR', level, presets: [{ id: 'only', name: 'Only' }] });
+      return { c, pad: c.presets[1] };
+    };
+    const sets = (level) => [padded(level).pad.equipmentSet, padded(level).pad.talentSet];
+    expect(sets(27)).toEqual([1, 0]);
+    expect(sets(28)).toEqual([2, 0]);
+    expect(sets(37)).toEqual([2, 0]);
+    expect(sets(38)).toEqual([2, 1]);
+    expect(sets('20')).toEqual([1, 0]); // the normalised level, not the raw string
+    for (const level of [1, 27, 30, 38]) {
+      const { c, pad } = padded(level);
+      expect(checkPreset(c, pad).filter((v) => !v.warn)).toEqual([]);
+    }
   });
 
   it('normalise enforces 2..8 presets, unique ids, caps and enums', () => {

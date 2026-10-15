@@ -74,7 +74,9 @@ Preset = { id, name, equipmentSet: 1|2, talentSet: 0|1, petId | null, mountId | 
   // 'default', then the first board (`model/legality.js` resolveTranscendencePreset; the game keeps
   // the active board for a null link, Game/transcendence.md §9). Below level 58 (the link unlock)
   // reconcile clears a link that picks the same board as null would; a link to another board stays
-  // saved, and `checkPreset` / the optimiser report it.
+  // saved but is ignored, and `checkPreset` warns (`transcendenceLink`). What the stats, power, the
+  // Ancient check and the optimiser run on is `effectiveTranscendencePreset`: no board below 55, the
+  // unlinked board below 58, else the resolved one.
 
 Sheet  = { values: Partial<ComputedStats>, enteredAt, inputsKey | null,  // tier-2 input, §6
            presetId | null }                                // presetId: Oblivion sheet only
@@ -99,9 +101,13 @@ search time. Dominion is derived (`totalDominion` from talents + transcendence +
   talent points `talentPointsForLevel` (1 per level from 15, 29 at 43; over-cap allocations lose their
   highest tiers first), Awakening points `max(0, min(level, 59) - 44)`, relic slots `0` below level 22 else
   `2 + extraRelicSlots`, generic sigil slots `maxSigilSlots`. Lowering the level re-normalises (the UI shows
-  `previewLevelChange` first). Equipped relics must be owned (level > 0). Set 2 (level 28), Dual Talents (38),
-  Mounts (40) and Transcendence (55) are *reported* by `checkPreset`, not repaired. A level that is `''`,
-  `null`, a boolean or an array is the max level (like `undefined`), never 1.
+  `previewLevelChange` first). Equipped relics must be owned (level > 0). Set 2 (level 28), Dual Talents (38)
+  and Mounts (40) are *reported* by `checkPreset`, not repaired: they still count in the build, and the
+  optimiser refuses a preset that uses them (`previewLevelChange` lists them as `flagged`). Transcendence
+  (55) and its links (58) are kept but ignored below their levels (`effectiveTranscendencePreset`, see
+  Preset above; listed as `inert`); `checkPreset` only warns. The two-preset padding uses set 2 / talent set 1 only once the level unlocks them, else set 1 /
+  talent set 0; saved presets are not rewritten. A level that is `''`, `null`, a boolean or an array is the
+  max level (like `undefined`), never 1.
 - **`extraRelicSlots`** (0..2) is `extraSlotsPurchased` of the game's relic state; an absent value is 2, so
   saves from before the field keep their four slots. It sits beside `relics` because `relics` is a plain
   id-to-level record.
@@ -114,7 +120,7 @@ search time. Dominion is derived (`totalDominion` from talents + transcendence +
   `setPresetSigilCondition` is a deprecated alias of `setSigilCondition` (removed with the old screens).
 - **An Ancient sigil follows the board** (Q3, strict): the stored choice is kept, but `buildFighter` and the
   stat pipeline ignore it, with a warning in `computePresetStats().warnings`, unless the transcendence
-  preset the build resolves to allocates the species' `transcendenceNode` (`ancientActive`). The altar can
+  preset the build runs on (`effectiveTranscendencePreset`, so never below level 55) allocates the species' `transcendenceNode` (`ancientActive`). The altar can
   only be evolved to tier 3 (`EVOLVE_TIER_CAP`); a recorded tier above that is allowed (data entry) and
   `checkPreset` warns.
 - **`sigils.altarTier`** (1..8) replaces v1's `sigilForgeTier`; it tiers every

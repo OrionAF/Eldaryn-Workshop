@@ -5,7 +5,7 @@
    * disabled option with its reason instead of the choice silently reverting.
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
-  import { dualEquipUnlocked, dualTalentsUnlocked, transcendenceUnlocked, transcendenceLinkUnlocked, UNLOCK_LEVELS, resolveTranscendencePreset } from '../../lib/model/legality.js';
+  import { dualEquipUnlocked, dualTalentsUnlocked, transcendenceUnlocked, transcendenceLinkUnlocked, UNLOCK_LEVELS, effectiveTranscendencePreset } from '../../lib/model/legality.js';
   import Panel from '../ui/Panel.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
   import Select from '../ui/Select.svelte';
@@ -34,12 +34,13 @@
     { value: '', label: 'Follow the active board' },
     ...character.transcendence.presets.map((p) => ({ value: p.id, label: p.name, disabled: !canLink && p.id !== preset.transcendencePresetId })),
   ]);
-  const resolved = $derived(resolveTranscendencePreset(character, preset));
+  // the board the stats run on: below 58 a saved link is ignored for the active board
+  const runs = $derived(effectiveTranscendencePreset(character, preset));
   const boardHint = $derived(
     !transcendenceUnlocked(character.level)
       ? `Transcendence unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE}.`
-      : `${resolved ? `Uses ${resolved.name}` : 'No board yet'}${preset.transcendencePresetId ? '' : ' (the active board)'}. ` +
-          (canLink ? '' : `Linking a board unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE_PRESETS}.`),
+      : `${runs ? `Uses ${runs.name}` : 'No board yet'}${canLink && preset.transcendencePresetId ? '' : ' (the active board)'}. ` +
+          (canLink ? '' : `Linking a board unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE_PRESETS}${preset.transcendencePresetId ? '; the link is ignored until then' : ''}.`),
   );
 </script>
 

@@ -129,6 +129,7 @@ utilitySigilSpecies, ancientSigilSpecies, transcendencePresetId, sigilConditions
   are `null` iff equal to the saved value.
 - `transcendencePresetId` is the **resolved** board (`resolveTranscendencePreset`), so a null link
   and the board it resolves to are one build; applying keeps a null link while the board is unchanged.
+  The Ancient checks use the board the stats run on (`runningBoardOf`, level gates applied).
 - `sigilConditions` holds only overrides of the character-wide condition (`sigils.owned[sp].condition`)
   for equipped sigils; `ON_COOLDOWN` is written explicitly.
 - Canonical form: list entries kept from the saved preset stay in its order, new ones follow sorted;
@@ -219,8 +220,10 @@ above") is a legality rule of the build space, not a score: Combat Power gates C
 
 `legalityOf(character, presetId, cand)` → `{ok, violations, warnings}`: structural checks; round-trip
 (`materialise → normaliseCharacter → candidateOf` keeps every choice); `checkPreset` gates with the
-Ancient-board entry promoted to a violation; talent points, sigils locked, conditions below 54, board
-links below 58, and placed glyphs (sealed, twice on one mount, a major of another class or spec).
+Ancient-board entry promoted to a violation; talent points, sigils locked, conditions below 54, and
+placed glyphs (sealed, twice on one mount, a major of another class or spec). A board link below 58 is
+only a warning (`transcendenceLink`): the build ignores it (`effectiveTranscendencePreset`, data-model.md
+§1 Preset), and the board block searches nothing below 58.
 
 ### Effect oracle
 
