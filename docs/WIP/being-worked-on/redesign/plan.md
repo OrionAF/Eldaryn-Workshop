@@ -830,6 +830,8 @@ app stays usable between waves. Every `data-testid` and aria-label listed in ia.
 | **U11** Oblivion Floors (T5) | sonnet low | Locked state with inline unlock; summary strip; scan setup (floors, threshold, effort); table with wins/deaths/timeouts and N; "Model estimate: the server resolves the real fight" caption; "sampling range"; "30+ (scan cap)"; assumption chips; staleness signature | F2, U2b, U3 | §5.20 | **#104** results grey out / discard when the signature changes; **#105** caption, labels and cap marker |
 | **U12** Retire old UI + docs | sonnet low | delete unrouted screens/components, legacy class aliases, `setPresetSigilCondition` alias and `components/optimiser/apply.js`; CLAUDE.md (L7 row, styling conventions: fonts, tokens, components, router, job store); data-model.md (UI key); a route smoke test that every route renders for an empty, a fresh and the real fixture character | all U | parity sweep against ia.md §5 | route smoke test |
 
+**U12 note (r1):** legacy class aliases (`.btn-gold`, `.btn-ghost`, `.rank-controls`, `.subheading`, `.micro-label`, legacy numeric selectors) are deferred to a follow-up slice **U13** (migrate ~30 components to `ui/` primitives, then delete the aliases). The ia.md §5 parity sweep is likewise deferred to U13; U12 asserts per-route h1 markers and no console errors only. `GearScreen`/`SigilEquipPanel` stay as adapters until then.
+
 Dependency order inside D: U0 → U1, U2a → U2b → {U3, U5, U6, U7}; U3 → {U4, U8, U9, U10, U11};
 everything → U12. Tool pages need their engine slices merged first (U8 ← A4, U9 ← F1, U10 ← E3, U11 ← F2).
 

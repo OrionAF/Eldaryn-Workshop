@@ -141,12 +141,12 @@ describe('sigil conditions are character-wide', () => {
     expect(buildFighter(n, 'p1').conditions[sp]).toBe('MY_HP_BELOW_40');
   });
 
-  it('setSigilCondition writes the owned sigil; the deprecated alias writes the same value', () => {
+  it('setSigilCondition writes the owned sigil; null clears it', () => {
     const c = fixtureCharacter('WARRIOR');
     const s = storeFor(c);
     s.sigils.setSigilCondition('CATACLYSM', 'ENEMY_HP_BELOW_40');
     expect(c.sigils.owned.CATACLYSM.condition).toBe('ENEMY_HP_BELOW_40');
-    s.presets.setPresetSigilCondition('p1', 'CATACLYSM', null);
+    s.sigils.setSigilCondition('CATACLYSM', null);
     expect(c.sigils.owned.CATACLYSM.condition).toBeUndefined();
   });
 });

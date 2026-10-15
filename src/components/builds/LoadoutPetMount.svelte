@@ -16,7 +16,7 @@
   import PickCard from '../ui/PickCard.svelte';
   import EmptyState from '../ui/EmptyState.svelte';
   import ScopeChip from '../ui/ScopeChip.svelte';
-  import { petLabel, mountLabel } from '../presets/presetLabels.js';
+  import { petLabel, mountLabel } from './presetLabels.js';
 
   let { character, preset } = $props();
 

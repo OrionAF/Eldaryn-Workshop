@@ -164,9 +164,9 @@ describe('presets', () => {
     for (const sp of ['DEFENSE_STANCE', 'BERSERK_STANCE', 'CATACLYSM', 'IRON_BASTION']) store.setSigilLevel(sp, 3);
     store.setSigilOwned('FLAMEBORN', true);
     store.setPresetSigils(a, { species: ['DEFENSE_STANCE', 'BERSERK_STANCE', 'CATACLYSM', 'IRON_BASTION'], utility: 'u', ancient: 'FLAMEBORN' });
-    store.setPresetSigilCondition(a, 'CATACLYSM', 'ENEMY_HP_BELOW_40');
-    store.setPresetSigilCondition(a, 'IRON_BASTION', 'MY_HP_BELOW_40');
-    store.setPresetSigilCondition(a, 'DEFENSE_STANCE', 'MY_HP_BELOW_40'); // auras take no condition
+    store.setSigilCondition('CATACLYSM', 'ENEMY_HP_BELOW_40');
+    store.setSigilCondition('IRON_BASTION', 'MY_HP_BELOW_40');
+    store.setSigilCondition('DEFENSE_STANCE', 'MY_HP_BELOW_40'); // auras take no condition
     const p = store.current.presets[0];
     expect(p).toMatchObject({
       equipmentSet: 2,
