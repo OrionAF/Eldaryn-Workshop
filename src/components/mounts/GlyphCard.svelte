@@ -12,7 +12,7 @@
   import ConfirmButton from '../ConfirmButton.svelte';
   import { TIER_LABELS, glyphText, majorText, rarityClass, secondaryUnit, statLabel } from './mountsView.js';
 
-  let { glyph, mountName = null, sigilEquipped = true, onUpdate, onRemove } = $props();
+  let { glyph, mountName = null, inertIn = [], onUpdate, onRemove } = $props();
 
   const info = $derived(glyphTypeInfo(glyph.glyphType));
   const art = $derived(glyphImage(info?.tier, glyph.rarity));
@@ -30,7 +30,7 @@
   }
 </script>
 
-<div class="glyph-card rarity-card {rarityClass(glyph.rarity)}" class:inert={info?.tier === 'major' && !sigilEquipped} data-glyph-id={glyph.id}>
+<div class="glyph-card rarity-card {rarityClass(glyph.rarity)}" class:inert={info?.tier === 'major' && inertIn.length > 0} data-glyph-id={glyph.id}>
   <span class="rarity-badge">{glyph.rarity}</span>
   {#if art}<img class="glyph-art" src={art} alt="" loading="lazy" />{/if}
   <p class="glyph-name">{info?.name ?? glyph.glyphType} <span class="tier">{info ? TIER_LABELS[info.tier] : ''}</span></p>
@@ -54,7 +54,7 @@
     {/if}
   {:else if info?.tier === 'major'}
     <p class="effect">{majorText(glyph.glyphType, glyph.rarity)}</p>
-    {#if !sigilEquipped}<p class="warn">Sigil not equipped in any preset</p>{/if}
+    {#if inertIn.length}<p class="warn" data-testid="glyph-inert">Inert in {inertIn.join(', ')}: its sigil is not equipped</p>{/if}
   {:else}
     <p class="effect">{glyphText(glyph)}</p>
   {/if}
