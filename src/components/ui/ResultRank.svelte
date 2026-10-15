@@ -10,7 +10,8 @@
    * finished) is neutral, never up/down. `footer` carries Apply and friends.
    *
    * Props: row, unit, domain (the table's forestDomain), presetName, expanded ($bindable),
-   * onrunmore(row), footer snippet.
+   * onrunmore(row), footer snippet, unmeasured (per-change effects were never measured for this
+   * row: a run saved before the attribution pass, or a row not yet confirmed; the cells say so).
    */
   import CIForest from './CIForest.svelte';
   import VerdictChip from './VerdictChip.svelte';
@@ -26,6 +27,7 @@
     presetName = 'this build',
     expanded = $bindable(false),
     onrunmore = null,
+    unmeasured = false,
     footer,
   } = $props();
   const id = $props.id();
@@ -111,7 +113,7 @@
                 <span class="v {verdictTone(c.own)}">{fmtContrast(unit, c.own)}</span>
                 <span class="ci">{fmtContrastCi(unit, c.own)}</span>
               {:else}
-                <span class="ci">no solo effect</span>
+                <span class="ci">{unmeasured ? 'not measured' : 'no solo effect'}</span>
               {/if}
             </span>
             <span class="verdict">{#if c.own}<VerdictChip verdict={c.own.verdict} />{/if}</span>
@@ -120,7 +122,7 @@
               {#if c.needed}
                 <span>Without it: {fmtContrast(unit, c.needed)} {fmtContrastCi(unit, c.needed)}</span>
               {/if}
-              <span>{c.keptBecause === 'interaction' ? 'Kept for its interaction with other changes' : 'Kept for its own effect'}</span>
+              {#if c.keptBecause}<span>{c.keptBecause === 'interaction' ? 'Kept for its interaction with other changes' : 'Kept for its own effect'}</span>{/if}
               {#if c.bundle?.length}<span>Comes with: {c.bundle.join(', ')}</span>{/if}
             </span>
           </div>

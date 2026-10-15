@@ -1,0 +1,523 @@
+{
+ "schema": "optimiser-result/2",
+ "status": "done",
+ "aborted": false,
+ "error": null,
+ "request": {
+  "presetId": "p1",
+  "realm": "base",
+  "mode": "pve",
+  "target": {
+   "kind": "chapter",
+   "chapter": 1,
+   "level": 1
+  },
+  "objective": {
+   "kind": "ttk-median"
+  },
+  "space": {
+   "spec": false,
+   "equipmentSet": false,
+   "sigils": false,
+   "utility": false,
+   "ancient": false,
+   "conditions": false,
+   "relics": true,
+   "pet": false,
+   "mount": false,
+   "transcendence": false,
+   "minorGlyphs": false,
+   "majorGlyphs": false,
+   "talents": false
+  },
+  "seed": 2,
+  "seeds": {
+   "search": 2477172306,
+   "minimise": 392390607,
+   "confirm": 1288119682
+  },
+  "effort": {
+   "level": "quick",
+   "delta": 0.01,
+   "deltaKind": "relative",
+   "alpha": 0.05,
+   "n0": 8,
+   "maxN": 32
+  },
+  "characterKey": "character:ij2uchase1zg:11985"
+ },
+ "target": {
+  "kind": "chapter",
+  "chapter": 1,
+  "level": 1,
+  "label": "Chapter 1, level 1",
+  "key": "{\"chapter\":1,\"kind\":\"chapter\",\"level\":1}",
+  "mode": "campaign",
+  "fidelity": "client",
+  "assumptions": [
+   {
+    "id": "campaign-cap",
+    "label": "The campaign loop has no time limit; a fight past 20 minutes is reported as timed out.",
+    "value": "",
+    "tag": "APP"
+   }
+  ]
+ },
+ "objective": {
+  "kind": "ttk-median",
+  "label": "Median time to kill",
+  "unit": "ms",
+  "higherIsBetter": false,
+  "statistic": "censored-quantile",
+  "q": 0.5
+ },
+ "headline": {
+  "better": 1,
+  "equivalent": 0,
+  "unresolved": 0,
+  "worseHidden": 0,
+  "text": "1 build measured better than the current preset."
+ },
+ "baseline": {
+  "rank": 0,
+  "tieGroup": null,
+  "isBaseline": true,
+  "provisional": false,
+  "key": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":null,\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+  "engineKey": "engine-pve:1afqgyx20oqm1:1466",
+  "candidate": {
+   "equipmentSet": 1,
+   "talentSet": 0,
+   "talentAllocation": null,
+   "petId": "pet-a",
+   "mountId": "mount-a",
+   "mountGlyphs": null,
+   "relicIds": [],
+   "sigilSpecies": [
+    "BERSERK_STANCE",
+    "WARBORN_FURY",
+    "CATACLYSM"
+   ],
+   "utilitySigilSpecies": null,
+   "ancientSigilSpecies": "FLAMEBORN",
+   "transcendencePresetId": "default",
+   "sigilConditions": {}
+  },
+  "value": {
+   "est": 1700,
+   "lo": 1700,
+   "hi": 1700,
+   "n": 8,
+   "seed": 1288119682,
+   "level": 0.95,
+   "alphaAdj": 0.05,
+   "method": "order-stat"
+  },
+  "aux": {
+   "winRate": {
+    "est": 1,
+    "lo": 0.6755924351161198,
+    "hi": 1,
+    "n": 8,
+    "seed": null,
+    "level": 0.95,
+    "alphaAdj": 0.05,
+    "method": "wilson"
+   },
+   "meanMs": 1700
+  },
+  "vsBaseline": null,
+  "changes": [],
+  "remainder": null,
+  "writes": [],
+  "runMore": null,
+  "lines": [
+   {
+    "label": "Gear set",
+    "value": "Set 1"
+   },
+   {
+    "label": "Talents",
+    "value": "Arms - Sharpened Blade 5/5, Quick Strikes 3/3, Precision 3/3, Brutality 5/5, Keen Edge 3/3, Combat Frenzy 3/3, Savage Blows 3/3, Relentless Assault 4/5"
+   },
+   {
+    "label": "Pet",
+    "value": "Hell Drake"
+   },
+   {
+    "label": "Mount",
+    "value": "Night Wolf (level 3)"
+   },
+   {
+    "label": "Minor glyphs",
+    "value": "Swift Edge (Common) critChance 1.5, Keen Eye (Uncommon) attackPercent 6.1"
+   },
+   {
+    "label": "Major glyphs",
+    "value": "Warhaste Emblem (Rare)"
+   },
+   {
+    "label": "Mythic glyph",
+    "value": "None"
+   },
+   {
+    "label": "Relics",
+    "value": "None"
+   },
+   {
+    "label": "Sigils",
+    "value": "Berserk Stance, Warborn Fury, Cataclysm"
+   },
+   {
+    "label": "Utility sigil",
+    "value": "None"
+   },
+   {
+    "label": "Ancient sigil",
+    "value": "Flameborn"
+   },
+   {
+    "label": "Conditions",
+    "value": "None"
+   },
+   {
+    "label": "Transcendence",
+    "value": "Default (77 nodes)"
+   }
+  ]
+ },
+ "rows": [
+  {
+   "rank": 1,
+   "tieGroup": null,
+   "isBaseline": false,
+   "provisional": false,
+   "key": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":null,\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+   "engineKey": "engine-pve:v6959j1fyxc3f:1466",
+   "candidate": {
+    "equipmentSet": 1,
+    "talentSet": 0,
+    "talentAllocation": null,
+    "petId": "pet-a",
+    "mountId": "mount-a",
+    "mountGlyphs": null,
+    "relicIds": [
+     "relic_swift_emblem"
+    ],
+    "sigilSpecies": [
+     "BERSERK_STANCE",
+     "WARBORN_FURY",
+     "CATACLYSM"
+    ],
+    "utilitySigilSpecies": null,
+    "ancientSigilSpecies": "FLAMEBORN",
+    "transcendencePresetId": "default",
+    "sigilConditions": {}
+   },
+   "value": {
+    "est": 1600,
+    "lo": 1600,
+    "hi": 1600,
+    "n": 8,
+    "seed": 1288119682,
+    "level": 0.95,
+    "alphaAdj": 0.05,
+    "method": "order-stat"
+   },
+   "aux": {
+    "winRate": {
+     "est": 1,
+     "lo": 0.6755924351161198,
+     "hi": 1,
+     "n": 8,
+     "seed": null,
+     "level": 0.95,
+     "alphaAdj": 0.05,
+     "method": "wilson"
+    },
+    "meanMs": 1600
+   },
+   "vsBaseline": {
+    "delta": -100,
+    "lo": -100,
+    "hi": -100,
+    "pct": -0.058823529411764705,
+    "n": 8,
+    "seed": 1288119682,
+    "alphaAdj": 0.0033333333333333335,
+    "method": "paired-bootstrap",
+    "verdict": "better",
+    "significant": true,
+    "nNeeded": null,
+    "basis": "quantile",
+    "higherIsBetter": false
+   },
+   "changes": [
+    {
+     "id": "relics",
+     "dimension": "relics",
+     "label": "Relics",
+     "from": "None",
+     "to": "Swift Emblem",
+     "scope": "preset",
+     "owner": {
+      "presetId": "p1"
+     },
+     "sideEffects": [],
+     "bundle": [],
+     "own": {
+      "delta": -100,
+      "lo": -100,
+      "hi": -100,
+      "pct": -0.058823529411764705,
+      "n": 8,
+      "seed": 1288119682,
+      "alphaAdj": 0.05,
+      "method": "paired-bootstrap",
+      "verdict": "better",
+      "significant": true,
+      "nNeeded": null,
+      "basis": "quantile",
+      "higherIsBetter": false
+     },
+     "needed": {
+      "delta": -100,
+      "lo": -100,
+      "hi": -100,
+      "pct": -0.058823529411764705,
+      "n": 8,
+      "seed": 1288119682,
+      "alphaAdj": 0.05,
+      "method": "paired-bootstrap",
+      "verdict": "better",
+      "significant": true,
+      "nNeeded": null,
+      "basis": "quantile",
+      "higherIsBetter": false
+     },
+     "keptBecause": "own-effect"
+    }
+   ],
+   "remainder": null,
+   "writes": [
+    {
+     "scope": "preset",
+     "title": "Preset Main",
+     "owner": {
+      "presetId": "p1"
+     },
+     "changeIds": [
+      "relics"
+     ],
+     "sideEffects": []
+    }
+   ],
+   "runMore": null,
+   "lines": [
+    {
+     "label": "Gear set",
+     "value": "Set 1"
+    },
+    {
+     "label": "Talents",
+     "value": "Arms - Sharpened Blade 5/5, Quick Strikes 3/3, Precision 3/3, Brutality 5/5, Keen Edge 3/3, Combat Frenzy 3/3, Savage Blows 3/3, Relentless Assault 4/5"
+    },
+    {
+     "label": "Pet",
+     "value": "Hell Drake"
+    },
+    {
+     "label": "Mount",
+     "value": "Night Wolf (level 3)"
+    },
+    {
+     "label": "Minor glyphs",
+     "value": "Swift Edge (Common) critChance 1.5, Keen Eye (Uncommon) attackPercent 6.1"
+    },
+    {
+     "label": "Major glyphs",
+     "value": "Warhaste Emblem (Rare)"
+    },
+    {
+     "label": "Mythic glyph",
+     "value": "None"
+    },
+    {
+     "label": "Relics",
+     "value": "Swift Emblem"
+    },
+    {
+     "label": "Sigils",
+     "value": "Berserk Stance, Warborn Fury, Cataclysm"
+    },
+    {
+     "label": "Utility sigil",
+     "value": "None"
+    },
+    {
+     "label": "Ancient sigil",
+     "value": "Flameborn"
+    },
+    {
+     "label": "Conditions",
+     "value": "None"
+    },
+    {
+     "label": "Transcendence",
+     "value": "Default (77 nodes)"
+    }
+   ]
+  }
+ ],
+ "search": {
+  "strategy": "exhaustive",
+  "jointSize": 31,
+  "blocks": [
+   {
+    "id": "spec",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "equipmentSet",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "sigils",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "utility",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "ancient",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "conditions",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "relics",
+    "enabled": true,
+    "domain": 31,
+    "status": "converged"
+   },
+   {
+    "id": "pet",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "mount",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "transcendence",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "minorGlyphs",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "majorGlyphs",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   },
+   {
+    "id": "talents",
+    "enabled": false,
+    "domain": 1,
+    "status": "disabled"
+   }
+  ],
+  "starts": 1,
+  "optima": 1,
+  "evaluated": 31,
+  "merged": {
+   "inert": 0,
+   "engineIdentical": 0,
+   "sampleIdentical": 14
+  },
+  "fights": {
+   "search": 248,
+   "minimise": 128,
+   "confirm": 128,
+   "total": 504
+  },
+  "converged": true,
+  "unresolved": []
+ },
+ "phases": [
+  {
+   "id": "screen",
+   "label": "Screen",
+   "state": "done",
+   "fights": 8,
+   "ms": 5
+  },
+  {
+   "id": "search",
+   "label": "Search",
+   "state": "done",
+   "fights": 240,
+   "ms": 244
+  },
+  {
+   "id": "minimise",
+   "label": "Minimise",
+   "state": "done",
+   "fights": 128,
+   "ms": 131
+  },
+  {
+   "id": "confirm",
+   "label": "Confirm",
+   "state": "done",
+   "fights": 128,
+   "ms": 74
+  },
+  {
+   "id": "attribute",
+   "label": "Attribute",
+   "state": "done",
+   "fights": 0,
+   "ms": 123
+  }
+ ],
+ "multiplicity": {
+  "vsBaseline": "holm",
+  "perChange": "holm-within-row",
+  "racing": "bonferroni",
+  "looks": "bonferroni",
+  "alpha": 0.05
+ },
+ "warnings": [],
+ "baselineViolations": [],
+ "checkpoint": null,
+ "stats": {
+  "ms": 579,
+  "workers": 1
+ }
+}

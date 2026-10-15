@@ -46,6 +46,16 @@ export function createRunsStore(ctx) {
     });
   }
 
+  /** Mark that a row of the run was written to its preset (Apply review); the run keeps the rank. */
+  function setRunApplied(runId, rank = null) {
+    return ctx.edit((c) => {
+      const r = c.runs.find((x) => x.id === runId);
+      if (!r) return false;
+      r.applied = { at: new Date().toISOString(), rank: Number.isFinite(rank) ? rank : null };
+      return true;
+    });
+  }
+
   /** Pinned runs keep their detail and survive the budget; unpinning re-applies compaction. */
   function setRunPinned(runId, pinned) {
     return ctx.edit((c) => {
@@ -64,5 +74,5 @@ export function createRunsStore(ctx) {
     });
   }
 
-  return { addRun, deleteRun, setRunName, setRunNotes, setRunPinned, clearRuns };
+  return { addRun, deleteRun, setRunName, setRunNotes, setRunApplied, setRunPinned, clearRuns };
 }

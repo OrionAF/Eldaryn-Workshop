@@ -81,4 +81,12 @@ describe('runs store', () => {
     expect(store.current.id).toBe(other);
     expect(store.current.runs).toEqual([]);
   });
+
+  it('setRunApplied marks the run with the rank that was written and persists it', () => {
+    const a = store.addRun(result(110), { name: 'first' });
+    expect(store.setRunApplied(a.id, 2)).toBe(true);
+    expect(store.current.runs[0].applied).toMatchObject({ rank: 2 });
+    expect(saved().runs[0].applied.rank).toBe(2);
+    expect(store.setRunApplied('nope', 1)).toBe(false);
+  });
 });
