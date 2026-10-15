@@ -1,9 +1,10 @@
 // The four engine metrics (rebuild-plan §2.3, §5): dpsVsDummy, ttkVs, survival, pvpWinRate.
 //
 // Every metric is a Monte-Carlo sample loop with a 95 % interval (t for means, Wilson for
-// proportions; the methods live in ./stats, see docs/Reference/simulation.md §Statistics). Fight i of every call uses rng = mulberry32(hashSeed(seed, i)), so two fighters
-// measured with the same seed see the same random stream (common random numbers) and their
-// per-sample difference (pairedDelta) has far less variance than the difference of two means.
+// proportions; the methods live in ./stats, see docs/Reference/simulation.md §Statistics). Fight i of
+// every call uses rng = fightRng(seed, i) (engine/rng.js), so two fighters measured with the same seed
+// are paired (common random numbers); how much that narrows pairedDelta is measured, not assumed
+// (simulation.md §Common random numbers).
 //
 // Each metric exists in a sync form and an `...Async` form. The async form yields to the event loop
 // every ~25 ms so a worker can see an 'abort' message; both stop early on `signal.aborted` and
@@ -12,7 +13,7 @@
 // The cache lives in the calling realm: in the browser each job has its own worker, so it spans
 // one job (repeated metric calls inside it), not separate runs; inline runs share the page's.
 
-import { mulberry32, hashSeed } from './rng.js';
+import { hashSeed, fightRng } from './rng.js';
 import { simulatePve, preparePveFighter, trainingDummy } from './pve/fight.js';
 import { runDuel, fighterDuelArgs } from './pvp/resolver.js';
 import { tCrit, meanInterval, wilsonZ, isBinary, pairedProportion, pairedT } from './stats/index.js';
@@ -124,7 +125,6 @@ function finish(spec, samples, aborted, key, cacheOn = true) {
   return r;
 }
 
-const fightRng = (seed, i) => mulberry32(hashSeed(seed, i));
 const lookup = (opts, key) => (opts.cache === false ? null : cache.get(key) ?? null);
 
 function pick(o, ...ks) {

@@ -29,6 +29,43 @@ export function mulberry32(seed) {
   };
 }
 
+/**
+ * A lane-capable rng for one fight: itself a mulberry32 stream, plus `rng.lane(name)`, which returns
+ * an independent child stream (same kind, so lanes nest) seeded from `(seed, name)` and created
+ * once per name. Each actor and draw purpose reads its own lane, so a build change that adds or
+ * removes draws in one lane (an extra swing, a new proc) leaves every other lane's draws aligned
+ * between the two builds (common random numbers; see docs/Reference/simulation.md §Common random
+ * numbers). Every lane is uniform and independent, so each fight's distribution is unchanged.
+ */
+export function laneRng(seed) {
+  const s = seed >>> 0;
+  const rng = mulberry32(s);
+  const kids = new Map();
+  rng.lane = (name) => {
+    let k = kids.get(name);
+    if (k === undefined) {
+      k = laneRng(hashSeed(s, 'lane', name));
+      kids.set(name, k);
+    }
+    return k;
+  };
+  return rng;
+}
+
+/**
+ * The `name` lane of `rng`, or `rng` itself when it has no lanes (a plain or scripted function):
+ * every call site works with either, and a plain function keeps its exact draw order.
+ */
+export function lane(rng, name) {
+  return typeof rng?.lane === 'function' ? rng.lane(name) : rng;
+}
+
+/**
+ * The rng of fight `i` of a sample seeded `seed`: a lane rng (laneRng), the same for every build, so
+ * two builds measured on one seed are paired fight by fight and lane by lane.
+ */
+export const fightRng = (seed, i) => laneRng(hashSeed(seed, i));
+
 /** sfc32: four 32-bit seeds; a missing seed defaults to 0. Warmed up 12 draws. */
 export function sfc32(a = 0, b = 0, c = 0, d = 0) {
   a >>>= 0;

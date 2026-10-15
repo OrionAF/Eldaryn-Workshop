@@ -10,6 +10,7 @@
 import { ARENA_CONSTANTS } from '../../game/combatPvp.js';
 import { createPlayerEntity } from '../core/entity.js';
 import { absorbWithShield } from '../core/shield.js';
+import { lane } from '../rng.js';
 import { critDownChance } from '../core/debuffs.js';
 import { applyBulwarkDr, applyElusiveBuff, applySunderToTarget, createStackCombat } from '../core/stacks.js';
 import {
@@ -360,7 +361,7 @@ export function createReactions(s, deps) {
    */
   function minionStrike(minion, side, target, drTarget, ownStack, foeStack) {
     if (!minion.alive || target.hp <= 0) return;
-    const swing = minionSwing(minion, s.tickMs, s.rng);
+    const swing = minionSwing(minion, s.tickMs, lane(lane(s.rng, side), 'minion'));
     if (!swing) return;
     const undo = applyStackToTarget(drTarget, ownStack, foeStack);
     const dr = drTarget.damageReduction;
