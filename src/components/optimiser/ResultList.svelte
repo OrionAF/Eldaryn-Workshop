@@ -4,8 +4,10 @@
    * Every simulated number carries its N and 95% interval (rebuild-plan §5 fidelity labels). A row shows the
    * paired difference vs the current preset and the lines that differ; Apply writes it to the preset.
    * `onApply` is null for a saved run whose preset may have moved on (then the button is hidden).
+   * Entries come through resultAdapter.js legacyView; a change that writes beyond the preset names its scope.
    */
-  import { fmtValue, fmtWithCi, fmtDelta, fmtDeltaCi } from './format.js';
+  import { fmtWithCi, fmtDelta, fmtDeltaCi } from './format.js';
+  import { verdictText } from './resultAdapter.js';
 
   let { unit, baseline = null, results = [], onApply = null, applying = false } = $props();
 
@@ -23,13 +25,23 @@
       <span class="micro-label">Current preset</span>
       <span class="value mono">{fmtWithCi(unit, baseline)}</span>
       <span class="n mono" title={nTitle(baseline)}>N={baseline.n ?? 0}{nSplit(baseline)}</span>
+      {#if baseline.matchups?.length}
+        <ul class="matchups" data-testid="matchups">
+          {#each baseline.matchups as m (m.opponentId + m.seat)}
+            <li class="mono">
+              <span class="who">{m.name}, {m.seat === 'attacker' ? 'I attack' : 'I defend'}</span>
+              {fmtWithCi(unit, { value: m.p, lo: m.lo, hi: m.hi })} <span class="n">N={m.n}</span>
+            </li>
+          {/each}
+        </ul>
+      {/if}
     </div>
   {/if}
 
   {#each rows as e (e.key)}
     <div class="row" class:is-baseline={e.isBaseline} data-testid="result-row">
       <div class="head">
-        <span class="rank mono">#{e.rank}</span>
+        <span class="rank mono">#{e.tieGroup ? `${e.rank}=` : e.rank}</span>
         <span class="value mono">{fmtWithCi(unit, e)}</span>
         <span class="n mono" title={nTitle(e)}>N={e.n ?? 0}{nSplit(e)}</span>
         {#if e.isBaseline}
@@ -39,7 +51,7 @@
             {fmtDelta(unit, e.vsBaseline)} vs current
           </span>
           <span class="ci mono">{fmtDeltaCi(unit, e.vsBaseline)}</span>
-          <span class="tag">{e.vsBaseline.significant ? 'significant' : 'within noise'}</span>
+          <span class="tag">{verdictText(e.vsBaseline)}</span>
         {/if}
         <span class="spacer"></span>
         {#if onApply && !e.isBaseline}
@@ -50,8 +62,11 @@
       {#if !e.isBaseline}
         {#if e.changes?.length}
           <ul class="changes">
-            {#each e.changes as c (c.label)}
-              <li><span class="label">{c.label}</span> <span class="from">{c.from || 'none'}</span> to <span class="to">{c.to || 'none'}</span></li>
+            {#each e.changes as c (c.id ?? c.label)}
+              <li>
+                <span class="label">{c.label}</span> <span class="from">{c.from || 'none'}</span> to <span class="to">{c.to || 'none'}</span>
+                {#if c.scope && c.scope !== 'preset'}<span class="tag">{c.scope === 'mount' ? 'mount sockets' : 'character-wide'}</span>{/if}
+              </li>
             {/each}
           </ul>
         {:else}

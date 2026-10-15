@@ -2,7 +2,7 @@
 
 How the app measures builds: the statistics every tool shares, the optimiser's search and its
 result shape. App contracts only; game facts are in `Game/`. Design record:
-`docs/WIP/being-worked-on/redesign/plan.md` §A.6, §A.12.
+`docs/WIP/being-worked-on/redesign/plan.md` §A.6-§A.12.
 
 ## Statistics
 
@@ -232,6 +232,175 @@ missing indices (prefix extension; fight i depends on the stage seed and i alone
 one engine key share one entry. `compareSets` is the sequential comparator of §Statistics with the
 objective's own contrast at each look; `contrastSets` is one fixed-n contrast (confirm,
 attribution). Both return the Contrast shape plus `basis` and `higherIsBetter`.
+
+## Search
+
+Code: `src/lib/search/search.js` (driver: `optimize`, `optimizeMore`), `race.js`, `minimise.js`,
+`result.js`; worker tasks `optimize` and `optimizeMore` (`src/lib/tasks/optimize.js`). Design record:
+plan §A.7-§A.10. Every decision is a paired comparison on common random numbers with a family-wise
+level; no proxy ranks anything, N is never lowered and no block is skipped for time, so a run's cost
+varies and Effort sets only its precision.
+
+### Effort
+
+| Level | δ relative (DPS, TTK) | δ absolute (proportions) | maxN | n0 (first look) |
+|---|---|---|---|---|
+| Quick | 1 % | 2 points | 8 192 | 8 |
+| Standard | 0.5 % | 1 point | 32 768 | 16 |
+| Thorough | 0.25 % | 0.5 point | 131 072 | 32 |
+
+δ and maxN are Drop Check's `DROP_PRECISION` (open decision Q4); n0 is the optimiser's own. N counts
+fights per arm and, for PVP, per matchup. α = 0.05 for every family. `resolveEffort(level | {level,
+n0, maxN, delta, randomStarts})`: the object form overrides a level (tests and benchmarks). Retired
+request keys (`budget`, `maxMs`, `finalMs`, `maxEvals`, `maxPasses`) are ignored.
+
+### Seeds and phases
+
+`S1 = hashSeed('search', seed, target.key)` (screen and search), `S2 = hashSeed('minimise', …)`,
+`S3 = hashSeed('confirm', …)` (confirm and attribute), `S4k = hashSeed('more', seed, target.key, k)`
+(the k-th Run more). The data that decides is never the data reported. Phases, in order: **screen**
+(baseline legality, the baseline's first look), **search**, **minimise**, **confirm**, **attribute**.
+
+### Racing (`race.js`)
+
+All arms are sampled to n0; the leader is the best estimate (`objective.score`); an arm leaves when
+its contrast against the leader is `worse` at α / (arms × looks). The race stops when one arm is
+left or every survivor is `equivalent` to the leader; arms still open at maxN are `unresolved`. The
+winner is the arm nearest the baseline among the leader and its ties. Before a race the arms are
+made distinct, simulable (an `EngineInputError` arm is skipped, warning `arms-not-simulable`) and
+merged by engine key (`effect.mergeByEngine`).
+
+### Strategy
+
+- **Exhaustive** when the talents block is off (its domain is a neighbourhood, not every
+  allocation) and the joint space (product of the enabled blocks' domain sizes, then the actual
+  enumeration) holds at most `EXHAUSTIVE_MAX` = 50 000 builds: one race of every legal canonical build.
+- **Local** otherwise. Starts: the baseline; each other spec, inner-optimised; each other gear set;
+  a talent fill that spends points one at a time on the best ordering heuristic (`objective.screen`,
+  a start only); `randomStarts` (3) seeded random legal starts. From each, coordinate ascent: race
+  `[x, ...block.domain(x)]` per block in `BLOCKS` order and accept a winner only when a sequential
+  compare on S1 at α / arms says `better` and its canonical form was not visited; a full pass that
+  accepts nothing is followed by a race of the two-point talent moves (+1 +1, −1 −1). The ascent ends
+  when both accept nothing, so it always ends converged; neighbours still open are listed in
+  `search.unresolved` and mark their block `unresolved`.
+- **Compound blocks**: a `spec` arm is the switched build inner-optimised over sigils, utility,
+  ancient, conditions, major glyphs and talents; a `mount` arm is the mount inner-optimised over its
+  sockets (memoised per start).
+- **Finalists**: the distinct optima, plus the ties and unresolved arms of each ascent's last pass
+  (the builds as good as the optimum at this precision), each canonicalised (inert changes reverted).
+
+### Minimise and confirm
+
+- **Minimise** (S2, per finalist): for each atomic change c (`effect.changesOf`), compare F against
+  F − c (legalised, canonical), Holm over the changes (each test sequential). Every change not found
+  `better` is droppable; the one costing least is dropped (bit-identical outcomes first, then the
+  smallest gain, then the most disruptive) and the loop repeats. A change legality puts straight back
+  cannot be dropped alone (it is in another change's bundle). The set stands only when F is `better`
+  than the baseline at α / finalists; otherwise the finalist collapses into the baseline. A change
+  dropped while `unresolved` at maxN is listed (warning `change-dropped-unresolved`).
+- **Confirm** (S3): every distinct minimised build against the baseline, sequentially, Holm across
+  rows. `worse` rows are hidden (`headline.worseHidden`).
+- **Attribute** (S3, at the row's confirm n): `own(c)` = (B + c) against B and `needed(c)` = F against
+  F − c, each Holm within the row; `keptBecause` = `own-effect` when `own` is significantly better,
+  else `interaction`. The interaction remainder (two or more changes): per fight
+  `d_full − Σ d_c`, paired t, for mean and proportion objectives (PVP lanes averaged per fight
+  index); a paired bootstrap of θ(F) − θ(B) − Σ(θ(B + c) − θ(B)) (B = 2 000) for quantile objectives.
+- **Ranking**: `better` rows by their statistic, then `equivalent` and `unresolved` rows by fewest
+  changes. Adjacent `better` rows whose contrast is not significant (Bonferroni over the adjacent
+  pairs) share a `tieGroup` (the first one's rank); other rows have `tieGroup` 0 (not resolved apart
+  from the baseline).
+
+### Builds equal in effect
+
+Three layers, cheapest first: `canonicalise` reverts changes that leave the engine inputs unchanged;
+races merge arms with one engine key (the one nearest the baseline stays); and builds whose outcome
+vectors are bit-identical on the same stage are one build for this target (a heal condition or a
+defensive relic against the dummy): minimise drops such a change first, and confirmed rows with
+identical S3 vectors at the same n keep only the nearest. Distance (`distanceOf`) counts one per
+change, except relic and sigil changes (each piece swapped) and talent changes (points moved).
+`search.merged` counts the three (`inert`, `engineIdentical`, `sampleIdentical`).
+
+### Invariants
+
+`result.js rowViolations` checks every reported row: **I1** the candidate passes `legalityOf` and a
+non-baseline row has changes; **I2** reverting any change alters the engine key (or the change sits
+in another change's bundle); **I3** every change was decided `better`-needed on S2 (or is bundled).
+Test and development builds throw on a violation; a production run withholds the row with warning
+`invariant`.
+
+### Progress, cancel and resume
+
+Progress (throttled to 250 ms, forced at each phase start): `{type: 'progress', jobId, phase,
+phases: [{id, label, state: 'done'|'current'|'queued', done, total}], block, counts: {evaluated,
+fights, eliminated, merged}, elapsedMs, provisional}`; `provisional` lists the current optima
+(`{key, candidate, provisional: true}`) during the search, else null.
+
+Every race and comparison is a logged **step** (`kind`, a hash of its inputs, its output and the
+sample lengths it requested). A checkpoint is posted after the search, after minimise and on cancel:
+`{schema: 'optimiser-checkpoint/1', requestKey, characterKey, phase, seeds, log, frontier: {armsN},
+finalists, minimised, confirmed}`. A request with `resumeFrom` replays the log step by step without
+simulating (a step whose kind or inputs differ ends the replay), so cancel + resume equals the
+uninterrupted run apart from wall-clock fields. A checkpoint of another request or character is
+ignored (warning `checkpoint-ignored`). Fight counts are logical (the highest n requested per build
+and stage, times lanes), so they too are identical after a resume. Cancel is soft: sampling stops at
+the next yield (every 25 ms), the checkpoint is posted, and the result has `status: 'cancelled'`,
+`aborted: true`, provisional rows (values from the fights already held, no contrasts) and
+`checkpoint: {jobId, phase, resumable: true}`.
+
+### Run more
+
+`optimizeMore({character, result, rowKeys?, targetN, round?})` re-measures the chosen rows, their
+changes' `own`/`needed` and the baseline at exactly `targetN` on `S4k` (k = `round`, default the
+next), Holm across the chosen rows, and returns the result with those rows and the baseline updated
+and `more: {round, targetN, seed, rowKeys}`. A character whose snapshot key differs from the run's
+`request.characterKey` is refused.
+
+### Cost
+
+Measured on the Warrior fixture (one thread, this machine; a 60 s dummy fight costs about 2 ms):
+
+| Space | Effort | Strategy | Builds raced | Fights | Time |
+|---|---|---|---|---|---|
+| relics + pet | Quick | exhaustive | 62 | 624 | 1.2 s |
+| every block | Quick | local (4 starts) | 8 437 | 138 920 | 249 s |
+
+The full run shared four cores with other jobs. Standard and Thorough cost more: n0 doubles, and a
+comparison inside δ can run to maxN. A PVP duel costs several times a dummy fight, per matchup.
+
+## Result
+
+`search/result.js`; schema `'optimiser-result/2'`. Plain JSON: a non-finite bound is null.
+
+- `status` `'done'|'cancelled'|'failed'`, `aborted` (= cancelled), `error` (`{message}` or null).
+- `request`: `{presetId, realm, mode, target, objective, space, seed, seeds: {search, minimise,
+  confirm}, effort: {level, delta, deltaKind, alpha, n0, maxN}, characterKey}`;
+  `characterKey = metricKey('character', character)` (staleness and Run more).
+- `target`: the target spec plus `{kind, label, key, mode, fidelity, assumptions: [{id, label, value,
+  tag}]}`; `tag` is `UNRESOLVED` for a server-run fight, `SERVER` for PVP and the World Boss model,
+  else `APP`. `objective`: its spec plus `{kind, label, unit, higherIsBetter, statistic, q}`.
+- `headline: {better, equivalent, unresolved, worseHidden, text}`.
+- `baseline` (rank 0) and `rows` (rank 1…), each a **Row**: `{rank, tieGroup, isBaseline,
+  provisional, key, engineKey, candidate, value: Estimate, aux, vsBaseline: Contrast|null, changes,
+  remainder, writes, runMore, lines}`. `aux`: TTK `{winRate: Estimate, meanMs}`; PVP `{meanMs,
+  timeoutShare, matchups: [{opponentId, name, seat, value, vsBaseline}], defaulted?: [{opponentId,
+  keys}]}` (a matchup's `vsBaseline` is unadjusted). `runMore` is `{targetN, reason: 'unresolved'}`
+  when the row is too close to call (`targetN`: the next doubling of n reaching `nNeeded`), else null.
+  `lines` is `describeBuild` (display only).
+- **Change**: `effect.changesOf`'s `{id, dimension, label, from, to, scope, owner, sideEffects,
+  bundle}` plus `own: Contrast|null`, `needed: Contrast|null` (null only for a change that cannot be
+  dropped alone) and `keptBecause`. **WriteGroup** (`writes`): `effect.writesOf`.
+- **Estimate** `{est, lo, hi, n, seed, level: 0.95, alphaAdj, method}`; **Contrast** `{delta, lo, hi,
+  pct, n, seed, alphaAdj, method, verdict, significant, nNeeded, basis, higherIsBetter}` (`basis`
+  `'winRate'` when a TTK contrast fell back to win rate; `n` per lane).
+- `search: {strategy, jointSize, blocks: [{id, enabled, domain, status: 'converged'|'unresolved'|
+  'disabled'|'not-reached'}], starts, optima, evaluated, merged, fights: {search, minimise, confirm,
+  total}, converged, unresolved: [{fromKey, toKey, change, contrast}]}`.
+- `phases: [{id, label, state: 'done'|'cancelled'|'not-run', fights, ms}]`, `multiplicity` (the
+  families above), `warnings: [{code, message, severity}]` (`sheet-stale`, `sheet-unverified`,
+  `residual-applied`, `opponent-defaulted`, `change-dropped-unresolved`, `arms-not-simulable`,
+  `checkpoint-ignored`, `invariant`), `baselineViolations` (non-empty ⇒ `failed`: the baseline breaks
+  a game gate and is never silently legalised), `checkpoint`, `stats: {ms, workers}`, and after Run
+  more `more`.
 
 ## Drop Check
 

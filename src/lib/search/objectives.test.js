@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   resolveTarget, makeObjective, objectiveKindsFor, closedFormDps, ehpProxy, SCREEN_SPELL_WEIGHT,
-  OBJECTIVE_KINDS, TARGET_KINDS, residualFor, legacyVs,
+  OBJECTIVE_KINDS, TARGET_KINDS, residualFor,
 } from './objectives.js';
 import { setOf, contrastSets } from './sampler.js';
 import { buildFighter } from '../build/fighter.js';
@@ -244,13 +244,6 @@ describe('ttk statistic: the censored quantile over all fights (#66 #73)', () =>
     expect(w.verdict).toBe('better');
   });
 
-  it('the legacy row contrast is the same quantile difference, signed as a gain', () => {
-    const vs = legacyVs(o, B, A, { seed: 3 });
-    expect(vs.delta).toBe(censoredQuantile(A.main[0], 0.5) - censoredQuantile(B.main[0], 0.5));
-    expect(vs.significant).toBe(true);
-    expect(vs.lo).toBeLessThanOrEqual(vs.delta);
-    expect(vs.hi).toBeGreaterThanOrEqual(vs.delta);
-  });
 });
 
 describe('measures', () => {

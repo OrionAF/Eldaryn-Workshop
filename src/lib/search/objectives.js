@@ -23,7 +23,7 @@ import { raidById } from '../game/fortress.js';
 import { CLASSIC_DUNGEONS } from '../game/pveContent.js';
 import { WORLD_BOSS_AFFINITIES } from '../game/worldBoss.js';
 import { formatFlat } from '../format.js';
-import { setOf, contrastSets } from './sampler.js';
+import { setOf } from './sampler.js';
 import { resolvePvpTarget, makePvpObjective, PVP_TARGET_KIND, PVP_OBJECTIVE_KIND } from './pvpObjective.js';
 
 // The PVE kinds. The PVP pair is kept apart: it is only valid together and needs the character's opponents.
@@ -267,7 +267,7 @@ function proportionEstimate(xs, alpha) {
   return { est: w.est, lo: w.lo, hi: w.hi, n: xs.length, level: level(alpha), alphaAdj: alpha, method: 'wilson' };
 }
 
-/** A ranked quantity for the legacy beam (search.js until A4): ttk ∞ ranks below every finite time, by win rate. */
+/** `score` of a TTK set (higher is better; picks a race's leader): ∞ ranks below every finite time, by win rate. */
 const UNREACHED_MS = 1e12;
 
 // ---------------------------------------------------------------------------------------------
@@ -361,8 +361,8 @@ export function makeObjective(raw = { kind: 'dps' }, target = resolveTarget({ ki
 }
 
 // ---------------------------------------------------------------------------------------------
-// Legacy adapter for search.js's tiered beam (retired by A4): `measure` is the objective's own
-// statistic over one sample set, so what ranks is what is shown (no proxy ties, plan §A.1 I6, I7).
+// `measure`: one fixed-n measure of a fighter in the legacy flat shape (value, lo, hi, n, score,
+// samples), for one-off measures and tests. The optimiser itself samples through search/sampler.js.
 
 function legacyMeasure(o, s) {
   const { value, aux } = o.estimate(s);
@@ -384,21 +384,5 @@ function withLegacy(o) {
       const done = (c) => (c.aborted ? { ...ABORTED } : legacyMeasure(o, setOf(c.main, c.side)));
       return typeof chunk?.then === 'function' ? chunk.then(done) : done(chunk);
     },
-  };
-}
-
-/**
- * search.js's `vsBaseline` row field from two legacy measures: the objective's own paired contrast
- * of X against the baseline Y, signed so that a positive delta is an improvement (the legacy screen
- * colours on the sign). A TTK contrast that fell back to win rate has no time difference to show.
- */
-export function legacyVs(objective, x, y, { seed = 1 } = {}) {
-  const c = contrastSets(objective, x, y, { seed });
-  const flip = c.higherIsBetter ? 1 : -1;
-  if (c.basis === 'winRate') return { delta: null, lo: null, hi: null, significant: c.significant, pct: null, verdict: c.verdict };
-  const bound = (v) => finiteOrNull(v == null ? null : flip * v);
-  return {
-    delta: bound(c.delta), lo: bound(flip > 0 ? c.lo : c.hi), hi: bound(flip > 0 ? c.hi : c.lo),
-    significant: c.significant, pct: objective.kind === 'dps' ? finiteOrNull(c.pct) : null, verdict: c.verdict,
   };
 }

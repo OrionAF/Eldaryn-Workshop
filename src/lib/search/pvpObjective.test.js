@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { resolveTarget, makeObjective, objectiveKindsFor, TARGET_KINDS } from './objectives.js';
-import { resolvePvpTarget, matchupsOf, PVP_BUDGET, PVP_MAX_OPPONENTS } from './pvpObjective.js';
-import { optimizeBuild, resolveBudget } from './search.js';
+import { resolvePvpTarget, matchupsOf, PVP_MAX_OPPONENTS } from './pvpObjective.js';
+import { BLOCKS } from './space.js';
 import { runTask } from '../tasks/index.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { cloneAsOpponent, presetDuelFighter, opponentFighter } from '../features/duel.js';
@@ -20,8 +20,6 @@ function withOpponents() {
   ];
   return normaliseCharacter(raw);
 }
-const SMALL = { n1: 8, n2: 16, maxEvals: 8, finalists: 3, maxPasses: 1, topN: 4, width: 2, maxMs: 20000 };
-const RELICS = { equipmentSet: false, talentSet: false, talents: false, pet: false, mount: false, glyphs: false, relics: true, sigils: false, utility: false, ancient: false, conditions: false, transcendence: false };
 const pvp = (opponentIds, seats = 'attacker') => ({ kind: 'pvp', opponentIds, seats });
 const OBJ = { kind: 'pvp-winrate' };
 
@@ -86,7 +84,6 @@ describe('pvp-winrate measure', () => {
     const mean = m.extra.matchups.reduce((s, x) => s + x.p, 0) / 4;
     expect(m.value).toBeCloseTo(mean, 12);
     expect(o.unit).toBe('p');
-    expect(o.defaultBudget).toEqual(PVP_BUDGET);
   });
 
   it('is deterministic for a seed (common random numbers); one 0/1 lane per matchup averages to the win rate', async () => {
@@ -156,76 +153,27 @@ describe('pvp-winrate measure', () => {
   });
 });
 
-describe('optimizeBuild with the pvp objective', () => {
+describe('the optimiser with the pvp objective', () => {
   const c = withOpponents();
-  const run = (extra = {}) => optimizeBuild({
-    character: c, presetId: 'p1', target: pvp(['opp-a'], 'both'), objective: OBJ, space: RELICS, budget: SMALL, seed: 3, ...extra,
-  });
+  const only = (...on) => Object.fromEntries(BLOCKS.map((b) => [b, on.includes(b)]));
+  const TINY = { level: 'quick', n0: 8, maxN: 16, randomStarts: 0 };
 
-  it('screens at tier 1, re-measures finalists at tier 2, and never ranks below the current preset', async () => {
-    const r = await run();
-    expect(r.aborted).toBe(false);
-    expect(r.tier).toBe(2);
+  it('measures every row per matchup with a Wilson interval, through the worker task', async () => {
+    const r = await runTask('optimize', { character: c, presetId: 'p1', target: pvp(['opp-b'], 'both'), objective: OBJ, space: only('pet'), effort: TINY, seed: 3 });
+    expect(r.status).toBe('done');
     expect(r.objective).toMatchObject({ kind: 'pvp-winrate', unit: 'p', higherIsBetter: true });
-    expect(r.target).toMatchObject({ kind: 'pvp', opponentIds: ['opp-a'], seats: 'both' });
-    expect(r.realm).toBe('base');
-    expect(r.results[0].score).toBeGreaterThanOrEqual(r.baseline.score);
-    expect(r.baseline.isBaseline).toBe(true);
-    expect(r.baseline.vsBaseline).toBeNull();
-    expect(r.budget.n1).toBe(8);
-    for (const e of r.results) {
-      expect(e.n).toBe(r.budget.n2 * 2);
-      expect(e.matchups).toHaveLength(2);
-      expect(e.perMatchupN).toBe(r.budget.n2);
-      expect(e.lo).toBeLessThanOrEqual(e.value);
-      expect(e.hi).toBeGreaterThanOrEqual(e.value);
-      if (!e.isBaseline) expect(e.vsBaseline.lo).not.toBeNull();
+    expect(r.target).toMatchObject({ kind: 'pvp', opponentIds: ['opp-b'], seats: 'both', fidelity: 'server-model' });
+    expect(r.target.assumptions.map((a) => a.tag)).toEqual(['SERVER']);
+    for (const row of [r.baseline, ...r.rows]) {
+      expect(row.aux.matchups.map((m) => m.seat)).toEqual(['attacker', 'defender']);
+      expect(row.value.n).toBe(row.aux.matchups[0].value.n * 2);
+      expect(row.value.method).toBe('wilson');
     }
     expect(JSON.parse(JSON.stringify(r))).toEqual(r);
   });
 
-  it('is reproducible for a seed', async () => {
-    const a = await run();
-    const b = await run();
-    expect(b.results.map((e) => [e.key, e.value])).toEqual(a.results.map((e) => [e.key, e.value]));
-  });
-
-  it('merges the PVP defaults under the caller budget, and finalMs shrinks n2 but never below 2 * n1', async () => {
-    const r = await run({ budget: { ...SMALL, n2: 400, finalMs: 1 } });
-    expect(r.budget.finalMs).toBe(1);
-    expect(r.budget.n2).toBe(16); // 2 * n1
-    const d = resolveBudget(PVP_BUDGET);
-    expect(d.n1).toBe(64);
-    expect(d.n2).toBe(400);
-    const r2 = await run({ budget: { n1: 8, n2: 16, maxEvals: 3, finalists: 2, maxPasses: 1 } });
-    expect(r2.budget.screenKeep).toBe(PVP_BUDGET.screenKeep);
-    expect(r2.budget.finalMs).toBe(PVP_BUDGET.finalMs);
-  });
-
-  it('a signal aborted mid-search returns best-so-far at tier 1', async () => {
-    const ctl = new AbortController();
-    const r = await run({ signal: ctl.signal, onProgress: (p) => { if (p.phase === 'search' && p.evals >= 2) ctl.abort(); } });
-    expect(r.aborted).toBe(true);
-    expect(r.tier).toBe(1);
-    expect(r.baseline).not.toBeNull();
-    expect(r.results[0].score).toBeGreaterThanOrEqual(r.baseline.score);
-    expect(r.results.every((e) => e.n === 16)).toBe(true); // n1 = 8 per matchup, 2 matchups
-  });
-
-  it('a signal aborted up front returns an empty aborted result', async () => {
-    const ctl = new AbortController();
-    ctl.abort();
-    const r = await run({ signal: ctl.signal });
-    expect(r.aborted).toBe(true);
-    expect(r.baseline).toBeNull();
-    expect(r.results).toEqual([]);
-  });
-
-  it("works through the worker task and fails clearly with no opponent", async () => {
-    const r = await runTask('optimize', { character: c, presetId: 'p1', target: pvp(['opp-b'], 'defender'), objective: OBJ, space: RELICS, budget: SMALL });
-    expect(r.tier).toBe(2);
-    expect(r.results[0].matchups[0]).toMatchObject({ opponentId: 'opp-b', seat: 'defender' });
+  it('fails clearly with no opponent', async () => {
     const none = fixtureCharacter('WARRIOR');
-    await expect(runTask('optimize', { character: none, presetId: 'p1', target: pvp(['opp-b']), objective: OBJ, budget: SMALL })).rejects.toThrow(/saved opponent/);
+    await expect(runTask('optimize', { character: none, presetId: 'p1', target: pvp(['opp-b']), objective: OBJ })).rejects.toThrow(/saved opponent/);
   });
 });
