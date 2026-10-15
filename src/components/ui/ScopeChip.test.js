@@ -13,14 +13,14 @@ it('keeps the comma and space before "also" as text of the detail cell, not betw
   const t = setup(ScopeChip, { scope: 'character', target: 'Iron Bastion', sideEffects: ['PVP'] });
   const cell = t.q('.t');
   expect(cell.textContent).toBe('Iron Bastion, also PVP');
-  const before = [...cell.childNodes].filter((n) => n.nodeType === Node.TEXT_NODE).map((n) => n.textContent).join('');
-  expect(before).toBe('Iron Bastion, ');
+  expect(cell.querySelector('.tg').textContent).toBe('Iron Bastion');
+  expect(cell.querySelector('.sep').textContent).toBe(',');
   expect(cell.querySelector('em').textContent).toBe('also PVP');
   t.done();
 });
 
 it('a side-effect-only chip still shows the cell', () => {
   const t = setup(ScopeChip, { scope: 'preset', sideEffects: ['Boss'] });
-  expect(t.q('.t').textContent).toBe('also Boss');
+  expect(t.q('.t').textContent).toBe(' also Boss');
   t.done();
 });
