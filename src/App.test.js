@@ -215,13 +215,14 @@ it('notifications: a message shows in the live region and the Activity drawer, e
 });
 
 it('a screen calling setStatus raises a toast (setStatus -> notify)', () => {
-  open('#/character/overview');
-  const level = q('main input[type="number"]');
-  expect(level).not.toBeNull();
-  level.value = String(rosterStore.current.level);
-  level.dispatchEvent(new Event('change', { bubbles: true }));
+  open('#/character/pets');
+  const tier = q('main select[aria-label="Pet altar tier"]');
+  tier.value = String(Number(tier.value) === 1 ? 2 : 1);
+  tier.dispatchEvent(new Event('change', { bubbles: true }));
   flushSync();
-  expect(q('div[aria-label="Notifications"]').textContent).toContain('Level saved');
+  click([...qa('main button')].find((b) => b.textContent.trim() === 'Change tier'));
+  click([...qa('main button')].find((b) => b.textContent.trim() === 'Wipe collection'));
+  expect(q('div[aria-label="Notifications"]').textContent).toContain('collection cleared');
 });
 
 it('phone area bar: Character / Builds / Tools / Import, the current area marked', () => {

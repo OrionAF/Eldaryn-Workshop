@@ -8,7 +8,7 @@
   import { talentTiers, tierPointsRequired } from '../../lib/game/talents.js';
   import { tierPointsSpent } from '../../lib/model/talents.js';
 
-  let { specKey, talentSetIndex } = $props();
+  let { specKey, talentSetIndex, pointsLeft = Infinity } = $props();
 
   const tiers = $derived(talentTiers(specKey));
   const allocation = $derived(rosterStore.current.talentSets[talentSetIndex].allocation);
@@ -60,7 +60,8 @@
           <button
             type="button"
             aria-label={`Raise ${talent.name}`}
-            disabled={!unlocked || rank >= talent.maxRank}
+            disabled={!unlocked || rank >= talent.maxRank || pointsLeft <= 0}
+            title={unlocked && rank < talent.maxRank && pointsLeft <= 0 ? 'No talent points left at this level' : undefined}
             onclick={() => rosterStore.setTalentSetRank(talentSetIndex, talent.id, rank + 1)}>+</button
           >
         </div>

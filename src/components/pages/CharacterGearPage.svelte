@@ -1,7 +1,7 @@
 <script>
   /**
-   * CharacterGearPage.svelte - adapter: mounts the pre-redesign GearScreen until the slice that owns this
-   * page replaces this file (plan §D). `tab` is the optional third hash segment.
+   * CharacterGearPage.svelte - C3. GearScreen holds the page (the Oblivion screen embeds it pinned to
+   * its realm until U11 retires that); `tab` ('stones') opens the Enchant stones tab.
    */
   import GearScreen from '../screens/GearScreen.svelte';
 
@@ -9,4 +9,4 @@
   let { setStatus = () => {}, onNavigate = () => {}, tab = null } = $props();
 </script>
 
-<GearScreen {setStatus} {onNavigate} />
+<GearScreen {tab} />
