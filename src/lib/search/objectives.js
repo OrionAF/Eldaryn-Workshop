@@ -9,7 +9,7 @@
 //   {kind: 'raid', id: 'raid_1', step: 1..8}          village raid step, 5 mobs
 //   {kind: 'oblivion', floor: n, applyOutputCut?: false}   forces the Oblivion realm; power comes from the fighter
 //   {kind: 'worldBoss', affinity?: 'NONE'|'FORTIFIED'|'ENRAGED'}
-//   {kind: 'fortressBoss', group: 'TOP'|'BOTTOM'|'CORE', stars?: 1..5 (TOP, BOTTOM), aliveDefenders?: 0+, maxClanSize?: 50, kills?: 0+}
+//   {kind: 'fortressBoss', group: 'TOP'|'BOTTOM'|'CORE', stars?: 1..5 (TOP, BOTTOM), aliveDefenders?: 0+, server?: whole number|null (default the character's), shieldPercent?: 0..60, kills?: 0+}
 //                                                     the clan-war Fortress boss, 60 s, dps only; the rest sets the credit multipliers
 //   {kind: 'custom', mob: MobSpec, seconds?: 60}      a user-entered mob
 //   {kind: 'pvp', opponentIds: string[], seats}       saved opponents (pvpObjective.js); needs `{character}`
@@ -25,9 +25,9 @@ import { chapterMobs, dungeonMobs, raidMobs, oblivionFloorMob, worldBossMob } fr
 import { raidById } from '../game/fortress.js';
 import { CLASSIC_DUNGEONS } from '../game/pveContent.js';
 import { WORLD_BOSS_AFFINITIES } from '../game/worldBoss.js';
-import { FORTRESS_STARS } from '../game/fortress.js';
+import { FORTRESS_STARS, clanCapForServer } from '../game/fortress.js';
 import {
-  fortressBossMob, fortressBossMultipliers, FORTRESS_BOSS_GROUPS, FORTRESS_BOSS_DEFAULT_CLAN_SIZE,
+  fortressBossMob, fortressBossMultipliers, FORTRESS_BOSS_GROUPS, MAX_SHIELD_PERCENT,
 } from '../engine/pve/fortressBoss.js';
 import { formatFlat } from '../format.js';
 import { setOf } from './sampler.js';
@@ -169,14 +169,22 @@ export function resolveTarget(raw = { kind: 'dummy' }, { character } = {}) {
       throw new Error(`Fortress stars must be a whole number from 1 to ${FORTRESS_STARS.max}, got ${stars}`);
     }
     const aliveDefenders = raw.aliveDefenders ?? 0;
-    const maxClanSize = raw.maxClanSize ?? FORTRESS_BOSS_DEFAULT_CLAN_SIZE;
+    const server = raw.server !== undefined ? raw.server : character?.server ?? null;
+    // a saved spec's explicit `maxClanSize` stays an explicit cap (it overrides the server's)
+    const maxClanSize = raw.maxClanSize ?? null;
+    const shieldPercent = raw.shieldPercent ?? null;
     const kills = raw.kills ?? 0;
     if (!nonNegInt(aliveDefenders)) throw new Error(`alive defenders must be a whole number from 0, got ${aliveDefenders}`);
-    if (!posInt(maxClanSize)) throw new Error(`max clan size must be a whole number from 1, got ${maxClanSize}`);
+    if (server !== null && !nonNegInt(server)) throw new Error(`server must be a whole number or null, got ${server}`);
+    if (maxClanSize !== null && !posInt(maxClanSize)) throw new Error(`max clan size must be a whole number from 1, got ${maxClanSize}`);
+    if (shieldPercent !== null && !(isNum(shieldPercent) && shieldPercent >= 0 && shieldPercent <= MAX_SHIELD_PERCENT)) {
+      throw new Error(`shield percent must be from 0 to ${MAX_SHIELD_PERCENT}, got ${shieldPercent}`);
+    }
+    const clanCap = maxClanSize ?? clanCapForServer(server);
     if (!nonNegInt(kills)) throw new Error(`kills must be a whole number from 0, got ${kills}`);
     const mob = fortressBossMob(group);
-    t.spec = { kind, group, ...(core ? {} : { stars }), aliveDefenders, maxClanSize, kills };
-    t.fortress = fortressBossMultipliers({ group, stars, aliveDefenders, maxClanSize, kills });
+    t.spec = { kind, group, ...(core ? {} : { stars }), aliveDefenders, server, ...(maxClanSize !== null ? { maxClanSize } : {}), ...(shieldPercent !== null ? { shieldPercent } : {}), kills };
+    t.fortress = { ...fortressBossMultipliers({ group, stars, aliveDefenders, clanCap, shieldPercent, kills }), clanCap };
     t.enemy = mob;
     t.maxMs = mob.fightDurationMs;
     t.seconds = mob.fightDurationMs / 1000;

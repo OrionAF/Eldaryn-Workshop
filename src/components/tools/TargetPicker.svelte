@@ -11,8 +11,8 @@
   import { targetOut } from '../../lib/search/result.js';
   import { PVP_MAX_OPPONENTS, PVP_SEATS } from '../../lib/search/pvpObjective.js';
   import { chapterLabel } from '../../lib/game/combatPve.js';
-  import { RAIDS } from '../../lib/game/fortress.js';
-  import { FORTRESS_BOSS_GROUPS } from '../../lib/engine/pve/fortressBoss.js';
+  import { RAIDS, clanCapForServer } from '../../lib/game/fortress.js';
+  import { FORTRESS_BOSS_GROUPS, MAX_SHIELD_PERCENT } from '../../lib/engine/pve/fortressBoss.js';
   import { CLASSIC_DUNGEONS } from '../../lib/game/pveContent.js';
   import { WORLD_BOSS_AFFINITIES } from '../../lib/game/worldBoss.js';
   import { classLabel } from '../../lib/game/classes.js';
@@ -41,7 +41,7 @@
     raid: { kind: 'raid', id: 'raid_1', step: 1 },
     oblivion: { kind: 'oblivion', floor: 1 },
     worldBoss: { kind: 'worldBoss', affinity: 'NONE' },
-    fortressBoss: { kind: 'fortressBoss', group: 'TOP', stars: 1, aliveDefenders: 0, maxClanSize: 50, kills: 0 },
+    fortressBoss: { kind: 'fortressBoss', group: 'TOP', stars: 1, aliveDefenders: 0, server: character?.server ?? null, kills: 0 },
     custom: { kind: 'custom', mob: { hp: 1000000, attack: 10000, attackSpeed: 1 }, seconds: 60 },
   };
   const pvpDefault = () => ({ kind: 'pvp', opponentIds: opponents.slice(0, 1).map((o) => o.id), seats: 'attacker' });
@@ -154,14 +154,27 @@
     {#if target.group !== 'CORE'}
       <NumberField label="Stars" min={1} max={5} value={target.stars} onchange={(v) => patchInt('stars', v)} />
     {/if}
-    <div class="two">
-      <NumberField label="Alive defenders" min={0} value={target.aliveDefenders} onchange={(v) => patchInt('aliveDefenders', v)} />
-      <NumberField label="Clan size" min={1} value={target.maxClanSize} onchange={(v) => patchInt('maxClanSize', v)} />
-    </div>
+    <Checkbox
+      label="Shield % (from the siege screen)"
+      checked={target.shieldPercent != null}
+      onchange={(on) => {
+        const { shieldPercent, ...rest } = target;
+        target = on ? { ...rest, shieldPercent: resolved?.fortress?.shieldPercent ?? 0 } : rest;
+      }}
+    />
+    {#if target.shieldPercent != null}
+      <NumberField label="Boss shield" unit="%" min={0} max={MAX_SHIELD_PERCENT} value={target.shieldPercent} onchange={(v) => { if (Number.isFinite(v)) patch({ shieldPercent: v }); }} />
+    {:else}
+      <div class="two">
+        <NumberField label="Alive defenders" min={0} value={target.aliveDefenders} onchange={(v) => patchInt('aliveDefenders', v)} />
+        <NumberField label="Server" min={0} value={target.server ?? undefined} onchange={(v) => { if (Number.isFinite(v)) { const { maxClanSize, ...rest } = target; target = { ...rest, server: Math.round(v) }; } }} />
+      </div>
+      <span class="hint" data-testid="clan-cap">Clan cap {target.maxClanSize ?? clanCapForServer(target.server ?? null)}{target.maxClanSize != null ? ' (saved explicit cap)' : target.server == null ? ' (server not set: the default)' : ''}</span>
+    {/if}
     <NumberField label="Defender kills" min={0} value={target.kills} onchange={(v) => patchInt('kills', v)} />
     {#if resolved?.fortress}
       <span class="hint" data-testid="fortress-shield">
-        Boss shield {resolved.fortress.shieldPercent}%. Credited damage is raw x {resolved.fortress.total.toFixed(2)}; the credit never changes which build is best.
+        Boss shield {Number(resolved.fortress.shieldPercent.toFixed(1))}%{target.shieldPercent == null ? ` (${target.aliveDefenders} alive of a ${resolved.fortress.clanCap} cap)` : ''}. Credited damage is raw x {resolved.fortress.total.toFixed(2)}; the credit never changes which build is best.
       </span>
     {/if}
   {:else if target.kind === 'custom'}
