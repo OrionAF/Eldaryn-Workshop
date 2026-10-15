@@ -63,6 +63,16 @@ describe('clock and time limit', () => {
     const hard = simulateCelestial({ party, difficulty: 'HARD', rolls: scripted() });
     expect(hard).toMatchObject({ won: false, timedOut: true, timeMs: 360000 });
   });
+
+  it('reports each member\'s HP left (0 for the dead), the last tick\'s HP', () => {
+    const r = run({ party: [fighter({ totalHp: 1 }), tank({ totalHp: 1e15, totalAttack: TOUGH })], tankIndex: 1, difficulty: 'NORMAL' });
+    expect(r.hpLeft).toHaveLength(2);
+    expect(r.hpLeft[1]).toBe(r.log.at(-1).playerHpsAfter[1]);
+    expect(r.hpLeft[1]).toBeGreaterThan(0);
+    expect(r.hpLeft[1]).toBeLessThanOrEqual(1e15);
+    const solo = run({ party: [tank({ totalHp: 1, totalAttack: TOUGH })] });
+    expect(solo).toMatchObject({ won: false, timedOut: false, hpLeft: [0] });
+  });
 });
 
 describe('Gatekeeper\'s Burden', () => {

@@ -27,7 +27,7 @@
   import { relicSlotCap } from '../../lib/model/legality.js';
   import { presetDuelFighter, opponentFighter, missingStats } from '../../lib/features/duel.js';
   import {
-    normaliseSetup, setupFromRun, requestOf, searchCharacter, signatureOf, runApplyBlock, retiredGoalBlock,
+    normaliseSetup, setupFromRun, requestOf, searchCharacter, signatureOf, runApplyBlock, retiredGoalBlock, otherCharacters, targetContext,
   } from '../../lib/ui/optimiserSetup.js';
   import {
     viewResult, progressSegments, progressLine, effortPlan, enabledCount, toggleTotal, optimiserJobChips,
@@ -47,6 +47,7 @@
   import EmptyState from '../ui/EmptyState.svelte';
   import RunProgress from '../ui/RunProgress.svelte';
   import TargetPicker from '../tools/TargetPicker.svelte';
+  import { rosterPartnerFor } from '../../lib/search/celestialObjective.js';
   import SpaceGroups from '../optimiser/SpaceGroups.svelte';
   import PowerGuard from '../optimiser/PowerGuard.svelte';
   import { presetPower } from '../../lib/build/power.js';
@@ -61,10 +62,12 @@
   let { setStatus = () => {}, onNavigate = () => {}, tab = null } = $props();
 
   const character = $derived(rosterStore.current);
+  // the roster's other characters: Celestial partners (their presets are resolved into the request)
+  const others = $derived(otherCharacters(character, rosterStore.roster?.characters ?? []));
 
   // ---- setup, kept per character in the UI key ---------------------------------------------------
 
-  const loadSetup = (c) => normaliseSetup(loadUi().optimiserSetups[c.id], c, prefs.defaultEffort);
+  const loadSetup = (c) => normaliseSetup(loadUi().optimiserSetups[c.id], c, prefs.defaultEffort, otherCharacters(c, rosterStore.roster?.characters ?? []));
   let loadedId = untrack(() => character.id);
   let setup = $state(untrack(() => loadSetup(character)));
   $effect.pre(() => {
@@ -89,13 +92,15 @@
     if (!allowedObjectives.includes(setup.objective.kind)) setup.objective = { kind: allowedObjectives[0] };
   });
   const objectiveOptions = $derived(allowedObjectives.map((k) => ({ value: k, label: OBJECTIVE_LABEL[k] })));
-  const resolvedTarget = $derived.by(() => {
+  const resolvedFull = $derived.by(() => {
+    const t = $state.snapshot(setup.target);
     try {
-      return resolveTarget($state.snapshot(setup.target), { character });
-    } catch {
-      return null;
+      return { target: resolveTarget(t, targetContext(t, character, others)), error: '' };
+    } catch (e) {
+      return { target: null, error: e?.message ?? String(e) };
     }
   });
+  const resolvedTarget = $derived(resolvedFull.target);
   const targetLabel = $derived(resolvedTarget?.label ?? '');
   // the preset's Combat Power in the realm the fight uses (the guard compares candidates with the same figure)
   const currentPower = $derived.by(() => {
@@ -124,6 +129,7 @@
     return [...floorBlock, ...fightBlockers()];
   });
   function fightBlockers() {
+    if (setup.target.kind === 'celestial') return resolvedFull.error ? [{ text: resolvedFull.error }] : [];
     if (!isPvp) return [];
     if (!opponents.length) return [{ text: 'PVP needs a saved opponent.', fix: 'Open Opponents', to: '#/tools/opponents' }];
     if (!pvpIds.length) return [{ text: 'Pick at least one opponent.' }];
@@ -185,18 +191,24 @@
     openRunId = null;
     const s = { ...$state.snapshot(setup), presetId: preset.id };
     if (isPvp) s.target = { ...s.target, opponentIds: [...pvpIds] };
-    start(requestOf(s, character), { characterId: character.id, presetId: preset.id, presetName: preset.name, mode: 'optimize' }, {
+    start(requestOf(s, character, others), { characterId: character.id, presetId: preset.id, presetName: preset.name, mode: 'optimize' }, {
       title: `Optimise ${preset.name}`,
       context: `${targetLabel} · ${OBJECTIVE_LABEL[s.objective.kind]}`,
     });
     setStatus('');
   }
 
+  /** A Celestial run's roster partner as it is now (the task refuses it if the partner changed since). */
+  function partnerOf(target) {
+    const partner = rosterPartnerFor(target, others);
+    return partner ? { partner } : {};
+  }
+
   function runMore(row) {
     if (live || !shown || stale || !row.runMore || retiredGoalBlock(result)) return;
     const meta = { characterId: character.id, presetId: result.request.presetId, presetName: resultPreset?.name ?? '', mode: 'optimizeMore', fromJob: jobKey(shown) };
     start(
-      { mode: 'optimizeMore', character: searchCharacter(character), result, rowKeys: [row.key], targetN: row.runMore.targetN },
+      { mode: 'optimizeMore', character: searchCharacter(character), ...partnerOf(result.target), result, rowKeys: [row.key], targetN: row.runMore.targetN },
       meta,
       { title: `Re-measure rank ${row.rank}`, context: `${result.target.label} · N ${fmtCount(row.runMore.targetN)}` },
     );
@@ -297,7 +309,7 @@
 
   function rerun(r) {
     openRunId = null;
-    setup = setupFromRun(r, character, prefs.defaultEffort);
+    setup = setupFromRun(r, character, prefs.defaultEffort, others);
     go(formatHash('tools/optimiser'));
     notify('Settings loaded from the run. Press Optimise to measure again.', { kind: 'info' });
   }
@@ -322,7 +334,7 @@
 
         <section class="step">
           <h3><span class="n">II</span> Fight</h3>
-          <TargetPicker bind:target={setup.target} bind:objective={setup.objective} {character} oblivionUnlocked={character.oblivion?.unlocked ?? false} playerLevel={character.level} {opponents} onNavigate={go} />
+          <TargetPicker bind:target={setup.target} bind:objective={setup.objective} {character} oblivionUnlocked={character.oblivion?.unlocked ?? false} playerLevel={character.level} {opponents} characters={others} onNavigate={go} />
         </section>
 
         <section class="step">

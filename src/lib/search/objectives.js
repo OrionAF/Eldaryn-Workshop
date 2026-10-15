@@ -13,6 +13,8 @@
 //                                                     the clan-war Fortress boss, 60 s, dps only; the rest sets the credit multipliers
 //   {kind: 'custom', mob: MobSpec, seconds?: 60}      a user-entered mob
 //   {kind: 'pvp', opponentIds: string[], seats}       saved opponents (pvpObjective.js); needs `{character}`
+//   {kind: 'celestial', difficulty, level?, partner, tank?, starter?, tactics?}   the Celestial Trial with a fixed
+//                                                     partner (celestialObjective.js); needs `{character, partner?}`
 // An OBJECTIVE is what "better" means: {kind: 'dps'|'survival', seconds?} (survival: custom mobs only) or
 // {kind: 'win-chance'} (the highest chance to clear the step before dying or the time cap),
 // {kind: 'win-rate', target?: 0.01..1} (the fewest changes that clear it at least that often; default 0.95) or
@@ -34,6 +36,7 @@ import {
 import { formatFlat } from '../format.js';
 import { setOf } from './sampler.js';
 import { resolvePvpTarget, makePvpObjective, PVP_TARGET_KIND, PVP_OBJECTIVE_KIND } from './pvpObjective.js';
+import { resolveCelestialTarget, celestialRunner, celestialFightScore, CELESTIAL_TARGET_KIND } from './celestialObjective.js';
 
 // The PVE kinds. The PVP pair is kept apart: it is only valid together and needs the character's opponents.
 export const OBJECTIVE_KINDS = ['dps', 'survival', 'win-chance', 'win-rate', 'push'];
@@ -53,6 +56,7 @@ const COMPAT = {
   fortressBoss: ['dps'],
   custom: ['dps', 'win-chance', 'win-rate', 'survival'],
   [PVP_TARGET_KIND]: [PVP_OBJECTIVE_KIND],
+  [CELESTIAL_TARGET_KIND]: ['win-chance', 'win-rate'],
 };
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -122,9 +126,10 @@ const nonNegInt = (v) => Number.isInteger(v) && v >= 0;
  *   `maxMs`/`seconds` are the target's own window when it has one (dummy, custom, World Boss, Fortress
  *   boss), else undefined/0 and every mob keeps its own cap.
  */
-export function resolveTarget(raw = { kind: 'dummy' }, { character } = {}) {
+export function resolveTarget(raw = { kind: 'dummy' }, { character, partner } = {}) {
   const kind = raw?.kind;
   if (kind === PVP_TARGET_KIND) return resolvePvpTarget(raw, character);
+  if (kind === CELESTIAL_TARGET_KIND) return resolveCelestialTarget(raw, { character, partner });
   if (!TARGET_KINDS.includes(kind)) throw new Error(`unknown target kind '${kind}'`);
   const t = { kind, spec: null, label: '', realm: null, enemy: null, maxMs: undefined, seconds: 0, opts: {} };
   let cut = false;
@@ -311,6 +316,23 @@ function fortressSampler(target, seconds) {
     for (let i = from; i < to; i++) {
       if (signal?.aborted) return { main: [out], side: {}, aborted: true };
       out.push(simulateFortressBoss({ fighter: args, group, rng: fightRng(seed, i) }).damageDealt / seconds);
+    }
+    return { main: [out], side: {}, aborted: false };
+  };
+}
+
+/**
+ * The Celestial sampler (simulation.md §Celestial Trial): fight i is the party fight with rng
+ * fightRng(seed, i), the partner fixed; the outcome is celestialFightScore (the party clear in time).
+ */
+function celestialSampler(target) {
+  const runner = celestialRunner(target);
+  return (fighter, { seed, from = 0, to, signal }) => {
+    const { fight } = runner(fighter);
+    const out = [];
+    for (let i = from; i < to; i++) {
+      if (signal?.aborted) return { main: [out], side: {}, aborted: true };
+      out.push(celestialFightScore(fight(fightRng(seed, i))));
     }
     return { main: [out], side: {}, aborted: false };
   };
@@ -533,7 +555,9 @@ export function makeObjective(raw = { kind: 'dps' }, target = resolveTarget({ ki
       label: max ? 'Highest chance to win' : `Win rate (target ${Math.round(tau * 1000) / 10}%)`, unit: 'p', higherIsBetter: true,
       statistic: 'proportion', q: null, deltaKind: 'absolute', window: target.seconds || null,
       target: max ? null : tau, goal: max ? 'max' : 'target',
-      sample: pveSampler(target, { enemy: target.enemy, maxMs: target.maxMs }, (r, prepared) => winRateFightScore(r, prepared.inputs.player.maxHp)),
+      sample: target.kind === CELESTIAL_TARGET_KIND
+        ? celestialSampler(target)
+        : pveSampler(target, { enemy: target.enemy, maxMs: target.maxMs }, (r, prepared) => winRateFightScore(r, prepared.inputs.player.maxHp)),
       /** The per-fight point a remainder is measured in: the win bit (win-rate points). */
       pointOf: winBit,
       estimate(s, { alpha = 0.05 } = {}) {
