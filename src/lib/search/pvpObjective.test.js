@@ -6,8 +6,9 @@ import { runTask } from '../tasks/index.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { cloneAsOpponent, presetDuelFighter, opponentFighter } from '../features/duel.js';
 import { normaliseCharacter } from '../model/index.js';
-import { wilson, pvpWinRate } from '../engine/metrics.js';
+import { wilsonInterval, pvpWinRate } from '../engine/metrics.js';
 import { hashSeed } from '../engine/rng.js';
+import { contrastSets } from './sampler.js';
 
 /** The Warrior fixture with two saved opponents (ids opp-a, opp-b), cloned from its own preset. */
 function withOpponents() {
@@ -79,7 +80,7 @@ describe('pvp-winrate measure', () => {
     expect(m.lo).toBeLessThanOrEqual(m.value);
     expect(m.hi).toBeGreaterThanOrEqual(m.value);
     const wins = Math.round(m.value * m.n);
-    expect(m.lo).toBeCloseTo(wilson(wins, 80).lo, 12);
+    expect(m.lo).toBeCloseTo(wilsonInterval(wins, 80).lo, 12);
     expect(m.extra.matchups).toHaveLength(4);
     expect(m.extra.perMatchupN).toBe(20);
     const mean = m.extra.matchups.reduce((s, x) => s + x.p, 0) / 4;
@@ -88,16 +89,42 @@ describe('pvp-winrate measure', () => {
     expect(o.defaultBudget).toEqual(PVP_BUDGET);
   });
 
-  it('is deterministic for a seed (common random numbers) and the sample vector averages to the win rate', async () => {
+  it('is deterministic for a seed (common random numbers); one 0/1 lane per matchup averages to the win rate', async () => {
     const o = objFor(['opp-a'], 'both');
-    const a = await o.measure(mine, { n: 24, seed: 9, keepSamples: true });
-    const b = await o.measure(mine, { n: 24, seed: 9, keepSamples: true });
+    const a = await o.measure(mine, { n: 24, seed: 9 });
+    const b = await o.measure(mine, { n: 24, seed: 9 });
     expect(b).toEqual(a);
-    expect(a.scoreSamples).toHaveLength(24);
-    expect(a.scoreSamples.every((x) => x === 0 || x === 0.5 || x === 1)).toBe(true);
-    expect(a.scoreSamples.reduce((s, x) => s + x, 0) / 24).toBeCloseTo(a.value, 12);
+    expect(a.samples.main).toHaveLength(2);
+    expect(a.samples.n).toBe(24);
+    const flat = a.samples.main.flat();
+    expect(flat.every((x) => x === 0 || x === 1)).toBe(true);
+    expect(flat.reduce((s, x) => s + x, 0) / 48).toBeCloseTo(a.value, 12);
     const other = await o.measure(mine, { n: 24, seed: 10 });
     expect(other.n).toBe(48);
+  });
+
+  it('two builds at a 0 % win rate tie: no tie-break on duel length (#63)', async () => {
+    const o = objFor(['opp-a'], 'attacker');
+    const weak = { ...mine, stats: { ...mine.stats, totalAttack: 1 } };
+    const glass = { ...weak, stats: { ...weak.stats, totalHp: Math.max(1, Math.round(mine.stats.totalHp / 4)) } };
+    const a = await o.measure(weak, { n: 12, seed: 2 });
+    const b = await o.measure(glass, { n: 12, seed: 2 });
+    expect([a.value, b.value]).toEqual([0, 0]);
+    expect(b.extra.meanMs).not.toBe(a.extra.meanMs); // they lose at different speeds...
+    expect([b.score, b.tie]).toEqual([a.score, a.tie]); // ...and still rank equal, so the baseline stays first
+  });
+
+  it('the contrast is stratified by matchup and estimates carry per-matchup intervals', async () => {
+    const o = objFor(['opp-a'], 'both');
+    const strong = { ...mine, stats: { ...mine.stats, totalAttack: mine.stats.totalAttack * 4 } };
+    const a = await o.measure(strong, { n: 32, seed: 2 });
+    const b = await o.measure(mine, { n: 32, seed: 2 });
+    const c = contrastSets(o, a.samples, b.samples);
+    expect(c.method).toBe('stratified-tango');
+    expect(c.delta).toBeCloseTo(a.value - b.value, 12);
+    const e = o.estimate(a.samples);
+    expect(e.value.n).toBe(64);
+    expect(e.aux.matchups.map((m) => [m.seat, m.value.n])).toEqual([['attacker', 32], ['defender', 32]]);
   });
 
   it('the defender seat is the complement of the engine attacker rate (ties go to the defender)', async () => {
@@ -109,8 +136,8 @@ describe('pvp-winrate measure', () => {
     const theirs = opponentFighter(c.opponents[0]);
     const direct = pvpWinRate(theirs, mine, { n: 30, seed: hashSeed(4, 'opp-a', 'defender'), cache: false });
     expect(def.value).toBeCloseTo(1 - direct.p, 12);
-    expect(def.lo).toBeCloseTo(1 - direct.hi, 12);
-    expect(def.hi).toBeCloseTo(1 - direct.lo, 12);
+    expect(def.lo).toBeCloseTo(1 - wilsonInterval(Math.round(direct.p * 30), 30).hi, 12);
+    expect(def.hi).toBeCloseTo(1 - wilsonInterval(Math.round(direct.p * 30), 30).lo, 12);
     const directAtt = pvpWinRate(mine, theirs, { n: 30, seed: hashSeed(4, 'opp-a', 'attacker'), cache: false });
     expect(att.value).toBeCloseTo(directAtt.p, 12);
   });

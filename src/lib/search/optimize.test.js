@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { optimizeBuild, createEvalCache } from './search.js';
 import { fixtureCharacter } from '../build/fixtures.js';
+import { sheetInputsKey } from '../build/stats.js';
 import { normaliseCharacter } from '../model/index.js';
 import { relicsForClass } from '../game/relics.js';
 
@@ -93,6 +94,28 @@ describe('optimizeBuild on a 60 s dummy', () => {
     // a different character snapshot does not share entries
     const c = await optimizeBuild({ ...req, character: fixtureCharacter('WARRIOR') });
     expect(c.stats.cacheHits).toBe(0);
+  });
+
+  it('a cache shared with a run at another N never serves the other N (#76)', async () => {
+    const cache = createEvalCache();
+    const req = { character: relicless(), presetId: 'p1', space: only('relics'), budget: SMALL, cache };
+    await optimizeBuild(req);
+    const more = await optimizeBuild({ ...req, budget: { ...SMALL, n1: 6, n2: 12 } });
+    expect(more.stats.cacheHits).toBe(0);
+    expect(more.results.every((e) => e.n === 12)).toBe(true);
+  });
+
+  it('ttk rows compare the ranked quantile: vsBaseline is the median difference in ms, signed as a gain (#73)', async () => {
+    const r = await optimizeBuild({
+      character: relicless(), presetId: 'p1', target: { kind: 'custom', mob: { hp: 3e6, attack: 1, attackSpeed: 1 }, seconds: 600 },
+      objective: { kind: 'ttk-median' }, space: only('relics'), budget: SMALL,
+    });
+    expect(r.objective.unit).toBe('ms');
+    for (const e of r.results.filter((x) => !x.isBaseline)) {
+      expect(e.vsBaseline.delta).toBeCloseTo(r.baseline.value - e.value, 6);
+      expect(e.vsBaseline.lo).toBeLessThanOrEqual(e.vsBaseline.delta);
+      expect(e.vsBaseline.hi).toBeGreaterThanOrEqual(e.vsBaseline.delta);
+    }
   });
 
   it('the budget stops the search and says why', async () => {
@@ -225,13 +248,26 @@ describe('other targets and objectives', () => {
 });
 
 describe('residual carry', () => {
-  it('a preset with a sheet is searched on computed stats plus its residual, and still never loses to itself', async () => {
+  const sheetedWith = (stamp) => {
     const base = fixtureCharacter('WARRIOR');
-    const sheeted = {
+    const c = {
       ...base,
       presets: base.presets.map((p) => (p.id === 'p1' ? { ...p, relicIds: [], sheet: { values: { totalAttack: 90000 } } } : p)),
     };
-    const r = await optimizeBuild({ character: sheeted, presetId: 'p1', space: only('relics'), budget: SMALL });
+    if (!stamp) return c;
+    const inputsKey = sheetInputsKey(c, 'p1');
+    return { ...c, presets: c.presets.map((p) => (p.id === 'p1' ? { ...p, sheet: { ...p.sheet, inputsKey } } : p)) };
+  };
+
+  it('an unconfirmed sheet carries no residual, and the run says so', async () => {
+    const r = await optimizeBuild({ character: sheetedWith(false), presetId: 'p1', space: only('relics'), budget: SMALL });
+    expect(r.stats.residualKeys).toBe(0);
+    expect(r.warnings.map((w) => w.code)).toEqual(['sheet-unverified']);
+  });
+
+  it('a preset with a confirmed sheet is searched on computed stats plus its residual, and still never loses to itself', async () => {
+    const r = await optimizeBuild({ character: sheetedWith(true), presetId: 'p1', space: only('relics'), budget: SMALL });
+    expect(r.warnings.map((w) => w.code)).toEqual(['residual-applied']);
     expect(r.stats.residualKeys).toBeGreaterThan(0);
     expect(r.results[0].score).toBeGreaterThanOrEqual(r.baseline.score);
     // the residual lifts every candidate: the baseline sits near the sheet's Attack, not the computed one
