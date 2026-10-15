@@ -155,3 +155,30 @@ runs.
   the logged character's stats.
 - Commit the log as a fixture next to `arena-fight-warrior.json`. It holds fight values only, no
   player identifiers; check before committing.
+
+## 8. Easier imports without HTTP Toolkit
+
+**Ask** (2026-10-15): can users capture the profile and fight JSON from their phones without HTTP
+Toolkit? Can the app ask the game server for it?
+
+**Findings.**
+- The game client talks to `https://api.eldaryn.solmeron.com` with the player's login token
+  (`Authorization: Bearer …`). Own state: `GET /player/full-state`. Another player:
+  `GET /leaderboard/player/<id>`. `/arena/fight` is a POST that starts a real fight.
+- Calling it from this app would mean handling the user's token, getting past the browser's
+  cross-site block (it would need a proxy), and very likely breaking the game's Terms of Service.
+  Rejected.
+- There is no web version of the game: eldaryn.live is the wiki, so DevTools capture is out.
+
+**Plan.**
+1. **Phone-only capture guide** inside the Import dialog. On iPhone, an on-device HTTPS capture app
+   (Proxyman for iOS, HTTP Catcher, Stream) lets you trust its certificate, open the profile or
+   fight in game, and share the response to Files, with no computer. Android needs root or a
+   computer (apps ignore user certificates since Android 7), so say that plainly. Keep the steps
+   short, with screenshots.
+2. **Screenshot import** as the no-tech fallback: read the in-game stat sheet and a ranked player's
+   profile screen from screenshots in the browser (OCR, all on the device). It fills the preset's
+   stat sheet or an opponent's sheet, shows what it read for confirmation, and labels the result as
+   read from a screenshot.
+3. **Ask the developer** (Discord) for an in-game "export profile / copy build" button. It is the
+   clean solution for every player. The wiki has a Builds section that could use the same format.
