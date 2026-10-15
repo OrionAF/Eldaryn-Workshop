@@ -88,12 +88,13 @@
       New preset
     </Button>
   {/snippet}
+  <p class="scroll-hint">Scroll sideways to see every preset. The property names stay in view.</p>
   <!-- svelte-ignore a11y_no_noninteractive_tabindex (a scrollable region must be focusable) -->
   <div class="scroll" tabindex="0" role="region" aria-label="Preset comparison, scrolls sideways on narrow screens">
     <table class="compare" data-testid="preset-compare">
       <thead>
         <tr>
-          <th scope="col"><span class="visually-hidden">Property</span></th>
+          <th scope="col" class="sticky"><span class="visually-hidden">Property</span></th>
           {#each presets as p (p.id)}
             {@const active = p.id === character.activePresetId}
             <th scope="col" class:active data-preset-id={p.id}>
@@ -132,7 +133,7 @@
       </thead>
       <tbody>
         <tr>
-          <th scope="row" class="lbl">Stats come from</th>
+          <th scope="row" class="lbl sticky">Stats come from</th>
           {#each presets as p (p.id)}
             {@const s = stats[p.id]}
             <td data-testid="source-chip">
@@ -144,7 +145,7 @@
         </tr>
         {#each rows as r (r.id)}
           <tr data-row={r.id}>
-            <th scope="row" class="lbl">{r.label}</th>
+            <th scope="row" class="lbl sticky">{r.label}</th>
             {#each r.cells as c, i (presets[i].id)}
               <td class:num={r.mono} class:diff={new Set(r.cells).size > 1}>{c}</td>
             {/each}
@@ -162,7 +163,11 @@
 </Panel>
 
 <style>
-  .scroll { overflow-x: auto; }
+  .scroll { overflow-x: auto; max-width: 100%; }
+  .scroll-hint { display: none; margin: 0 0 var(--sp-2); font-size: var(--fs-12); color: var(--text-muted); }
+  /* The property column stays put while the preset columns scroll under it. */
+  th.sticky { position: sticky; left: 0; z-index: 1; background: var(--surface-2); }
+  thead th.sticky { background: var(--surface-3); }
   table.compare { width: 100%; border-collapse: collapse; font-size: var(--fs-13); min-width: 520px; }
   thead th {
     text-align: left;
@@ -205,5 +210,10 @@
   tbody th.lbl { font-size: var(--fs-14); color: var(--text-soft); white-space: nowrap; }
   td.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; text-align: right; }
   .hint { color: var(--text-muted); font-size: var(--fs-12); }
+  @media (max-width: 700px) {
+    .scroll-hint { display: block; }
+    thead th { min-width: 140px; }
+    tbody th.lbl { white-space: normal; min-width: 92px; max-width: 110px; }
+  }
   .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>

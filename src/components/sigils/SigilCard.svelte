@@ -43,7 +43,7 @@
     </label>
   {:else}
     <div class="level-row">
-      <div class="rank-controls">
+      <div class="stepper">
         <button type="button" disabled={level <= 0} aria-label="{def.name} level down" onclick={() => onLevel(def.species, level - 1)}>−</button>
         <input
           class="level-input"
@@ -72,7 +72,7 @@
     {#each blocks as block (block.form ?? 'base')}
       {#if block.rows.length || block.title}
         <div class="effect">
-          <span class="micro-label">{block.type}{block.form ? ` · ${block.form}` : ''}{block.title ? ` · ${block.title}` : ''}</span>
+          <span class="effect-title">{block.type}{block.form ? ` · ${block.form}` : ''}{block.title ? ` · ${block.title}` : ''}</span>
           {#each block.rows as row}
             <span class="stat-row">
               <span class="stat-name">{row.label}</span>
@@ -114,126 +114,65 @@
 </div>
 
 <style>
-  .sigil-card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding: var(--space-3);
+  .sigil-card { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3); }
+  .sigil-card.unowned { opacity: 0.6; }
+  .rarity-title { margin: 0; }
+  .sigil-art { display: block; width: 64px; height: 64px; margin: 0 auto; object-fit: contain; border-radius: var(--r-1); }
+  .level-row { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); }
+  .stepper { display: flex; align-items: center; gap: var(--sp-1); }
+  .stepper button {
+    width: 26px;
+    padding: 2px 0;
+    font-size: var(--fs-13);
+    border-radius: var(--r-1);
+    background: var(--surface-3);
+    border: 1px solid var(--line-control);
+    color: var(--text-ink);
   }
-  .sigil-card.unowned {
-    opacity: 0.6;
+  .stepper button:hover:not(:disabled) { border-color: var(--brass-400); }
+  .level-input { width: 42px; text-align: center; padding: var(--sp-1) 2px; }
+  .level-caption { font-size: var(--fs-11); color: var(--text-muted); }
+  .owned-toggle { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); font-size: var(--fs-12); color: var(--text-soft); }
+  .base-stats { margin: 0; text-align: center; font-size: var(--fs-12); color: var(--text-soft); }
+  .stat-num { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--text-ink); }
+  .sep { color: var(--text-muted); margin: 0 var(--sp-1); }
+  .effects { display: flex; flex-direction: column; gap: var(--sp-2); }
+  .effect { display: flex; flex-direction: column; gap: var(--sp-1); background: var(--surface-1); border-radius: var(--r-1); padding: var(--sp-2); }
+  .effect-title {
+    font-family: var(--font-ui);
+    font-weight: var(--fw-bold);
+    font-size: var(--fs-11);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--text-soft);
   }
-  .rarity-title {
-    margin: 0;
-  }
-  .sigil-art {
-    display: block;
-    width: 64px;
-    height: 64px;
-    margin: 0 auto;
-    object-fit: contain;
-    border-radius: var(--radius-field);
-  }
-  .level-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-  }
-  .rank-controls {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .level-input {
-    width: 42px;
-    text-align: center;
-    padding: 4px 2px;
-  }
-  .level-caption {
-    font-size: 11px;
-    color: var(--color-muted);
-  }
-  .owned-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-    font-size: 12px;
-    color: var(--color-soft);
-  }
-  .base-stats {
-    margin: 0;
-    text-align: center;
-    font-size: 12px;
-    color: var(--color-soft);
-  }
-  .stat-num {
-    font-family: var(--font-data);
-    font-variant-numeric: tabular-nums;
-    color: var(--color-ink);
-  }
-  .sep {
-    color: var(--color-dim);
-    margin: 0 4px;
-  }
-  .effects {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-  .effect {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    background: var(--color-inset);
-    border-radius: var(--radius-field);
-    padding: 6px 8px;
-  }
-  .stat-row {
+  .stat-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); font-size: var(--fs-12); }
+  .stat-name { color: var(--text-muted); }
+  .derived-stat { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--brass-200); }
+  .timing { font-size: var(--fs-11); color: var(--text-muted); }
+  .notes { margin: 0; font-size: var(--fs-12); font-style: italic; color: var(--text-muted); }
+  .card-foot {
+    margin-top: auto;
+    padding-top: var(--sp-2);
+    border-top: 1px solid var(--line-hairline);
+    font-size: var(--fs-12);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-2);
-    font-size: 11.5px;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
   }
-  .stat-name {
-    color: var(--color-muted);
-  }
-  .derived-stat {
-    font-family: var(--font-data);
-    font-variant-numeric: tabular-nums;
-    color: var(--color-gold-light);
-  }
-  .timing {
-    font-size: 10.5px;
-    color: var(--color-dim);
-  }
-  .notes {
-    margin: 0;
-    font-size: 11px;
-    font-style: italic;
-    color: var(--color-muted);
-  }
-  .card-foot {
-    margin-top: auto;
-    padding-top: var(--space-2);
-    border-top: 1px solid var(--color-border-hairline);
-    font-size: 10px;
-  }
-  .used-by {
-    color: var(--color-muted);
-  }
-  .card-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
+  .used-by { color: var(--text-muted); }
   .details-toggle, .equip-btn {
     background: transparent;
-    border: 1px solid var(--line-control, var(--color-border));
-    color: var(--text-soft, var(--color-soft));
-    border-radius: var(--r-1, var(--radius-field));
-    padding: 2px 8px;
-    font-size: 11.5px;
+    border: 1px solid var(--line-control);
+    color: var(--text-soft);
+    border-radius: var(--r-1);
+    padding: 2px var(--sp-2);
+    font-size: var(--fs-12);
     cursor: pointer;
   }
+  .details-toggle:hover, .equip-btn:hover { border-color: var(--line-control-hover); color: var(--text-ink); }
   .details-toggle { align-self: flex-start; }
   .equip-wrap { position: relative; }
   .equip-menu { position: absolute; right: 0; bottom: 100%; z-index: 5; }

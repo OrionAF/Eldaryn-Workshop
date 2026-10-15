@@ -124,8 +124,8 @@
               {m.label}
             {/if}
           </th>
-          <td class="r num dim" title="Value the model computes for this stat">{statText(m.key, computed?.[m.key])}</td>
-          <td class="r">
+          <td class="r num dim" data-label="Model" title="Value the model computes for this stat">{statText(m.key, computed?.[m.key])}</td>
+          <td class="r" data-label="Your sheet">
             <span class="input-wrap">
               <input
                 id={`sheet-${m.key}`}
@@ -154,7 +154,7 @@
               <span class="msg" id="echo-{m.key}">Read as {echo.text}</span>
             {/if}
           </td>
-          <td class="r">
+          <td class="r raw" data-label="Raw">
             {#if m.rawKey}
               <span class="input-wrap">
                 <input
@@ -175,9 +175,9 @@
               </span>
             {/if}
           </td>
-          <td class="r num" class:warn={s.kind === 'off'}>{s.gap === null ? '-' : gapText(m.key, s.gap)}</td>
-          <td class="r num dim">±{statText(m.key, toleranceFor(m.key))}</td>
-          <td class="status">
+          <td class="r num" data-label="Gap" class:warn={s.kind === 'off'}>{s.gap === null ? '-' : gapText(m.key, s.gap)}</td>
+          <td class="r num dim" data-label="Tolerance">±{statText(m.key, toleranceFor(m.key))}</td>
+          <td class="status" data-label="Status">
             {#if s.kind === 'ok'}<span class="good"><span aria-hidden="true">✓</span> explained</span>
             {:else if s.kind === 'off'}<span class="bad"><span aria-hidden="true">!</span> off by {gapText(m.key, Math.abs(s.gap)).replace(/^[+-]/, '')}</span>
             {:else if s.kind === 'unknown'}<span class="dim">no model value</span>
@@ -210,7 +210,7 @@
   .head { display: flex; justify-content: flex-end; padding: 0 var(--sp-1) var(--sp-2); }
   .summary { font-size: var(--fs-13); color: var(--verdict-down); }
   .summary.all-good { color: var(--verdict-up); }
-  .scroll { overflow-x: auto; }
+  .scroll { overflow-x: auto; max-width: 100%; }
   table.sheet { width: 100%; min-width: 760px; border-collapse: collapse; font-size: var(--fs-13); }
   thead th {
     text-align: left;
@@ -246,4 +246,38 @@
   .split li.rest { color: var(--text-muted); }
   .split li.total { border-top: 1px solid var(--line-hairline); color: var(--text-ink); }
   .note { margin: var(--sp-1) 0 0 var(--sp-5); color: var(--text-muted); font-size: var(--fs-12); }
+
+  /* Phone: one stacked card per stat instead of a 760px-wide table, so Your sheet, Raw, Gap, Tolerance
+     and Status are all reachable without sideways scrolling. */
+  @media (max-width: 700px) {
+    table.sheet { min-width: 0; }
+    table.sheet thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    table.sheet, table.sheet tbody { display: block; }
+    tr[data-key] {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--sp-2) var(--sp-3);
+      padding: var(--sp-3) var(--sp-2);
+      border-bottom: 1px solid var(--line-hairline);
+    }
+    tr[data-key] > th.lbl { grid-column: 1 / -1; display: block; padding: 0; border: 0; }
+    tr[data-key] > td { display: block; padding: 0; border: 0; text-align: left; min-width: 0; }
+    tr[data-key] > td::before {
+      content: attr(data-label);
+      display: block;
+      font-size: var(--fs-11);
+      font-weight: var(--fw-heavy);
+      letter-spacing: var(--track-label);
+      text-transform: uppercase;
+      color: var(--text-soft);
+    }
+    tr[data-key] > td.raw:not(:has(input)) { display: none; }
+    .input-wrap { display: flex; }
+    .input-wrap input { width: 100%; min-width: 0; text-align: left; }
+    .msg { text-align: left; }
+    .status { white-space: normal; }
+    tr.src-row, tr.src-row > td { display: block; padding: var(--sp-2); }
+    .split { padding-left: 0; }
+    .note { margin-left: 0; }
+  }
 </style>

@@ -2,8 +2,8 @@
   /**
    * CharacterSigilsPage.svelte - C5: the sigil collection (levels, per-card "Equip in") and the
    * Sigil Altar (ia.md §5.11). Character-wide: the Altar tier and which sigils are owned at what
-   * level (sigils.owned). Which sigils a preset equips is per-preset; the full tray is the Builds
-   * loadout page's (B2), and SigilEquipPanel stays here until that page mounts it.
+   * level (sigils.owned). Which sigils a preset equips is per-preset: the slots and activation
+   * conditions are the Builds loadout page's (B2); this page only lists what each preset equips.
    * Every number on a card is derived from the level through engine/sources/sigilScale; the page
    * stores nothing but levels, the tier and the picks.
    */
@@ -12,7 +12,6 @@
   import { sigilBySpecies, isSigilSpeciesActiveForSpec } from '../../lib/game/sigils.js';
   import { ownableSigils, MAX_ALTAR_TIER, EVOLVE_TIER_CAP } from '../../lib/model/sigils.js';
   import { equipItems, equipPatch } from '../sigils/sigilView.js';
-  import Chip from '../Chip.svelte';
   import Modal from '../Modal.svelte';
   import Panel from '../ui/Panel.svelte';
   import Stepper from '../ui/Stepper.svelte';
@@ -20,7 +19,6 @@
   import Banner from '../ui/Banner.svelte';
   import EmptyState from '../ui/EmptyState.svelte';
   import SigilCard from '../sigils/SigilCard.svelte';
-  import SigilEquipPanel from '../sigils/SigilEquipPanel.svelte';
 
   // eslint-disable-next-line no-unused-vars
   let { setStatus = () => {}, onNavigate = () => {}, tab = null } = $props();
@@ -29,8 +27,7 @@
   const tier = $derived(character.sigils.altarTier);
   const owned = $derived(character.sigils.owned);
 
-  let selectedId = $state(null);
-  const preset = $derived(character.presets.find((p) => p.id === selectedId) ?? character.presets.find((p) => p.id === character.activePresetId) ?? character.presets[0]);
+  const preset = $derived(character.presets.find((p) => p.id === character.activePresetId) ?? character.presets[0]);
   const spec = $derived(character.talentSets?.[preset.talentSet]?.spec ?? null);
 
   const SECTION_ORDER = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Ancient'];
@@ -92,7 +89,7 @@
     <Panel title="Sigil Altar">
       <div class="altar-row">
         <div class="stepper-group">
-          <span class="micro-label" id="altar-label">Altar tier</span>
+          <span class="label" id="altar-label">Altar tier</span>
           <Stepper label="altar tier" value={tier} min={1} max={MAX_ALTAR_TIER} onchange={(n) => rosterStore.setSigilAltarTier(n)} />
           <span class="num" data-testid="altar-tier">{tier}</span>
         </div>
@@ -111,13 +108,14 @@
       {/if}
     </Panel>
 
-    <Panel title="Equipped in {preset.name}">
-      <div class="preset-chips" role="group" aria-label="Preset">
+    <Panel title="Equipped per preset">
+      <ul class="equipped" data-testid="equipped-summary" aria-label="Sigils equipped per preset">
         {#each character.presets as p (p.id)}
-          <Chip label={p.name} selected={p.id === preset.id} onClick={() => (selectedId = p.id)} />
+          {@const names = [...p.sigilSpecies, p.utilitySigilSpecies, p.ancientSigilSpecies].filter(Boolean).map(nameOf)}
+          <li><strong>{p.name}</strong><span class="names">{names.length ? names.join(', ') : 'No sigils'}</span></li>
         {/each}
-      </div>
-      <SigilEquipPanel {character} {preset} />
+      </ul>
+      <p class="hint">Slots and activation conditions are picked per preset in <a href="#/builds/loadout">Loadout</a>.</p>
     </Panel>
 
     <h2 class="collection-head">Collection</h2>
@@ -171,9 +169,20 @@
   .altar-row { display: flex; align-items: center; gap: var(--sp-5); flex-wrap: wrap; margin-bottom: var(--sp-3); }
   .stepper-group { display: flex; align-items: center; gap: var(--sp-2); }
   .danger-zone { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--line-rule); }
-  .preset-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+  .equipped { list-style: none; margin: 0 0 var(--sp-2); padding: 0; display: grid; gap: var(--sp-1); font-size: var(--fs-13); }
+  .equipped li { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
+  .equipped .names { color: var(--text-soft); }
   .collection-head { margin: var(--sp-4) 0 0; }
+  .label, .rarity-section .subheading {
+    font-family: var(--font-ui);
+    font-weight: var(--fw-bold);
+    font-size: var(--fs-11);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--text-soft);
+  }
   .rarity-section .subheading { margin: 0 0 var(--sp-2); }
+  .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
   .sigil-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--sp-3); }
   .destroyed { color: var(--text-soft); }
   .losing { margin: 0; padding-left: var(--sp-5); display: grid; gap: var(--sp-1); }
