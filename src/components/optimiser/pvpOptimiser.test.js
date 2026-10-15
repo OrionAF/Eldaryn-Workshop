@@ -53,7 +53,8 @@ it('picks opponents and a seat, runs, and shows N and a Wilson interval on every
   expect([...q('[data-testid="objective-kind"]').options].map((o) => o.value)).toEqual(['pvp-winrate']);
   expect(q('[data-testid="pvp-opponents"]').textContent).toMatch(/Tanky/);
   click(btn(/^Both seats$/));
-  for (const label of ['Gear set', 'Talent set', 'Talent points', 'Pet', 'Mount', 'Glyphs', 'Sigils', 'Utility sigil', 'Ancient sigil', 'Sigil conditions', 'Transcendence']) {
+  // every block off: the run measures the current preset alone (a full PVP search is minutes of duels)
+  for (const label of ['Gear set', 'Talent set', 'Talent points', 'Pet', 'Mount', 'Minor glyphs', 'Major glyphs', 'Relics', 'Sigils', 'Utility sigil', 'Ancient sigil', 'Sigil conditions', 'Transcendence']) {
     click(btn(new RegExp(`^${label}$`)));
   }
   click(btn(/^Quick$/));

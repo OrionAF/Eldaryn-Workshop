@@ -3,15 +3,15 @@
 // reads `request.resumeFrom` and reports its checkpoint through `onCheckpoint`.
 // On abort it resolves with its best-so-far result carrying `aborted: true` (the metrics do this).
 //
-// Every mode ('optimize', 'duel', 'dropCheck', 'oblivionFloors') is dispatched here. A request
+// Every mode ('optimize', 'optimizeMore', 'duel', 'dropCheck', 'oblivionFloors') is dispatched here. A request
 // that still carries the retired `v2: true` flag is harmless: the flag is ignored.
 
-import { optimize } from './optimize.js';
+import { optimize, optimizeMore } from './optimize.js';
 import { duel } from './duel.js';
 import { dropCheck } from './dropCheck.js';
 import { oblivionFloors } from './oblivionFloors.js';
 
-export const TASKS = { optimize, duel, dropCheck, oblivionFloors };
+export const TASKS = { optimize, optimizeMore, duel, dropCheck, oblivionFloors };
 
 export const hasTask = (mode) => Object.prototype.hasOwnProperty.call(TASKS, mode);
 

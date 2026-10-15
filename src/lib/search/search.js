@@ -1,456 +1,1030 @@
-// search/search.js (F2a): the generic search machinery plus the PVE build optimiser driver.
+// search/search.js (A4): the optimiser driver. Phases screen -> search -> minimise -> confirm ->
+// attribute (redesign plan A.7-A.10). The procedure, effort levels, seeds, checkpoint and result
+// contract are docs/Reference/simulation.md §Search and §Result; this file implements them.
 //
-// Part 1 is domain-free: subset enumeration, top-k selection, an evaluation cache, a pacer that keeps
-// a worker responsive to 'abort', and `tieredBeamSearch` (a beam over named dimensions with a cheap
-// screen and a simulated score). The subset and beam ideas are salvaged from the retired v1 optimiser
-// (subsetsUpTo, subsetCount, the transcendence beam); nothing is imported from it.
-//
-// Part 2 is `optimizeBuild`: the tiered PVE optimiser (rebuild-plan §5 row 2) on top of
-// search/candidates.js (what a build is) and search/objectives.js (what "better" means).
-//   tier 0  closed-form screen on the candidate's stats (microseconds); only prunes big neighbour sets
-//   tier 1  simulation, N = budget.n1 (default 16), drives the beam
-//   tier 2  simulation, N = budget.n2 (default 64), a different seed, re-measures the finalists
-// Every tier uses ONE seed for all candidates (common random numbers, engine/metrics.js), and the
-// current build is always evaluated at every tier, so the top result can never rank below it.
-import { hashSeed } from '../engine/rng.js';
-import { stableStringify, metricKey } from '../engine/metrics.js';
+// Every decision is a paired, family-wise-corrected comparison on common random numbers
+// (search/sampler.js): nothing is ranked by a proxy, N is never lowered and no block is skipped
+// for time. The cost of a run is therefore variable; Effort only sets the precision.
+import { hashSeed, mulberry32 } from '../engine/rng.js';
+import { metricKey } from '../engine/metrics.js';
+import { EngineInputError } from '../engine/validate.js';
 import { computePresetStats } from '../build/stats.js';
 import { resolvePreset } from '../build/presetInputs.js';
 import { describeBuild } from '../build/describe.js';
-import { createBuildSpace } from './candidates.js';
-import { subsetsUpTo, combinations, subsetCount, choose } from './combinatorics.js';
-import { resolveTarget, makeObjective, residualFor, legacyVs } from './objectives.js';
+import { talentSpec } from '../game/talents.js';
+import { pointsSpent, sanitiseAllocation } from '../model/talents.js';
+import { talentPointsForLevel } from '../model/legality.js';
+import { DROP_PRECISION } from '../features/swap.js';
+import { BLOCKS, createBuildSpace } from './space.js';
+import { candidateEngineKey, changesOf, canonicalise, mergeByEngine, writesOf } from './effect.js';
+import { legalityOf } from './legality.js';
+import { resolveTarget, makeObjective, residualFor } from './objectives.js';
+import { createSampler, compareSets, contrastSets, setOf, isAbort, AbortError } from './sampler.js';
+import { race } from './race.js';
+import { minimise, attribute, holmSequential, holmFixed } from './minimise.js';
+import {
+  RESULT_SCHEMA, CHECKPOINT_SCHEMA, PHASES, MULTIPLICITY, estimateOut, contrastOut, targetOut, objectiveOut,
+  headlineOf, rankRows, failedResult, rowViolations, nearestOfEqual, groupTies,
+} from './result.js';
 
-// ---------------------------------------------------------------------------------------------
-// Part 1: generic machinery
+/** The joint space is raced exhaustively at or below this many builds (a strategy switch, not a cap). */
+export const EXHAUSTIVE_MAX = 50_000;
+/** Seeded random legal starts of the local strategy. */
+export const RANDOM_STARTS = 3;
+/** First look per Effort level (fights per arm, per lane). */
+export const EFFORT_N0 = Object.freeze({ quick: 8, standard: 16, thorough: 32 });
+export const EFFORT_LEVELS = Object.freeze(['quick', 'standard', 'thorough']);
+/** Family-wise level of every family (racing, confirm, attribution). */
+export const ALPHA = 0.05;
 
-/**
- * Order records best first: higher `score`, then higher `tie`, then the smaller `dist` (fewer changes
- * from the starting state), so of two equally good builds the less disruptive one comes first.
- */
-export function byScoreDesc(a, b) {
-  if (b.score !== a.score) return b.score - a.score;
-  if ((b.tie ?? 0) !== (a.tie ?? 0)) return (b.tie ?? 0) - (a.tie ?? 0);
-  return (a.dist ?? 0) - (b.dist ?? 0);
-}
-
-/**
- * Drop records whose `equiv` was already seen earlier in the list (items are already ordered best
- * first, so the survivor is the better or less disruptive one). Records without `equiv` all stay.
- * @template T
- * @param {T[]} items
- * @param {(item: T) => string|undefined} equivOf
- */
-export function dedupeEquivalent(items, equivOf) {
-  const seen = new Set();
-  return items.filter((it) => {
-    const e = equivOf(it);
-    if (e === undefined) return true;
-    if (seen.has(e)) return false;
-    seen.add(e);
-    return true;
-  });
-}
-
-/** The best `k` items by a comparator (stable for equal items). */
-export function topK(items, k, cmp) {
-  return items.map((it, i) => [it, i]).sort((x, y) => cmp(x[0], y[0]) || x[1] - y[1]).slice(0, k).map((p) => p[0]);
-}
+// Blocks a compound value is re-optimised over before it is raced (plan A.3).
+const SPEC_INNER = ['sigils', 'utility', 'ancient', 'conditions', 'majorGlyphs', 'talents'];
+const MOUNT_INNER = ['minorGlyphs', 'majorGlyphs'];
+const PROGRESS_MS = 250;
+const YIELD_MS = 25;
 
 /**
- * Keep the best `keep` items by `value` (higher is better), but also the best `perGroup` of every
- * group, so a cheap screen cannot wipe out a whole kind of build it cannot rank (spell kits).
+ * Effort: Q4's precision (the delta and maxN Drop Check uses, features/swap.js DROP_PRECISION) plus the
+ * first look. A string picks a level; an object may override n0, maxN, delta and randomStarts (tests).
+ * @returns {{level: string, delta: number, deltaKind: 'relative'|'absolute', alpha: number, n0: number, maxN: number, randomStarts: number}}
  */
-export function screenWithGroups(items, { value, group, keep, perGroup }) {
-  if (items.length <= keep) return items;
-  const ranked = items.map((it, i) => ({ it, v: value(it), i })).sort((a, b) => b.v - a.v || a.i - b.i);
-  const chosen = new Set(ranked.slice(0, keep).map((r) => r.i));
-  if (group && perGroup > 0) {
-    const seen = new Map();
-    for (const r of ranked) {
-      const g = group(r.it);
-      const n = seen.get(g) ?? 0;
-      if (n < perGroup) chosen.add(r.i);
-      seen.set(g, n + 1);
+export function resolveEffort(raw, objective) {
+  const o = typeof raw === 'string' ? { level: raw } : raw && typeof raw === 'object' ? raw : {};
+  const level = EFFORT_LEVELS.includes(o.level) ? o.level : 'standard';
+  const p = DROP_PRECISION[level];
+  const deltaKind = objective.deltaKind;
+  const posInt = (v) => Number.isInteger(v) && v >= 1;
+  const n0 = posInt(o.n0) ? o.n0 : EFFORT_N0[level];
+  const maxN = posInt(o.maxN) && o.maxN >= n0 ? o.maxN : Math.max(n0, p.maxN);
+  const delta = typeof o.delta === 'number' && o.delta >= 0 ? o.delta : deltaKind === 'relative' ? p.rel : p.prob;
+  const randomStarts = Number.isInteger(o.randomStarts) && o.randomStarts >= 0 ? o.randomStarts : RANDOM_STARTS;
+  return { level, delta, deltaKind, alpha: ALPHA, n0, maxN, randomStarts };
+}
+
+/** Phase seeds (I4: the data that decides is never the data reported). */
+export function seedsFor(seed, targetKey) {
+  return {
+    search: hashSeed('search', seed, targetKey),
+    minimise: hashSeed('minimise', seed, targetKey),
+    confirm: hashSeed('confirm', seed, targetKey),
+  };
+}
+
+/** The seed of the k-th Run more round. */
+export const moreSeed = (seed, targetKey, k) => hashSeed('more', seed, targetKey, k);
+
+// Toggle names before A2 (saved runs can be re-run with their settings).
+function togglesOf(raw) {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const t = { ...raw };
+  if ('talentSet' in t && !('spec' in t)) t.spec = !!t.talentSet;
+  if ('glyphs' in t) {
+    if (!('minorGlyphs' in t)) t.minorGlyphs = !!t.glyphs;
+    if (!('majorGlyphs' in t)) t.majorGlyphs = !!t.glyphs;
+  }
+  return Object.fromEntries(BLOCKS.filter((b) => b in t).map((b) => [b, !!t[b]]));
+}
+
+/** Validate a request and build everything a run needs. Throws on a request that cannot run. */
+export function prepare(request) {
+  const { character } = request ?? {};
+  if (!character || typeof character !== 'object') throw new Error('optimize: request.character is required');
+  const preset = resolvePreset(character, request.presetId);
+  if (!preset) throw new Error('optimize: the character has no preset to optimise');
+  const target = resolveTarget(request.target ?? { kind: 'dummy' }, { character });
+  const realm = target.realm ?? (request.realm === 'oblivion' ? 'oblivion' : 'base');
+  const mode = target.mode === 'pvp' ? 'pvp' : 'pve';
+  const objective = makeObjective(request.objective ?? { kind: 'dps' }, target);
+  const effort = resolveEffort(request.effort, objective);
+  const seed = Number.isFinite(request.seed) ? request.seed : 1;
+  const seeds = seedsFor(seed, target.key);
+  const { residual, warnings } = residualFor(computePresetStats(character, preset.id, { realm }));
+  if (target.opponents) {
+    for (const o of target.opponents) {
+      if (o.fighter.defaulted?.length) {
+        warnings.push({ code: 'opponent-defaulted', severity: 'warn', message: `${o.name || 'Opponent'}: ${o.fighter.defaulted.join(', ')} left blank in its sheet, so neutral values were used.` });
+      }
     }
   }
-  return ranked.filter((r) => chosen.has(r.i)).map((r) => r.it);
+  const space = createBuildSpace(character, preset, { realm, mode, residual, toggles: togglesOf(request.space) });
+  const characterKey = metricKey('character', character);
+  const requestEcho = {
+    presetId: preset.id, realm, mode, target: target.spec, objective: objective.spec, space: space.toggles,
+    seed, seeds, effort: { level: effort.level, delta: effort.delta, deltaKind: effort.deltaKind, alpha: effort.alpha, n0: effort.n0, maxN: effort.maxN }, characterKey,
+  };
+  const requestKey = metricKey('optimise-request', { ...requestEcho, characterKey: undefined, randomStarts: effort.randomStarts });
+  return { character, preset, target, realm, mode, objective, effort, seed, seeds, warnings, space, characterKey, requestEcho, requestKey };
 }
 
-/** Bounded Map: oldest entries leave first. */
-export function createEvalCache(max = 20000) {
-  const map = new Map();
-  return {
-    get: (k) => map.get(k),
-    has: (k) => map.has(k),
-    set(k, v) {
-      if (map.size >= max && !map.has(k)) map.delete(map.keys().next().value);
-      map.set(k, v);
-    },
-    get size() {
-      return map.size;
-    },
-  };
-}
+const symdiff = (a, b) => a.filter((x) => !b.includes(x)).length + b.filter((x) => !a.includes(x)).length;
 
 /**
- * Cooperative scheduling for a search that runs in a worker: `tick()` yields to the event loop
- * every `yieldMs` so an 'abort' message can be processed. `stop()` is true once aborted.
+ * How far a candidate is from the baseline: one per change, except that relic and sigil changes count
+ * each piece swapped and a talent change the points moved. Of builds equal in effect the nearest is kept.
  */
-export function createPacer({ signal, yieldMs = 25 } = {}) {
-  let last = Date.now();
-  return {
-    stop: () => !!signal?.aborted,
-    async tick() {
-      if (Date.now() - last >= yieldMs) {
-        await new Promise((r) => setTimeout(r, 0));
-        last = Date.now();
+export function distanceOf(space, B, X) {
+  const saved = (set) => space.character.talentSets?.[set]?.allocation ?? {};
+  const allocOf = (c, set) => (c.talentSet === set && c.talentAllocation ? c.talentAllocation : saved(set));
+  let d = 0;
+  for (const c of changesOf(space, B, X, { bundles: false })) {
+    if (c.id === 'relics') d += symdiff(B.relicIds, X.relicIds);
+    else if (c.id === 'sigils') d += symdiff(B.sigilSpecies, X.sigilSpecies);
+    else if (c.id.startsWith('talents:')) {
+      const set = Number(c.id.slice(8));
+      const a = allocOf(B, set);
+      const b = allocOf(X, set);
+      let moved = 0;
+      for (const id of new Set([...Object.keys(a), ...Object.keys(b)])) moved += Math.abs((a[id] ?? 0) - (b[id] ?? 0));
+      d += Math.max(1, Math.ceil(moved / 2));
+    } else d += 1;
+  }
+  return d;
+}
+
+// ---------------------------------------------------------------------------------------------
+// the run state: arms, sampling ledger, logged steps (checkpoint / resume), progress
+
+function createRun(prep, hooks) {
+  const { space, objective, effort } = prep;
+  const sampler = createSampler(objective);
+  const lanes = Math.max(1, objective.lanes ?? 1);
+  const signal = hooks.signal;
+  const t0 = Date.now();
+  const st = {
+    phase: 'screen',
+    phaseState: Object.fromEntries(PHASES.map((p) => [p.id, 'not-run'])),
+    phaseMs: Object.fromEntries(PHASES.map((p) => [p.id, 0])),
+    phaseStart: t0,
+    fights: Object.fromEntries(PHASES.map((p) => [p.id, 0])),
+    ledger: new Map(),
+    log: [],
+    replay: hooks.replay ?? null,
+    stepGets: null,
+    evaluated: new Set(),
+    merged: { inert: 0, engineIdentical: 0, sampleIdentical: 0 },
+    block: null,
+    eliminated: 0,
+    lastProgress: 0,
+    lastYield: Date.now(),
+    provisional: null,
+    notSimulable: 0,
+  };
+  const arms = new Map();
+  const base = space.canonical(space.start);
+
+  function armOf(cand) {
+    const c = space.canonical(cand);
+    const key = space.key(c);
+    let a = arms.get(key);
+    if (!a) {
+      a = { cand: c, key, dist: distanceOf(space, base, c), ek: undefined };
+      arms.set(key, a);
+    }
+    return a;
+  }
+  /** The arm's engine key, or null when its fighter cannot fight (EngineInputError). */
+  function ekOf(a) {
+    if (a.ek === undefined) {
+      try {
+        a.ek = candidateEngineKey(space, a.cand);
+      } catch (e) {
+        if (!(e instanceof EngineInputError)) throw e;
+        a.ek = null;
+        st.notSimulable++;
       }
-    },
-  };
+    }
+    return a.ek;
+  }
+
+  function raise(k, n) {
+    const prev = st.ledger.get(k) ?? 0;
+    if (n > prev) {
+      st.ledger.set(k, n);
+      st.fights[st.phase] += (n - prev) * lanes;
+    }
+    if (st.stepGets) st.stepGets.set(k, Math.max(st.stepGets.get(k) ?? 0, n));
+  }
+
+  async function tick() {
+    if (signal?.aborted) throw new AbortError();
+    if (Date.now() - st.lastYield >= YIELD_MS) {
+      await new Promise((r) => setTimeout(r, 0));
+      st.lastYield = Date.now();
+      if (signal?.aborted) throw new AbortError();
+    }
+  }
+
+  /** The first n fights of an arm on a stage. */
+  async function getSet(a, stage, n) {
+    const ek = ekOf(a);
+    raise(`${stage.id}|${ek}`, n);
+    await tick();
+    const fighter = sampler.held(ek, stage) >= n ? null : space.fighterOf(a.cand);
+    const set = await sampler.get(ek, stage, fighter, n, { signal });
+    progress();
+    return set;
+  }
+
+  /** What a cancelled run can still show: the fights held, without simulating. */
+  async function heldSet(a, stage) {
+    const ek = ekOf(a);
+    const n = ek ? sampler.held(ek, stage) : 0;
+    return n > 0 ? sampler.get(ek, stage, null, n) : null;
+  }
+
+  /**
+   * One logged decision. On resume the checkpoint's log is replayed step by step (same kind and
+   * inputs), so the run reaches the cancel point without sampling and continues bit for bit.
+   */
+  async function step(kind, parts, live) {
+    const sig = hashSeed(kind, ...parts);
+    if (st.replay) {
+      const e = st.replay[st.log.length];
+      if (e && e.kind === kind && e.sig === sig) {
+        for (const [k, n] of e.gets) raise(k, n);
+        st.log.push(e);
+        return e.out;
+      }
+      st.replay = null;
+    }
+    const outer = st.stepGets;
+    st.stepGets = new Map();
+    let out;
+    try {
+      out = await live();
+    } finally {
+      const gets = st.stepGets;
+      st.stepGets = outer;
+      if (out !== undefined) st.log.push({ kind, sig, phase: st.phase, out, gets: [...gets] });
+    }
+    return out;
+  }
+
+  const effortFor = (alpha) => ({ delta: effort.delta, deltaKind: effort.deltaKind, n0: effort.n0, maxN: effort.maxN, alpha });
+
+  const identical = (x, y, n) => x.main.every((lane, j) => {
+    const other = y.main[j];
+    for (let i = 0; i < n; i++) if (lane[i] !== other[i]) return false;
+    return true;
+  });
+
+  /** Sequential paired comparison of X against Y on a stage (logged). */
+  function compare(X, Y, stage, alpha) {
+    return step('compare', [stage.id, X.key, Y.key, alpha], async () => {
+      const c = await compareSets(objective, (n) => getSet(X, stage, n), (n) => getSet(Y, stage, n), { ...effortFor(alpha), seed: stage.seed });
+      const [x, y] = [await getSet(X, stage, c.n), await getSet(Y, stage, c.n)];
+      return { ...c, identical: identical(x, y, c.n) };
+    });
+  }
+
+  /** One paired contrast at a fixed n on a stage (logged). */
+  function contrastAt(X, Y, stage, n, alpha) {
+    return step('contrast', [stage.id, X.key, Y.key, n, alpha], async () => {
+      const x = await getSet(X, stage, n);
+      const y = await getSet(Y, stage, n);
+      return contrastSets(objective, x, y, { ...effortFor(alpha), seed: stage.seed });
+    });
+  }
+
+  /** A race on a stage (logged; the eliminated arms are kept as a count so checkpoints stay small). */
+  function raceArms(list, stage) {
+    for (const a of list) st.evaluated.add(a.key);
+    return step('race', [stage.id, ...list.map((a) => a.key)], async () => {
+      const r = await race(list, {
+        objective, effort: effortFor(effort.alpha), seed: stage.seed,
+        getSet: (a, n) => getSet(a, stage, n),
+        onLook: () => progress(),
+      });
+      return { ...r, eliminated: r.eliminated.length };
+    });
+  }
+
+  function setPhase(id) {
+    const now = Date.now();
+    if (st.phaseState[st.phase] === 'current') {
+      st.phaseState[st.phase] = 'done';
+      st.phaseMs[st.phase] += now - st.phaseStart;
+    }
+    st.phase = id;
+    st.phaseState[id] = 'current';
+    st.phaseStart = now;
+    progress(true);
+  }
+
+  function progress(force = false) {
+    if (!hooks.onProgress) return;
+    const now = Date.now();
+    if (!force && now - st.lastProgress < PROGRESS_MS) return;
+    st.lastProgress = now;
+    hooks.onProgress({
+      type: 'progress',
+      jobId: hooks.jobId,
+      phase: st.phase,
+      phases: PHASES.map((p) => ({
+        id: p.id, label: p.label,
+        state: st.phaseState[p.id] === 'current' ? 'current' : st.phaseState[p.id] === 'done' ? 'done' : 'queued',
+        done: null, total: null,
+      })),
+      block: st.block,
+      counts: { evaluated: st.evaluated.size, fights: Object.values(st.fights).reduce((a, b) => a + b, 0), eliminated: st.eliminated, merged: st.merged.inert + st.merged.engineIdentical + st.merged.sampleIdentical },
+      elapsedMs: now - t0,
+      provisional: st.provisional,
+    });
+  }
+
+  function checkpoint(extra = {}) {
+    return {
+      schema: CHECKPOINT_SCHEMA,
+      requestKey: prep.requestKey,
+      characterKey: prep.characterKey,
+      phase: st.phase,
+      seeds: prep.seeds,
+      log: st.log.slice(),
+      frontier: { armsN: Object.fromEntries(st.ledger) },
+      finalists: [],
+      minimised: {},
+      confirmed: [],
+      ...extra,
+    };
+  }
+
+  return { st, sampler, base, armOf, ekOf, getSet, heldSet, compare, contrastAt, raceArms, setPhase, progress, checkpoint, t0, signal };
 }
 
-/**
- * Beam search over dimensions with a cheap screen and an (async, expensive) evaluation.
- *
- * @template S
- * @param {Object} o
- * @param {S} o.start                       the starting state (always evaluated, always kept in the pool)
- * @param {Array<{id: string, neighbours: (s: S) => S[]}>} o.dimensions
- * @param {(s: S) => string} o.key          canonical identity of a state (dedupes neighbours)
- * @param {(s: S) => number} [o.screen]     tier 0: higher is better; used only to prune big neighbour sets
- * @param {(s: S) => string} [o.group]      diversity group of the screen (see screenWithGroups)
- * @param {(s: S) => Promise<Object|null>} o.evaluate  tier 1: {score, tie?, dist?, equiv?, ...}; null = aborted.
- *   Records with the same `equiv` are the same build in effect: only the best (then least disruptive) is expanded.
- * @param {number} [o.width=3]              beam width
- * @param {number} [o.maxPasses=3]
- * @param {number} [o.screenKeep=40]       neighbours that survive the screen per dimension step
- * @param {number} [o.perGroup=6]
- * @param {number} [o.minGain=0.0005]       relative gain a pass must reach to trigger another pass
- * @param {number} [o.maxEvals=Infinity]    cap on evaluate() calls
- * @param {number} [o.deadline=Infinity]    Date.now() limit for starting new evaluations
- * @param {{stop: () => boolean, tick: () => Promise<void>}} [o.pacer]
- * @param {(p: Object) => void} [o.onProgress]
- * @returns {Promise<{records: Map<string, {state: S, rec: Object, dimension: string}>, best: string, passes: number,
- *   evals: number, screened: number, truncated: null|'evals'|'time', aborted: boolean}>}
- */
-export async function tieredBeamSearch(o) {
-  const {
-    start, dimensions, key, screen = () => 0, group, evaluate,
-    width = 3, maxPasses = 3, screenKeep = 40, perGroup = 6, minGain = 0.0005,
-    maxEvals = Infinity, deadline = Infinity, pacer = createPacer(), onProgress,
-  } = o;
-  const records = new Map();
-  let evals = 0;
-  let screened = 0;
-  let truncated = null;
-  let aborted = false;
-  const attempted = new Set(); // keys already screened (or evaluated): never reconsidered
+// ---------------------------------------------------------------------------------------------
+// search (A.7)
 
-  const budgetLeft = () => {
-    if (pacer.stop()) { aborted = true; return false; }
-    if (evals >= maxEvals) { truncated = truncated ?? 'evals'; return false; }
-    if (Date.now() >= deadline) { truncated = truncated ?? 'time'; return false; }
-    return true;
-  };
-  const evalOne = async (state, dimension) => {
-    const k = key(state);
-    const rec = await evaluate(state);
-    evals++;
-    if (!rec) { aborted = true; return null; }
-    records.set(k, { state, rec, dimension });
-    onProgress?.({ phase: 'search', evals, best: records.get(bestKey())?.rec.score ?? null, dimension });
-    await pacer.tick();
-    return k;
-  };
-  const bestKey = () => {
-    let bk = null;
-    for (const [k, r] of records) if (bk === null || byScoreDesc(r.rec, records.get(bk).rec) < 0) bk = k;
-    return bk;
+async function searchPhase(prep, run) {
+  const { space, objective, effort, seeds } = prep;
+  const S1 = { id: 'search', seed: seeds.search };
+  const { st, armOf, ekOf } = run;
+  const B = armOf(space.start);
+  const enabled = new Set(space.blocks.filter((b) => b.enabled).map((b) => b.id));
+  const blockById = new Map(space.blocks.map((b) => [b.id, b]));
+  const sizes = space.domainSizes(B.cand);
+  const status = new Map(); // block id -> 'converged' | 'unresolved'
+  const unresolvedOut = [];
+  const simulable = (a) => ekOf(a) != null;
+
+  let jointSize = 1;
+  for (const id of enabled) jointSize *= sizes[id] ?? 1;
+  const talentsLocal = enabled.has('talents') && (sizes.talents ?? 1) > 1;
+
+  /** Canonical (inert changes reverted, A.5) arm of a candidate. */
+  const canonArm = (a) => {
+    const r = canonicalise(space, B.cand, a.cand);
+    st.merged.inert += r.inert.length;
+    return armOf(r.candidate);
   };
 
-  const startKey = key(start);
-  attempted.add(startKey);
-  await evalOne(start, 'start');
-  if (aborted || !records.has(startKey)) return { records, best: startKey, passes: 0, evals, screened, truncated, aborted };
+  /** Simulable, distinct, engine-merged arms; the incumbent stays first. */
+  function prepareArms(list) {
+    const seen = new Set();
+    const ok = [];
+    for (const a of list) {
+      if (seen.has(a.key) || !simulable(a)) continue;
+      seen.add(a.key);
+      ok.push(a);
+    }
+    const m = mergeByEngine(space, ok.map((a) => a.cand), { base: B.cand });
+    st.merged.engineIdentical += m.merged;
+    return m.arms.map(armOf);
+  }
 
-  let beam = [startKey];
-  let passes = 0;
-  for (let pass = 1; pass <= maxPasses; pass++) {
-    passes = pass;
-    const before = records.get(bestKey()).rec.score;
-    for (const dim of dimensions) {
-      if (!budgetLeft()) break;
-      const fresh = new Map();
-      for (const bk of beam) {
-        for (const s of dim.neighbours(records.get(bk).state)) {
-          const k = key(s);
-          if (!attempted.has(k) && !fresh.has(k)) fresh.set(k, s);
+  const labelOf = (from, to) => changesOf(space, from.cand, to.cand, { bundles: false }).map((c) => `${c.label}: ${c.from} -> ${c.to}`).join('; ');
+
+  // --- exhaustive ------------------------------------------------------------------------------
+  function enumerateJoint() {
+    const ids = BLOCKS.filter((id) => enabled.has(id));
+    const out = new Map([[B.key, B.cand]]);
+    let over = false;
+    const rec = (i, c) => {
+      if (over) return;
+      if (i === ids.length) {
+        const k = space.key(c);
+        if (!out.has(k)) out.set(k, c);
+        if (out.size > EXHAUSTIVE_MAX) over = true;
+        return;
+      }
+      rec(i + 1, c);
+      for (const v of blockById.get(ids[i]).domain(c)) rec(i + 1, v);
+    };
+    rec(0, B.cand);
+    return over ? null : [...out.values()];
+  }
+
+  async function exhaustive(cands) {
+    const arms = prepareArms(cands.map(armOf));
+    st.block = 'all';
+    const r = await run.raceArms(arms, S1);
+    st.eliminated += r.eliminated;
+    for (const id of enabled) status.set(id, 'converged');
+    for (const u of r.unresolved) {
+      for (const c of changesOf(space, arms[r.winner].cand, arms[u.i].cand, { bundles: false })) status.set(c.dimension, 'unresolved');
+      unresolvedOut.push({ fromKey: arms[r.winner].key, toKey: arms[u.i].key, change: labelOf(arms[r.winner], arms[u.i]), contrast: contrastOut(u.contrast) });
+    }
+    const contenders = [...r.ties, ...r.unresolved.map((u) => u.i)].map((i) => arms[i]);
+    return { strategy: 'exhaustive', starts: 1, optima: [arms[r.winner]], contenders };
+  }
+
+  // --- local -----------------------------------------------------------------------------------
+  const innerMemo = new Map();
+
+  async function innerBest(cand, inner) {
+    const ids = inner.filter((id) => enabled.has(id));
+    const start = armOf(cand);
+    if (!ids.length || !simulable(start)) return start;
+    const k = `${ids.join(',')}|${start.key}`;
+    if (!innerMemo.has(k)) {
+      // The inner optimum is the arm raced; its neighbours still open are listed like the outer ones.
+      // Its ties are not finalists: the outer ascent's last pass re-races every block around the final x.
+      const r = await ascent(start, ids);
+      unresolvedOut.push(...r.unresolved);
+      innerMemo.set(k, r.x);
+    }
+    return innerMemo.get(k);
+  }
+
+  async function blockArms(id, x) {
+    let vals = blockById.get(id).domain(x.cand).map(armOf);
+    if (id === 'spec') {
+      const out = [];
+      for (const v of vals) out.push(await innerBest(v.cand, SPEC_INNER));
+      vals = out;
+    } else if (id === 'mount') {
+      const out = [];
+      for (const v of vals) out.push(v.cand.mountId ? await innerBest(v.cand, MOUNT_INNER) : v);
+      vals = out;
+    }
+    return prepareArms([x, ...vals]);
+  }
+
+  /** Talent moves of two points that the talents block does not list (+1 +1, -1 -1). */
+  function twoPointArms(x) {
+    const specKey = space.specOf(x.cand);
+    const spec = talentSpec(specKey);
+    const cap = talentPointsForLevel(Number.isFinite(space.character.level) ? space.character.level : 100);
+    if (!spec || cap === 0) return [];
+    const alloc = x.cand.talentAllocation ?? space.character.talentSets?.[x.cand.talentSet]?.allocation ?? {};
+    const spent = pointsSpent(alloc);
+    const talents = spec.tiers.flatMap((t) => t.talents);
+    const out = [];
+    for (let a = 0; a < talents.length; a++) {
+      for (let b = a; b < talents.length; b++) {
+        for (const s of [1, -1]) {
+          const next = { ...alloc };
+          next[talents[a].id] = (next[talents[a].id] ?? 0) + s;
+          next[talents[b].id] = (next[talents[b].id] ?? 0) + s;
+          if (Object.values(next).some((r) => r < 0)) continue;
+          const clean = sanitiseAllocation(next, specKey, cap);
+          if (pointsSpent(clean) !== spent + 2 * s) continue;
+          out.push(armOf(space.legalise({ ...x.cand, talentAllocation: clean })));
         }
       }
-      if (fresh.size === 0) continue;
-      const states = [...fresh.values()];
-      screened += states.length;
-      const kept = screenWithGroups(states, { value: screen, group, keep: screenKeep, perGroup });
-      for (const s of states) attempted.add(key(s));
-      for (const s of kept) {
-        if (!budgetLeft()) break;
-        if (await evalOne(s, dim.id) === null) break;
-      }
-      if (aborted) break;
-      beam = dedupeEquivalent(
-        topK([...records.keys()], records.size, (a, b) => byScoreDesc(records.get(a).rec, records.get(b).rec)),
-        (k) => records.get(k).rec.equiv,
-      ).slice(0, width);
     }
-    if (aborted || truncated) break;
-    const after = records.get(bestKey()).rec.score;
-    const base = Math.abs(before) || 1;
-    if (!(after - before > minGain * base)) break;
+    return out;
   }
-  return { records, best: bestKey(), passes, evals, screened, truncated, aborted };
+
+  /** The arm to accept from a race, if one is significantly better than the incumbent (arms[0]). */
+  async function acceptable(arms, r, visited) {
+    const picks = [r.winner, r.leader].filter((v, i, a) => a.indexOf(v) === i && v !== 0);
+    for (const w of picks) {
+      const c = await run.compare(arms[w], arms[0], S1, effort.alpha / arms.length);
+      if (c.verdict !== 'better') continue;
+      const W = canonArm(arms[w]);
+      if (!visited.has(W.key)) return W;
+    }
+    return null;
+  }
+
+  /**
+   * Coordinate ascent (A.7): race each block's full domain against the incumbent, accept a
+   * significantly better winner, until a full pass (and the two-point talent check) accepts nothing.
+   * @returns {Promise<{x: Object, contenders: Object[], unresolved: Object[]}>}
+   */
+  async function ascent(x0, ids) {
+    let x = x0;
+    const visited = new Set([x.key]);
+    for (;;) {
+      let accepted = false;
+      const contenders = [];
+      const unresolved = [];
+      const raced = [];
+      for (const id of ids) {
+        if (!enabled.has(id)) continue;
+        st.block = id;
+        const arms = await blockArms(id, x);
+        if (!status.has(id)) status.set(id, 'converged');
+        if (arms.length < 2) continue;
+        const r = await run.raceArms(arms, S1);
+        st.eliminated += r.eliminated;
+        raced.push({ id, unresolved: r.unresolved.length > 0 });
+        contenders.push(...r.ties.map((i) => arms[i]), ...r.unresolved.map((u) => arms[u.i]));
+        for (const u of r.unresolved) unresolved.push({ fromKey: arms[0].key, toKey: arms[u.i].key, change: labelOf(arms[0], arms[u.i]), contrast: contrastOut(u.contrast) });
+        const W = await acceptable(arms, r, visited);
+        if (W) {
+          x = W;
+          visited.add(x.key);
+          accepted = true;
+        }
+      }
+      if (!accepted && ids.includes('talents') && enabled.has('talents')) {
+        st.block = 'talents';
+        const arms = prepareArms([x, ...twoPointArms(x)]);
+        if (arms.length > 1) {
+          const r = await run.raceArms(arms, S1);
+          st.eliminated += r.eliminated;
+          for (const u of r.unresolved) unresolved.push({ fromKey: arms[0].key, toKey: arms[u.i].key, change: labelOf(arms[0], arms[u.i]), contrast: contrastOut(u.contrast) });
+          if (r.unresolved.length) raced.push({ id: 'talents', unresolved: true });
+          contenders.push(...r.ties.map((i) => arms[i]), ...r.unresolved.map((u) => arms[u.i]));
+          const W = await acceptable(arms, r, visited);
+          if (W) {
+            x = W;
+            visited.add(x.key);
+            accepted = true;
+          }
+        }
+      }
+      if (!accepted) {
+        for (const r of raced) if (r.unresolved) status.set(r.id, 'unresolved');
+        return { x, contenders, unresolved };
+      }
+    }
+  }
+
+  /** Talent points spent one at a time on the best ordering heuristic (a start only, I7). */
+  function talentFill(cand, pick) {
+    const talents = blockById.get('talents');
+    let c = space.legalise({ ...cand, talentAllocation: {} });
+    for (;;) {
+      const spent = pointsSpent(c.talentAllocation ?? {});
+      const plus = talents.domain(c).filter((v) => pointsSpent(v.talentAllocation ?? space.character.talentSets?.[v.talentSet]?.allocation ?? {}) === spent + 1);
+      if (!plus.length) return c;
+      c = pick(plus);
+    }
+  }
+
+  function greedyStart() {
+    return talentFill(B.cand, (plus) => {
+      let best = plus[0];
+      let bestV = -Infinity;
+      for (const v of plus) {
+        let s = -Infinity;
+        try {
+          s = objective.screen(space.fighterOf(v).stats);
+        } catch {
+          s = -Infinity;
+        }
+        if (s > bestV) {
+          bestV = s;
+          best = v;
+        }
+      }
+      return best;
+    });
+  }
+
+  function randomStart(k) {
+    const rng = mulberry32(hashSeed('start', seeds.search, k));
+    let c = B.cand;
+    for (const id of BLOCKS) {
+      if (!enabled.has(id)) continue;
+      if (id === 'talents') {
+        c = talentFill(c, (plus) => plus[Math.floor(rng() * plus.length)]);
+        continue;
+      }
+      const d = blockById.get(id).domain(c);
+      const i = Math.floor(rng() * (d.length + 1));
+      if (i < d.length) c = d[i];
+    }
+    return c;
+  }
+
+  async function local() {
+    st.block = null;
+    const starts = [B];
+    if (enabled.has('spec')) for (const v of blockById.get('spec').domain(B.cand)) starts.push(await innerBest(v, SPEC_INNER));
+    if (enabled.has('equipmentSet')) for (const v of blockById.get('equipmentSet').domain(B.cand)) starts.push(armOf(v));
+    if (talentsLocal) starts.push(armOf(greedyStart()));
+    for (let k = 0; k < effort.randomStarts; k++) starts.push(armOf(randomStart(k)));
+    const distinct = [];
+    for (const s of starts) {
+      const a = simulable(s) ? canonArm(s) : null;
+      if (a && simulable(a) && !distinct.some((d) => d.key === a.key)) distinct.push(a);
+    }
+    const optima = [];
+    const contenders = [];
+    for (const s of distinct) {
+      const r = await ascent(s, BLOCKS);
+      optima.push(r.x);
+      contenders.push(...r.contenders);
+      unresolvedOut.push(...r.unresolved);
+      st.provisional = optima.map((a) => ({ key: a.key, candidate: a.cand, provisional: true }));
+      run.progress();
+    }
+    return { strategy: 'local', starts: distinct.length, optima, contenders };
+  }
+
+  let out = null;
+  if (!talentsLocal && jointSize <= EXHAUSTIVE_MAX) {
+    const cands = enumerateJoint();
+    if (cands) out = await exhaustive(cands);
+  }
+  if (!out) out = await local();
+  const blocks = BLOCKS.map((id) => ({
+    id,
+    enabled: enabled.has(id),
+    domain: enabled.has(id) ? sizes[id] ?? 1 : 1,
+    status: !enabled.has(id) ? 'disabled' : status.get(id) ?? 'not-reached',
+  }));
+  const optimaKeys = new Set(out.optima.map((a) => a.key));
+  return {
+    ...out,
+    jointSize: out.strategy === 'exhaustive' || jointSize <= Number.MAX_SAFE_INTEGER ? jointSize : null,
+    blocks,
+    optimaCount: optimaKeys.size,
+    unresolved: [...new Map(unresolvedOut.map((u) => [`${u.fromKey}|${u.toKey}`, u])).values()],
+    canonArm,
+  };
 }
 
 // ---------------------------------------------------------------------------------------------
-// Part 2: the PVE build optimiser
+// rows
 
-export const DEFAULT_BUDGET = {
-  n1: 16,           // tier-1 fights per candidate
-  n2: 64,           // tier-2 fights per finalist
-  width: 3,         // beam width
-  maxPasses: 3,
-  screenKeep: 40,   // neighbours past the tier-0 screen per dimension step
-  perGroup: 6,      // per spell-kit group, kept regardless of the screen
-  finalists: 12,    // tier-2 candidates (the current build is always one of them)
-  topN: 10,         // entries in result.results
-  maxEvals: 400,    // tier-1 evaluations; the search stops when reached
-  maxMs: 20000,     // wall clock for the search stage (tier 2 follows)
-  minGain: 0.0005,
-};
-
-/** Fill a partial budget; unknown keys and non-positive numbers fall back to the default. */
-export function resolveBudget(partial = {}) {
-  const out = { ...DEFAULT_BUDGET };
-  for (const k of Object.keys(DEFAULT_BUDGET)) {
-    const v = partial?.[k];
-    if (typeof v === 'number' && Number.isFinite(v) && (k === 'minGain' ? v >= 0 : v > 0)) out[k] = v;
+function auxOf(prep, est, set, baseSet) {
+  const aux = { ...est.aux };
+  if (aux.winRate) aux.winRate = estimateOut(aux.winRate);
+  if (aux.matchups) {
+    aux.matchups = aux.matchups.map((m, j) => {
+      let vs = null;
+      if (set && baseSet) {
+        const lane = (s) => setOf([s.main[j]], {});
+        vs = contrastOut(contrastSets(prep.objective, lane(set), lane(baseSet), { alpha: ALPHA, delta: prep.effort.delta, deltaKind: prep.effort.deltaKind }));
+      }
+      return { ...m, value: estimateOut(m.value), vsBaseline: vs };
+    });
   }
-  for (const k of ['n1', 'n2', 'width', 'maxPasses', 'screenKeep', 'perGroup', 'finalists', 'topN', 'maxEvals']) out[k] = Math.max(1, Math.floor(out[k]));
-  return out;
+  if (prep.target.opponents) {
+    const d = prep.target.opponents.filter((o) => o.fighter.defaulted?.length).map((o) => ({ opponentId: o.id, keys: [...o.fighter.defaulted] }));
+    if (d.length) aux.defaulted = d;
+  }
+  for (const k of ['meanMs', 'timeoutShare']) if (k in aux) aux[k] = Number.isFinite(aux[k]) ? aux[k] : null;
+  return aux;
 }
 
-const finite = (x) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
+function lineOf(space, cand) {
+  return describeBuild(...space.describeArgs(cand)).map((l) => ({ label: l.label, value: l.value, ...(l.inactive ? { inactive: l.inactive } : {}) }));
+}
+
+function nextLook(n, need) {
+  let t = Math.max(2 * n, 1);
+  while (need && t < need) t *= 2;
+  return t;
+}
+
+/** A provisional row: what a cancelled run (or live progress) can show without more fights. */
+async function provisionalRow(prep, run, arm, B, stages) {
+  const { space, objective } = prep;
+  let set = null;
+  for (const s of stages) {
+    set = await run.heldSet(arm, s);
+    if (set) break;
+  }
+  const value = set ? estimateOut({ ...objective.estimate(set, { alpha: ALPHA }).value, seed: null }) : { est: null, lo: null, hi: null, n: 0, seed: null, level: 0.95, alphaAdj: ALPHA, method: null };
+  const changes = arm.key === B.key ? [] : changesOf(space, B.cand, arm.cand).map((c) => ({ ...c, own: null, needed: null, keptBecause: null }));
+  return {
+    rank: 0, tieGroup: null, isBaseline: arm.key === B.key, provisional: true, key: arm.key, engineKey: run.ekOf(arm),
+    candidate: arm.cand, value, aux: {}, vsBaseline: null, changes, remainder: null,
+    writes: arm.key === B.key ? [] : writesOf(space, B.cand, arm.cand, changes), runMore: null, lines: lineOf(space, arm.cand),
+  };
+}
+
+/** Rows that hold I1-I3 (result.js rowViolations); strict throws on the first violation, else it is withheld with a warning. */
+function withholdViolations(space, B, rows, { strict, warnings, decided }) {
+  const kept = [];
+  for (const r of rows) {
+    const v = rowViolations(space, B.cand, r, { decided: decided(r) });
+    if (v.length && strict) throw new Error(`Optimiser invariant violated on row ${r.key}: ${v.join('; ')}`);
+    if (v.length) warnings.push({ code: 'invariant', severity: 'warn', message: `A build was withheld: ${v.join('; ')}` });
+    else kept.push(r);
+  }
+  return kept;
+}
 
 /**
- * Optimise one preset for a target and objective.
- *
- * @param {Object} req
- * @param {Object} req.character           a normalised v2 Character (plain data)
- * @param {string} [req.presetId]          default: the active preset
- * @param {'base'|'oblivion'} [req.realm]  default 'base'; an 'oblivion' target forces 'oblivion'
- * @param {Object} [req.target]            see objectives.js resolveTarget; default the 60 s dummy
- * @param {Object} [req.objective]         see objectives.js makeObjective; default {kind: 'dps'}
- * @param {Object} [req.space]             dimension toggles, see candidates.js SPACE_DEFAULTS
- * @param {Object} [req.budget]            partial DEFAULT_BUDGET
- * @param {number} [req.seed=1]
- * @param {AbortSignal} [req.signal]       abort resolves with best-so-far and `aborted: true`
- * @param {(p: Object) => void} [req.onProgress]  {phase: 'search'|'final', done?, total?, evals?, best?}
- * @param {{get: Function, set: Function}} [req.cache]  createEvalCache(); sharing one across runs is only
- *   valid for the same character snapshot, target, objective and seed (the key includes all of them anyway)
- * @returns {Promise<OptimiserResult>}
- *
- * @typedef {Object} OptimiserEntry
- * @property {number} rank                 1-based among result.results
- * @property {boolean} isBaseline          the current preset, unchanged
- * @property {string} key                  candidate identity
- * @property {Object} candidate            see candidates.js Candidate
- * @property {number|null} value           headline metric (DPS, median TTK ms, survival p)
- * @property {number|null} lo               95 % interval of `value` (null when undefined)
- * @property {number|null} hi
- * @property {number} n                    fights behind `value`
- * @property {number} score                higher is better, in objective score space
- * @property {null|{delta: number, lo: number, hi: number, significant: boolean, pct: number|null}} vsBaseline
- *   paired (common-random-number) difference in score space; positive = better than the current preset
- * @property {Array<{label: string, from: string, to: string}>} changes   describe lines that differ from the baseline
- * @property {Array<{label: string, value: string}>} lines                describeBuild of the candidate
- * @property {Array<{opponentId: string, name: string, seat: 'attacker'|'defender', p: number, lo: number, hi: number, n: number}>} [matchups]
- *   PVP objective only (pvpObjective.js): my win rate per (opponent, seat), each over `perMatchupN` duels
- *
- * @typedef {Object} OptimiserResult
- * @property {boolean} aborted
- * @property {null|'evals'|'time'} truncated
- * @property {1|2} tier                    fidelity of the ranked values (2 unless aborted before tier 2 finished)
- * @property {Object} target               {kind, label, key, ...spec}
- * @property {Object} objective            {kind, label, unit, higherIsBetter, ...spec}
- * @property {'base'|'oblivion'} realm
- * @property {string} presetId
- * @property {number} seed
- * @property {Object} space
- * @property {Object} budget
- * @property {OptimiserEntry} baseline
- * @property {OptimiserEntry[]} results
- * @property {{tier0: number, tier1: number, tier2: number, passes: number, cacheHits: number, ms: number, residualKeys: number}} stats
+ * Whether two adjacent `better` rows are resolved apart (groupTies): one fixed-n contrast on the stage
+ * and n `pick(a, b)` returns ({stage, n}).
  */
-export async function optimizeBuild(req) {
-  const t0 = Date.now();
-  const { character, signal, onProgress } = req;
-  if (!character || typeof character !== 'object') throw new Error('optimize: request.character is required');
-  const preset = resolvePreset(character, req.presetId);
-  if (!preset) throw new Error('optimize: the character has no preset to optimise');
-  const target = resolveTarget(req.target ?? { kind: 'dummy' }, { character });
-  const realm = target.realm ?? (req.realm === 'oblivion' ? 'oblivion' : 'base');
-  const objective = makeObjective(req.objective ?? { kind: 'dps' }, target);
-  const targetEcho = { ...target.spec, label: target.label, key: target.key, mode: target.mode, fidelity: target.fidelity, assumptions: target.assumptions };
-  const wanted = { ...objective.defaultBudget, ...req.budget }; // F5: PVP brings its own defaults
-  // F5: `finalMs` (outside DEFAULT_BUDGET) caps the tier-2 wall clock by shrinking n2 to what fits, never below 2 * n1.
-  const finalMs = typeof wanted.finalMs === 'number' && Number.isFinite(wanted.finalMs) && wanted.finalMs > 0 ? wanted.finalMs : null;
-  let budget = { ...resolveBudget(wanted), ...(finalMs ? { finalMs } : {}) };
-  const seed = Number.isFinite(req.seed) ? req.seed : 1;
-  const seed1 = hashSeed('tier1', seed, target.key);
-  const seed2 = hashSeed('tier2', seed, target.key);
-
-  // Tier 1 carries the current preset's residual (rebuild-plan §4 "Residual carry").
-  // A3: only a sheet confirmed for this build carries its residual (objectives.js residualFor).
-  const { residual, warnings } = residualFor(computePresetStats(character, preset.id, { realm }));
-  const space = createBuildSpace(character, preset, { realm, residual, space: req.space });
-  const start = space.start;
-  const cache = req.cache ?? createEvalCache();
-  const ctxKey = metricKey('optctx', character, preset.id, realm, target.key, objective.key, seed);
-  let cacheHits = 0;
-  let tier2Evals = 0;
-  let tier1Measured = 0;
-  let tier1Ms = 0;
-  const pacer = createPacer({ signal });
-
-  const measureCached = async (cand, tier) => {
-    const ck = `${ctxKey}|t${tier}|n${tier === 1 ? budget.n1 : budget.n2}|${space.key(cand)}`;
-    const hit = cache.get(ck);
-    if (hit) { cacheHits++; return hit; }
-    const fighter = space.fighterOf(cand);
-    const tStart = Date.now();
-    const m = await objective.measure(fighter, { // F5: the PVP measure is async (it yields so abort lands)
-      n: tier === 1 ? budget.n1 : budget.n2,
-      seed: tier === 1 ? seed1 : seed2,
-      signal,
-    });
-    if (m.aborted) return null;
-    if (tier === 1) { tier1Measured++; tier1Ms += Date.now() - tStart; }
-    m.dist = space.distance(cand);
-    m.equiv = metricKey('fighter', fighter);
-    cache.set(ck, m);
-    return m;
-  };
-
-  // --- search stage (tier 0 screen, tier 1 beam)
-  const search = await tieredBeamSearch({
-    start,
-    dimensions: space.dimensions,
-    key: space.key,
-    screen: (c) => objective.tier0(space.fighterOf(c).stats),
-    group: space.kitKey,
-    evaluate: (c) => measureCached(c, 1),
-    width: budget.width,
-    maxPasses: budget.maxPasses,
-    screenKeep: budget.screenKeep,
-    perGroup: budget.perGroup,
-    minGain: budget.minGain,
-    maxEvals: budget.maxEvals,
-    deadline: t0 + budget.maxMs,
-    pacer,
-    onProgress,
-  });
-
-  // --- final stage (tier 2): the best tier-1 builds plus the current one, re-measured on a fresh seed
-  const startKey = space.key(start);
-  if (!search.records.has(startKey)) {
-    // Aborted before the current build was even measured: nothing to rank.
-    return {
-      aborted: true, truncated: search.truncated, tier: 1, target: targetEcho, warnings,
-      objective: { ...objective.spec, label: objective.label, unit: objective.unit, higherIsBetter: objective.higherIsBetter },
-      realm, presetId: preset.id, seed, space: space.toggles, budget, baseline: null, results: [],
-      stats: { tier0: 0, tier1: search.evals, tier2: 0, passes: 0, cacheHits, ms: Date.now() - t0, residualKeys: Object.keys(residual).length },
-    };
-  }
-  const ranked = dedupeEquivalent(
-    topK([...search.records.keys()], search.records.size, (a, b) => byScoreDesc(search.records.get(a).rec, search.records.get(b).rec)),
-    (k) => search.records.get(k).rec.equiv,
-  ).slice(0, budget.finalists);
-  const finalKeys = ranked.includes(startKey) ? ranked : [...ranked.slice(0, Math.max(0, budget.finalists - 1)), startKey];
-  if (finalMs && tier1Measured > 0 && !search.aborted) {
-    const msPerFight = Math.max(tier1Ms / tier1Measured / budget.n1, 1e-3);
-    const fit = Math.floor(finalMs / (finalKeys.length * msPerFight));
-    budget = { ...budget, n2: Math.max(Math.min(budget.n2, fit), Math.min(budget.n2, 2 * budget.n1)) };
-  }
-  const tier2 = new Map();
-  let aborted = search.aborted;
-  if (!aborted) {
-    for (const k of finalKeys) {
-      if (pacer.stop()) { aborted = true; break; }
-      const m = await measureCached(search.records.get(k).state, 2);
-      if (!m) { aborted = true; break; }
-      tier2.set(k, m);
-      tier2Evals++;
-      onProgress?.({ phase: 'final', done: tier2.size, total: finalKeys.length });
-      await pacer.tick();
-    }
-  }
-  const tierDone = !aborted && tier2.size === finalKeys.length ? 2 : 1;
-  const measureOf = (k) => (tierDone === 2 ? tier2.get(k) : search.records.get(k).rec);
-  const pool = tierDone === 2 ? finalKeys
-    : dedupeEquivalent(topK([...search.records.keys()], search.records.size, (a, b) => byScoreDesc(search.records.get(a).rec, search.records.get(b).rec)),
-      (k) => search.records.get(k).rec.equiv);
-  const order = topK(pool, pool.length, (a, b) => byScoreDesc(measureOf(a), measureOf(b)));
-
-  // --- entries
-  const baseM = measureOf(startKey);
-  const baseLines = describeBuild(...space.describeArgs(start));
-  const entryOf = (k, rank) => {
-    const { state } = search.records.get(k);
-    const m = measureOf(k);
-    const isBaseline = k === startKey;
-    let vs = null;
-    if (!isBaseline && tierDone === 2 && m.samples && baseM.samples) {
-      // A3: the objective's own paired contrast of the ranked statistic (plan §A.1 I6)
-      vs = legacyVs(objective, m.samples, baseM.samples, { seed: seed2 });
-    } else if (!isBaseline) {
-      vs = { delta: finite(m.score - baseM.score), lo: null, hi: null, significant: false, pct: null };
-    }
-    const lines = describeBuild(...space.describeArgs(state));
-    const changes = lines
-      .map((l, i) => ({ label: l.label, from: baseLines[i]?.value ?? '', to: l.value }))
-      .filter((c, i) => c.from !== c.to || baseLines[i]?.label !== lines[i].label);
-    return {
-      rank, isBaseline, key: k, candidate: state,
-      value: finite(m.value), lo: finite(m.lo), hi: finite(m.hi), n: m.n, score: m.score,
-      vsBaseline: vs, changes, lines,
-      // F5: a PVP win rate also carries its per-matchup rates (same N, Wilson interval each).
-      ...(m.extra?.matchups ? { matchups: m.extra.matchups, perMatchupN: m.extra.perMatchupN } : {}),
-    };
-  };
-  const results = order.slice(0, budget.topN).map((k, i) => entryOf(k, i + 1));
-  const baseline = results.find((e) => e.isBaseline) ?? entryOf(startKey, order.indexOf(startKey) + 1);
-
-  return {
-    aborted,
-    warnings,
-    truncated: search.truncated,
-    tier: tierDone,
-    target: targetEcho,
-    objective: { ...objective.spec, label: objective.label, unit: objective.unit, higherIsBetter: objective.higherIsBetter },
-    realm,
-    presetId: preset.id,
-    seed,
-    space: space.toggles,
-    budget,
-    baseline,
-    results,
-    stats: {
-      tier0: search.screened, tier1: search.evals, tier2: tier2Evals, passes: search.passes, cacheHits,
-      ms: Date.now() - t0, residualKeys: Object.keys(residual).length,
-    },
+function apartOn(prep, run, pick) {
+  const { objective, effort } = prep;
+  return async (a, b, alpha) => {
+    const { stage, n } = pick(a, b);
+    const x = await run.getSet(run.armOf(a.candidate), stage, n);
+    const y = await run.getSet(run.armOf(b.candidate), stage, n);
+    return contrastSets(objective, x, y, { alpha, delta: effort.delta, deltaKind: effort.deltaKind, seed: stage.seed }).significant;
   };
 }
 
-// Re-exported so callers hashing their own keys use the same stable JSON, and so the salvaged
-// combinatorics are reachable from the one search entry point.
-export { stableStringify, subsetsUpTo, combinations, subsetCount, choose };
+const strictDefault = () => {
+  try {
+    return import.meta.env?.MODE === 'test' || import.meta.env?.DEV === true;
+  } catch {
+    return false;
+  }
+};
+
+// ---------------------------------------------------------------------------------------------
+// the task
+
+/**
+ * Optimise one preset (A.7-A.10). Request: {character, presetId?, realm?, target?, objective?, space?,
+ * effort?, seed?, resumeFrom?, jobId?}. Returns an OptimiserResult (simulation.md §Result); a request
+ * that cannot run throws, a baseline that breaks a game rule returns status 'failed'.
+ * @param {Object} request
+ * @param {{signal?: AbortSignal, onProgress?: Function, onCheckpoint?: Function, strict?: boolean}} [hooks]
+ */
+export async function optimize(request, hooks = {}) {
+  const prep = prepare(request);
+  const { space, objective, effort, seeds, target, warnings } = prep;
+  const strict = hooks.strict ?? strictDefault();
+  const echo = { request: prep.requestEcho, target: targetOut(target), objective: objectiveOut(objective) };
+  const t0 = Date.now();
+
+  const legal = legalityOf(space.character, space.presetId, space.start);
+  if (!legal.ok) return failedResult({ ...echo, warnings, baselineViolations: legal.violations });
+
+  const cp = request.resumeFrom;
+  const resumable = cp?.schema === CHECKPOINT_SCHEMA && cp.requestKey === prep.requestKey && cp.characterKey === prep.characterKey && Array.isArray(cp.log);
+  if (cp && !resumable) warnings.push({ code: 'checkpoint-ignored', severity: 'info', message: 'The saved progress belongs to a different request or character; the run started over.' });
+  const jobId = request.jobId ?? `opt-${prep.requestKey.split(':')[1] ?? 'job'}`;
+  const run = createRun(prep, { ...hooks, jobId, replay: resumable ? cp.log : null });
+  const { st, armOf } = run;
+  const B = armOf(space.start);
+  if (run.ekOf(B) == null) {
+    return failedResult({ ...echo, warnings, error: 'The current preset cannot be simulated: an engine input is missing or not a number.' });
+  }
+  const S1 = { id: 'search', seed: seeds.search };
+  const S2 = { id: 'minimise', seed: seeds.minimise };
+  const S3 = { id: 'confirm', seed: seeds.confirm };
+  const onCheckpoint = hooks.onCheckpoint ?? (() => {});
+
+  let searchOut = null;
+  let finals = [];
+  let rowsDraft = [];
+  try {
+    // screen: the baseline's first look (the space and its legality are checked above)
+    run.setPhase('screen');
+    await run.getSet(B, S1, effort.n0);
+
+    run.setPhase('search');
+    searchOut = await searchPhase(prep, run);
+    const fmap = new Map();
+    for (const a of [...searchOut.optima, ...searchOut.contenders]) {
+      if (!a || a.key === B.key) continue;
+      const F = searchOut.canonArm(a);
+      if (F.key !== B.key && !fmap.has(F.key)) fmap.set(F.key, F);
+    }
+    finals = [...fmap.values()];
+    st.provisional = null;
+    onCheckpoint(run.checkpoint({ finalists: finals.map((a) => a.key) }));
+
+    // minimise (S2)
+    run.setPhase('minimise');
+    const ctx2 = { space, B, armOf, objective, compare: (X, Y, a) => run.compare(X, Y, S2, a) };
+    const minimised = new Map();
+    for (const F of finals) {
+      const m = await minimise(ctx2, F, { alpha: effort.alpha, alphaFinal: effort.alpha / finals.length });
+      for (const d of m.dropped) {
+        if (d.contrast.identical) st.merged.sampleIdentical++;
+        if (d.contrast.verdict === 'unresolved') {
+          warnings.push({ code: 'change-dropped-unresolved', severity: 'info', message: `${d.change.label} (${d.change.from} to ${d.change.to}) was dropped: too close to call at ${d.contrast.n} fights.` });
+        }
+      }
+      if (m.arm.key !== B.key && !minimised.has(m.arm.key)) minimised.set(m.arm.key, { arm: m.arm, decided: m.decided });
+    }
+    rowsDraft = [...minimised.values()];
+    onCheckpoint(run.checkpoint({ finalists: finals.map((a) => a.key), minimised: Object.fromEntries(rowsDraft.map((r) => [r.arm.key, Object.keys(r.decided)])) }));
+
+    // confirm (S3): every row against the baseline, Holm across rows
+    run.setPhase('confirm');
+    const vs = await holmSequential(rowsDraft, effort.alpha, (r, a) => run.compare(r.arm, B, S3, a));
+    rowsDraft.forEach((r, i) => { r.vs = vs[i]; });
+
+    // attribute (S3, at each row's own n)
+    run.setPhase('attribute');
+    const ctx3 = {
+      space, B, armOf, objective,
+      contrastAt: (X, Y, n, a) => run.contrastAt(X, Y, S3, n, a),
+      getSet: (a, n) => run.getSet(a, S3, n),
+    };
+    for (const r of rowsDraft) {
+      if (r.vs.verdict === 'worse') continue;
+      r.attr = await attribute(ctx3, r.arm, r.vs.n, { alpha: effort.alpha, seed: S3.seed });
+    }
+
+    // assemble
+    const nBase = Math.max(effort.n0, ...rowsDraft.map((r) => r.vs.n));
+    const baseSet = await run.getSet(B, S3, nBase);
+    const shown = rowsDraft.filter((r) => r.vs.verdict !== 'worse');
+    const rows = [];
+    for (const r of shown) {
+      const set = await run.getSet(r.arm, S3, r.vs.n);
+      const est = objective.estimate(set, { alpha: ALPHA });
+      const changes = r.attr.changes.map((c) => ({ ...c, own: contrastOut(c.own), needed: contrastOut(c.needed) }));
+      rows.push({
+        rank: 0, tieGroup: null, isBaseline: false, provisional: false, key: r.arm.key, engineKey: run.ekOf(r.arm), candidate: r.arm.cand,
+        value: estimateOut({ ...est.value, seed: S3.seed }), aux: auxOf(prep, est, set, await run.getSet(B, S3, r.vs.n)),
+        vsBaseline: contrastOut(r.vs), changes,
+        remainder: r.attr.remainder, writes: writesOf(space, B.cand, r.arm.cand, changes),
+        runMore: r.vs.verdict === 'unresolved' ? { targetN: nextLook(r.vs.n, r.vs.nNeeded), reason: 'unresolved' } : null,
+        lines: lineOf(space, r.arm.cand),
+        _score: objective.score(set),
+        _decided: r.decided,
+        _sig: `${r.vs.n}|${hashSeed(...set.main.map((l) => l.join(',')))}`,
+        _dist: r.arm.dist,
+      });
+    }
+    // builds equal in effect on this target (bit-identical outcomes, A.5 b): the nearest one stays
+    const equal = nearestOfEqual(rows);
+    st.merged.sampleIdentical += equal.merged;
+    const kept = withholdViolations(space, B, equal.rows, { strict, warnings, decided: (r) => r._decided });
+    const ranked = await groupTies(rankRows(kept, (r) => r._score), apartOn(prep, run, (a, b) => ({ stage: S3, n: Math.min(a.vsBaseline.n, b.vsBaseline.n) })));
+
+    const baseEst = objective.estimate(baseSet, { alpha: ALPHA });
+    const baseline = {
+      rank: 0, tieGroup: null, isBaseline: true, provisional: false, key: B.key, engineKey: run.ekOf(B), candidate: B.cand,
+      value: estimateOut({ ...baseEst.value, seed: S3.seed }), aux: auxOf(prep, baseEst, null, null), vsBaseline: null, changes: [],
+      remainder: null, writes: [], runMore: null, lines: lineOf(space, B.cand),
+    };
+    const rowsOut = ranked.map(({ _score, _decided, _sig, _dist, ...r }) => r);
+    st.phaseState.attribute = 'done';
+    st.phaseMs.attribute += Date.now() - st.phaseStart;
+    const result = {
+      schema: RESULT_SCHEMA,
+      status: 'done',
+      aborted: false,
+      error: null,
+      ...echo,
+      headline: headlineOf(rowsOut, shown.length === rowsDraft.length ? 0 : rowsDraft.length - shown.length),
+      baseline,
+      rows: rowsOut,
+      search: searchSummary(searchOut, st),
+      phases: phasesOut(st),
+      multiplicity: { ...MULTIPLICITY },
+      warnings: dedupeWarnings(warnings, st),
+      baselineViolations: [],
+      checkpoint: null,
+      stats: { ms: Date.now() - t0, workers: 1 },
+    };
+    return result;
+  } catch (e) {
+    if (!isAbort(e)) throw e;
+    const phase = st.phase;
+    st.phaseState[phase] = 'cancelled';
+    st.phaseMs[phase] += Date.now() - st.phaseStart;
+    onCheckpoint(run.checkpoint());
+    const stagesNewest = [S3, S2, S1];
+    const pool = rowsDraft.length ? rowsDraft.map((r) => r.arm) : finals.length ? finals : (searchOut?.optima ?? []);
+    const prov = [];
+    for (const a of pool) if (a.key !== B.key && !prov.some((p) => p.key === a.key)) prov.push(await provisionalRow(prep, run, a, B, stagesNewest));
+    const baseline = await provisionalRow(prep, run, B, B, stagesNewest);
+    return {
+      schema: RESULT_SCHEMA,
+      status: 'cancelled',
+      aborted: true,
+      error: null,
+      ...echo,
+      headline: headlineOf(prov, 0),
+      baseline,
+      rows: prov.map((r, i) => ({ ...r, rank: i + 1 })),
+      search: searchOut ? searchSummary(searchOut, st) : null,
+      phases: phasesOut(st),
+      multiplicity: { ...MULTIPLICITY },
+      warnings: dedupeWarnings(warnings, st),
+      baselineViolations: [],
+      checkpoint: { jobId, phase, resumable: true },
+      stats: { ms: Date.now() - t0, workers: 1 },
+    };
+  }
+}
+
+function dedupeWarnings(warnings, st) {
+  const out = [...warnings];
+  if (st.notSimulable) out.push({ code: 'arms-not-simulable', severity: 'info', message: `${st.notSimulable} build${st.notSimulable === 1 ? '' : 's'} could not be simulated (an engine input is missing) and were skipped.` });
+  const seen = new Set();
+  return out.filter((w) => {
+    const k = `${w.code}|${w.message}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+function phasesOut(st) {
+  return PHASES.map((p) => ({
+    ...p,
+    state: st.phaseState[p.id] === 'current' ? 'done' : st.phaseState[p.id],
+    fights: st.fights[p.id],
+    ms: st.phaseMs[p.id],
+  }));
+}
+
+function searchSummary(s, st) {
+  const f = st.fights;
+  const search = f.screen + f.search;
+  const confirm = f.confirm + f.attribute;
+  return {
+    strategy: s.strategy,
+    jointSize: s.jointSize,
+    blocks: s.blocks,
+    starts: s.starts,
+    optima: s.optimaCount,
+    evaluated: st.evaluated.size,
+    merged: { ...st.merged },
+    fights: { search, minimise: f.minimise, confirm, total: search + f.minimise + confirm },
+    converged: true, // a finished search always ends at a fixed point (simulation.md §Result)
+    unresolved: s.unresolved,
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Run more (A.9 requests)
+
+/**
+ * Re-measure rows of a finished result, their changes and the baseline at a fixed `targetN` on a
+ * fresh seed (S4k). Request: {character, result, rowKeys?, targetN, seed?, round?}. Returns the
+ * result with those rows (and the baseline) updated, the rows re-checked (I1, I2), re-ranked and
+ * re-grouped, rows now `worse` hidden, and `more: {round, targetN, seed, rowKeys}`.
+ */
+export async function optimizeMore(request, hooks = {}) {
+  const { character, result } = request ?? {};
+  if (!result || result.schema !== RESULT_SCHEMA || result.status !== 'done') throw new Error('optimizeMore: needs a finished optimiser result');
+  const r = result.request;
+  const prep = prepare({ character, presetId: r.presetId, realm: r.realm, target: r.target, objective: r.objective, space: r.space, effort: r.effort, seed: r.seed });
+  if (prep.characterKey !== r.characterKey) throw new Error('optimizeMore: the character has changed since this run; run the optimiser again');
+  const targetN = Number.isInteger(request.targetN) && request.targetN >= 2 ? request.targetN : null;
+  if (!targetN) throw new Error('optimizeMore: targetN must be an integer >= 2');
+  const round = Number.isInteger(request.round) && request.round >= 1 ? request.round : (result.more?.round ?? 0) + 1;
+  const S3 = { id: 'confirm', seed: prep.seeds.confirm };
+  const S4 = { id: `more${round}`, seed: moreSeed(prep.seed, prep.target.key, round) };
+  const { space, objective, effort } = prep;
+  const strict = hooks.strict ?? strictDefault();
+  const run = createRun(prep, { ...hooks, jobId: request.jobId ?? null, replay: null });
+  const { armOf } = run;
+  const B = armOf(space.start);
+  const wanted = new Set(Array.isArray(request.rowKeys) ? request.rowKeys : result.rows.map((x) => x.key));
+  const picked = result.rows.filter((x) => wanted.has(x.key));
+  try {
+    run.setPhase('confirm');
+    const arms = picked.map((x) => armOf(x.candidate));
+    const vs = await holmFixed(arms.map((a) => [a, B]), effort.alpha, (X, Y, n, a) => run.contrastAt(X, Y, S4, n, a), targetN);
+    run.setPhase('attribute');
+    const ctx = {
+      space, B, armOf, objective,
+      contrastAt: (X, Y, n, a) => run.contrastAt(X, Y, S4, n, a),
+      getSet: (a, n) => run.getSet(a, S4, n),
+    };
+    const baseSet = await run.getSet(B, S4, targetN);
+    const updated = new Map();
+    for (let i = 0; i < arms.length; i++) {
+      const set = await run.getSet(arms[i], S4, targetN);
+      const est = objective.estimate(set, { alpha: ALPHA });
+      const attr = await attribute(ctx, arms[i], targetN, { alpha: effort.alpha, seed: S4.seed });
+      const changes = attr.changes.map((c) => ({ ...c, own: contrastOut(c.own), needed: contrastOut(c.needed) }));
+      updated.set(arms[i].key, {
+        value: estimateOut({ ...est.value, seed: S4.seed }), aux: auxOf(prep, est, set, baseSet), vsBaseline: contrastOut(vs[i]),
+        changes, remainder: attr.remainder,
+        runMore: vs[i].verdict === 'unresolved' ? { targetN: nextLook(targetN, vs[i].nNeeded), reason: 'unresolved' } : null,
+      });
+    }
+    const baseEst = objective.estimate(baseSet, { alpha: ALPHA });
+    // Re-rank on each row's latest data: a re-measured row on S4 at targetN, the others on S3 at their
+    // confirm n (the same fights the run reported). Adjacent rows are resolved apart on S4 when both were
+    // re-measured, else on S3 at the smaller of their confirm n.
+    const confirmN = new Map(result.rows.map((x) => [x.key, x.vsBaseline.n]));
+    const merged = result.rows.map((x) => (updated.has(x.key) ? { ...x, ...updated.get(x.key) } : x));
+    const shown = merged.filter((x) => x.vsBaseline.verdict !== 'worse');
+    const warnings = [...(result.warnings ?? [])];
+    const kept = withholdViolations(space, B, shown, { strict, warnings, decided: () => null });
+    const scores = new Map();
+    for (const x of kept) {
+      const set = updated.has(x.key) ? await run.getSet(armOf(x.candidate), S4, targetN) : await run.getSet(armOf(x.candidate), S3, confirmN.get(x.key));
+      scores.set(x.key, objective.score(set));
+    }
+    const pick = (a, b) => (updated.has(a.key) && updated.has(b.key)
+      ? { stage: S4, n: targetN }
+      : { stage: S3, n: Math.min(confirmN.get(a.key), confirmN.get(b.key)) });
+    const rows = await groupTies(rankRows(kept, (x) => scores.get(x.key)), apartOn(prep, run, pick));
+    return {
+      ...result,
+      baseline: { ...result.baseline, value: estimateOut({ ...baseEst.value, seed: S4.seed }), aux: auxOf(prep, baseEst, null, null) },
+      rows,
+      warnings,
+      headline: headlineOf(rows, result.headline.worseHidden + merged.length - shown.length),
+      more: { round, targetN, seed: S4.seed, rowKeys: [...updated.keys()] },
+    };
+  } catch (e) {
+    if (!isAbort(e)) throw e;
+    return { ...result, aborted: true };
+  }
+}
