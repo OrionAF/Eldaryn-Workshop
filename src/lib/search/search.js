@@ -97,7 +97,8 @@ export function prepare(request) {
   if (!preset) throw new Error('optimize: the character has no preset to optimise');
   const target = resolveTarget(request.target ?? { kind: 'dummy' }, { character });
   const realm = target.realm ?? (request.realm === 'oblivion' ? 'oblivion' : 'base');
-  const mode = target.mode === 'pvp' ? 'pvp' : 'pve';
+  // the engine the target runs on: the Fortress boss is the duel engine under its own rules (effect.js engineKey)
+  const mode = target.mode === 'pvp' ? 'pvp' : target.kind === 'fortressBoss' ? 'fortress' : 'pve';
   const objective = makeObjective(request.objective ?? { kind: 'dps' }, target);
   const effort = resolveEffort(request.effort, objective);
   const seed = Number.isFinite(request.seed) ? request.seed : 1;

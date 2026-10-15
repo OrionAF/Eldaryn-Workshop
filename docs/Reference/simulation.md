@@ -403,12 +403,18 @@ null, which gives the default clan cap 50; caps per server are in clan-fortress.
 the clan's damage). The boss is the table's HP, attack and speed (clan-fortress.md §1.1) in a 60 s
 window.
 
-Engine path: PVE mode `fortressBoss`, the shared fight engine with the dungeon-family rules
-(non-live loop, server-run) at the 10 ms `BOSS_TICK_INTERVAL_MS`, no hit-back hook. This is the client's
-`simulateBossFight` rule set (combat-pve.md §1: shared engine, identical structure, no call site found), not
-the World Boss mode, whose affinity ramp and rebound belong to that boss only. Shield mitigation is not
-carried by the boss constants, so the campaign value is assumed (labelled `fortress-boss-model`). A player
-the boss kills stops dealing damage, so durable builds score higher.
+Engine path: the arena duel engine (`engine/pvp/resolver.js` `simulateArenaPvP`), driven by
+`engine/pve/fortressBoss.js` `simulateFortressBoss`. The player is the attacker (`fortressPlayerDuelArgs`, the
+Fighter's duel arguments) and the boss is the defender (`fortressBossDuelArgs`: the table's HP, attack and
+speed, no spells, sigils or shield). The Fortress rules a server log shows (clan-fortress.md §1.4) are the
+named `FORTRESS_FIGHT_RULES`, applied to the inputs: no x8 HP, no PVP ratings, no sigil stacks, a boss that
+cannot be blinded, the boss's spell resist, and the boss's ±15% per-swing spread. The spread is the
+resolver's one Fortress-only option, `defenderDamageVariance`, drawn from its own rng lane. Arena callers
+never set it, so the arena duel is unchanged. The search runs in its own `fortress` mode, so builds are merged
+by the Fortress duel's inputs (`effect.js` `engineKey`) and the condition options are the PVE ones. The
+assumption labelled `fortress-boss-model` says which parts come from the log. A player the boss kills stops
+dealing damage. `engine/pve/fortressReplay.js` replays a server response against these rules, rule by rule
+(`src/lib/__fixtures__/real/fortressReplay.test.js`).
 
 Credit: the result shows raw damage (dps x 60) and the effective damage the clan is credited,
 `round(raw x shield x contribution x star)` (clan-fortress.md §3.1). The multipliers are constant within a

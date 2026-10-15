@@ -6,6 +6,12 @@ import {
   calculateBossShield, calculateContributionBonus, calculateStarVulnerability, fortressBossMultipliers, fortressBossCredit,
 } from '../engine/pve/fortressBoss.js';
 import { fortressDamage } from '../ui/optimiserView.js';
+import { FORTRESS_CONSTANTS } from '../game/fortress.js';
+import { engineKey } from './effect.js';
+import { prepare } from './search.js';
+import { normaliseCharacter } from '../model/index.js';
+import { gameProfileToCharacter } from '../model/gameProfile.js';
+import sentinelProfile from '../__fixtures__/real/profile-sentinel-l85-miss.json';
 
 const fighter = {
   stats: {
@@ -24,7 +30,9 @@ describe('Fortress boss target', () => {
     expect(top.spec).toEqual({ kind: 'fortressBoss', group: 'TOP', stars: 1, aliveDefenders: 0, server: null, kills: 0 });
     expect(top.fidelity).toBe('server-model');
     expect(top.assumptions.map((a) => a.id)).toContain('fortress-boss-model');
-    expect(PVE_MODES.fortressBoss.dtMs).toBe(10);
+    // the fight runs on the duel engine (engine/pve/fortressBoss.js), no longer a PVE mode
+    expect(Object.hasOwn(PVE_MODES, 'fortressBoss')).toBe(false);
+    expect(FORTRESS_CONSTANTS.bossTickIntervalMs).toBe(10);
     const core = resolveTarget({ kind: 'fortressBoss', group: 'CORE' });
     expect(core.enemy).toMatchObject({ hp: 2.7e10, attack: 800, attackSpeed: 1.2 });
     expect('stars' in core.spec).toBe(false);
@@ -122,5 +130,24 @@ describe('Fortress boss target', () => {
     expect(a.value).toBeGreaterThan(800); // one 1000 swing a second for 60 s; 1e6 HP outlasts the boss's 500 a second
     expect(a.value).toBeLessThan(1100);
     expect(b.value).toBe(a.value);
+  });
+});
+
+describe('Fortress boss search mode', () => {
+  const crimson = (condition) => ({
+    class: 'SENTINEL', spec: null, stats: fighter.stats, sigils: [{ species: 'CRIMSON_ARROW', level: 5 }],
+    conditions: { CRIMSON_ARROW: condition }, altarTier: 1,
+  });
+
+  it('the engine key is the Fortress duel\'s input: a damage sigil\'s condition counts there, though the PVE key ignores it', () => {
+    expect(engineKey(crimson('ON_COOLDOWN'), 'pve')).toBe(engineKey(crimson('MY_HP_BELOW_40'), 'pve'));
+    expect(engineKey(crimson('ON_COOLDOWN'), 'fortress')).not.toBe(engineKey(crimson('MY_HP_BELOW_40'), 'fortress'));
+  });
+
+  it('a Fortress target runs the search in the fortress mode', () => {
+    const character = normaliseCharacter(gameProfileToCharacter(sentinelProfile));
+    const run = prepare({ character, target: { kind: 'fortressBoss', group: 'TOP', stars: 5 }, objective: { kind: 'dps' } });
+    expect(run.mode).toBe('fortress');
+    expect(run.space.mode).toBe('fortress');
   });
 });

@@ -43,7 +43,7 @@ player's build:
 | **Raid** | **[SERVER]** same shape: `/raid/fight-prepare`, `/raid/fight-resolve`, `/raid/fight` | `L886736-886821` |
 | **Oblivion dungeon** | **[SERVER]** `/oblivion-dungeon/floor-prepare`, `/floor-resolve` | `L1705095-1705146` |
 | **Crusade** (group boss) | **[SERVER]** `/crusade/start`, `/crusade/solo`; client plays `ticks` | `L1703354-1703422`, `L1843245-1843842` |
-| **Fortress boss** | **[SERVER]** `/fortress/boss-fight/start`; client plays `ticks` | `L1399614`, `L1639328-1639938` |
+| **Fortress boss** | **[SERVER]** `/fortress/boss-fight/start`; client plays `combatLog`. A server log shows the arena duel's rules with Fortress changes, not this engine (`clan-fortress.md` §1.4) | `L1399614`, `L1639328-1639938` |
 | **Celestial Trial** (party of 2) | **[SERVER]**; the start response carries `celestialResult.ticks`, the client plays them; no client simulator (rules from server logs, §20) | `pve-content.md §6` |
 | **World boss** | **[SERVER]** `/world-boss/fight-start` returns `fightId, bossHp, damageDealt, fightDurationMs, playerDied, combatLog`; client decodes the log and replays it, then posts `{fightId, damageDealt}` to `/world-boss/fight-end` | `L1702891`, `L1702935`, `L1152196-1152442`, `L1748209-1748249` |
 | **Arena** | **[SERVER]** `/arena/fight` (`see combat-pvp.md`) | `L1101943` |
