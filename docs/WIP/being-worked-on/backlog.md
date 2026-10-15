@@ -1,212 +1,38 @@
 # Backlog: features the user asked for
 
-> **Status:** queued. Start these after the current speed work (worker pool, engine speed pass,
-> CPU profile and calibration, the race's futility stop, and the stat-weight surrogate decision).
-> Added 2026-10-15.
+> **Order:** quickest first (2026-10-15). Section numbers are stable IDs that other files cite, not the order. Sizes are rough agent time: XS under an hour, S one to two hours, M about half a day, L a day or more.
 
-## 1. Optimiser: list the search steps
-
-**Ask.** Clicking the Search segment, or a button beside it, shows the steps the run has done and the
-one it is on, e.g. "1. Gear set: done · 2. Talents: done · 3. Pets: done · 4. Relics: in progress".
-
-**Notes.**
-- The search walks the build-space blocks (`search/space.js` `BLOCKS`). Progress already reports the
-  current block ("Search, talents: 1,782 builds tried").
-- Extend the progress message with one row per block: status (queued, running, done, skipped because
-  the user turned it off), builds tried, fights, and whether it found an improvement. Multi-start runs
-  pass over the blocks more than once, so show the pass number too.
-- UI: an expandable step list under RunProgress on the Optimiser page and in the Jobs tray
-  (design-system.md §4.17).
-- The run history keeps the final list.
-
-## 2. Import other players' profiles as PVP opponents
-
-**Ask.** Import the profile JSON that the game returns when you open another player from Rankings,
-and save it as a PVP opponent.
-
-**What the file holds** (a sample is outside the repo; commit only a sanitised copy as a fixture):
-- class, level, `activeSpec` and realm;
-- `equipment` per slot (rarity, item level, primary and secondary stats);
-- `equippedPet` (species, rarity, level, tier, secondaries) and `activeMount` (species, rarity,
-  level, base rolls);
-- `equippedSigils` with levels, `utilitySigil`, `sigilAltarTier`, `activeMajorGlyphs`;
-- `equippedRelics` with levels, `enchantSlots`, `socketedStones`, and `awakeningPath` (no level);
-- the full server-computed `computedStats`.
-
-It has no talent allocation, Transcendence nodes, mount glyphs or awakening level.
-
-**Notes.**
-- `computedStats` is the server's own sheet, so it becomes the opponent's stat sheet exactly, with no
-  model gaps. The loadout (spec, sigils with levels, utility, major glyphs, Druid form) supplies the
-  mechanics the PVP resolver needs (`features/duel.js`, opponent model `model/opponents.js`).
-- The import dialog (`lib/importPlan.js`, kind detection) gets a new kind, "player profile
-  (opponent)". It is told apart from the user's own profile because it has `equippedPet`,
-  `activeMount`, `computedStats` and `arenaRank` instead of whole collections.
-- Re-importing the same `playerId` updates that opponent instead of adding a duplicate.
-- Strip player and clan identifiers from any committed fixture.
-
-## 3. Optimiser setup: estimates before you run
-
-**Ask.** A section of the setup shows the estimated time, the number of builds to try and the number
-of fights to simulate.
-
-**Notes.**
-- It builds on the speed calibration (fights per second on this device, per fight kind).
-- Builds: the space size per enabled block, exact when the space is enumerated, an estimate
-  otherwise. Fights: a range from the race rules (the least when every arm resolves at the first
-  look, up to the cap at maxN). Time: fights divided by the calibrated speed and the worker count.
-- Label every number as an estimate (decision Q5), and update it live as the setup changes.
-
-## 4. PVE goal: win rate ("clear without dying")
-
-**Ask.** For dungeons, raids, chapters and Oblivion floors, the useful question is whether the
-build clears the content without dying, not how fast. Ten seconds and fifty are the same to the user.
-
-**Notes.**
-- Today's "Survival chance" measures surviving N seconds against an unkillable copy of the mob, and
-  the TTK goals measure speed. Neither is "clears the step".
-- New goal, **Win rate** (the user confirmed 2026-10-15: "basically the win rate"; same name and
-  intervals as PVP win rate): the share of fights in which the whole step is cleared before the
-  character dies or the time cap is reached (a proportion; Wilson/Newcombe intervals as for win
-  rate). The user sets the target, e.g. "at least 95%".
-- Search framing: find the build **with the fewest changes** that reaches the target. If the current
-  build already reaches it, say so and suggest nothing. If no build reaches it, maximise the win
-  rate and show how close each build gets.
-- At a 100% win rate builds tie, so the tie-break is fewest changes, then a safety margin (for
-  example the lowest HP fraction left across fights). The margin also gives the search, and stat
-  weights, a gradient where the win rate saturates.
-- Make it the default goal for these targets. Keep TTK as an option for players who farm for speed.
-
-## 5. Optimiser: let it change more than the loadout
-
-**Ask.** Today the optimiser only switches things the user owns (sets, sigils, relics, pet, mount,
-board choice, glyph sockets) and keeps gear, stones, levels, Awakening and pet/mount rolls fixed. Add
-options to:
-
-| Option | What it searches | Cost in game | Default |
+| Order | Item | Size | Status |
 |---|---|---|---|
-| Re-slot stones | Which owned enchant stones sit in which gear slots, per gear set | Free | On |
-| Re-arrange Transcendence | A new node allocation for a board, within its point budget and the graph rules | Reset is free; a 2nd board is expensive | On |
-| Reset Awakening | Path and point allocation | Very expensive | Off |
-| Upgrade owned relics | Higher levels for relics already owned | Costs resources | Off |
-| Buy new relics | Relics the character does not own yet | Costs resources | Off |
+| 1 | §14 Mount pruning | XS | Running |
+| 2 | §10 Push (merge only) | XS | Built and reviewed; merge queued after §14 |
+| 3 | §10 Fortress boss shield fix | S | Implemented; review and merge queued after §14 |
+| 4 | §11 Celestial Trial Optimiser target | S | Paused; the engine is merged |
+| 5 | §6 Results say which pet, mount or glyph | S | Not started |
+| 6 | §1 Optimiser step list | S | Not started |
+| 7 | §12 Highest chance to win | M | Paused mid-build (branch `rebuild2/W3-wip`) |
+| 8 | §3 Setup estimates | M | Not started |
+| 9 | §13 Lean glyph neighbourhoods | M | Paused (branch `rebuild2/S1-wip`); decide after §14's measured gain |
+| 10 | §9 Stat weights chart | M | Not started |
+| 11 | §2 Rankings profiles as PVP opponents (and Celestial partners) | M | Not started |
+| 12 | §10 Arena reward weighting | S | Needs §2 |
+| 13 | §7 PVE replay check | L | Not started; needs dungeon logs |
+| 14 | §10 Crusade (solo) | L | Not started |
+| 15 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Not started |
+| - | §11 Celestial open questions | - | Waits for more server logs |
+| Done | §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target; §11 Celestial engine | - | Merged |
 
-**Notes.**
-- Stones: check `Reference/Game/stones.md` for which stone types each slot and realm accepts. The
-  search is an assignment of stones to slots. Most of a stone's value is stats, so the stat-weight
-  surrogate can order it, with simulation to confirm.
-- Transcendence: use the board-graph rules in `src/lib/transcendence.js`, the point budget, and the
-  Ancient sigil's node (decision Q3). Search an allocation, not only the saved boards. Applying it
-  re-allocates that board, which every preset linked to it shares, so show the side effects. Never
-  suggest buying a second board.
-- Awakening, relic upgrades and relic purchases cost resources. Each result row shows what it would
-  cost, in the game's own currency, from the catalogue where the client has the cost, and the results
-  keep free changes apart from paid ones. Relic levels respect the class pool and level caps
-  (`Reference/Game/relics.md`).
-- Each option is a toggle under "Allowed to change". The scope chips and Apply review say exactly
-  what gets written: stones per set, the board shared by presets, the character-wide Awakening, relic
-  levels and ownership.
+## 14. Optimiser: never try a mount another owned mount beats
 
-## 6. Optimiser results: say exactly which pet, mount or glyph
+**Ask** (2026-10-15): the Optimiser should never test Common mounts when Epic ones are owned.
 
-**Ask.** Pets of the same species share a name, so "Pet: Iron Golem → Iron Golem" does not say which
-Iron Golem to equip. Show the suggested pet's secondary stats.
+**Rule.** A mount only adds attack % and HP % (each `round(base * (1 + 0.1*(level-1)))`), and every mount has the same sockets. So a mount that another owned mount matches or beats on both values can never help. This is pruned by Pareto dominance, not by rarity, because a level-5 Rare (up to 41 HP / 28 attack) can beat a level-1 Epic (34-39 / 24-27). For the user's Sentinel it cuts 11 mounts to 2.
 
-**Notes**, from the same screenshot (Rank 1, dungeon, TTK median):
-- **Name owned instances unambiguously.** Wherever a result names something the user owns several of,
-  show what tells them apart:
-  - pet: rarity, level and secondary stats;
-  - mount: level and rolls;
-  - glyph: rarity and stat;
-  - stone: type and stats.
-  Apply this to change rows, the Apply review and the "Show full build" drawer. When two owned copies
-  are identical, say so ("either of your 2 identical copies").
-- **Raw stat keys leak** in the full-build drawer ("Quickstep (Common) healthPercent 4.5",
-  "critDamage 0.09"). Use the shared stat label formatter ("Health +4.5%", "Crit damage +9%").
-- **Talent changes list the whole allocation twice.** Show only the points that moved, e.g. "Essence
-  Siphon 2 → 0, Focused Casting 0 → 3".
-- **A baseline with no value shows "n/a".** On TTK the current build had no median because it
-  rarely wins, and the axis then reads "−0.00 s … 0.00 s". Say why instead: "Rarely clears: 18% win
-  rate; compared by win rate". Draw the axis on the basis actually used. Backlog §4 (Win rate)
-  removes most of these cases.
-
-## 7. PVE replay check against server dungeon logs
-
-**Ask** (from a real dungeon log the user captured, 2026-10-15). The PVP side already has a replay
-check against a real `/arena/fight` log (`engine/pvp/replayCheck.js`). Build the same for PVE dungeon
-runs.
-
-**What one log shows** (a Mystic with Void Aegis; 3 mobs; died on mob 3 at 58.56 s):
-- 10 ms ticks: a DOT tick lands at 1,510 ms after the cast at 1,500 ms;
-- a 720 ms player swing and a ~1,665 ms mob swing;
-- spell cadence: Barrage every 1 s, Burst every 3 s, and the Runic Affliction cycle;
-- HP regen pulses of 461 every 100 ms;
-- heals land in the same tick as the cast, HP first;
-- with Void Aegis (`vampAlwaysRefills`) the WHOLE vamp heal also refills the shield, not just the
-  overflow;
-- regen pulses refill the shield while HP is full;
-- the shield cap (`playerShieldMax` 175,626).
-
-**Notes.**
-- Only attack rows carry `playerShieldHp`. Spell rows carry `playerHpAfter` (the end-of-tick value),
-  so a checker has to reconstruct the shield between attack rows.
-- The rules to check: timing, swing intervals, spell cadence, heal → HP → shield, regen pulses, the
-  shield cap, and mob-to-mob transitions. Damage values can be checked too once the fight is run with
-  the logged character's stats.
-- Commit the log as a fixture next to `arena-fight-warrior.json`. It holds fight values only, no
-  player identifiers; check before committing.
-
-## 8. Easier imports without HTTP Toolkit (phone-only capture guide)
-
-**Status (2026-10-15): replaced.** The capture-guide idea is dropped. Instead every import entry point
-moved to Settings > Data > Import, behind one disclaimer: importing is possible but finicky, it needs
-another app (HTTP Catcher on iPhone) or a PC with HTTP Toolkit, Android usually needs root, and this
-app's own backups always import. The notes below stay as the research record.
-
-**Ask** (2026-10-15): can users capture the profile and fight JSON from their phones without HTTP
-Toolkit? Can the app ask the game server for it?
-
-**Findings.**
-- The game client talks to `https://api.eldaryn.solmeron.com` with the player's login token
-  (`Authorization: Bearer …`). Own state: `GET /player/full-state`. Another player:
-  `GET /leaderboard/player/<id>`. `/arena/fight` is a POST that starts a real fight.
-- Calling it from this app would mean handling the user's token, getting past the browser's
-  cross-site block (it would need a proxy), and very likely breaking the game's Terms of Service.
-  Rejected.
-- There is no web version of the game: eldaryn.live is the wiki, so DevTools capture is out.
-
-**Plan.**
-1. **Phone-only capture guide** inside the Import dialog. On iPhone, an on-device HTTPS capture app
-   (Proxyman for iOS, HTTP Catcher, Stream) lets you trust its certificate, open the profile or
-   fight in game, and share the response to Files, with no computer. Android needs root or a
-   computer (apps ignore user certificates since Android 7), so say that plainly. Keep the steps
-   short, with screenshots.
-
-## 9. Stat weights chart (like the v1 one)
-
-**Ask** (2026-10-15): bring back the old stat-weight display, one chart that ranks every stat, not a
-weight table per piece of content.
-
-**What v1 did** (`src/lib/statWeights.js` and `SimulationScreen.svelte` before `f486ffc`): it added one
-game-sized step to each stat in turn (+100 Attack, +1 point of Attack %, +1% Crit, +10% Crit
-Multiplier...), re-scored the preset with the closed-form expected DPS, and drew the gain as a bar
-per stat, largest first. The tank and PVP goals added the defensive stats. The ranking came from a
-formula, not from fights.
-
-**Plan.**
-- The engine has no closed form now, so measure the weights in the client port. Use mean damage per
-  second against the training dummy (`metrics.js` `dpsVsDummyAsync`, the one Drop Check uses) and
-  common random numbers. The mean over a fixed duration is smooth, so it avoids the median-TTK
-  steps the 2026-10-15 experiment hit.
-- Defensive stats rank on survival against one fixed reference enemy (`survivalAsync`). Show it as a
-  second chart, because damage and survival are different units.
-- Probe the raw totals and apply the caps once (the rule v1 learned the hard way), so a stat past its
-  cap shows about 0. Use the v1 step sizes.
-- Each bar shows its interval. A stat whose interval spans 0 reads "no measurable effect", never a
-  rank.
-- It runs as a job, on the Character Stats page or in Tools, for the selected preset.
+**Status:** running (slice M1).
 
 ## 10. Optimiser objectives: trim, fix the target range, add Push, a Power guard and Crusade
+
+**Status (2026-10-15).** Done: retire kill time and survival, target range (slice O1); Combat Power and the Power guard (O2); Fortress boss target (O3). Fortress shield fix (O3b): two server siege snapshots show the shield divides alive defenders by the server's clan cap (30 on server 5), not the defending clan's size; implemented, awaiting review. Push (O4): built and reviewed, awaiting merge. Not started: Crusade (solo), Arena reward weighting.
 
 **Ask** (2026-10-15): the user agreed to this review of the objectives.
 
@@ -252,6 +78,8 @@ express that. See §11.
 
 ## 11. Celestial Trial (party of 2), and party roles
 
+**Status (2026-10-15).** The Celestial engine is merged (slice C1), replay-checked against five server logs. The Optimiser target (C2: partner, tank, starter, tactics, difficulty, level) is paused. Open questions (Overload end and Judgment, NORMAL Overload, stack-player rule) wait for more logs.
+
 **Ask** (2026-10-15): can the Celestial Trial be simulated? The user supplied one server fight log
 (Hard, level 85, the user plus a tank partner). It stays outside the repo because it names another
 player. Facts and the log check are in `Game/pve-content.md` §6.
@@ -274,3 +102,227 @@ port can be checked tick by tick, like §7.
 partner fixed. This is where tank versus damage spec gets judged properly. If the user is the
 tank, the boss and Judgment Strike hit them, and Block Fury matters. Crusade groups would use the
 same party machinery later.
+
+## 6. Optimiser results: say exactly which pet, mount or glyph
+
+**Ask.** Pets of the same species share a name, so "Pet: Iron Golem → Iron Golem" does not say which
+Iron Golem to equip. Show the suggested pet's secondary stats.
+
+**Notes**, from the same screenshot (Rank 1, dungeon, TTK median):
+- **Name owned instances unambiguously.** Wherever a result names something the user owns several of,
+  show what tells them apart:
+  - pet: rarity, level and secondary stats;
+  - mount: level and rolls;
+  - glyph: rarity and stat;
+  - stone: type and stats.
+  Apply this to change rows, the Apply review and the "Show full build" drawer. When two owned copies
+  are identical, say so ("either of your 2 identical copies").
+- **Raw stat keys leak** in the full-build drawer ("Quickstep (Common) healthPercent 4.5",
+  "critDamage 0.09"). Use the shared stat label formatter ("Health +4.5%", "Crit damage +9%").
+- **Talent changes list the whole allocation twice.** Show only the points that moved, e.g. "Essence
+  Siphon 2 → 0, Focused Casting 0 → 3".
+- **A baseline with no value shows "n/a".** On TTK the current build had no median because it
+  rarely wins, and the axis then reads "−0.00 s … 0.00 s". Say why instead: "Rarely clears: 18% win
+  rate; compared by win rate". Draw the axis on the basis actually used. Backlog §4 (Win rate)
+  removes most of these cases.
+
+## 1. Optimiser: list the search steps
+
+**Ask.** Clicking the Search segment, or a button beside it, shows the steps the run has done and the
+one it is on, e.g. "1. Gear set: done · 2. Talents: done · 3. Pets: done · 4. Relics: in progress".
+
+**Notes.**
+- The search walks the build-space blocks (`search/space.js` `BLOCKS`). Progress already reports the
+  current block ("Search, talents: 1,782 builds tried").
+- Extend the progress message with one row per block: status (queued, running, done, skipped because
+  the user turned it off), builds tried, fights, and whether it found an improvement. Multi-start runs
+  pass over the blocks more than once, so show the pass number too.
+- UI: an expandable step list under RunProgress on the Optimiser page and in the Jobs tray
+  (design-system.md §4.17).
+- The run history keeps the final list.
+
+## 12. PVE goal: highest chance to win
+
+**Ask** (2026-10-15): "Find me a build which gives me the highest % chance to win."
+
+**Plan.**
+- A new goal, "Highest chance to win", becomes the default for content you clear. It ranks on clear rate, and ties go to the fewest changes. "Reach a win rate" stays as an option, with its minimum lowered to 1%.
+- Fast decisions at low rates. When the leading build has wins, builds with none are dropped quickly. Only when no build wins does how far each one gets decide, and the result then says so plainly.
+- Measured problem: on Hard Forsaken Mines step 2, a race of 299 sigil sets ran 306,208 fights and dropped none.
+
+**Status:** paused mid-build; the work so far is on branch `rebuild2/W3-wip`.
+
+## 3. Optimiser setup: estimates before you run
+
+**Ask.** A section of the setup shows the estimated time, the number of builds to try and the number
+of fights to simulate.
+
+**Notes.**
+- It builds on the speed calibration (fights per second on this device, per fight kind).
+- Builds: the space size per enabled block, exact when the space is enumerated, an estimate
+  otherwise. Fights: a range from the race rules (the least when every arm resolves at the first
+  look, up to the cap at maxN). Time: fights divided by the calibrated speed and the worker count.
+- Label every number as an estimate (decision Q5), and update it live as the setup changes.
+
+## 13. Optimiser: lean glyph neighbourhoods
+
+**Measured problem** (the user's Fortress run, 2026-10-15): 76,068 builds in about 5 minutes, at about 15 fights each. Each minor-glyph visit races every set of up to 3 glyphs (378 sets). Each mount switch also re-optimises that mount's sockets from scratch.
+
+**Plan.**
+- Glyph blocks become single-socket moves (about 40 arms instead of 378), with a bounded pair polish where effects are not additive.
+- A mount switch keeps the current glyph rows where they are legal.
+- The run estimate becomes honest, instead of saying "under a minute".
+
+**Status:** paused (branch `rebuild2/S1-wip`). Decide after §14's measured gain.
+
+## 9. Stat weights chart (like the v1 one)
+
+**Ask** (2026-10-15): bring back the old stat-weight display, one chart that ranks every stat, not a
+weight table per piece of content.
+
+**What v1 did** (`src/lib/statWeights.js` and `SimulationScreen.svelte` before `f486ffc`): it added one
+game-sized step to each stat in turn (+100 Attack, +1 point of Attack %, +1% Crit, +10% Crit
+Multiplier...), re-scored the preset with the closed-form expected DPS, and drew the gain as a bar
+per stat, largest first. The tank and PVP goals added the defensive stats. The ranking came from a
+formula, not from fights.
+
+**Plan.**
+- The engine has no closed form now, so measure the weights in the client port. Use mean damage per
+  second against the training dummy (`metrics.js` `dpsVsDummyAsync`, the one Drop Check uses) and
+  common random numbers. The mean over a fixed duration is smooth, so it avoids the median-TTK
+  steps the 2026-10-15 experiment hit.
+- Defensive stats rank on survival against one fixed reference enemy (`survivalAsync`). Show it as a
+  second chart, because damage and survival are different units.
+- Probe the raw totals and apply the caps once (the rule v1 learned the hard way), so a stat past its
+  cap shows about 0. Use the v1 step sizes.
+- Each bar shows its interval. A stat whose interval spans 0 reads "no measurable effect", never a
+  rank.
+- It runs as a job, on the Character Stats page or in Tools, for the selected preset.
+
+## 2. Import other players' profiles as PVP opponents
+
+**Ask.** Import the profile JSON that the game returns when you open another player from Rankings,
+and save it as a PVP opponent.
+
+**What the file holds** (a sample is outside the repo; commit only a sanitised copy as a fixture):
+- class, level, `activeSpec` and realm;
+- `equipment` per slot (rarity, item level, primary and secondary stats);
+- `equippedPet` (species, rarity, level, tier, secondaries) and `activeMount` (species, rarity,
+  level, base rolls);
+- `equippedSigils` with levels, `utilitySigil`, `sigilAltarTier`, `activeMajorGlyphs`;
+- `equippedRelics` with levels, `enchantSlots`, `socketedStones`, and `awakeningPath` (no level);
+- the full server-computed `computedStats`.
+
+It has no talent allocation, Transcendence nodes, mount glyphs or awakening level.
+
+**Notes.**
+- `computedStats` is the server's own sheet, so it becomes the opponent's stat sheet exactly, with no
+  model gaps. The loadout (spec, sigils with levels, utility, major glyphs, Druid form) supplies the
+  mechanics the PVP resolver needs (`features/duel.js`, opponent model `model/opponents.js`).
+- The import dialog (`lib/importPlan.js`, kind detection) gets a new kind, "player profile
+  (opponent)". It is told apart from the user's own profile because it has `equippedPet`,
+  `activeMount`, `computedStats` and `arenaRank` instead of whole collections.
+- Re-importing the same `playerId` updates that opponent instead of adding a duplicate.
+- Strip player and clan identifiers from any committed fixture.
+
+## 7. PVE replay check against server dungeon logs
+
+**Ask** (from a real dungeon log the user captured, 2026-10-15). The PVP side already has a replay
+check against a real `/arena/fight` log (`engine/pvp/replayCheck.js`). Build the same for PVE dungeon
+runs.
+
+**What one log shows** (a Mystic with Void Aegis; 3 mobs; died on mob 3 at 58.56 s):
+- 10 ms ticks: a DOT tick lands at 1,510 ms after the cast at 1,500 ms;
+- a 720 ms player swing and a ~1,665 ms mob swing;
+- spell cadence: Barrage every 1 s, Burst every 3 s, and the Runic Affliction cycle;
+- HP regen pulses of 461 every 100 ms;
+- heals land in the same tick as the cast, HP first;
+- with Void Aegis (`vampAlwaysRefills`) the WHOLE vamp heal also refills the shield, not just the
+  overflow;
+- regen pulses refill the shield while HP is full;
+- the shield cap (`playerShieldMax` 175,626).
+
+**Notes.**
+- Only attack rows carry `playerShieldHp`. Spell rows carry `playerHpAfter` (the end-of-tick value),
+  so a checker has to reconstruct the shield between attack rows.
+- The rules to check: timing, swing intervals, spell cadence, heal → HP → shield, regen pulses, the
+  shield cap, and mob-to-mob transitions. Damage values can be checked too once the fight is run with
+  the logged character's stats.
+- Commit the log as a fixture next to `arena-fight-warrior.json`. It holds fight values only, no
+  player identifiers; check before committing.
+
+## 5. Optimiser: let it change more than the loadout
+
+**Ask.** Today the optimiser only switches things the user owns (sets, sigils, relics, pet, mount,
+board choice, glyph sockets) and keeps gear, stones, levels, Awakening and pet/mount rolls fixed. Add
+options to:
+
+| Option | What it searches | Cost in game | Default |
+|---|---|---|---|
+| Re-slot stones | Which owned enchant stones sit in which gear slots, per gear set | Free | On |
+| Re-arrange Transcendence | A new node allocation for a board, within its point budget and the graph rules | Reset is free; a 2nd board is expensive | On |
+| Reset Awakening | Path and point allocation | Very expensive | Off |
+| Upgrade owned relics | Higher levels for relics already owned | Costs resources | Off |
+| Buy new relics | Relics the character does not own yet | Costs resources | Off |
+
+**Notes.**
+- Stones: check `Reference/Game/stones.md` for which stone types each slot and realm accepts. The
+  search is an assignment of stones to slots. Most of a stone's value is stats, so the stat-weight
+  surrogate can order it, with simulation to confirm.
+- Transcendence: use the board-graph rules in `src/lib/transcendence.js`, the point budget, and the
+  Ancient sigil's node (decision Q3). Search an allocation, not only the saved boards. Applying it
+  re-allocates that board, which every preset linked to it shares, so show the side effects. Never
+  suggest buying a second board.
+- Awakening, relic upgrades and relic purchases cost resources. Each result row shows what it would
+  cost, in the game's own currency, from the catalogue where the client has the cost, and the results
+  keep free changes apart from paid ones. Relic levels respect the class pool and level caps
+  (`Reference/Game/relics.md`).
+- Each option is a toggle under "Allowed to change". The scope chips and Apply review say exactly
+  what gets written: stones per set, the board shared by presets, the character-wide Awakening, relic
+  levels and ownership.
+
+## 4. PVE goal: win rate ("clear without dying")
+
+**Ask.** For dungeons, raids, chapters and Oblivion floors, the useful question is whether the
+build clears the content without dying, not how fast. Ten seconds and fifty are the same to the user.
+
+**Notes.**
+- Today's "Survival chance" measures surviving N seconds against an unkillable copy of the mob, and
+  the TTK goals measure speed. Neither is "clears the step".
+- New goal, **Win rate** (the user confirmed 2026-10-15: "basically the win rate"; same name and
+  intervals as PVP win rate): the share of fights in which the whole step is cleared before the
+  character dies or the time cap is reached (a proportion; Wilson/Newcombe intervals as for win
+  rate). The user sets the target, e.g. "at least 95%".
+- Search framing: find the build **with the fewest changes** that reaches the target. If the current
+  build already reaches it, say so and suggest nothing. If no build reaches it, maximise the win
+  rate and show how close each build gets.
+- At a 100% win rate builds tie, so the tie-break is fewest changes, then a safety margin (for
+  example the lowest HP fraction left across fights). The margin also gives the search, and stat
+  weights, a gradient where the win rate saturates.
+- Make it the default goal for these targets. Keep TTK as an option for players who farm for speed.
+## 8. Easier imports without HTTP Toolkit (phone-only capture guide)
+
+**Status (2026-10-15): replaced.** The capture-guide idea is dropped. Instead every import entry point
+moved to Settings > Data > Import, behind one disclaimer: importing is possible but finicky, it needs
+another app (HTTP Catcher on iPhone) or a PC with HTTP Toolkit, Android usually needs root, and this
+app's own backups always import. The notes below stay as the research record.
+
+**Ask** (2026-10-15): can users capture the profile and fight JSON from their phones without HTTP
+Toolkit? Can the app ask the game server for it?
+
+**Findings.**
+- The game client talks to `https://api.eldaryn.solmeron.com` with the player's login token
+  (`Authorization: Bearer …`). Own state: `GET /player/full-state`. Another player:
+  `GET /leaderboard/player/<id>`. `/arena/fight` is a POST that starts a real fight.
+- Calling it from this app would mean handling the user's token, getting past the browser's
+  cross-site block (it would need a proxy), and very likely breaking the game's Terms of Service.
+  Rejected.
+- There is no web version of the game: eldaryn.live is the wiki, so DevTools capture is out.
+
+**Plan.**
+1. **Phone-only capture guide** inside the Import dialog. On iPhone, an on-device HTTPS capture app
+   (Proxyman for iOS, HTTP Catcher, Stream) lets you trust its certificate, open the profile or
+   fight in game, and share the response to Files, with no computer. Android needs root or a
+   computer (apps ignore user certificates since Android 7), so say that plainly. Keep the steps
+   short, with screenshots.
+
