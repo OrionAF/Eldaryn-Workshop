@@ -151,9 +151,9 @@ export function prepareSwap(character, { slot, item, realm = 'base', presetIds =
     const before = buildFighter(character, presetId, { realm });
     let after;
     let method;
-    if (res.sheet) {
+    if (res.source === 'sheet') {
       method = 'anchored';
-      after = { ...before, stats: anchoredDelta(before.stats, rawDelta, res.ctx) };
+      after = { ...before, stats: anchoredDelta(before.stats, rawDelta, { ...res.ctx, exact: res.exact }) };
     } else {
       method = 'recomputed';
       after = buildFighter(withItem(character, setKey, slot, item), presetId, { realm });

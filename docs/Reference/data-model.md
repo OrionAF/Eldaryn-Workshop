@@ -72,7 +72,8 @@ Preset = { id, name, equipmentSet: 1|2, talentSet: 0|1, petId | null, mountId | 
   // 'default', then the first board (`model/legality.js` resolveTranscendencePreset; the game keeps
   // the active board for a null link, Game/transcendence.md §9).
 
-Sheet  = { values: Partial<ComputedStats>, enteredAt }          // tier-2 input, §5
+Sheet  = { values: Partial<ComputedStats>, enteredAt, inputsKey | null,  // tier-2 input, §6
+           presetId | null }                                // presetId: Oblivion sheet only
 ```
 
 There is no persisted goal, linked flag, manual-totals mode, dominion value or
@@ -151,8 +152,10 @@ This split is deliberate and load-bearing; don't move a field across it casually
 | **Per-preset** | The preset chooses | equipment set (1/2), talent set (0/1), pet, mount, relics, generic/utility/Ancient sigils, transcendence preset, and the user sheet |
 | **Per-mount** | Neither of the above | glyph sockets (`mount.glyphs`), reached per preset via `preset.mountId` |
 
-The Oblivion realm has one loadout (`equipment.oblivion` + `oblivionEnchantStones`);
-the rest of the active preset carries over (`Game/pve-content.md` §9).
+The Oblivion realm has one gear loadout (`equipment.oblivion` + `oblivionEnchantStones`). The
+app builds the rest (talents, pet, mount, relics, sigils, board) from whichever preset is chosen;
+which choices the server uses in the rift is unknown from the client (`Game/pve-content.md` §9),
+so the one Oblivion sheet belongs to the preset it was entered for (§6).
 
 **Constraints the code enforces:** two-preset minimum (`MIN_PRESETS`; the store's
 `deletePreset` refuses at the minimum, so never write a loop that deletes "down to one
@@ -241,16 +244,42 @@ The server computes the live stats and adds relics and possibly other sources
    `character.baseResidual`; relics enter as additive points, an ASSUMPTION the UI
    labels as one.
 2. **Sheet (tier 2).** The user types the in-game sheet into `preset.sheet` (or
-   `oblivion.sheet` for the Oblivion realm). When present, the engines use it verbatim.
+   `oblivion.sheet` for the Oblivion realm). While it describes the build (below), the engines
+   use it verbatim.
 3. **Validation (tier 3).** `diffSheet(computed, sheet)` compares per key
    (tolerances: Attack/HP ±1, percent ±0.1, multipliers ±0.01). "Absorb into base"
    moves the five base residuals into `baseResidual`; other residuals are carried
    (`build/residual.js`) and added in raw space to every candidate built from that preset.
 
-Sheet-anchored deltas (Drop Check, gear search) start from the sheet's raw value,
-apply the delta, re-apply the soft cap, and split Attack/HP into flat and percent
-parts (`engine/pipeline/anchoredDelta.js`). Details and the layer map:
-`WIP/being-worked-on/rebuild-plan.md` §2 and §4.
+**Sheet status** (`computePresetStats(...).sheetStatus`, `build/stats.js`). A sheet stores
+`inputsKey`, the fingerprint (`sheetInputsKey`: `metricKey` of the preset's engine inputs except
+the base residual, the realm and the character level) of the build it was entered for. The
+Oblivion sheet also stores the `presetId` it was entered for: the rift has one live loadout, and
+which of the app's presets the server uses there is unknown, so the sheet belongs to one preset.
+
+| Status | When | Effect |
+|---|---|---|
+| `fresh` | `inputsKey` equals the current build's | sheet overlaid, residual taken |
+| `stale` | the build changed since, or the Oblivion sheet belongs to another preset | computed stats, empty residual, warning; the stored sheet is still returned for re-entry |
+| `unverified` | no `inputsKey` (a legacy sheet, a game-profile import, or rows carried to a new Oblivion owner) | sheet overlaid, residual taken, warning ("Confirm sheet matches this build") |
+| `none` | no sheet | computed stats |
+
+A new sheet is stamped with the current build; editing rows keeps the old stamp, so a stale
+sheet stays stale until the user confirms it (`confirmPresetSheet` / `confirmOblivionSheet`).
+Absorbing into base never stales a sheet. A deleted owner preset leaves the Oblivion sheet unused;
+on load `reconcileOblivion` clears the dangling `presetId`, and the sheet then counts only where its
+`inputsKey` matches.
+
+The overlay keeps a computed `raw*` the sheet omits while the computed total equals the sheet's
+(it then describes the same total); otherwise the raw is dropped.
+
+Sheet-anchored deltas (Drop Check, gear search; `engine/pipeline/anchoredDelta.js`) add a raw-space
+change to the sheet. `computePresetStats(...).exact` (`calculateTotalStatsExact`) carries the
+computed pipeline's unrounded Attack/HP flat and percent and every capped raw. Where the sheet
+agrees with them after rounding, the change is computed exactly and only the residual (sheet minus
+computed) is anchored; otherwise the sheet's 1-dp values are used and `anchoredDeltaDetailed`
+returns `approx: true` with a per-key error bound (Attack/HP from the percent's ±0.05 rounding,
+capped stats one display tick).
 
 **Opponent sheets are sparse.** The editor saves only the rows the class sheet shows, and the user may
 leave rows blank. At the PVP boundary (`completeDuelStats`, applied in `opponentFighter` and again in

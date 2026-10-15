@@ -110,6 +110,7 @@ describe('character', () => {
     expect(normaliseSheet({ values: { totalCritChance: 12.5, rawCritChance: 30, evil: 3, totalAttack: NaN, totalHp: '9' }, enteredAt: 'x' })).toEqual({
       values: { totalCritChance: 12.5, rawCritChance: 30 },
       enteredAt: 'x',
+      inputsKey: null,
     });
     expect(normaliseSheet({ values: {} })).toBeNull();
     expect(normaliseSheet(null)).toBeNull();

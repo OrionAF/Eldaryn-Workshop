@@ -4,7 +4,7 @@ import {
   signalOf, verdictFor, aggregateVerdict, statDeltas, secondaryKey, NEUTRAL_PCT,
 } from './swap.js';
 import { fixtureCharacter } from '../build/fixtures.js';
-import { computePresetStats } from '../build/stats.js';
+import { computePresetStats, sheetInputsKey } from '../build/stats.js';
 import { buildFighter } from '../build/fighter.js';
 import { dpsVsDummy, clearMetricCache } from '../engine/metrics.js';
 
@@ -122,6 +122,25 @@ describe('prepareSwap', () => {
     const exact = buildFighter(clone, 'p1').stats;
     expect(Math.abs(r.after.stats.totalAttack / exact.totalAttack - 1)).toBeLessThan(0.002);
     expect(r.after.stats.totalCritChance).toBeCloseTo(exact.totalCritChance, 0);
+  });
+
+  it('an exact sheet anchors to the recompute exactly (the computed split rides in ctx.exact); a stale one recomputes', () => {
+    const c = warrior();
+    const truth = computePresetStats(c, 'p1').computed;
+    c.presets[0].sheet = { values: truth, enteredAt: 'now', inputsKey: sheetInputsKey(c, 'p1') };
+    const cand = upgrade();
+    const [r] = prepareSwap(c, { slot: 'WEAPON', item: cand, presetIds: ['p1'] });
+    expect(r.method).toBe('anchored');
+    const clone = structuredClone(c);
+    clone.presets[0].sheet = null;
+    clone.equipment.set1.items.WEAPON = cand;
+    const exact = buildFighter(clone, 'p1').stats;
+    expect(r.after.stats.totalAttack).toBe(exact.totalAttack);
+    expect(r.after.stats.totalHp).toBe(exact.totalHp);
+    c.presets[0].petId = null; // the build changed: the sheet is stale
+    const [s] = prepareSwap(c, { slot: 'WEAPON', item: cand, presetIds: ['p1'] });
+    expect(s.source).toBe('computed');
+    expect(s.method).toBe('recomputed');
   });
 
   it('anchors a sheet that differs from the pipeline: the difference rides along', () => {
