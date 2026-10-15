@@ -369,10 +369,13 @@ const ABORTED = Symbol('aborted');
  *   opponents?: Array<{id: string, name?: string, fighter: Object}>, nPvp?: number, seed?: number,
  *   precision?: 'quick'|'standard'|'thorough', maxN?: number,
  * }} o  `nSim` / `nSurvival` / `nPvp` are the first look of each comparison, not its size
- * @param {{signal?: AbortSignal, onProgress?: Function}} [ctx]  progress is {done, total} in whole metrics
+ * @param {{signal?: AbortSignal, onProgress?: Function, sampleRange?: Function}} [ctx]  progress is {done, total} in
+ *   whole metrics. `sampleRange(metric, fighter, from, to, {signal})` (tasks/dropCheck.js, over a worker pool) draws
+ *   fights from..to-1 of 'sim' | 'survival' | 'pvp:<id>' as the engine metric would, and promises a chunk
+ *   `{main: [samples], aborted}`; with it a side's samples are extended instead of re-drawn from 0.
  * @returns {Promise<{results: Array<Object>, aborted: boolean}>}  cancelling returns what finished
  */
-export async function runSwapMetrics(items, o = {}, { signal, onProgress } = {}) {
+export async function runSwapMetrics(items, o = {}, { signal, onProgress, sampleRange } = {}) {
   const {
     sim = true, seconds = 60, nSim = 32, enemy = null, survivalSeconds = 60, nSurvival = 200,
     opponents = [], nPvp = 64, seed = 1, precision = 'standard',
@@ -399,10 +402,23 @@ export async function runSwapMetrics(items, o = {}, { signal, onProgress } = {})
     store.set(key, r.samples);
     return r.samples;
   };
-  const pair = (item, idx, metric, runFor) => [
-    sampler(item.baseKey == null ? `${idx}|before|${metric}` : `${item.baseKey}|${metric}`, runFor(item.before)),
-    sampler(`${idx}|after|${metric}`, runFor(item.after)),
-  ];
+  const ranged = (key, metric, f) => async (n) => {
+    let have = store.get(key) ?? [];
+    if (have.length < n) {
+      const c = await sampleRange(metric, f, have.length, n, { signal });
+      have = have.concat(c.main[0] ?? []); // a new array: sets already handed out never change
+      store.set(key, have);
+      if (c.aborted || signal?.aborted) throw ABORTED;
+    }
+    return have.length === n ? have : have.slice(0, n);
+  };
+  const pair = (item, idx, metric, runFor) => {
+    const keys = [item.baseKey == null ? `${idx}|before|${metric}` : `${item.baseKey}|${metric}`, `${idx}|after|${metric}`];
+    const sides = [item.before, item.after];
+    return sampleRange
+      ? keys.map((k, j) => ranged(k, metric, sides[j]))
+      : keys.map((k, j) => sampler(k, runFor(sides[j])));
+  };
   const contrast = (kind, [getBefore, getAfter], n0) => contrastMetric(kind, getBefore, getAfter, { n0, maxN, alpha, precision, seed });
 
   try {

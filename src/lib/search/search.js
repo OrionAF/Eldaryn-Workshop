@@ -142,12 +142,22 @@ export function distanceOf(space, B, X) {
   return d;
 }
 
+/** What a pool worker needs to rebuild this run's target and objective (KERNELS.objective). */
+function poolSetup(prep) {
+  return { target: prep.target.spec, objective: prep.objective.spec, character: { opponents: prep.character.opponents ?? [] } };
+}
+
 // ---------------------------------------------------------------------------------------------
 // the run state: arms, sampling ledger, logged steps (checkpoint / resume), progress
 
 function createRun(prep, hooks) {
   const { space, objective, effort } = prep;
-  const sampler = createSampler(objective);
+  // With a worker pool (hooks.pool, simulation.md §Worker pool) the fights of a sample request are
+  // sharded over its workers; each worker builds this target and objective once from their specs.
+  const pool = hooks.pool ? hooks.pool('objective', poolSetup(prep)) : null;
+  const sampler = createSampler(pool
+    ? { ...objective, sample: (fighter, o) => pool.run({ fighter, seed: o.seed }, o.from, o.to, { signal: o.signal }) }
+    : objective);
   const lanes = Math.max(1, objective.lanes ?? 1);
   const signal = hooks.signal;
   const t0 = Date.now();
@@ -226,6 +236,26 @@ function createRun(prep, hooks) {
     return set;
   }
 
+  /**
+   * Draw the first n fights of several arms at once, so a pool can sample them in parallel before a
+   * sequence of logged steps reads them one by one. Only fights those steps will request anyway are
+   * drawn (n is their first look or fixed n), the ledger is untouched (fight counts stay logical) and
+   * errors are left for the step itself to raise. Skipped while a checkpoint is being replayed.
+   */
+  async function prefetch(list, stage, n) {
+    if (!pool || st.replay || signal?.aborted) return;
+    const todo = [];
+    for (const a of list) {
+      const ek = a && ekOf(a);
+      if (ek && sampler.held(ek, stage) < n && !todo.some((t) => t.ek === ek)) todo.push({ a, ek });
+    }
+    await Promise.all(todo.map(async ({ a, ek }) => {
+      try {
+        await sampler.get(ek, stage, space.fighterOf(a.cand), n, { signal });
+      } catch { /* the step raises it */ }
+    }));
+  }
+
   /** What a cancelled run can still show: the fights held, without simulating. */
   async function heldSet(a, stage) {
     const ek = ekOf(a);
@@ -281,8 +311,7 @@ function createRun(prep, hooks) {
   /** One paired contrast at a fixed n on a stage (logged). */
   function contrastAt(X, Y, stage, n, alpha) {
     return step('contrast', [stage.id, X.key, Y.key, n, alpha], async () => {
-      const x = await getSet(X, stage, n);
-      const y = await getSet(Y, stage, n);
+      const [x, y] = await Promise.all([getSet(X, stage, n), getSet(Y, stage, n)]);
       return contrastSets(objective, x, y, { ...effortFor(alpha), seed: stage.seed });
     });
   }
@@ -349,7 +378,7 @@ function createRun(prep, hooks) {
     };
   }
 
-  return { st, sampler, base, armOf, ekOf, getSet, heldSet, compare, contrastAt, raceArms, setPhase, progress, checkpoint, t0, signal };
+  return { st, sampler, base, armOf, ekOf, getSet, heldSet, prefetch, compare, contrastAt, raceArms, setPhase, progress, checkpoint, t0, signal, workers: pool?.size ?? 1 };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -791,7 +820,7 @@ export async function optimize(request, hooks = {}) {
 
     // minimise (S2)
     run.setPhase('minimise');
-    const ctx2 = { space, B, armOf, objective, compare: (X, Y, a) => run.compare(X, Y, S2, a) };
+    const ctx2 = { space, B, armOf, objective, compare: (X, Y, a) => run.compare(X, Y, S2, a), prefetch: (arms) => run.prefetch(arms, S2, effort.n0) };
     const minimised = new Map();
     for (const F of finals) {
       const m = await minimise(ctx2, F, { alpha: effort.alpha, alphaFinal: effort.alpha / finals.length });
@@ -808,6 +837,7 @@ export async function optimize(request, hooks = {}) {
 
     // confirm (S3): every row against the baseline, Holm across rows
     run.setPhase('confirm');
+    await run.prefetch([B, ...rowsDraft.map((r) => r.arm)], S3, effort.n0);
     const vs = await holmSequential(rowsDraft, effort.alpha, (r, a) => run.compare(r.arm, B, S3, a));
     rowsDraft.forEach((r, i) => { r.vs = vs[i]; });
 
@@ -817,6 +847,7 @@ export async function optimize(request, hooks = {}) {
       space, B, armOf, objective,
       contrastAt: (X, Y, n, a) => run.contrastAt(X, Y, S3, n, a),
       getSet: (a, n) => run.getSet(a, S3, n),
+      prefetch: (arms, n) => run.prefetch(arms, S3, n),
     };
     for (const r of rowsDraft) {
       if (r.vs.verdict === 'worse') continue;
@@ -875,7 +906,7 @@ export async function optimize(request, hooks = {}) {
       warnings: dedupeWarnings(warnings, st),
       baselineViolations: [],
       checkpoint: null,
-      stats: { ms: Date.now() - t0, workers: 1 },
+      stats: { ms: Date.now() - t0, workers: run.workers },
     };
     return result;
   } catch (e) {
@@ -904,7 +935,7 @@ export async function optimize(request, hooks = {}) {
       warnings: dedupeWarnings(warnings, st),
       baselineViolations: [],
       checkpoint: { jobId, phase, resumable: true },
-      stats: { ms: Date.now() - t0, workers: 1 },
+      stats: { ms: Date.now() - t0, workers: run.workers },
     };
   }
 }
@@ -977,12 +1008,14 @@ export async function optimizeMore(request, hooks = {}) {
   try {
     run.setPhase('confirm');
     const arms = picked.map((x) => armOf(x.candidate));
+    await run.prefetch([B, ...arms], S4, targetN);
     const vs = await holmFixed(arms.map((a) => [a, B]), effort.alpha, (X, Y, n, a) => run.contrastAt(X, Y, S4, n, a), targetN);
     run.setPhase('attribute');
     const ctx = {
       space, B, armOf, objective,
       contrastAt: (X, Y, n, a) => run.contrastAt(X, Y, S4, n, a),
       getSet: (a, n) => run.getSet(a, S4, n),
+      prefetch: (list, n) => run.prefetch(list, S4, n),
     };
     const baseSet = await run.getSet(B, S4, targetN);
     const updated = new Map();
