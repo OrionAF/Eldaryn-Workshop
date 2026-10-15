@@ -106,12 +106,28 @@ export function createSampler(objective) {
 export const WIN_RATE_DELTA = 0.02;
 
 function verdictOf(objective, x, y, o, alpha, final) {
-  const c = objective.contrast(x, y, { alpha, seed: o.seed, B: o.B });
-  const hib = c.higherIsBetter ?? objective.higherIsBetter;
-  const zone = c.basis === 'winRate'
+  const main = objective.contrast(x, y, { alpha, seed: o.seed, B: o.B });
+  const zoneOf = (c) => (c.basis === 'winRate'
     ? o.deltaWinRate ?? WIN_RATE_DELTA
-    : deltaAbs(o.delta ?? 0, o.deltaKind ?? objective.deltaKind, c.ref);
-  const verdict = decide(c, zone, hib) ?? (final ? 'unresolved' : null);
+    : deltaAbs(o.delta ?? 0, o.deltaKind ?? objective.deltaKind, c.ref));
+  let c = main;
+  let hib = c.higherIsBetter ?? objective.higherIsBetter;
+  let zone = zoneOf(c);
+  let verdict = decide(c, zone, hib);
+  // a lexicographic objective (win rate, then its margin): the second criterion decides only once the
+  // first is equivalent; while it is open the comparison continues, and at maxN the tie stands
+  if (verdict === 'equivalent' && main.then) {
+    const t = main.then;
+    const tz = zoneOf(t);
+    const tv = decide(t, tz, t.higherIsBetter ?? true);
+    if (tv === 'better' || tv === 'worse') {
+      c = { ...t, winRate: main.winRate };
+      hib = t.higherIsBetter ?? true;
+      zone = tz;
+      verdict = tv;
+    } else if (tv == null && !final) return null;
+  }
+  verdict ??= final ? 'unresolved' : null;
   if (!verdict) return null;
   return {
     delta: c.delta, lo: c.lo, hi: c.hi,
@@ -120,6 +136,7 @@ function verdictOf(objective, x, y, o, alpha, final) {
     verdict, significant: verdict === 'better' || verdict === 'worse',
     nNeeded: verdict === 'unresolved' ? nNeeded({ sd: c.sd, delta: c.delta, deltaMin: zone, alpha }) : null,
     p: c.p ?? null, sd: c.sd ?? null, zone,
+    ...(c.winRate ? { winRate: c.winRate } : {}),
   };
 }
 
