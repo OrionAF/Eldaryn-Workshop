@@ -396,6 +396,11 @@ Every resolved target carries its engine `mode` (`PVE_MODES` key, or `pvp`), the
 default off) and `fidelity`: `server-model` when the fight is server-run (dungeon, raid, Oblivion,
 World Boss, Fortress boss, Celestial Trial, PVP), else `client`.
 
+The dungeon mode is checked against a server dungeon log (Game/combat-pve.md §21) by
+`engine/pve/dungeonReplay.js`: rule by rule (clocks, the spell schedule, sizes, the HP and shield chains
+rebuilt between attack rows), on the log and on the app's own runs of the same step
+(`src/lib/__fixtures__/real/dungeonReplay.test.js`).
+
 The Celestial Trial (`engine/pve/celestial.js`, mode `celestial`, NORMAL and HARD) is `server-model`
 with a stronger footing than the other server-run modes: its rules are read from five server logs
 (Game/combat-pve.md §20) and a replay check reproduces all five tick by tick

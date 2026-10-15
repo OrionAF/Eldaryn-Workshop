@@ -328,6 +328,15 @@ runs.
 - Commit the log as a fixture next to `arena-fight-warrior.json`. It holds fight values only, no
   player identifiers; check before committing.
 
+**Status: done on `rebuild2/PVEREPLAY` (2026-10-15), not merged.** `engine/pve/dungeonReplay.js` checks a
+dungeon step log rule by rule (16 rules: grid, outcome, mobs, transitions, both swing clocks, the DAMAGE
+spell schedule, spell sizes and vamp heals, hit sizes, mob HP, regen, and the HP and shield chains rebuilt
+between attack rows, plus the shield cap). Every rule passes on the real log with the imported Mystic and
+the catalogue's dungeon_4 step 8, and on the app's own runs of that step; planted errors (a shifted swing, a
+late heal, a shield over its cap, a wrong hit size, ...) each fail. The app's engine agreed with the log on
+every point, so no engine rule changed. Findings: Game/combat-pve.md §21. Open: the spell-resist path (the
+mobs have DR 0) and the per-row shield stamp (§21 [UNRESOLVED]).
+
 ## 5. Optimiser: let it change more than the loadout
 
 **Ask.** Today the optimiser only switches things the user owns (sets, sigils, relics, pet, mount,
