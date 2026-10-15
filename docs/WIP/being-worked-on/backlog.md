@@ -5,7 +5,7 @@
 | Order | Item | Size | Status |
 |---|---|---|---|
 | 1 | §10 Push | XS | Merging (queue run wf_2c43327e-8d7) |
-| 2 | §13 Glyph dominance pruning | S | Building, alongside the queue (run wf_f4b445f6-df1) |
+| 2 | §13 Glyph dominance pruning | S | Done (slice G1); merge pending |
 | 3 | §10 Fortress boss shield fix | S | Queued: review and merge |
 | 4 | §12 Highest chance to win | M | Queued: resumes from branch `rebuild2/W3-wip` |
 | 5 | §15 Fortress boss fight from the server log | M | Queued |
@@ -80,7 +80,7 @@ express that. See §11.
 
 For the user's Sentinel this cuts about 378 minor-glyph rows per visit to about 80. It replaces the earlier single-socket idea (branch `rebuild2/S1-wip`, now dropped). It follows §14's measured result: mount pruning alone cut the mounts from 11 to 2, but the Fortress run still did not finish in 10 minutes.
 
-**Status:** building (slice G1).
+**Status:** done (slice G1, branch `rebuild2/G1-r1`). Measured on the user's Sentinel (L85, active preset, 13 usable minors): the `minorGlyphs` domain fell from 377 rows to 78 (378 to 78 counting the baseline). The `majorGlyphs` domain stays at 3 there, since only a few majors act for the spec and running sigils. All 42 major tables are monotone in rarity (a catalogue test checks it), so major pruning is exact for every type. The mount inner ascent and the spec block use the same domains; nothing else enumerates glyph subsets.
 
 ## 12. PVE goal: highest chance to win
 
