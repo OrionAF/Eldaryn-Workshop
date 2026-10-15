@@ -9,13 +9,15 @@ import { normaliseCalibration } from './calibration.js';
 
 export const DENSITIES = ['comfortable', 'compact'];
 export const EFFORTS = ['quick', 'standard', 'thorough'];
+/** Drop Check's "Compare against": every gear set, or Set 1 only (features/swap.js DROP_SET_SCOPES). */
+export const DROP_SETS = ['all', 'set1'];
 
 /**
  * Preferences (G6): density, reduced motion, the effort tools start with (plan Q4: Standard), and the
  * CPU profile that sizes a job's worker pool (tasks/cpuProfile.js workersFor), and the last speed calibration
- * (calibration.js, null until the user runs it).
+ * (calibration.js, null until the user runs it), and which gear sets Drop Check compares a drop against.
  */
-export const defaultPrefs = () => ({ density: 'comfortable', reduceMotion: false, defaultEffort: 'standard', cpuProfile: DEFAULT_CPU_PROFILE, calibration: null });
+export const defaultPrefs = () => ({ density: 'comfortable', reduceMotion: false, defaultEffort: 'standard', cpuProfile: DEFAULT_CPU_PROFILE, calibration: null, dropSets: 'all' });
 
 const defaults = () => ({ v: 1, lastHash: null, areaLast: {}, optimiserSetups: {}, prefs: defaultPrefs() });
 
@@ -28,11 +30,12 @@ export function normalisePrefs(raw) {
     if (EFFORTS.includes(raw.defaultEffort)) out.defaultEffort = raw.defaultEffort;
     if (CPU_PROFILES.includes(raw.cpuProfile)) out.cpuProfile = raw.cpuProfile;
     out.calibration = normaliseCalibration(raw.calibration);
+    if (DROP_SETS.includes(raw.dropSets)) out.dropSets = raw.dropSets;
   }
   return out;
 }
 
-/** @returns {{v:1, lastHash:string|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string, calibration:object|null}}} */
+/** @returns {{v:1, lastHash:string|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string, calibration:object|null, dropSets:'all'|'set1'}}} */
 export function loadUi() {
   const ui = defaults();
   try {

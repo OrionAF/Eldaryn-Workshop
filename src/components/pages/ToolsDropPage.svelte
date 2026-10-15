@@ -19,13 +19,14 @@
    * first. Run more raises the precision step (features/dropView.js runMoreRequest).
    */
   import { untrack } from 'svelte';
-  import { prefs } from '../../lib/prefs.svelte.js';
+  import { prefs, setPrefs } from '../../lib/prefs.svelte.js';
   import { importFlow, takeHandoff } from '../../lib/importFlow.svelte.js';
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { go } from '../../lib/router.svelte.js';
   import { formatHash } from '../../lib/routes.js';
   import { jobsStore, startJob, cancelJob, jobSignature, isStale } from '../../lib/jobs.svelte.js';
-  import { prepareSwap, buildEnemy, dropOpponents, DROP_PRECISION } from '../../lib/features/swap.js';
+  import { prepareSwap, buildEnemy, dropOpponents, setInScope, DROP_PRECISION } from '../../lib/features/swap.js';
+  import { equipSetKey } from '../../lib/build/presetInputs.js';
   import { dropFights } from '../../lib/calibration.js';
   import RunEstimate from '../ui/RunEstimate.svelte';
   import { dropHasStats } from '../../lib/model/drop.js';
@@ -69,9 +70,14 @@
     { value: 'standard', label: 'Standard', sub: '0.5%' },
     { value: 'thorough', label: 'Thorough', sub: '0.25%' },
   ];
+  // "Compare against" (a per-device preference): Set 1 only skips the presets wearing Set 2 entirely.
+  const SETS = [
+    { value: 'all', label: 'Both sets' },
+    { value: 'set1', label: 'Set 1 only' },
+  ];
   const TABS = $derived([
     { id: 'single', label: 'Single drop' },
-    { id: 'bag', label: 'Loot bag', count: bag ? bag.entries.length : undefined },
+    { id: 'bag', label: 'Loot bag', count: bag ? liveCount : undefined },
   ]);
 
   const character = $derived(rosterStore.current);
@@ -120,7 +126,9 @@
   let precision = $state(untrack(() => prefs.defaultEffort));
   let maxNOverride = $state(null);
 
-  const scopeId = $derived(scope === 'all' || character.presets.some((p) => p.id === scope) ? scope : 'all');
+  const dropSets = $derived(prefs.dropSets);
+  const scopedPresets = $derived(character.presets.filter((p) => setInScope(equipSetKey(p, realm), dropSets)));
+  const scopeId = $derived(scope === 'all' || scopedPresets.some((p) => p.id === scope) ? scope : 'all');
   const enemyEffective = $derived(
     realm === 'oblivion'
       ? enemySpec.kind === 'oblivion' ? enemySpec : { kind: 'oblivion', floor: 10 }
@@ -140,7 +148,7 @@
   const hasStats = $derived(drop ? dropHasStats(drop.item) : false);
   const rows = $derived(
     drop && hasStats
-      ? prepareSwap(character, { slot: drop.slot, item: drop.item, realm, presetIds: scopeId === 'all' ? null : [scopeId] })
+      ? prepareSwap(character, { slot: drop.slot, item: drop.item, realm, presetIds: scopeId === 'all' ? null : [scopeId], sets: dropSets })
       : [],
   );
   const request = $derived.by(() => {
@@ -204,8 +212,10 @@
   function applyTo(setKey) {
     const sets = singleCards.find((c) => c.setKey === setKey);
     const label = setLabelOf(setKey);
-    if (rosterStore.applyDropToSet(setKey)) setStatus?.(`Applied to ${label}: ${sets?.presetNames.length ?? 0} preset(s) updated`);
+    const ok = rosterStore.applyDropToSet(setKey);
+    if (ok) setStatus?.(`Applied to ${label}: ${sets?.presetNames.length ?? 0} preset(s) updated`);
     else setStatus?.(`Could not apply to ${label}`);
+    return ok;
   }
 
   const silhouetteSet = $derived(
@@ -229,11 +239,15 @@
   const kept = () => keptBags.get(character?.id) ?? null;
 
   const bagResults = $derived(bagJob?.result?.results ?? []);
-  const ranked = $derived(bag ? rankEntries(bag.entries, bag.rows, bag.offsets, bagResults) : []);
+  // Items applied to a set leave the list (view state, kept with the bag); the job's results stay indexed by import order.
+  const applied = $derived(new Set(bag?.applied ?? []));
+  const ranked = $derived(bag ? rankEntries(bag.entries, bag.rows, bag.offsets, bagResults).filter((r) => !applied.has(r.entry.key)) : []);
+  const liveCount = $derived(bag ? bag.entries.filter((e) => !applied.has(e.key)).length : 0);
+  const liveBag = () => ({ ...bag, entries: bag.entries.filter((e) => !applied.has(e.key)) });
   const counts = $derived(tally(ranked.map((r) => r.best), bag?.skipped ?? []));
-  const bagStale = $derived(!!bagJob && isStale(bagJob));
+  const bagStale = $derived(!!bagJob && (isStale(bagJob) || bag.sets !== dropSets));
   /** The next loot-bag run's request (null before an import), for the run-time estimate. */
-  const bagRequest = $derived(bag && character ? prepareBatch(character, bag.entries).request : null);
+  const bagRequest = $derived(bag && character ? prepareBatch(character, liveBag().entries, { sets: dropSets }).request : null);
   const bagBusy = $derived(bagJob?.status === 'queued' || bagJob?.status === 'running');
   const bagRowState = $derived(stateOf(bagJob));
 
@@ -255,12 +269,13 @@
   }
 
   function runBatch(base, { precision: withPrecision = precision, maxN = null } = {}) {
-    const prep = prepareBatch(character, base.entries);
+    const sets = dropSets;
+    const prep = prepareBatch(character, base.entries, { sets });
     const key = character.id;
     let jobId = null;
     if (prep.request) {
       const req = { ...prep.request, precision: withPrecision, ...(maxN ? { maxN } : {}) };
-      const entryKeys = base.entries.map((e) => e.key).join(',');
+      const entryKeys = `${sets}|${base.entries.map((e) => e.key).join(',')}`;
       jobId = startJob({
         tool: 'drop-bag',
         title: 'Drop Check · Loot bag',
@@ -273,7 +288,7 @@
           tallyChips(tally(rankEntries(base.entries, prep.rows, prep.offsets, res?.results ?? []).map((r) => r.best), base.skipped)),
       });
     }
-    keptBags.set(key, { entries: base.entries, skipped: base.skipped, source: base.source, rows: prep.rows, offsets: prep.offsets, jobId, precision: withPrecision, maxN });
+    keptBags.set(key, { entries: base.entries, skipped: base.skipped, source: base.source, rows: prep.rows, offsets: prep.offsets, jobId, precision: withPrecision, maxN, sets });
     bump += 1;
   }
 
@@ -297,7 +312,7 @@
     const next = bagNext();
     if (!next) return;
     precision = next.precision;
-    runBatch(bag, { precision: next.precision, maxN: next.maxN ?? null });
+    runBatch(liveBag(), { precision: next.precision, maxN: next.maxN ?? null });
   }
 
   function loadFromBag(entry) {
@@ -307,11 +322,15 @@
     setStatus?.(`Loaded ${entry.name} into Single drop`);
   }
 
-  /** Apply a loot-bag item without leaving the bag: it becomes the saved drop, then goes into the set. */
+  /** Apply a loot-bag item without leaving the bag: it becomes the saved drop, goes into the set, and leaves the list. */
   function applyEntry(entry, setKey) {
     rosterStore.startDrop(entry.slot, entry.realm);
     rosterStore.setDropItem(entry.item);
-    applyTo(setKey);
+    if (!applyTo(setKey)) return;
+    const cur = keptBags.get(character.id);
+    if (cur) keptBags.set(character.id, { ...cur, applied: [...(cur.applied ?? []), entry.key] });
+    if (expandedKey === entry.key) expandedKey = null;
+    bump += 1;
   }
 
   const cardsOf = (i) => setCards(bag.rows[i], entryResults(bag.offsets, bag.rows, i, bagResults));
@@ -374,10 +393,16 @@
           </Panel>
 
           <Panel title="Measure" scope="tool">
+            {#if realm === 'base'}
+              <div class="block">
+                <span class="cap-label">Compare against</span>
+                <SegmentedControl label="Compare against" value={dropSets} options={SETS} onchange={(v) => setPrefs({ dropSets: v })} />
+              </div>
+            {/if}
             <Select
               label="Presets"
               value={scopeId}
-              options={[{ value: 'all', label: 'All presets' }, ...character.presets.map((p) => ({ value: p.id, label: p.name }))]}
+              options={[{ value: 'all', label: 'All presets' }, ...scopedPresets.map((p) => ({ value: p.id, label: p.name }))]}
               onchange={(v) => (scope = v)}
             />
             <Checkbox bind:checked={simOn} label={`Simulated DPS (${SECONDS} s dummy)`} />
@@ -413,7 +438,7 @@
               {#if request}<RunEstimate bound="upper" fights={dropFights(request, request.maxN ?? DROP_PRECISION[precision].maxN)} />{/if}
             </div>
             {#snippet footer()}
-              <Button variant="primary" disabled={!request || singleBusy} reason={!hasStats ? 'Enter at least one stat for the drop' : !request ? 'Choose a metric to measure' : ''} loading={singleBusy} busyLabel="Checking…" onclick={() => checkDrop()}>
+              <Button variant="primary" disabled={!request || singleBusy} reason={!hasStats ? 'Enter at least one stat for the drop' : !rows.length ? 'No preset wears Set 1' : !request ? 'Choose a metric to measure' : ''} loading={singleBusy} busyLabel="Checking…" onclick={() => checkDrop()}>
                 Check drop
               </Button>
               {#if singleBusy}<Button variant="ghost" onclick={() => cancelJob(singleJob.id)}>Cancel</Button>{/if}
@@ -440,7 +465,9 @@
               {#if !singleJob}
                 <Banner variant="estimate" lead="Not simulated yet.">The figures below are instant auto-attack estimates. Press Check drop for a verdict.</Banner>
               {/if}
-              {#if !anySheet}
+              {#if !rows.length}
+                <Banner variant="info" lead="Nothing to compare.">No preset wears Set 1. Switch Compare against to Both sets, or give a preset Set 1.</Banner>
+              {:else if !anySheet}
                 <p class="hint">
                   These presets have no in-game stat sheet, so numbers come from the calculated totals.
                   <button type="button" class="link" onclick={() => onNavigate('builds/sheet')}>Enter a sheet</button> for exact anchoring.
@@ -467,10 +494,14 @@
       <div id="dc-panel-bag" role="tabpanel" class="stack">
         <Panel title="Loot bag" scope="tool">
           <p class="hint">
-            Every item of an imported loot bag (or a full game profile) is tried in every gear set. Items of another class are skipped.
+            Every item of an imported loot bag (or a full game profile) is tried in {dropSets === 'set1' ? 'Set 1 only' : 'every gear set'}. Items of another class are skipped.
           </p>
           <ImportPointer what="a loot bag" />
           {#if batchError}<Banner variant="error">{batchError}</Banner>{/if}
+          <div class="row">
+            <span class="cap-label">Compare against</span>
+            <SegmentedControl label="Compare against" value={dropSets} options={SETS} onchange={(v) => setPrefs({ dropSets: v })} />
+          </div>
           <div class="row">
             <span class="cap-label">Effort</span>
             <SegmentedControl label="Effort" bind:value={precision} options={EFFORT} />
@@ -498,10 +529,13 @@
               {#if bagBusy}
                 <Button variant="ghost" size="small" onclick={() => cancelJob(bagJob.id)}>Cancel</Button>
               {:else}
-                <Button variant="secondary" size="small" onclick={() => runBatch(bag)}>Check again</Button>
+                <Button variant="secondary" size="small" disabled={!liveCount} onclick={() => runBatch(liveBag())}>Check again</Button>
               {/if}
             {/snippet}
             {#if bagJob}<RunProgress segments={segmentsOf(bagJob)} />{/if}
+            {#if applied.size}
+              <p class="hint" data-testid="bag-applied">{applied.size} applied item{applied.size === 1 ? '' : 's'} removed from the list.{liveCount ? ' Check again to judge the rest against your new gear.' : ''}</p>
+            {/if}
             <div class="summary" aria-label="Summary">
               <span class="v up"><span aria-hidden="true">▲</span> <span class="num">{counts.upgrade}</span> upgrade</span>
               <span class="v"><span aria-hidden="true">◆</span> <span class="num">{counts.sidegrade}</span> sidegrade</span>
@@ -517,9 +551,9 @@
               <Banner variant="info" lead="Cancelled.">Unfinished drops show the estimate only.</Banner>
             {/if}
             {#if bagStale}
-              <Banner variant="warn" lead="Stale.">Your gear or presets changed since this check. Check again for current verdicts.</Banner>
+              <Banner variant="warn" lead="Stale.">Your gear, presets or the gear sets compared changed since this check. Check again for current verdicts.</Banner>
             {/if}
-            <p class="hint">Simulated DPS only: defence is not measured. A set's verdict covers every preset that wears it.</p>
+            <p class="hint">Simulated DPS only: defence is not measured. {bag.sets === 'set1' ? 'Compared against Set 1 only.' : 'Each drop shows its best gear set.'} A set's verdict covers every preset that wears it.</p>
 
             <div class="tbl" role="table" aria-label="Drops: change in DPS, 95% intervals">
               <div class="trow thead" role="row">
@@ -571,7 +605,7 @@
                 {#if open}
                   <div class="expand" id="dc-x-{i}" role="region" aria-label="{e.name}: verdict by gear set">
                     <div class="cards">
-                      {#each cardsOf(i) as c (c.setKey)}
+                      {#each cardsOf(r.order) as c (c.setKey)}
                         <DropSetCard
                           card={c}
                           phase={bagRowState}

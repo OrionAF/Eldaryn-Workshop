@@ -132,11 +132,18 @@ function withItem(character, setKey, slot, item) {
 }
 
 /**
+ * Which equipment sets Drop Check compares a drop against: 'all', or 'set1' (a base-realm drop is tried only
+ * in Set 1, so presets wearing Set 2 are neither simulated nor judged). Oblivion has one set either way.
+ */
+export const DROP_SET_SCOPES = ['all', 'set1'];
+export const setInScope = (setKey, sets = 'all') => sets !== 'set1' || setKey !== 'set2';
+
+/**
  * Everything the screen shows before any simulation, per preset.
  *
  * @param {Object} character  a normalised v2 Character
- * @param {{slot: string, item: Object, realm?: 'base'|'oblivion', presetIds?: string[]|null}} drop
- *   `presetIds` null or omitted means every preset
+ * @param {{slot: string, item: Object, realm?: 'base'|'oblivion', presetIds?: string[]|null, sets?: 'all'|'set1'}} drop
+ *   `presetIds` null or omitted means every preset; `sets` drops the presets whose set is out of scope (setInScope)
  * @returns {Array<{
  *   presetId: string, name: string, setKey: 'set1'|'set2'|'oblivion', current: Object|null,
  *   source: 'sheet'|'computed', method: 'anchored'|'recomputed', approx: boolean, errors: Object<string, number>,
@@ -145,13 +152,14 @@ function withItem(character, setKey, slot, item) {
  *   closed: {before: number, after: number, delta: number, pct: number|null},
  * }>}  `before` / `after` are Fighters (plain data)
  */
-export function prepareSwap(character, { slot, item, realm = 'base', presetIds = null }) {
+export function prepareSwap(character, { slot, item, realm = 'base', presetIds = null, sets = 'all' }) {
   const ids = presetIds ?? character.presets.map((p) => p.id);
   const out = [];
   for (const presetId of ids) {
     const preset = character.presets.find((p) => p.id === presetId);
     if (!preset) continue;
     const setKey = equipSetKey(preset, realm);
+    if (!setInScope(setKey, sets)) continue;
     const current = character.equipment?.[setKey]?.items?.[slot] ?? null;
     const rawDelta = itemRawDelta(current, item);
     const res = computePresetStats(character, presetId, { realm });

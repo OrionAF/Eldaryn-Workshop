@@ -11,7 +11,7 @@ describe('normalisePrefs', () => {
   it('falls back per field and ignores junk', () => {
     expect(normalisePrefs(null)).toEqual(defaultPrefs());
     expect(normalisePrefs({ density: 'huge', reduceMotion: 'yes', defaultEffort: 'warp', cpuProfile: 'turbo' })).toEqual(defaultPrefs());
-    expect(normalisePrefs({ density: 'compact', defaultEffort: 'thorough' })).toEqual({ density: 'compact', reduceMotion: false, defaultEffort: 'thorough', cpuProfile: 'balanced', calibration: null });
+    expect(normalisePrefs({ density: 'compact', defaultEffort: 'thorough' })).toEqual({ density: 'compact', reduceMotion: false, defaultEffort: 'thorough', cpuProfile: 'balanced', calibration: null, dropSets: 'all' });
     expect(normalisePrefs({ cpuProfile: 'eco' }).cpuProfile).toBe('eco');
   });
   it('the default effort is Standard (plan Q4)', () => {
@@ -22,6 +22,20 @@ describe('normalisePrefs', () => {
   });
 });
 
+describe('Drop Check sets to compare against', () => {
+  it('defaults to both sets and keeps only a known value', () => {
+    expect(defaultPrefs().dropSets).toBe('all');
+    expect(normalisePrefs({ dropSets: 'set1' }).dropSets).toBe('set1');
+    expect(normalisePrefs({ dropSets: 'set2' }).dropSets).toBe('all');
+  });
+  it('is remembered on this device', () => {
+    setPrefs({ dropSets: 'set1' });
+    expect(prefs.dropSets).toBe('set1');
+    expect(loadUi().prefs.dropSets).toBe('set1');
+    setPrefs({ dropSets: 'all' });
+  });
+});
+
 describe('stored with the UI state, per device', () => {
   it('saveUi merges prefs field by field and keeps the rest of the UI key', () => {
     saveUi({ lastHash: '#/settings' });
@@ -29,7 +43,7 @@ describe('stored with the UI state, per device', () => {
     saveUi({ prefs: { reduceMotion: true } });
     const ui = loadUi();
     expect(ui.lastHash).toBe('#/settings');
-    expect(ui.prefs).toEqual({ density: 'compact', reduceMotion: true, defaultEffort: 'standard', cpuProfile: 'balanced', calibration: null });
+    expect(ui.prefs).toEqual({ density: 'compact', reduceMotion: true, defaultEffort: 'standard', cpuProfile: 'balanced', calibration: null, dropSets: 'all' });
   });
   it('a broken stored value yields the defaults', () => {
     localStorage.setItem(UI_KEY, '{"prefs": 7}');

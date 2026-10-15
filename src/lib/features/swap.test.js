@@ -90,6 +90,11 @@ describe('prepareSwap', () => {
     expect(groupBySet(rows).map((g) => g.setKey)).toEqual(['set1', 'set2']);
   });
 
+  it('Set 1 only leaves out the presets wearing Set 2', () => {
+    const rows = prepareSwap(warrior(), { slot: 'WEAPON', item: upgrade(), sets: 'set1' });
+    expect(rows.map((r) => [r.presetId, r.setKey])).toEqual([['p1', 'set1']]);
+  });
+
   it('can be limited to chosen presets', () => {
     const rows = prepareSwap(warrior(), { slot: 'WEAPON', item: upgrade(), presetIds: ['p2', 'nope'] });
     expect(rows.map((r) => r.presetId)).toEqual(['p2']);

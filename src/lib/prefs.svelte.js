@@ -28,6 +28,9 @@ export const prefs = {
   get calibration() {
     return state.calibration;
   },
+  get dropSets() {
+    return state.dropSets;
+  },
 };
 
 /** Change one or more preferences, apply them, and remember them on this device. */
