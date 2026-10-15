@@ -9,6 +9,7 @@
   import { PVE_CHAPTERS, PVE_HARD_CHAPTERS, PVE_PROGRESS_CONSTANTS, chapterLabel } from '../../lib/game/combatPve.js';
   import { RAIDS } from '../../lib/game/fortress.js';
   import { CLASSIC_DUNGEONS, OBLIVION_FLOORS } from '../../lib/game/pveContent.js';
+  import Select from '../ui/Select.svelte';
 
   let { value, realm = 'base', playerLevel = null, onchange } = $props();
 
@@ -20,8 +21,19 @@
   );
   const kind = $derived(kinds.some((k) => k.id === value?.kind) ? value.kind : kinds[0].id);
 
-  const chapters = [...PVE_CHAPTERS, ...PVE_HARD_CHAPTERS].map((c) => ({ chapter: c.chapter, label: chapterLabel(c.chapter) }));
-  const steps = Array.from({ length: 8 }, (_, i) => i + 1);
+  const chapterOptions = [...PVE_CHAPTERS, ...PVE_HARD_CHAPTERS].map((c) => ({ value: c.chapter, label: chapterLabel(c.chapter) }));
+  const numbered = (list) => list.map((n) => ({ value: n, label: String(n) }));
+  const levelOptions = numbered(levels);
+  const stepOptions = numbered(Array.from({ length: 8 }, (_, i) => i + 1));
+  const kindOptions = $derived(kinds.map((k) => ({ value: k.id, label: k.label })));
+  const dungeonOptions = CLASSIC_DUNGEONS.map((d) => ({ value: d.id, label: d.name }));
+  const raidOptions = $derived(
+    RAIDS.map((r) => ({
+      value: r.id,
+      label: `${r.name}${playerLevel != null && playerLevel < r.requiredPlayerLevel ? ` (needs level ${r.requiredPlayerLevel})` : ''}`,
+    })),
+  );
+  const floorOptions = OBLIVION_FLOORS.map((f) => ({ value: f.floor, label: String(f.floor) }));
 
   function pickKind(k) {
     if (k === 'campaign') onchange({ kind: 'campaign', chapter: 1, level: 1 });
@@ -33,102 +45,22 @@
 </script>
 
 <div class="enemy-picker">
-  <label class="field">
-    <span class="micro-label">Target</span>
-    <select aria-label="Enemy kind" value={kind} onchange={(e) => pickKind(e.currentTarget.value)}>
-      {#each kinds as k (k.id)}
-        <option value={k.id}>{k.label}</option>
-      {/each}
-    </select>
-  </label>
+  <Select label="Target" options={kindOptions} value={kind} onchange={pickKind} />
 
   {#if kind === 'campaign'}
-    <label class="field">
-      <span class="micro-label">Chapter</span>
-      <select aria-label="Chapter" value={value.chapter} onchange={(e) => patch({ chapter: Number(e.currentTarget.value) })}>
-        {#each chapters as c (c.chapter)}
-          <option value={c.chapter}>{c.label}</option>
-        {/each}
-      </select>
-    </label>
-    <label class="field">
-      <span class="micro-label">Level</span>
-      <select aria-label="Level" value={value.level} onchange={(e) => patch({ level: Number(e.currentTarget.value) })}>
-        {#each levels as l (l)}
-          <option value={l}>{l}</option>
-        {/each}
-      </select>
-    </label>
+    <Select label="Chapter" options={chapterOptions} value={value.chapter} onchange={(v) => patch({ chapter: Number(v) })} />
+    <Select label="Level" options={levelOptions} value={value.level} onchange={(v) => patch({ level: Number(v) })} />
   {:else if kind === 'dungeon'}
-    <label class="field">
-      <span class="micro-label">Dungeon</span>
-      <select aria-label="Dungeon" value={value.id} onchange={(e) => patch({ id: e.currentTarget.value })}>
-        {#each CLASSIC_DUNGEONS as d (d.id)}
-          <option value={d.id}>{d.name}</option>
-        {/each}
-      </select>
-    </label>
-    <label class="field">
-      <span class="micro-label">Step</span>
-      <select aria-label="Step" value={value.step} onchange={(e) => patch({ step: Number(e.currentTarget.value) })}>
-        {#each steps as s (s)}
-          <option value={s}>{s}</option>
-        {/each}
-      </select>
-    </label>
+    <Select label="Dungeon" options={dungeonOptions} value={value.id} onchange={(v) => patch({ id: v })} />
+    <Select label="Step" options={stepOptions} value={value.step} onchange={(v) => patch({ step: Number(v) })} />
   {:else if kind === 'raid'}
-    <label class="field">
-      <span class="micro-label">Village raid</span>
-      <select aria-label="Village raid" value={value.id} onchange={(e) => patch({ id: e.currentTarget.value })}>
-        {#each RAIDS as r (r.id)}
-          <option value={r.id}>{r.name}{playerLevel != null && playerLevel < r.requiredPlayerLevel ? ` (needs level ${r.requiredPlayerLevel})` : ''}</option>
-        {/each}
-      </select>
-    </label>
-    <label class="field">
-      <span class="micro-label">Step</span>
-      <select aria-label="Step" value={value.step} onchange={(e) => patch({ step: Number(e.currentTarget.value) })}>
-        {#each steps as s (s)}
-          <option value={s}>{s}</option>
-        {/each}
-      </select>
-    </label>
+    <Select label="Village raid" options={raidOptions} value={value.id} onchange={(v) => patch({ id: v })} />
+    <Select label="Step" options={stepOptions} value={value.step} onchange={(v) => patch({ step: Number(v) })} />
   {:else}
-    <label class="field">
-      <span class="micro-label">Floor</span>
-      <select aria-label="Floor" value={value.floor} onchange={(e) => patch({ floor: Number(e.currentTarget.value) })}>
-        {#each OBLIVION_FLOORS as f (f.floor)}
-          <option value={f.floor}>{f.floor}</option>
-        {/each}
-      </select>
-    </label>
+    <Select label="Floor" options={floorOptions} value={value.floor} onchange={(v) => patch({ floor: Number(v) })} />
   {/if}
 </div>
 
 <style>
-  .enemy-picker {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-  }
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-  }
-  select {
-    background: var(--color-field);
-    color: var(--color-ink);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-field);
-    padding: 7px 10px;
-    font-size: 13px;
-    max-width: 100%;
-  }
-  @media (max-width: 700px) {
-    select {
-      min-height: 44px;
-    }
-  }
+  .enemy-picker { display: grid; gap: var(--sp-3); min-width: 0; }
 </style>

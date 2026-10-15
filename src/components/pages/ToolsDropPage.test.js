@@ -3,6 +3,8 @@ import { mount, unmount, flushSync } from 'svelte';
 import ToolsDropPage from './ToolsDropPage.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
 import { jobsStore, __resetJobs } from '../../lib/jobs.svelte.js';
+import { loadImportText, confirmImport, resetImportFlow } from '../../lib/importFlow.svelte.js';
+import { setPrefs, applyPrefs } from '../../lib/prefs.svelte.js';
 import lootBag from '../../lib/__fixtures__/real/drop-batch.json';
 
 const gear = (attack) => ({
@@ -35,6 +37,7 @@ beforeEach(() => {
   localStorage.clear();
   calls = [];
   verdict = 'better';
+  resetImportFlow();
   __resetJobs({ run: runner });
   rosterStore.addCharacter('Drop Page', 'WARRIOR');
   rosterStore.setEquipmentItem('set1', 'WEAPON', gear(1000));
@@ -137,7 +140,7 @@ it('Apply names its scope first and writes only after the confirm', async () => 
 });
 
 const paste = (json) => {
-  const box = q('Loot-bag JSON');
+  const box = [...target.querySelectorAll('label')].filter((l) => l.textContent === 'Loot-bag JSON').map((l) => document.getElementById(l.htmlFor))[0];
   box.value = JSON.stringify(json);
   box.dispatchEvent(new Event('input', { bubbles: true }));
   flushSync();
@@ -196,4 +199,81 @@ it('Loot bag: before the job finishes a row is Queued/Simulating, not a verdict'
   expect(chips).toHaveLength(4);
   expect(chips.every((c) => /Simulating|Queued/.test(c))).toBe(true);
   expect(target.querySelector('.trow.rank .vchip.up, .trow.rank .vchip.down')).toBeNull();
+});
+
+it('Import dialog handoff: a loot bag confirmed before the page opens lands on Loot bag and runs', async () => {
+  expect(loadImportText(JSON.stringify(lootBag))).toBe(true);
+  expect(confirmImport()).toBe(true);
+  open();
+  await settle();
+  expect(jobsStore.list[0]).toMatchObject({ tool: 'drop-bag' });
+  expect(target.querySelector('#dc-panel-bag')).not.toBeNull();
+  expect(target.querySelectorAll('.trow.rank')).toHaveLength(4);
+});
+
+it('Import dialog handoff: a page that is already open reacts to a new loot bag', async () => {
+  open();
+  expect(target.querySelector('#dc-panel-single')).not.toBeNull();
+  loadImportText(JSON.stringify(lootBag));
+  confirmImport();
+  flushSync();
+  await settle();
+  expect(target.querySelector('#dc-panel-bag')).not.toBeNull();
+  expect(target.querySelectorAll('.trow.rank')).toHaveLength(4);
+  expect(jobsStore.list.filter((j) => j.tool === 'drop-bag')).toHaveLength(1);
+});
+
+it('PVP win rate measures every saved opponent as soon as it is switched on, and Set 2 gets its own table', async () => {
+  const oppId = rosterStore.addOpponent('WARRIOR_TANK', 'Rival');
+  rosterStore.setOpponentSheet(oppId, { totalHp: 800, totalAttack: 30, totalAttackSpeed: 1, totalCritChance: 5, totalCritDamage: 150 });
+  __resetJobs({
+    run: (request) => {
+      calls.push(request);
+      const results = request.items.map((it) => ({
+        presetId: it.presetId,
+        ...(request.sim ? { sim: metric('better') } : {}),
+        pvp: request.opponents.map((o) => ({ opponentId: o.id, name: o.name, ...metric('better') })),
+      }));
+      return { promise: Promise.resolve({ results, aborted: false }), cancel() {} };
+    },
+  });
+  open();
+  change(q('Attack'), '9.000');
+  const toggle = [...target.querySelectorAll('input[type="checkbox"]')].find((c) => c.closest('label')?.textContent.includes('PVP win rate'));
+  toggle.click();
+  flushSync();
+  btn('Check drop').click();
+  flushSync();
+  await settle();
+  expect(calls[0].opponents.map((o) => o.id)).toEqual([oppId]);
+  const tables = [...target.querySelectorAll('[data-metric-table]')].map((t) => t.dataset.metricTable);
+  expect(tables).toEqual(['sim', `pvp:${oppId}`]);
+  const pvp = target.querySelector(`[data-metric-table="pvp:${oppId}"]`);
+  expect(pvp.textContent).toContain('Set 2');
+  expect(pvp.querySelectorAll('.axis')).toHaveLength(1);
+});
+
+it('the preference default effort is the effort the page starts with', async () => {
+  setPrefs({ defaultEffort: 'thorough' });
+  try {
+    open();
+    change(q('Attack'), '9.000');
+    btn('Check drop').click();
+    flushSync();
+    await settle();
+    expect(calls[0].precision).toBe('thorough');
+  } finally {
+    localStorage.clear();
+    applyPrefs();
+  }
+});
+
+it('Loot bag: the too-close-to-call count in the summary takes the neutral verdict colour', async () => {
+  verdict = 'unresolved';
+  open({ tab: 'bag' });
+  paste(lootBag);
+  await settle();
+  const count = target.querySelector('.summary [data-count="inconclusive"]');
+  expect(count).not.toBeNull();
+  expect(count.classList.contains('side')).toBe(true);
 });

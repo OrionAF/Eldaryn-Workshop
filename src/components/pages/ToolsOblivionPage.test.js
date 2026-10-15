@@ -74,3 +74,48 @@ it('stale: changing the build greys the result out and drops the highest floor',
   expect(target.querySelector('[data-testid="max-floor"]').textContent).toBe('-');
   expect(target.textContent).toContain('Out of date');
 });
+
+const press = (re) => [...target.querySelectorAll('button')].find((b) => re.test(b.textContent.trim()));
+
+it('cancel keeps the floors finished so far and Resume runs the scan again to the end', async () => {
+  rosterStore.setOblivionUnlocked(true);
+  const done = { power: 0, threshold: 0.9, rows: ROWS, maxFloor: 30, scanCapped: false, assumptions: [] };
+  __resetJobs({
+    run: (req) => {
+      requests.push(req);
+      if (requests.length > 1) return { cancel() {}, promise: Promise.resolve({ ...done, aborted: false }) };
+      let finish;
+      const promise = new Promise((r) => (finish = r));
+      return { promise, cancel() { finish({ ...done, rows: [ROWS[0]], maxFloor: 1, aborted: true }); } };
+    },
+  });
+  mountPage();
+  press(/Simulate floors/).click();
+  flushSync();
+  press(/^Cancel$/).click();
+  await vi.waitFor(() => expect(jobsStore.list[0].status).toBe('cancelled'));
+  flushSync();
+  expect(target.textContent).toContain('Showing the floors finished so far');
+  expect(target.querySelector('tr[data-floor="1"]').textContent).toContain('64');
+  expect(target.querySelector('tr[data-floor="2"]').textContent).not.toContain('30');
+  press(/^Resume$/).click();
+  flushSync();
+  await vi.waitFor(() => expect(jobsStore.list[0].status).toBe('finished'));
+  flushSync();
+  expect(requests).toHaveLength(2);
+  expect(target.querySelector('tr[data-floor="2"]').textContent).toContain('30');
+  expect(target.textContent).not.toContain('Showing the floors finished so far');
+});
+
+it('stale: changing the scan setup (not only the build) marks the finished scan out of date', async () => {
+  rosterStore.setOblivionUnlocked(true);
+  mountPage();
+  press(/Simulate floors/).click();
+  await vi.waitFor(() => expect(jobsStore.list[0].status).toBe('finished'));
+  flushSync();
+  expect(target.textContent).not.toContain('Out of date');
+  target.querySelector('button[aria-label="Increase From floor"]').click();
+  flushSync();
+  expect(target.querySelector('table.stale')).toBeTruthy();
+  expect(target.textContent).toContain('Out of date');
+});

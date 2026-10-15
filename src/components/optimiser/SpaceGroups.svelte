@@ -26,7 +26,7 @@
   </div>
   {#each SPACE_GROUPS as g (g.id)}
     <div class="group" data-group={g.id}>
-      <span class="micro-label">{g.label}</span>
+      <span class="cap-label">{g.label}</span>
       <div class="chips">
         {#each g.items as [key, label] (key)}
           <Chip {label} selected={space[key]} onClick={() => flip(key)} />
@@ -52,7 +52,7 @@
   .count { flex: 1; font-size: var(--fs-12); color: var(--text-soft); }
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--text-ink); }
   .group { display: grid; gap: 4px; }
-  .micro-label { font-size: var(--fs-11); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-muted); }
+  .cap-label { font-size: var(--fs-11); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-muted); }
   .chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
   .link {
     background: none; border: 0; padding: 0 2px; min-height: 24px; cursor: pointer;

@@ -62,6 +62,16 @@ it('the interaction remainder is shown with no interval and no verdict colour', 
   expect(rem.querySelector('.up, .down')).toBeNull();
 });
 
+it('the remainder never prints an interval, even when a saved row carries bounds', () => {
+  const result = richResult();
+  result.rows[0].remainder = { delta: 1200, lo: 800, hi: 1600, method: 'difference' };
+  const ui = mountResults(result);
+  toggle(ui, 0);
+  const rem = ui.q('.remainder');
+  expect(rem.textContent).toMatch(/no interval/);
+  expect(rem.textContent).not.toMatch(/95% CI/);
+});
+
 it('a row that is too close to call says how many fights would settle it and offers Run more', () => {
   const onrunmore = vi.fn();
   const ui = mountResults(richResult(), { onrunmore });

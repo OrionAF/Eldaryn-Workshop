@@ -134,7 +134,7 @@
             <CIForest {domain} est={r.delta} tone="est" label="Interaction remainder {fmtSigned(unit, r.delta)}, no interval" />
             <span class="delta">
               <span class="v side">{fmtSigned(unit, r.delta)}</span>
-              <span class="ci">{r.lo == null ? 'no interval' : fmtContrastCi(unit, r)}</span>
+              <span class="ci">no interval</span>
             </span>
             <span class="verdict"><VerdictChip verdict="remainder" /></span>
           </div>
@@ -152,11 +152,11 @@
   .rank { border-bottom: 1px solid var(--line-hairline); }
   .line, .abl {
     display: grid;
-    grid-template-columns: minmax(130px, 1.9fr) minmax(150px, 1.3fr) 96px 150px;
-    column-gap: 10px;
+    grid-template-columns: minmax(calc(var(--sp-10) * 3.25), 1.9fr) minmax(calc(var(--sp-10) * 3.75), 1.3fr) calc(var(--sp-10) * 2.4) calc(var(--sp-10) * 3.75);
+    column-gap: calc(var(--sp-1) * 2.5);
     align-items: center;
     padding: 0 var(--sp-4);
-    min-height: 52px;
+    min-height: calc(var(--sp-1) * 13);
   }
   .toggle {
     display: flex;
@@ -166,24 +166,24 @@
     background: none;
     border: 0;
     padding: 0;
-    min-height: 52px;
+    min-height: calc(var(--sp-1) * 13);
     color: inherit;
     text-align: left;
     cursor: pointer;
     font: inherit;
   }
   .line:hover { background: var(--surface-3); }
-  .expanded .line { background: var(--surface-4); box-shadow: inset 4px 0 0 var(--ember-500); }
+  .expanded .line { background: var(--surface-4); box-shadow: inset var(--sp-1) 0 0 var(--ember-500); }
   .mark {
     flex: none;
-    width: 24px;
-    height: 24px;
+    width: var(--sp-6);
+    height: var(--sp-6);
     display: grid;
     place-items: center;
     transform: rotate(45deg);
     border: 1px solid var(--line-control);
     border-radius: 2px;
-    margin-left: 4px;
+    margin-left: var(--sp-1);
     font-family: var(--font-data);
     font-size: var(--fs-12);
     color: var(--text-ink);
@@ -192,8 +192,8 @@
   .mark.base {
     transform: none;
     width: auto;
-    height: 20px;
-    padding: 0 3px;
+    height: var(--sp-5);
+    padding: 0 calc(var(--sp-1) * 0.75);
     margin-left: -2px;
     border-color: var(--brass-500);
     color: var(--brass-200);
@@ -211,17 +211,17 @@
   .delta .v.up { color: var(--verdict-up); }
   .delta .v.down { color: var(--verdict-down); }
   .ci { font-size: var(--fs-12); color: var(--text-soft); font-family: var(--font-data); font-variant-numeric: tabular-nums; text-align: right; }
-  .verdict { display: grid; justify-items: start; gap: 3px; }
+  .verdict { display: grid; justify-items: start; gap: calc(var(--sp-1) * 0.75); }
   .n { font-size: var(--fs-12); color: var(--text-soft); }
   .link-btn {
-    background: none; border: 0; padding: 0 2px; min-height: 24px; cursor: pointer;
+    background: none; border: 0; padding: 0 calc(var(--sp-1) * 0.5); min-height: var(--sp-6); cursor: pointer;
     color: var(--brass-400); font-size: var(--fs-12); font-weight: var(--fw-bold);
-    text-decoration: underline; text-underline-offset: 3px;
+    text-decoration: underline; text-underline-offset: calc(var(--sp-1) * 0.75);
   }
   .link-btn:hover { color: var(--brass-200); }
-  .body { background: var(--surface-1); box-shadow: inset 4px 0 0 var(--ember-700); border-top: 1px solid var(--line-rule); }
-  .cap { margin: 0; padding: var(--sp-2) var(--sp-4) 6px var(--sp-8); font-size: var(--fs-11); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
-  .abl { min-height: 0; padding-block: var(--sp-2); row-gap: 4px; border-bottom: 1px solid var(--line-hairline); }
+  .body { background: var(--surface-1); box-shadow: inset var(--sp-1) 0 0 var(--ember-700); border-top: 1px solid var(--line-rule); }
+  .cap { margin: 0; padding: var(--sp-2) var(--sp-4) calc(var(--sp-1) * 1.5) var(--sp-8); font-size: var(--fs-11); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
+  .abl { min-height: 0; padding-block: var(--sp-2); row-gap: var(--sp-1); border-bottom: 1px solid var(--line-hairline); }
   .abl .chg { padding-left: var(--sp-8); font-size: var(--fs-14); color: var(--text-soft); min-width: 0; }
   .abl .chg b { color: var(--text-ink); }
   .arrow { color: var(--text-muted); }
@@ -233,11 +233,11 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 4px var(--sp-2);
+    gap: var(--sp-1) var(--sp-2);
   }
   .remainder .chg { font-style: italic; }
   @media (max-width: 700px) {
-    .line, .abl { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'main delta' 'forest forest' 'vd vd'; padding: var(--sp-3); row-gap: 6px; }
+    .line, .abl { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'main delta' 'forest forest' 'vd vd'; padding: var(--sp-3); row-gap: calc(var(--sp-1) * 1.5); }
     .line > .toggle, .abl > .chg { grid-area: main; padding-left: 0; }
     .line > :nth-child(2), .abl > :nth-child(2) { grid-area: forest; }
     .line > .delta, .abl > .delta { grid-area: delta; }

@@ -4,6 +4,7 @@ import ToolsOptimiserPage from './ToolsOptimiserPage.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
 import { __resetJobs, jobsStore } from '../../lib/jobs.svelte.js';
 import { loadUi, saveUi } from '../../lib/uiState.js';
+import { loadRoster } from '../../lib/storage.js';
 import { fixtureCharacter } from '../../lib/build/fixtures.js';
 import { cloneAsOpponent } from '../../lib/features/duel.js';
 import { SCHEMA_VERSION } from '../../lib/model/index.js';
@@ -281,7 +282,7 @@ it('the history tab lists runs; a legacy run opens with "not measured"; Re-run w
   const row = view.q('[data-testid="run-row"]');
   expect(row.textContent).toMatch(/Old run/);
   expect(row.textContent).toMatch(/before per-change effects/);
-  click(row.querySelector('button.open'));
+  click([...row.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Details'));
   expect(row.textContent).toMatch(/Per-change effects: not measured/);
   click(row.querySelector('[data-testid="baseline-row"]') ? row.querySelector('[data-testid="result-row"] button[aria-expanded]') : null);
   expect(row.querySelector('[data-testid="result-row"]').textContent).toMatch(/not measured/);
@@ -340,3 +341,60 @@ it('runs a real quick search over the relics, with every row listing a change, a
   await vi.waitFor(() => expect(rosterStore.current.runs).toHaveLength(1));
   expect(text()).not.toMatch(/Setup changed since this run/);
 }, 100000);
+
+it('a history row opens its stored result in Setup & results, read-only', () => {
+  rosterStore.addRun(richResult(), { presetName: 'Main', name: 'Pinned find' });
+  flushSync();
+  mountPage({ tab: 'history' });
+  click(view.q('[data-testid="run-row"] button.open'));
+  expect(view.q('#opt-panel-setup')).not.toBeNull();
+  expect(view.q('[data-testid="optimiser-results"]')).not.toBeNull();
+  expect(text()).toMatch(/Saved run/);
+  expect(view.qa('[data-testid="result-row"]').length).toBeGreaterThan(0);
+  // read-only: no Apply, no Run more
+  click(view.q('[data-testid="result-row"] button[aria-expanded]'));
+  expect(btn(/^Apply to /)).toBeUndefined();
+  expect(btn(/^Run more$/)).toBeUndefined();
+  click(btn(/^Close$/));
+  expect(view.q('[data-testid="optimiser-results"]')).toBeNull();
+});
+
+it('Pin on a history row keeps the run through Clear unpinned', () => {
+  rosterStore.addRun(richResult(), { presetName: 'Main', name: 'Keep me' });
+  rosterStore.addRun(dpsResult(), { presetName: 'Main', name: 'Drop me' });
+  flushSync();
+  mountPage({ tab: 'history' });
+  const rows = () => view.qa('[data-testid="run-row"]');
+  const keep = rows().find((r) => /Keep me/.test(r.textContent));
+  click([...keep.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Pin'));
+  expect(rosterStore.current.runs.find((r) => r.name === 'Keep me').pinned).toBe(true);
+  click(btn(/^Clear unpinned$/));
+  click(btn(/^Confirm clear$/));
+  expect(rosterStore.current.runs.map((r) => r.name)).toEqual(['Keep me']);
+});
+
+it('a saved run survives a reload with its rows and changes', () => {
+  rosterStore.addRun(richResult(), { presetName: 'Main' });
+  const reloaded = loadRoster().characters.find((c) => c.id === rosterStore.current.id);
+  const run = reloaded.runs[0];
+  expect(run.detail.rows.length).toBeGreaterThan(0);
+  expect(run.detail.rows[0].changes.length).toBeGreaterThan(0);
+});
+
+it('a blank survival window means the whole fight, not 5 s', () => {
+  saveUi({
+    optimiserSetups: {
+      [rosterStore.current.id]: { presetId: 'p1', target: { kind: 'chapter', chapter: 1, level: 1 }, objective: { kind: 'survival', seconds: 30 }, effort: 'quick', seed: 1 },
+    },
+  });
+  mountPage();
+  const field = [...view.qa('label')].find((l) => l.textContent.trim() === 'Survive for (s)');
+  const input = document.getElementById(field.htmlFor);
+  expect(input.value).toBe('30');
+  input.value = '';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  input.dispatchEvent(new Event('blur', { bubbles: true }));
+  flushSync();
+  click(btn(/^Optimise Main/));
+  expect(requests[0].objective).toEqual({ kind: 'survival' });
+});

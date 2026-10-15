@@ -13,7 +13,7 @@
   import ForestAxis from '../ui/ForestAxis.svelte';
   import VerdictChip from '../ui/VerdictChip.svelte';
 
-  let { rows } = $props();
+  let { rows, partial = false } = $props();
 
   const pts = (x) => (x - 0.5) * 100;
   const pct = (x) => `${(x * 100).toFixed(1)}%`;
@@ -44,7 +44,13 @@
       </div>
       <div role="cell"><CIForest {domain} est={r.est} lo={r.lo} hi={r.hi} tone={tone(r.v)} label={sentence(r)} /></div>
       <span class="r num" role="cell">{signed(r.est)} pts</span>
-      <span role="cell"><VerdictChip verdict={r.v?.verdict ?? 'unresolved'} label={r.v?.verdict === 'better' ? 'Favoured' : r.v?.verdict === 'worse' ? 'Unfavoured' : 'Too close to call'} /></span>
+      <span role="cell">
+        {#if partial}
+          <VerdictChip verdict="unresolved" label="Inconclusive / partial" />
+        {:else}
+          <VerdictChip verdict={r.v?.verdict ?? 'unresolved'} label={r.v?.verdict === 'better' ? 'Favoured' : r.v?.verdict === 'worse' ? 'Unfavoured' : 'Too close to call'} />
+        {/if}
+      </span>
     </div>
   {/each}
 </div>

@@ -12,22 +12,24 @@
 
   let { segments = [] } = $props();
 
+  // A.9 phases say 'current' for the one running; the segment draws it as 'active'.
+  const stateOf = (s) => (s.state === 'current' ? 'active' : s.state);
   const fraction = (s) => {
-    if (s.state === 'done') return 1;
+    if (stateOf(s) === 'done') return 1;
     if (s.total > 0 && s.done != null) return Math.min(1, s.done / s.total);
     return 0;
   };
   const caption = (s) => {
     if (s.text) return s.text;
     if (s.total > 0 && s.done != null) return `${fmtCount(s.done)}/${fmtCount(s.total)}`;
-    return { done: 'done', active: 'running', queued: 'queued', cancelled: 'cancelled' }[s.state] ?? '';
+    return { done: 'done', active: 'running', queued: 'queued', cancelled: 'cancelled' }[stateOf(s)] ?? '';
   };
 </script>
 
 <div class="runprog" style="--n: {Math.max(1, segments.length)}">
   {#each segments as s (s.id)}
     {@const f = fraction(s)}
-    <div class="seg-step is-{s.state}">
+    <div class="seg-step is-{stateOf(s)}">
       <div class="lbl"><b>{s.label}</b><span class="num">{caption(s)}</span></div>
       <div
         class="bar"
@@ -36,7 +38,7 @@
         aria-valuemin="0"
         aria-valuemax="100"
         aria-valuenow={Math.round(f * 100)}
-        aria-valuetext="{s.label}, {s.total > 0 && s.done != null ? `${s.done} of ${s.total}` : s.state}"
+        aria-valuetext="{s.label}, {s.total > 0 && s.done != null ? `${s.done} of ${s.total}` : stateOf(s)}"
       >
         <i style="width: {f * 100}%"></i>
       </div>
@@ -50,7 +52,7 @@
     grid-template-columns: repeat(var(--n), minmax(0, 1fr));
     gap: var(--sp-4);
   }
-  .seg-step { display: grid; gap: 5px; min-width: 0; }
+  .seg-step { display: grid; gap: calc(var(--sp-1) * 1.25); min-width: 0; }
   .lbl {
     display: flex;
     justify-content: space-between;
@@ -61,7 +63,7 @@
   }
   .lbl b { color: var(--text-ink); font-weight: var(--fw-bold); }
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
-  .bar { height: 5px; background: var(--surface-4); border-radius: 1px; overflow: hidden; }
+  .bar { height: calc(var(--sp-1) * 1.25); background: var(--surface-4); border-radius: 1px; overflow: hidden; }
   .bar i { display: block; height: 100%; background: var(--brass-500); }
   .is-active .bar i { background: var(--ember-500); box-shadow: var(--glow-ember); }
   .is-active .lbl b { color: var(--ember-300); }

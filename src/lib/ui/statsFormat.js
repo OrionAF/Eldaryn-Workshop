@@ -51,9 +51,17 @@ export function fmtContrast(unit, c) {
   return fmtSigned(unit, c.delta);
 }
 
-/** "95% CI lo to hi", signed in every unit. */
+/**
+ * "95% CI lo to hi", signed in every unit. A DPS contrast whose headline is relative (`pct`) prints its bounds
+ * in the same percent (pct / delta is 1 / the starting DPS), so the headline and its interval share a unit.
+ */
 export function fmtContrastCi(unit, c) {
   if (!c || !finite(c.lo) || !finite(c.hi)) return '';
+  if (unit === 'dps' && finite(c.pct) && finite(c.delta) && c.delta !== 0) {
+    const k = c.pct / c.delta;
+    const pct = (x) => withSign(`${(Math.abs(x * k) * 100).toFixed(2)}%`, x * k);
+    return `95% CI ${pct(c.lo)} to ${pct(c.hi)}`;
+  }
   return `95% CI ${fmtSigned(unit, c.lo)} to ${fmtSigned(unit, c.hi)}`;
 }
 
