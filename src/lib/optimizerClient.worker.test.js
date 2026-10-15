@@ -4,7 +4,10 @@
  */
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { runOptimizerTask } from './optimizerClient.js';
-import { createWorkerHandler } from './optimizerWorker.js';
+import { createWorkerHandler, poolFactory } from './optimizerWorker.js';
+import { saveUi, UI_KEY } from './uiState.js';
+import { inlinePool } from './tasks/pool.js';
+import { fakeSpawn } from './tasks/fakePoolWorker.js';
 
 let instances = [];
 class FakeWorker {
@@ -30,6 +33,7 @@ const duelReq = {
 };
 
 afterEach(() => {
+  localStorage.removeItem(UI_KEY);
   vi.unstubAllGlobals();
   instances = [];
   FakeWorker.throwOnConstruct = false;
@@ -100,6 +104,33 @@ describe('client with a Worker', () => {
     w.emit({ type: 'progress', progress: {} });
     w.onerror({ message: 'crashed' });
     await expect(second.promise).rejects.toThrow('crashed');
+  });
+});
+
+describe('worker pool size (J2)', () => {
+  it('the request carries the pool size of the CPU profile read when the job starts', () => {
+    vi.stubGlobal('Worker', FakeWorker);
+    vi.stubGlobal('navigator', { hardwareConcurrency: 8 });
+    runOptimizerTask(duelReq);
+    saveUi({ prefs: { cpuProfile: 'max' } });
+    runOptimizerTask(duelReq);
+    saveUi({ prefs: { cpuProfile: 'eco' } });
+    runOptimizerTask(duelReq);
+    runOptimizerTask({ ...duelReq, workers: 3 });
+    expect(instances.map((w) => w.sent[0].request.workers)).toEqual([4, 7, 2, 3]);
+  });
+
+  it('the worker host builds no pool for one worker, and a worker pool for more', async () => {
+    expect(poolFactory(1)).toBe(inlinePool);
+    expect(poolFactory(undefined)).toBe(inlinePool);
+    expect(poolFactory(4)).toBe(inlinePool); // no Worker in this environment: inline
+    const spawn = fakeSpawn();
+    const pool = poolFactory(3, spawn)('duel', { attacker: duelReq.attacker, defender: duelReq.defender });
+    expect(pool.size).toBe(3);
+    expect(spawn.made).toBe(3);
+    const c = await pool.run({ swap: false, seed: 1 }, 0, 10);
+    expect(c.main[0]).toEqual(Array(10).fill(1));
+    pool.close();
   });
 });
 

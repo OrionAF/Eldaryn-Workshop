@@ -10,11 +10,15 @@ beforeEach(() => {
 describe('normalisePrefs', () => {
   it('falls back per field and ignores junk', () => {
     expect(normalisePrefs(null)).toEqual(defaultPrefs());
-    expect(normalisePrefs({ density: 'huge', reduceMotion: 'yes', defaultEffort: 'warp' })).toEqual(defaultPrefs());
-    expect(normalisePrefs({ density: 'compact', defaultEffort: 'thorough' })).toEqual({ density: 'compact', reduceMotion: false, defaultEffort: 'thorough' });
+    expect(normalisePrefs({ density: 'huge', reduceMotion: 'yes', defaultEffort: 'warp', cpuProfile: 'turbo' })).toEqual(defaultPrefs());
+    expect(normalisePrefs({ density: 'compact', defaultEffort: 'thorough' })).toEqual({ density: 'compact', reduceMotion: false, defaultEffort: 'thorough', cpuProfile: 'balanced' });
+    expect(normalisePrefs({ cpuProfile: 'eco' }).cpuProfile).toBe('eco');
   });
   it('the default effort is Standard (plan Q4)', () => {
     expect(defaultPrefs().defaultEffort).toBe('standard');
+  });
+  it('the CPU profile defaults to balanced (J2)', () => {
+    expect(defaultPrefs().cpuProfile).toBe('balanced');
   });
 });
 
@@ -25,7 +29,7 @@ describe('stored with the UI state, per device', () => {
     saveUi({ prefs: { reduceMotion: true } });
     const ui = loadUi();
     expect(ui.lastHash).toBe('#/settings');
-    expect(ui.prefs).toEqual({ density: 'compact', reduceMotion: true, defaultEffort: 'standard' });
+    expect(ui.prefs).toEqual({ density: 'compact', reduceMotion: true, defaultEffort: 'standard', cpuProfile: 'balanced' });
   });
   it('a broken stored value yields the defaults', () => {
     localStorage.setItem(UI_KEY, '{"prefs": 7}');
@@ -34,6 +38,11 @@ describe('stored with the UI state, per device', () => {
 });
 
 describe('setPrefs', () => {
+  it('stores the CPU profile on this device', () => {
+    setPrefs({ cpuProfile: 'max' });
+    expect(prefs.cpuProfile).toBe('max');
+    expect(loadUi().prefs.cpuProfile).toBe('max');
+  });
   it('updates the reactive state, persists, and sets the attributes on <html>', () => {
     setPrefs({ density: 'compact', reduceMotion: true });
     expect(prefs.density).toBe('compact');

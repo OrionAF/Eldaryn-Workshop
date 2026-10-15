@@ -11,6 +11,11 @@
  * which also detaches Svelte $state proxies. A legacy `v2: true` flag on a request is ignored.
  * `request.resumeFrom` (a checkpoint a task emitted earlier) travels with it.
  *
+ * `request.workers`, the job's engine-worker pool size, is set here from this device's CPU profile
+ * pref (read now, so a changed profile applies to the next job) unless the caller gives one; the
+ * worker builds the pool (optimizerWorker.js). The inline path runs without a pool. Pool size never
+ * changes a result (simulation.md §Worker pool).
+ *
  * Wire protocol, see optimizerWorker.js. In: { type: 'start', request }, { type: 'cancel' }.
  * Out: progress, checkpoint, done, error.
  *
@@ -20,9 +25,17 @@
  */
 
 import { runTask } from './tasks/index.js';
+import { workersFor } from './tasks/cpuProfile.js';
+import { loadUi } from './uiState.js';
+
+/** Pool size for a job started now on this device. */
+export function jobWorkers() {
+  return workersFor(loadUi().prefs.cpuProfile, globalThis.navigator?.hardwareConcurrency);
+}
 
 export function runOptimizerTask(request, hooks = {}) {
   const plain = JSON.parse(JSON.stringify(request));
+  if (!Number.isInteger(plain.workers) || plain.workers < 1) plain.workers = jobWorkers();
   if (typeof Worker === 'undefined') return runInline(plain, hooks);
   return runInWorker(plain, hooks);
 }
