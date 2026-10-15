@@ -7,7 +7,7 @@
 | 1 | §15 Fortress boss fight from the server log | M | Built on rebuild2/F2, not merged |
 | 2 | §11 Celestial Trial Optimiser target | S | Queued |
 | 3 | §6 Results say which pet, mount or glyph | S | Queued |
-| 4 | §1 Optimiser step list | S | Queued |
+| 4 | §1 Optimiser step list | S | Built on rebuild2/STEPS, not merged |
 | 5 | §3 Setup estimates | M | Not started |
 | 6 | §9 Stat weights chart | M | Not started |
 | 7 | §2 Rankings profiles as PVP opponents (and Celestial partners) | M | Not started |
@@ -195,6 +195,8 @@ one it is on, e.g. "1. Gear set: done · 2. Talents: done · 3. Pets: done · 4.
 - UI: an expandable step list under RunProgress on the Optimiser page and in the Jobs tray
   (design-system.md §4.17).
 - The run history keeps the final list.
+
+**Status: built on rebuild2/STEPS, not merged.** Progress carries `searchSteps` (simulation.md §Progress), the result `search.steps`, a saved run `steps`. The list is a `StepList` (design-system.md §4.17) on the Optimiser page, in the Jobs tray and in a run's Details. Push shows its rungs as before and has no block list.
 
 ## 3. Optimiser setup: estimates before you run
 

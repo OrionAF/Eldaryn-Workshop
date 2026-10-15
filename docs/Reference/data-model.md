@@ -62,7 +62,7 @@ Character = {
   drop: { realm, slot, item: Item } | null,
   opponents: [{ id, name, class, spec, sheet: Sheet, sigils, utility, ancient,
                 conditions, majorGlyphs, altarTier }],
-  runs: OptimiserRun[]        // byte-budgeted run history; `schema: 2` = an optimiser-result/2 (model/runs.js header);
+  runs: OptimiserRun[]        // byte-budgeted run history; `schema: 2` = an optimiser-result/2 (model/runs.js header; optional `steps` = the search's final per-block rows, simulation.md §Progress);
                               // `powerFloor` (the run's Combat Power guard) and each Row's `power` are kept when present
 }
 

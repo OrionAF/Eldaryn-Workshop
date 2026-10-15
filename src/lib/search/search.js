@@ -180,6 +180,8 @@ function createRun(prep, hooks) {
     evaluated: new Set(),
     merged: { inert: 0, engineIdentical: 0, sampleIdentical: 0 },
     block: null,
+    steps: null, // the search's per-block rows (simulation.md §Progress), set by searchPhase
+    stepDepth: 0,
     eliminated: 0,
     lastProgress: 0,
     lastYield: Date.now(),
@@ -367,6 +369,7 @@ function createRun(prep, hooks) {
         done: null, total: null,
       })),
       block: st.block,
+      ...(st.steps ? { searchSteps: st.steps.map((r) => ({ ...r })) } : {}),
       counts: { evaluated: st.evaluated.size, fights: Object.values(st.fights).reduce((a, b) => a + b, 0), eliminated: st.eliminated, merged: st.merged.inert + st.merged.engineIdentical + st.merged.sampleIdentical },
       elapsedMs: now - t0,
       provisional: st.provisional,
@@ -435,6 +438,41 @@ async function searchPhase(prep, run) {
 
   let jointSize = 1;
   for (const id of enabled) jointSize *= sizes[id] ?? 1;
+
+  // --- steps: one row per block (simulation.md §Progress, searchSteps) ------------------------------
+  st.steps = BLOCKS.map((id) => ({
+    id,
+    state: !enabled.has(id) || (sizes[id] ?? 1) <= 1 ? 'skipped' : 'queued',
+    reason: !enabled.has(id) ? 'off' : (sizes[id] ?? 1) <= 1 ? 'nothing-to-try' : null,
+    pass: 0, tried: 0, fights: 0, improved: false,
+  }));
+  run.progress(true); // the rows, all queued, before the first block starts
+  const stepOf = (id) => st.steps.find((r) => r.id === id);
+  const fightsNow = () => Object.values(st.fights).reduce((a, b) => a + b, 0);
+  /**
+   * Run one visit of a block as a step row. Work nested inside it (the inner ascents that Spec and Mount
+   * run per value) belongs to the outer row, so only the outermost visit is recorded.
+   * @param {(row: Object) => Promise<any>} fn  sets `row.tried` increments and `row.improved`
+   */
+  async function inStep(id, fn) {
+    const row = stepOf(id);
+    if (st.stepDepth > 0 || !row || row.reason === 'off') return fn(row ?? {});
+    const f0 = fightsNow();
+    st.stepDepth++;
+    row.state = 'running';
+    row.reason = null;
+    row.pass++;
+    run.progress(true);
+    try {
+      return await fn(row);
+    } finally {
+      st.stepDepth--;
+      row.fights += fightsNow() - f0;
+      // a visit that raced nothing (the domain is empty or one value) has nothing to try
+      if (row.state === 'running') Object.assign(row, row.tried > 0 ? { state: 'done' } : { state: 'skipped', reason: 'nothing-to-try' });
+      run.progress(true);
+    }
+  }
   const talentsLocal = enabled.has('talents') && (sizes.talents ?? 1) > 1;
 
   /** Canonical (inert changes reverted, A.5) arm of a candidate. */
@@ -483,8 +521,20 @@ async function searchPhase(prep, run) {
   async function exhaustive(cands) {
     const arms = prepareArms(cands.map(armOf));
     st.block = 'all';
+    const f0 = fightsNow();
+    for (const row of st.steps) if (row.state === 'queued') { row.state = 'running'; row.pass = 1; }
+    run.progress(true);
     const r = await run.raceArms(arms, S1);
     st.eliminated += r.eliminated;
+    // one joint race covers every open block: each row shows its tries and fights
+    const moved = new Set(changesOf(space, B.cand, arms[r.winner].cand, { bundles: false }).map((c) => c.dimension));
+    for (const row of st.steps) {
+      if (row.state !== 'running') continue;
+      row.state = 'done';
+      row.tried = arms.length;
+      row.fights = fightsNow() - f0;
+      row.improved = moved.has(row.id);
+    }
     for (const id of enabled) status.set(id, 'converged');
     for (const u of r.unresolved) {
       for (const c of changesOf(space, arms[r.winner].cand, arms[u.i].cand, { bundles: false })) status.set(c.dimension, 'unresolved');
@@ -580,37 +630,45 @@ async function searchPhase(prep, run) {
       for (const id of ids) {
         if (!enabled.has(id)) continue;
         st.block = id;
-        const arms = await blockArms(id, x);
-        if (!status.has(id)) status.set(id, 'converged');
-        if (arms.length < 2) continue;
-        const r = await run.raceArms(arms, S1);
-        st.eliminated += r.eliminated;
-        raced.push({ id, unresolved: r.unresolved.length > 0 });
-        contenders.push(...r.ties.map((i) => arms[i]), ...r.unresolved.map((u) => arms[u.i]));
-        for (const u of r.unresolved) unresolved.push({ fromKey: arms[0].key, toKey: arms[u.i].key, change: labelOf(arms[0], arms[u.i]), contrast: contrastOut(u.contrast) });
-        const W = await acceptable(arms, r, visited);
-        if (W) {
-          x = W;
-          visited.add(x.key);
-          accepted = true;
-        }
-      }
-      if (!accepted && ids.includes('talents') && enabled.has('talents')) {
-        st.block = 'talents';
-        const arms = prepareArms([x, ...twoPointArms(x)]);
-        if (arms.length > 1) {
+        await inStep(id, async (row) => {
+          const arms = await blockArms(id, x);
+          if (!status.has(id)) status.set(id, 'converged');
+          if (arms.length < 2) return;
+          row.tried += arms.length - 1;
           const r = await run.raceArms(arms, S1);
           st.eliminated += r.eliminated;
-          for (const u of r.unresolved) unresolved.push({ fromKey: arms[0].key, toKey: arms[u.i].key, change: labelOf(arms[0], arms[u.i]), contrast: contrastOut(u.contrast) });
-          if (r.unresolved.length) raced.push({ id: 'talents', unresolved: true });
+          raced.push({ id, unresolved: r.unresolved.length > 0 });
           contenders.push(...r.ties.map((i) => arms[i]), ...r.unresolved.map((u) => arms[u.i]));
+          for (const u of r.unresolved) unresolved.push({ fromKey: arms[0].key, toKey: arms[u.i].key, change: labelOf(arms[0], arms[u.i]), contrast: contrastOut(u.contrast) });
           const W = await acceptable(arms, r, visited);
           if (W) {
             x = W;
             visited.add(x.key);
             accepted = true;
+            row.improved = true;
           }
-        }
+        });
+      }
+      if (!accepted && ids.includes('talents') && enabled.has('talents')) {
+        st.block = 'talents';
+        await inStep('talents', async (row) => {
+          const arms = prepareArms([x, ...twoPointArms(x)]);
+          if (arms.length > 1) {
+            row.tried += arms.length - 1;
+            const r = await run.raceArms(arms, S1);
+            st.eliminated += r.eliminated;
+            for (const u of r.unresolved) unresolved.push({ fromKey: arms[0].key, toKey: arms[u.i].key, change: labelOf(arms[0], arms[u.i]), contrast: contrastOut(u.contrast) });
+            if (r.unresolved.length) raced.push({ id: 'talents', unresolved: true });
+            contenders.push(...r.ties.map((i) => arms[i]), ...r.unresolved.map((u) => arms[u.i]));
+            const W = await acceptable(arms, r, visited);
+            if (W) {
+              x = W;
+              visited.add(x.key);
+              accepted = true;
+              row.improved = true;
+            }
+          }
+        });
       }
       if (!accepted) {
         for (const r of raced) if (r.unresolved) status.set(r.id, 'unresolved');
@@ -698,6 +756,9 @@ async function searchPhase(prep, run) {
     if (cands) out = await exhaustive(cands);
   }
   if (!out) out = await local();
+  // a block never reached has nothing to show but its reason
+  for (const row of st.steps) if (row.state === 'queued') Object.assign(row, { state: 'skipped', reason: 'nothing-to-try' });
+  run.progress(true);
   const blocks = BLOCKS.map((id) => ({
     id,
     enabled: enabled.has(id),
@@ -1130,6 +1191,7 @@ function searchSummary(s, st) {
     strategy: s.strategy,
     jointSize: s.jointSize,
     blocks: s.blocks,
+    steps: st.steps ? st.steps.map((r) => ({ ...r })) : [],
     starts: s.starts,
     optima: s.optimaCount,
     evaluated: st.evaluated.size,
