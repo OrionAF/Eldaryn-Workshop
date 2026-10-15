@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { isGameProfile, gameProfileToCharacter, importedCharacterName, altarLevelFromXp } from './gameProfile.js';
 import { normaliseCharacter, normaliseRoster, newRoster, SCHEMA_VERSION } from './index.js';
-import { resolveTranscendencePreset } from './legality.js';
+import { resolveTranscendencePreset, checkPreset } from './legality.js';
+import { prepare } from '../search/search.js';
+import { legalityOf } from '../search/legality.js';
 
 // A small hand-written profile in the shape of the player-profile response. Every value is invented.
 // Ids and secrets (player id, clan, shop, economy) exist only to prove they are never copied.
@@ -527,6 +529,14 @@ describe('M3 import integrity', () => {
     expect(resolveTranscendencePreset(c, c.presets[1]).id).toBe('x');
   });
 
+  it('a linked preset whose board differs from the active one takes the live board', () => {
+    const f = fixture(); // preset-2 (selected) links tp2
+    f.activeTranscendencePresetId = 'default';
+    const { c, report } = imp(f);
+    expect(c.presets[1].transcendencePresetId).toBe('default');
+    expect(report[0]).toMatchObject({ kind: 'liveLoadoutApplied', presetId: 'preset-2', fields: ['transcendencePresetId'] });
+  });
+
   it('extraSlotsPurchased 0 caps relics at 2 per preset', () => {
     const f = fixture();
     f.relicState.extraSlotsPurchased = 0;
@@ -535,5 +545,57 @@ describe('M3 import integrity', () => {
     const { c } = imp(f);
     expect(c.extraRelicSlots).toBe(0);
     expect(c.presets[0].relicIds).toHaveLength(2);
+  });
+});
+
+// Invented profile in the shape the game sends below the Presets unlock (level 41): one 'default'
+// preset with no board link, and one empty 'default' board that is also the active board.
+function lowLevelProfile() {
+  return {
+    player: { name: 'Lowhero', class: 'SENTINEL', level: 38 },
+    equipment: {},
+    equipment2: {},
+    activeEquipmentSet: 1,
+    talentState: { specialization: 'SENTINEL_MARKSMANSHIP', allocation: {} },
+    activeTalentSet: 1,
+    presets: [{
+      id: 'default', name: 'DEFAULT', equipmentSet: 1, talentSet: 1, petId: null, mountId: null,
+      relicIds: [], sigilSpecies: [], utilitySigilSpecies: null, transcendencePresetId: null, isDefault: true,
+    }],
+    activePresetId: 'default',
+    petState: { ownedPets: [], equippedPetId: null },
+    mountState: { ownedMounts: [], activeMountId: null },
+    sigilState: { ownedSigils: [], equippedSpecies: [], utilitySlotSpecies: null, altarTier: 1 },
+    relicState: { ownedRelics: [], equippedRelicIds: [], extraSlotsPurchased: 0 },
+    transcendencePresets: [{ id: 'default', name: 'DEFAULT', icon: 'core', allocatedNodeIds: [], isDefault: true }],
+    activeTranscendencePresetId: 'default',
+  };
+}
+
+describe('below the Presets unlock (level 41)', () => {
+  it('an unlinked preset stays unlinked: the active board is not a live change', () => {
+    const report = [];
+    const c = normaliseCharacter(gameProfileToCharacter(lowLevelProfile(), { now: 'T', report }));
+    expect(c.presets[0].transcendencePresetId).toBeNull();
+    expect(resolveTranscendencePreset(c, c.presets[0]).id).toBe('default');
+    expect(report).toEqual([]);
+    expect(checkPreset(c, c.presets[0])).toEqual([]);
+  });
+
+  it('with no presets, the live loadout follows the active board instead of linking it', () => {
+    const f = lowLevelProfile();
+    delete f.presets;
+    delete f.activePresetId;
+    const raw = gameProfileToCharacter(f, { now: 'T' });
+    expect(raw.presets[0].transcendencePresetId).toBeNull();
+    const c = normaliseCharacter(raw);
+    expect(resolveTranscendencePreset(c, c.presets[0]).id).toBe('default');
+    expect(checkPreset(c, c.presets[0])).toEqual([]);
+  });
+
+  it('the optimiser accepts the imported preset as its baseline (no "Transcendence unlocks at level 55")', () => {
+    const c = normaliseCharacter(gameProfileToCharacter(lowLevelProfile(), { now: 'T' }));
+    const { space } = prepare({ character: c, presetId: c.activePresetId });
+    expect(legalityOf(space.character, space.presetId, space.start)).toEqual({ ok: true, violations: [], warnings: [] });
   });
 });

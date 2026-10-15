@@ -72,7 +72,9 @@ Preset = { id, name, equipmentSet: 1|2, talentSet: 0|1, petId | null, mountId | 
            transcendencePresetId | null, sheet: Sheet | null }
   // A null (or unresolved) transcendencePresetId builds on `transcendence.activePresetId`, then
   // 'default', then the first board (`model/legality.js` resolveTranscendencePreset; the game keeps
-  // the active board for a null link, Game/transcendence.md §9).
+  // the active board for a null link, Game/transcendence.md §9). Below level 58 (the link unlock)
+  // reconcile clears a link that picks the same board as null would; a link to another board stays
+  // saved, and `checkPreset` / the optimiser report it.
 
 Sheet  = { values: Partial<ComputedStats>, enteredAt, inputsKey | null,  // tier-2 input, §6
            presetId | null }                                // presetId: Oblivion sheet only
@@ -328,7 +330,7 @@ stored or committed; only the mapped fields below survive, and `normaliseCharact
 | `oblivionPrestige.oblivion.{equipment,enchantSlots,enchantStones,level}` | `equipment.oblivion`, `oblivionEnchantStones`, `oblivion.level` | `unlocked`, `activeRealm` too |
 | `enchantStones` | `enchantStones` | `OBLIVION_POWER` rows dropped (derived); `activated` kept, so a sealed stone adds nothing |
 | `talentState` / `talentState2`, preset `talentSet` 1\|2 | `talentSets[0\|1]`, `talentSet` 0\|1 | |
-| `presets[]` | `presets` (max 8) | none: one preset from the live loadout (active sets, equipped pet/mount/relics/sigils, transcendence preset). A live loadout that differs from the game's selected preset (`activePresetId`) UPDATES that preset (id, name and icon kept; report `liveLoadoutApplied`) and it takes the sheet. Fallback when the profile has no such preset: the live loadout is appended once as "Live loadout" (at 8 presets the sheet has no owner) |
+| `presets[]` | `presets` (max 8) | none: one preset from the live loadout (active sets, equipped pet/mount/relics/sigils; no board link, so it follows the active board). The active board is a live change only for a preset linked to another board, which then links the active board. A live loadout that differs from the game's selected preset (`activePresetId`) UPDATES that preset (id, name and icon kept; report `liveLoadoutApplied`) and it takes the sheet. Fallback when the profile has no such preset: the live loadout is appended once as "Live loadout" (at 8 presets the sheet has no owner) |
 | `sigilState` live lists | the live preset's sigils | Mystic Druid (active talent set `MYSTIC_DRUID`) reads `druidEquippedSpecies` / `druidUtilitySlotSpecies`, every other class `equippedSpecies` / `utilitySlotSpecies` |
 | `sigilState.ownedSigils`, `altarTier` | `sigils` | per-sigil `activationCondition` becomes `owned[species].condition`; an Ancient in `sigilSpecies` moves to `ancientSigilSpecies` |
 | `petState` | `pets` | Attack Speed / Crit Damage / Minion Attack Speed secondaries x100 (pets keep percent points); altar level from `totalXp` + `tier` (Game/pets.md §6) |

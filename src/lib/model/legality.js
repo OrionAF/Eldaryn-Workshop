@@ -68,6 +68,7 @@ export const dualTalentsUnlocked = (level) => lvl(level) >= UNLOCK_LEVELS.DUAL_T
 export const mountsUnlocked = (level) => lvl(level) >= UNLOCK_LEVELS.MOUNTS;
 export const conditionsUnlocked = (level) => lvl(level) >= UNLOCK_LEVELS.CONDITIONS;
 export const transcendenceUnlocked = (level) => lvl(level) >= UNLOCK_LEVELS.TRANSCENDENCE;
+export const transcendenceLinkUnlocked = (level) => lvl(level) >= UNLOCK_LEVELS.TRANSCENDENCE_PRESETS;
 export const sigilsUnlocked = (level, cls) => lvl(level) >= sigilUnlockLevel(cls);
 
 /**
@@ -78,6 +79,12 @@ export function resolveTranscendencePreset(character, preset) {
   const list = character?.transcendence?.presets ?? [];
   const byId = (id) => (id ? list.find((p) => p.id === id) : undefined);
   return byId(preset?.transcendencePresetId) ?? byId(character?.transcendence?.activePresetId) ?? byId('default') ?? list[0] ?? null;
+}
+
+/** Does the preset's link pick another board than an unlinked preset would? A link to that same board changes nothing. */
+export function linksAnotherBoard(character, preset) {
+  if (!preset?.transcendencePresetId) return false;
+  return (resolveTranscendencePreset(character, preset)?.id ?? null) !== (resolveTranscendencePreset(character, null)?.id ?? null);
 }
 
 /**
@@ -109,7 +116,7 @@ export function checkPreset(character, preset) {
   if (preset.equipmentSet === 2 && !dualEquipUnlocked(L)) add('dualEquip', 'equipmentSet', `Equipment set 2 unlocks at level ${UNLOCK_LEVELS.DUAL_EQUIP}`);
   if (preset.talentSet === 1 && !dualTalentsUnlocked(L)) add('dualTalents', 'talentSet', `Talent set 2 unlocks at level ${UNLOCK_LEVELS.DUAL_TALENTS}`);
   if (preset.mountId && !mountsUnlocked(L)) add('mounts', 'mountId', `Mounts unlock at level ${UNLOCK_LEVELS.MOUNTS}`);
-  if (preset.transcendencePresetId && !transcendenceUnlocked(L)) {
+  if (linksAnotherBoard(character, preset) && !transcendenceUnlocked(L)) {
     add('transcendence', 'transcendencePresetId', `Transcendence unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE}`);
   }
 

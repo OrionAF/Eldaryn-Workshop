@@ -174,6 +174,38 @@ describe('checkPreset', () => {
     expect(v.some((x) => x.gate === 'dualEquip')).toBe(true);
     expect(v.some((x) => x.gate === 'altarTier' && x.warn)).toBe(true);
   });
+
+  it('below 55 only a link to another board than the unlinked one breaks the Transcendence gate', () => {
+    const c = fixtureCharacter('WARRIOR');
+    c.transcendence.presets.push({ id: 'bare', name: 'Bare', allocatedNodeIds: [] });
+    c.level = 38;
+    const p = { ...c.presets[1], transcendencePresetId: 'default' }; // the active board: a no-op link
+    expect(L.checkPreset(c, p).map((x) => x.gate)).not.toContain('transcendence');
+    p.transcendencePresetId = 'bare';
+    expect(L.checkPreset(c, p).map((x) => x.gate)).toContain('transcendence');
+  });
+});
+
+describe('transcendence links below level 58 (transcendence.md §9)', () => {
+  const withLink = (level, link, edit = () => {}) => {
+    const raw = clone(fixtureCharacter('WARRIOR'));
+    raw.level = level;
+    raw.transcendence.presets.push({ id: 'bare', name: 'Bare', allocatedNodeIds: [] });
+    raw.presets[0].transcendencePresetId = link;
+    edit(raw);
+    return normaliseCharacter(raw).presets[0].transcendencePresetId;
+  };
+
+  it('a link to the board an unlinked preset uses anyway is cleared on load, so saved imports heal', () => {
+    expect(withLink(38, 'default')).toBeNull();
+    expect(withLink(57, 'default')).toBeNull();
+    expect(withLink(38, 'bare', (r) => { r.transcendence.activePresetId = 'bare'; })).toBeNull();
+  });
+
+  it('a link to another board stays saved below 58, and any link stays from 58', () => {
+    expect(withLink(38, 'bare')).toBe('bare');
+    expect(withLink(58, 'default')).toBe('default');
+  });
 });
 
 describe('level change', () => {

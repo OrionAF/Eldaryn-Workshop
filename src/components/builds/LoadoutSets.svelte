@@ -5,7 +5,7 @@
    * disabled option with its reason instead of the choice silently reverting.
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
-  import { dualEquipUnlocked, dualTalentsUnlocked, transcendenceUnlocked, UNLOCK_LEVELS, resolveTranscendencePreset } from '../../lib/model/legality.js';
+  import { dualEquipUnlocked, dualTalentsUnlocked, transcendenceUnlocked, transcendenceLinkUnlocked, UNLOCK_LEVELS, resolveTranscendencePreset } from '../../lib/model/legality.js';
   import Panel from '../ui/Panel.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
   import Select from '../ui/Select.svelte';
@@ -28,11 +28,19 @@
       disabled: i === 1 && !dualTalentsUnlocked(character.level),
     })),
   );
+  // below level 58 a preset cannot link a board (transcendence.md §9); a saved link stays selectable so it can be cleared
+  const canLink = $derived(transcendenceLinkUnlocked(character.level));
   const boardOptions = $derived([
     { value: '', label: 'Follow the active board' },
-    ...character.transcendence.presets.map((p) => ({ value: p.id, label: p.name })),
+    ...character.transcendence.presets.map((p) => ({ value: p.id, label: p.name, disabled: !canLink && p.id !== preset.transcendencePresetId })),
   ]);
   const resolved = $derived(resolveTranscendencePreset(character, preset));
+  const boardHint = $derived(
+    !transcendenceUnlocked(character.level)
+      ? `Transcendence unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE}.`
+      : `${resolved ? `Uses ${resolved.name}` : 'No board yet'}${preset.transcendencePresetId ? '' : ' (the active board)'}. ` +
+          (canLink ? '' : `Linking a board unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE_PRESETS}.`),
+  );
 </script>
 
 <Panel title="Gear & talents" level="primary" scope="preset">
@@ -61,10 +69,8 @@
     label="Transcendence board"
     options={boardOptions}
     value={preset.transcendencePresetId ?? ''}
-    disabled={!transcendenceUnlocked(character.level)}
-    hint={transcendenceUnlocked(character.level)
-      ? `${resolved ? `Uses ${resolved.name}` : 'No board yet'}${preset.transcendencePresetId ? '' : ' (the active board)'}. `
-      : `Transcendence unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE}.`}
+    disabled={!canLink && !preset.transcendencePresetId}
+    hint={boardHint}
     onchange={(v) => rosterStore.setPresetTranscendence(preset.id, v || null)}
   />
   <a class="link" href="#/character/transcendence">Edit boards</a>

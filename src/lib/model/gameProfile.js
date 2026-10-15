@@ -233,6 +233,8 @@ function liveSigils(profile) {
  * The live loadout as a (client-shaped) preset: the active equipment and talent sets, the equipped pet,
  * mount, relics and sigils. A profile with no presets (the Presets feature unlocks at level 41) is
  * exactly this one preset; a profile whose live state differs from its active preset gets it appended.
+ * It links no board: a null link runs the active board (transcendence.md §9), which is imported as
+ * `transcendence.activePresetId`, and a link needs level 58.
  */
 function livePreset(profile, id, name) {
   const sigils = liveSigils(profile);
@@ -246,7 +248,7 @@ function livePreset(profile, id, name) {
     relicIds: profile.relicState?.equippedRelicIds,
     sigilSpecies: sigils.species,
     utilitySigilSpecies: sigils.utility,
-    transcendencePresetId: profile.activeTranscendencePresetId,
+    transcendencePresetId: null,
   };
 }
 
@@ -271,7 +273,10 @@ function liveChanges(profile, preset) {
   if (Array.isArray(live.relicIds) && !sameSet(live.relicIds.filter((x) => typeof x === 'string'), arr(preset.relicIds))) out.push('relicIds');
   if (Array.isArray(live.sigilSpecies) && !sameSet(live.sigilSpecies.filter((x) => typeof x === 'string'), arr(preset.sigilSpecies))) out.push('sigilSpecies');
   if (live.utilitySigilSpecies !== undefined && str(live.utilitySigilSpecies) !== str(preset.utilitySigilSpecies)) out.push('utilitySigilSpecies');
-  if (live.transcendencePresetId !== undefined && str(live.transcendencePresetId) !== str(preset.transcendencePresetId)) out.push('transcendencePresetId');
+  // an unlinked preset follows whatever board is active, so only a link to another board is a change
+  const link = str(preset.transcendencePresetId);
+  const board = str(profile.activeTranscendencePresetId);
+  if (link && board && link !== board) out.push('transcendencePresetId');
   return out;
 }
 
@@ -308,7 +313,7 @@ function mapPresets(profile, sheet, report) {
   if (!implicit) {
     const fields = liveChanges(profile, selected ?? list[0]);
     if (fields.length && selected) {
-      const live = livePreset(profile, selected.id, selected.name);
+      const live = { ...livePreset(profile, selected.id, selected.name), transcendencePresetId: profile.activeTranscendencePresetId };
       // a field the profile omits keeps the preset's value
       const merged = { ...selected };
       for (const k of fields) merged[k] = live[k];

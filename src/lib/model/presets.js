@@ -3,6 +3,7 @@
 // transcendence), so cross-references are validated in `reconcilePresets` and remapped from v1 in
 // `migratePresetsFromV1` - the domain slices never edit this file.
 import { newId, normaliseSheet } from './character.js';
+import { linksAnotherBoard, transcendenceLinkUnlocked } from './legality.js';
 
 export const MIN_PRESETS = 2;
 export const MAX_PRESETS = 8;
@@ -90,6 +91,9 @@ export function reconcilePresets(character) {
     if (p.petId && !petIds.has(p.petId)) p.petId = null;
     if (p.mountId && !mountIds.has(p.mountId)) p.mountId = null;
     if (p.transcendencePresetId && !trIds.has(p.transcendencePresetId)) p.transcendencePresetId = null;
+    // below level 58 the game holds no link (transcendence.md §9), so one that picks the board an
+    // unlinked preset uses anyway is dropped; a link to another board stays saved for the gates to report
+    if (!transcendenceLinkUnlocked(character.level) && !linksAnotherBoard(character, p)) p.transcendencePresetId = null;
     delete p.sigilConditions; // lifted to sigils.owned[sp].condition by normaliseSigils (M1)
   }
   return character;
