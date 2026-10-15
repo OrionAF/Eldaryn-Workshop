@@ -307,7 +307,19 @@ objective choice, so they carry no win-rate goal.
 Every resolved target carries its engine `mode` (`PVE_MODES` key, or `pvp`), the mode's labelled
 `assumptions` (`{id, label, value?}`; the Oblivion output-cut toggle gives `value` 'on'/'off',
 default off) and `fidelity`: `server-model` when the fight is server-run (dungeon, raid, Oblivion,
-World Boss, Fortress boss, PVP), else `client`.
+World Boss, Fortress boss, Celestial Trial, PVP), else `client`.
+
+The Celestial Trial (`engine/pve/celestial.js`, mode `celestial`, NORMAL and HARD) is `server-model`
+with a stronger footing than the other server-run modes: its rules are read from five server logs
+(Game/combat-pve.md §20) and a replay check reproduces all five tick by tick
+(`engine/pve/celestialReplay.js`). Its assumptions, each a `CELESTIAL_ASSUMPTIONS` label: the add
+first-swing phase is a uniform 10-1000 ms draw; stack sigils and thorns run for one stack player
+(default player 0, the one who starts the run); Overload ends when the living adds fall below the
+threshold and multiplies Judgment Strike too (the cautious reading of two open items); the time limit
+counts from 0; the boss and the adds attack the tank (the "adds target everyone" tactic is not
+modelled) and, with the tank dead, the first living player; no add spawns at the
+`maxAlive` cap; Block Fury and the per-add attack bonus multiply. MYTHIC is not simulated (its
+party-power HP scaling is server-side).
 
 ### Fortress boss
 
