@@ -30,6 +30,7 @@ import {
 import { glyphCombatMods } from '../core/glyphMods.js';
 import { disruptionEffectFor } from '../core/disruption.js';
 import { assertFiniteEntity } from '../validate.js';
+import { lane } from '../rng.js';
 
 /** @typedef {import('./events.js').DuelEvent} DuelEvent */
 /** @typedef {import('./events.js').ArenaPvpResult} ArenaPvpResult */
@@ -198,7 +199,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
   // L1456488-1456788: one side's debuffs tick; the damage goes through the victim's PVP Defense
   // once, then its shield. Rows are named after the CASTER's side.
   const tickDebuffs = (list, victim, casterSide, t) => {
-    const r = processDebuffsTick(list, dt, t, rng);
+    const r = processDebuffsTick(list, dt, t, lane(rng, casterSide));
     if (r.targetHpDelta < 0) {
       let dmg = Math.abs(r.targetHpDelta);
       if (victim.pvpDefense > 0) dmg = Math.max(1, Math.round(dmg * (1 - pvpRatingToFraction(victim.pvpDefense))));
@@ -292,7 +293,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
         caster: A, target: D, dtMs: dt, timestamp: t, side: 'attacker', targetDebuffs: dDebuffs, casterDebuffs: aDebuffs,
         targetSpellResistBonus: dBuffBefore?.spellResist ?? 0, casterHpPercentBonus: aStackHp,
         targetMinion: dMin, casterMinion: aMin, log: keepRows,
-      }, rng);
+      }, lane(rng, 'attacker'));
       for (const r of rows) events.push(r);
       aMods = buffMods(aRt);
       aBuff = aMods;
@@ -303,7 +304,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
         caster: D, target: A, dtMs: dt, timestamp: t, side: 'defender', targetDebuffs: aDebuffs, casterDebuffs: dDebuffs,
         targetSpellResistBonus: aBuffBefore?.spellResist ?? 0, casterHpPercentBonus: dStackHp,
         targetMinion: aMin, casterMinion: dMin, log: keepRows,
-      }, rng);
+      }, lane(rng, 'defender'));
       for (const r of rows) events.push(r);
       dMods = buffMods(dRt);
       dBuff = dMods;

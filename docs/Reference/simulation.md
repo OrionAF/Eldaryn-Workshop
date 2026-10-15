@@ -12,9 +12,42 @@ its multiplicity family, and returns plain data.
 
 ### Sampling unit
 
-Fight *i* of a stage uses `rng = mulberry32(hashSeed(seed, i))` for every build measured on that
-stage (common random numbers), so outcomes are paired by fight index and prefix-stable: raising N
-extends a sample, never restarts it.
+Fight *i* of a stage uses `rng = fightRng(seed, i)` (`engine/rng.js`) for every build measured on
+that stage (common random numbers, below), so outcomes are paired by fight index and prefix-stable:
+raising N extends a sample, never restarts it.
+
+### Common random numbers
+
+`fightRng(seed, i) = laneRng(hashSeed(seed, i))`: a mulberry32 stream that also hands out
+independent child streams, `rng.lane(name)`, each seeded from `(seed, name)`. The engine reads one
+lane per actor and draw purpose:
+
+| Engine | Lanes |
+|---|---|
+| PVE tick | `player` → `avoid`, `crit`, `double`, `blind`, `paralyze`, `disrupt`; `minion`; `enemy` → `avoid`, `crit` |
+| PVP | `attacker` / `defender` (the swinger's side) → the same sub-lanes; `<side>` → `minion` |
+| spells | `spell:<species>` of the caster's lane (PVE: the root) |
+| debuffs | `debuff:<species>:<type>` of the caster's lane (PVE: the root) |
+
+Why: with one shared stream every conditional draw (an extra swing from more Attack Speed, a new
+proc) shifts all later draws of every actor, so two builds stop seeing the same luck after the
+first difference (finding #75). With lanes, a build change only moves the draws of the lanes it
+touches. Each lane is uniform and independent, so a fight's distribution is unchanged; `lane(rng,
+name)` returns a plain or scripted rng itself, so port tests keep the client's exact draw order.
+
+Measured (`engine/crn.test.js`, the class fixtures, +5 % Attack Speed, same fight seeds; paired sd
+of the per-fight difference, lanes vs one stream):
+
+| Case | Reduction |
+|---|---|
+| time to kill, dungeon_3 step 4 (enemy hits back) | 63-91 % (Warrior 90, Sentinel 63, Mystic 91, Necromancer 12) |
+| time to kill, Oblivion floor 20 | 84-95 % (Necromancer, who loses: 32 %) |
+| damage on the training dummy (no enemy draws) | about 0 on average: −26 % to +55 % by class, within noise at N = 40-100 |
+| PVP win, fixture vs fixture (discordant duels, N = 200) | 40-66 % fewer discordant pairs (e.g. 47 → 16, 81 → 40) |
+
+So the paired intervals are much narrower whenever the opponent draws too; against the dummy
+pairing is no better than before (it was already about 4× tighter than independent samples). The
+statistics stay valid either way: they use the observed paired sd, never an assumed one.
 
 ### Estimates (one build)
 

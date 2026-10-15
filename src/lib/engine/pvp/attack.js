@@ -6,6 +6,7 @@ import { PVP_RATING } from '../../game/stats.js';
 import { rollAttackDamage, rollPenetrationCritMult, rollDisruption, PARALYZE_DURATION_MS, STAGGER_STUN_MS } from '../core/rolls.js';
 import { absorbWithShield, regenShieldRefillAmount } from '../core/shield.js';
 import { damageMinion, minionDeathMeta } from '../core/minions.js';
+import { lane } from '../rng.js';
 
 /** Regen pulse period (module 5399 slot9, L1457661-1457662). */
 export const REGEN_PULSE_MS = 100;
@@ -100,6 +101,7 @@ export function processAttack(atk, def, t, atkIsAttacker, maxHp, defMinion, rng,
   const cap = maxHp == null ? atk.maxHp : maxHp;
   const S = atkIsAttacker ? 'attacker' : 'defender'; // swinger side
   const T = atkIsAttacker ? 'defender' : 'attacker'; // target side
+  const X = lane(rng, S); // the swinger's lanes (engine/rng.js laneRng); a plain rng is its own lanes
   const emit = (type, damage, extra) => {
     if (!log) return;
     const ev = { timestamp: t, type, damage, attackerHpAfter: Math.max(0, atk.hp), defenderHpAfter: Math.max(0, def.hp) };
@@ -111,7 +113,7 @@ export function processAttack(atk, def, t, atkIsAttacker, maxHp, defMinion, rng,
   if (atk.blinded) { atk.blinded = false; emit(`${S}_blind`, 0); return events; } // L1452903-1452905, 1453755-1453787
 
   if (defMinion && defMinion.alive) { // L1452906-1452912, 1453570-1453754
-    const roll = rollAttackDamage(atk, rng);
+    const roll = rollAttackDamage(atk, X);
     const strikes = [{ damage: roll.damage, isCrit: roll.isCrit, doubleHit: false }];
     if (roll.isDoubleHit) strikes.push({ damage: roll.doubleHitDamage, isCrit: false, doubleHit: true });
     for (const s of strikes) {
@@ -128,12 +130,12 @@ export function processAttack(atk, def, t, atkIsAttacker, maxHp, defMinion, rng,
   }
 
   const avoid = def.blockChance + def.missChance;
-  if (avoid > 0 && rng() * 100 < avoid) { // L1452914-1452927: one roll for block and miss together
+  if (avoid > 0 && lane(X, 'avoid')() * 100 < avoid) { // L1452914-1452927: one roll for block and miss together
     // AVOIDED path L1453403-1453569
     let dealt = 0;
     if (atk.penetration > 0 && def.missChance === 0) {
       const base = Math.round((atk.attack * atk.penetration) / 100);
-      const raw = Math.round(base * rollPenetrationCritMult(atk, rng));
+      const raw = Math.round(base * rollPenetrationCritMult(atk, X));
       dealt = mitigate(raw, atk, def);
       strike(def, dealt);
       applyLifesteal(atk, dealt, cap);
@@ -143,7 +145,7 @@ export function processAttack(atk, def, t, atkIsAttacker, maxHp, defMinion, rng,
   }
 
   // HIT path L1452929-1453400
-  const roll = rollAttackDamage(atk, rng);
+  const roll = rollAttackDamage(atk, X);
   const dmg = mitigate(roll.damage, atk, def);
   strike(def, dmg);
   applyLifesteal(atk, dmg, cap);
@@ -156,16 +158,16 @@ export function processAttack(atk, def, t, atkIsAttacker, maxHp, defMinion, rng,
   }
 
   // On-hit procs, once per swing, after the double hit (L1453143-1453400).
-  if (atk.blindChance > 0 && !def.blinded && def.hp > 0 && rng() * 100 < atk.blindChance) { // L1453143-1453191
+  if (atk.blindChance > 0 && !def.blinded && def.hp > 0 && lane(X, 'blind')() * 100 < atk.blindChance) { // L1453143-1453191
     def.blinded = true;
     emit(`${T}_blinded`, 0);
   }
-  if (atk.paralyzeChance > 0 && !(def.paralyzedMs > 0) && def.hp > 0 && rng() * 100 < atk.paralyzeChance) { // L1453193-1453246
+  if (atk.paralyzeChance > 0 && !(def.paralyzedMs > 0) && def.hp > 0 && lane(X, 'paralyze')() * 100 < atk.paralyzeChance) { // L1453193-1453246
     def.paralyzedMs = PARALYZE_DURATION_MS;
     emit(`${T}_paralyzed`, 0);
   }
   if (atk.disruptionChance > 0 && def.hp > 0) { // L1453248-1453400
-    const d = rollDisruption(atk, def.silencedMs ?? 0, def.staggerStacks ?? 0, def.fearedMs ?? 0, rng);
+    const d = rollDisruption(atk, def.silencedMs ?? 0, def.staggerStacks ?? 0, def.fearedMs ?? 0, X);
     // An unknown disruptionEffect returns undefined after drawing (the client would throw); treat as no proc.
     if (d && d.procced) {
       def.silencedMs = d.silencedMs;
