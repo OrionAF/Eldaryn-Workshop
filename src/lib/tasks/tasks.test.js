@@ -11,14 +11,15 @@ const stats = (o = {}) => ({
 const fighter = (o = {}) => ({ stats: stats(o), class: 'WARRIOR', spec: null, sigils: [] });
 
 describe('task registry', () => {
-  it('names the four tasks', () => {
-    expect(Object.keys(TASKS).sort()).toEqual(['dropCheck', 'duel', 'oblivionFloors', 'optimize']);
+  it('names the tasks', () => {
+    expect(Object.keys(TASKS).sort()).toEqual(['dropCheck', 'duel', 'oblivionFloors', 'optimize', 'optimizeMore']);
     expect(hasTask('toString')).toBe(false);
   });
 
   it('implemented tasks validate their request; unknown modes reject', async () => {
     await expect(runTask('oblivionFloors', {})).rejects.toThrow(/fighter is required/); // F4
     await expect(runTask('optimize', {})).rejects.toThrow(/character is required/); // F2a
+    await expect(runTask('optimizeMore', {})).rejects.toThrow(/finished optimiser result/); // A4
     await expect(runTask('nope', {})).rejects.toThrow(/unknown task/);
   });
 

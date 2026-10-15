@@ -1,5 +1,5 @@
 // search/space.js (A2): what a searchable build is and every legal value of each search block
-// (redesign plan A.3). Replaces search/candidates.js once the A4 driver switches over.
+// (redesign plan A.3). It replaced the retired search/candidates.js.
 //
 // The Candidate shape, its canonical form and the block domains are specified in
 // docs/Reference/simulation.md §Build space. Merging engine-identical values is search/effect.js.
