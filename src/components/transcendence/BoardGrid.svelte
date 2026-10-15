@@ -145,6 +145,15 @@
     zoomTo(zoom * factor, e.clientX - rect.left, e.clientY - rect.top);
   }
 
+  function zoomBy(factor) {
+    const rect = viewportEl.getBoundingClientRect();
+    zoomTo(zoom * factor, rect.width / 2, rect.height / 2);
+  }
+  function resetView() {
+    zoom = 1;
+    centerOnStart();
+  }
+
   // Node clicks/pans both fire on pointerup; suppress the click that follows
   // a drag so dragging past a node doesn't also toggle it.
   function handleSelect(node) {
@@ -165,6 +174,7 @@
   });
 </script>
 
+<div class="board-wrap">
 <div
   class="viewport"
   role="application"
@@ -192,8 +202,17 @@
     {/each}
   </div>
 </div>
+<div class="tools" role="group" aria-label="Board view">
+  <button type="button" aria-label="Zoom in" onclick={() => zoomBy(1.25)}>+</button>
+  <button type="button" aria-label="Zoom out" onclick={() => zoomBy(1 / 1.25)}>−</button>
+  <button type="button" aria-label="Reset view" onclick={resetView}>⟲</button>
+</div>
+</div>
 
 <style>
+  .board-wrap { position: relative; }
+  .tools { position: absolute; top: var(--space-2, 8px); right: var(--space-2, 8px); display: flex; gap: var(--space-1, 4px); }
+  .tools button { min-width: 32px; min-height: 32px; }
   .viewport {
     position: relative;
     width: 100%;
