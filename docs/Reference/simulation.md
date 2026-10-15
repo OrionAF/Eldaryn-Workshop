@@ -286,13 +286,16 @@ time cap (each mob's own cap, or the custom window) is a loss.
   highest chance it is attached only while neither build has won a fight; wins only accumulate, so it
   is never pending (`thenPending` false). The
   comparator reads it only once g is `equivalent`: `better`/`worse` on the margin decide; while it is
-  open the comparison continues; at maxN the tie on g stands (`equivalent`). This gives the search a
+  open the comparison continues (a race keeps the arm open until its last look); at maxN the tie on g
+  stands (`equivalent`). This gives the search a
   gradient where the rate saturates at 0 (a 0 % build that gets further is better) without letting
   a bigger change win on margin among builds that already reach the target. δ is absolute in both
   units. The combined false-claim rate per look is at most alpha.
 - **Fast drops at low rates.** When the leader has wins and an arm has none, the arm's b is 0, so its
-  upper bound against the leader soon falls below −δ. It leaves the race as `worse` or `futile` on
-  `basis: 'win-rate'`, whatever its progress. Progress only decides when neither build won (the
+  upper bound against the leader soon falls below +δ and it is `futile`. It is `worse` once the
+  leader's own wins (c) push the Tango bound below 0. Either way it leaves on `basis: 'win-rate'`,
+  whatever its progress. A futile arm nearer the baseline than the leader stays until it is
+  `equivalent` or `worse`. Progress only decides when neither build won (the
   highest chance) or both are below τ (a target goal).
 - **Score** (race leader, row order): min(p̂, τ) × 10⁶ + mean s, lexicographic for n ≤ 131 072.
   Racing then picks, among the leader and its ties, the arm nearest the baseline: of the builds that
@@ -310,7 +313,8 @@ time cap (each mob's own cap, or the custom window) is a loss.
   `reached` when a row meets the target (the first such row has the fewest changes) or
   `not-reached`, with the best build's rate in the headline.
 - **Highest-chance verdicts** (`search.js` `chanceGoalOf`; `goal.mode` `'max'`, `goal.target` null):
-  `already` as above. `best` names the first row whose verdict is `better` ("Best chance to win: N%
+  `already` as above. `best` names the first row whose verdict is `better` on the win rate
+  (`basis: 'win-rate'`; a row better only on progress never heads it) ("Best chance to win: N%
   (95% CI lo-hi) with k changes; the current build wins M%."), or the current build when no row is
   better ("No change was shown to raise the chance to win. The current build wins N% (95% CI lo-hi).").
   `no-wins` when no build won a single fight: the rows are then ranked by progress (mean s) and the

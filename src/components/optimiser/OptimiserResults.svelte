@@ -41,7 +41,7 @@
   const maxRun = $derived(view.kind === 'win-chance');
   const target = $derived(winRun ? (view.goal?.target ?? view.push?.target ?? null) : null);
   // The highest-chance verdict's build: the first row shown better than the current one (search.js chanceGoalOf).
-  const bestRow = $derived(maxRun ? (view.rows.find((r) => r.vsBaseline?.verdict === 'better') ?? null) : null);
+  const bestRow = $derived(maxRun ? (view.rows.find((r) => r.vsBaseline?.verdict === 'better' && r.vsBaseline.basis === 'win-rate') ?? null) : null);
   const axisTitle = $derived(winRun ? 'Change in win rate vs current (percentage points)' : AXIS_TITLE[view.unit]);
   // The win rate the goal banners talk about (optimiserView.js goalWinRate).
   const goalTries = $derived(triesPerClear(goalWinRate(view)));

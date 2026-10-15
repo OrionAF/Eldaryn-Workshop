@@ -377,7 +377,7 @@ export function meetsTarget(e, target, delta = 0) {
 /**
  * The paired contrast of the capped win rate g = min(p_X, τ) − min(p_Y, τ) (simulation.md §Win rate); the
  * highest-chance goal (`max`) uses τ = 1, so g is the plain rate difference. The rate interval intersects
- * four intervals at a joint alpha · 3/4 (Bonferroni): Tango on p_X − p_Y at alpha / 4, a Wilson interval
+ * five intervals at a joint alpha · 3/4 (Bonferroni): Tango on p_X − p_Y at alpha / 4, a Wilson interval
  * per build at alpha / 8, and an exact one-sided bound on each discordant rate at alpha / 8 (p_X − p_Y is
  * at most P(X wins and Y loses), and at least −P(Y wins and X loses)), which is what lets two builds that
  * rarely or never win be shown equal on the rate after about ln(8 / alpha) / δ fights. Because min(·, τ)
@@ -410,8 +410,8 @@ function cappedWinRateContrast(tau, x, y, alpha, max = false) {
   const pairedHi = t.hi < 0 ? (wx.hi < tau ? Math.max(t.hi, wx.hi - tau) : 0) : t.hi;
   let lo = Math.max(pairedLo, cap(wx.lo) - cap(wy.hi), -uC);
   let hi = Math.min(pairedHi, cap(wx.hi) - cap(wy.lo), uB);
-  // the intervals disagree (each holds at its own level): fall back to the weaker bounds
-  if (lo > hi) [lo, hi] = [Math.min(lo, hi), Math.max(lo, hi)];
+  // the intervals disagree (each holds at its own level): fall back to the Tango bounds alone
+  if (lo > hi) [lo, hi] = [Math.min(pairedLo, pairedHi), Math.max(pairedLo, pairedHi)];
   const both = max ? sumOf(bx) + sumOf(by) === 0 : Math.max(wx.hi, wy.hi) < tau;
   const then = both
     ? { ...pairedT(xs.slice(0, n), ys.slice(0, n), { alpha: alpha / 4 }), method: 'paired-t', basis: 'margin', higherIsBetter: true, ref: meanInterval(ys.slice(0, n)).est }

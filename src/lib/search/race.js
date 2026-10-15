@@ -70,7 +70,7 @@ export async function race(arms, { objective, getSet, effort, seed, onLook }) {
     for (const i of [...alive].sort((a, b) => a - b)) {
       if (i === leader) continue;
       // the verdict stays worse / equivalent / unresolved; futility is read from c.futile below
-      const c = contrastSets(objective, sets[i], sets[leader], { ...effort, futility: false, alpha: alphaLook, seed });
+      const c = contrastSets(objective, sets[i], sets[leader], { ...effort, futility: false, alpha: alphaLook, seed, final });
       if (c.verdict === 'worse') {
         alive.delete(i);
         eliminated.push({ i, contrast: c });

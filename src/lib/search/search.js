@@ -1034,17 +1034,20 @@ function goalOf(objective, baseline, rows, check) {
 
 /**
  * The highest-chance verdict (simulation.md §Win rate): 'best' names the build with the best clear chance
- * (the first row shown better than the current build, else the current build); 'no-wins' when no build
+ * (the first row shown better than the current build on the win rate, else the current build; a row
+ * better only on progress never heads it); 'no-wins' when no build
  * won a single fight, with how far the build that gets furthest goes (its mean progress score, the share
  * of the step's HP removed). 'already' is alreadyResult's.
  */
 function chanceGoalOf(baseline, rows, check) {
   const base = { winRate: baseline.aux.winRate, check: { meets: check.meets, n: check.n, value: estimateOut(check.value) } };
-  const best = rows.find((r) => r.vsBaseline?.verdict === 'better') ?? baseline;
+  const better = rows.filter((r) => r.vsBaseline?.verdict === 'better');
+  const noWins = [baseline, ...rows].every((r) => r.aux.winRate.est === 0);
+  const best = (noWins ? better[0] : better.find((r) => r.vsBaseline.basis === 'win-rate')) ?? baseline;
   const k = best.changes.length;
   const who = best.isBaseline ? 'the current build' : `${k} change${k === 1 ? '' : 's'}`;
   const w = best.aux.winRate;
-  if ([baseline, ...rows].every((r) => r.aux.winRate.est === 0)) {
+  if (noWins) {
     const n = Math.max(baseline.aux.winRate.n, ...rows.map((r) => r.aux.winRate.n));
     return {
       mode: 'max', target: null, status: 'no-wins', baseline: base, bestKey: best.key, progress: best.aux.margin,
