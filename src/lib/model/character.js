@@ -51,22 +51,31 @@ function isSheetKey(k) {
 }
 
 /**
- * Sheet = { values: Partial<ComputedStats>, enteredAt } - the tier-2 in-game sheet (plan §4).
- * Only finite numbers under `total*` / `raw*` keys survive; the authoritative key list is the
- * `engine/pipeline/sheet.js` slice (E3). Returns null when nothing usable is left.
+ * Sheet = { values: Partial<ComputedStats>, enteredAt, inputsKey, presetId? } - the tier-2 in-game
+ * sheet (data-model.md §6). Only finite numbers under `total*` / `raw*` keys survive; the
+ * authoritative key list is `engine/pipeline/sheet.js`. `inputsKey` fingerprints the build the sheet
+ * was entered for (null on a legacy sheet: unverified); `presetId` names the owner preset of the
+ * Oblivion sheet (`withOwner`), checked by reconcileOblivion. Returns null when no value is left.
  */
-export function normaliseSheet(raw) {
+export function normaliseSheet(raw, { withOwner = false } = {}) {
   if (!raw || typeof raw !== 'object' || !raw.values || typeof raw.values !== 'object') return null;
   const values = {};
   for (const [k, v] of Object.entries(raw.values)) {
     if (isSheetKey(k) && typeof v === 'number' && Number.isFinite(v)) values[k] = v;
   }
   if (Object.keys(values).length === 0) return null;
-  return { values, enteredAt: typeof raw.enteredAt === 'string' ? raw.enteredAt : null };
+  const sheet = {
+    values,
+    enteredAt: typeof raw.enteredAt === 'string' ? raw.enteredAt : null,
+    inputsKey: typeof raw.inputsKey === 'string' && raw.inputsKey ? raw.inputsKey : null,
+  };
+  if (withOwner) sheet.presetId = typeof raw.presetId === 'string' && raw.presetId ? raw.presetId : null;
+  return sheet;
 }
 
-export function makeSheet(values, enteredAt = new Date().toISOString()) {
-  return normaliseSheet({ values, enteredAt });
+/** A new sheet; `meta` carries `inputsKey` (and `presetId` for the Oblivion sheet). */
+export function makeSheet(values, enteredAt = new Date().toISOString(), meta = {}) {
+  return normaliseSheet({ values, enteredAt, ...meta }, { withOwner: 'presetId' in meta });
 }
 
 /** The core (non-domain) character fields. `raw` may be anything. */

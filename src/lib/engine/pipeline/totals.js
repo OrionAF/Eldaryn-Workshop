@@ -182,7 +182,18 @@ const CAPPED_D = [
  * @param {{playerClass?: string, formConfig?: Object|null, activeSpec?: string|null}} [ctx]  a11
  * @returns {import('../types.js').ComputedStats}
  */
-export function calculateTotalStats(
+export function calculateTotalStats(...args) {
+  return calculateTotalStatsExact(...args).stats;
+}
+
+/**
+ * calculateTotalStats plus the unrounded values it rounded away, for sheet anchoring
+ * (anchoredDelta.js): `attackFlat`/`hpFlat` before the percent, the exact `attackPercent`/
+ * `healthPercent`, and `raw[totalKey]`, every capped stat's raw sum before the curve.
+ * @returns {{stats: import('../types.js').ComputedStats, exact: {attackFlat: number, attackPercent: number,
+ *   attackMult: number, hpFlat: number, healthPercent: number, raw: Object<string, number>}}}
+ */
+export function calculateTotalStatsExact(
   base, equipment, talents, pet, sigils, stones, awakening, a7, fortress, transcendence, mounts, ctx,
 ) {
   const acc = {
@@ -305,5 +316,11 @@ export function calculateTotalStats(
   for (const [key, a, rawKey, digits] of [...CAPPED_HEAD, ...CAPPED_B, ...CAPPED_C, ...CAPPED_D]) {
     if (acc[a] > capConfig(key).soft) out[rawKey] = fix(acc[a], digits);
   }
-  return out;
+  const raw = {};
+  for (const [key, a] of [...CAPPED_HEAD, ...CAPPED_B, ...CAPPED_C, ...CAPPED_D]) raw[key] = acc[a];
+  const exact = {
+    attackFlat: acc.attack, attackPercent: acc.attackPercent, attackMult,
+    hpFlat: acc.hp + acc.gearHp * (gearHpMult - 1), healthPercent: acc.healthPercent, raw,
+  };
+  return { stats: out, exact };
 }
