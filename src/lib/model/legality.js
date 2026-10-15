@@ -70,10 +70,14 @@ export const conditionsUnlocked = (level) => lvl(level) >= UNLOCK_LEVELS.CONDITI
 export const transcendenceUnlocked = (level) => lvl(level) >= UNLOCK_LEVELS.TRANSCENDENCE;
 export const sigilsUnlocked = (level, cls) => lvl(level) >= sigilUnlockLevel(cls);
 
-/** The transcendence preset a build preset uses: its own link, else 'default', else the first. */
+/**
+ * The transcendence preset a build preset uses: its own link, else the active board (a null link
+ * leaves the board unchanged in the game, transcendence.md §9), else 'default', else the first.
+ */
 export function resolveTranscendencePreset(character, preset) {
   const list = character?.transcendence?.presets ?? [];
-  return list.find((p) => p.id === preset?.transcendencePresetId) ?? list.find((p) => p.id === 'default') ?? list[0] ?? null;
+  const byId = (id) => (id ? list.find((p) => p.id === id) : undefined);
+  return byId(preset?.transcendencePresetId) ?? byId(character?.transcendence?.activePresetId) ?? byId('default') ?? list[0] ?? null;
 }
 
 /**
