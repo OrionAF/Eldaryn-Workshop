@@ -3,6 +3,7 @@ import { flushSync } from 'svelte';
 import { setup, click, key } from '../ui/testkit.js';
 
 vi.mock('../../lib/optimizerClient.js', () => ({
+  jobWorkers: () => 2,
   runOptimizerTask: (request, { onProgress, onCheckpoint }) => {
     if (request.mode === 'boom') return { promise: Promise.reject(new Error('The opponent has no stat sheet.')), cancel() {} };
     onProgress({ phases: [{ id: 's', label: 'Screen', state: 'done' }, { id: 'm', label: 'Measure', state: 'current', done: 4, total: 6 }] });

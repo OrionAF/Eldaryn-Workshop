@@ -25,7 +25,9 @@
   import { go } from '../../lib/router.svelte.js';
   import { formatHash } from '../../lib/routes.js';
   import { jobsStore, startJob, cancelJob, jobSignature, isStale } from '../../lib/jobs.svelte.js';
-  import { prepareSwap, buildEnemy, dropOpponents } from '../../lib/features/swap.js';
+  import { prepareSwap, buildEnemy, dropOpponents, DROP_PRECISION } from '../../lib/features/swap.js';
+  import { dropFights } from '../../lib/calibration.js';
+  import RunEstimate from '../ui/RunEstimate.svelte';
   import { dropHasStats } from '../../lib/model/drop.js';
   import { parseDropBatch, prepareBatch, rankEntries, entryResults } from '../../lib/features/dropBatch.js';
   import { setCards, setLabelOf, chipFor, pctInterval, tally, tallyChips, runMoreRequest } from '../../lib/features/dropView.js';
@@ -230,6 +232,8 @@
   const ranked = $derived(bag ? rankEntries(bag.entries, bag.rows, bag.offsets, bagResults) : []);
   const counts = $derived(tally(ranked.map((r) => r.best), bag?.skipped ?? []));
   const bagStale = $derived(!!bagJob && isStale(bagJob));
+  /** The next loot-bag run's request (null before an import), for the run-time estimate. */
+  const bagRequest = $derived(bag && character ? prepareBatch(character, bag.entries).request : null);
   const bagBusy = $derived(bagJob?.status === 'queued' || bagJob?.status === 'running');
   const bagRowState = $derived(stateOf(bagJob));
 
@@ -406,6 +410,7 @@
               <span class="cap-label">Effort</span>
               <SegmentedControl label="Effort" bind:value={precision} options={EFFORT} onchange={() => (maxNOverride = null)} />
               <p class="hint">Effort sets the precision only. Each comparison runs from a small first look until it is resolved, or stops and says "too close to call".</p>
+              {#if request}<RunEstimate bound="upper" fights={dropFights(request, request.maxN ?? DROP_PRECISION[precision].maxN)} />{/if}
             </div>
             {#snippet footer()}
               <Button variant="primary" disabled={!request || singleBusy} reason={!hasStats ? 'Enter at least one stat for the drop' : !request ? 'Choose a metric to measure' : ''} loading={singleBusy} busyLabel="Checking…" onclick={() => checkDrop()}>
@@ -469,6 +474,11 @@
             <span class="cap-label">Effort</span>
             <SegmentedControl label="Effort" bind:value={precision} options={EFFORT} />
           </div>
+          {#if bagRequest}
+            <RunEstimate bound="upper" fights={dropFights(bagRequest, DROP_PRECISION[precision].maxN)} />
+          {:else}
+            <p class="hint" data-testid="run-estimate-bag">Run-time estimate appears once a loot bag is imported.</p>
+          {/if}
         </Panel>
 
         {#if !bag}

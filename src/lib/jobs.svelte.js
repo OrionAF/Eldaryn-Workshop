@@ -17,7 +17,7 @@
  * may pass `currentSignature()` (reading reactive state); `isStale(job)` is true once it differs,
  * so a result computed for an edited preset is marked, never silently shown as current.
  */
-import { runOptimizerTask } from './optimizerClient.js';
+import { runOptimizerTask, jobWorkers } from './optimizerClient.js';
 import { go } from './router.svelte.js';
 import { notify, dismissKey } from './notify.svelte.js';
 import { createCheckpointDb, readFlag, writeFlag } from './jobCheckpoints.js';
@@ -58,7 +58,9 @@ function launch(id) {
   job.error = null;
   job.progress = null;
   job.cancelRequested = false;
-  const request = job.resumeFrom ? { ...job.request, resumeFrom: job.resumeFrom } : job.request;
+  // The pool size is fixed when the job starts (a changed CPU profile applies to the next job) and shown in the tray.
+  job.workers = Number.isInteger(job.request.workers) && job.request.workers >= 1 ? job.request.workers : jobWorkers();
+  const request = { ...job.request, workers: job.workers, ...(job.resumeFrom ? { resumeFrom: job.resumeFrom } : {}) };
   let handle;
   try {
     handle = runner(request, {
@@ -94,6 +96,11 @@ function settle(id, status, { result, error } = {}) {
   if (status === 'finished') {
     job.checkpoint = null;
     job.resumeFrom = null;
+    try {
+      job.onFinish?.(job);
+    } catch {
+      // a failing hook must not unsettle the job
+    }
   }
   if (status === 'cancelled' && persistCheckpoints && job.checkpoint) saveCheckpoint(job);
   else void db.remove(id);
@@ -117,7 +124,8 @@ function saveCheckpoint(job) {
 /**
  * @param {{ tool: string, title: string, context?: string, request: object, signature?: string,
  *   currentSignature?: () => string, openRoute?: string, notice?: string,
- *   summarize?: (result) => Array<{tone?: string, text: string}> }} spec
+ *   summarize?: (result) => Array<{tone?: string, text: string}>, onFinish?: (job) => void }} spec
+ * `onFinish` runs once when the job finishes (not when it is cancelled or fails).
  * @returns {string} the job id
  */
 export function startJob(spec) {
@@ -131,6 +139,8 @@ export function startJob(spec) {
     currentSignature: spec.currentSignature ?? null,
     openRoute: spec.openRoute ?? null,
     summarize: spec.summarize ?? null,
+    onFinish: spec.onFinish ?? null,
+    workers: null,
     status: 'queued',
     progress: null,
     result: null,
@@ -248,6 +258,8 @@ export async function restoreInterrupted() {
       currentSignature: null,
       openRoute: r.openRoute ?? null,
       summarize: null,
+      onFinish: null,
+      workers: null,
       status: 'cancelled',
       progress: null,
       result: null,

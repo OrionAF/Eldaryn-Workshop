@@ -48,6 +48,8 @@
   import OptimiserResults from '../optimiser/OptimiserResults.svelte';
   import ApplyReview from '../optimiser/ApplyReview.svelte';
   import RunHistoryTab from '../optimiser/RunHistoryTab.svelte';
+  import { optimiserFights } from '../../lib/calibration.js';
+  import RunEstimate from '../ui/RunEstimate.svelte';
 
   // eslint-disable-next-line no-unused-vars
   let { setStatus = () => {}, onNavigate = () => {}, tab = null } = $props();
@@ -333,6 +335,7 @@
           <p class="hint" data-testid="effort-cost">
             Run time is not capped. Measured at Quick: {MEASURED_COST.small.space} {MEASURED_COST.small.time}, {MEASURED_COST.full.space} {MEASURED_COST.full.time}. Standard and Thorough take longer; PVP several times longer.
           </p>
+          <RunEstimate bound="lower" fights={optimiserFights(plan, enabledCount(setup.space), setup.target.kind, pvpIds.length)} />
           <p class="hint" data-testid="plan-summary">
             Searches <span class="num">{enabledCount(setup.space)}</span> of <span class="num">{toggleTotal}</span> dimensions{targetLabel ? ` against ${targetLabel}` : ''}. The same seed reproduces the same result.
           </p>

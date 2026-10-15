@@ -13,6 +13,8 @@ import { searchCharacter } from '../../lib/ui/optimiserSetup.js';
 import { notifications } from '../../lib/notify.svelte.js';
 import { setup, click } from '../ui/testkit.js';
 import { richResult, dpsResult, legacyRun } from '../../lib/__fixtures__/optimiser/index.js';
+import { setPrefs as setEstimatePrefs, applyPrefs as resetEstimatePrefs } from '../../lib/prefs.svelte.js';
+import { APP_VERSION as ESTIMATE_VERSION } from '../../lib/calibration.js';
 
 let view;
 let requests;
@@ -467,4 +469,17 @@ it('a run saved without write groups says to re-run, not "Nothing to write"', ()
   mountPage();
   expandFirst();
   expect(btn(/^Apply to Main/).title).toMatch(/saved before it could be applied/);
+});
+
+it('S2: shows the run-time estimate under Effort, or a link to calibrate', () => {
+  resetEstimatePrefs();
+  mountPage();
+  expect(view.q('[data-testid="run-estimate"] a').getAttribute('href')).toBe('#/settings');
+  view.done();
+  view = null;
+  setEstimatePrefs({ calibration: { profile: 'balanced', workers: 4, fightsPerSec: { dummy: 100, dungeon: 100, duel: 100 }, measuredAt: Date.now(), version: ESTIMATE_VERSION } });
+  mountPage();
+  expect(view.q('[data-testid="run-estimate"]').textContent).toMatch(/At least about .* on this device \(estimate\)/);
+  localStorage.clear();
+  resetEstimatePrefs();
 });
