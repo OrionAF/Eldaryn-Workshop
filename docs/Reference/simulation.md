@@ -159,7 +159,7 @@ value of the block given the rest of `c` (legalised, canonical, without `c` itse
   Dominance is on (effAtk, effHp), not rarity (a level-5 Rare can beat a level-1 Epic on HP and lose on attack).
   Of equal twins the ridden one, else the first owned, is kept. The candidate's current mount stays the baseline
   even when dominated, and switching to its dominator stays offered. `space.prunedMounts(c)` lists `{id, by}`;
-  the search result's `blocks[mount].pruned` carries it;
+  the search result's `blocks[mount].pruned` carries it as `space.pruned('mount', c)` (stat dominance item 4 below);
 - glyphs (exact, with one exception): a minor glyph adds one secondary stat with a value
   (`glyphSecondaryValue`; Game/mounts-glyphs.md §9) to the ridden mount's bonuses, and every stat of the 26-stat
   pool enters the totals as a sum that only flattens at a cap (Game/stats.md caps). None of them lowers an
@@ -185,7 +185,45 @@ value of the block given the rest of `c` (legalised, canonical, without `c` itse
      one-per-type, sealed and inert-major rules stay. Major rows still allow empty sockets;
   5. the same domains serve the compound mount block's inner socket ascent and the spec block's.
 - talents: +1, −1, move 1 or k points between two talents, every redistribution of a tier's points,
-  within `talentPointsForLevel`.
+  within `talentPointsForLevel`; then the stat dominance filter below;
+- relics: full sets only, min(slot cap, owned) relics: every relic bonus is positive and grows with level
+  (Game/relics.md §2, §7; `statDominance.test.js` checks the catalogue), so a free slot never beats one more relic.
+  The current set stays the baseline even when partial;
+- pet: never "no pet" while a pet is owned: a pet adds positive flat Attack and HP plus its secondaries and has no
+  ability (Game/pets.md §4);
+- stat dominance (exact, under the glyph rule's "more of a stat never hurts"; `search/dominance.js`) on `sigils`,
+  `utility`, `conditions`, `relics`, `pet` and `talents`: a value is dropped when the incumbent or another value of
+  the same visit gives the engine the same inputs apart from the stats, and matches or beats it on every stat. Both
+  are read from the engine's own inputs (`preparePveFighter`, `fighterDuelArgs`, `fortressPlayerDuelArgs`), so a stat
+  the mode ignores (PVP ratings in PVE) never blocks a prune, and spells, shield, minion, stack sigils and glyph
+  effects must be equal. Conduits, Dominion and Oblivion power are compared for equality (Chrono Flux timing is not
+  monotone in them). Of exact twins the incumbent, else the first value, is kept; the incumbent always stays (an
+  illegal incumbent, one legality would repair, dominates nothing). Talents are pure linear stat bonuses with no
+  negative value (Game/talents.md §5), pets and relics pure stat bonuses, so these blocks prune most;
+  1. damage-only targets: when the target cannot hurt the player, two values compare on the attacking side only:
+     the stats that only lower damage taken or heal (HP, DR, Block, Miss, Blind, Paralyze, Disruption, Spell
+     Resist, Lifesteal, HP Regen, Spell Vamp, PVP Defense, minion HP, minion Lifesteal, Soul Link) are dropped, and so
+     are defensive spells (HEAL, or a BUFF of only those stats) and the shield, which makes heal and shield sigils
+     interchangeable. It holds per run and per value, never assumed: a PVE target with `enemyDealsDamage` false (the
+     training dummy, a custom mob with no attack, World Boss NONE / FORTIFIED); or the Fortress boss while the
+     value's HP exceeds the boss's maximum window damage (61 swings at attack x 1.15: it has no crit, double hit or
+     spell) and the value has no thorns source, no minion (the boss would hit it, and minion HP follows the
+     player's), no Chrono Flux charged by hits taken while a transform runs, and no damage-side spell gated on its own
+     HP. Both values of a comparison must pass, else every stat counts. No damage source scales with max HP or a
+     defensive stat (Game/combat-pve.md §5, §10, §12, combat-pvp.md §6, §8: swings and spells read Attack, heals and
+     minion HP read max HP), so no defensive stat joins the attacking set;
+  2. thorns: while the value fights with a thorns source (Iron Bastion's glyph or buff thorns, Bulwark of Thorns,
+     Primal Instinct, Primal Retribution) or the Celestial partner does, the hit-taken stats (DR, Block, Miss, Blind,
+     Paralyze, Disruption, Spell Resist, PVP Defense) are compared for equality, not as "more is better", so the
+     pruning stays exact instead of becoming the glyph rule's heuristic. While a PVP opponent has a thorns source
+     every stat is compared for equality (more attack also means more reflected damage);
+  3. sigil slots are not filled by rule: an extra sigil can weaken another. Debuffs of one type share one instance
+     (`applyDebuff`, Game/combat-pve.md §9.2): a second POISON or BLEED source pushes its own, possibly weaker, stack
+     damage over a stronger one at max stacks and resets the duration; Sunder Mark replaces Siegebreaker
+     (combat-pve.md §11); a Form sigil changes the stat pipeline. Empty slots stay in the sigil domain;
+  4. `space.pruned(block, c)` lists `{id, by, reason: 'dominated'}` (`id`/`by` the block's part of the candidate,
+     `by` null when the incumbent dominates; mounts the same, with mount ids); the search result's
+     `blocks[i].pruned` carries it for every block that prunes.
 
 `legalise(c)` makes the repairs reconcile would make, drops conditions the spec does not offer, and
 takes back changed major glyphs that would be inert. `spec` and `mount` values are compound: the

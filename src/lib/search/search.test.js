@@ -164,7 +164,8 @@ describe('optimize: no inert or target-inert riders (#53, #71)', { timeout: 1200
     for (const row of r.rows) expect(row.changes.some((c) => c.id.startsWith('condition:'))).toBe(false);
     const values = r.rows.map((row) => `${row.value.n}|${row.value.est}`);
     expect(new Set(values).size).toBe(values.length);
-    expect(r.search.merged.sampleIdentical).toBeGreaterThan(0);
+    // the heal sigil's condition variants are twins on the attacking side (damage-only dominance, backlog §16)
+    expect(r.search.blocks.find((b) => b.id === 'conditions').pruned.length).toBeGreaterThan(0);
   });
 });
 
@@ -213,7 +214,9 @@ describe('optimize: coverage (#52, #57, #70)', { timeout: 120000 }, () => {
       for (const s of genericSigils('WARRIOR', 'WARRIOR_DPS')) raw.sigils.owned[s.species] ??= { level: 10 };
     });
     const r = await optimize({ character, presetId: 'p1', target: SHORT, effort: { level: 'quick', n0: 4, maxN: 4, randomStarts: 0 }, seed: 1 });
-    expect(r.search.blocks.find((b) => b.id === 'sigils').domain).toBe(299);
+    // 299 sets in all: the ones tried plus the ones dominance pruned (heal sigils are interchangeable on the dummy)
+    const sigils = r.search.blocks.find((b) => b.id === 'sigils');
+    expect(sigils.domain + sigils.pruned.length).toBe(299);
     expect(r.search.blocks.every((b) => b.enabled)).toBe(true);
     expect(r.search.blocks.map((b) => b.status).filter((s) => s === 'not-reached')).toEqual([]);
   }, 120000);

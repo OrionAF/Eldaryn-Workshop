@@ -33,10 +33,13 @@ describe('estimateRun: builds', () => {
   }, 60000);
 
   it('the Combat Power guard is applied to the exact count, as the search applies it', async () => {
-    const floor = presetPower(character, 'p1').power;
-    const r0 = req({ space: only('relics'), powerFloor: floor });
+    // full relic sets only (backlog §16): the saved set holds the strongest relics, so swaps cost Power
+    const ids = Object.keys(character.relics);
+    const weaker = { ...character, extraRelicSlots: 1, relics: Object.fromEntries(ids.map((id, i) => [id, 7 - i])) };
+    const floor = presetPower(weaker, 'p1').power;
+    const r0 = req({ character: weaker, space: only('relics'), powerFloor: floor });
     const e = estimateRun(r0);
-    const free = estimateRun(req({ space: only('relics') }));
+    const free = estimateRun(req({ character: weaker, space: only('relics') }));
     expect(e.builds.exact).toBe(true);
     expect(e.builds.lo).toBeLessThan(free.builds.lo);
     const run = await optimize(r0);

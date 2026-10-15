@@ -96,7 +96,8 @@ describe('block domains', () => {
     const arms = block(space, 'talents').domain(space.start);
     expect(arms.length).toBeGreaterThan(0);
     expect(Math.max(...arms.map((a) => spent(space, a)))).toBe(16);
-    expect(arms.some((a) => spent(space, a) === 15)).toBe(true); // -1 moves
+    // a -1 move only loses stats, so a full-spend move dominates it (stat dominance, backlog §16)
+    expect(arms.some((a) => spent(space, a) === 15)).toBe(false);
   });
 
   it('relicSlotCap 2 gives no 3-relic arm (#49)', () => {
@@ -105,7 +106,8 @@ describe('block domains', () => {
     const arms = block(space, 'relics').domain(space.start);
     expect(arms.length).toBeGreaterThan(0);
     expect(Math.max(...arms.map((a) => a.relicIds.length))).toBe(2);
-    expect(arms.some((a) => a.relicIds.length === 0)).toBe(true); // an empty slot is a legal choice
+    // full sets only: a free slot never beats one more relic (stat dominance, backlog §16)
+    expect(arms.every((a) => a.relicIds.length === 2)).toBe(true);
   });
 
   it('every subset up to the slot cap of the owned generic sigils, empty included', () => {

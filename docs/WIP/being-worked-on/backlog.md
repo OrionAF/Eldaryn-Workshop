@@ -26,6 +26,30 @@
 
 **Measured** per visit, at the active preset (scratch measurement 2026-10-15): talents Sentinel 146 to 51 (13 on attack stats only), Warrior 162 to 78 (8); relics Warrior 163 to 36 (2), Sentinel 16 to 1; minor glyphs on attack stats only 78 to 36 and 61 to 11; sigils 299 to 220 with full slots.
 
+**Status: done (slice PRUNE, branch `rebuild2/PRUNE`).** The rules are in simulation.md §Build space (relics, pet, stat dominance items 1-4); the filter is `search/dominance.js`, used by `space.js` for `sigils`, `utility`, `conditions`, `relics`, `pet` and `talents`. Differences from the ask:
+- Sigil slots are not filled by rule: one sigil can weaken another (debuffs of one type share one instance, so a weaker POISON or BLEED overwrites a stronger stack; Sunder Mark replaces Siegebreaker; a Form changes the stat pipeline). Sigils still get the exact stat filter and the damage-only rule, which makes heal and shield sigils interchangeable.
+- Thorns: no heuristic. While a thorns source runs (the player's or the Celestial partner's) the hit-taken stats must be equal; while a PVP opponent has one every stat must be equal. The pruning stays exact.
+- The Fortress bound is 61 boss swings (one more than the 60 s window holds) at attack x 1.15, and also needs no minion, no hit-charged Chrono Flux transform and no damage spell gated on the player's HP.
+- Not built: vs a harmless target an HP-gated BUFF never casts, so its condition variants could merge (the Warrior's 25 condition combos stay 25).
+
+Per-visit domain sizes (values tried plus the current one) at the active preset, before (c37a4ce) and after. Before is the same for every target. Dungeon is Hard Forsaken Mines step 6 (every stat), dummy the training dummy (damage-only), Fortress TOP 5 stars. `src/lib/__fixtures__/real/dominancePruning.test.js`, run with `PRUNE_MEASURE=1`.
+
+| Character | Block | Before | Dungeon | Dummy | Fortress |
+|---|---|---|---|---|---|
+| Sentinel L85 | talents | 146 | 35 | 8 | 11 |
+| Sentinel L85 | relics | 16 | 1 | 1 | 1 |
+| Sentinel L85 | pet | 2 | 1 | 1 | 1 |
+| Sentinel L85 | sigils | 299 | 299 | 299 | 176 |
+| Warrior L73 | talents | 162 | 71 | 2 | 71 |
+| Warrior L73 | relics | 163 | 50 | 2 | 50 |
+| Warrior L73 | pet | 2 | 1 | 1 | 1 |
+| Warrior L73 | sigils | 299 | 299 | 232 | 109 |
+| Warrior L73 | conditions | 25 | 25 | 25 | 25 |
+
+The Sentinel passes the Fortress damage-only test, the Warrior's active preset does not (every stat counts there). The Sentinel's dummy sigils stay 299 because its stack sigils differ in the PVE inputs; in the Fortress stack sigils never stack, so sets that differ only in them compare on stats.
+
+CELESTIAL_TABLE
+
 ## 10. Optimiser objectives: trim, fix the target range, add Push, a Power guard and Crusade
 
 **Status (2026-10-15).** Done: retire kill time and survival, target range (slice O1); Combat Power and the Power guard (O2); Fortress boss target (O3). Fortress shield fix (O3b): two server siege snapshots show the shield divides alive defenders by the server's clan cap (30 on server 5), not the defending clan's size; merged. Push (O4): merged (§Push in simulation.md). Not started: Crusade (solo), Arena reward weighting.
