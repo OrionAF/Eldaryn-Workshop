@@ -6,9 +6,15 @@ import { fixtureCharacter } from '../build/fixtures.js';
 const only = (...on) => Object.fromEntries(BLOCKS.map((b) => [b, on.includes(b)]));
 const SHORT = { kind: 'dummy', seconds: 10 };
 const QUICK = { level: 'quick', n0: 4, maxN: 8, randomStarts: 0 };
+// a second pet that wins on one attacking stat (the target is the dummy), so the pet block has a value to try (a dominated pet would be pruned)
+const character = (() => {
+  const c = fixtureCharacter('WARRIOR');
+  const lucky = { id: 'pet-b', species: 'INFERNAL_DRAKE', rarity: 'Legendary', secondaries: [{ type: 'CRIT_CHANCE', value: 9 }] };
+  return { ...c, pets: { ...c.pets, owned: [...c.pets.owned, lucky] } };
+})();
 const run = (space, effort = QUICK, seed = 6) => {
   const seen = [];
-  return optimize({ character: fixtureCharacter('WARRIOR'), presetId: 'p1', target: SHORT, space: only(...space), effort, seed }, { onProgress: (p) => seen.push(p) })
+  return optimize({ character, presetId: 'p1', target: SHORT, space: only(...space), effort, seed }, { onProgress: (p) => seen.push(p) })
     .then((result) => ({ result, seen }));
 };
 const byId = (rows) => Object.fromEntries(rows.map((r) => [r.id, r]));

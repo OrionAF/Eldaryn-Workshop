@@ -18,7 +18,8 @@ import { pointsSpent, sanitiseAllocation } from '../model/talents.js';
 import { talentPointsForLevel } from '../model/legality.js';
 import { DROP_PRECISION } from '../features/swap.js';
 import { formatFlat } from '../format.js';
-import { BLOCKS, createBuildSpace, normalisePowerFloor } from './space.js';
+import { BLOCKS, DOMINANCE_BLOCKS, createBuildSpace, normalisePowerFloor } from './space.js';
+import { dominanceContextOf } from './dominance.js';
 import { candidateEngineKey, changesOf, canonicalise, mergeByEngine, writesOf } from './effect.js';
 import { legalityOf } from './legality.js';
 import { resolveTarget, makeObjective, residualFor, meetsTarget, isWinRateKind } from './objectives.js';
@@ -114,7 +115,9 @@ export function prepare(request) {
     }
   }
   const powerFloor = normalisePowerFloor(request.powerFloor);
-  const space = createBuildSpace(character, preset, { realm, mode, residual, toggles: togglesOf(request.space), powerFloor });
+  const space = createBuildSpace(character, preset, {
+    realm, mode, residual, toggles: togglesOf(request.space), powerFloor, dominance: dominanceContextOf(target, mode),
+  });
   const characterKey = metricKey('character', character);
   const requestEcho = {
     presetId: preset.id, realm, mode, target: target.spec, objective: objective.spec, space: space.toggles,
@@ -780,7 +783,7 @@ async function searchPhase(prep, run) {
     id,
     enabled: enabled.has(id),
     domain: enabled.has(id) ? sizes[id] ?? 1 : 1,
-    ...(id === 'mount' && enabled.has(id) ? { pruned: space.prunedMounts(B.cand) } : {}),
+    ...(enabled.has(id) && (id === 'mount' || DOMINANCE_BLOCKS.includes(id)) ? { pruned: space.pruned(id, B.cand) } : {}),
     status: !enabled.has(id) ? 'disabled' : status.get(id) ?? 'not-reached',
   }));
   const optimaKeys = new Set(out.optima.map((a) => a.key));
