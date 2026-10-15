@@ -6,12 +6,11 @@
 import { specsForClass } from '../game/classes.js';
 import { talentSpec } from '../game/talents.js';
 import { relicById } from '../game/relics.js';
-import { petDisplayName } from '../game/pets.js';
-import { mountBySpecies } from '../game/mountsGlyphs.js';
+import { petText, mountText, glyphText } from './statText.js';
 import { sigilBySpecies, isSigilSpeciesActiveForSpec } from '../game/sigils.js';
 import { mountGlyphLoadout, activeMajorGlyphs } from '../model/mounts.js';
 import { glyphTypeInfo } from '../model/glyphs.js';
-import { DEFAULT_CONDITION, SIGIL_CONDITIONS_LEVEL } from '../model/sigils.js';
+import { DEFAULT_CONDITION, SIGIL_CONDITIONS_LEVEL, conditionLabel } from '../model/sigils.js';
 import { ancientActive } from '../model/legality.js';
 import { presetSpec, equipSetKey, resolvePreset, transcendencePreset } from './presetInputs.js';
 
@@ -56,7 +55,7 @@ export function describeBuild(character, presetOrId, { realm = 'base', talentAll
   lines.push(line('Talents', talentsLine(character, preset, talentAllocation)));
 
   const pet = preset.petId ? (character.pets?.owned ?? []).find((p) => p.id === preset.petId) : null;
-  lines.push(line('Pet', pet ? petDisplayName(pet.species, (character.pets?.altar?.tier ?? 1) >= 2) ?? pet.species : NONE));
+  lines.push(line('Pet', pet ? petText(character, pet) : NONE));
 
   // Sigils the Fighter runs: owned, usable on the spec, and an Ancient only while the board allocates its node.
   const tr = transcendencePreset(character, preset);
@@ -73,11 +72,14 @@ export function describeBuild(character, presetOrId, { realm = 'base', talentAll
   const equipped = [...generic, utility, ancient].filter((s) => s && !s.reason).map((s) => s.sp);
 
   const mount = preset.mountId ? (character.mounts ?? []).find((m) => m.id === preset.mountId) : null;
-  lines.push(line('Mount', mount ? `${mountBySpecies(mount.species)?.name ?? mount.species} (level ${mount.level})` : NONE));
+  lines.push(line('Mount', mount ? mountText(character, mount) : NONE));
   const loadout = mount ? mountGlyphLoadout(character, mount, spec) : { minors: [], mythics: [] };
   const typeName = (t) => glyphTypeInfo(t)?.name ?? t;
   const glyphName = (g) => `${typeName(g.glyphType)} (${g.rarity})`;
-  lines.push(line('Minor glyphs', join(loadout.minors.map((g) => `${glyphName(g)} ${g.stat} ${g.value}`))));
+  // Each minor socket's glyph instance, named by statText (never the raw stat key, backlog §6).
+  const byId = new Map((character.glyphs ?? []).map((g) => [g.id, g]));
+  const minors = mount ? mount.glyphs.minor.map((id) => byId.get(id)).filter((g) => g && !g.sealed && g.secondary) : [];
+  lines.push(line('Minor glyphs', join(minors.map((g) => glyphText(character, g)))));
   const { active, inert } = activeMajorGlyphs(character, mount, spec, equipped);
   lines.push(itemsLine('Major glyphs', [
     ...active.map((g) => ({ name: glyphName(g), reason: null })),
@@ -93,7 +95,7 @@ export function describeBuild(character, presetOrId, { realm = 'base', talentAll
   // Conditions the Fighter applies: only from the level gate on, and never the default (fighter.js).
   const cond = (sp) => character.sigils.owned[sp].condition;
   const gated = (character.level ?? 100) >= SIGIL_CONDITIONS_LEVEL;
-  const conds = gated ? equipped.filter((sp) => cond(sp) && cond(sp) !== DEFAULT_CONDITION).map((sp) => `${sigilName(sp)}: ${cond(sp)}`) : [];
+  const conds = gated ? equipped.filter((sp) => cond(sp) && cond(sp) !== DEFAULT_CONDITION).map((sp) => `${sigilName(sp)}: ${conditionLabel(cond(sp))}`) : [];
   lines.push(line('Conditions', join(conds)));
 
   lines.push(line('Transcendence', tr ? `${tr.name} (${tr.allocatedNodeIds.length} nodes)` : NONE));

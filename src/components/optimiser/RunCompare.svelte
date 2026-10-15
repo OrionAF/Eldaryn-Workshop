@@ -7,7 +7,7 @@
   import Banner from '../ui/Banner.svelte';
   import VerdictChip from '../ui/VerdictChip.svelte';
   import { fmtEstimate, fmtContrast, fmtContrastCi, fmtCount, verdictText } from '../../lib/ui/statsFormat.js';
-  import { viewRun } from '../../lib/ui/optimiserView.js';
+  import { viewRun, changeText } from '../../lib/ui/optimiserView.js';
 
   let { a, b } = $props();
 
@@ -22,7 +22,7 @@
     !!a.target?.key && a.target.key === b.target?.key && a.objective?.kind === b.objective?.kind && a.presetId === b.presetId,
   );
   const when = (iso) => (iso ? new Date(iso).toLocaleString() : '');
-  const changesText = (s) => (s.top ? s.top.changes.map((c) => `${c.label}: ${c.from} → ${c.to}`) : []);
+  const changesText = (s) => (s.top ? s.top.changes.map(changeText) : []);
 </script>
 
 <div class="compare" data-testid="run-compare">

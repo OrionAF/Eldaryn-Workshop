@@ -261,6 +261,36 @@ it('Compare against on the Loot bag: Set 1 only marks the bag stale and Check ag
   for (const r of target.querySelectorAll('.trow.rank .vd')) expect(r.textContent).not.toContain('Set 2');
 });
 
+it('Loot bag: an expanded row lists its Attack, Health and every secondary stat, or says it has none', async () => {
+  const bag = {
+    pendingItems: [
+      { ...lootBag.pendingItems[1], name: 'Plain Leggings', secondaryStats: [] },
+      lootBag.pendingItems[1],
+    ],
+  };
+  open({ tab: 'bag' });
+  paste(bag);
+  await settle();
+  const statsOf = (name) => {
+    const row = [...target.querySelectorAll('.trow.rank')].find((r) => r.querySelector('.name').textContent === name);
+    row.querySelector('.toggle').click();
+    flushSync();
+    const box = target.querySelector('.expand [data-testid="drop-stats"]');
+    const text = box.textContent.replace(/\s+/g, ' ');
+    row.querySelector('.toggle').click();
+    flushSync();
+    return { box, text };
+  };
+  const full = statsOf(lootBag.pendingItems[1].name);
+  expect(full.text).toContain('Attack');
+  expect(full.text).toContain('Health');
+  expect(full.box.querySelectorAll('.stat-value').length).toBe(2 + lootBag.pendingItems[1].secondaryStats.length);
+  expect(full.text).toMatch(/\+\d+(\.\d+)?%/);
+  expect(full.text).not.toMatch(/total[A-Z]|_/);
+  const plain = statsOf('Plain Leggings');
+  expect(plain.text).toContain('No secondary stats');
+});
+
 it('Loot bag: an item applied to a set leaves the list, and Check again judges only the rest', async () => {
   open({ tab: 'bag' });
   paste(lootBag);

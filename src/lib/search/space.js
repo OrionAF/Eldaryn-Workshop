@@ -15,7 +15,8 @@ import {
   genericSigils, utilitySigils, ancientSigils, sigilConditionOptions, SELF_CONDITIONS, DEFAULT_CONDITION,
 } from '../model/sigils.js';
 import { glyphSocketable, activeMajorGlyphs, emptyMountSockets, mountEffectiveStats, MOUNT_GLYPH_SOCKETS } from '../model/mounts.js';
-import { glyphTypeInfo, glyphStatLabel, glyphSecondaryValue, GLYPH_TIERS, GLYPH_RARITY_LADDER } from '../model/glyphs.js';
+import { glyphText } from '../build/statText.js';
+import { glyphTypeInfo, glyphSecondaryValue, GLYPH_TIERS, GLYPH_RARITY_LADDER } from '../model/glyphs.js';
 import { PRESET_SIGIL_CAP } from '../model/presets.js';
 import {
   relicSlotCap, talentPointsForLevel, sigilSlotCap, sigilsUnlocked, dualEquipUnlocked, dualTalentsUnlocked,
@@ -598,10 +599,5 @@ export function normalisePowerFloor(v) {
 
 /** A relic's name (labels for changes). */
 export const relicName = (id) => relicById(id)?.name ?? id;
-/** A glyph instance's label. */
-export const glyphLabel = (character, id) => {
-  const g = (character.glyphs ?? []).find((x) => x.id === id);
-  if (!g) return 'Empty';
-  const name = glyphTypeInfo(g.glyphType)?.name ?? g.glyphType;
-  return g.secondary ? `${name} (${g.rarity}, ${glyphStatLabel(g.secondary.stat)})` : `${name} (${g.rarity})`;
-};
+/** A glyph instance's label: type, rarity and rolled stat (build/statText.js), 'Empty' for an empty socket. */
+export const glyphLabel = (character, id) => glyphText(character, (character.glyphs ?? []).find((x) => x.id === id) ?? null);

@@ -21,7 +21,7 @@
   import CIForest from './CIForest.svelte';
   import VerdictChip from './VerdictChip.svelte';
   import ScopeChip from './ScopeChip.svelte';
-  import { changeSummary, bundleText, dimensionLabel, onlyWith, targetStanding, powerText, KEPT_BECAUSE_TEXT } from '../../lib/ui/optimiserView.js';
+  import { changeSummary, bundleText, dimensionLabel, changeEffect, targetStanding, powerText, KEPT_BECAUSE_TEXT } from '../../lib/ui/optimiserView.js';
   import {
     fmtEstimate, fmtContrast, fmtContrastCi, fmtSigned, verdictText, nNeededText, verdictTone, fmtCount,
   } from '../../lib/ui/statsFormat.js';
@@ -71,7 +71,8 @@
     >
       <span class="mark" class:base={row.isBaseline}><span>{rankText}</span></span>
       <span class="value">
-        <span class="v">{fmtEstimate(unit, row.value)}</span>
+        <span class="v">{row.valueNote ? '' : fmtEstimate(unit, row.value)}</span>
+        {#if row.valueNote}<span class="why" data-testid="value-note">{row.valueNote}</span>{/if}
         <span class="meta">{summary}</span>
         {#if power}<span class="pw" data-testid="row-power">{power}</span>{/if}
       </span>
@@ -109,24 +110,25 @@
   {#if expanded}
     <div id="{id}-body" class="body" role="region" aria-label="Changes in rank {rankText}">
       {#if row.changes.length}
-        <p class="cap">Change · own effect (added alone to the current build, paired seeds) · same axis as above</p>
+        <p class="cap">Change · own effect (added alone to the current build, paired seeds); a change that helps only with the others shows its value without it · same axis as above</p>
         {#each row.changes as c (c.id)}
-          {@const dep = onlyWith(c, row.changes)}
-          {@const eff = dep ? c.needed : c.own}
+          {@const e = changeEffect(c, row.changes)}
+          {@const eff = e.lead}
+          {@const dep = e.dep}
           <div class="abl">
-            <span class="chg">{c.label}: {c.from} <span class="arrow">→</span> <b>{c.to}</b></span>
+            <span class="chg">{#if c.moved}{c.label}: {c.moved}{:else}{c.label}: {c.from} <span class="arrow">→</span> <b>{c.to}</b>{/if}</span>
             <CIForest
               {domain}
               est={eff?.delta ?? null}
               lo={eff?.lo ?? null}
               hi={eff?.hi ?? null}
               tone={eff ? verdictTone(eff) : 'est'}
-              label={dep ? `${c.label}: only with ${dep}; without it ${fmtContrast(unit, eff)}` : sentence(c.own, c.label)}
+              label={e.kind === 'interaction' ? `${c.label}: helps with the other changes; without it ${fmtContrast(unit, eff)}` : sentence(c.own, c.label)}
             />
             <span class="delta">
-              {#if dep}
+              {#if e.kind === 'interaction'}
                 <span class="v {verdictTone(eff)}">{fmtContrast(unit, eff)}</span>
-                <span class="ci">Only with: {dep}</span>
+                <span class="ci">{dep ? `Only with: ${dep}` : `Without it, ${fmtContrastCi(unit, eff)}`}</span>
               {:else if c.own}
                 <span class="v {verdictTone(c.own)}">{fmtContrast(unit, c.own)}</span>
                 <span class="ci">{fmtContrastCi(unit, c.own)}</span>
@@ -134,10 +136,12 @@
                 <span class="ci">{unmeasured ? 'not measured' : 'no solo effect'}</span>
               {/if}
             </span>
-            <span class="verdict">{#if c.own && !dep}<VerdictChip verdict={c.own.verdict} />{/if}</span>
+            <span class="verdict">{#if e.chip}<VerdictChip verdict={e.chip.verdict} label={e.chip.label ?? ''} />{/if}</span>
             <span class="why">
               <ScopeChip scope={c.scope} target={targetOf(c)} sideEffects={c.sideEffects ?? []} />
-              {#if c.needed && !dep}
+              {#if e.kind === 'interaction'}
+                {#if c.own && !dep}<span>Alone on the current build: {fmtContrast(unit, c.own)} {fmtContrastCi(unit, c.own)}</span>{/if}
+              {:else if c.needed}
                 <span>Without it: {fmtContrast(unit, c.needed)} {fmtContrastCi(unit, c.needed)}</span>
               {/if}
               {#if KEPT_BECAUSE_TEXT[c.keptBecause]}<span>{KEPT_BECAUSE_TEXT[c.keptBecause]}</span>{/if}
@@ -222,6 +226,7 @@
   .mark.base > span { transform: none; }
   .value { display: grid; min-width: 0; line-height: 1.2; }
   .v { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+  .value .why { font-size: var(--fs-12); color: var(--text-soft); }
   .value .v { font-size: var(--fs-16); font-weight: var(--fw-medium); color: var(--text-ink); }
   .meta { font-size: var(--fs-12); color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pw { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: var(--fs-12); color: var(--text-soft); }

@@ -79,6 +79,21 @@ export function orientRow(row, higherIsBetter = true) {
   };
 }
 
+/** A contrast that fell back to win rate, kept in win-rate points (the table's unit when every row fell back). */
+const asWinRate = (c) => (c?.basis === 'winRate' ? { ...c, pct: null } : orientContrast(c));
+
+/**
+ * Why a row has no value of its own (backlog §6): a time objective has no median when the build rarely
+ * wins, so say so with its win rate and the basis the verdicts used. Null when the row has a value.
+ */
+export function valueNoteOf(row, rows = []) {
+  if (!row || finite(row.value?.est)) return null;
+  const rate = row.aux?.winRate?.est;
+  if (!finite(rate)) return null;
+  const basis = rows.some((r) => r.vsBaseline?.basis === 'winRate') ? 'compared by win rate' : 'too few wins for a time';
+  return `Rarely clears: ${Math.round(rate * 100)}% win rate; ${basis}`;
+}
+
 /**
  * What the results table renders: the baseline, the ranked rows, the table's single forest domain, and
  * how many non-baseline rows were withheld because they list no change (I3 would be broken, so such a
@@ -86,10 +101,24 @@ export function orientRow(row, higherIsBetter = true) {
  * @returns {{unit: string, higherIsBetter: boolean, baseline: Object|null, rows: Object[], withheld: number, domain: Object}}
  */
 export function viewResult(result) {
-  const unit = result?.objective?.unit ?? 'dps';
   const hib = result?.objective?.higherIsBetter !== false;
   const all = (result?.rows ?? []).filter((r) => !r.isBaseline);
-  const rows = all.filter((r) => (r.changes ?? []).length > 0).map((r) => orientRow(r, hib));
+  const listed = all.filter((r) => (r.changes ?? []).length > 0);
+  // Every row fell back to win rate (a saved kill-time run where nothing wins often): draw the axis in
+  // win-rate points, the basis the verdicts actually used, and show each build's win rate as its value.
+  const winBasis = listed.length > 0 && listed.every((r) => r.vsBaseline?.basis === 'winRate');
+  const unit = winBasis ? 'p' : (result?.objective?.unit ?? 'dps');
+  const winRow = (r) => ({
+    ...r,
+    value: r.aux?.winRate ?? r.value,
+    vsBaseline: asWinRate(r.vsBaseline),
+    changes: (r.changes ?? []).map((c) => ({ ...c, own: asWinRate(c.own), needed: asWinRate(c.needed) })),
+    remainder: null,
+  });
+  const rows = listed.map((r) => (winBasis ? winRow(r) : orientRow(r, hib)));
+  const base = result?.baseline ? { changes: [], ...result.baseline } : null;
+  const valueNote = valueNoteOf(base, listed);
+  const baseline = base ? { ...base, ...(winBasis && base.aux?.winRate ? { value: base.aux.winRate } : {}), ...(valueNote ? { valueNote } : {}) } : null;
   const items = [];
   for (const r of rows) {
     items.push(r.vsBaseline);
@@ -103,7 +132,7 @@ export function viewResult(result) {
     goal: result?.goal ? { status: result.goal.status, target: result.goal.target, ...(result.goal.mode === 'max' ? { mode: 'max' } : {}) } : null,
     push: result?.push ?? null,
     higherIsBetter: hib,
-    baseline: result?.baseline ? { changes: [], ...result.baseline } : null,
+    baseline,
     rows,
     withheld: all.length - rows.length,
     domain: forestDomain(items),
@@ -226,6 +255,9 @@ export const DIMENSION_LABEL = Object.freeze({
 const GLYPH_DIMENSION = /Glyphs$/;
 const TIER_WORD = { minor: 'Minor', major: 'Major', mythic: 'Mythic' };
 
+/** A change as one line: a talent change lists only the points that moved (`moved`, backlog §6). */
+export const changeText = (c) => `${c.label}: ${c.moved || `${c.from} → ${c.to}`}`;
+
 /** A dimension key as text; never the raw key. */
 export const dimensionLabel = (dimension) => DIMENSION_LABEL[dimension] ?? (/^[A-Z]/.test(dimension) ? dimension : 'Other'); // a legacy run stored the label itself
 
@@ -269,6 +301,25 @@ export function onlyWith(change, changes = []) {
   if (!o || !change.needed || o.delta !== 0 || o.lo !== 0 || o.hi !== 0) return null;
   const driver = changes.find((x) => x.id !== change.id && (x.bundle ?? []).includes(change.id));
   return driver ? driver.label : 'another change';
+}
+
+/** The badge of a change kept for its interaction: what it means, never a red Downgrade. */
+export const INTERACTION_LABEL = 'Helps with the other changes';
+
+/**
+ * How a change row reads (simulation.md §Result, change display). A change kept for its interaction
+ * (`keptBecause: 'interaction'`, or "Only with" another change) leads with `needed`, its value in this build
+ * ("Without it"), under the badge INTERACTION_LABEL, coloured up only when `needed` is better and otherwise
+ * neutral; its own effect alone on the current build is secondary text. Every other change leads with `own`.
+ * @returns {{kind: 'interaction'|'own', lead: Object|null, chip: {verdict: string, label?: string}|null, dep: string|null}}
+ */
+export function changeEffect(change, changes = []) {
+  const dep = onlyWith(change, changes);
+  if (change?.needed && (dep || change.keptBecause === 'interaction')) {
+    const verdict = change.needed.verdict === 'better' ? 'better' : 'equivalent';
+    return { kind: 'interaction', lead: { ...change.needed, verdict }, chip: { verdict, label: INTERACTION_LABEL }, dep };
+  }
+  return { kind: 'own', lead: change?.own ?? null, chip: change?.own ? { verdict: change.own.verdict } : null, dep: null };
 }
 
 /** The "Comes with" text: the forced companions by name, every glyph socket counted together. */

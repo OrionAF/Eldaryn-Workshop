@@ -42,7 +42,7 @@
   import ImportPointer from '../import/ImportPointer.svelte';
   import DropSetCard from '../drop/DropSetCard.svelte';
   import DropMetricTables from '../drop/DropMetricTables.svelte';
-  import { itemSummary, signedPct, dropStatRows } from '../drop/dropFormat.js';
+  import { itemSummary, signedPct, dropStatRows, dropStatLines } from '../drop/dropFormat.js';
   import StatTable from '../ui/StatTable.svelte';
   import Panel from '../ui/Panel.svelte';
   import Tabs from '../ui/Tabs.svelte';
@@ -603,7 +603,20 @@
                   </div>
                 </div>
                 {#if open}
+                  {@const lines = dropStatLines(e.item)}
                   <div class="expand" id="dc-x-{i}" role="region" aria-label="{e.name}: verdict by gear set">
+                    <div class="drop-stats" data-testid="drop-stats" aria-label="Stats of {e.name}">
+                      <dl class="stat-lines">
+                        {#each lines.primary as l (l.label)}<div><dt>{l.label}</dt><dd class="stat-value">{l.text}</dd></div>{/each}
+                      </dl>
+                      {#if lines.secondary.length}
+                        <dl class="stat-lines">
+                          {#each lines.secondary as l, k (k)}<div><dt>{l.label}</dt><dd class="stat-value">{l.text}</dd></div>{/each}
+                        </dl>
+                      {:else}
+                        <p class="hint">No secondary stats.</p>
+                      {/if}
+                    </div>
                     <div class="cards">
                       {#each cardsOf(r.order) as c (c.setKey)}
                         <DropSetCard
@@ -674,6 +687,11 @@
   .delta .est,
   .delta .ci { color: var(--text-soft); }
   .skip { color: var(--status-warn); font-size: var(--fs-12); }
+  .drop-stats { display: grid; gap: var(--sp-1); }
+  .stat-lines { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); margin: 0; font-size: var(--fs-12); }
+  .stat-lines div { display: flex; gap: var(--sp-2); align-items: baseline; }
+  .stat-lines dt { color: var(--text-soft); }
+  .stat-lines dd { margin: 0; color: var(--text-ink); }
   .expand { padding: var(--sp-3) 0 var(--sp-4); display: grid; gap: var(--sp-3); border-bottom: 1px solid var(--line-hairline); }
   @media (max-width: 1023px) {
     .grid { grid-template-columns: minmax(0, 1fr); }
