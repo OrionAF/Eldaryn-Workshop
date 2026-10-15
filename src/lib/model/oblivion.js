@@ -20,7 +20,7 @@ export function normaliseOblivion(rawCharacter, ctx) {
       level: Number.isFinite(lvl) ? Math.min(100, Math.max(0, lvl)) : 0,
       // A locked realm can never be the active one.
       activeRealm: unlocked && r.activeRealm === 'oblivion' ? 'oblivion' : 'base',
-      sheet: normaliseSheet(r.sheet),
+      sheet: normaliseSheet(r.sheet, { withOwner: true }),
     },
   };
 }
@@ -30,5 +30,8 @@ export function migrateOblivionFromV1(v1Character) {
   return { value: defaultOblivion(), idMap: {} };
 }
 
-// eslint-disable-next-line no-unused-vars
-export function reconcileOblivion(character) {}
+/** The Oblivion sheet's owner must still be a preset; a lost owner leaves the sheet ownerless (data-model.md §6). */
+export function reconcileOblivion(character) {
+  const sheet = character?.oblivion?.sheet;
+  if (sheet?.presetId && !(character.presets ?? []).some((p) => p.id === sheet.presetId)) sheet.presetId = null;
+}

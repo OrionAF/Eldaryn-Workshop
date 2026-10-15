@@ -3,6 +3,8 @@ import { rosterStore as store } from './rosterStore.svelte.js';
 import { mergeStores } from './store/context.js';
 import { KEY, KEY_V1 } from './storage.js';
 import { relicsForClass } from './game/relics.js';
+import { computePresetStats } from './build/stats.js';
+import { normaliseCharacter } from './model/index.js';
 const WR = relicsForClass('WARRIOR').map((r) => r.id);
 
 /** Fresh single character (the store is a singleton): add one, delete the rest. */
@@ -231,6 +233,40 @@ describe('sheets', () => {
     expect(store.current.oblivion.sheet.values.totalOblivionPower).toBe(170);
     store.setOblivionSheet(null);
     expect(store.current.oblivion.sheet).toBeNull();
+  });
+
+  it('a sheet is stamped for its build: a build edit makes it stale, a row edit keeps it stale, confirm freshens it', () => {
+    const a = store.current.presets[0].id;
+    const status = () => computePresetStats(store.current, a).sheetStatus;
+    store.setPresetSheet(a, { totalAttack: 5000 });
+    expect(status()).toBe('fresh');
+    expect(saved().characters[0].presets[0].sheet.inputsKey).toBe(store.current.presets[0].sheet.inputsKey);
+    store.setRelicLevel(WR[0], 1);
+    store.setPresetRelics(a, [WR[0]]);
+    expect(status()).toBe('stale');
+    store.setPresetSheet(a, { totalAttack: 5100 });
+    expect(status()).toBe('stale');
+    store.confirmPresetSheet(a);
+    expect(status()).toBe('fresh');
+    expect(store.current.presets[0].sheet.values.totalAttack).toBe(5100);
+  });
+
+  it('the Oblivion sheet belongs to the preset it was entered for; a deleted owner applies it nowhere and loads ownerless', () => {
+    const [a, b] = store.current.presets.map((p) => p.id);
+    store.setOblivionSheet({ totalAttack: 5000 }, a);
+    expect(store.current.oblivion.sheet.presetId).toBe(a);
+    const oblivion = (id) => computePresetStats(store.current, id, { realm: 'oblivion' });
+    expect(oblivion(a).sheetStatus).toBe('fresh');
+    expect(oblivion(b).source).toBe('computed');
+    // carried over to b by an edit: unverified until confirmed
+    store.setOblivionSheet({ totalAttack: 5000 }, b);
+    expect(oblivion(b).sheetStatus).toBe('unverified');
+    store.confirmOblivionSheet(b);
+    expect(oblivion(b).sheetStatus).toBe('fresh');
+    store.addPreset('Third');
+    store.deletePreset(b);
+    for (const p of store.current.presets) expect(oblivion(p.id).source).toBe('computed');
+    expect(normaliseCharacter(JSON.parse(JSON.stringify(store.current))).oblivion.sheet.presetId).toBeNull();
   });
 });
 
