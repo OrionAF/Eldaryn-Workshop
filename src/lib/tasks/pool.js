@@ -28,6 +28,8 @@ export function appendChunk(dst, c) {
   });
   add(dst.main, c.main ?? []);
   for (const [k, lanes] of Object.entries(c.side ?? {})) add((dst.side[k] ??= []), lanes);
+  // the debug log's per-fight timing (kernels.js objective), merged in index order like the outcomes
+  if (c.trace) for (const [k, lanes] of Object.entries(c.trace)) add(((dst.trace ??= {})[k] ??= []), lanes);
   return dst;
 }
 

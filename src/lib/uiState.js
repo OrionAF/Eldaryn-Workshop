@@ -6,6 +6,7 @@ export const UI_KEY = 'eldaryn_ui_v1';
 
 import { CPU_PROFILES, DEFAULT_CPU_PROFILE } from './tasks/cpuProfile.js';
 import { normaliseCalibration } from './calibration.js';
+import { DEBUG_LOG_LEVELS } from './model/debugLog.js';
 
 export const DENSITIES = ['comfortable', 'compact'];
 export const EFFORTS = ['quick', 'standard', 'thorough'];
@@ -15,9 +16,10 @@ export const DROP_SETS = ['all', 'set1'];
 /**
  * Preferences (G6): density, reduced motion, the effort tools start with (plan Q4: Standard), and the
  * CPU profile that sizes a job's worker pool (tasks/cpuProfile.js workersFor), and the last speed calibration
- * (calibration.js, null until the user runs it), and which gear sets Drop Check compares a drop against.
+ * (calibration.js, null until the user runs it), which gear sets Drop Check compares a drop against, and
+ * the Optimiser's debug log level (model/debugLog.js; simulation.md §Debug log).
  */
-export const defaultPrefs = () => ({ density: 'comfortable', reduceMotion: false, defaultEffort: 'standard', cpuProfile: DEFAULT_CPU_PROFILE, calibration: null, dropSets: 'all' });
+export const defaultPrefs = () => ({ density: 'comfortable', reduceMotion: false, defaultEffort: 'standard', cpuProfile: DEFAULT_CPU_PROFILE, calibration: null, dropSets: 'all', debugLog: 'off' });
 
 const defaults = () => ({ v: 1, lastHash: null, areaLast: {}, optimiserSetups: {}, prefs: defaultPrefs() });
 
@@ -31,11 +33,12 @@ export function normalisePrefs(raw) {
     if (CPU_PROFILES.includes(raw.cpuProfile)) out.cpuProfile = raw.cpuProfile;
     out.calibration = normaliseCalibration(raw.calibration);
     if (DROP_SETS.includes(raw.dropSets)) out.dropSets = raw.dropSets;
+    if (DEBUG_LOG_LEVELS.includes(raw.debugLog)) out.debugLog = raw.debugLog;
   }
   return out;
 }
 
-/** @returns {{v:1, lastHash:string|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string, calibration:object|null, dropSets:'all'|'set1'}}} */
+/** @returns {{v:1, lastHash:string|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string, calibration:object|null, dropSets:'all'|'set1', debugLog:'off'|'builds'|'fights'}}} */
 export function loadUi() {
   const ui = defaults();
   try {

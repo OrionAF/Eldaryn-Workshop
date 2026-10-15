@@ -25,6 +25,7 @@ import { legalityOf } from './legality.js';
 import { resolveTarget, makeObjective, residualFor, meetsTarget, isWinRateKind } from './objectives.js';
 import { createSampler, compareSets, contrastSets, setOf, isAbort, AbortError } from './sampler.js';
 import { race } from './race.js';
+import { createDebugLog } from './debugLog.js';
 import { minimise, attribute, holmSequential, holmFixed } from './minimise.js';
 import {
   RESULT_SCHEMA, CHECKPOINT_SCHEMA, PHASES, MULTIPLICITY, estimateOut, contrastOut, targetOut, objectiveOut,
@@ -171,9 +172,11 @@ function createRun(prep, hooks) {
   // With a worker pool (hooks.pool, simulation.md §Worker pool) the fights of a sample request are
   // sharded over its workers; each worker builds this target and objective once from their specs.
   const pool = hooks.pool ? hooks.pool('objective', poolSetup(prep)) : null;
+  // the debug log (simulation.md §Debug log) only observes: it reads the fights the run draws anyway
+  const log = hooks.debugLog ?? null;
   const sampler = createSampler(pool
-    ? { ...objective, sample: (fighter, o) => pool.run({ fighter, seed: o.seed }, o.from, o.to, { signal: o.signal }) }
-    : objective);
+    ? { ...objective, sample: (fighter, o) => pool.run({ fighter, seed: o.seed, ...(o.trace ? { trace: true } : {}) }, o.from, o.to, { signal: o.signal }) }
+    : objective, { log });
   const lanes = Math.max(1, objective.lanes ?? 1);
   const signal = hooks.signal;
   const t0 = Date.now();
@@ -251,8 +254,38 @@ function createRun(prep, hooks) {
     await tick();
     const fighter = sampler.held(ek, stage) >= n ? null : space.fighterOf(a.cand);
     const set = await sampler.get(ek, stage, fighter, n, { signal });
+    // a read outside any decision (the screen look, the result's own sets) is logged as a measure
+    if (log && !st.stepGets && log.pending(sampler.logId(ek, stage)) > 0) logArm(a, stage, { step: 'measure', looks: 0, n, decision: 'measured' });
     progress();
     return set;
+  }
+
+  // ---- debug log rows (simulation.md §Debug log) --------------------------------------------------
+  // the exhaustive strategy races every block at once ('all'), in one pass
+  const blockPass = () => (st.block === 'all' ? 1 : st.block ? st.steps?.find((r) => r.id === st.block)?.pass ?? null : null);
+  const logCtx = () => ({
+    phase: st.phase, block: st.phase === 'search' ? st.block : null, pass: st.phase === 'search' ? blockPass() : null, rung: hooks.debugRung ?? null,
+  });
+  const baseKey = space.key(base);
+  /** One build row: the arm's short change list and the fights its entry has pending on this stage. */
+  function logArm(a, stage, f) {
+    a.logChanges ??= a.key === baseKey ? [] : changesOf(space, base, a.cand, { bundles: false }).map((c) => `${c.label}: ${c.to}`);
+    log.build({ step: f.step, stage: stage.id, key: a.key, entry: a.ek ? sampler.logId(a.ek, stage) : null, changes: a.logChanges, looks: f.looks, n: f.n, decision: f.decision, basis: f.basis, delta: f.delta });
+  }
+  const VERDICT_DECISION = { better: 'better', worse: 'worse', equivalent: 'tied', unresolved: 'unresolved', futile: 'dropped' };
+  /** A pairwise decision: X gets the verdict, Y (the reference) a row of its own so its fights count. */
+  function logPair(step, X, Y, stage, c) {
+    const f = { step, looks: c.looks ?? 1, n: c.n, basis: c.basis ?? c.verdict ?? null, delta: c.delta };
+    logArm(X, stage, { ...f, decision: VERDICT_DECISION[c.verdict] ?? 'unresolved' });
+    logArm(Y, stage, { ...f, decision: 'reference', basis: `against ${X.key}`, delta: null });
+  }
+  function logRace(list, r, stage) {
+    const out = new Map([[r.winner, { decision: 'kept', basis: list.length === 1 ? 'only build' : r.winner === r.leader ? 'leader' : 'nearest of the ties' }]]);
+    for (const i of r.ties) out.set(i, { decision: 'tied', basis: i === r.leader ? 'leader' : 'equivalent to the leader' });
+    for (const e of r.eliminated) out.set(e.i, { decision: 'dropped', basis: 'worse than the leader', delta: e.contrast.delta });
+    for (const e of r.futile) out.set(e.i, { decision: 'dropped', basis: 'futile: cannot beat the leader by delta', delta: e.contrast.delta });
+    for (const u of r.unresolved) out.set(u.i, { decision: 'unresolved', basis: 'open at maxN', delta: u.contrast.delta });
+    list.forEach((a, i) => logArm(a, stage, { step: 'race', looks: r.looks, n: r.n, ...(out.get(i) ?? { decision: 'unresolved' }) }));
   }
 
   /**
@@ -327,6 +360,7 @@ function createRun(prep, hooks) {
     return step('compare', [stage.id, X.key, Y.key, alpha, ...(futility ? ['futile'] : [])], async () => {
       const c = await compareSets(objective, (n) => getSet(X, stage, n), (n) => getSet(Y, stage, n), { ...effortFor(alpha), futility, seed: stage.seed });
       const [x, y] = [await getSet(X, stage, c.n), await getSet(Y, stage, c.n)];
+      if (log) logPair('compare', X, Y, stage, c);
       return { ...c, identical: identical(x, y, c.n) };
     });
   }
@@ -335,7 +369,9 @@ function createRun(prep, hooks) {
   function contrastAt(X, Y, stage, n, alpha) {
     return step('contrast', [stage.id, X.key, Y.key, n, alpha], async () => {
       const [x, y] = await Promise.all([getSet(X, stage, n), getSet(Y, stage, n)]);
-      return contrastSets(objective, x, y, { ...effortFor(alpha), seed: stage.seed });
+      const c = contrastSets(objective, x, y, { ...effortFor(alpha), seed: stage.seed });
+      if (log) logPair('contrast', X, Y, stage, c);
+      return c;
     });
   }
 
@@ -348,6 +384,7 @@ function createRun(prep, hooks) {
         getSet: (a, n) => getSet(a, stage, n),
         onLook: () => progress(),
       });
+      if (log) logRace(list, r, stage);
       return { ...r, eliminated: r.eliminated.length + r.futile.length, futile: r.futile.length };
     });
   }
@@ -361,6 +398,7 @@ function createRun(prep, hooks) {
     st.phase = id;
     st.phaseState[id] = 'current';
     st.phaseStart = now;
+    log?.enterPhase(id);
     progress(true);
   }
 
@@ -415,13 +453,19 @@ function createRun(prep, hooks) {
       for (let k = 0; k < looks.length; k++) {
         const value = objective.estimate(await getSet(X, stage, looks[k]), { alpha }).value;
         const meets = meetsTarget(value, objective.target ?? 1, effort.delta);
-        if (meets != null || k === looks.length - 1) return { meets, n: looks[k], value };
+        if (meets != null || k === looks.length - 1) {
+          if (log) {
+            const decision = meets === true ? 'kept' : meets === false ? 'dropped' : 'unresolved';
+            logArm(X, stage, { step: 'goal', looks: k + 1, n: looks[k], decision, basis: meets === true ? 'meets the target' : meets === false ? 'below the target' : 'open at maxN' });
+          }
+          return { meets, n: looks[k], value };
+        }
       }
       throw new Error('unreachable');
     });
   }
 
-  return { st, sampler, base, armOf, ekOf, getSet, heldSet, prefetch, compare, contrastAt, raceArms, goalCheck, setPhase, progress, checkpoint, t0, signal, workers: pool?.size ?? 1 };
+  return { st, sampler, log, logCtx, base, armOf, ekOf, getSet, heldSet, prefetch, compare, contrastAt, raceArms, goalCheck, setPhase, progress, checkpoint, t0, signal, workers: pool?.size ?? 1 };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -523,10 +567,12 @@ async function searchPhase(prep, run) {
     row.state = 'running';
     row.reason = null;
     row.pass++;
+    run.log?.enterBlock(id);
     run.progress(true);
     try {
       return await fn(row);
     } finally {
+      run.log?.enterBlock(null);
       st.stepDepth--;
       row.fights += fightsNow() - f0;
       // a visit that raced nothing (the domain is empty or one value) has nothing to try
@@ -568,7 +614,9 @@ async function searchPhase(prep, run) {
     const f0 = fightsNow();
     for (const row of st.steps) if (row.state === 'queued') { row.state = 'running'; row.pass = 1; }
     run.progress(true);
+    run.log?.enterBlock('all');
     const r = await run.raceArms(arms, S1);
+    run.log?.enterBlock(null);
     st.eliminated += r.eliminated;
     // one joint race covers every open block: each row shows its tries and fights
     const moved = new Set(changesOf(space, B.cand, arms[r.winner].cand, { bundles: false }).map((c) => c.dimension));
@@ -916,12 +964,21 @@ export async function optimize(request, hooks = {}) {
   const resumable = cp?.schema === CHECKPOINT_SCHEMA && cp.requestKey === prep.requestKey && cp.characterKey === prep.characterKey && Array.isArray(cp.log);
   if (cp && !resumable) warnings.push({ code: 'checkpoint-ignored', severity: 'info', message: 'The saved progress belongs to a different request or character; the run started over.' });
   const jobId = request.jobId ?? `opt-${prep.requestKey.split(':')[1] ?? 'job'}`;
-  const run = createRun(prep, { ...hooks, jobId, replay: resumable ? cp.log : null });
+  // A Push rung's run shares the Push's log (hooks.debugLog) and leaves the result to the Push.
+  const log = hooks.debugLog ?? createDebugLog(request.debug);
+  const run = createRun(prep, { ...hooks, debugLog: log, jobId, replay: resumable ? cp.log : null });
   const { st, armOf } = run;
   const B = armOf(space.start);
   if (run.ekOf(B) == null) {
     return failedResult({ ...echo, warnings, error: 'The current preset cannot be simulated: an engine input is missing or not a number.' });
   }
+  const restoreLogCtx = log?.useContext(run.logCtx);
+  const withLog = (res) => {
+    restoreLogCtx?.();
+    if (!log) return res;
+    log.flush(res.aborted ? 'cancelled' : 'unclaimed');
+    return hooks.debugLog ? res : { ...res, debug: log.finish(debugHeader(prep, echo, jobId)) };
+  };
   const S1 = { id: 'search', seed: seeds.search };
   const S2 = { id: 'minimise', seed: seeds.minimise };
   const S3 = { id: 'confirm', seed: seeds.confirm };
@@ -937,7 +994,7 @@ export async function optimize(request, hooks = {}) {
     // win rate: a baseline that already meets the target needs no change (the check is on S3, whose
     // baseline fights confirm reuses; the baseline is fixed, so no selection rides on it)
     const goal = isWinRateKind(objective.kind) ? await run.goalCheck(B, S3) : null;
-    if (goal?.meets) return alreadyResult(prep, run, B, goal, await run.getSet(B, S3, goal.n), echo, S3, t0);
+    if (goal?.meets) return withLog(alreadyResult(prep, run, B, goal, await run.getSet(B, S3, goal.n), echo, S3, t0));
 
     run.setPhase('search');
     searchOut = await searchPhase(prep, run);
@@ -1046,9 +1103,12 @@ export async function optimize(request, hooks = {}) {
       checkpoint: null,
       stats: { ms: Date.now() - t0, workers: run.workers },
     };
-    return result;
+    return withLog(result);
   } catch (e) {
-    if (!isAbort(e)) throw e;
+    if (!isAbort(e)) {
+      restoreLogCtx?.();
+      throw e;
+    }
     const phase = st.phase;
     st.phaseState[phase] = 'cancelled';
     st.phaseMs[phase] += Date.now() - st.phaseStart;
@@ -1058,7 +1118,7 @@ export async function optimize(request, hooks = {}) {
     const prov = [];
     for (const a of pool) if (a.key !== B.key && !prov.some((p) => p.key === a.key)) prov.push(await provisionalRow(prep, run, a, B, stagesNewest));
     const baseline = await provisionalRow(prep, run, B, B, stagesNewest);
-    return {
+    return withLog({
       schema: RESULT_SCHEMA,
       status: 'cancelled',
       aborted: true,
@@ -1074,8 +1134,16 @@ export async function optimize(request, hooks = {}) {
       baselineViolations: [],
       checkpoint: { jobId, phase, resumable: true },
       stats: { ms: Date.now() - t0, workers: run.workers },
-    };
+    });
   }
+}
+
+/** The debug log's header line (simulation.md §Debug log): what was run, at which effort and seed. */
+export function debugHeader(prep, echo, jobId) {
+  return {
+    run: prep.objective.kind === 'push' ? 'push' : 'optimise', jobId, character: prep.character.name ?? null, preset: prep.preset.name ?? null,
+    target: echo.target.label ?? null, targetSpec: prep.target.spec, objective: prep.objective.spec, effort: prep.requestEcho.effort, seed: prep.seed,
+  };
 }
 
 /** Why a baseline below the Combat Power guard cannot be optimised (also the setup's blocker text). */

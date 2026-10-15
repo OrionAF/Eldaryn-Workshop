@@ -16,6 +16,7 @@ import { hashSeed, fightRng } from '../engine/rng.js';
 import { wilsonInterval, stratifiedPairedProportion, stableStringify } from '../engine/metrics.js';
 import { runDuel, fighterDuelArgs } from '../engine/pvp/resolver.js';
 import { opponentFighter, duelFighter, missingStats } from '../features/duel.js';
+import { fightTrace } from './sampler.js';
 
 export const PVP_TARGET_KIND = 'pvp';
 export const PVP_OBJECTIVE_KIND = 'pvp-winrate';
@@ -95,7 +96,7 @@ export function makePvpObjective(raw, target, { closedFormDps, ehpProxy }) {
     window: null, lanes: lanes.length, screen, tier0: screen,
 
     /** Duels from..to-1 of every matchup: main = my wins (0/1), side.ms = duel length, side.timedOut. */
-    async sample(fighter, { seed, from = 0, to, signal }) {
+    async sample(fighter, { seed, from = 0, to, signal, trace }) {
       const mine = duelFighter(fighter);
       const missing = missingStats(mine);
       if (missing.length) throw new Error(`the preset has no ${missing.join(' / ')}; enter stats or gear first`);
@@ -103,20 +104,24 @@ export function makePvpObjective(raw, target, { closedFormDps, ehpProxy }) {
       const main = lanes.map(() => []);
       const ms = lanes.map(() => []);
       const timedOut = lanes.map(() => []);
+      const tr = trace ? fightTrace(lanes.length) : null;
+      const done = (aborted) => ({ main, side: { ms, timedOut }, aborted, ...(tr ? { trace: tr.out } : {}) });
       let last = Date.now();
       // fight-major order, so an abort leaves every lane equally long
       for (let i = from; i < to; i++) {
-        if (signal?.aborted) return { main, side: { ms, timedOut }, aborted: true };
+        if (signal?.aborted) return done(true);
         lanes.forEach((m, j) => {
+          const t0 = tr ? performance.now() : 0;
           const rng = fightRng(hashSeed(seed, m.opponentId, m.seat), i);
           const r = m.seat === 'attacker' ? runDuel({ attacker: me, defender: m.args, rng }) : runDuel({ attacker: m.args, defender: me, rng });
           main[j].push(r.attackerWon === (m.seat === 'attacker') ? 1 : 0);
           ms[j].push(r.timeMs);
           timedOut[j].push(r.timedOut ? 1 : 0);
+          tr?.add(j, t0, r.timeMs);
         });
         if (Date.now() - last >= YIELD_MS) { await tick(); last = Date.now(); }
       }
-      return { main, side: { ms, timedOut }, aborted: false };
+      return done(false);
     },
 
     estimate(s, { alpha = 0.05 } = {}) {

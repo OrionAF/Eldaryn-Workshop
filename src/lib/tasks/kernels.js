@@ -3,7 +3,8 @@
 // -> chunk}: `prepare` runs once per job and worker (the target, objective, opponents), `run` gets only a
 // fighter or a selector plus the range. Fight i of every kernel reads the same rng the single-thread
 // code reads for index i, so a chunk is a pure function of (setup, args, i) and shards merge by index.
-// A chunk is `{main: number[][], side: Object<string, number[][]>}` (sampler.js sample-set lanes).
+// A chunk is `{main: number[][], side: Object<string, number[][]>, trace?}` (sampler.js sample-set lanes;
+// `trace` only when the debug log asked, simulation.md §Debug log).
 import { fightRng, mulberry32, hashSeed } from '../engine/rng.js';
 import { simulatePve, preparePveFighter, trainingDummy } from '../engine/pve/fight.js';
 import { oblivionFloorMob } from '../engine/pve/enemies.js';
@@ -18,12 +19,19 @@ const range = (from, to, f) => {
 };
 
 export const KERNELS = {
-  /** The optimiser's objective (search/objectives.js `sample`). args: {fighter, seed}. */
+  /**
+   * The optimiser's objective (search/objectives.js `sample`). args: {fighter, seed, trace?}; `trace`
+   * (the debug log) adds the fights' timing to the chunk (sampler.js fightTrace), never changes them.
+   */
   objective: {
     prepare: ({ target, objective, character, partner }) => makeObjective(objective, resolveTarget(target, { character, partner })),
-    async run(o, { fighter, seed }, from, to) {
-      const c = await o.sample(fighter, { seed, from, to });
-      return { main: c.main, side: c.side ?? {} };
+    async run(o, { fighter, seed, trace }, from, to) {
+      if (!trace) {
+        const c = await o.sample(fighter, { seed, from, to });
+        return { main: c.main, side: c.side ?? {} };
+      }
+      const c = await o.sample(fighter, { seed, from, to, trace: true });
+      return { main: c.main, side: c.side ?? {}, ...(c.trace ? { trace: c.trace } : {}) };
     },
   },
 

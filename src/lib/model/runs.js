@@ -1,4 +1,4 @@
-// model/runs.js - persisted `runs` (rebuild-plan §3), owned by F2a. Pure; imports nothing.
+// model/runs.js - persisted `runs` (rebuild-plan §3), owned by F2a. Pure; imports only model/debugLog.js.
 //
 // Domain contract (§3 "Normalisation layout"): every function deals in a PARTIAL CHARACTER.
 //   defaultRuns() / normaliseRuns(rawCharacter, ctx) / migrateRunsFromV1(v1Character) / reconcileRuns(character)
@@ -24,6 +24,8 @@
 //   }
 //   steps: [{id, state, reason, pass, tried, fights, improved}]   optional: the search's final per-block rows
 //     (simulation.md §Progress); absent on a run saved before they existed, on a Push run and on a cancelled one
+//   debug: {level, phases, blocks, totals}   optional: the debug log's summary (model/debugLog.js); only on a
+//     run made with the debug log on (simulation.md §Debug log)
 //   RunEntry = {rank, isBaseline, key, candidate, value, lo, hi, n, score, vsBaseline, changes, lines}
 //
 // Schema 2 (`schema: 2`, redesign plan U8) records an 'optimiser-result/2' result (docs/Reference/simulation.md
@@ -41,6 +43,8 @@
 // detail drops oldest-first until the history fits RUN_BYTE_BUDGET, then whole rows beyond
 // RUN_MAX_ROWS (pinned runs are exempt from both). storage.js saveRoster applies the roster-wide
 // ROSTER_RUN_BYTE_BUDGET across every character with enforceRosterRunsBudget.
+
+import { normaliseDebugSummary } from './debugLog.js';
 
 export const RUN_KIND = 'optimise';
 export const RUN_DETAIL_LIMIT = 50;      // runs that keep their detail (pinned exempt)
@@ -260,6 +264,8 @@ export function normaliseRun(raw) {
     applied,
     headline: normaliseHeadline(raw.headline),
     ...(normaliseSteps(raw.steps) ? { steps: normaliseSteps(raw.steps) } : {}),
+    // a run made with the debug log on keeps its per-phase / per-block summary, never its rows
+    ...(normaliseDebugSummary(raw.debug) ? { debug: normaliseDebugSummary(raw.debug) } : {}),
     detail: normaliseDetail(raw.detail, schema),
   };
 }
@@ -330,6 +336,7 @@ function runFromResultV2(result, fields) {
     characterKey: req.characterKey,
     applied: fields.applied ?? null,
     steps: result.search?.steps ?? null,
+    debug: result.debug?.summary ?? null,
     headline: {
       unit, higherIsBetter: result.objective?.higherIsBetter, tier: 2, aborted: false, truncated: null,
       baseline: base?.value?.est ?? null, best: (top ?? base)?.value?.est ?? null,

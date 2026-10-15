@@ -1,7 +1,8 @@
 // Worker tasks 'optimize' and 'optimizeMore' (A4): the build optimiser (search/search.js).
 //
 // optimize request (plain JSON; a stale `v2: true` flag and retired `budget` keys are ignored):
-//   { character, partner?, presetId?, realm?, target?, objective?, space?, effort?, seed?, powerFloor?, resumeFrom?, jobId? }
+//   { character, partner?, presetId?, realm?, target?, objective?, space?, effort?, seed?, powerFloor?, resumeFrom?, jobId?, debug? }
+//   `debug` (builds | fights) attaches a debug log to the result (simulation.md §Debug log).
 //   `partner` is a Celestial roster partner, resolved by the caller (search/celestialObjective.js resolveRosterPartner).
 //   An objective {kind: 'push'} runs the Push goal (search/push.js, simulation.md §Push) instead.
 // optimizeMore request: { character, partner?, result, rowKeys?, targetN, seed?, round? }
@@ -14,11 +15,11 @@ import { push as runPush, PUSH_KIND } from '../search/push.js';
 import { poolScope } from './pool.js';
 
 export async function optimize(request = {}, { signal, onProgress, onCheckpoint, pool } = {}) {
-  const { character, partner, presetId, realm, target, objective, space, effort, seed, powerFloor, resumeFrom, jobId } = request;
+  const { character, partner, presetId, realm, target, objective, space, effort, seed, powerFloor, resumeFrom, jobId, debug } = request;
   const scope = poolScope(pool);
   try {
     const run = objective?.kind === PUSH_KIND ? runPush : runOptimize;
-    return await run({ character, partner, presetId, realm, target, objective, space, effort, seed, powerFloor, resumeFrom, jobId }, { signal, onProgress, onCheckpoint, pool: pool && scope.open });
+    return await run({ character, partner, presetId, realm, target, objective, space, effort, seed, powerFloor, resumeFrom, jobId, debug }, { signal, onProgress, onCheckpoint, pool: pool && scope.open });
   } finally {
     scope.close();
   }

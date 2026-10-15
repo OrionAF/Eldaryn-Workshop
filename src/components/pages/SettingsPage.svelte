@@ -15,6 +15,7 @@
   import { prefs, setPrefs } from '../../lib/prefs.svelte.js';
   import { CPU_PROFILES, workersFor } from '../../lib/tasks/cpuProfile.js';
   import { staleReason } from '../../lib/calibration.js';
+  import { DEBUG_LOG_LEVELS } from '../../lib/model/debugLog.js';
   import { startCalibration, calibrating, CALIBRATE_TOOL } from '../../lib/calibrationJob.js';
   import { jobsStore, cancelJob } from '../../lib/jobs.svelte.js';
 
@@ -44,6 +45,8 @@
   };
   const when = (t) => new Date(t).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
   const KIND_LABEL = { dummy: 'Training dummy', dungeon: 'Dungeon step', duel: 'Duel' };
+  const DEBUG_LABEL = { off: 'Off', builds: 'Builds', fights: 'Builds and fights' };
+  const DEBUG_OPTIONS = DEBUG_LOG_LEVELS.map((v) => ({ value: v, label: DEBUG_LABEL[v] }));
 </script>
 
 <div class="settings">
@@ -135,6 +138,19 @@
           {#if calJob}<Button variant="ghost" onclick={() => cancelJob(calJob.id)}>Cancel</Button>{/if}
         </div>
         <p class="note">Runs fights for about 6 seconds with your active preset (a sample character when you have none). It never runs by itself.</p>
+      </div>
+
+      <div class="field" data-testid="debug-log-pref">
+        <SegmentedControl
+          label="Debug: log the search"
+          value={prefs.debugLog}
+          options={DEBUG_OPTIONS}
+          onchange={(v) => setPrefs({ debugLog: v })}
+        />
+        <p class="note">Records every build an Optimiser run tries (and every fight, at the second level) so its Details show where the time went, with a log to download. It never changes a result.</p>
+        {#if prefs.debugLog === 'fights'}
+          <p class="warn" role="status" data-testid="debug-log-warn">Builds and fights slows runs and can use tens of MB of memory on a long run.</p>
+        {/if}
       </div>
     </div>
   </Panel>
