@@ -18,7 +18,7 @@
   const presetCount = $derived(character?.presets?.length ?? 0);
   const activePreset = $derived(character?.presets?.find((p) => p.id === character.activePresetId) ?? character?.presets?.[0] ?? null);
 
-  const scope = $derived(page?.scope ?? 'tool');
+  const scope = $derived(page?.scope ?? 'global');
   const target = $derived(
     !page ? 'This device' : page.scope === 'preset' ? (activePreset?.name ?? '') : page.scope === 'character' ? (character?.name ?? '') : '',
   );

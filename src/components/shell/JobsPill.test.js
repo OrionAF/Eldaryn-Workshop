@@ -13,7 +13,7 @@ vi.mock('../../lib/optimizerClient.js', () => ({
 }));
 
 const { default: JobsPill } = await import('./JobsPill.svelte');
-const { startJob, __resetJobs, jobsStore } = await import('../../lib/jobs.svelte.js');
+const { startJob, cancelJob, __resetJobs, jobsStore } = await import('../../lib/jobs.svelte.js');
 
 let ui;
 beforeEach(() => {
@@ -68,5 +68,19 @@ describe('JobsPill and tray', () => {
     key(ui.q('[role="dialog"]'), 'Escape');
     expect(ui.q('[role="dialog"]')).toBeNull();
     expect(document.activeElement).toBe(ui.q('.jobs-pill'));
+  });
+});
+
+describe('JobsPill count', () => {
+  it('counts running jobs only: a finished job leaves no badge, and the label still says what finished', async () => {
+    await fresh();
+    const id = startJob({ tool: 'optimize', title: 'Optimiser · Boss build', request: { mode: 'optimize' } });
+    flushSync();
+    expect(ui.q('.count').textContent).toBe('1');
+    cancelJob(id);
+    await vi.waitFor(() => expect(jobsStore.list[0].status).toBe('cancelled'));
+    flushSync();
+    expect(ui.q('.count')).toBeNull();
+    expect(ui.q('.jobs-pill').getAttribute('aria-label')).toBe('Jobs: 0 running, 1 finished');
   });
 });

@@ -36,3 +36,14 @@ it('reads a typed value with the percent rule and reports it', () => {
 it('a row off by more than the tolerance reads "off by"', () => {
   expect(t.q('tr[data-key="totalAttack"]').textContent).toContain('off by');
 });
+
+it('without a computed build (an opponent) the empty Model, Gap, Tolerance and Status columns are not drawn', () => {
+  const o = setup(SheetTable, { keys: ['totalAttack', 'totalCritChance'], values: { totalAttack: 48124 }, computed: null, onChange: () => {} });
+  const heads = o.qa('thead th').map((th) => th.textContent.trim());
+  expect(heads).toEqual(['Stat', 'Your sheet', 'Raw']);
+  const labels = [...o.q('tr[data-key="totalAttack"]').querySelectorAll('td')].map((td) => td.dataset.label);
+  expect(labels).toEqual(['Your sheet', 'Raw']);
+  expect(o.q('[data-testid="diff-summary"]').textContent.trim()).toBe('1/2 entered');
+  expect(o.target.textContent).not.toMatch(/no model value/);
+  o.done();
+});

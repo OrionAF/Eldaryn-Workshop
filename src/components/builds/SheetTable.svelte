@@ -17,6 +17,9 @@
   let { keys, values, computed, contributions = null, onChange } = $props();
 
   const rows = $derived(keys.map((k) => sheetKeyMeta(k)).filter(Boolean));
+  // No computed build (an opponent's sheet has none): the Model, Gap, Tolerance and Status columns would be
+  // empty on every row, so they are not drawn.
+  const hasModel = $derived(computed != null);
 
   let drafts = $state({});
   let invalid = $state({});
@@ -98,7 +101,7 @@
 
 <div class="head">
   <span class="summary num" class:all-good={summary.total > 0 && summary.explained === summary.total} data-testid="diff-summary">
-    {summary.explained}/{summary.total} explained
+    {#if hasModel}{summary.explained}/{summary.total} explained{:else}{summary.total}/{rows.length} entered{/if}
   </span>
 </div>
 <!-- svelte-ignore a11y_no_noninteractive_tabindex (a scrollable region must be focusable) -->
@@ -106,8 +109,8 @@
   <table class="sheet">
     <thead>
       <tr>
-        <th scope="col">Stat</th><th scope="col" class="r">Model</th><th scope="col" class="r">Your sheet</th>
-        <th scope="col" class="r">Raw</th><th scope="col" class="r">Gap</th><th scope="col" class="r">Tolerance</th><th scope="col">Status</th>
+        <th scope="col">Stat</th>{#if hasModel}<th scope="col" class="r">Model</th>{/if}<th scope="col" class="r">Your sheet</th>
+        <th scope="col" class="r">Raw</th>{#if hasModel}<th scope="col" class="r">Gap</th><th scope="col" class="r">Tolerance</th><th scope="col">Status</th>{/if}
       </tr>
     </thead>
     <tbody>
@@ -124,7 +127,7 @@
               {m.label}
             {/if}
           </th>
-          <td class="r num dim" data-label="Model" title="Value the model computes for this stat">{statText(m.key, computed?.[m.key])}</td>
+          {#if hasModel}<td class="r num dim" data-label="Model" title="Value the model computes for this stat">{statText(m.key, computed?.[m.key])}</td>{/if}
           <td class="r" data-label="Your sheet">
             <span class="input-wrap">
               <input
@@ -175,6 +178,7 @@
               </span>
             {/if}
           </td>
+          {#if hasModel}
           <td class="r num" data-label="Gap" class:warn={s.kind === 'off'}>{s.gap === null ? '-' : gapText(m.key, s.gap)}</td>
           <td class="r num dim" data-label="Tolerance">±{statText(m.key, toleranceFor(m.key))}</td>
           <td class="status" data-label="Status">
@@ -183,11 +187,12 @@
             {:else if s.kind === 'unknown'}<span class="dim">no model value</span>
             {:else}<span class="dim">model used</span>{/if}
           </td>
+          {/if}
         </tr>
         {#if open[m.key] && contrib}
           {@const split = contributionRows(contrib, m.key)}
           <tr class="src-row" id="src-{m.key}">
-            <td colspan="7">
+            <td colspan={hasModel ? 7 : 3}>
               <ul class="split" aria-label="{m.label} by source">
                 {#each split.rows.filter((r) => r.value !== 0) as r (r.id)}
                   <li><span>{r.label}</span><span class="num">{statText(m.key, r.value)}</span></li>

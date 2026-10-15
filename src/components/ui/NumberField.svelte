@@ -87,7 +87,7 @@
 </div>
 
 <style>
-  .field { display: grid; gap: 4px; min-width: 0; }
+  .field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; }
   label { font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }
   .input {
     display: flex;

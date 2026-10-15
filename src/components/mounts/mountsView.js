@@ -1,5 +1,5 @@
 // Pure display helpers for the Mounts screen (labels only; the numbers come from model/glyphs.js and the catalogue).
-import { glyphTypeInfo, glyphSecondaryValue, glyphSecondaryDef, majorEffectAtRarity } from '../../lib/model/glyphs.js';
+import { glyphTypeInfo, glyphStatLabel, glyphSecondaryValue, glyphSecondaryDef, majorEffectAtRarity } from '../../lib/model/glyphs.js';
 
 export const TIER_LABELS = { minor: 'Minor', major: 'Major', mythic: 'Mythic' };
 export const SOCKET_LAYOUT = [
@@ -13,7 +13,7 @@ const RARITIES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic'];
 export const rarityClass = (rarity) => (RARITIES.includes(rarity) ? `rarity-${rarity.toLowerCase()}` : 'rarity-unknown');
 
 /** Camel-case stat key to words: 'critChance' -> 'Crit Chance'. */
-export const statLabel = (stat) => stat.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
+export const statLabel = glyphStatLabel;
 
 /** Unit suffix of a pool stat: the two-decimal stats (speed, crit damage) are fractions, the rest percent points (doc §9). */
 export function secondaryUnit(stat) {

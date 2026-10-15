@@ -27,12 +27,18 @@
 
   let selectedId = $state(null);
   let newSpec = $state('WARRIOR_DPS');
-  let cloneSpec = $state('WARRIOR_DPS');
+  let cloneSpecPick = $state(null); // null: follow the chosen preset's talent-set spec
   let clonePick = $state(null);
 
   const selected = $derived(character.opponents.find((o) => o.id === selectedId) ?? character.opponents[0] ?? null);
   const full = $derived(character.opponents.length >= MAX_OPPONENTS);
   const clonePreset = $derived(character.presets.some((p) => p.id === clonePick) ? clonePick : character.activePresetId);
+  // The spec the preset plays: its chosen talent set's spec, else the class's first spec.
+  const presetSpec = (id) => {
+    const p = character.presets.find((x) => x.id === id);
+    return character.talentSets?.[p?.talentSet === 1 ? 1 : 0]?.spec ?? SPECS.find((x) => x.class === character.class)?.key ?? 'WARRIOR_DPS';
+  };
+  const cloneSpec = $derived(cloneSpecPick ?? presetSpec(clonePreset));
   const presetOptions = $derived(character.presets.map((p) => ({ value: p.id, label: p.name })));
   const rows = $derived(
     character.opponents.map((o) => {
@@ -82,8 +88,8 @@
       <Select label="New opponent spec" options={specOptions} bind:value={newSpec} />
       <Button variant="primary" disabled={full} reason={full ? `At most ${MAX_OPPONENTS} saved opponents.` : ''} onclick={add}>+ New opponent</Button>
       <hr />
-      <Select label="Clone my preset" options={presetOptions} value={clonePreset} onchange={(v) => (clonePick = v)} />
-      <Select label="as spec" options={specOptions} bind:value={cloneSpec} />
+      <Select label="Clone my preset" options={presetOptions} value={clonePreset} onchange={(v) => { clonePick = v; cloneSpecPick = null; }} />
+      <Select label="as spec" options={specOptions} value={cloneSpec} onchange={(v) => (cloneSpecPick = v)} />
       <Button variant="secondary" disabled={full} reason={full ? `At most ${MAX_OPPONENTS} saved opponents.` : ''} onclick={clone}>Clone</Button>
     </Panel>
 

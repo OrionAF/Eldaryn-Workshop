@@ -48,6 +48,8 @@ it('a disabled tab cannot be selected and carries its reason', () => {
   const dis = qa('[role=tab]')[1];
   expect(dis.getAttribute('aria-disabled')).toBe('true');
   expect(dis.title).toBe('Unlock Oblivion first');
+  expect(dis.getAttribute('aria-description')).toBe('Unlock Oblivion first');
+  expect(qa('[role=tab]')[0].hasAttribute('aria-description')).toBe(false);
   click(dis);
   expect(onchange).not.toHaveBeenCalled();
   done();

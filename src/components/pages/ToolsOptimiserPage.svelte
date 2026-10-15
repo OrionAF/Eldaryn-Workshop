@@ -27,7 +27,7 @@
   import { relicSlotCap } from '../../lib/model/legality.js';
   import { presetDuelFighter, opponentFighter, missingStats } from '../../lib/features/duel.js';
   import {
-    normaliseSetup, setupFromRun, requestOf, searchCharacter, signatureOf,
+    normaliseSetup, setupFromRun, requestOf, searchCharacter, signatureOf, runApplyBlock,
   } from '../../lib/ui/optimiserSetup.js';
   import {
     viewResult, progressSegments, progressLine, effortPlan, enabledCount, toggleTotal, optimiserJobChips,
@@ -204,6 +204,7 @@
   // ---- apply -------------------------------------------------------------------------------------
 
   let applyRow = $state(null);
+  let applySource = $state(null); // {presetId, presetName, runId}: the preset the review writes to, the run to mark applied
   let applyOpen = $state(false);
   let applyError = $state('');
   const applyBlocked = $derived(
@@ -213,22 +214,32 @@
   );
 
   function askApply(row) {
+    applySource = { presetId: resultPreset.id, presetName: resultPreset.name, runId: recorded.get(jobKey(shown)) ?? null };
+    applyRow = row;
+    applyError = '';
+    applyOpen = true;
+  }
+
+  /** Apply from a saved run (Run history or the opened run): its stored write groups, its own preset. */
+  function askApplySaved(run, row) {
+    const p = character.presets.find((x) => x.id === run.presetId);
+    if (!p) return;
+    applySource = { presetId: p.id, presetName: p.name, runId: run.id };
     applyRow = row;
     applyError = '';
     applyOpen = true;
   }
 
   function confirmApply({ cand, include }) {
-    if (!applyRow || !resultPreset) return;
-    const r = rosterStore.applyCandidate(resultPreset.id, cand, { include });
+    if (!applyRow || !applySource) return;
+    const r = rosterStore.applyCandidate(applySource.presetId, cand, { include });
     if (!r.ok) {
       applyError = r.violations.map((v) => v.detail).join('; ');
       return;
     }
-    const runId = recorded.get(jobKey(shown)) ?? null;
-    if (runId) rosterStore.setRunApplied(runId, applyRow.rank);
+    if (applySource.runId) rosterStore.setRunApplied(applySource.runId, applyRow.rank);
     applyOpen = false;
-    notify(`Applied rank ${applyRow.rank} to ${resultPreset.name}. Run again to measure against the new current build.`, { kind: 'success' });
+    notify(`Applied rank ${applyRow.rank} to ${applySource.presetName}. Run again to measure against the new current build.`, { kind: 'success' });
   }
 
   // ---- tabs --------------------------------------------------------------------------------------
@@ -243,13 +254,18 @@
   ]);
   const onTab = (id) => go(formatHash('tools/optimiser', id === 'history' ? 'history' : null), { replace: true });
 
-  // A saved run opened from the history: its stored result shows in Setup & results, read-only.
+  // A saved run opened from the history: its stored result shows in Setup & results, with Apply while it still matches the character.
+  // After a reload no job holds a result, so the newest saved run shows instead of "No run yet".
   let openRunId = $state(null);
-  const savedRun = $derived((character.runs ?? []).find((r) => r.id === openRunId) ?? null);
+  let dismissedSaved = $state(false);
+  const openedRun = $derived((character.runs ?? []).find((r) => r.id === openRunId) ?? null);
+  const latestRun = $derived(!openRunId && !dismissedSaved && !result && !live && !failedJob ? (character.runs ?? [])[0] ?? null : null);
+  const savedRun = $derived(openedRun ?? latestRun);
   const savedView = $derived(savedRun ? viewRun(savedRun) : null);
   const showSaved = $derived(!!savedRun && !live);
   function openRun(r) {
     openRunId = r.id;
+    dismissedSaved = false;
     tabId = 'setup';
     go(formatHash('tools/optimiser'));
   }
@@ -268,7 +284,7 @@
 
 {#if tabId === 'history'}
   <div role="tabpanel" id="opt-panel-history">
-    <RunHistoryTab onrerun={rerun} onopen={openRun} />
+    <RunHistoryTab onrerun={rerun} onopen={openRun} onapply={askApplySaved} />
   </div>
 {:else}
   <div role="tabpanel" id="opt-panel-setup" class="panes">
@@ -349,17 +365,24 @@
       {#if showSaved}
         <Panel title={savedRun.name} level="primary" scope="tool">
           {#snippet meta()}
-            <Button variant="ghost" size="small" onclick={() => (openRunId = null)}>Close</Button>
+            <Button variant="ghost" size="small" onclick={() => { openRunId = null; dismissedSaved = true; }}>Close</Button>
           {/snippet}
           <Banner variant="info" lead="Saved run.">
-            Opened from Run history ({new Date(savedRun.at).toLocaleString()}). It is read-only: Apply and Run more are off.
+            Saved {new Date(savedRun.at).toLocaleString()}. You can apply a build from it while the character still matches; Run more is off for a saved run.
             {#snippet action()}<Button variant="ghost" size="small" onclick={() => rerun(savedRun)}>Re-run with settings</Button>{/snippet}
           </Banner>
           {#if savedRun.headline.text}
             <div class="headline" role="status"><h3>{savedRun.headline.text}</h3></div>
           {/if}
           {#if savedView}
-            <OptimiserResults view={savedView} presetName={savedRun.presetName || 'the preset'} unmeasured={() => savedRun.schema !== 2} />
+            <OptimiserResults
+              view={savedView}
+              presetName={savedRun.presetName || 'the preset'}
+              unmeasured={() => savedRun.schema !== 2}
+              onapply={(row) => askApplySaved(savedRun, row)}
+              applyBlocked={runApplyBlock(savedRun, character)}
+              missingWritesReason="This run was saved before it could be applied. Re-run with settings."
+            />
           {:else}
             <p class="hint" data-testid="saved-compacted">Detail compacted to keep storage small; the headline above is kept. Pin a run to keep its detail.</p>
           {/if}
@@ -457,9 +480,9 @@
       {/if}
     </div>
   </div>
-
-  <ApplyReview bind:open={applyOpen} row={applyRow} presetName={resultPreset?.name ?? ''} error={applyError} onconfirm={confirmApply} />
 {/if}
+
+<ApplyReview bind:open={applyOpen} row={applyRow} presetName={applySource?.presetName ?? ''} error={applyError} onconfirm={confirmApply} />
 
 <style>
   .page-tabs { margin-bottom: var(--sp-4); }

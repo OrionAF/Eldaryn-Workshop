@@ -4,11 +4,12 @@
    * character, newest first. The run's name opens its stored result in Setup & results (`onopen`); Details
    * expands it in place. Rename / notes / pin / delete / Clear unpinned, "Re-run with
    * settings" (loads the run's setup, measures afresh) and a side-by-side compare of two runs. A run's detail
-   * is read-only; a run saved before per-change effects were measured says "not measured". The headline
+   * offers Apply while the character still matches what was measured; a run saved before per-change effects were measured says "not measured". The headline
    * rows are kept forever; the detail may have compacted away (model/runs.js).
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { viewRun } from '../../lib/ui/optimiserView.js';
+  import { runApplyBlock } from '../../lib/ui/optimiserSetup.js';
   import { fmtScalar, fmtCount } from '../../lib/ui/statsFormat.js';
   import ConfirmAction from '../tools/ConfirmAction.svelte';
   import Button from '../ui/Button.svelte';
@@ -20,7 +21,7 @@
   import OptimiserResults from './OptimiserResults.svelte';
   import RunCompare from './RunCompare.svelte';
 
-  let { onrerun = () => {}, onopen = null } = $props();
+  let { onrerun = () => {}, onopen = null, onapply = null } = $props();
 
   const runs = $derived(rosterStore.current?.runs ?? []);
   let openId = $state(null);
@@ -98,7 +99,14 @@
               </Banner>
             {/if}
             {#if view}
-              <OptimiserResults {view} presetName={run.presetName || 'the preset'} unmeasured={() => run.schema !== 2} />
+              <OptimiserResults
+                {view}
+                presetName={run.presetName || 'the preset'}
+                unmeasured={() => run.schema !== 2}
+                onapply={onapply ? (row) => onapply(run, row) : null}
+                applyBlocked={runApplyBlock(run, rosterStore.current)}
+                missingWritesReason="This run was saved before it could be applied. Re-run with settings."
+              />
             {:else}
               <p class="hint">Detail compacted to keep storage small; the headline above is kept.</p>
             {/if}

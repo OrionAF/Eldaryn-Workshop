@@ -28,6 +28,7 @@ const {
   progressOf, openResult, setPersistCheckpoints, restoreInterrupted, __resetJobs, MAX_RUNNING,
 } = await import('./jobs.svelte.js');
 const { router, syncRouter } = await import('./router.svelte.js');
+const { notifications, resetNotifications } = await import('./notify.svelte.js');
 
 const settled = (id, status) =>
   vi.waitFor(() => expect(jobsStore.list.find((j) => j.id === id)?.status).toBe(status), { timeout: 3000 });
@@ -167,5 +168,20 @@ describe('job store', () => {
     resumeJob(restored.id);
     await settled(restored.id, 'finished');
     expect(restored.result.i).toBe(STEPS);
+  });
+});
+
+describe('the started notice belongs to the job', () => {
+  it('shows while the job runs and is gone once it settles, whatever the outcome', async () => {
+    resetNotifications();
+    const a = startJob({ tool: 'optimize', title: 'a', notice: 'Floor scan started', request: { mode: 'optimize' } });
+    expect(notifications.toasts.map((t) => t.message)).toEqual(['Floor scan started']);
+    await settled(a, 'finished');
+    expect(notifications.toasts).toHaveLength(0);
+    expect(notifications.log.map((e) => e.message)).toContain('Floor scan started');
+    const b = startJob({ tool: 'boom', title: 'b', notice: 'Drop check started', request: { mode: 'boom' } });
+    await settled(b, 'failed');
+    expect(notifications.toasts).toHaveLength(0);
+    resetNotifications();
   });
 });

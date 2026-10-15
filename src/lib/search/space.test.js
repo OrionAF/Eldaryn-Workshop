@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  createBuildSpace, candidateOf, canonical, materialise, BLOCKS, SPACE_DEFAULTS, conditionOptionsFor,
+  createBuildSpace, candidateOf, canonical, materialise, BLOCKS, SPACE_DEFAULTS, conditionOptionsFor, glyphLabel,
 } from './space.js';
 import { legalityOf } from './legality.js';
 import { fixtureCharacter } from '../build/fixtures.js';
@@ -247,4 +247,13 @@ describe('legality of every arm (light; the deep run is H3)', () => {
       }
     });
   }
+});
+
+describe('glyphLabel', () => {
+  it('prints the secondary stat as words, not its camelCase key', () => {
+    const c = { glyphs: [{ id: 'g1', glyphType: 'NO_SUCH_TYPE', rarity: 'Rare', secondary: { stat: 'attackSpeed' } }, { id: 'g2', glyphType: 'NO_SUCH_TYPE', rarity: 'Rare', secondary: null }] };
+    expect(glyphLabel(c, 'g1')).toBe('NO_SUCH_TYPE (Rare, Attack Speed)');
+    expect(glyphLabel(c, 'g2')).toBe('NO_SUCH_TYPE (Rare)');
+    expect(glyphLabel(c, null)).toBe('Empty');
+  });
 });

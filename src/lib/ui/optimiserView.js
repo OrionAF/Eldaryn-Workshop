@@ -129,6 +129,65 @@ export function viewRun(run) {
   return { ...viewResult({ objective: { unit, higherIsBetter: true }, baseline, rows }), legacy: true };
 }
 
+// ---- change labels --------------------------------------------------------------------------
+
+/** What each change dimension (effect.js `changesOf`) is called on screen. */
+export const DIMENSION_LABEL = Object.freeze({
+  equipmentSet: 'Gear set', spec: 'Talent set', talents: 'Talents', pet: 'Pet', mount: 'Mount', relics: 'Relics', sigils: 'Sigils',
+  utility: 'Utility sigil', ancient: 'Ancient sigil', transcendence: 'Transcendence', conditions: 'Sigil conditions',
+  minorGlyphs: 'Minor glyphs', majorGlyphs: 'Major glyphs', mythicGlyphs: 'Mythic glyphs',
+});
+const GLYPH_DIMENSION = /Glyphs$/;
+const TIER_WORD = { minor: 'Minor', major: 'Major', mythic: 'Mythic' };
+
+/** A dimension key as text; never the raw key. */
+export const dimensionLabel = (dimension) => DIMENSION_LABEL[dimension] ?? (/^[A-Z]/.test(dimension) ? dimension : 'Other'); // a legacy run stored the label itself
+
+/**
+ * "8 changes · Talent set, Talents, Mount, Relics, Sigils, 3 glyph sockets": each dimension once, every
+ * glyph socket counted together.
+ */
+export function changeSummary(changes = []) {
+  const parts = [];
+  let sockets = 0;
+  for (const c of changes) {
+    if (GLYPH_DIMENSION.test(c.dimension)) {
+      if (sockets++ === 0) parts.push(null); // the socket count goes where the first socket was
+      continue;
+    }
+    const l = dimensionLabel(c.dimension);
+    if (!parts.includes(l)) parts.push(l);
+  }
+  const text = parts.map((p) => p ?? `${sockets} glyph socket${sockets === 1 ? '' : 's'}`).join(', ');
+  return `${changes.length} change${changes.length === 1 ? '' : 's'}${text ? ` · ${text}` : ''}`;
+}
+
+/** The label of one change id: from the row's own changes when it lists it, else read from the id's shape. */
+export function changeIdLabel(id, changes = []) {
+  const own = changes.find((c) => c.id === id);
+  if (own) return own.label;
+  const [kind, a, tier, i] = String(id).split(':');
+  if (kind === 'talents') return `Talents (${a === '1' ? 'Set B' : 'Set A'})`;
+  if (kind === 'glyph') return `${TIER_WORD[tier] ?? 'Mount'} glyph socket ${Number(i) + 1}`;
+  if (kind === 'condition') return 'Sigil condition';
+  return DIMENSION_LABEL[kind] ?? 'Another change';
+}
+
+/** The "Comes with" text: the forced companions by name, every glyph socket counted together. */
+export function bundleText(bundle = [], changes = []) {
+  const labels = [];
+  let sockets = 0;
+  for (const id of bundle) {
+    if (String(id).startsWith('glyph:')) {
+      if (sockets++ === 0) labels.push(null);
+      continue;
+    }
+    const l = changeIdLabel(id, changes);
+    if (!labels.includes(l)) labels.push(l);
+  }
+  return labels.map((l) => l ?? `${sockets} glyph socket${sockets === 1 ? '' : 's'}`).join(', ');
+}
+
 // ---- progress -------------------------------------------------------------------------------
 
 /** RunProgress segments from a live progress report (A.10 phases) or a finished result's phases. */

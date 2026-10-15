@@ -181,13 +181,13 @@
       signature: storeSignature(),
       currentSignature: () => storeSignature(),
       openRoute: formatHash('tools/drop'),
+      notice: 'Drop check started. Progress is in Jobs.',
       summarize: (res) => {
         const byPreset = Object.fromEntries((res?.results ?? []).map((r) => [r.presetId, r]));
         return tallyChips(tally(setCards(snapRows, byPreset), []));
       },
     });
     keptRows.set(id, { rows: snapRows });
-    setStatus?.('Drop check started. Progress is in Jobs.');
   }
 
   function runMoreSingle() {
