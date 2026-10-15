@@ -4,6 +4,7 @@
  * `planImport(text, roster)` reads one JSON text and says what it is and what importing it would do,
  * without writing anything: the roster is never touched. Kinds, checked in this order:
  *   profile   the game's player profile (model/gameProfile.js isGameProfile)
+ *   opponent  another player's profile from Rankings (model/opponents.js isRankingsProfile), saved as an opponent
  *   roster    an Eldaryn export, v1 or v2 (has a `characters` list)
  *   fightLog  an arena fight response (`{result: {ticks}}` or `{ticks}`), routed to Duel > Verify
  *   lootBag   `{pendingItems | oblivionPendingItems}`, routed to Drop Check
@@ -15,13 +16,15 @@ import { ImportError, parseJsonText } from './storage.js';
 import { isGameProfile, gameProfileToCharacter } from './model/gameProfile.js';
 import { normaliseCharacter, normaliseRoster, isV1Roster, SCHEMA_VERSION } from './model/index.js';
 import { describeProfileUpdate } from './model/merge.js';
+import { isRankingsProfile, opponentFromRankingsProfile, MAX_OPPONENTS } from './model/opponents.js';
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
-/** @returns {'profile'|'roster'|'fightLog'|'lootBag'|null} */
+/** @returns {'profile'|'opponent'|'roster'|'fightLog'|'lootBag'|null} */
 export function detectKind(parsed) {
   if (!isObj(parsed)) return null;
   if (isGameProfile(parsed)) return 'profile';
+  if (isRankingsProfile(parsed)) return 'opponent';
   if (Array.isArray(parsed.characters)) return 'roster';
   if (Array.isArray(parsed.result?.ticks) || Array.isArray(parsed.ticks)) return 'fightLog';
   if (Array.isArray(parsed.pendingItems) || Array.isArray(parsed.oblivionPendingItems)) return 'lootBag';
@@ -123,14 +126,23 @@ const sameName = (a, b) => String(a).trim().toLowerCase() === String(b).trim().t
  * on empty text, bad JSON, an unrecognised shape, or a backup with no character.
  * @param {string} text
  * @param {object} roster  the current roster (read only)
- * @param {{now?: string}} [opts]
+ * @param {{now?: string, character?: object}} [opts]  `character`: where a Rankings profile would be saved
  */
-export function planImport(text, roster, { now } = {}) {
+export function planImport(text, roster, { now, character: into } = {}) {
   if (typeof text !== 'string' || !text.trim()) throw new ImportError('There is nothing to import: the file or pasted text is empty.');
   const parsed = parseJsonText(text);
   const kind = detectKind(parsed);
   if (!kind) {
     throw new ImportError('Valid JSON, but not a roster backup, game profile, loot bag or fight log, so nothing was imported.');
+  }
+
+  if (kind === 'opponent') {
+    if (!into) throw new ImportError('This is a player profile from Rankings. It is saved as an opponent, so create or select a character first.');
+    const opponent = opponentFromRankingsProfile(parsed, { ...(now ? { now } : {}) });
+    const pid = opponent.imported?.playerId;
+    const list = into.opponents ?? [];
+    const match = pid ? list.find((o) => o.imported?.playerId === pid) ?? null : null;
+    return { kind, opponent, match, full: !match && list.length >= MAX_OPPONENTS, sigils: opponent.sigils.length + (opponent.utility ? 1 : 0) + (opponent.ancient ? 1 : 0) };
   }
 
   if (kind === 'profile') {

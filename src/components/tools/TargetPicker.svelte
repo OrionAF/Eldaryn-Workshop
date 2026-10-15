@@ -112,7 +112,7 @@
   const partnerOptions = $derived([
     { value: '', label: 'None (solo)' },
     ...characters.map((c) => ({ value: `character:${c.id}`, label: `${c.name || 'Character'} (level ${c.level})` })),
-    ...opponents.map((o) => ({ value: `opponent:${o.id}`, label: `Opponent: ${o.name || 'Opponent'} (${classLabel(o.class)})` })),
+    ...opponents.map((o) => ({ value: `opponent:${o.id}`, label: `Opponent: ${o.name || 'Opponent'} (${classLabel(o.class)}${o.imported ? `, Rankings level ${o.imported.level}` : ''})` })),
   ]);
   const partnerCharacter = $derived(target.partner?.source === 'character' ? characters.find((c) => c.id === target.partner.characterId) ?? null : null);
   const partnerPresetOptions = $derived((partnerCharacter?.presets ?? []).map((p) => ({ value: p.id, label: p.name })));

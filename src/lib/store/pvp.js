@@ -35,6 +35,26 @@ export function createPvpStore(ctx) {
     });
   }
 
+  /**
+   * Save an opponent imported from Rankings (model/opponents.js opponentFromRankingsProfile). The same
+   * playerId updates that opponent in place (its id is kept); otherwise it is added.
+   * @returns {{id: string, updated: boolean}|null} null at the cap
+   */
+  function saveRankingsOpponent(draft) {
+    return ctx.edit((c) => {
+      const pid = draft?.imported?.playerId;
+      const old = pid ? c.opponents.find((o) => o.imported?.playerId === pid) : null;
+      if (old) {
+        replace(c, old.id, { ...draft, id: old.id });
+        return { id: old.id, updated: true };
+      }
+      if (c.opponents.length >= MAX_OPPONENTS) return null;
+      const o = normaliseOpponent({ ...draft, id: newId('opp') });
+      c.opponents.push(o);
+      return { id: o.id, updated: false };
+    });
+  }
+
   function duplicateOpponent(id) {
     return ctx.edit((c) => {
       const src = find(c, id);
@@ -81,5 +101,5 @@ export function createPvpStore(ctx) {
     });
   }
 
-  return { addOpponent, cloneOpponentFromPreset, duplicateOpponent, removeOpponent, updateOpponent, setOpponentSheet };
+  return { saveRankingsOpponent, addOpponent, cloneOpponentFromPreset, duplicateOpponent, removeOpponent, updateOpponent, setOpponentSheet };
 }

@@ -13,7 +13,7 @@
 </script>
 
 <div class="source">
-  <DropZone {onfile} {label} hint="Game profile, roster backup, loot bag or fight log" {error} />
+  <DropZone {onfile} {label} hint="Game profile, Rankings profile, roster backup, loot bag or fight log" {error} />
   <details class="paste" open={!primary}>
     <summary>Or paste the JSON</summary>
     <Textarea label="Pasted JSON" rows={5} placeholder={'{ ... }'} bind:value={text} />
@@ -21,7 +21,7 @@
   </details>
   <p class="kinds">
     Accepted: your <b>game profile</b> (becomes a character, or updates one), an Eldaryn <b>roster backup</b>, a
-    <b>loot bag</b> (new drops for Drop Check) and an arena <b>fight log</b> (for the replay check).
+    <b>Rankings profile</b> (another player, saved as an opponent), a <b>loot bag</b> (new drops for Drop Check) and an arena <b>fight log</b> (for the replay check).
   </p>
 </div>
 
