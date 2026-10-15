@@ -1,6 +1,6 @@
 import { it, expect, beforeEach, afterEach, describe } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
-import SigilsScreen from './SigilsScreen.svelte';
+import SigilsScreen from './CharacterSigilsPage.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
 import { ownableSigils } from '../../lib/model/sigils.js';
 import { sigilImage } from '../../lib/assets.js';
@@ -86,23 +86,44 @@ describe('collection', () => {
 describe('altar', () => {
   it('the tier stepper edits the tier without touching the collection', () => {
     own('CATACLYSM', 4);
-    target.querySelector('button[aria-label="Raise altar tier"]').click();
+    target.querySelector('button[aria-label="Increase altar tier"]').click();
     flushSync();
     expect(rosterStore.current.sigils.altarTier).toBe(2);
     expect(rosterStore.current.sigils.owned.CATACLYSM).toEqual({ level: 4 });
   });
 
-  it('Evolve destroys owned sigils but keeps Ancients, after a confirm click', () => {
+  it('Evolve lists what it destroys, keeps Ancients and only runs after the confirm', () => {
     own('CATACLYSM', 4);
     own('FLAMEBORN', 1);
     const evolve = [...target.querySelectorAll('button')].find((b) => b.textContent === 'Evolve Altar');
     evolve.click();
     flushSync();
     expect(rosterStore.current.sigils.altarTier).toBe(1); // not yet: needs the confirm
-    [...target.querySelectorAll('button')].find((b) => b.textContent === 'Evolve').click();
+    const dialog = target.querySelector('dialog[open]');
+    expect(dialog.querySelector('[data-testid="evolve-destroyed"]').textContent).toBe('Cataclysm');
+    [...dialog.querySelectorAll('button')].find((b) => b.textContent === 'Evolve to tier 2').click();
     flushSync();
     expect(rosterStore.current.sigils.altarTier).toBe(2);
     expect(Object.keys(rosterStore.current.sigils.owned)).toEqual(['FLAMEBORN']);
+  });
+
+  it('Evolve names the presets that lose an equipped sigil', () => {
+    own('CATACLYSM', 4);
+    rosterStore.setPresetSigils(preset().id, { species: ['CATACLYSM'] });
+    flushSync();
+    [...target.querySelectorAll('button')].find((b) => b.textContent === 'Evolve Altar').click();
+    flushSync();
+    const text = target.querySelector('dialog[open]').textContent;
+    expect(text).toContain('Presets that lose equips');
+    expect(text).toContain(preset().name);
+  });
+
+  it('a tier above the evolve cap carries a warning and no Evolve button', () => {
+    expect(target.querySelector('.banner, [role="status"].banner')).toBeNull();
+    rosterStore.setSigilAltarTier(5);
+    flushSync();
+    expect(target.textContent).toContain('cannot be reached by evolving');
+    expect([...target.querySelectorAll('button')].some((b) => b.textContent === 'Evolve Altar')).toBe(false);
   });
 });
 
@@ -118,7 +139,7 @@ describe('equip panel', () => {
     slot(1).dispatchEvent(new Event('change', { bubbles: true }));
     flushSync();
     expect(preset().sigilSpecies).toEqual(['CATACLYSM']);
-    expect(card('Cataclysm').textContent).toContain(`in ${preset().name}`);
+    expect(card('Cataclysm').textContent).toContain(`Equipped in: ${preset().name}`);
   });
 
   it('locks slots the character level has not unlocked, and shows the unlock level', () => {
@@ -187,5 +208,55 @@ describe('other classes', () => {
     expect(preset().utilitySigilSpecies).toBe('ARCANE_BARRIER');
     // the Shield sigil is utility-only: not offered in a generic slot
     expect([...target.querySelector('select[aria-label="Sigil slot 1"]').options].map((o) => o.value)).toEqual(['']);
+  });
+
+  it('Form sigils are level-locked: an owned toggle, no level field, stored at level 1', () => {
+    rosterStore.setCharacterClass(rosterStore.current.id, 'MYSTIC');
+    flushSync();
+    const c = card('Ursine Form');
+    expect(c).toBeTruthy();
+    expect(c.querySelector('input.level-input')).toBeNull();
+    c.querySelector('input[type="checkbox"]').click();
+    flushSync();
+    expect(rosterStore.current.sigils.owned.URSINE_FORM).toEqual({ level: 1 });
+    expect(card('Ursine Form').textContent).toContain('fixed at level 1');
+  });
+});
+
+describe('Equip in menu', () => {
+  const openMenu = (name) => {
+    const btn = card(name).querySelector('.equip-btn');
+    if (btn.getAttribute('aria-expanded') !== 'true') btn.click();
+    flushSync();
+    return [...card(name).querySelectorAll('[role^="menuitem"]')];
+  };
+
+  it('names every preset, disables an unowned sigil with the reason, and equips on select', () => {
+    expect(card('Cataclysm').textContent).toContain('Unequipped');
+    expect(openMenu('Cataclysm').every((i) => i.getAttribute('aria-disabled') === 'true')).toBe(true);
+    expect(card('Cataclysm').textContent).toContain('not owned');
+    own('CATACLYSM', 3);
+    const items = openMenu('Cataclysm');
+    expect(items.map((i) => i.textContent)).toEqual(expect.arrayContaining([expect.stringContaining(preset().name)]));
+    items[0].click();
+    flushSync();
+    expect(preset().sigilSpecies).toEqual(['CATACLYSM']);
+    expect(card('Cataclysm').textContent).toContain(`Equipped in: ${preset().name}`);
+  });
+
+  it('unequips from the checked entry and refuses past the unlocked slots', () => {
+    own('CATACLYSM', 3);
+    rosterStore.setCharacterLevel(25); // one generic slot
+    flushSync();
+    rosterStore.setPresetSigils(preset().id, { species: ['CATACLYSM'] });
+    own('DEFENSE_STANCE', 1);
+    const full = openMenu('Defense Stance')[0];
+    expect(full.getAttribute('aria-disabled')).toBe('true');
+    expect(full.textContent).toContain('no free slot');
+    const checked = openMenu('Cataclysm')[0];
+    expect(checked.getAttribute('aria-checked')).toBe('true');
+    checked.click();
+    flushSync();
+    expect(preset().sigilSpecies).toEqual([]);
   });
 });

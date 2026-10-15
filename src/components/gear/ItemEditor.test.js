@@ -131,3 +131,34 @@ it('parse / format helpers', () => {
   expect(fromDisplay('CRIT_DAMAGE', '20')).toBeCloseTo(0.2);
   expect(fromDisplay('CRIT_CHANCE', '-3')).toBe(0);
 });
+
+it('shows the item level, quality and secondary ranges as visible text, not only a tooltip', () => {
+  const { app } = render({ value: legendary });
+  const text = target.textContent;
+  expect(text).toMatch(/Range 1 to \d+/);
+  expect(text).toContain('Range 1 to 100');
+  expect(text).toMatch(/Range [\d.]+ to [\d.]+ at item level 100/);
+  unmount(app);
+});
+
+it('an item level above the cap is clamped and flagged instead of silently changed', () => {
+  const { app, changes } = render({ value: legendary });
+  change(q('Item level'), '99999');
+  expect(changes.at(-1).itemLevel).toBeLessThan(99999);
+  expect(target.querySelector('.flag[role="alert"]').textContent).toContain('99999 is outside 1 to');
+  unmount(app);
+});
+
+it('a secondary above the highest roll at the item level is flagged and clamped to that roll', () => {
+  const { app, changes } = render({ value: legendary });
+  change(q('Secondary 1 value'), '99');
+  expect(changes.at(-1).secondaryStats[0].value).toBeLessThan(99);
+  expect(target.querySelector('.flag[role="alert"]').textContent).toContain('above the highest roll');
+  unmount(app);
+});
+
+it('warns when the item level is above what the Ascension step drops', () => {
+  const { app } = render({ value: { ...legendary, itemLevel: 130 }, ascension: 1 });
+  expect(target.querySelector('.flag[role="status"]').textContent).toContain('above what your Ascension step drops');
+  unmount(app);
+});

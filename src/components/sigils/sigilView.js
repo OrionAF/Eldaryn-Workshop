@@ -3,7 +3,7 @@
 // Field meanings: Game/sigils.md §5-§6.
 import { scaledSigilSpell, spellTypeOf } from '../../lib/engine/sources/sigilScale.js';
 import { sigilBySpecies } from '../../lib/game/sigils.js';
-import { DEFAULT_CONDITION } from '../../lib/model/sigils.js';
+import { DEFAULT_CONDITION, ancientSigils, utilitySigils, genericSigils, maxSigilSlots, slotUnlockLevel } from '../../lib/model/sigils.js';
 
 const STAT_LABELS = {
   ATTACK_PERCENT: 'Attack',
@@ -126,4 +126,50 @@ export function conditionLabel(id) {
   const m = /^(ENEMY|MY)_HP_BELOW_(\d+)$/.exec(id);
   if (!m) return id;
   return `${m[1] === 'ENEMY' ? 'Enemy' : 'My'} HP at or below ${m[2]}%`;
+}
+
+/**
+ * Which slot of `preset` a sigil would take: 'ancient', 'utility' or 'generic', or null when the preset's
+ * spec cannot use it (a Druid-only sigil on a Mage preset, a Shield sigil on a Warrior).
+ */
+export function equipKind(character, preset, species) {
+  const cls = character.class;
+  const spec = character.talentSets?.[preset.talentSet]?.spec ?? null;
+  const has = (list) => list.some((s) => s.species === species);
+  if (has(ancientSigils(cls))) return 'ancient';
+  if (has(utilitySigils(cls, spec))) return 'utility';
+  if (has(genericSigils(cls, spec))) return 'generic';
+  return null;
+}
+
+/**
+ * One "Equip in" menu row per preset for a sigil: checked when equipped, disabled with a reason when it
+ * cannot be (unowned, wrong spec, no free or unlocked slot). Rows are Menu items (`id` is the preset id).
+ */
+export function equipItems(character, species) {
+  const owned = !!character.sigils.owned[species];
+  const slots = maxSigilSlots(character.level, character.class);
+  return character.presets.map((preset) => {
+    const kind = equipKind(character, preset, species);
+    const equipped = [...preset.sigilSpecies, preset.utilitySigilSpecies, preset.ancientSigilSpecies].includes(species);
+    let reason = '';
+    if (!equipped) {
+      if (!owned) reason = 'not owned';
+      else if (!kind) reason = 'not usable on this spec';
+      else if (slots === 0) reason = `unlocks at level ${slotUnlockLevel(1, character.class)}`;
+      else if (kind === 'generic' && preset.sigilSpecies.length >= slots) reason = 'no free slot';
+    }
+    return { id: preset.id, label: preset.name, checked: equipped, disabled: !!reason, meta: reason || undefined };
+  });
+}
+
+/** The `setPresetSigils` argument that toggles `species` in `preset` (null when it has no slot kind). */
+export function equipPatch(character, preset, species) {
+  const kind = equipKind(character, preset, species);
+  if (kind === 'ancient') return { ancient: preset.ancientSigilSpecies === species ? null : species };
+  if (kind === 'utility') return { utility: preset.utilitySigilSpecies === species ? null : species };
+  if (kind === 'generic') {
+    return { species: preset.sigilSpecies.includes(species) ? preset.sigilSpecies.filter((s) => s !== species) : [...preset.sigilSpecies, species] };
+  }
+  return null;
 }
