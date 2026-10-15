@@ -28,7 +28,7 @@ it('a profile whose name matches offers "Update <name>" first, with the diff and
   expect(button(qa, `Update ${name}`)).toBeTruthy();
   expect(qa('[role="radio"],[role="tab"],button').some((b) => b.textContent.trim() === 'Add as a new character')).toBe(true);
   expect(q('.report').textContent).toContain('What will change');
-  expect(q('.report').textContent).toContain('Presets, saved opponents and run history are kept');
+  expect(q('.report').textContent).toContain('presets made in the app, saved opponents and run history are kept');
   done();
 });
 
