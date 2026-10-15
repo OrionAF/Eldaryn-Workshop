@@ -78,7 +78,7 @@ export function setCards(rows, results = {}) {
       setLabel: setLabelOf(setKey),
       verdict,
       basis: sim ? 'sim' : 'closed',
-      coverageLabel: per[0].v.coverageLabel,
+      coverageLabel: [...new Set(per.map((p) => p.v.coverageLabel))].join('; '),
       notJudged: [...new Set(per.flatMap((p) => p.v.notJudged))].map(statKeyLabel),
       unresolved: per.some((p) => p.v.unresolved.length > 0),
       nNeeded: needed.length ? Math.max(...needed) : null,
