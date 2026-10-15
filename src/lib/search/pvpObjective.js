@@ -23,12 +23,6 @@ export const PVP_SEATS = ['attacker', 'defender', 'both'];
 /** Most opponents one run may select: matchups multiply the cost of every candidate. */
 export const PVP_MAX_OPPONENTS = 4;
 
-/**
- * Budget defaults for a PVP run under the legacy beam (search.js until A4 replaces it with the
- * sequential racer): N = 64 per matchup in the beam, 400 for the finalists.
- */
-export const PVP_BUDGET = { n1: 64, n2: 400, finalists: 4, topN: 8, maxEvals: 120, maxMs: 9000, finalMs: 8000, screenKeep: 8, perGroup: 2 };
-
 const SEAT_LABEL = { attacker: 'attacking', defender: 'defending', both: 'both seats' };
 // Arena duels are server-run; the app replays the client's bundled resolver (Game/combat-pvp.md §1).
 const PVP_ASSUMPTIONS = [{ id: 'pvp-server', label: "Arena duels are run by the server; simulated with the client's bundled duel resolver." }];
@@ -98,7 +92,7 @@ export function makePvpObjective(raw, target, { closedFormDps, ehpProxy }) {
   return {
     kind: PVP_OBJECTIVE_KIND, key: PVP_OBJECTIVE_KIND, spec: { kind: PVP_OBJECTIVE_KIND },
     label: 'PVP win rate', unit: 'p', higherIsBetter: true, statistic: 'proportion', q: null, deltaKind: 'absolute',
-    window: null, lanes: lanes.length, defaultBudget: PVP_BUDGET, screen, tier0: screen,
+    window: null, lanes: lanes.length, screen, tier0: screen,
 
     /** Duels from..to-1 of every matchup: main = my wins (0/1), side.ms = duel length, side.timedOut. */
     async sample(fighter, { seed, from = 0, to, signal }) {
@@ -152,7 +146,7 @@ export function makePvpObjective(raw, target, { closedFormDps, ehpProxy }) {
 
     score: pooled,
 
-    /** search.js's legacy `extra` (until A4). */
+    /** The PVP fields of `measure` (objectives.js). */
     legacyExtra(s, aux) {
       return {
         perMatchupN: s.n, meanMs: aux.meanMs, timeoutShare: aux.timeoutShare,

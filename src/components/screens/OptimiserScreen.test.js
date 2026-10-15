@@ -68,7 +68,7 @@ it('the raid target lists all five village raids by name', () => {
 });
 
 it('runs a quick search, shows N and CIs, auto-saves the run and applies a result', async () => {
-  for (const label of ['Gear set', 'Talent set', 'Talent points', 'Pet', 'Mount', 'Glyphs', 'Sigils', 'Utility sigil', 'Ancient sigil', 'Sigil conditions', 'Transcendence']) {
+  for (const label of ['Gear set', 'Talent set', 'Talent points', 'Pet', 'Mount', 'Minor glyphs', 'Major glyphs', 'Sigils', 'Utility sigil', 'Ancient sigil', 'Sigil conditions', 'Transcendence']) {
     click(btn(new RegExp(`^${label}$`)));
   }
   click(btn(/^Quick$/));

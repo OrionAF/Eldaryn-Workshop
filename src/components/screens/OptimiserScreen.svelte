@@ -1,37 +1,26 @@
 <script>
   /**
-   * OptimiserScreen.svelte - PVE optimiser (rebuild-plan §5 row 2). Pick a preset, a target, an objective and
-   * which build dimensions may change; the worker searches (tier 1 screens candidates cheaply, tier 2 re-measures
-   * the finalists with more fights). Results show the top builds with N and a 95% interval on every simulated
-   * number, a paired difference vs the current preset, and Apply to preset. Finished runs auto-save to history.
-   * The PVP target (F5) scores win rate vs saved opponents; a duel costs several ms, so it has its own effort levels.
+   * OptimiserScreen.svelte - the build optimiser (search/search.js, docs/Reference/simulation.md §Search).
+   * Pick a preset, a target, an objective and which build blocks may change; the worker races every legal
+   * build, keeps only the changes that matter and confirms them on fresh fights. Every number carries N and a
+   * 95% interval; a row's verdict against the current preset is family-wise corrected. Effort sets precision
+   * only, never a time limit. Results come through optimiser/resultAdapter.js until U8 replaces this screen.
    */
   import { onDestroy } from 'svelte';
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { runOptimizerTask } from '../../lib/optimizerClient.js';
-  import { SPACE_DEFAULTS } from '../../lib/search/candidates.js';
+  import { SPACE_DEFAULTS } from '../../lib/search/space.js';
+  import { EFFORT_LEVELS, resolveEffort } from '../../lib/search/search.js';
   import Chip from '../Chip.svelte';
   import TargetPicker from '../optimiser/TargetPicker.svelte';
   import SpacePicker from '../optimiser/SpacePicker.svelte';
   import ResultList from '../optimiser/ResultList.svelte';
   import RunHistory from '../optimiser/RunHistory.svelte';
-  import { applyCandidate } from '../optimiser/apply.js';
+  import { legacyView } from '../optimiser/resultAdapter.js';
 
   let { setStatus = () => {}, onNavigate = () => {} } = $props(); // eslint-disable-line no-unused-vars
 
-  const EFFORT = {
-    quick: { label: 'Quick', budget: { n1: 8, n2: 32, maxEvals: 150, maxMs: 8000 } },
-    standard: { label: 'Standard', budget: {} },
-    thorough: { label: 'Thorough', budget: { n1: 24, n2: 128, maxEvals: 800, maxMs: 40000 } },
-  };
-  // PVP: the budget merges over PVP_BUDGET (search/pvpObjective.js): N = 64 per matchup in the beam, then up to 400
-  // for the finalists; maxMs and finalMs bound the two stages (a longer effort buys a wider search, not more N).
-  const PVP_EFFORT = {
-    quick: { label: 'Quick', budget: { maxEvals: 40, maxMs: 4000, finalMs: 4000, finalists: 3 }, maxEvals: 40, maxMs: 4000 },
-    standard: { label: 'Standard', budget: {}, maxEvals: 120, maxMs: 9000 },
-    thorough: { label: 'Thorough', budget: { maxEvals: 400, maxMs: 40000, finalMs: 20000, finalists: 6, screenKeep: 16, perGroup: 3 }, maxEvals: 400, maxMs: 40000 },
-  };
-  const MAX_EVALS_DEFAULT = 400;
+  const EFFORT_LABEL = { quick: 'Quick', standard: 'Standard', thorough: 'Thorough' };
 
   const character = $derived(rosterStore.current);
 
@@ -43,33 +32,34 @@
   let seed = $state(1);
   let running = $state(false);
   let progress = $state(null);
-  let startedAt = 0;
-  let nowMs = $state(0);
-  let ticker = null;
-  let last = $state(null); // { result, presetName, runId }
+  let last = $state(null); // { result, view, presetName, runId, characterId }
   let applying = $state(false);
   let job = null;
 
   const preset = $derived(character.presets.find((p) => p.id === presetPick) ?? character.presets.find((p) => p.id === character.activePresetId) ?? character.presets[0]);
-  const noRelics = $derived(space.relics && space.relicSlots < 1);
   const isPvp = $derived(target.kind === 'pvp');
   const opponents = $derived(character.opponents ?? []);
   // Opponents deleted since they were picked fall out of the request; a PVP run needs at least one left.
   const pvpIds = $derived(isPvp ? target.opponentIds.filter((id) => opponents.some((o) => o.id === id)) : []);
   const noPvpPick = $derived(isPvp && pvpIds.length === 0);
-  const effortSet = $derived(isPvp ? PVP_EFFORT : EFFORT);
+  const relative = $derived(objective.kind === 'dps' || String(objective.kind).startsWith('ttk'));
+  const effortHint = $derived.by(() => {
+    const e = resolveEffort(effort, { deltaKind: relative ? 'relative' : 'absolute' });
+    const zone = relative ? `${(e.delta * 100).toFixed(2)}%` : `${(e.delta * 100).toFixed(1)} points`;
+    return `Resolves differences of ${zone}; a comparison still open at ${e.maxN.toLocaleString('en-US')} fights is reported as too close to call.`;
+  });
 
   const pctDone = $derived.by(() => {
-    if (!progress) return 0;
-    if (progress.phase === 'final') return progress.total ? Math.min(1, progress.done / progress.total) : 1;
-    const e = effortSet[effort];
-    const byEvals = progress.evals / (e.maxEvals ?? e.budget.maxEvals ?? MAX_EVALS_DEFAULT);
-    const byTime = isPvp ? (nowMs - startedAt) / e.maxMs : 0; // a PVP search usually ends on its time limit
-    return Math.min(0.85, Math.max(byEvals, byTime) * 0.85); // tier 1 fills the first 85%, tier 2 the rest
+    if (!progress?.phases) return 0;
+    const i = progress.phases.findIndex((p) => p.state === 'current');
+    return i < 0 ? 0 : (i + 0.5) / progress.phases.length;
   });
-  const progressText = $derived(
-    !progress ? 'starting' : progress.phase === 'final' ? `re-measuring finalists ${progress.done}/${progress.total}` : `screening builds: ${progress.evals} tried, searching ${progress.dimension ?? ''}`,
-  );
+  const progressText = $derived.by(() => {
+    if (!progress?.phases) return 'starting';
+    const cur = progress.phases.find((p) => p.state === 'current');
+    const c = progress.counts ?? {};
+    return `${cur?.label ?? 'Working'}${progress.block ? ` (${progress.block})` : ''}: ${c.evaluated ?? 0} builds, ${(c.fights ?? 0).toLocaleString('en-US')} fights`;
+  });
 
   async function run() {
     if (running || !preset) return;
@@ -81,31 +71,28 @@
       target: isPvp ? { ...$state.snapshot(target), opponentIds: [...pvpIds] } : $state.snapshot(target),
       objective: $state.snapshot(objective),
       space: { ...$state.snapshot(space) },
-      budget: effortSet[effort].budget,
+      effort,
       seed: Number(seed) || 1,
     };
     running = true;
     progress = null;
-    startedAt = nowMs = Date.now();
-    clearInterval(ticker);
-    ticker = setInterval(() => (nowMs = Date.now()), 250);
     setStatus('');
     const own = runOptimizerTask(req, { onProgress: (p) => (progress = p) });
     job = own;
     try {
       const result = await own.promise;
       if (job !== own) return;
+      const view = legacyView(result);
       let runId = null;
-      if (result.baseline && rosterStore.current?.id === snapshot.characterId) {
-        runId = rosterStore.addRun(result, { presetName: snapshot.presetName })?.id ?? null;
+      if (result.status === 'done' && rosterStore.current?.id === snapshot.characterId) {
+        runId = rosterStore.addRun(view, { presetName: snapshot.presetName })?.id ?? null;
       }
-      last = { result, presetName: snapshot.presetName, runId, characterId: snapshot.characterId };
-      setStatus(result.aborted ? 'Optimiser cancelled; showing the best found so far.' : '');
+      last = { result, view, presetName: snapshot.presetName, runId, characterId: snapshot.characterId };
+      setStatus(result.status === 'cancelled' ? 'Optimiser cancelled; showing provisional builds.' : '');
     } catch (e) {
       if (job === own) setStatus(`Optimiser failed: ${e.message}`);
     } finally {
       if (job === own) {
-        clearInterval(ticker);
         running = false;
         job = null;
       }
@@ -113,28 +100,27 @@
   }
 
   const cancel = () => job?.cancel();
-  onDestroy(() => {
-    clearInterval(ticker);
-    cancel();
-  });
+  onDestroy(cancel);
 
   function apply(entry) {
     if (!last || applying) return;
-    const p = character.presets.find((x) => x.id === last.result.presetId);
+    const p = character.presets.find((x) => x.id === last.view.presetId);
     if (!p || character.id !== last.characterId) {
       setStatus('That preset no longer exists on this character.');
       return;
     }
     applying = true;
     try {
-      applyCandidate(rosterStore, p.id, entry.candidate, p);
-      setStatus(`Applied rank ${entry.rank} to ${p.name}. Re-run to measure against the new current build.`);
+      const r = rosterStore.applyCandidate(p.id, entry.candidate);
+      setStatus(r.ok
+        ? `Applied rank ${entry.rank} to ${p.name}. Re-run to measure against the new current build.`
+        : `Not applied: ${r.violations.map((v) => v.detail).join('; ')}`);
     } finally {
       applying = false;
     }
   }
 
-  const res = $derived(last?.result ?? null);
+  const res = $derived(last?.view ?? null);
   const unit = $derived(res?.objective?.unit ?? 'dps');
 </script>
 
@@ -159,15 +145,15 @@
   <div class="group">
     <span class="micro-label">Effort</span>
     <div class="chip-list">
-      {#each Object.entries(effortSet) as [key, e] (key)}
-        <Chip label={e.label} selected={effort === key} onClick={() => (effort = key)} />
+      {#each EFFORT_LEVELS as key (key)}
+        <Chip label={EFFORT_LABEL[key]} selected={effort === key} onClick={() => (effort = key)} />
       {/each}
       <label class="seed">
         <span class="micro-label">Seed</span>
         <input class="mono" type="number" min="1" step="1" bind:value={seed} />
       </label>
     </div>
-    <p class="hint">The same seed reproduces the same ranking. A different seed re-rolls the fights.</p>
+    <p class="hint">{effortHint} The same seed reproduces the same result. A different seed re-rolls the fights.</p>
   </div>
 
   <div class="run-row">
@@ -176,7 +162,7 @@
       <progress max="1" value={pctDone} aria-label="Optimiser progress"></progress>
       <span class="mono progress-text" data-testid="optimiser-progress">{progressText}</span>
     {:else}
-      <button type="button" class="btn-gold" disabled={noRelics || noPvpPick} onclick={run}>Optimise {preset?.name ?? ''}</button>
+      <button type="button" class="btn-gold" disabled={noPvpPick} onclick={run}>Optimise {preset?.name ?? ''}</button>
       {#if noPvpPick && opponents.length}<span class="hint">Pick at least one opponent.</span>{/if}
     {/if}
   </div>
@@ -187,22 +173,26 @@
     <div class="out-head">
       <h3 class="subheading">{res.target.label}: {res.objective.label}</h3>
       <span class="mono meta">
-        {last.presetName}, realm {res.realm}, seed {res.seed}, tier {res.tier}, {res.stats.tier1} builds measured, {Math.round(res.stats.ms / 100) / 10} s
+        {last.presetName}, realm {res.realm}, seed {res.seed}, {res.stats.tier1} builds raced, {Math.round(res.stats.ms / 100) / 10} s
       </span>
     </div>
-    {#if res.aborted}<p class="note" role="status">Cancelled: partial result{res.tier < 2 ? ' (finalists not re-measured, wider intervals)' : ''}.</p>{/if}
-    {#if res.truncated}<p class="note" role="status">Stopped early on the {res.truncated === 'time' ? 'time' : 'evaluation'} limit; a longer effort may find more.</p>{/if}
+    {#if res.headline}<p class="headline" role="status">{res.headline.text}</p>{/if}
+    {#if res.aborted}<p class="note" role="status">Cancelled: these builds are provisional (not confirmed on fresh fights).</p>{/if}
+    {#if res.baselineViolations?.length}
+      <p class="note" role="status">The current preset breaks a game rule; fix it first: {res.baselineViolations.map((v) => v.detail).join('; ')}</p>
+    {/if}
+    {#each res.warnings ?? [] as w (w.code + w.message)}<p class="hint">{w.message}</p>{/each}
     {#if !res.baseline}
-      <p class="note" role="status">Cancelled before the current preset was measured; nothing to show.</p>
+      <p class="note" role="status">{res.error?.message ?? 'Nothing to show.'}</p>
     {:else}
       <ResultList {unit} baseline={res.baseline} results={res.results} onApply={apply} {applying} />
       {#if res.objective.kind === 'pvp-winrate'}
         <p class="hint">
-          Win rates are the mean over every opponent and seat, with N duels and a 95% Wilson interval; the finalists are re-measured with more duels than the beam used. Ties go to the defender. Your side is computed stats plus the preset's sheet residual.
+          Win rates are the mean over every opponent and seat, with N duels and a 95% Wilson interval, measured on fresh duels after the search. Ties go to the defender. Your side is computed stats plus the preset's confirmed sheet residual.
         </p>
       {:else}
       <p class="hint">
-        Builds are scored as computed stats plus the preset's sheet residual, so gains are approximate when a build changes Attack% or HP% a lot. Verify a pick in game or on the Duel screen.
+        Builds are scored as computed stats plus the preset's confirmed sheet residual. Each listed change was needed: dropping it measured significantly worse. Verify a pick in game or on the Duel screen.
       </p>
       {/if}
     {/if}
@@ -235,4 +225,5 @@
   .progress-text, .meta { font-size: 12px; color: var(--color-muted); }
   .out-head { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
   .note { color: var(--color-warning); font-size: 12px; margin: 0; }
+  .headline { margin: 0; font-size: 13px; color: var(--color-text); }
 </style>
