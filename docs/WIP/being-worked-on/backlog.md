@@ -129,3 +129,29 @@ Iron Golem to equip. Show the suggested pet's secondary stats.
   rarely wins, and the axis then reads "−0.00 s … 0.00 s". Say why instead: "Rarely clears: 18% win
   rate; compared by win rate". Draw the axis on the basis actually used. Backlog §4 (Win rate)
   removes most of these cases.
+
+## 7. PVE replay check against server dungeon logs
+
+**Ask** (from a real dungeon log the user captured, 2026-10-15). The PVP side already has a replay
+check against a real `/arena/fight` log (`engine/pvp/replayCheck.js`). Build the same for PVE dungeon
+runs.
+
+**What one log shows** (a Mystic with Void Aegis; 3 mobs; died on mob 3 at 58.56 s):
+- 10 ms ticks: a DOT tick lands at 1,510 ms after the cast at 1,500 ms;
+- a 720 ms player swing and a ~1,665 ms mob swing;
+- spell cadence: Barrage every 1 s, Burst every 3 s, and the Runic Affliction cycle;
+- HP regen pulses of 461 every 100 ms;
+- heals land in the same tick as the cast, HP first;
+- with Void Aegis (`vampAlwaysRefills`) the WHOLE vamp heal also refills the shield, not just the
+  overflow;
+- regen pulses refill the shield while HP is full;
+- the shield cap (`playerShieldMax` 175,626).
+
+**Notes.**
+- Only attack rows carry `playerShieldHp`. Spell rows carry `playerHpAfter` (the end-of-tick value),
+  so a checker has to reconstruct the shield between attack rows.
+- The rules to check: timing, swing intervals, spell cadence, heal → HP → shield, regen pulses, the
+  shield cap, and mob-to-mob transitions. Damage values can be checked too once the fight is run with
+  the logged character's stats.
+- Commit the log as a fixture next to `arena-fight-warrior.json`. It holds fight values only, no
+  player identifiers; check before committing.
