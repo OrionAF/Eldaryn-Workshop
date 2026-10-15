@@ -12,7 +12,7 @@
 <span class="scope-chip" style="--scope-c: var(--scope-{scope})">
   <b>{LABEL[scope] ?? scope}</b>
   {#if target || names.length}
-    <span class="t">{#if target}<span class="tg">{target}</span>{#if names.length}<span class="sep">,</span>{/if}{/if}{#if names.length}{' '}<em>also {names.join(', ')}</em>{/if}</span>
+    <span class="t">{target}{#if names.length}{target ? ', ' : ''}<em>also {names.join(', ')}</em>{/if}</span>
   {/if}
 </span>
 
@@ -52,6 +52,5 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .sep { margin-inline-end: var(--sp-1); }
   em { font-style: normal; color: var(--status-warn); font-weight: var(--fw-bold); }
 </style>
