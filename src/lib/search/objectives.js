@@ -28,7 +28,8 @@ import { CLASSIC_DUNGEONS } from '../game/pveContent.js';
 import { WORLD_BOSS_AFFINITIES } from '../game/worldBoss.js';
 import { FORTRESS_STARS, clanCapForServer } from '../game/fortress.js';
 import {
-  fortressBossMob, fortressBossMultipliers, FORTRESS_BOSS_GROUPS, MAX_SHIELD_PERCENT,
+  fortressBossMob, fortressBossMultipliers, FORTRESS_BOSS_GROUPS, MAX_SHIELD_PERCENT, FORTRESS_ASSUMPTIONS,
+  fortressPlayerDuelArgs, simulateFortressBoss,
 } from '../engine/pve/fortressBoss.js';
 import { formatFlat } from '../format.js';
 import { setOf } from './sampler.js';
@@ -100,21 +101,26 @@ const dungeonLabel = (id) => {
   return `${hard ? 'Hard dungeon' : 'Dungeon'} ${name}`;
 };
 
-/** The PVE mode's labelled assumptions (engine/pve/fight.js PVE_MODES), in the result's shape. */
+/**
+ * The target's labelled assumptions in the result's shape: the PVE mode's (engine/pve/fight.js PVE_MODES), or
+ * the Fortress fight's (engine/pve/fortressBoss.js), which runs on the duel engine.
+ */
 function assumptionsOf(mode, { applyOutputCut } = {}) {
-  return PVE_MODES[mode].assumptions.map((a) => ({
+  const list = mode === 'fortressBoss' ? FORTRESS_ASSUMPTIONS : PVE_MODES[mode].assumptions;
+  return list.map((a) => ({
     id: a.key, label: a.text, ...(a.key === 'oblivion-output-cut' ? { value: applyOutputCut ? 'on' : 'off' } : {}),
   }));
 }
-const SERVER_RUN = new Set(['server-fight', 'world-boss-model']);
+const SERVER_RUN = new Set(['server-fight', 'world-boss-model', 'fortress-boss-model']);
 const nonNegInt = (v) => Number.isInteger(v) && v >= 0;
 
 /**
  * @returns {{kind: string, spec: Object, label: string, key: string, realm: 'base'|'oblivion'|null,
  *   enemy: Object|Object[], maxMs: number|undefined, seconds: number, opts: Object, mode: string,
  *   fidelity: 'client'|'server-model', assumptions: Array<{id: string, label: string, value?: string}>}}
- *   `opts` is passed to simulatePve; `maxMs`/`seconds` are the target's own window when it has one
- *   (dummy, custom, World Boss), else undefined/0 and every mob keeps its own cap.
+ *   `opts` is passed to simulatePve (not used by the Fortress boss, which runs on the duel engine);
+ *   `maxMs`/`seconds` are the target's own window when it has one (dummy, custom, World Boss, Fortress
+ *   boss), else undefined/0 and every mob keeps its own cap.
  */
 export function resolveTarget(raw = { kind: 'dummy' }, { character } = {}) {
   const kind = raw?.kind;
@@ -293,6 +299,24 @@ function optsFor(target, fighter) {
 }
 
 /**
+ * The Fortress boss sampler (simulation.md §Fortress boss): fight i is the duel-engine Fortress fight with
+ * rng fightRng(seed, i); the outcome is the boss HP lost over the 60 s window, so a player the boss kills
+ * stops scoring.
+ */
+function fortressSampler(target, seconds) {
+  const group = target.spec.group;
+  return (fighter, { seed, from = 0, to, signal }) => {
+    const args = fortressPlayerDuelArgs(fighter);
+    const out = [];
+    for (let i = from; i < to; i++) {
+      if (signal?.aborted) return { main: [out], side: {}, aborted: true };
+      out.push(simulateFortressBoss({ fighter: args, group, rng: fightRng(seed, i) }).damageDealt / seconds);
+    }
+    return { main: [out], side: {}, aborted: false };
+  };
+}
+
+/**
  * A synchronous PVE sampler: fight i (from <= i < to) uses rng fightRng(seed, i), the same lanes for
  * every build (simulation.md §Statistics, sampling unit; §Common random numbers).
  */
@@ -458,7 +482,10 @@ export function makeObjective(raw = { kind: 'dps' }, target = resolveTarget({ ki
       label: 'Damage per second', unit: 'dps', higherIsBetter: true, statistic: 'mean', q: null, deltaKind: 'relative',
       window: seconds,
       // the mob never dies inside the window: a finite pool would cap every strong build at hp / seconds
-      sample: pveSampler(target, { enemy: unkillable(target.enemy), maxMs: seconds * 1000 }, (r) => r.damageDealt / seconds),
+      // (the Fortress boss keeps its table HP, the real fight's pool: emptying it scores the pool, as in the game)
+      sample: target.kind === 'fortressBoss'
+        ? fortressSampler(target, seconds)
+        : pveSampler(target, { enemy: unkillable(target.enemy), maxMs: seconds * 1000 }, (r) => r.damageDealt / seconds),
       estimate(s, { alpha = 0.05 } = {}) {
         const m = meanInterval(s.main[0], { alpha });
         return { value: { est: m.est, lo: m.lo, hi: m.hi, n: s.n, level: level(alpha), alphaAdj: alpha, method: 't' }, aux: {} };

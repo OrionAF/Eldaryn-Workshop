@@ -54,6 +54,22 @@ The guide labels these 01:00-13:00 CET and 13:00-00:00 CET (L910310). Those are 
 - 3 siege tokens/day (`SIEGE_TOKENS_PER_DAY`), reset hour 0. Each attack, on a defender or the boss, costs 1 token (L1223934, L910316). [CODE]
 - Boss fight lasts 60,000 ms (`BOSS_FIGHT_DURATION_MS`). [CODE]
 - Fights are simulated server-side. [SERVER] The client only plays back ticks; `BOSS_TICK_INTERVAL_MS` is 10.
+- Playback (`useFortressBossFight` L1639328-1639938) reads the response's `combatLog`, takes `attackerHpAfter` as the player's HP and `defenderHpAfter` as the boss's, and stops at the first `time_up`, `attacker_dead` or `defender_dead` row (`isTerminal`). [CODE]
+
+**The boss fight rules, from one server log.** A real 2.7.3 `/fortress/boss-fight/start` response (2026-10-15; TOP Fortress Guardian, 5 stars, a level-85 Sentinel with Elusive Supremacy, Blinding Mark and Mist Veil; fixture `src/lib/__fixtures__/real/fortress-boss-top-fight.json`) shows the following. Each item is [DERIVED] from that server data unless tagged otherwise. One log is one fight, so a rule a single fight cannot test stays open.
+- The fight is the arena duel (combat-pvp.md §4, §6, §7) with the player as the attacker and the boss as the defender. It uses the arena's row types, the 10 ms tick, the attacker-first swing order, swing timers that carry their remainder, regen pulses every 100 ms sized `round(maxHp x regen / 1000)`, lifesteal, and spells cast on their cooldown with additive attack-speed buffs. The log ends with a `time_up` row at 60,000 ms and no death row after it.
+- The player keeps the sheet HP (2,757,745). There is no x8 arena HP buff.
+- PVP Attack and PVP Defense do not apply. Every plain hit and double hit was exactly the sheet attack (2,280,378), every crit was `round(attack x critDamage)` (10,991,422), and boss hits were not reduced by the player's 197 PVP Defense.
+- The boss swings at its table speed (TOP: every 1,000 ms, from t = 1,000) for its table attack ±15%: 25 landed hits ranged from 434 to 574 against a player with 0 DR. The shape of the spread (uniform, or rounded before or after mitigation) is [UNRESOLVED].
+- The player's Miss works: 35 of the 60 boss swings were evaded. They are logged as `attacker_miss`, the arena's label for the attacker evading a defender swing.
+- Stack sigils did not stack. With 35 evades, Elusive Supremacy would have raised attack and attack speed in the arena (combat-pvp.md §9). Instead every hit stayed at the sheet attack, and the swing clock stayed on 351 ms (2.85/s), or 347 ms while Blinding Mark's +0.03 attack speed was up. That the other stack sigils (Bulwark of Thorns, Sunder Mark, Siegebreaker Mark, Druid forms) are off too is an assumption.
+- The boss was never blinded. All 60 boss swings landed or were evaded, with no `defender_blind` row, although the player had 4.5% Blind and Blinding Mark adds 50% for 5 s in every 12 s. Whether Paralyze lands is [UNRESOLVED]: with 1% Paralyze, 171 swings show none, which happens by chance 18% of the time.
+- The response gives the boss's spell resist as 20 (`bossSpellResist`). This is the TOP value; the other groups are [UNRESOLVED].
+- `rawDamage` is the boss HP lost (1,356,414,446 in 60 s, 22.6M a second). `effectiveDamage` = `round(raw x shieldMultiplier x contributionMultiplier x bossVulnerabilityMultiplier)` (§3.1).
+- A double hit's first row carries the boss HP after that strike, not after the whole swing. The arena log stamps both rows with the post-swing HP (combat-pvp.md §11). This only changes the log, not the outcome.
+- Not shown by this log: the boss's own crits or procs (none seen), a Necromancer's opening summon window, and a fight that ends in a death.
+
+The app plays this fight in `engine/pve/fortressBoss.js` (simulation.md, Fortress boss).
 
 ## §2 Fortress buffs (the stat contribution)
 
@@ -315,7 +331,7 @@ War Pact is a **skill**, not a clan feature. `crusadeDiscount` ("War Pact", cate
 - `raidConstants`, `raids[]`: each has `{id, name, requiredPlayerLevel, source, stepMultipliers[], roster[], steps[{stepNumber, influenceReward, mobIds[], mobHp[], mobAttack[]}]}`
 
 ## §10 App comparison
-The app models Fortress Buffs as three checkboxes with fixed stat blocks (`src/lib/totals.js` `FORTRESS_BUFF_STATS`, `fortressBuffsContribution`). The Optimiser also has a `fortressBoss` target (`src/lib/engine/pve/fortressBoss.js`; contract in simulation.md §Fortress boss): the 60 s boss race, with the §3.1 shield, contribution bonus and §2.5 star multipliers shown as the clan's credited damage. Its shield divides alive defenders by the cap of the character's server (`server`, imported from a game profile; unknown gives 50), or takes a shield percent typed in from the siege screen. Nothing else from this system is modelled.
+The app models Fortress Buffs as three checkboxes with fixed stat blocks (`src/lib/totals.js` `FORTRESS_BUFF_STATS`, `fortressBuffsContribution`). The Optimiser also has a `fortressBoss` target (`src/lib/engine/pve/fortressBoss.js`; contract in simulation.md §Fortress boss): the 60 s boss fight under the §1.4 rules, with the §3.1 shield, contribution bonus and §2.5 star multipliers shown as the clan's credited damage. Its shield divides alive defenders by the cap of the character's server (`server`, imported from a game profile; unknown gives 50), or takes a shield percent typed in from the siege screen. Nothing else from this system is modelled.
 
 Disagreements:
 1. **BOTTOM class remap is missing, and miss/blind are double counted.** The app BOTTOM block gives `dmg_reduction 5 + miss_chance 5` and `block_chance 3 + blind_chance 3` at once. The game gives each class only one set (§2.2). Warrior gets DR and block, Sentinel gets miss and blind, Mystic gets lifesteal 5 and hpRegen +3, and Necromancer gets health% +5 and hpRegen +3.
