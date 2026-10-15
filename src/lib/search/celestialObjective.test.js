@@ -83,12 +83,19 @@ describe('Celestial target spec', () => {
     expect(resolveHard({ tactics: { focus: 'BOSS' } }).spec.tactics).toEqual({ focus: 'BOSS', holdCount: defaultCelestialTactics('HARD').holdCount });
   });
 
-  it('is scored by the win-rate family only; Push and dps are refused', () => {
-    expect(objectiveKindsFor('celestial')).toEqual(['win-chance', 'win-rate']);
-    expect(goalRetired('celestial', 'push')).toBe(true);
+  it('is scored by the win-rate family and Push; dps is refused', () => {
+    expect(objectiveKindsFor('celestial')).toEqual(['win-chance', 'win-rate', 'push']);
+    expect(goalRetired('celestial', 'push')).toBe(false);
+    expect(goalRetired('celestial', 'dps')).toBe(true);
     expect(() => makeObjective({ kind: 'dps' }, resolveHard())).toThrow(/cannot score/);
-    expect(() => makeObjective({ kind: 'push' }, resolveHard())).toThrow(/cannot score/);
+    expect(makeObjective({ kind: 'push', target: 0.9 }, resolveHard()).spec).toEqual({ kind: 'push', target: 0.9 });
     expect(makeObjective({ kind: 'win-rate', target: 0.9 }, resolveHard()).label).toBe('Win rate (target 90%)');
+  });
+
+  it('a level below the difficulty own unlock is refused (NORMAL 40, HARD 60)', () => {
+    expect(() => resolveHard({ level: 59 })).toThrow(/from 60/);
+    expect(resolveHard({ level: 60 }).celestial.level).toBe(60);
+    expect(resolveHard({ difficulty: 'NORMAL', level: 40 }).celestial.level).toBe(40);
   });
 });
 

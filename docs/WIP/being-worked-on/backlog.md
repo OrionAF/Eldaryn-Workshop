@@ -144,7 +144,7 @@ The old engine's pick (Elusive Supremacy, Blinding Mark, Mist Veil) is the set t
 
 ## 11. Celestial Trial (party of 2), and party roles
 
-**Status (2026-10-15).** The Celestial engine is merged (slice C1), replay-checked against five server logs. The Optimiser target (C2: partner from my other characters or my opponents, or solo; tank; starter; tactics; difficulty; level) is merged (2026-10-15; simulation.md §Celestial Trial). Follow-up: Push on Celestial (the deepest level cleared at a target rate). Open questions (Overload end and Judgment, NORMAL Overload, stack-player rule) wait for more logs.
+**Status (2026-10-15).** The Celestial engine is merged (slice C1), replay-checked against five server logs. The Optimiser target (C2: partner from my other characters or my opponents, or solo; tank; starter; tactics; difficulty; level) is merged (2026-10-15; simulation.md §Celestial Trial). Push on Celestial (the deepest level cleared at a target rate) is built on rebuild2/PUSHC, not merged (2026-10-15; simulation.md §Push, §Celestial Trial). Open questions (Overload end and Judgment, NORMAL Overload, stack-player rule) wait for more logs.
 
 **Ask** (2026-10-15): can the Celestial Trial be simulated? The user supplied one server fight log
 (Hard, level 85, the user plus a tank partner). It stays outside the repo because it names another

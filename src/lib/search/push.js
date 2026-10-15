@@ -12,6 +12,8 @@ import { stableStringify } from '../engine/metrics.js';
 import { EngineInputError } from '../engine/validate.js';
 import { PVE_CHAPTERS, PVE_HARD_CHAPTERS, PVE_HARD_CHAPTER_OFFSET, PVE_PROGRESS_CONSTANTS } from '../game/combatPve.js';
 import { OBLIVION_FLOORS } from '../game/pveContent.js';
+import { celestialDifficulty } from '../game/celestial.js';
+import { MAX_PLAYER_LEVEL } from '../game/classes.js';
 import { dungeonSteps, raidSteps } from '../engine/pve/enemies.js';
 import { describeBuild } from '../build/describe.js';
 import { resolveTarget, makeObjective, meetsTarget } from './objectives.js';
@@ -26,7 +28,7 @@ const PROGRESS_MS = 250;
 const YIELD_MS = 25;
 export const PUSH_CHECKPOINT_SCHEMA = 'push-checkpoint/1';
 /** Target kinds that form a ladder. */
-export const LADDER_KINDS = Object.freeze(['chapter', 'dungeon', 'raid', 'oblivion']);
+export const LADDER_KINDS = Object.freeze(['chapter', 'dungeon', 'raid', 'oblivion', 'celestial']);
 /** Push phases, in the order a run first reaches them (climb and optimise alternate per rung). */
 export const PUSH_PHASES = Object.freeze([
   { id: 'climb', label: 'Climb' },
@@ -44,16 +46,19 @@ const HARD_CHAPTERS = PVE_HARD_CHAPTERS.map((c) => c.chapter).sort((a, b) => a -
 const LAST_OBLIVION_FLOOR = Math.max(...OBLIVION_FLOORS.map((f) => f.floor));
 const hardDisplay = (chapter) => PVE_HARD_CHAPTERS.find((c) => c.chapter === chapter)?.displayChapter ?? chapter - PVE_HARD_CHAPTER_OFFSET;
 
-const rung = (spec, short) => ({ spec, key: stableStringify(spec), short });
+const rung = (spec, short, key = stableStringify(spec)) => ({ spec, key, short });
 
 /**
  * The ladder a ladder target belongs to: its rungs in order (difficulty assumed to rise along them,
  * simulation.md §Push) and the index of the target's own rung (the start). A campaign ladder is the
- * track of the start chapter: normal chapters 1-11 or hard chapters 12-22, each level in order.
- * @returns {{kind: string, label: string, rungs: Array<{spec: Object, key: string, short: string}>, start: number}}
+ * track of the start chapter: normal chapters 1-11 or hard chapters 12-22, each level in order. A Celestial
+ * ladder is the party's scaling level, from the difficulty's unlock level to the player level cap, the
+ * partner and the rest of the spec fixed; a rung's key is the resolved target's, so it carries the
+ * partner's build (`ctx` is resolveTarget's: {character, partner}).
+ * @returns {{kind: string, label: string, unit: 'step'|'level', rungs: Array<{spec: Object, key: string, short: string}>, start: number}}
  */
-export function ladderOf(raw) {
-  const t = resolveTarget(raw);
+export function ladderOf(raw, ctx = {}) {
+  const t = resolveTarget(raw, ctx);
   const spec = t.spec;
   let rungs;
   let label;
@@ -75,12 +80,22 @@ export function ladderOf(raw) {
       hard ? `hard level ${hardDisplay(c)}-${i + 1}` : `level ${c}-${i + 1}`,
     )));
     label = hard ? 'Hard campaign' : 'Campaign';
+  } else if (spec.kind === 'celestial') {
+    const floor = celestialDifficulty(spec.difficulty).unlockLevel;
+    const from = t.celestial.level;
+    if (from < floor || from > MAX_PLAYER_LEVEL) throw new Error(`Push on the Celestial Trial needs a party level from ${floor} (the ${spec.difficulty} unlock) to ${MAX_PLAYER_LEVEL}, got ${from}`);
+    rungs = Array.from({ length: MAX_PLAYER_LEVEL - floor + 1 }, (_, i) => {
+      const level = floor + i;
+      const rs = { ...spec, level };
+      return rung(rs, `level ${level}`, resolveTarget(rs, ctx).key);
+    });
+    label = t.label.replace(/, L\d+/, '');
   } else {
-    throw new Error(`Push needs a ladder (chapter, dungeon, raid or Oblivion), got '${spec.kind}'`);
+    throw new Error(`Push needs a ladder (chapter, dungeon, raid, Oblivion or Celestial), got '${spec.kind}'`);
   }
   const start = rungs.findIndex((r) => r.key === t.key);
   if (start < 0) throw new Error(`'${t.label}' is not on its ladder`);
-  return { kind: spec.kind, label, rungs, start };
+  return { kind: spec.kind, label, rungs, start, unit: spec.kind === 'celestial' ? 'level' : 'step' };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -448,9 +463,9 @@ function liveEnv(prep, request, ladder, hooks) {
   const rungOf = (r) => {
     let x = rungs.get(r);
     if (!x) {
-      const target = resolveTarget(ladder.rungs[r].spec, { character: prep.character });
+      const target = resolveTarget(ladder.rungs[r].spec, { character: prep.character, partner: prep.partner });
       const objective = makeObjective({ kind: 'win-rate', target: tau }, target);
-      const setup = { target: target.spec, objective: objective.spec, character: { opponents: prep.character.opponents ?? [] } };
+      const setup = { target: target.spec, objective: objective.spec, character: { opponents: prep.character.opponents ?? [], level: prep.character.level }, partner: prep.partner };
       const sample = hooks.pool
         ? (fighter, o) => {
           let p = handles.get(r);
@@ -510,7 +525,7 @@ function liveEnv(prep, request, ladder, hooks) {
       } : undefined;
       try {
         const res = await optimize({
-          character: prep.character, presetId: prep.preset.id, realm: request.realm, target: ladder.rungs[r].spec,
+          character: prep.character, partner: prep.partner, presetId: prep.preset.id, realm: request.realm, target: ladder.rungs[r].spec,
           objective: { kind: 'win-rate', target: tau }, space: request.space, effort: request.effort, seed: prep.seed, powerFloor: request.powerFloor,
           resumeFrom, jobId: hooks.jobId,
         }, { signal: hooks.signal, onProgress, onCheckpoint, pool, strict: hooks.strict });
@@ -542,7 +557,7 @@ export async function push(request, hooks = {}) {
   const prep = prepare(request);
   const { space, objective, effort, warnings } = prep;
   if (objective.kind !== PUSH_KIND) throw new Error('push: the objective must be {kind: \'push\'}');
-  const ladder = ladderOf(request.target);
+  const ladder = ladderOf(request.target, { character: prep.character, partner: prep.partner });
   const tau = objective.target;
   const t0 = Date.now();
   const echo = { request: prep.requestEcho, target: targetOut(prep.target), objective: objectiveOut(objective) };
@@ -730,7 +745,7 @@ export function pushBlock(ladder, tau, core) {
   return {
     target: tau,
     status,
-    ladder: { kind: ladder.kind, label: ladder.label, size: R.length },
+    ladder: { kind: ladder.kind, label: ladder.label, size: R.length, unit: ladder.unit ?? 'step' },
     start: { index: ladder.start, label: startLabel },
     baseline: { deepest: bConf >= ladder.start ? bConf : null, label: bConf >= ladder.start ? R[bConf].short : null, searched: at(core.baseline?.searched).index },
     reached: { deepest: reachedIdx >= ladder.start ? reachedIdx : null, label: reachedIdx >= ladder.start ? R[reachedIdx].short : null, key: deeper ? best.key : null, foundAt: deeper ? at(best.foundAt).index : null, foundLabel: deeper && best.foundAt != null ? R[best.foundAt].short : null, searched: at(best?.searched).index },

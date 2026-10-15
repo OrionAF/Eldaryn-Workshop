@@ -56,7 +56,7 @@ const COMPAT = {
   fortressBoss: ['dps'],
   custom: ['dps', 'win-chance', 'win-rate', 'survival'],
   [PVP_TARGET_KIND]: [PVP_OBJECTIVE_KIND],
-  [CELESTIAL_TARGET_KIND]: ['win-chance', 'win-rate'],
+  [CELESTIAL_TARGET_KIND]: ['win-chance', 'win-rate', 'push'],
 };
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
