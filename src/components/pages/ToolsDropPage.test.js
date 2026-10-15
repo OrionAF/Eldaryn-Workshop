@@ -164,6 +164,30 @@ it('Loot bag: the batch is a job, rows rank in one DPS table, and a gear edit ma
   expect(target.querySelectorAll('.expand [data-set]').length).toBeGreaterThan(0);
 });
 
+it('Loot bag: Run more at Thorough raises maxN, and the next step raises it again', async () => {
+  verdict = 'unresolved';
+  open({ tab: 'bag' });
+  paste(lootBag);
+  await settle();
+  target.querySelector('.trow.rank .toggle').click();
+  flushSync();
+  btn('Run more').click(); // standard -> thorough
+  flushSync();
+  await vi.waitFor(() => expect(calls).toHaveLength(2));
+  expect(calls[1].precision).toBe('thorough');
+  await settle();
+  btn('Run more').click(); // thorough -> 4x maxN
+  flushSync();
+  await vi.waitFor(() => expect(calls).toHaveLength(3));
+  expect(calls[2].precision).toBe('thorough');
+  expect(calls[2].maxN).toBeGreaterThan(calls[1].maxN ?? 0);
+  await settle();
+  btn('Run more').click();
+  flushSync();
+  await vi.waitFor(() => expect(calls).toHaveLength(4));
+  expect(calls[3].maxN).toBeGreaterThan(calls[2].maxN);
+});
+
 it('Loot bag: before the job finishes a row is Queued/Simulating, not a verdict', async () => {
   __resetJobs({ run: () => ({ promise: new Promise(() => {}), cancel() {} }) });
   open({ tab: 'bag' });

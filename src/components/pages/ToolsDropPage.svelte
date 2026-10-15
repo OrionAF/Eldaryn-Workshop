@@ -241,12 +241,12 @@
     return chip.verdict === 'better' ? 'up' : chip.verdict === 'worse' ? 'down' : 'side';
   }
 
-  function runBatch(base, withPrecision = precision) {
+  function runBatch(base, { precision: withPrecision = precision, maxN = null } = {}) {
     const prep = prepareBatch(character, base.entries);
     const key = character.id;
     let jobId = null;
     if (prep.request) {
-      const req = { ...prep.request, precision: withPrecision };
+      const req = { ...prep.request, precision: withPrecision, ...(maxN ? { maxN } : {}) };
       const entryKeys = base.entries.map((e) => e.key).join(',');
       jobId = startJob({
         tool: 'drop-bag',
@@ -260,7 +260,7 @@
           tallyChips(tally(rankEntries(base.entries, prep.rows, prep.offsets, res?.results ?? []).map((r) => r.best), base.skipped)),
       });
     }
-    keptBags.set(key, { entries: base.entries, skipped: base.skipped, source: base.source, rows: prep.rows, offsets: prep.offsets, jobId, precision: withPrecision });
+    keptBags.set(key, { entries: base.entries, skipped: base.skipped, source: base.source, rows: prep.rows, offsets: prep.offsets, jobId, precision: withPrecision, maxN });
     bump += 1;
   }
 
@@ -277,11 +277,14 @@
     setStatus?.(`Imported ${n} drop${n === 1 ? '' : 's'}${parsed.skipped.length ? `, skipped ${parsed.skipped.length}` : ''}`);
   }
 
+  const bagNext = () => (bag ? runMoreRequest({ precision: bag.precision, ...(bag.maxN ? { maxN: bag.maxN } : {}) }) : null);
+
   function runMoreBag() {
-    const next = runMoreRequest({ precision: bag.precision });
-    if (!next || !bag) return;
+    if (!bag) return;
+    const next = bagNext();
+    if (!next) return;
     precision = next.precision;
-    runBatch(bag, next.precision);
+    runBatch(bag, { precision: next.precision, maxN: next.maxN ?? null });
   }
 
   function loadFromBag(entry) {
@@ -534,7 +537,7 @@
                           card={c}
                           phase={bagRowState}
                           onapply={(setKey) => applyEntry(e, setKey)}
-                          onrunmore={bagJob?.status === 'finished' && !bagStale && runMoreRequest({ precision: bag.precision }) ? runMoreBag : null}
+                          onrunmore={bagJob?.status === 'finished' && !bagStale && bagNext() ? runMoreBag : null}
                         />
                       {/each}
                     </div>
