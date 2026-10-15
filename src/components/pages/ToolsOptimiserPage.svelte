@@ -21,8 +21,10 @@
   import { notify } from '../../lib/notify.svelte.js';
   import { loadUi, saveUi, EFFORTS } from '../../lib/uiState.js';
   import {
-    startJob, cancelJob, resumeJob, retryJob, isStale, jobsStore,
+    startJob, cancelJob, resumeJob, retryJob, isStale, jobsStore, jobDebugLog,
   } from '../../lib/jobs.svelte.js';
+  import { debugLogFileName } from '../../lib/search/debugLog.js';
+  import DebugLog from '../optimiser/DebugLog.svelte';
   import { resolveTarget, objectiveKindsFor } from '../../lib/search/objectives.js';
   import { relicSlotCap } from '../../lib/model/legality.js';
   import { presetDuelFighter, opponentFighter, missingStats } from '../../lib/features/duel.js';
@@ -201,7 +203,9 @@
     openRunId = null;
     const s = { ...$state.snapshot(setup), presetId: preset.id };
     if (isPvp) s.target = { ...s.target, opponentIds: [...pvpIds] };
-    start(requestOf(s, character, others), { characterId: character.id, presetId: preset.id, presetName: preset.name, mode: 'optimize' }, {
+    // the debug log setting (Settings, per device) rides in the request: the search never reads prefs
+    const debug = prefs.debugLog !== 'off' ? { debug: prefs.debugLog } : {};
+    start({ ...requestOf(s, character, others), ...debug }, { characterId: character.id, presetId: preset.id, presetName: preset.name, mode: 'optimize' }, {
       title: `Optimise ${preset.name}`,
       context: `${targetLabel} · ${OBJECTIVE_LABEL[s.objective.kind]}`,
     });
@@ -217,8 +221,9 @@
   function runMore(row) {
     if (live || !shown || stale || !row.runMore || retiredGoalBlock(result)) return;
     const meta = { characterId: character.id, presetId: result.request.presetId, presetName: resultPreset?.name ?? '', mode: 'optimizeMore', fromJob: jobKey(shown) };
+    const { debug: _log, ...measured } = result; // a re-measure keeps no debug log of the run it re-measures
     start(
-      { mode: 'optimizeMore', character: searchCharacter(character), ...partnerOf(result.target), result, rowKeys: [row.key], targetN: row.runMore.targetN },
+      { mode: 'optimizeMore', character: searchCharacter(character), ...partnerOf(result.target), result: measured, rowKeys: [row.key], targetN: row.runMore.targetN },
       meta,
       { title: `Re-measure rank ${row.rank}`, context: `${result.target.label} · N ${fmtCount(row.runMore.targetN)}` },
     );
@@ -447,6 +452,7 @@
             <p class="hint" data-testid="saved-compacted">Detail compacted to keep storage small; the headline above is kept. Pin a run to keep its detail.</p>
           {/if}
         </Panel>
+        {#if savedRun.debug}<DebugLog debug={savedRun.debug} />{/if}
       {:else if !result && !live && !failedJob}
         <Panel title="Results" level="primary" scope="tool">
           <EmptyState title="No run yet" text="Choose what to improve and what to fight, then press Optimise. Builds appear here with the change in your preset's result and a 95% interval." />
@@ -548,6 +554,9 @@
               {/each}
             </ul>
           </Panel>
+          {#if result.debug}
+            <DebugLog debug={result.debug} getLog={() => jobDebugLog(shown.id)} fileName={debugLogFileName(character.name)} />
+          {/if}
         {/if}
       {/if}
     </div>

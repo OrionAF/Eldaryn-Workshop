@@ -41,6 +41,22 @@ afterEach(() => {
 const text = () => ui.target.textContent.replace(/\s+/g, ' ');
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
+describe('Debug: log the search', () => {
+  it('offers Off / Builds / Builds and fights, warns at the fights level, and remembers the choice on this device', () => {
+    ui = setup(SettingsPage);
+    const group = ui.q('[aria-label="Debug: log the search"]');
+    expect([...group.querySelectorAll('button')].map((b) => b.textContent.trim())).toEqual(['Off', 'Builds', 'Builds and fights']);
+    expect(prefs.debugLog).toBe('off');
+    expect(ui.target.querySelector('[data-testid="debug-log-warn"]')).toBeNull();
+    click(ui.q('[aria-label="Debug: log the search"] [data-value="fights"]'));
+    expect(prefs.debugLog).toBe('fights');
+    expect(loadUi().prefs.debugLog).toBe('fights');
+    expect(ui.q('[data-testid="debug-log-warn"]').textContent).toMatch(/slows runs.*tens of MB/);
+    click(ui.q('[aria-label="Debug: log the search"] [data-value="off"]'));
+    expect(loadUi().prefs.debugLog).toBe('off');
+  });
+});
+
 describe('Performance section', () => {
   it('offers Eco / Balanced / Max with the worker count each means on this device', () => {
     ui = setup(SettingsPage);

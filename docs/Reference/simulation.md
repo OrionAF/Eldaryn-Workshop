@@ -976,6 +976,60 @@ in 7 s. A flat 0 % rung stops at the screen after about z² / δ fights per scre
   `checkpoint-ignored`, `invariant`), `baselineViolations` (non-empty ⇒ `failed`: the baseline breaks
   a game gate and is never silently legalised), `checkpoint`, `stats: {ms, workers}` (run metadata:
   wall clock and pool size; nothing else in a result depends on either), and after Run more `more`.
+- `debug` only when the request asked for a debug log (§Debug log); absent otherwise.
+
+## Debug log
+
+Code: `src/lib/search/debugLog.js` (`createDebugLog`, `debugLogLines`, `debugLogFileName`), the level and the
+saved summary in `src/lib/model/debugLog.js`, the section in `components/optimiser/DebugLog.svelte`. A setting
+for finding what slows a run (Settings > Performance, "Debug: log the search"; data-model.md §5.1): **Off**
+(default), **Builds** or **Builds and fights**. The page puts it in the optimise request as `debug: 'builds' |
+'fights'` (L5 never reads prefs); a Push passes its log to each rung's own run, so a Push logs one log.
+
+**It never changes a result.** The log only observes the fights the run draws anyway: no random number is drawn
+for it, and fight order, sharding, seeds, CRN indexes and every decision are unchanged. The sampler asks the
+objective to time its fights (`trace: true`, carried to pool workers in the shard args and merged in index order
+like the outcomes), and the timing never enters a sample set. A result with the log on equals the result with it
+off apart from its `debug` field (`debugLog.test.js`, inline and on a worker pool). Off, no log object exists
+and nothing is allocated per fight; measured on a 635k-fight Warrior run the levels' speed differed only by
+noise.
+
+What is recorded:
+
+- **Build rows** (both levels), one per build a decision raced: `id`, `phase` (`screen`, `search`, `minimise`,
+  `confirm`, `attribute`; a Push's own steps `push-climb`, `push-screen`, `push-confirm`), `block` and `pass`
+  in the search (`all` and pass 1 for the exhaustive race), `rung` inside a Push, `step` (`race`, `compare`,
+  `contrast`, `goal`, a Push `check` or `screen`, `measure` for a read outside a decision, `unclaimed`), `stage`,
+  the canonical `key`, `changes` (short labels against the baseline), `fights` simulated for it, `cpuMs` (the
+  compute time of those fights, `performance.now()` around each), `looks`, `n`, and the `decision` with its
+  `basis` (and `delta` when a contrast decided): race `kept` / `tied` / `dropped` (worse or futile) /
+  `unresolved`; a pairwise comparison `better` / `worse` / `tied` / `unresolved` / `dropped` (futile) for the
+  challenger and `reference` for the build it was compared against; a goal or Push check `kept` / `dropped` /
+  `unresolved`; `measured`. Fights wait on their sampler entry until a row claims them, so fights a pool draws
+  ahead of the step that reads them land on that step's row; fights no row read (drawn ahead and never read, or
+  cut off by a cancel) end as `unclaimed` / `cancelled` rows. The rows' fights add up to every fight simulated.
+- **Fight rows** (Builds and fights), one per fight and lane, from every worker: `build` (the build row's id),
+  `lane`, `index` (the CRN index), `value` (the sampled outcome: a win-rate score ≥ 1 is a win, else the share of
+  HP removed; DPS; a PVP 0/1), `gameMs` (the fight's game length) and `cpuMs`. Engine ticks are not counted
+  by the engine, so they are not logged. Stored as typed columns (26 bytes a row; about 26 MB per million
+  fights, briefly up to twice that while a column grows), capped at 4,000,000 rows (`FIGHT_ROW_CAP`); build rows
+  cap at 250,000. Beyond a cap rows are counted, not kept, and the summary says how many.
+- **Summary**: per phase and per search block `builds`, `fights`, `cpuMs` and `wallMs` (wall time between
+  phase and block changes), the run's totals, and the 20 slowest builds by compute time.
+
+The log lives with the run's session job (`jobs.svelte.js` keeps the full log beside the job, the reactive
+result keeps the summary only) and works for a cancelled run (the log up to the cancel; a resumed run replays
+its log without fights, so its log holds the work after the resume). A saved run keeps only the summary
+(`model/runs.js` `debug`, data-model.md). The run's Details show a Debug log section (design-system §4.39) and
+**Download log** saves it as JSONL, `optimiser-log-<character>-<timestamp>.jsonl`, one JSON object per line:
+
+```
+{"type":"header","schema":"optimiser-debug-log/1","run":"optimise","jobId","character","preset","target","targetSpec","objective","effort","seed","level","summary"}
+{"type":"build","id","phase","block","pass","rung","step","stage","key","entry","changes","fights","cpuMs","looks","n","decision","basis","delta"}
+{"type":"fight","build","lane","index","value","gameMs","cpuMs"}
+```
+
+All build lines come before the fight lines.
 
 ## Worker pool
 

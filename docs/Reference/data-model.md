@@ -64,7 +64,9 @@ Character = {
                 conditions, majorGlyphs, altarTier,
                 imported: { playerId: string|null, level: 1..200, importedAt: ISO|null } | null }],   // `imported`: set only for an opponent imported from Rankings (null when typed; old saves load as null)
   runs: OptimiserRun[]        // byte-budgeted run history; `schema: 2` = an optimiser-result/2 (model/runs.js header; optional `steps` = the search's final per-block rows, simulation.md §Progress);
-                              // `powerFloor` (the run's Combat Power guard) and each Row's `power` are kept when present
+                              // `powerFloor` (the run's Combat Power guard) and each Row's `power` are kept when present;
+                              // optional `debug` {level, phases, blocks, totals} = a debug-logged run's summary, never its rows
+                              // (model/debugLog.js normaliseDebugSummary; simulation.md §Debug log)
 }
 
 Preset = { id, name, equipmentSet: 1|2, talentSet: 0|1, petId | null, mountId | null,
@@ -260,7 +262,8 @@ partner by id, another character's preset or an opponent, and normalises to no p
 simulation.md §Celestial Trial) and
 `prefs` (`density`, `reduceMotion`, `defaultEffort`, `cpuProfile`: `eco` | `balanced` (default) | `max`,
 the worker-pool size of a job, simulation.md §Worker pool; `dropSets`: `all` (default) | `set1`, the gear
-sets Drop Check compares against, simulation.md §Drop Check). Every read and write is try/catch-guarded, a
+sets Drop Check compares against, simulation.md §Drop Check; `debugLog`: `off` (default) | `builds` | `fights`,
+the Optimiser's debug log level, simulation.md §Debug log; a stored value without it loads as `off`). Every read and write is try/catch-guarded, a
 missing or broken value falls back to the defaults, and nothing in the roster depends on it. It is not
 exported with the roster. Session jobs (`lib/jobs.svelte.js`) are not persisted; the optional resume
 checkpoints use IndexedDB, opt-in.

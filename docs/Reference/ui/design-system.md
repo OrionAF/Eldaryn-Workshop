@@ -614,6 +614,19 @@ Inline notice in a panel body or dialog: icon, bold lead, sentence, optional act
 - **Activity log** (G5, `v11`): the drawer with glyph + sentence + time entries; errors stay until dismissed; "Normalisation dropped n references" is logged once on load.
 - **Identity fields** (C1, `v1`): Class select, Level stepper, "Oblivion unlocked" toggle chip and Oblivion level number field in a 2 × 2 grid under the Power figure.
 
+### 4.39 Debug log (Optimiser Details)
+
+Shown under "How to read this" on the Optimiser page (which the Jobs tray's Open leads to) when the run was made
+with the debug log setting on (Settings > Performance, a SegmentedControl Off / Builds / Builds and fights with a
+one-line note; the fights level adds a warn line on slow runs and memory). An F1 panel "Debug log", `scope="tool"`,
+with **Download log** (secondary, small; busy label "Saving…") in the header meta while the session holds the full
+log. Body: a muted totals line (level, builds, fights, compute, wall), a warn line when a row cap truncated the log,
+then plain tables with a left caption: **By phase** and **By search block** (Builds, Fights, Compute, Wall, Share of
+the run's compute) and **Slowest builds** (Where: rung · phase · block · pass, Changes or "Current build", Fights,
+Compute, Decision with its basis). Numbers right-aligned in the data font; hairline row rules; the body scrolls
+horizontally on a phone. A saved run shows the same tables from its stored summary, without the slowest builds or
+the download, and says the full log is kept only for its session. Spec: simulation.md §Debug log.
+
 
 ---
 
