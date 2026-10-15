@@ -4,11 +4,16 @@
 
 export const UI_KEY = 'eldaryn_ui_v1';
 
+import { CPU_PROFILES, DEFAULT_CPU_PROFILE } from './tasks/cpuProfile.js';
+
 export const DENSITIES = ['comfortable', 'compact'];
 export const EFFORTS = ['quick', 'standard', 'thorough'];
 
-/** Preferences (G6): density, reduced motion, the effort tools start with (plan Q4: Standard). */
-export const defaultPrefs = () => ({ density: 'comfortable', reduceMotion: false, defaultEffort: 'standard' });
+/**
+ * Preferences (G6): density, reduced motion, the effort tools start with (plan Q4: Standard), and the
+ * CPU profile that sizes a job's worker pool (tasks/cpuProfile.js workersFor).
+ */
+export const defaultPrefs = () => ({ density: 'comfortable', reduceMotion: false, defaultEffort: 'standard', cpuProfile: DEFAULT_CPU_PROFILE });
 
 const defaults = () => ({ v: 1, lastHash: null, areaLast: {}, optimiserSetups: {}, prefs: defaultPrefs() });
 
@@ -19,11 +24,12 @@ export function normalisePrefs(raw) {
     if (DENSITIES.includes(raw.density)) out.density = raw.density;
     if (typeof raw.reduceMotion === 'boolean') out.reduceMotion = raw.reduceMotion;
     if (EFFORTS.includes(raw.defaultEffort)) out.defaultEffort = raw.defaultEffort;
+    if (CPU_PROFILES.includes(raw.cpuProfile)) out.cpuProfile = raw.cpuProfile;
   }
   return out;
 }
 
-/** @returns {{v:1, lastHash:string|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, prefs:{density:string, reduceMotion:boolean, defaultEffort:string}}} */
+/** @returns {{v:1, lastHash:string|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string}}} */
 export function loadUi() {
   const ui = defaults();
   try {

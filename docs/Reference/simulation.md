@@ -262,7 +262,8 @@ request keys (`budget`, `maxMs`, `finalMs`, `maxEvals`, `maxPasses`) are ignored
 
 ### Racing (`race.js`)
 
-All arms are sampled to n0; the leader is the best estimate (`objective.score`); an arm leaves when
+All arms are sampled to n0 (every look requests all surviving arms at once, so a worker pool samples
+them in parallel; the decision reads them in arm order once all are in); the leader is the best estimate (`objective.score`); an arm leaves when
 its contrast against the leader is `worse` at α / (arms × looks). The race stops when one arm is
 left or every survivor is `equivalent` to the leader; arms still open at maxN are `unresolved`. The
 winner is the arm nearest the baseline among the leader and its ties. Before a race the arms are
@@ -413,8 +414,52 @@ checkpoint as `resumeFrom`. The page sends the character with `runs: []`, so sav
   families above), `warnings: [{code, message, severity}]` (`sheet-stale`, `sheet-unverified`,
   `residual-applied`, `opponent-defaulted`, `change-dropped-unresolved`, `arms-not-simulable`,
   `checkpoint-ignored`, `invariant`), `baselineViolations` (non-empty ⇒ `failed`: the baseline breaks
-  a game gate and is never silently legalised), `checkpoint`, `stats: {ms, workers}`, and after Run
-  more `more`.
+  a game gate and is never silently legalised), `checkpoint`, `stats: {ms, workers}` (run metadata:
+  wall clock and pool size; nothing else in a result depends on either), and after Run more `more`.
+
+## Worker pool
+
+Code: `src/lib/tasks/pool.js` (`createPool`, `inlinePool`, `poolScope`), `tasks/kernels.js`,
+`tasks/cpuProfile.js` (`workersFor`), `src/lib/poolWorker.js`, hosted by `optimizerWorker.js`.
+
+- **Size.** The per-device pref `cpuProfile` (data-model.md, UI key) gives `workersFor(profile, cores)`
+  with `cores = navigator.hardwareConcurrency || 4`: `eco` ⌊cores/4⌋ clamped to 1-2, `balanced` ⌊cores/2⌋
+  clamped to 1-6, `max` cores − 1 (at least 1). `optimizerClient.js` reads it when a job starts and
+  sends it as `request.workers` (an explicit `workers` wins), so a change applies to the next job and
+  the tasks stay pure.
+- **Hosting.** The job keeps its one worker (the driver: search, statistics, progress, checkpoints) and
+  that worker starts `workers` nested engine workers. Nested dedicated workers keep the main thread
+  free of both the driver and the fights; the driver is cheap next to the fights it waits on. With
+  `workers` 1, or where the job worker cannot create Workers, nothing changes: the fights run in the
+  job worker (`inlinePool`); on the inline path (no Workers at all) they run on the main thread.
+- **Kernels.** A pool runs one kernel per job: `objective` (the optimiser's target and objective,
+  rebuilt from their specs), `duel`, `swap` (Drop Check's metrics) and `oblivion`. Each worker
+  prepares it once (`prepare`: target, objective, opponents, prepared fighter); a shard message then
+  carries only `{args: fighter or selector, from, to}`. Fight i of a kernel draws exactly what the
+  single-thread code draws for i (`fightRng(seed, i)`, or `mulberry32(hashSeed(seed, k))` for Oblivion
+  floors), so a chunk is a function of (setup, args, i) alone.
+- **Sharding.** `run(args, from, to)` splits the range into shards of ⌈len / workers⌉ fights, clamped to
+  4-64, queued first in, first out across all open requests; idle workers take the next shard. Chunks
+  are merged in index order, so the result never depends on completion order or pool size.
+- **Determinism.** Every decision reads merged, index-ordered outcomes. The search driver requests
+  several arms at once only inside one logged step (a race look, a contrast's two sides) or as a
+  prefetch: before a sequence of logged steps (minimise's tests, confirm, attribution, Run more) the
+  arms are drawn in parallel to the n those steps will request anyway (their first look or fixed n).
+  A prefetch does not touch the fight ledger and is skipped while a checkpoint is replayed, so fight
+  counts, logs and checkpoints are identical for every pool size, and a checkpoint taken on one pool
+  size resumes on another (`search/determinism.test.js`, pool sizes 1, 2 and 4 with shards finishing
+  out of order).
+- **Cancel.** An aborted request resolves with the contiguous prefix of finished shards and
+  `aborted: true` (the sample store keeps that prefix); shards still running are discarded.
+- **Failure.** A worker that fails before it is ready (load error, construction throws, prepare
+  throws) is dropped; when none is left the queued shards run inline in the job worker with the same
+  numbers. A worker that dies mid-shard has its shard re-queued. An error thrown by the kernel itself
+  (a missing stat) rejects the request, as it would inline.
+- **Measured** (chromium, built app, Warrior L72 capture's TANK preset, every block, Quick, 60 s dummy;
+  4 cores shared with other work, load average about 7): 1 worker 321 s, 2 workers (balanced on 4
+  cores) 265 s, identical results (41 947 builds evaluated, 394 744 fights, 25 rows). The gain is
+  small here because the search is a long chain of small logged steps (8-fight first looks) and the
+  driver's own work (legality, canonical forms, engine keys) stays on one thread.
 
 ## Drop Check
 

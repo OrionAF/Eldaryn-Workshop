@@ -22,6 +22,9 @@ export const prefs = {
   get defaultEffort() {
     return state.defaultEffort;
   },
+  get cpuProfile() {
+    return state.cpuProfile;
+  },
 };
 
 /** Change one or more preferences, apply them, and remember them on this device. */

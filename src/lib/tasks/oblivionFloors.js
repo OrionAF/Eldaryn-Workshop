@@ -11,16 +11,18 @@
 //   scanCapped: the last floor of the data table passed, so the real limit is beyond the scan.
 // Cancel returns the rows finished so far with aborted: true.
 
-import { simulatePve, preparePveFighter, PVE_MODES, FIGHT_CAP_MS } from '../engine/pve/fight.js';
+// A floor's fights run on the job's pool (ctx.pool, tasks/pool.js; inline without one): KERNELS.oblivion,
+// fight k seeded mulberry32(hashSeed(seed, k)).
+
+import { PVE_MODES, FIGHT_CAP_MS } from '../engine/pve/fight.js';
 import { oblivionFloorMob, oblivionEffectiveInstability } from '../engine/pve/enemies.js';
 import { OBLIVION_FLOORS } from '../game/pveContent.js';
-import { mulberry32, hashSeed } from '../engine/rng.js';
 import { wilson, quantile } from '../engine/metrics.js';
+import { poolScope } from './pool.js';
 
 const LAST_DATA_FLOOR = Math.max(...OBLIVION_FLOORS.map((f) => f.floor));
-const tick = () => new Promise((r) => setTimeout(r, 0));
 
-export async function oblivionFloors(request, { signal, onProgress } = {}) {
+export async function oblivionFloors(request, { signal, onProgress, pool } = {}) {
   const {
     fighter, from = 1, to = 30, n = 64, seed = 1, threshold = 0.9, maxMs, stopAfter = 3, applyOutputCut = false,
   } = request ?? {};
@@ -38,34 +40,35 @@ export async function oblivionFloors(request, { signal, onProgress } = {}) {
   let aborted = signal?.aborted === true;
   let dry = 0;
   if (!aborted && n > 0 && floors.length) {
-    const prepared = preparePveFighter(fighter);
-    outer: for (let i = 0; i < floors.length; i++) {
-      if (signal?.aborted) { aborted = true; break; }
-      const floor = floors[i];
-      const mob = oblivionFloorMob(floor);
-      if (!mob) continue;
-      let wins = 0;
-      let timeouts = 0;
-      const times = [];
-      for (let k = 0; k < n; k++) {
-        if (signal?.aborted) { aborted = true; break outer; }
-        const r = simulatePve({
-          fighter: prepared, enemy: mob, mode: 'oblivion', oblivion: { power }, applyOutputCut,
-          ...(maxMs != null ? { maxMs } : {}), rng: mulberry32(hashSeed(seed, k)),
+    const scope = poolScope(pool);
+    try {
+      const fights = scope.open('oblivion', { fighter, power, applyOutputCut, maxMs });
+      for (let i = 0; i < floors.length; i++) {
+        if (signal?.aborted) { aborted = true; break; }
+        const floor = floors[i];
+        const mob = oblivionFloorMob(floor);
+        if (!mob) continue;
+        const c = await fights.run({ floor, seed }, 0, n, {
+          signal, onProgress: (done) => onProgress?.({ done, n, floor, floorIndex: i, floors: floors.length }),
         });
-        if (r.won) { wins++; times.push(r.timeMs); } else if (r.timedOut) timeouts++;
-        onProgress?.({ done: k + 1, n, floor, floorIndex: i, floors: floors.length });
-        if ((k & 7) === 7) await tick();
+        if (c.aborted) { aborted = true; break; }
+        const won = c.main[0];
+        const timedOut = c.side.timedOut[0];
+        const times = c.side.ms[0].filter((_, k) => won[k] === 1);
+        const wins = times.length;
+        const timeouts = timedOut.filter((t, k) => t === 1 && won[k] !== 1).length;
+        const w = wilson(wins, n);
+        rows.push({
+          floor, instability: mob.instability, strain: oblivionEffectiveInstability(mob.instability, power),
+          p: w.p, pLo: w.lo, pHi: w.hi, wins, deaths: n - wins - timeouts, timeouts, n,
+          medianMs: wins ? quantile(times, 0.5) : null,
+          verdict: w.lo >= threshold ? 'pass' : w.hi < threshold ? 'fail' : 'unresolved',
+        });
+        dry = wins === 0 && timeouts === 0 ? dry + 1 : 0;
+        if (stopAfter > 0 && dry >= stopAfter) break;
       }
-      const w = wilson(wins, n);
-      rows.push({
-        floor, instability: mob.instability, strain: oblivionEffectiveInstability(mob.instability, power),
-        p: w.p, pLo: w.lo, pHi: w.hi, wins, deaths: n - wins - timeouts, timeouts, n,
-        medianMs: wins ? quantile(times, 0.5) : null,
-        verdict: w.lo >= threshold ? 'pass' : w.hi < threshold ? 'fail' : 'unresolved',
-      });
-      dry = wins === 0 && timeouts === 0 ? dry + 1 : 0;
-      if (stopAfter > 0 && dry >= stopAfter) break;
+    } finally {
+      scope.close();
     }
   }
   let maxFloor = null;
