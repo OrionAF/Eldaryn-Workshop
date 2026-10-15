@@ -78,6 +78,12 @@ it('the phone strip has a short label for Oblivion Floors', () => {
   expect(link.querySelector('.label-short').textContent.trim()).toBe('Oblivion');
 });
 
+it('the Oblivion link keeps its full name when CSS hides the full label (phone)', () => {
+  const target = mountApp({ empty: false });
+  const link = target.querySelector('a[data-page="tools/oblivion"]');
+  expect(link.getAttribute('aria-label')).toBe('Oblivion Floors');
+});
+
 it('index.html links an icon and the file exists', async () => {
   const fs = await import('node:fs');
   const html = fs.readFileSync('index.html', 'utf8');
