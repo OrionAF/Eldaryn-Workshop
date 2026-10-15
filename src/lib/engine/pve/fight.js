@@ -185,6 +185,17 @@ export function oblivionCombatState(effective, instability) {
 // simulateFight
 // ---------------------------------------------------------------------------------------------
 
+// Same values in every BuffSet field applyBuffsToEntity reads (all but hpPercent). Object.is, so that
+// -0 and NaN never reuse a view; unrolled, so every read is a plain property load.
+function sameBuffSet(a, b) {
+  return Object.is(a.attackPercent, b.attackPercent) && Object.is(a.attackSpeed, b.attackSpeed)
+    && Object.is(a.lifesteal, b.lifesteal) && Object.is(a.blockChance, b.blockChance)
+    && Object.is(a.missChance, b.missChance) && Object.is(a.blindChance, b.blindChance)
+    && Object.is(a.critChance, b.critChance) && Object.is(a.critDamage, b.critDamage)
+    && Object.is(a.damageReduction, b.damageReduction) && Object.is(a.hpRegen, b.hpRegen)
+    && Object.is(a.penetration, b.penetration) && Object.is(a.spellResist, b.spellResist);
+}
+
 /**
  * @typedef {Object} FightContext
  * @property {number} [dtMs=100]
@@ -222,6 +233,35 @@ export function oblivionCombatState(effective, instability) {
  * @property {number} damageTaken         incoming swing damage (shield-effective) plus instability damage
  */
 
+// port of finishMinionTick L1087924-1088000 (a closure in the client; a module function here, so that the
+// fight loop's variables stay out of a closure context)
+function finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart) {
+  const heal = soulLinkHeal(minion, tickDealt);
+  if (heal > 0 && log) {
+    ticks.push({ timestamp: ts, type: 'minion_heal', damage: heal, attackerHp: hp, defenderHp: enemyHp });
+  }
+  if (hp <= 0 && killMinion(minion) && log) {
+    ticks.push({ timestamp: ts, type: 'minion_dead', damage: 0, attackerHp: hp, defenderHp: enemyHp });
+  }
+  if (log && (minionAliveAtStart || minion.alive)) {
+    for (let i = tickFrom; i < ticks.length; i++) ticks[i].minionHp = minion.hp;
+  }
+}
+
+/** The FightResult of simulateFight. */
+function fightResult(ticks, ts, attackerWon, hp, shieldHp, enemyHp, enemyHp0, damageTaken) {
+  return {
+    ticks,
+    endTime: ts,
+    attackerWon,
+    hp,
+    shieldHp,
+    enemyHp,
+    damageDealt: Math.max(0, enemyHp0 - enemyHp),
+    damageTaken,
+  };
+}
+
 // port of simulateFight L1087661-1089480. The client mutates `player.hp` / `player.shieldHp`; this
 // returns them instead and leaves its arguments alone (apart from the objects named in FightContext).
 /**
@@ -244,6 +284,8 @@ export function simulateFight(player, enemy, ctx, rng) {
   const emit = log ? (ev) => ticks.push(ev) : null;
 
   const chronoOn = chrono != null && (chrono.flameConduit > 0 || chrono.earthenConduit > 0 || chrono.darkConduit > 0);
+  // the TRANSFORM runtimes, in order: the per-tick transform checks only ever read these
+  const transforms = spells ? spells.filter((rt) => rt.config.spell.spellType === 'TRANSFORM') : null;
   const stacksOn = stackCombat != null && stackCombat.active;
   const oblivionOn = oblivion != null && (oblivion.trueDamagePercentPerPulse > 0 || oblivion.healingMult < 1 ||
     oblivion.regenMult < 1 || oblivion.healCapPctPerSec > 0 || !!oblivion.blocksShieldOverflow);
@@ -279,31 +321,7 @@ export function simulateFight(player, enemy, ctx, rng) {
   let tickFrom = 0;
   let minionAliveAtStart = false;
 
-  // port of finishMinionTick L1087924-1088000
-  const finishMinionTick = () => {
-    if (!minion) return;
-    const heal = soulLinkHeal(minion, tickDealt);
-    if (heal > 0 && emit) emit({ timestamp: ts, type: 'minion_heal', damage: heal, attackerHp: hp, defenderHp: enemyHp });
-    if (hp <= 0 && killMinion(minion) && emit) {
-      emit({ timestamp: ts, type: 'minion_dead', damage: 0, attackerHp: hp, defenderHp: enemyHp });
-    }
-    if (emit && (minionAliveAtStart || minion.alive)) {
-      for (let i = tickFrom; i < ticks.length; i++) ticks[i].minionHp = minion.hp;
-    }
-  };
-
-  const result = (attackerWon, over = {}) => ({
-    ticks,
-    endTime: ts,
-    attackerWon,
-    hp: over.hp ?? hp,
-    shieldHp: over.shieldHp ?? shield,
-    enemyHp,
-    damageDealt: Math.max(0, enemyHp0 - enemyHp),
-    damageTaken,
-  });
-
-  if (!(hp > 0) || !(enemyHp > 0)) return result(false);
+  if (!(hp > 0) || !(enemyHp > 0)) return fightResult(ticks, ts, false, hp, shield, enemyHp, enemyHp0, damageTaken);
 
   // --- opening: a pending minion respawn is summoned before the first tick (L1087780-1087856)
   if (minion && hp > 0 && resummonIfDead(minion)) {
@@ -323,7 +341,7 @@ export function simulateFight(player, enemy, ctx, rng) {
     minion.timer = openingSwingTimerStart(Math.round(1000 / minion.attackSpeed), windowMs, minion.timer);
   }
 
-  // per-tick views shared with spellsStep (declared here because that helper sits outside the loop)
+  // per-tick views the spell pass sets and the rest of the tick reads
   let enemyView = enemy;
   let playerView = player;
   let stackHpPct = 0;
@@ -332,6 +350,47 @@ export function simulateFight(player, enemy, ctx, rng) {
   let totalHpPct = 0;
   let transformFired = false;
   let transformHeal = 0;
+  // applyBuffsToEntity(player, bm) of the last buffed tick: the buff set changes only when a buff
+  // starts or ends, and nothing mutates the view, so an equal set reuses it
+  const tickOpts = {
+    attackerMaxHp: 0, defenderBlinded: false, defenderParalyzedMs: 0, defenderSilencedMs: 0, defenderStaggerStacks: 0,
+    defenderFearedMs: 0, attackerShieldHp: 0, defenderShieldHp: 0, healBudget, blocksShieldOverflow, minion,
+    attackerOutputMult: outputMult,
+  };
+  // the spell pass input, one object per fight refilled each tick (processSpellsTick keeps nothing)
+  const spellInput = {
+    maxHp: player.maxHp,
+    dtMs,
+    timestamp: 0,
+    attack: player.attack,
+    healReductionPercent: 0,
+    hp: 0,
+    enemyHp: 0,
+    enemyMaxHp: enemy.maxHp,
+    offensiveConditions: false,
+    selfConditionsMet: false,
+    spellDamage: player.spellDamage,
+    targetSpellResist: 0,
+    spellCritChance: player.spellCritChance,
+    critDamage: player.critDamage,
+    spellVamp: player.spellVamp,
+    silencedMs: 0,
+    healingMult: 1,
+    healBaseMaxHp: 0,
+    minionAlive: false,
+  };
+  // the Oblivion bite's copy of a view, and the view it was made from
+  let bittenFrom = null;
+  let bitten = null;
+  let lastBm = null;
+  let lastBuffed = null;
+  const buffedPlayer = (bm) => {
+    if (lastBm === null || !sameBuffSet(lastBm, bm)) {
+      lastBuffed = applyBuffsToEntity(player, bm);
+      lastBm = bm;
+    }
+    return lastBuffed;
+  };
 
   while (hp > 0 && enemyHp > 0 && ts - startMs < maxMs) {
     ts += dtMs;
@@ -366,8 +425,8 @@ export function simulateFight(player, enemy, ctx, rng) {
           if (emit) emit({ timestamp: ts, type: 'attacker_instability', damage: dmg, attackerHp: hp, defenderHp: enemyHp });
           if (hp <= 0) {
             if (emit) emit({ timestamp: ts, type: 'attacker_dead', damage: 0, attackerHp: 0, defenderHp: enemyHp });
-            finishMinionTick();
-            return result(false, { hp: 0, shieldHp: 0 });
+            if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart);
+            return fightResult(ticks, ts, false, 0, 0, enemyHp, enemyHp0, damageTaken);
           }
         }
       }
@@ -411,9 +470,110 @@ export function simulateFight(player, enemy, ctx, rng) {
       }
     }
 
+    // 4. the spell pass and everything it applies (L1088292-1088735); the enemy dying to a spell
+    // pre-empts the swing
     if (spells) {
-      const sr = spellsStep();
-      if (sr) return sr;
+      spellInput.timestamp = ts;
+      spellInput.hp = hp;
+      spellInput.enemyHp = enemyHp;
+      spellInput.targetSpellResist = liveSpellResist
+        ? enemyView.spellResist : enemyView.spellResist + enemyView.damageReduction;
+      spellInput.minionAlive = isMinionAlive(minion);
+      const res = processSpellsTick(spells, spellInput, rng);
+      const minionEvents = routeSpellHealToMinion(minion, res, player.maxHp);
+      // live loop: the transform's heal joins the spell heal and its clamp (L1074900-1074909)
+      if (transformHeal > 0) res.ownerHpDelta += transformHeal;
+      const bm = res.buffModifiers;
+      playerView = hasActiveBuffs(bm) ? buffedPlayer(bm) : player;
+      buffHpPct = bm.hpPercent;
+      totalHpPct = bm.hpPercent + stackHpPct;
+      buffedMaxHp = getBuffedMaxHp(player.maxHp, totalHpPct);
+
+      if (res.ownerHpDelta > 0) {
+        const prev = hp;
+        const want = healingMult < 1 ? Math.floor(res.ownerHpDelta * healingMult) : res.ownerHpDelta;
+        const granted = spendHealBudget(healBudget, want);
+        hp = Math.min(buffedMaxHp, hp + granted);
+        const refillEv = healingMult < 1
+          ? {
+            ownerHpDelta: granted,
+            ownerVampHeal: Math.floor(res.ownerVampHeal * healingMult),
+            ownerShieldRefill: Math.floor((res.ownerShieldRefill ?? 0) * healingMult),
+          }
+          : res;
+        const raw = blocksShieldOverflow
+          ? (refillEv.ownerShieldRefill ?? 0)
+          : shieldRefillAmount(refillEv, hp - prev, player.shieldVampAlwaysRefills);
+        const refill = spendHealBudget(healBudget, raw);
+        if (refill > 0 && player.shieldMax > 0 && shield < player.shieldMax) {
+          shield = Math.min(player.shieldMax, shield + refill);
+        }
+      }
+      if (totalHpPct <= 0 && hp > player.maxHp) hp = player.maxHp;
+
+      if (res.targetHpDelta < 0) {
+        const before = enemyHp;
+        enemyHp = Math.max(0, enemyHp - cut(-res.targetHpDelta));
+        tickDealt += before - enemyHp;
+      }
+      if (res.targetParalyzeMs && enemyHp > 0) {
+        paralyzedMs = Math.max(paralyzedMs, res.targetParalyzeMs);
+        if (emit) {
+          emit({
+            timestamp: ts, type: 'defender_paralyzed', damage: 0, attackerHp: hp, defenderHp: enemyHp,
+            paralyzeMs: res.targetParalyzeMs,
+          });
+        }
+      }
+      if (res.targetSilenceMs && enemyHp > 0) {
+        silencedMs = Math.max(silencedMs, res.targetSilenceMs);
+        if (emit) emit({ timestamp: ts, type: 'defender_silenced', damage: 0, attackerHp: hp, defenderHp: enemyHp });
+      }
+      if (res.targetFearMs && enemyHp > 0) {
+        fearedMs = Math.max(fearedMs, res.targetFearMs);
+        if (emit) {
+          emit({
+            timestamp: ts, type: 'defender_feared', damage: 0, attackerHp: hp, defenderHp: enemyHp, fearMs: res.targetFearMs,
+          });
+        }
+      }
+      if (res.targetBlinded && enemyHp > 0) {
+        if (emit) emit({ timestamp: ts, type: 'defender_blinded', damage: 0, attackerHp: hp, defenderHp: enemyHp });
+        blinded = true;
+      }
+      if (res.newDebuffs) {
+        for (const spec of res.newDebuffs) {
+          const applied = applyDebuff(debuffs, spec, ts);
+          if (emit) {
+            emit({
+              timestamp: ts,
+              type: applied.type === 'debuff_applied' ? 'spell_debuff_applied' : 'spell_debuff_stack',
+              damage: 0, attackerHp: hp, defenderHp: enemyHp, spell: applied.source, debuffStacks: applied.stacks,
+              debuffMaxStacks: applied.maxStacks, debuffPermanent: applied.permanent, damagePerTick: applied.damagePerTick,
+            });
+          }
+        }
+      }
+      if (emit) {
+        for (const ev of res.events) {
+          emit({
+            timestamp: ev.timestamp, type: ev.type, damage: ev.value, attackerHp: hp, defenderHp: enemyHp,
+            spell: ev.spell, ...(ev.isCrit ? { isCrit: true } : {}),
+            ...(res.ownerMomentumStacks !== undefined ? { momentumStacks: res.ownerMomentumStacks } : {}),
+          });
+        }
+        for (const ev of minionEvents) {
+          emit({
+            timestamp: ev.timestamp, type: ev.type, damage: ev.healed, attackerHp: hp, defenderHp: enemyHp,
+            spell: ev.spell, ...(ev.minionMaxHp !== undefined ? { minionMaxHp: ev.minionMaxHp } : {}),
+          });
+        }
+      }
+      if (enemyHp <= 0) {
+        if (emit) emit({ timestamp: ts, type: 'defender_dead', damage: 0, attackerHp: hp, defenderHp: 0 });
+        if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart);
+        return fightResult(ticks, ts, true, hp, shield, enemyHp, enemyHp0, damageTaken);
+      }
     }
 
     // 5. processDebuffsTick on the enemy (L1088736)
@@ -437,8 +597,8 @@ export function simulateFight(player, enemy, ctx, rng) {
       }
       if (enemyHp <= 0) {
         if (emit) emit({ timestamp: ts, type: 'defender_dead', damage: 0, attackerHp: hp, defenderHp: 0 });
-        finishMinionTick();
-        return result(true);
+        if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart);
+        return fightResult(ticks, ts, true, hp, shield, enemyHp, enemyHp0, damageTaken);
       }
     }
 
@@ -461,7 +621,12 @@ export function simulateFight(player, enemy, ctx, rng) {
       }
     }
     if (oblivionOn) {
-      view = { ...view, lifesteal: view.lifesteal * healingMult, hpRegen: view.hpRegen * oblivion.regenMult };
+      // views are never mutated, so the bitten copy of the same view is reused
+      if (view !== bittenFrom) {
+        bittenFrom = view;
+        bitten = { ...view, lifesteal: view.lifesteal * healingMult, hpRegen: view.hpRegen * oblivion.regenMult };
+      }
+      view = bitten;
     }
     let enemyNow = enemyView;
     if (enemyAt) {
@@ -474,20 +639,16 @@ export function simulateFight(player, enemy, ctx, rng) {
     }
 
     // 7. processCombatTick (L1088954)
-    const t = processCombatTick(view, enemyNow, hp, enemyHp, timers, dtMs, ts, {
-      attackerMaxHp: buffedMaxHp,
-      defenderBlinded: blinded,
-      defenderParalyzedMs: paralyzedMs,
-      defenderSilencedMs: silencedMs,
-      defenderStaggerStacks: staggerStacks,
-      defenderFearedMs: fearedMs,
-      attackerShieldHp: shield,
-      defenderShieldHp: enemyShield,
-      healBudget,
-      blocksShieldOverflow,
-      minion,
-      attackerOutputMult: outputMult,
-    }, rng);
+    // one options object per fight, refilled each tick (processCombatTick reads it and keeps nothing)
+    tickOpts.attackerMaxHp = buffedMaxHp;
+    tickOpts.defenderBlinded = blinded;
+    tickOpts.defenderParalyzedMs = paralyzedMs;
+    tickOpts.defenderSilencedMs = silencedMs;
+    tickOpts.defenderStaggerStacks = staggerStacks;
+    tickOpts.defenderFearedMs = fearedMs;
+    tickOpts.attackerShieldHp = shield;
+    tickOpts.defenderShieldHp = enemyShield;
+    const t = processCombatTick(view, enemyNow, hp, enemyHp, timers, dtMs, ts, tickOpts, rng);
     tickDealt += t.attackerDamageDealt;
     hp = t.attackerHp;
     enemyHp = t.defenderHp;
@@ -513,9 +674,9 @@ export function simulateFight(player, enemy, ctx, rng) {
     // but fires it at the top of the next tick, and keeps the bar empty on the tick it fired
     // (L1076680-1076700).
     if (chronoOn) {
-      const active = spells ? isTransformActive(spells) : false;
+      const active = transforms ? isTransformActive(transforms) : false;
       if (!active && !transformFired) {
-        const fires = spells ? transformFireCount(spells) : 0;
+        const fires = transforms ? transformFireCount(transforms) : 0;
         chrono.flux = clampChronoFlux(chrono.flux + chronoFluxFromEvents(
           events, chrono.flameConduit, chrono.earthenConduit, chrono.darkConduit, fires));
       }
@@ -604,134 +765,13 @@ export function simulateFight(player, enemy, ctx, rng) {
         }
       }
     }
-    finishMinionTick();
+    if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart);
 
     // 11. end check (L1089416-1089457)
-    if (enemyHp <= 0) return result(true);
-    if (hp <= 0) return result(false, { hp: 0, shieldHp: 0 });
+    if (enemyHp <= 0) return fightResult(ticks, ts, true, hp, shield, enemyHp, enemyHp0, damageTaken);
+    if (hp <= 0) return fightResult(ticks, ts, false, 0, 0, enemyHp, enemyHp0, damageTaken);
   }
-  return result(false);
-
-  // 4. the spell pass and everything it applies (L1088292-1088735). Returns a FightResult when the
-  // enemy dies to a spell (the swing is pre-empted), else null. Reads and writes the loop's state.
-  function spellsStep() {
-    const res = processSpellsTick(spells, {
-      maxHp: player.maxHp,
-      dtMs,
-      timestamp: ts,
-      attack: player.attack,
-      healReductionPercent: 0,
-      hp,
-      enemyHp,
-      enemyMaxHp: enemy.maxHp,
-      offensiveConditions: false,
-      selfConditionsMet: false,
-      spellDamage: player.spellDamage,
-      targetSpellResist: liveSpellResist ? enemyView.spellResist : enemyView.spellResist + enemyView.damageReduction,
-      spellCritChance: player.spellCritChance,
-      critDamage: player.critDamage,
-      spellVamp: player.spellVamp,
-      silencedMs: 0,
-      healingMult: 1,
-      healBaseMaxHp: 0,
-      minionAlive: isMinionAlive(minion),
-    }, rng);
-    const minionEvents = routeSpellHealToMinion(minion, res, player.maxHp);
-    // live loop: the transform's heal joins the spell heal and its clamp (L1074900-1074909)
-    if (transformHeal > 0) res.ownerHpDelta += transformHeal;
-    const bm = res.buffModifiers;
-    playerView = hasActiveBuffs(bm) ? applyBuffsToEntity(player, bm) : player;
-    buffHpPct = bm.hpPercent;
-    totalHpPct = bm.hpPercent + stackHpPct;
-    buffedMaxHp = getBuffedMaxHp(player.maxHp, totalHpPct);
-
-    if (res.ownerHpDelta > 0) {
-      const prev = hp;
-      const want = healingMult < 1 ? Math.floor(res.ownerHpDelta * healingMult) : res.ownerHpDelta;
-      const granted = spendHealBudget(healBudget, want);
-      hp = Math.min(buffedMaxHp, hp + granted);
-      const refillEv = healingMult < 1
-        ? {
-          ownerHpDelta: granted,
-          ownerVampHeal: Math.floor(res.ownerVampHeal * healingMult),
-          ownerShieldRefill: Math.floor((res.ownerShieldRefill ?? 0) * healingMult),
-        }
-        : res;
-      const raw = blocksShieldOverflow
-        ? (refillEv.ownerShieldRefill ?? 0)
-        : shieldRefillAmount(refillEv, hp - prev, player.shieldVampAlwaysRefills);
-      const refill = spendHealBudget(healBudget, raw);
-      if (refill > 0 && player.shieldMax > 0 && shield < player.shieldMax) {
-        shield = Math.min(player.shieldMax, shield + refill);
-      }
-    }
-    if (totalHpPct <= 0 && hp > player.maxHp) hp = player.maxHp;
-
-    if (res.targetHpDelta < 0) {
-      const before = enemyHp;
-      enemyHp = Math.max(0, enemyHp - cut(-res.targetHpDelta));
-      tickDealt += before - enemyHp;
-    }
-    if (res.targetParalyzeMs && enemyHp > 0) {
-      paralyzedMs = Math.max(paralyzedMs, res.targetParalyzeMs);
-      if (emit) {
-        emit({
-          timestamp: ts, type: 'defender_paralyzed', damage: 0, attackerHp: hp, defenderHp: enemyHp,
-          paralyzeMs: res.targetParalyzeMs,
-        });
-      }
-    }
-    if (res.targetSilenceMs && enemyHp > 0) {
-      silencedMs = Math.max(silencedMs, res.targetSilenceMs);
-      if (emit) emit({ timestamp: ts, type: 'defender_silenced', damage: 0, attackerHp: hp, defenderHp: enemyHp });
-    }
-    if (res.targetFearMs && enemyHp > 0) {
-      fearedMs = Math.max(fearedMs, res.targetFearMs);
-      if (emit) {
-        emit({
-          timestamp: ts, type: 'defender_feared', damage: 0, attackerHp: hp, defenderHp: enemyHp, fearMs: res.targetFearMs,
-        });
-      }
-    }
-    if (res.targetBlinded && enemyHp > 0) {
-      if (emit) emit({ timestamp: ts, type: 'defender_blinded', damage: 0, attackerHp: hp, defenderHp: enemyHp });
-      blinded = true;
-    }
-    if (res.newDebuffs) {
-      for (const spec of res.newDebuffs) {
-        const applied = applyDebuff(debuffs, spec, ts);
-        if (emit) {
-          emit({
-            timestamp: ts,
-            type: applied.type === 'debuff_applied' ? 'spell_debuff_applied' : 'spell_debuff_stack',
-            damage: 0, attackerHp: hp, defenderHp: enemyHp, spell: applied.source, debuffStacks: applied.stacks,
-            debuffMaxStacks: applied.maxStacks, debuffPermanent: applied.permanent, damagePerTick: applied.damagePerTick,
-          });
-        }
-      }
-    }
-    if (emit) {
-      for (const ev of res.events) {
-        emit({
-          timestamp: ev.timestamp, type: ev.type, damage: ev.value, attackerHp: hp, defenderHp: enemyHp,
-          spell: ev.spell, ...(ev.isCrit ? { isCrit: true } : {}),
-          ...(res.ownerMomentumStacks !== undefined ? { momentumStacks: res.ownerMomentumStacks } : {}),
-        });
-      }
-      for (const ev of minionEvents) {
-        emit({
-          timestamp: ev.timestamp, type: ev.type, damage: ev.healed, attackerHp: hp, defenderHp: enemyHp,
-          spell: ev.spell, ...(ev.minionMaxHp !== undefined ? { minionMaxHp: ev.minionMaxHp } : {}),
-        });
-      }
-    }
-    if (enemyHp <= 0) {
-      if (emit) emit({ timestamp: ts, type: 'defender_dead', damage: 0, attackerHp: hp, defenderHp: 0 });
-      finishMinionTick();
-      return result(true);
-    }
-    return null;
-  }
+  return fightResult(ticks, ts, false, hp, shield, enemyHp, enemyHp0, damageTaken);
 }
 
 // ---------------------------------------------------------------------------------------------
