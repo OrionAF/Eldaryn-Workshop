@@ -139,7 +139,7 @@ pvpAttack(accum) += f.pvpAttack         pvpDefense(accum) += f.pvpDefense
 ```
 The caller is the stats screen (L1209922-1209924), which passes the owned-fortress list and the player class.
 
-[UNRESOLVED] Unit of `attackSpeed`. The accumulator starts from `base.attackSpeed` plus equipment ATTACK_SPEED rolls, so +0.03 is an absolute add on that scale. Mapping that onto an optimiser "speed %" stat belongs to `stats.md`. I did not resolve whether the stat page displays the sum as ×100.
+`attackSpeed` is added as stored: the accumulator starts from `base.attackSpeed` plus equipment ATTACK_SPEED rolls, so +0.03 is an absolute add on that scale **[CODE]** (see `stats.md` §3.2, L1216476-1216513). **[UNRESOLVED]** whether the stat page displays the sum as ×100.
 
 ### §2.5 Stars (non-combat benefit, boss debuff)
 `FORTRESS_STARS` (L1223969-1223972): [CODE]

@@ -38,7 +38,7 @@
  */
 
 /**
- * The verbatim `simulateArenaPvP` return value (L1457017-1457289).
+ * The verbatim `simulateArenaPvP` return value (L1457545-1457621).
  * @typedef {Object} ArenaPvpResult
  * @property {DuelEvent[]} ticks       the log; [] in event-free mode
  * @property {number} totalDuration    timestamp of the last processed tick (ms)

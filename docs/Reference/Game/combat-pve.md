@@ -546,11 +546,13 @@ is not wound-reduced and emits no event (`L1091814-1091839`, `L1092451-1092476`)
 
 ### §10.5 Other spell effects
 
-Debuff-type spells apply SLOW / WOUND / CRIT_DOWN via `applyDebuff`; damage
-spells can also apply paralyze / silence / fear / blind (`paralyzeMs`,
-`silenceMs`, `fearMs`, `blinds`) and a bleed/poison debuff
-(`debuff.damagePerTickPercent`); selfHealPercent heals the caster for a share of
-the damage. A DoT damage tick is `floor(attack * attackPercent/100)` whenever `attackPercent`
+DoT DAMAGE spells (`isDoT`) apply SLOW / WOUND / CRIT_DOWN at cast from their `slow`,
+`wound` and `critDown` fields (duration `durationMs`, 1 stack; `L1092079-1092190`). Direct
+damage spells can also apply paralyze / silence / fear via `paralyzeMs`, `silenceMs` and `fearMs`
+(`L1092042-1092077`). Blind is `blindOnTick`, checked on each DoT tick (`L1091236`); there is no
+`blinds` field. DEBUFF spells push `{type: debuffType, config: spell.debuff}` (`L1091685-1091700`);
+the debuffType is WOUND, BLEED or POISON, and the bleed/poison tick uses
+`debuff.damagePerTickPercent`. selfHealPercent heals the caster for a share of the damage. A DoT damage tick is `floor(attack * attackPercent/100)` whenever `attackPercent`
 is set, `damagePerTick` otherwise, with its own crit roll per tick; the first tick lands on the
 tick after the cast (`L1091150-1091172`). Transform spells ("Chrono Flux") fire when `flux` reaches the max
 (`CHRONO_FLUX.MAX`, `L1089079-1089104`). Per-spell numbers `see sigils.md`. The transform's

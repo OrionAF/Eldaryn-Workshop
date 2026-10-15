@@ -162,7 +162,8 @@ while a.hp > 0 and d.hp > 0 and t < horizon:
     paralyzedMs, silencedMs, fearedMs  -= 10 (floor 0) on both        // L1456166-1456265
     cast attacker spells, then defender spells   (processArenaSpells) // L1456306-1456420
         (caster heal cap = buffed max HP incl. the caster's Bulwark hpPercent, L1456266-1456320)
-    clamp each hp to its buffed max (maxHp + buff + Bulwark hpPercent)  // L1456416-1456486
+    if a side's stack is active and its selfModifiers().hpPercent > 0: clamp that side's hp to
+        its buffed max (maxHp + buff + Bulwark hpPercent)  // L1456416-1456465; otherwise no clamp here
     tick attacker-held debuffs on defender and vice versa (DoTs)      // L1456488-1456788
     if a.hp <= 0 or d.hp <= 0: end fight                              // L1456790-1456796 (no swings this tick)
     apply timed buffs; compute regen with debuff reductions           // L1456797-1456888
@@ -418,14 +419,16 @@ Catalogue numbers `see sigils.md` (values in `data/combat-pvp.json`
 
 | Sigil | Gains a stack when | Loses | Effect |
 |---|---|---|---|
-| Bulwark of Thorns (Warrior) | its owner's **`block`**-labelled avoid | 1 per unblocked hit taken | per stack +8 % max HP, +4 % DR, +7 % thorns (max 8) `L1069204` |
+| Bulwark of Thorns (Warrior) | its owner's **`block`**- or **`miss`**-labelled avoid | 1 per unblocked hit taken | per stack +8 % max HP, +4 % DR, +7 % thorns (max 8) `L1069204` |
 | Elusive Supremacy (Sentinel) | its owner's **`miss`**-labelled avoid, or an enemy swing wasted by Blind | 2 per unblocked hit | per stack +3 % Attack, Crit, Lifesteal, Attack Speed `L1069436` |
 | Sunder Mark (Warrior) | each hit **it lands** | decays 1.75/s | per stack target loses 4 % DR, Block, Miss, Blind `L1069223` |
 | Siegebreaker Mark (Sentinel) | each hit it lands | decays 1.75/s | per stack target loses 3 % HP Regen, 3 % Block, 4 % Miss, 4 % Blind `L1069455` |
 | Druid Bear / Wolf | as Bulwark (4 % HP, 2 % DR, 5 % thorns, -2 per hit) / as Siegebreaker | | `L1070141-1070167` |
 
-- Bulwark/Elusive trigger on **event labels** (§6): a defender with any Miss
-  stat never gains Bulwark stacks from avoids. **[DERIVED]**.
+- Bulwark/Elusive trigger on **event labels** (§6). A Bulwark avoid counts whether it is labelled
+  block or miss, because both call `blockReflect` (`L1455048-1455098`, `bulwarkOnBlock`
+  `L1080043-1080062`) **[CODE]**. A defender with a Miss stat therefore gains Bulwark stacks from
+  its avoids.
 - Target-debuff stacks (Sunder/Siegebreaker) are applied to the defender's
   stats **only for the duration of that swing** and restored after
   (`applyStackToTarget` `L1454739-1454814`; module-3958 side `applySunderToTarget` `L1079741-1079784`, `createStackCombat` `L1079785-1080125`); Elusive/Bulwark DR are applied to
