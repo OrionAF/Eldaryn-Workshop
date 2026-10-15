@@ -174,16 +174,30 @@ const BUFF_FIELD = {
   HP_REGEN: 'hpRegen', HP_PERCENT: 'hpPercent', PENETRATION: 'penetration', SPELL_RESIST: 'spellResist',
 };
 
+// BUFF_FIELD as a Map: one lookup per effect per tick instead of hasOwn plus a property read
+const BUFF_FIELD_OF = new Map(Object.entries(BUFF_FIELD));
+
 // port of computeActiveBuffModifiers L1090093-1090362: sums the effects of every active BUFF /
 // TRANSFORM runtime (a transform's resolved effects win over its catalogue effects). No ceilings
 // here; applyBuffsToEntity applies them.
 export function computeActiveBuffModifiers(runtimes) {
-  const out = { ...EMPTY_BUFF_MODIFIERS };
-  for (const rt of runtimes) {
+  // a literal in EMPTY_BUFF_MODIFIERS key order (a spread of the frozen object is slow per tick)
+  const out = {
+    attackPercent: 0, attackSpeed: 0, lifesteal: 0, blockChance: 0, missChance: 0, blindChance: 0,
+    critChance: 0, critDamage: 0, damageReduction: 0, hpRegen: 0, hpPercent: 0, penetration: 0,
+    spellResist: 0,
+  };
+  for (let i = 0; i < runtimes.length; i++) {
+    const rt = runtimes[i];
     if (!rt.isEffectActive || !isBuffLikeSpell(rt.config.spell.spellType)) continue;
-    for (const e of rt.transformEffects ?? rt.config.spell.effects) {
+    const effects = rt.transformEffects ?? rt.config.spell.effects;
+    for (let j = 0; j < effects.length; j++) {
+      const e = effects[j];
       if (e.stat === 'SOUL_LINK') out.soulLink = (out.soulLink ?? 0) + e.value;
-      else if (Object.hasOwn(BUFF_FIELD, e.stat)) out[BUFF_FIELD[e.stat]] += e.value;
+      else {
+        const field = BUFF_FIELD_OF.get(e.stat);
+        if (field !== undefined) out[field] += e.value;
+      }
     }
   }
   return out;
@@ -261,6 +275,48 @@ const SPELL_RESIST_HARD = capConfig('SPELL_RESIST').hard;
  * @property {number} [ownerMomentumStacks]  only when a momentum spell is equipped
  */
 
+// The cast switch of processSpellsTick acts only on these types; any other idle runtime is a no-op.
+const castsSomething = (t) => t === 'DAMAGE' || t === 'BUFF' || t === 'HEAL' || t === 'DEBUFF';
+
+// The common tick where nothing fires: every idle castable spell is still cooling down after this tick's
+// countdown, and every running effect is a plain timed effect that neither ticks nor ends this tick.
+// processSpellsTick would then only count the timers down and return its empty result. This does the
+// same (same mutations, same result shape and key order) without building the full pass; null when any
+// runtime has work to do (nothing is mutated then).
+function quietSpellsTick(runtimes, dtMs, minionAlive) {
+  let hasMomentum = false;
+  for (let i = 0; i < runtimes.length; i++) {
+    const rt = runtimes[i];
+    const spell = rt.config.spell;
+    if (rt.isEffectActive) {
+      // the active-effect block of processSpellsTick, reduced to "does anything happen"
+      const empower = spell.minionEmpower != null;
+      if ((empower || spell.minionFrenzy != null) && !minionAlive) return null;
+      if (!(rt.effectRemaining - dtMs > 0)) return null;
+      const due = rt.nextTickIn - dtMs <= 0;
+      if (due && ((spell.spellType === 'DAMAGE' && spell.isDoT) || spell.spellType === 'HEAL' || empower)) return null;
+    } else if (castsSomething(spell.spellType)
+      && (!(rt.cooldownRemaining > 0) || !(Math.max(0, rt.cooldownRemaining - dtMs) > 0))) {
+      return null;
+    }
+    if (!hasMomentum && momentumConfig(spell) !== null) hasMomentum = true;
+  }
+  for (let i = 0; i < runtimes.length; i++) {
+    const rt = runtimes[i];
+    if (rt.cooldownRemaining > 0) rt.cooldownRemaining = Math.max(0, rt.cooldownRemaining - dtMs);
+    if (rt.isEffectActive) {
+      rt.nextTickIn -= dtMs;
+      rt.effectRemaining -= dtMs;
+    }
+  }
+  const out = {
+    ownerHpDelta: 0, ownerVampHeal: 0, targetHpDelta: 0, events: [],
+    buffModifiers: computeActiveBuffModifiers(runtimes), newDebuffs: undefined,
+  };
+  if (hasMomentum) out.ownerMomentumStacks = momentumStackCount(runtimes) ?? 0;
+  return out;
+}
+
 // port of processSpellsTick L1090474-1092344
 /**
  * One tick of the spell pass. Mutates `runtimes`. rng draws: one per spell crit roll, and only
@@ -271,6 +327,8 @@ const SPELL_RESIST_HARD = capConfig('SPELL_RESIST').hard;
  * @returns {SpellTickResult}
  */
 export function processSpellsTick(runtimes, input, rng) {
+  const quiet = quietSpellsTick(runtimes, input.dtMs, input.minionAlive);
+  if (quiet) return quiet;
   const {
     maxHp, dtMs, timestamp, attack = 0, healReductionPercent = 0, hp = 0, enemyHp = 0, enemyMaxHp = 0,
     offensiveConditions = false, selfConditionsMet = false, silencedMs = 0, healBaseMaxHp = 0,
@@ -293,7 +351,10 @@ export function processSpellsTick(runtimes, input, rng) {
     }
     return sum;
   };
-  const hasMomentum = runtimes.some((rt) => momentumConfig(rt.config.spell) !== null);
+  let hasMomentum = false;
+  for (let i = 0; i < runtimes.length && !hasMomentum; i++) {
+    hasMomentum = momentumConfig(runtimes[i].config.spell) !== null;
+  }
   const mom = () => (hasMomentum ? momentumBonuses(runtimes) ?? ZERO_MOMENTUM : ZERO_MOMENTUM);
   const resistMult = 1 - Math.min(targetSpellResist, SPELL_RESIST_HARD) / 100;
 
@@ -363,10 +424,14 @@ export function processSpellsTick(runtimes, input, rng) {
     source: spellRef,
   });
 
-  for (const rt of runtimes) {
+  for (let i = 0; i < runtimes.length; i++) {
+    const rt = runtimes[i];
+    if (rt.cooldownRemaining > 0) rt.cooldownRemaining = Math.max(0, rt.cooldownRemaining - dtMs);
+    // idle and cooling down (or a type that casts nothing): no effect ticks, and every cast path below
+    // needs cooldownRemaining <= 0 and a castable type
+    if (!rt.isEffectActive && (rt.cooldownRemaining > 0 || !castsSomething(rt.config.spell.spellType))) continue;
     const spellRef = { name: rt.config.name, icon: rt.config.icon, species: rt.config.species };
     const spell = rt.config.spell;
-    if (rt.cooldownRemaining > 0) rt.cooldownRemaining = Math.max(0, rt.cooldownRemaining - dtMs);
 
     // --- active effect (L1091117-1091454) ---
     if (rt.isEffectActive) {
@@ -576,31 +641,53 @@ export function triggerTransformSpell(runtimes, timestamp, hp = 0, maxHp = 0, sh
 }
 
 // port of hasPendingTransform L1092524-1092548: an idle TRANSFORM runtime exists
-export const hasPendingTransform = (runtimes) =>
-  runtimes.some((rt) => rt.config.spell.spellType === 'TRANSFORM' && !rt.isEffectActive);
+export function hasPendingTransform(runtimes) {
+  for (let i = 0; i < runtimes.length; i++) {
+    const rt = runtimes[i];
+    if (rt.config.spell.spellType === 'TRANSFORM' && !rt.isEffectActive) return true;
+  }
+  return false;
+}
 
 // port of isTransformActive L1092550-1092573
-export const isTransformActive = (runtimes) =>
-  runtimes.some((rt) => rt.config.spell.spellType === 'TRANSFORM' && rt.isEffectActive);
+export function isTransformActive(runtimes) {
+  for (let i = 0; i < runtimes.length; i++) {
+    const rt = runtimes[i];
+    if (rt.config.spell.spellType === 'TRANSFORM' && rt.isEffectActive) return true;
+  }
+  return false;
+}
 
 // port of transformFireCount L1092575-1092611
 export function transformFireCount(runtimes) {
   let n = 0;
-  for (const rt of runtimes) if (rt.config.spell.spellType === 'TRANSFORM') n += rt.transformFires;
+  for (let i = 0; i < runtimes.length; i++) {
+    const rt = runtimes[i];
+    if (rt.config.spell.spellType === 'TRANSFORM') n += rt.transformFires;
+  }
   return n;
 }
 
 // port of hasActiveEffects L1092614-1092624
-export const hasActiveEffects = (runtimes) => runtimes.some((rt) => rt.isEffectActive);
+export function hasActiveEffects(runtimes) {
+  for (let i = 0; i < runtimes.length; i++) if (runtimes[i].isEffectActive) return true;
+  return false;
+}
 
 // port of isSpellBuffActive L1092626-1092648
-export const isSpellBuffActive = (runtimes, species) =>
-  runtimes.some((rt) => rt.isEffectActive && rt.config.species === species);
+export function isSpellBuffActive(runtimes, species) {
+  for (let i = 0; i < runtimes.length; i++) {
+    const rt = runtimes[i];
+    if (rt.isEffectActive && rt.config.species === species) return true;
+  }
+  return false;
+}
 
 // port of activeBuffThornsPercent L1092650-1092699: Iron Bastion style thorns from active buffs
 export function activeBuffThornsPercent(runtimes) {
   let sum = 0;
-  for (const rt of runtimes) {
+  for (let i = 0; i < runtimes.length; i++) {
+    const rt = runtimes[i];
     if (!rt.isEffectActive || !isBuffLikeSpell(rt.config.spell.spellType)) continue;
     if (rt.config.spell.thornsPercent) sum += rt.config.spell.thornsPercent;
   }

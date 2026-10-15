@@ -4,7 +4,9 @@
 /** Hash any mix of strings/numbers to one uint32 seed (FNV-1a over the joined parts, then avalanche). */
 export function hashSeed(...parts) {
   let h = 0x811c9dc5;
-  const s = parts.map((p) => String(p)).join('\u001f');
+  // the joined string of the parts, built without the map/join arrays (hot: one call per fight and lane)
+  let s = parts.length > 0 ? String(parts[0]) : '';
+  for (let i = 1; i < parts.length; i++) s += '\u001f' + String(parts[i]);
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i);
     h = Math.imul(h, 0x01000193);
