@@ -21,6 +21,14 @@ const edit = (fn, cls = 'WARRIOR') => {
   fn(raw);
   return normaliseCharacter(raw);
 };
+/**
+ * Two weak extra minors, so two non-dominated full rows (3 sockets) stay close to the baseline. Glyph dominance
+ * prunes twins and strictly worse swaps, so a near-equal row has to be a trade between different stats.
+ */
+const addNearEqualGlyphs = (raw) => {
+  raw.glyphs.push({ id: 'gl-9', glyphType: 'g-swift', rarity: 'Common', secondary: { stat: 'doubleHit', quality: 0 } });
+  raw.glyphs.push({ id: 'gl-8', glyphType: 'g-keen', rarity: 'Common', secondary: { stat: 'critDamage', quality: 0 } });
+};
 const relicless = () => edit((raw) => { raw.presets[0].relicIds = []; });
 /** A result without its wall-clock fields (everything else is a function of the request). */
 const timeless = (r) => ({ ...r, stats: { ...r.stats, ms: 0 }, phases: r.phases.map((p) => ({ ...p, ms: 0 })) });
@@ -82,7 +90,7 @@ describe('optimize: contract', { timeout: 120000 }, () => {
 describe('optimize: changes are the effect oracle\'s, never describe-line diffs (#65, #72)', { timeout: 120000 }, () => {
   it('a minor-glyph-only swap is listed as a glyph socket change', async () => {
     const character = edit((raw) => {
-      raw.glyphs.push({ id: 'gl-9', glyphType: 'g-keen', rarity: 'Legendary', secondary: { stat: 'attackPercent', quality: 1 } });
+      addNearEqualGlyphs(raw);
     });
     const r = await optimize({ character, presetId: 'p1', target: SHORT, space: only('minorGlyphs'), effort: TINY, seed: 1 });
     expect(r.rows.length).toBeGreaterThan(0);
@@ -115,13 +123,13 @@ describe('optimize: changes are the effect oracle\'s, never describe-line diffs 
 
 describe('optimize: too close to call (A.8, A.9)', { timeout: 120000 }, () => {
   const character = edit((raw) => {
-    raw.glyphs.push({ id: 'gl-9', glyphType: 'g-keen', rarity: 'Legendary', secondary: { stat: 'attackPercent', quality: 1 } });
+    addNearEqualGlyphs(raw);
   });
   // δ = 0: no arm is futile or equivalent (A5), so near-equal glyphs stay open to maxN
   const req = { character, presetId: 'p1', target: SHORT, space: only('minorGlyphs'), effort: { ...TINY, delta: 0 } };
 
   it('a row still open at maxN is unresolved, offers Run more and sits in tie group 0', async () => {
-    const r = await optimize({ ...req, seed: 2 });
+    const r = await optimize({ ...req, seed: 3 });
     const open = r.rows.filter((row) => row.vsBaseline.verdict === 'unresolved');
     expect(open.length).toBeGreaterThan(0);
     for (const row of open) {
@@ -137,7 +145,7 @@ describe('optimize: too close to call (A.8, A.9)', { timeout: 120000 }, () => {
   });
 
   it('a change dropped while unresolved at maxN is listed as a warning', async () => {
-    const r = await optimize({ ...req, seed: 1 });
+    const r = await optimize({ ...req, seed: 3 });
     const w = r.warnings.filter((x) => x.code === 'change-dropped-unresolved');
     expect(w.length).toBeGreaterThan(0);
     expect(w[0].message).toMatch(new RegExp(`too close to call at ${TINY.maxN} fights`));
@@ -305,9 +313,9 @@ describe('optimizeMore', { timeout: 120000 }, () => {
 
   it('re-ranks and re-groups the rows on their latest data', async () => {
     const character = edit((raw) => {
-      raw.glyphs.push({ id: 'gl-9', glyphType: 'g-keen', rarity: 'Legendary', secondary: { stat: 'attackPercent', quality: 1 } });
+      addNearEqualGlyphs(raw);
     });
-    const r = await optimize({ character, presetId: 'p1', target: SHORT, space: only('minorGlyphs'), effort: { ...TINY, delta: 0 }, seed: 2 });
+    const r = await optimize({ character, presetId: 'p1', target: SHORT, space: only('minorGlyphs'), effort: { ...TINY, delta: 0 }, seed: 3 });
     expect(r.rows.map((x) => x.vsBaseline.verdict)).toEqual(['better', 'unresolved']);
     // a result whose order and groups are stale: the rows reversed, a bogus shared group
     const stale = { ...r, rows: [...r.rows].reverse().map((x, i) => ({ ...x, rank: i + 1, tieGroup: 7 })) };

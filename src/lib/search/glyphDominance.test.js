@@ -4,6 +4,7 @@ import { subsetsUpTo } from './combinatorics.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { normaliseCharacter } from '../model/index.js';
 import { glyphSecondaryValue } from '../model/glyphs.js';
+import { MAJOR_GLYPHS } from '../game/mountsGlyphs.js';
 
 const block = (space, id) => space.blocks.find((b) => b.id === id);
 // Legendary minors roll in quality [0.8, 1]; the value is whatever glyphSecondaryValue makes of it
@@ -138,5 +139,61 @@ describe('major glyph dominance', () => {
     const space = createBuildSpace(normaliseCharacter(raw), 'p1');
     const used = new Set(block(space, 'majorGlyphs').domain(space.start).flatMap((a) => (a.mountGlyphs?.major ?? ['gl-3']).filter(Boolean)));
     expect(used.has('aa')).toBe(false);
+  });
+});
+
+describe('glyph dominance edge cases', () => {
+  it('the baseline row stays as it is when partial or holding a dominated glyph, and the swap to its dominator is offered', () => {
+    const c = withGlyphs(SPEED, ['s5', null, null]);
+    const space = createBuildSpace(c, 'p1');
+    expect(space.start.mountGlyphs ?? null).toBeNull(); // untouched: the saved sockets still hold s5
+    const arms = block(space, 'minorGlyphs').domain(space.start);
+    expect(arms.length).toBeGreaterThan(0);
+    for (const a of arms) expect(minorsOf(space, a)).not.toContain('s5');
+    expect(arms.some((a) => minorsOf(space, a).includes('s11'))).toBe(true);
+  });
+
+  it('a glyph socketed in a major socket is not reused as a minor (types are tiered, so a major never has a secondary)', () => {
+    const raw = JSON.parse(JSON.stringify(fixtureCharacter('WARRIOR')));
+    raw.glyphs.push(minor('s11', 'attackSpeed', 1), minor('s10', 'attackSpeed', 0.9), minor('c1', 'critChance', 0.9));
+    const c = normaliseCharacter(raw);
+    expect(c.mounts[0].glyphs.major).toContain('gl-3');
+    const rows = minorRowsFor(c, c.mounts[0].glyphs);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) expect(r).not.toContain('gl-3');
+  });
+
+  it('rows are per mount: the same inventory glyph may sit on several mounts', () => {
+    const raw = JSON.parse(JSON.stringify(fixtureCharacter('WARRIOR')));
+    raw.glyphs = [minor('s11', 'attackSpeed', 1), minor('c1', 'critChance', 0.9), minor('h1', 'healthPercent', 0.9)];
+    raw.mounts.push({ ...raw.mounts[0], id: 'mount-b', glyphs: { minor: [null, null, null], major: [null, null], mythic: [null] } });
+    raw.mounts[0].glyphs = { minor: ['s11', 'c1', 'h1'], major: [null, null], mythic: [null] };
+    const c = normaliseCharacter(raw);
+    const mountB = c.mounts.find((m) => m.id === 'mount-b');
+    expect(minorRowsFor(c, mountB.glyphs).map((r) => [...r].sort())).toEqual([['c1', 'h1', 's11']]);
+    const space = createBuildSpace(c, 'p1');
+    const onB = block(space, 'minorGlyphs').domain({ ...space.start, mountId: 'mount-b', mountGlyphs: null });
+    expect(onB.length).toBeGreaterThan(0);
+  });
+});
+
+describe('major glyph tables are monotone in the player\'s favour (rarity index 0..4)', () => {
+  // Direction per field from mounts-glyphs.md §10: SUNDER_DECAY takes the min (lower decay is better); the
+  // ELUSIVE burn override is null (no override) below Epic, then 1 (stack loss capped, better than none).
+  const LOWER_IS_BETTER = new Set(['SUNDER_DECAY.decaypersecond']);
+  it('every field is non-decreasing (non-increasing where lower is better) and has five entries', () => {
+    const bad = [];
+    for (const g of MAJOR_GLYPHS) {
+      for (const [field, values] of Object.entries(g.perRarity)) {
+        const key = `${g.effectKind}.${field}`;
+        if (values.length !== 5) bad.push(`${g.id} ${key}: ${values.length} entries`);
+        const set = values.filter((v) => v != null);
+        const firstSet = values.findIndex((v) => v != null);
+        if (values.slice(firstSet).some((v) => v == null)) bad.push(`${g.id} ${key}: null after a value`);
+        const lower = LOWER_IS_BETTER.has(key);
+        for (let i = 1; i < set.length; i++) if (lower ? set[i] > set[i - 1] : set[i] < set[i - 1]) bad.push(`${g.id} ${key}: ${values.join()}`);
+      }
+    }
+    expect(bad).toEqual([]);
   });
 });

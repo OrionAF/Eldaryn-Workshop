@@ -174,7 +174,8 @@ value of the block given the rest of `c` (legalised, canonical, without `c` itse
      "usable" means unsealed with a rolled secondary (a glyph without one adds nothing, like an empty socket);
   4. majors: per glyph type only the best unsealed instance (rarity ladder; every perRarity table of
      Game/mounts-glyphs.md §10 improves with rarity: cooldown, damage, thorns, stacks and CC grow, decay
-     and the Elusive stack loss shrink, which is the better direction) and `activeMajorGlyphs` already keeps
+     and the Elusive stack loss shrink, which is the better direction; the Elusive override is absent
+     below Epic and 1 from Epic, also better; `glyphDominance.test.js` checks every table of the catalogue) and `activeMajorGlyphs` already keeps
      only the highest rarity of a type; of equal rarity the socketed instance, else the lowest id. The
      one-per-type, sealed and inert-major rules stay. Major rows still allow empty sockets;
   5. the same domains serve the compound mount block's inner socket ascent and the spec block's.
