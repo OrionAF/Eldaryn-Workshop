@@ -479,7 +479,7 @@ it('S2: shows the run-time estimate under Effort, or a link to calibrate', () =>
   view = null;
   setEstimatePrefs({ calibration: { profile: 'balanced', workers: 4, fightsPerSec: { dummy: 100, dungeon: 100, duel: 100 }, measuredAt: Date.now(), version: ESTIMATE_VERSION } });
   mountPage();
-  expect(view.q('[data-testid="run-estimate"]').textContent).toMatch(/About .* on this device \(estimate\)/);
+  expect(view.q('[data-testid="run-estimate"]').textContent).toMatch(/At least about .* on this device \(estimate\)/);
   localStorage.clear();
   resetEstimatePrefs();
 });
