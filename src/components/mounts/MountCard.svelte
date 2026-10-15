@@ -15,9 +15,11 @@
   import StarRating from '../StarRating.svelte';
   import Slider from '../Slider.svelte';
   import ConfirmButton from '../ConfirmButton.svelte';
+  import NumberField from '../ui/NumberField.svelte';
+  import PresetMenu from '../character/PresetMenu.svelte';
   import { SOCKET_LAYOUT, TIER_LABELS, glyphText, rarityClass } from './mountsView.js';
 
-  let { mount, glyphs = [], riddenBy = [], activePresetName = null, ridingActive = false, onPatch, onRide, onSocket, onRemove } = $props();
+  let { mount, glyphs = [], presets = [], onPatch, onRide, onSocket, onRemove } = $props();
 
   const species = $derived(mountBySpecies(mount.species));
   const bounds = $derived(mountRollBounds(mount.species));
@@ -25,6 +27,8 @@
   const atkRange = $derived([Math.min(bounds.atk[0], mount.baseAtk), Math.max(bounds.atk[1], mount.baseAtk)]);
   const effective = $derived(mountEffectiveStats(mount));
   const art = $derived(mountImage(mount.species));
+  const riddenBy = $derived(presets.filter((p) => p.mountId === mount.id).map((p) => p.name));
+  const rideItems = $derived(presets.map((p) => ({ id: p.id, label: p.name, checked: p.mountId === mount.id, meta: p.mountId && p.mountId !== mount.id ? 'rides another' : '' })));
   const glyphById = $derived(new Map(glyphs.map((g) => [g.id, g])));
 
   const slots = $derived(
@@ -53,7 +57,7 @@
   />
 
   <div class="stat-block">
-    <span class="stat-label">Base Health: <span class="stat-num">{mount.baseHp}</span>%</span>
+    <NumberField label="Base Health" value={mount.baseHp} min={0} unit="%" onchange={(v) => onPatch({ baseHp: Math.round(v) })} />
     <div class="slider-row">
       <span class="bound">{hpRange[0]}</span>
       <Slider min={hpRange[0]} max={hpRange[1]} step={1} value={mount.baseHp} ariaLabel="{species?.name} base health percent" oninput={(v) => onPatch({ baseHp: v })} />
@@ -61,7 +65,7 @@
     </div>
   </div>
   <div class="stat-block">
-    <span class="stat-label">Base Attack: <span class="stat-num">{mount.baseAtk}</span>%</span>
+    <NumberField label="Base Attack" value={mount.baseAtk} min={0} unit="%" onchange={(v) => onPatch({ baseAtk: Math.round(v) })} />
     <div class="slider-row">
       <span class="bound">{atkRange[0]}</span>
       <Slider min={atkRange[0]} max={atkRange[1]} step={1} value={mount.baseAtk} ariaLabel="{species?.name} base attack percent" oninput={(v) => onPatch({ baseAtk: v })} />
@@ -92,15 +96,11 @@
     {/each}
   </div>
 
+  <p class="ridden-by" data-testid="ridden-in">Ridden in: {riddenBy.length ? riddenBy.join(', ') : 'no preset'}</p>
   <div class="card-foot">
-    <button type="button" class="btn-ghost ride" aria-pressed={ridingActive} disabled={!activePresetName} onclick={onRide}>
-      {ridingActive ? `Riding (${activePresetName})` : activePresetName ? `Ride with ${activePresetName}` : 'No preset'}
-    </button>
+    <PresetMenu label="Ridden in" items={rideItems} onselect={(id) => onRide(id)} />
     <ConfirmButton class="btn-danger" label="Remove" confirmLabel="Confirm remove" onConfirm={onRemove} />
   </div>
-  {#if riddenBy.length > 0}
-    <p class="ridden-by">Used by: {riddenBy.join(', ')}</p>
-  {/if}
 </div>
 
 <style>
@@ -159,7 +159,7 @@
     gap: var(--space-1);
     justify-content: center;
     padding-top: var(--space-2);
-    border-top: 1px solid var(--color-border-hairline);
+    border-top: 2px solid var(--frame-mount);
   }
   .socket {
     width: 32px;

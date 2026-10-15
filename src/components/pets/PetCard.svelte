@@ -16,6 +16,7 @@
   import { rarityClass, formatFlat, formatPct } from '../../lib/format.js';
   import Slider from '../Slider.svelte';
   import ConfirmButton from '../ConfirmButton.svelte';
+  import NumberField from '../ui/NumberField.svelte';
 
   let { pet, species = [], types = [], evolved = false, altarLevel = null, altarTier = 1, usedBy = [], editing = false, onSpecies, onType, onValue, onDropSecondary, onToggleEdit, onRemove } = $props();
 
@@ -63,13 +64,17 @@
           <select value={sec.type} aria-label="Secondary stat {i + 1}" onchange={(e) => onType(i, e.target.value)}>
             {#each choices(sec.type) as t (t)}<option value={t}>{label(t)}</option>{/each}
           </select>
-          {#if range.manual}
-            <input class="sec-manual" type="text" inputmode="decimal" value={formatPct(sec.value)} aria-label="{label(sec.type)} value"
-              onchange={(e) => onValue(i, e.target.value.replace(',', '.'))} />
-          {:else}
+          <NumberField
+            label="{label(sec.type)} value"
+            value={sec.value}
+            min={range.min}
+            unit="%"
+            onchange={(v) => onValue(i, v)}
+          />
+          {#if !range.manual}
             <div class="sec-slider">
-              <Slider min={range.min} max={range.max} step={range.step} value={sec.value} ariaLabel="{label(sec.type)} value" oninput={(v) => onValue(i, v)} />
-              <span class="sec-value">{formatPct(sec.value)}</span>
+              <Slider min={range.min} max={range.max} step={range.step} value={sec.value} ariaLabel="{label(sec.type)} slider" oninput={(v) => onValue(i, v)} />
+              <span class="sec-range">{formatPct(range.min)}-{formatPct(range.max)}</span>
             </div>
           {/if}
           <button type="button" class="drop-sec" aria-label="Remove secondary {i + 1}" onclick={() => onDropSecondary(i)}>×</button>
@@ -109,8 +114,7 @@
   .sec-edit select { width: 100%; font-size: 11.5px; }
   .sec-slider { display: flex; align-items: center; gap: 4px; }
   .sec-slider :global(.slider) { flex: 1; min-width: 0; }
-  .sec-manual { width: 100%; font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 11.5px; }
-  .sec-value { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 11px; color: var(--color-soft); min-width: 40px; text-align: right; }
+  .sec-range { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 11px; color: var(--color-soft); text-align: right; white-space: nowrap; }
   .drop-sec { position: absolute; top: 0; right: 0; background: none; border: none; color: var(--color-muted); cursor: pointer; font-size: 13px; line-height: 1; padding: 2px 4px; }
   .drop-sec:hover { color: var(--color-danger); }
   .sec-line { margin: 0; display: flex; justify-content: space-between; gap: var(--space-2); font-size: 11.5px; }
