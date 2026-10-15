@@ -137,7 +137,10 @@ describe('major glyph dominance', () => {
     const raw = JSON.parse(JSON.stringify(c));
     raw.mounts[0].glyphs.major = ['gl-3', null];
     const space = createBuildSpace(normaliseCharacter(raw), 'p1');
-    const used = new Set(block(space, 'majorGlyphs').domain(space.start).flatMap((a) => (a.mountGlyphs?.major ?? ['gl-3']).filter(Boolean)));
+    const arms = block(space, 'majorGlyphs').domain(space.start);
+    expect(arms.length).toBeGreaterThan(0);
+    // the socketed gl-3 is the baseline (not an arm); the only arm drops it, and the twin 'aa' is never offered
+    const used = new Set(arms.flatMap((a) => (a.mountGlyphs?.major ?? []).filter(Boolean)));
     expect(used.has('aa')).toBe(false);
   });
 });
