@@ -331,3 +331,19 @@ stored or committed; only the mapped fields below survive, and `normaliseCharact
 **One glyph, several mounts.** The game lets one glyph id sit in the sockets of more than one mount and
 the server counts it for the ridden mount (`Game/mounts-glyphs.md` §8). The v2 model allows the same
 glyph id on several mounts (once per mount), so the import keeps the real ids.
+
+### 7.1 Kinds, the report, and "Update <name>"
+
+`importPlan.js` `planImport(text, roster)` is the dry run behind the import dialog (G3) and writes nothing.
+It detects the kind (profile, roster backup, fight log, loot bag; anything else is a specific `ImportError`)
+and, for a profile, reports the M1/M2/M3 entries above plus `dropped` entries (profile collections whose
+members the catalogue or the class rules did not keep: stones, mounts, glyphs, pets, sigils, relics,
+transcendence presets) and `defaulted` entries (item quality). A loot bag or fight log is handed to
+Drop Check or the replay check (`importFlow.svelte.js` `takeHandoff`); it never touches the roster.
+
+`model/merge.js` `mergeProfileIntoCharacter(existing, incoming)` brings a profile into an existing
+character: everything the game owns is replaced, and `KEPT_ON_UPDATE` (id, name, presets and the active
+preset, base residual, opponents, runs, drop) is kept, then the result is normalised so a preset
+reference the new data no longer holds is repaired. The profile's sheet goes to the active preset.
+`rosterStore.updateCharacterFromProfile` returns the character as it was; `restoreCharacter` is the
+one-step undo (kept in memory only, so a reload ends it).

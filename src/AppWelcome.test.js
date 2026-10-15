@@ -1,4 +1,4 @@
-import { it, expect } from 'vitest';
+import { it, expect, vi } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import App from './App.svelte';
 import { rosterStore } from './lib/rosterStore.svelte.js';
@@ -56,4 +56,63 @@ it('#/welcome with characters present redirects to Presets', async () => {
   expect(location.hash).toBe('#/builds/presets');
   unmount(app);
   target.remove();
+});
+
+async function mountWelcome() {
+  localStorage.clear();
+  rosterStore.roster.characters.splice(0);
+  history.replaceState(null, '', '#/welcome');
+  syncRouter();
+  const target = document.createElement('div');
+  document.body.appendChild(target);
+  const app = mount(App, { target });
+  flushSync();
+  return { target, done: () => (unmount(app), target.remove()) };
+}
+
+it('Welcome: the start button says what is missing while disabled, and the level is optional', async () => {
+  const { target, done } = await mountWelcome();
+  const submit = () => target.querySelector('form button[type="submit"]');
+  expect(submit().textContent.trim()).toBe('Add a name and a class');
+  expect(submit().disabled || submit().getAttribute('aria-disabled') === 'true').toBe(true);
+  const name = target.querySelector('form input[type="text"]');
+  name.value = 'Lvl';
+  name.dispatchEvent(new Event('input', { bubbles: true }));
+  flushSync();
+  expect(submit().textContent.trim()).toBe('Add a class');
+  const cls = target.querySelector('form select');
+  cls.value = 'WARRIOR';
+  cls.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+  expect(submit().textContent.trim()).toBe('Get started');
+  done();
+});
+
+it('Welcome: junk shows the reason and creates nothing; a profile is reported before anything is written', async () => {
+  const { target, done } = await mountWelcome();
+  const dropzoneInput = target.querySelector('dialog input[type="file"]');
+  const send = (text) => {
+    Object.defineProperty(dropzoneInput, 'files', { value: [new File([text], 'x.json')], configurable: true });
+    dropzoneInput.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  send('{"hello": 1}');
+  await vi.waitFor(() => {
+    flushSync();
+    expect(target.querySelector('dialog [role="alert"]').textContent).toContain('Valid JSON, but not a roster backup');
+  });
+  expect(rosterStore.roster.characters).toHaveLength(0);
+  send(JSON.stringify({ player: { name: 'Hero', class: 'WARRIOR', level: 10 }, equipment: {} }));
+  await vi.waitFor(() => {
+    flushSync();
+    expect(target.querySelector('dialog .report')).not.toBeNull();
+  });
+  expect(rosterStore.roster.characters).toHaveLength(0);
+  const create = [...target.querySelectorAll('dialog button')].find((b) => b.textContent.trim() === 'Create character');
+  create.click();
+  flushSync();
+  await tick();
+  flushSync();
+  expect(rosterStore.current.name).toBe('Hero');
+  expect(target.querySelector('h1').textContent).toBe('Overview');
+  done();
 });

@@ -6,11 +6,19 @@
    * stat sheets of the duel on screen.
    */
   import { replayCheck } from '../../lib/engine/pvp/replayCheck.js';
+  import { untrack } from 'svelte';
+  import { importFlow, takeHandoff } from '../../lib/importFlow.svelte.js';
 
   /** @type {{attacker?: Object|null, defender?: Object|null}} */
   let { attacker = null, defender = null } = $props();
 
-  let text = $state('');
+  let text = $state(takeHandoff('fightLog') ?? ''); // a fight log read by the import dialog (G3) arrives once
+  // Also reactive: importing a fight log while the Duel page is open does not remount this.
+  $effect(() => {
+    importFlow.handoffSeq;
+    const t = untrack(() => takeHandoff('fightLog'));
+    if (t) text = t;
+  });
   let useFighters = $state(false);
   let report = $state(null);
   let error = $state('');
@@ -40,7 +48,7 @@
   }
 </script>
 
-<details class="replay" data-testid="replay-check">
+<details class="replay" data-testid="replay-check" open={text !== ''}>
   <summary class="micro-label">Check an exported /arena/fight log (optional)</summary>
   <div class="body">
     <p class="note">
