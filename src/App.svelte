@@ -29,9 +29,6 @@
   const Page = $derived(route.kind === 'page' ? PAGE_COMPONENTS[route.id] : null);
   const classBlocked = $derived(!!page?.needsClass && !character?.class);
 
-  let importer = $state(null);
-  const openImport = () => importer?.open();
-
   // Old screens still call setStatus(msg) / onNavigate(id); both are app services now.
   const setStatus = (msg) => statusMessage(msg);
   const onNavigate = (target) => go(target);
@@ -48,7 +45,8 @@
   let wasEmpty = null;
   $effect(() => {
     if (empty) {
-      if (route.kind !== 'welcome') go('welcome', { replace: true });
+      // Settings stays reachable with no character: Settings > Import is the way in for a game file.
+      if (route.kind !== 'welcome' && route.kind !== 'settings') go('welcome', { replace: true });
     } else {
       if (wasEmpty === true) go(AFTER_IMPORT_PAGE_ID, { replace: true });
       else if (route.kind === 'welcome') go(DEFAULT_PAGE_ID, { replace: true });
@@ -59,15 +57,20 @@
 
 <a class="skip-link" href="#main">Skip to content</a>
 
-{#if empty}
+{#if empty && route.kind === 'settings'}
+  <div class="bare">
+    <a class="back" href="#/welcome">Back to Welcome</a>
+    <main id="main" tabindex="-1"><SettingsPage {setStatus} /></main>
+  </div>
+{:else if empty}
   <WelcomeScreen />
 {:else}
   <div class="app">
-    <TopBar onImport={openImport}>
+    <TopBar>
       {#snippet jobs()}<JobsPill />{/snippet}
     </TopBar>
     <div class="body">
-      <Rail {route} {character} onImport={openImport} />
+      <Rail {route} {character} />
       <div class="content">
         <ContextHeader {route} {character} />
         <div class="page">
@@ -95,7 +98,7 @@
   </div>
 {/if}
 
-<ImportFile bind:this={importer} />
+<ImportFile />
 <NotificationStack />
 
 <style>
@@ -114,6 +117,8 @@
     transform: translateY(-200%);
   }
   .skip-link:focus { transform: none; }
+  .bare { max-width: var(--content-max); margin: 0 auto; padding: var(--page-pad); display: grid; gap: var(--sp-4); }
+  .back { justify-self: start; color: var(--text-soft); }
   .app {
     display: flex;
     flex-direction: column;

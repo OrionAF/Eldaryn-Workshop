@@ -10,15 +10,12 @@
   import Banner from '../ui/Banner.svelte';
   import Checkbox from '../ui/Checkbox.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
-  import ImportSource from './ImportSource.svelte';
   import { unitFor } from './importUnits.js';
   import { classLabel } from '../../lib/game/classes.js';
   import { describeReportEntry } from '../../lib/importPlan.js';
   import {
     importFlow,
     closeImport,
-    loadImportFile,
-    loadImportText,
     confirmImport,
     backToChoose,
     setImportMode,
@@ -50,10 +47,10 @@
   const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 </script>
 
-<Modal open={importFlow.open} {title} onclose={closeImport}>
+<Modal open={importFlow.open && !!plan} {title} onclose={closeImport}>
   {#snippet children()}
     {#if !plan}
-      <ImportSource onfile={loadImportFile} ontext={loadImportText} error={importFlow.error} />
+      <!-- never open without a report: the file / paste step is Settings > Import (ImportSection) -->
     {:else if plan.kind === 'profile'}
       <div class="report">
         <p class="lead"><b>{plan.character.name}</b>, {classLabel(plan.character.class)}, level {plan.character.level}</p>

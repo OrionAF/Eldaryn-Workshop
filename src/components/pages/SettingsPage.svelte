@@ -1,6 +1,6 @@
 <script>
   /**
-   * SettingsPage.svelte - G6 route (`#/settings`): Data (export, the one-step undo of "Update <name>",
+   * SettingsPage.svelte - G6 route (`#/settings`): Data (export, Import, the one-step undo of "Update <name>",
    * where the data lives), Preferences (per device, lib/prefs.svelte.js) and the Danger zone. ia.md §5.3, §5.4.
    */
   import Panel from '../ui/Panel.svelte';
@@ -8,9 +8,10 @@
   import Checkbox from '../ui/Checkbox.svelte';
   import Select from '../ui/Select.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
+  import ImportSection from '../import/ImportSection.svelte';
   import DangerZone from '../settings/DangerZone.svelte';
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
-  import { importFlow, undoLastUpdate, openImport } from '../../lib/importFlow.svelte.js';
+  import { importFlow, undoLastUpdate } from '../../lib/importFlow.svelte.js';
   import { prefs, setPrefs } from '../../lib/prefs.svelte.js';
   import { CPU_PROFILES, workersFor } from '../../lib/tasks/cpuProfile.js';
   import { staleReason } from '../../lib/calibration.js';
@@ -60,8 +61,8 @@
       >
         {current ? `Export ${current.name}` : 'Export this character'}
       </Button>
-      <Button variant="ghost" onclick={openImport}>Import a file</Button>
     </div>
+    <ImportSection />
     {#if importFlow.undo}
       <div class="undo" role="status">
         <span>{importFlow.undo.name} was updated from a game profile.</span>
