@@ -49,11 +49,12 @@
   const kinds = $derived([...TARGET_KINDS.filter((k) => k !== 'oblivion' || oblivionUnlocked || target.kind === 'oblivion'), 'pvp']);
   const noOpponents = $derived(opponents.length === 0);
   const chosenIds = $derived(target.kind === 'pvp' ? target.opponentIds : []);
-  const objectives = $derived(objectiveKindsFor(target.kind));
+  const objectives = $derived(objectiveKindsFor(target.kind, target));
 
   function pickKind(kind) {
     target = kind === 'pvp' ? pvpDefault() : { ...DEFAULTS[kind] };
-    if (!objectiveKindsFor(kind).includes(objective.kind)) objective = { kind: objectiveKindsFor(kind)[0] };
+    const allowed = objectiveKindsFor(kind, kind === 'pvp' ? null : target);
+    if (!allowed.includes(objective.kind)) objective = { kind: allowed[0] };
   }
 
   function toggleOpponent(id) {
@@ -167,7 +168,7 @@
   {#if objective.kind === 'survival'}
     <label class="field">
       <span class="micro-label">Survive for (s)</span>
-      <input class="mono" type="number" min="5" max="600" value={objective.seconds ?? 60} onchange={(e) => (objective = { ...objective, seconds: intOf(e, 5, 600) })} />
+      <input class="mono" type="number" min="5" max="600" value={objective.seconds ?? ''} placeholder="whole fight" onchange={(e) => (objective = { ...objective, seconds: intOf(e, 5, 600) })} />
     </label>
   {/if}
 </div>
