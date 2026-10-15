@@ -134,8 +134,12 @@ export function winRateResult(status = 'reached') {
   return r;
 }
 
-/** A 'Highest chance to win' result (W3): 'best' (default), 'no-wins' or 'already'. No target, no Meets chips. */
-export function winChanceResult(status = 'best') {
+/**
+ * A 'Highest chance to win' result (W3): 'best' (default), 'no-wins', 'already', or 'no-gain' (status 'best'
+ * with no row shown better than the current build). No target, no Meets chips.
+ */
+export function winChanceResult(kind = 'best') {
+  const status = kind === 'no-gain' ? 'best' : kind;
   const r = winRateResult(status === 'already' ? 'already' : 'reached');
   r.objective = { ...r.objective, kind: 'win-chance', label: 'Highest chance to win' };
   for (const row of [r.baseline, ...r.rows]) {
@@ -153,12 +157,18 @@ export function winChanceResult(status = 'best') {
       row.vsBaseline = wr(i === 0 ? 0.19 : 0.09, 0.15, 0.23, 'better', 'margin', { delta: 0, lo: -0.002, hi: 0.002 });
     });
   }
-  const best = r.rows[0] ?? r.baseline;
+  if (kind === 'no-gain') {
+    r.rows.forEach((row) => {
+      row.vsBaseline = wr(0.002, -0.004, 0.008, 'equivalent');
+    });
+  }
+  const best = kind === 'no-gain' ? r.baseline : (r.rows[0] ?? r.baseline);
   const text = {
     best: 'Best chance to win: 96% (95% CI 95%-97%) with 1 change; the current build wins 70%.',
     'no-wins': "No build won any of 2,048 fights; the build that gets furthest (1 change) removes 60% of the step's HP.",
     already: 'Already clears at 99% (95% CI 98%-100%). No change needed.',
-  }[status];
+    'no-gain': 'No change was shown to raise the chance to win. The current build wins 70% (95% CI 68%-72%).',
+  }[kind];
   r.goal = { mode: 'max', target: null, status, baseline: { winRate: r.baseline.value, check: r.goal.baseline.check }, bestKey: best.key, text };
   r.headline = { ...r.headline, text };
   return r;

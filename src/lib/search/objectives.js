@@ -349,7 +349,7 @@ export function pushTarget(v) {
   return v;
 }
 
-const clamp01= (x) => (Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 0);
+const clamp01 = (x) => (Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 0);
 // A loss never reaches 1, whatever the rounding of a nearly cleared step.
 const LOSS_CEILING = 1 - 1e-9;
 

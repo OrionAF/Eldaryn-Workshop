@@ -40,6 +40,8 @@
   const winRun = $derived(isWinRateKind(view.kind) || view.kind === 'push');
   const maxRun = $derived(view.kind === 'win-chance');
   const target = $derived(winRun ? (view.goal?.target ?? view.push?.target ?? null) : null);
+  // The highest-chance verdict's build: the first row shown better than the current one (search.js chanceGoalOf).
+  const bestRow = $derived(maxRun ? (view.rows.find((r) => r.vsBaseline?.verdict === 'better') ?? null) : null);
   const axisTitle = $derived(winRun ? 'Change in win rate vs current (percentage points)' : AXIS_TITLE[view.unit]);
   // The win rate the goal banners talk about (optimiserView.js goalWinRate).
   const goalTries = $derived(triesPerClear(goalWinRate(view)));
@@ -64,6 +66,18 @@
     <div class="goal" data-testid="goal-no-wins">
       <Banner variant="warn" lead="No build won a fight.">
         The builds are ranked by how far their fights got: the share of the step's HP they remove before losing.
+      </Banner>
+    </div>
+  {:else if maxRun && view.goal?.status === 'best' && bestRow}
+    <div class="goal" data-testid="goal-best">
+      <Banner variant="success" lead="Best chance to win: {fmtEstimate('p', bestRow.aux.winRate)}.">
+        The first row has the best chance found{goalTries ? ` (${goalTries})` : ''}. Builds within the precision count as equal, and the one with fewer changes ranks first.
+      </Banner>
+    </div>
+  {:else if maxRun && view.goal?.status === 'best'}
+    <div class="goal" data-testid="goal-no-gain">
+      <Banner variant="info" lead="No change raised the chance to win.">
+        The current build wins {view.baseline?.aux?.winRate ? fmtEstimate('p', view.baseline.aux.winRate) : 'as before'}{goalTries ? ` (${goalTries})` : ''}.
       </Banner>
     </div>
   {:else if view.goal?.status === 'already'}

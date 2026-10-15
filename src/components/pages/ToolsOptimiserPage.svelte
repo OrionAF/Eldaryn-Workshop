@@ -345,7 +345,6 @@
           {/if}
           {#if setup.objective.kind === 'win-rate' || setup.objective.kind === 'push'}
             <WinRateTarget bind:objective={setup.objective} start={targetLabel} />
-
           {/if}
         </section>
 
