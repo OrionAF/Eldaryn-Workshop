@@ -12,7 +12,13 @@ import { stableStringify } from '../engine/metrics.js';
 const only = (...on) => Object.fromEntries(BLOCKS.map((b) => [b, on.includes(b)]));
 const TINY = { level: 'quick', n0: 8, maxN: 32, randomStarts: 0 };
 const SHORT = { kind: 'dummy', seconds: 10 };
-const character = fixtureCharacter('WARRIOR');
+// Full relic sets only are tried (stat dominance, backlog §16), so the saved set holds the strongest relics and the
+// others are weaker: swapping one in costs Power, which is what the guard must catch.
+const character = (() => {
+  const c = fixtureCharacter('WARRIOR');
+  const ids = Object.keys(c.relics);
+  return { ...c, extraRelicSlots: 1, relics: Object.fromEntries(ids.map((id, i) => [id, 7 - i])) };
+})();
 const P0 = presetPower(character, 'p1').power;
 
 describe('normalisePowerFloor', () => {
@@ -36,13 +42,13 @@ describe('the build space with a floor', () => {
     const values = ['relics', 'pet'].flatMap((id) => space.blocks.find((b) => b.id === id).domain(space.start));
     const below = values.filter((c) => space.powerOf(c) < P0);
     expect(below.length).toBeGreaterThan(0);
-    expect(values.length).toBeGreaterThan(below.length);
+    expect(space.admissible(space.start)).toBe(true);
     for (const c of values) expect(space.admissible(c)).toBe(space.powerOf(c) >= P0);
   });
 
   it('rowViolations flags a row below the floor (I1)', () => {
     const space = createBuildSpace(character, 'p1', { powerFloor: P0 });
-    const low = space.blocks.find((b) => b.id === 'pet').domain(space.start).find((c) => c.petId === null);
+    const low = space.blocks.find((b) => b.id === 'relics').domain(space.start).find((c) => space.powerOf(c) < P0);
     expect(space.powerOf(low)).toBeLessThan(P0);
     const v = rowViolations(space, space.start, { candidate: low, isBaseline: false, changes: [] });
     expect(v.some((x) => x.startsWith('I1 below the Combat Power floor'))).toBe(true);

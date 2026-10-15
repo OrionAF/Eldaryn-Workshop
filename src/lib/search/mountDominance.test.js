@@ -57,7 +57,7 @@ describe('mount dominance pruning', () => {
     const r = await optimize({ character, presetId: 'p1', target: { kind: 'dummy', seconds: 10 }, space, effort: { level: 'quick', n0: 8, maxN: 32, randomStarts: 0 }, seed: 2 });
     const raced = [r.baseline, ...r.rows].map((x) => x.candidate.mountId ?? null);
     expect(raced).not.toContain('com');
-    expect(r.search.blocks.find((b) => b.id === 'mount').pruned).toEqual([{ id: 'com', by: 'epic' }]);
+    expect(r.search.blocks.find((b) => b.id === 'mount').pruned).toEqual([{ id: 'com', by: 'epic', reason: 'dominated' }]);
     expect(r.search.blocks.find((b) => b.id === 'mount').domain).toBe(2);
   });
 });
