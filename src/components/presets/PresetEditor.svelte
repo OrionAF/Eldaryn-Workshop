@@ -70,8 +70,13 @@
   function writeSheet(values) {
     const clean = normaliseSheetValues(values);
     const next = Object.keys(clean).length ? clean : null;
-    if (activeRealm === 'oblivion') rosterStore.setOblivionSheet(next);
+    if (activeRealm === 'oblivion') rosterStore.setOblivionSheet(next, preset.id);
     else rosterStore.setPresetSheet(preset.id, next);
+  }
+
+  function confirmSheet() {
+    if (activeRealm === 'oblivion') rosterStore.confirmOblivionSheet(preset.id);
+    else rosterStore.confirmPresetSheet(preset.id);
   }
 
   function onSheetChange(key, value) {
@@ -276,11 +281,17 @@
         </div>
       {/if}
       <button type="button" class="btn-ghost" disabled={!stats.sheet} onclick={() => writeSheet({})}>Clear sheet</button>
+      {#if stats.sheetStatus === 'stale' || stats.sheetStatus === 'unverified'}
+        <button type="button" class="btn-ghost" data-testid="sheet-confirm" onclick={confirmSheet}>Confirm sheet matches this build</button>
+      {/if}
     </div>
+    {#if stats.sheetStatus === 'stale' || stats.sheetStatus === 'unverified'}
+      <p class="note" data-testid="sheet-status">{stats.warnings[stats.warnings.length - 1]}</p>
+    {/if}
     <p class="note">
       Type the numbers from the in-game character sheet. Leave a row blank to use the model's value. Flat rows
       read "." as a thousands separator ("48.124" is 48124); percentage rows read it as a decimal point.
-      {#if activeRealm === 'oblivion'}This is the Oblivion realm's sheet, shared by every preset.{/if}
+      {#if activeRealm === 'oblivion'}This is the Oblivion realm's sheet; it applies only to the preset it was entered for.{/if}
     </p>
     <SheetFields keys={sheetKeys} values={sheetValues} computed={stats.computed} onChange={onSheetChange} />
     <SheetDiff computed={stats.computed} sheet={stats.sheet} {absorbable} onAbsorb={absorb} />

@@ -302,6 +302,7 @@ describe('gameProfileToCharacter', () => {
     expect(c.presets[1].sheet).toEqual({
       values: { totalAttack: 123456, totalHp: 654321, totalBlockChance: 20.5, rawDamageReduction: 41.2 },
       enteredAt: now,
+      inputsKey: null, // unverified until the user confirms it
     });
     expect(c.oblivion.sheet).toBeNull();
   });

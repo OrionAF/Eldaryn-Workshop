@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { fixtureCharacter, FIXTURE_SPECS } from './fixtures.js';
 import { buildPresetInputs, equippedStones } from './presetInputs.js';
+import * as statsMod from './stats.js';
 import { computePresetStats } from './stats.js';
 import { calculateTotalStats } from '../engine/pipeline/totals.js';
 import { calculateFortressBonuses } from '../engine/sources/fortress.js';
@@ -183,5 +184,81 @@ describe('computePresetStats', () => {
       const r = computePresetStats(newCharacter('Empty', cls));
       expect(r.computed.totalAttack).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('sheet integrity (#90, #88, #17)', () => {
+  // Every total/raw key of the computed stats: an exact in-game sheet of that build.
+  const sheetOf = (stats) => Object.fromEntries(Object.entries(stats).filter(([k]) => /^(total|raw)[A-Z]/.test(k)));
+  const keyOf = (c, id, realm = 'base') => statsMod.sheetInputsKey?.(c, id, { realm }) ?? 'pre-S1';
+
+  it('a sheet entered for a build goes stale when the build changes: drop the pet -> computed stats, empty residual', () => {
+    const c = fixtureCharacter('WARRIOR');
+    const values = sheetOf(computePresetStats(c, 'p1').computed);
+    c.presets[0].sheet = { values, enteredAt: 'x', inputsKey: keyOf(c, 'p1') };
+    const fresh = computePresetStats(c, 'p1');
+    c.presets[0].petId = null;
+    const r = computePresetStats(c, 'p1');
+    expect(r.effective.totalAttack).toBe(97330); // the stale sheet said 172 179
+    expect(r.residual).toEqual({});
+    expect(fresh.sheetStatus).toBe('fresh');
+    expect(r.source).toBe('computed');
+    expect(r.sheetStatus).toBe('stale');
+    expect(r.sheet.values.totalAttack).toBe(172179); // still shown, for re-entry
+    expect(r.warnings.some((w) => /out of date/i.test(w))).toBe(true);
+  });
+
+  it('the fingerprint survives a save/load round trip (a reload never stales a sheet)', () => {
+    for (const cls of CLASSES) {
+      const c = fixtureCharacter(cls);
+      const again = normaliseCharacter(JSON.parse(JSON.stringify(c)));
+      for (const realm of ['base', 'oblivion']) {
+        for (const id of ['p1', 'p2']) expect(statsMod.sheetInputsKey(again, id, { realm })).toBe(statsMod.sheetInputsKey(c, id, { realm }));
+      }
+    }
+  });
+
+  it('a change to the base residual (absorb) leaves the sheet fresh', () => {
+    const c = fixtureCharacter('WARRIOR');
+    c.presets[0].sheet = { values: { totalAttack: 170000 }, enteredAt: 'x', inputsKey: keyOf(c, 'p1') };
+    c.baseResidual = { ...c.baseResidual, attack: c.baseResidual.attack + 5 };
+    expect(computePresetStats(c, 'p1').sheetStatus).toBe('fresh');
+  });
+
+  it('a legacy sheet (no inputsKey) is unverified: overlay and residual kept, with a warning', () => {
+    const c = fixtureCharacter('WARRIOR');
+    c.presets[0].sheet = { values: { totalAttack: 170000 }, enteredAt: 'x' };
+    const r = computePresetStats(c, 'p1');
+    expect(r.sheetStatus).toBe('unverified');
+    expect(r.effective.totalAttack).toBe(170000);
+    expect(r.residual.totalAttack).toBe(170000 - r.computed.totalAttack);
+    expect(r.warnings.length).toBeGreaterThan(0);
+    expect(computePresetStats(fixtureCharacter('WARRIOR'), 'p1').sheetStatus).toBe('none');
+  });
+
+  it('the Oblivion sheet entered from p1 is not applied to p2', () => {
+    const c = fixtureCharacter('WARRIOR');
+    const values = sheetOf(computePresetStats(c, 'p1', { realm: 'oblivion' }).computed);
+    c.oblivion.sheet = { values, enteredAt: 'x', presetId: 'p1', inputsKey: keyOf(c, 'p1', 'oblivion') };
+    const p2 = computePresetStats(c, 'p2', { realm: 'oblivion' });
+    expect(p2.effective.totalAttack).toBe(107896); // the p1 sheet said 240 855
+    expect(p2.residual).toEqual({});
+    const p1 = computePresetStats(c, 'p1', { realm: 'oblivion' });
+    expect(p1.source).toBe('sheet');
+    expect(p1.sheetStatus).toBe('fresh');
+    expect(p2.source).toBe('computed');
+    expect(p2.warnings.some((w) => /another preset/i.test(w))).toBe(true);
+  });
+
+  it('a capped stat the sheet gives without its raw keeps the computed raw when the totals agree', () => {
+    const c = fixtureCharacter('SENTINEL');
+    const at = { realm: 'oblivion' };
+    const comp = computePresetStats(c, 'p1', at).computed;
+    expect(comp.rawCritChance).toBe(53.5);
+    const values = { totalCritChance: comp.totalCritChance };
+    c.oblivion.sheet = { values, enteredAt: 'x', presetId: 'p1', inputsKey: keyOf(c, 'p1', 'oblivion') };
+    expect(computePresetStats(c, 'p1', at).effective.rawCritChance).toBe(53.5);
+    values.totalCritChance = comp.totalCritChance + 0.5; // disagrees: the computed raw describes another total
+    expect(computePresetStats(c, 'p1', at).effective.rawCritChance).toBeUndefined();
   });
 });
