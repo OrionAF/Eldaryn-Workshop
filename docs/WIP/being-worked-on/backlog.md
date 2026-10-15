@@ -176,3 +176,27 @@ Toolkit? Can the app ask the game server for it?
    fight in game, and share the response to Files, with no computer. Android needs root or a
    computer (apps ignore user certificates since Android 7), so say that plainly. Keep the steps
    short, with screenshots.
+
+## 9. Stat weights chart (like the v1 one)
+
+**Ask** (2026-10-15): bring back the old stat-weight display, one chart that ranks every stat, not a
+weight table per piece of content.
+
+**What v1 did** (`src/lib/statWeights.js` and `SimulationScreen.svelte` before `f486ffc`): it added one
+game-sized step to each stat in turn (+100 Attack, +1 point of Attack %, +1% Crit, +10% Crit
+Multiplier...), re-scored the preset with the closed-form expected DPS, and drew the gain as a bar
+per stat, largest first. The tank and PVP goals added the defensive stats. The ranking came from a
+formula, not from fights.
+
+**Plan.**
+- The engine has no closed form now, so measure the weights in the client port. Use mean damage per
+  second against the training dummy (`metrics.js` `dpsVsDummyAsync`, the one Drop Check uses) and
+  common random numbers. The mean over a fixed duration is smooth, so it avoids the median-TTK
+  steps the 2026-10-15 experiment hit.
+- Defensive stats rank on survival against one fixed reference enemy (`survivalAsync`). Show it as a
+  second chart, because damage and survival are different units.
+- Probe the raw totals and apply the caps once (the rule v1 learned the hard way), so a stat past its
+  cap shows about 0. Use the v1 step sizes.
+- Each bar shows its interval. A stat whose interval spans 0 reads "no measurable effect", never a
+  rank.
+- It runs as a job, on the Character Stats page or in Tools, for the selected preset.
