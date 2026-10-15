@@ -44,7 +44,7 @@ Seven layers; lower layers never import upper ones (design: `docs/WIP/being-work
 | L4 build | `src/lib/build/` | Character + preset to engine inputs: `presetInputs`, `stats` (sheet vs computed), `residual`, `fighter`, `describe` |
 | L5 features | `src/lib/features/`, `search/`, `tasks/` | `swap`, `duel`, `oblivionDungeon`; the optimiser (`search`, `candidates`, `objectives`); worker tasks (`optimize`, `duel`, `dropCheck`, `oblivionFloors`) dispatched by `tasks/index.js` via `optimizerClient.js` / `optimizerWorker.js` |
 | L6 state | `src/lib/rosterStore.svelte.js`, `store/`, `storage.js` | Reactive facade (Svelte 5 runes) over one mutator file per domain. Every mutator ends with an explicit `persist()` (no background `$effect`). `storage.js` owns the localStorage key (`eldaryn_optimiser_state_v2`; the v1 key is only read for migration) and JSON export/import, including a game profile JSON as a new character (`model/gameProfile.js`, data-model.md §7) |
-| L7 UI | `src/App.svelte`, `src/components/screens/<Name>Screen.svelte`, `src/components/<domain>/` | One screen per nav item (Character, Presets, Drop Check, Gear, Talents, Sigils, Pets, Mounts, Relics, Awakening, Transcendence, Optimiser, Duel, Oblivion); shared pieces (`Modal`, `Slider`, `ConfirmButton`, `Chip`, `StarRating`, `DuelTimeline`) sit directly in `src/components/`; import (G3) and Welcome (G0) live in `components/import/`, the Danger zone in `components/settings/` |
+| L7 UI | `src/App.svelte` (shell), `src/components/shell/`, `pages/`, `ui/`, `<domain>/` | Hash router (`lib/router.svelte.js`, route table `lib/routes.js`): 18 pages in Character / Builds / Tools plus Settings and Welcome, one file per route in `components/pages/<Area><Page>Page.svelte` registered in `pages/index.js`. Primitives (`Panel`, `Tabs`, `Button`, `Modal`, `Stepper`, `Menu`...) are in `components/ui/`; domain pieces in `components/<domain>/`. Long runs are session jobs (`lib/jobs.svelte.js`, Jobs pill and tray); `lib/notify.svelte.js` owns toasts and the Activity log; per-device view state and prefs use `eldaryn_ui_v1` (`uiState.js`, `prefs.svelte.js`) |
 
 - `src/lib/format.js` — number parsing/formatting (the "." thousands-vs-decimal gotcha) and the
   shared `rarityClass`/`RARITY_ORDER`. `src/lib/assets/` — art lookups per domain.
@@ -58,8 +58,11 @@ Seven layers; lower layers never import upper ones (design: `docs/WIP/being-work
 
 Full rationale in the `src/app.css` header comment — that file is authoritative.
 
-- Design tokens (colors, spacing, radii) live in `:root` custom properties in `app.css`.
-  Always reference these; never hardcode hex/px.
+- Design tokens (colors, spacing, radii, fonts) live in `:root` custom properties in `app.css`
+  (from `docs/WIP/being-worked-on/redesign/tokens.css`; `design-system.md` is the spec). Always
+  reference these; never hardcode hex/px. Fonts are self-hosted woff2 in `src/assets/fonts/`
+  (Grenze, Alegreya Sans, Red Hat Mono); no Google Fonts URL. Build pages from `components/ui/`
+  primitives; the legacy classes below remain as aliases for older pieces.
 - **All numeric data renders in tabular monospace** (`--font-data`,
   `font-variant-numeric: tabular-nums`). Add new numeric fields to the existing selector list
   in `app.css`, not via ad hoc inline styles.

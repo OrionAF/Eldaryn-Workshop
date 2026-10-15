@@ -9,7 +9,7 @@
   import Panel from '../ui/Panel.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
   import Select from '../ui/Select.svelte';
-  import { SET_LABELS, talentSetLabel, filledSlots } from '../presets/presetLabels.js';
+  import { SET_LABELS, talentSetLabel, filledSlots } from './presetLabels.js';
 
   let { character, preset } = $props();
 

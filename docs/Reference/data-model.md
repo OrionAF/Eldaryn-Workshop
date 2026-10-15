@@ -240,6 +240,15 @@ user-typed sigil damage values. Class `Warrior`/`Sentinel` becomes
   (`model/runs.js` `enforceRosterRunsBudget`: oldest unpinned detail first, then oldest unpinned rows,
   one pass by per-run size estimates); the per-character budget still applies on normalise.
 
+### 5.1 The per-device UI key
+
+View state lives apart from the roster under **`eldaryn_ui_v1`** (`src/lib/uiState.js`): `v`, `lastHash`
+(route to reopen), `areaLast` (last page per area), `optimiserSetups` (per character and preset) and
+`prefs` (`density`, `reduceMotion`, `defaultEffort`). Every read and write is try/catch-guarded, a
+missing or broken value falls back to the defaults, and nothing in the roster depends on it. It is not
+exported with the roster. Session jobs (`lib/jobs.svelte.js`) are not persisted; the optional resume
+checkpoints use IndexedDB, opt-in.
+
 ---
 
 ## 6. Stat sheet tiers
