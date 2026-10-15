@@ -136,8 +136,9 @@ paralyzeChance, disruptionChance, spellDamage, spellResist, spellCritChance, spe
 
 Consequences: mobs never crit, never double-hit, never heal and never apply
 status effects to the player in this engine. A mob can have DR, Block and
-Penetration (dungeon mobs carry `blockChance` 5-10 and `penetration` 6-10,
-`L1062731-1062760`; campaign mobs from chapter 9 on carry Penetration, §15).
+Penetration (classic dungeons 3-7 carry `blockChance` 5-20 and `penetration` 6-52,
+hard dungeons block 20-26, penetration 50-66 and DR 0 or 30, pve-content.md §4; campaign mobs
+from chapter 9 on carry Penetration, §15).
 A mob's Miss is always 0, which matters for the penetration rule in §5.4.
 
 ## §4 Swing timing

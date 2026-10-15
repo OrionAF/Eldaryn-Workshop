@@ -298,6 +298,8 @@
  * PVE mob/boss description fed to simulatePve.
  * @typedef {Object} MobSpec
  * @property {string} [id]
+ * @property {'campaign'|'dungeon'|'raid'|'oblivion'|'worldBoss'} [mode]  content the mob comes from,
+ *   stamped by engine/pve/enemies.js
  * @property {number} hp
  * @property {number} attack
  * @property {number} attackSpeed  multiplier

@@ -4,7 +4,9 @@ import {
   PVE_PROGRESS_CONSTANTS, PVE_HARD_LEVEL_MULTIPLIERS, PVE_HARD_CHAPTER_OFFSET, PVE_CHAPTERS,
   PVE_HARD_CHAPTERS, pveChapter, pveHardChapter,
 } from '../../game/combatPve.js';
-import { OBLIVION_FLOORS, classicDungeon } from '../../game/pveContent.js';
+import {
+  OBLIVION_FLOORS, CLASSIC_DUNGEONS, CLASSIC_DUNGEON_HARD, classicDungeon,
+} from '../../game/pveContent.js';
 import { raidById } from '../../game/fortress.js';
 import {
   WORLD_BOSS_AFFINITIES, WORLD_BOSS_AFFINITY_CYCLE, WORLD_BOSS_SEASON, WORLD_BOSSES,
@@ -65,9 +67,12 @@ export const hardChapterVariant = (templates, { hpScale, atkScale, penetration }
     penetration,
   }));
 
-/** Normalise a built mob to the MobSpec contract. */
-function toMobSpec(m) {
-  const spec = { id: m.id, hp: m.hp, attack: m.attack, attackSpeed: m.attackSpeed };
+/**
+ * Normalise a built mob to the MobSpec contract, stamped with the content `mode` it comes from
+ * (campaign, dungeon, raid, oblivion, worldBoss) for the fight driver.
+ */
+function toMobSpec(m, mode) {
+  const spec = { id: m.id, hp: m.hp, attack: m.attack, attackSpeed: m.attackSpeed, mode };
   if (m.name != null) spec.name = m.name;
   if (m.penetration != null) spec.penetration = m.penetration;
   if (m.blockChance != null) spec.blockChance = m.blockChance;
@@ -88,7 +93,8 @@ export function chapterMobs(chapter, level) {
   const mults = chapter > PVE_HARD_CHAPTER_OFFSET
     ? PVE_HARD_LEVEL_MULTIPLIERS
     : ch.levels.map((l) => l.levelMultiplier);
-  return buildChapterLevels(chapter, ch.mobTemplates, mults, [])[level - 1].mobs.map(toMobSpec);
+  return buildChapterLevels(chapter, ch.mobTemplates, mults, [])[level - 1].mobs
+    .map((m) => toMobSpec(m, 'campaign'));
 }
 
 /** Every level of a chapter ({level, mobs: MobSpec[], influenceReward}), or null. */
@@ -104,31 +110,85 @@ export function chapterLevels(chapter) {
 
 export const CHAPTER_COUNT = PVE_CHAPTERS.length + PVE_HARD_CHAPTERS.length;
 
+const HARD_SUFFIX = '_hard';
+const DUNGEON_STEP_COUNT = 8;
+
+// port of hardVariant L1062199-1062371; facts pve-content.md §4
 /**
- * Classic dungeon steps (8 per dungeon, 3 mobs each; step 8 = last three roster entries).
- * Roster rule is [DERIVED] (pve-content.md); hard variants are [UNRESOLVED] there, so not built.
- * Roster entries may carry optional blockChance/penetration, passed through.
- * @param {string} id e.g. 'dungeon_1'
+ * Hard roster of the normal dungeon at `dungeonIndex` (0-based): ids get `_hard`; hp scaled, then
+ * times (1 - DR/100); the boss's attack capped by the two entries before it; speed x speedMult
+ * and attack / speedMult; block, penetration (+bonus on the boss) and DR from the config.
+ */
+export function hardDungeonRoster(roster, cfg, dungeonIndex) {
+  const H = CLASSIC_DUNGEON_HARD;
+  const last = roster.length - 1;
+  const prev = roster.slice(Math.max(0, last - 2), last).map((r) => r.baseAtk);
+  const cap = prev.length > 0 ? Math.max(...prev) * H.bossAtkCapMult : Infinity;
+  const hpShare = H.share[dungeonIndex]?.hp ?? 1;
+  const atkShare = H.share[dungeonIndex]?.atk ?? 1;
+  const drMult = 1 - cfg.damageReduction / 100;
+  return roster.map((r, i) => ({
+    ...r,
+    id: `${r.id}${HARD_SUFFIX}`,
+    baseHp: Math.round(r.baseHp * cfg.hpScale * hpShare * drMult),
+    baseAtk: Math.round((i !== last ? r.baseAtk : Math.min(r.baseAtk, cap)) * cfg.atkScale * atkShare / H.speedMult),
+    baseSpd: parseFloat((r.baseSpd * H.speedMult).toFixed(3)),
+    blockChance: cfg.blockChance,
+    penetration: i !== last ? cfg.penetration : cfg.penetration + H.bossPenetrationBonus,
+    damageReduction: cfg.damageReduction,
+  }));
+}
+
+// port of hardCoinRewards L1062174-1062198
+/** Coins per step of the hard dungeon built from normal dungeon `dungeonIndex` (0-based). */
+export const hardDungeonCoins = (dungeonIndex) => Array.from({ length: DUNGEON_STEP_COUNT },
+  (_, i) => CLASSIC_DUNGEON_HARD.coinBase + CLASSIC_DUNGEON_HARD.coinStep * (DUNGEON_STEP_COUNT * dungeonIndex + i));
+
+// port of makeMob L1062373-1062439 (the dungeon module's own; no GLOBAL_MULTIPLIER, unlike the campaign one)
+const makeDungeonMob = (r, mult) => toMobSpec({
+  id: r.id, name: r.name,
+  hp: Math.round(r.baseHp * mult), attack: Math.round(r.baseAtk * mult), attackSpeed: r.baseSpd,
+  blockChance: r.blockChance, penetration: r.penetration, damageReduction: r.damageReduction,
+}, 'dungeon');
+
+/** Roster, step multipliers and coins of a normal or hard (`<id>_hard`) dungeon, or null. */
+function dungeonDefinition(id) {
+  const hard = typeof id === 'string' && id.endsWith(HARD_SUFFIX);
+  const d = classicDungeon(hard ? id.slice(0, -HARD_SUFFIX.length) : id);
+  if (!d) return null;
+  if (!hard) return { roster: d.mobRoster, multipliers: d.stepMultipliers, coins: d.stepCoins };
+  const k = CLASSIC_DUNGEONS.indexOf(d);
+  return {
+    roster: hardDungeonRoster(d.mobRoster, CLASSIC_DUNGEON_HARD.configs[k], k),
+    multipliers: CLASSIC_DUNGEON_HARD.stepMultipliers,
+    coins: hardDungeonCoins(k),
+  };
+}
+
+/** Every dungeon id in the client's order: the 7 normal ones, then their `_hard` variants. */
+export const DUNGEON_IDS = [
+  ...CLASSIC_DUNGEONS.map((d) => d.id),
+  ...CLASSIC_DUNGEONS.map((d) => `${d.id}${HARD_SUFFIX}`),
+];
+
+// port of buildSteps L1062441-1062526; facts pve-content.md §4
+/**
+ * Classic dungeon steps, normal (`dungeon_N`) or hard (`dungeon_N_hard`): 8 steps of 3 mobs; steps
+ * 1-7 rotate through the roster without the boss, step 8 is the last three entries (boss last).
+ * @param {string} id e.g. 'dungeon_1', 'dungeon_7_hard'
  * @returns {Array<{step:number, coins:number, multiplier:number, mobs:MobSpec[]}>|null}
  */
 export function dungeonSteps(id) {
-  const d = classicDungeon(id);
-  if (!d) return null;
-  const roster = d.mobRoster;
-  const n = roster.length;
-  return d.stepMultipliers.map((mult, s) => {
-    const idxs = s === d.stepMultipliers.length - 1
-      ? [n - 3, n - 2, n - 1]
-      : [(3 * s) % (n - 1), (3 * s + 1) % (n - 1), (3 * s + 2) % (n - 1)];
-    const mobs = idxs.map((i) => {
-      const r = roster[i];
-      return toMobSpec({
-        id: r.id ?? `${id}_${i}`, name: r.name,
-        hp: Math.round(r.baseHp * mult), attack: Math.round(r.baseAtk * mult),
-        attackSpeed: r.baseSpd, blockChance: r.blockChance, penetration: r.penetration,
-      });
-    });
-    return { step: s + 1, coins: d.stepCoins[s], multiplier: mult, mobs };
+  const def = dungeonDefinition(id);
+  if (!def) return null;
+  const { roster, multipliers, coins } = def;
+  const n = roster.length - 1;
+  return Array.from({ length: DUNGEON_STEP_COUNT }, (_, s) => {
+    const mult = multipliers[s] ?? 1;
+    const idxs = s + 1 !== DUNGEON_STEP_COUNT
+      ? [(3 * s) % n, (3 * s + 1) % n, (3 * s + 2) % n]
+      : [n - 2, n - 1, n];
+    return { step: s + 1, coins: coins[s] ?? 10, multiplier: mult, mobs: idxs.map((i) => makeDungeonMob(roster[i], mult)) };
   });
 }
 
@@ -156,7 +216,7 @@ export function raidSteps(id) {
       return toMobSpec({
         id: r.id, name: r.name,
         hp: Math.round(r.baseHp * mult), attack: Math.round(r.baseAtk * mult), attackSpeed: r.baseSpd,
-      });
+      }, 'raid');
     });
     return { step: i + 1, multiplier: mult, mobs };
   });
@@ -190,7 +250,7 @@ export function oblivionFloorMob(floor) {
   const hp = row ? row.mobHp : Math.round(20000000 * 1.13 ** (floor - 1));
   const attack = row ? row.mobAttack : Math.round(34000 * 1.06 ** (floor - 1));
   return {
-    id: `oblivion_floor_${floor}`, hp, attack, attackSpeed: OBLIVION_ATTACK_SPEED,
+    id: `oblivion_floor_${floor}`, mode: 'oblivion', hp, attack, attackSpeed: OBLIVION_ATTACK_SPEED,
     blockChance: OBLIVION_BLOCK, penetration: OBLIVION_PENETRATION,
     instability: oblivionInstability(floor),
   };
@@ -246,7 +306,7 @@ export function worldBossMob(affinityId = 'NONE') {
   if (!aff) return null;
   const boss = WORLD_BOSSES[0];
   return {
-    id: boss.id, name: boss.name, hp: boss.hp, attack: 0,
+    id: boss.id, name: boss.name, mode: 'worldBoss', hp: boss.hp, attack: 0,
     attackSpeed: aff.baseAttackSpeed, blockChance: aff.blockChance,
     stats: { spellResist: aff.bossSpellResist },
     affinity: aff,
