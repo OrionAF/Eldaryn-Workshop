@@ -57,7 +57,7 @@ function append(entry, chunk) {
  * more fights than held simulates only the missing ones (prefix extension).
  * @param {{sample: Function}} objective  from makeObjective
  */
-export function createSampler(objective) {
+export function createSampler(objective, { log = null } = {}) {
   const store = new Map();
   let fights = 0;
   let hits = 0;
@@ -65,8 +65,14 @@ export function createSampler(objective) {
 
   async function extend(entry, fighter, n, signal) {
     if (entry.n >= n) return;
-    const chunk = await objective.sample(fighter, { seed: entry.seed, from: entry.n, to: n, signal });
     const before = entry.n;
+    let chunk;
+    if (log) {
+      // the debug log (search/debugLog.js) asks the objective to time its fights; the outcomes are the same
+      const t = performance.now();
+      chunk = await objective.sample(fighter, { seed: entry.seed, from: entry.n, to: n, signal, trace: true });
+      log.drew(entry.logId, chunk, before, performance.now() - t);
+    } else chunk = await objective.sample(fighter, { seed: entry.seed, from: entry.n, to: n, signal });
     append(entry, chunk);
     fights += (entry.n - before) * Math.max(1, entry.main.length);
     if (chunk.aborted) throw new AbortError();
@@ -83,6 +89,7 @@ export function createSampler(objective) {
       let entry = store.get(k);
       if (!entry) {
         entry = { seed: stage.seed, main: [], side: {}, n: 0, busy: Promise.resolve() };
+        if (log) entry.logId = log.entry(stage.id, engineKey);
         store.set(k, entry);
       }
       if (entry.n >= n) hits++;
@@ -92,10 +99,28 @@ export function createSampler(objective) {
       await run;
       return sliceSet(entry, n);
     },
+    /** The debug log's entry id of a build on a stage (null without a log or before its first fight). */
+    logId: (engineKey, stage) => store.get(keyOf(engineKey, stage))?.logId ?? null,
     /** Fights held for a build on a stage (0 when none). */
     held: (engineKey, stage) => store.get(keyOf(engineKey, stage))?.n ?? 0,
     /** Fights simulated (lanes counted) and requests served without simulating. */
     stats: () => ({ fights, hits, entries: store.size }),
+  };
+}
+
+/**
+ * The per-fight timing a sampler returns when asked (`trace: true`, the debug log): compute ms and game
+ * ms of every fight, lane by lane like `main`. `t0` is performance.now() taken before the fight.
+ */
+export function fightTrace(lanes = 1) {
+  const cpu = Array.from({ length: lanes }, () => []);
+  const ms = Array.from({ length: lanes }, () => []);
+  return {
+    out: { cpu, ms },
+    add(j, t0, gameMs) {
+      cpu[j].push(performance.now() - t0);
+      ms[j].push(gameMs);
+    },
   };
 }
 

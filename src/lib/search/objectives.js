@@ -34,7 +34,7 @@ import {
   fortressPlayerDuelArgs, simulateFortressBoss,
 } from '../engine/pve/fortressBoss.js';
 import { formatFlat } from '../format.js';
-import { setOf } from './sampler.js';
+import { setOf, fightTrace } from './sampler.js';
 import { resolvePvpTarget, makePvpObjective, PVP_TARGET_KIND, PVP_OBJECTIVE_KIND } from './pvpObjective.js';
 import { resolveCelestialTarget, celestialRunner, celestialFightScore, CELESTIAL_TARGET_KIND } from './celestialObjective.js';
 
@@ -310,14 +310,18 @@ function optsFor(target, fighter) {
  */
 function fortressSampler(target, seconds) {
   const group = target.spec.group;
-  return (fighter, { seed, from = 0, to, signal }) => {
+  return (fighter, { seed, from = 0, to, signal, trace }) => {
     const args = fortressPlayerDuelArgs(fighter);
     const out = [];
+    const tr = trace ? fightTrace() : null;
     for (let i = from; i < to; i++) {
-      if (signal?.aborted) return { main: [out], side: {}, aborted: true };
-      out.push(simulateFortressBoss({ fighter: args, group, rng: fightRng(seed, i) }).damageDealt / seconds);
+      if (signal?.aborted) return chunkOf(out, tr, true);
+      const t0 = tr ? performance.now() : 0;
+      const r = simulateFortressBoss({ fighter: args, group, rng: fightRng(seed, i) });
+      out.push(r.damageDealt / seconds);
+      tr?.add(0, t0, r.timeMs);
     }
-    return { main: [out], side: {}, aborted: false };
+    return chunkOf(out, tr, false);
   };
 }
 
@@ -327,14 +331,18 @@ function fortressSampler(target, seconds) {
  */
 function celestialSampler(target) {
   const runner = celestialRunner(target);
-  return (fighter, { seed, from = 0, to, signal }) => {
+  return (fighter, { seed, from = 0, to, signal, trace }) => {
     const { fight } = runner(fighter);
     const out = [];
+    const tr = trace ? fightTrace() : null;
     for (let i = from; i < to; i++) {
-      if (signal?.aborted) return { main: [out], side: {}, aborted: true };
-      out.push(celestialFightScore(fight(fightRng(seed, i))));
+      if (signal?.aborted) return chunkOf(out, tr, true);
+      const t0 = tr ? performance.now() : 0;
+      const r = fight(fightRng(seed, i));
+      out.push(celestialFightScore(r));
+      tr?.add(0, t0, r.timeMs);
     }
-    return { main: [out], side: {}, aborted: false };
+    return chunkOf(out, tr, false);
   };
 }
 
@@ -343,18 +351,24 @@ function celestialSampler(target) {
  * every build (simulation.md §Statistics, sampling unit; §Common random numbers).
  */
 function pveSampler(target, { enemy, maxMs }, outcome) {
-  return (fighter, { seed, from = 0, to, signal }) => {
+  return (fighter, { seed, from = 0, to, signal, trace }) => {
     const prepared = preparePveFighter(fighter);
     const opts = optsFor(target, fighter);
     const out = [];
+    const tr = trace ? fightTrace() : null;
     for (let i = from; i < to; i++) {
-      if (signal?.aborted) return { main: [out], side: {}, aborted: true };
+      if (signal?.aborted) return chunkOf(out, tr, true);
+      const t0 = tr ? performance.now() : 0;
       const r = simulatePve({ fighter: prepared, enemy, maxMs, rng: fightRng(seed, i), ...opts });
       out.push(outcome(r, prepared));
+      tr?.add(0, t0, r.timeMs);
     }
-    return { main: [out], side: {}, aborted: false };
+    return chunkOf(out, tr, false);
   };
 }
+
+/** A one-lane sampler chunk; `tr` (sampler.js fightTrace) rides along only when the debug log asked. */
+const chunkOf = (out, tr, aborted) => (tr ? { main: [out], side: {}, aborted, trace: tr.out } : { main: [out], side: {}, aborted });
 
 const level = (alpha) => 1 - alpha;
 const finiteOrNull = (x) => (Number.isFinite(x) ? x : null);
