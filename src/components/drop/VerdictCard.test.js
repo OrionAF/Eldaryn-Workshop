@@ -11,7 +11,10 @@ beforeEach(() => {
 });
 
 const item = (attack) => ({ rarity: 'ETERNAL', itemLevel: 200, quality: 80, primaryStats: { attack, hp: 0 }, secondaryStats: [], conduit: null });
-const ci = (delta, lo, hi, n = 32) => ({ delta, lo, hi, n, significant: lo > 0 || hi < 0 });
+const ci = (delta, lo, hi, n = 32, zone = 0) => ({
+  delta, lo, hi, n, zone, significant: lo > 0 || hi < 0,
+  verdict: lo > 0 ? 'better' : hi < 0 ? 'worse' : zone > 0 && -zone < lo && hi < zone ? 'equivalent' : 'unresolved',
+});
 const sim = (d) => ({ sim: { before: { mean: 1000, lo: 990, hi: 1010, n: 32 }, after: { mean: 1000 + d.delta, lo: 0, hi: 0, n: 32 }, delta: d } });
 
 function rowsFor(attack) {
@@ -45,7 +48,7 @@ it('shows the paired sim delta with N and the 95% interval, plus survival and PV
     [rows[0].presetId]: {
       ...sim(ci(120, 80, 160)),
       survival: { before: { mean: 0.5 }, after: { mean: 0.6 }, delta: ci(0.1, 0.02, 0.18, 200) },
-      pvp: [{ opponentId: 'o1', name: 'Rival', before: { mean: 0.4 }, after: { mean: 0.45 }, delta: ci(0.05, -0.1, 0.2, 64) }],
+      pvp: [{ opponentId: 'o1', name: 'Rival', before: { mean: 0.4 }, after: { mean: 0.45 }, delta: ci(0.05, 0.01, 0.09, 64) }],
     },
   };
   const app = render({ setKey: 'set1', setLabel: 'Set 1', rows, results, status: 'done', onApply: () => {} });
@@ -61,11 +64,26 @@ it('shows the paired sim delta with N and the 95% interval, plus survival and PV
   unmount(app);
 });
 
-it('an interval spanning zero is a sidegrade', () => {
+it('an interval inside the indifference zone is a sidegrade; one spanning zero is too close to call', () => {
   const rows = rowsFor(40000).filter((r) => r.setKey === 'set1');
-  const app = render({ setKey: 'set1', setLabel: 'Set 1', rows, results: { [rows[0].presetId]: sim(ci(5, -60, 70)) }, status: 'done', onApply: () => {} });
+  const flatApp = render({ setKey: 'set1', setLabel: 'Set 1', rows, results: { [rows[0].presetId]: sim(ci(1, -4, 6, 4096, 10)) }, status: 'done', onApply: () => {} });
   expect(target.querySelector('li').dataset.verdict).toBe('sidegrade');
   expect(target.querySelector('[data-set]').dataset.verdict).toBe('sidegrade');
+  unmount(flatApp);
+  const app = render({ setKey: 'set1', setLabel: 'Set 1', rows, results: { [rows[0].presetId]: sim(ci(5, -60, 70)) }, status: 'done', onApply: () => {} });
+  expect(target.querySelector('li').dataset.verdict).toBe('inconclusive');
+  expect(target.textContent).toContain('Too close to call');
+  unmount(app);
+});
+
+it('states what the verdict covers and which changed stats it did not judge', () => {
+  const c = fixtureCharacter('WARRIOR');
+  const hpItem = { ...item(0), secondaryStats: [{ type: 'HEALTH_PERCENT', value: 10 }] };
+  const rows = prepareSwap(c, { slot: 'WEAPON', item: hpItem }).filter((r) => r.setKey === 'set1');
+  const app = render({ setKey: 'set1', setLabel: 'Set 1', rows, results: { [rows[0].presetId]: sim(ci(0, -1, 1, 4096, 10)) }, status: 'done', onApply: () => {} });
+  const cov = target.querySelector('.coverage').textContent;
+  expect(cov).toContain('DPS only: defence not measured');
+  expect(cov).toContain('Not judged');
   unmount(app);
 });
 
