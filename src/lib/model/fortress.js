@@ -4,9 +4,9 @@
 // Domain contract (§3 "Normalisation layout"); every function deals in a PARTIAL CHARACTER:
 //   defaultFortress(), normaliseFortress(rawCharacter, ctx) (idempotent),
 //   migrateFortressFromV1(v1Character) -> { value, idMap }, reconcileFortress(character).
-// `server` is the character's game server (a whole number, else null): it sets the Fortress boss shield's
-// clan cap (Game/clan-fortress.md §3.1). owned is unique and in canonical order (TOP, BOTTOM, CORE); TOP and BOTTOM are mutually exclusive
-// (TOP wins on corrupt data). No preset references this domain.
+// owned is unique and in canonical order (TOP, BOTTOM, CORE); TOP and BOTTOM are mutually exclusive
+// (TOP wins on corrupt data). `server` (whole number, else null) only feeds the boss shield's clan cap,
+// see Game/clan-fortress.md §3.1. No preset references this domain.
 
 export const FORTRESS_GROUPS = ['TOP', 'BOTTOM', 'CORE'];
 

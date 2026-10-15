@@ -154,9 +154,6 @@
     {#if target.group !== 'CORE'}
       <NumberField label="Stars" min={1} max={5} value={target.stars} onchange={(v) => patchInt('stars', v)} />
     {/if}
-    {#if target.group !== 'CORE'}
-      <span class="hint" data-testid="stars-hint">Stars come from the siege screen; the default is 1.</span>
-    {/if}
     <Checkbox
       label="Shield % (from the siege screen)"
       checked={target.shieldPercent != null}
@@ -170,9 +167,9 @@
     {:else}
       <div class="two">
         <NumberField label="Alive defenders" min={0} value={target.aliveDefenders} onchange={(v) => patchInt('aliveDefenders', v)} />
-        <NumberField label="Server" min={0} value={target.server ?? undefined} onchange={(v) => patchInt('server', v)} />
+        <NumberField label="Server" min={0} value={target.server ?? undefined} onchange={(v) => { if (Number.isFinite(v)) { const { maxClanSize, ...rest } = target; target = { ...rest, server: Math.round(v) }; } }} />
       </div>
-      <span class="hint" data-testid="clan-cap">Clan cap {clanCapForServer(target.server ?? null)}{target.server == null ? ' (server not set: the default)' : ''}</span>
+      <span class="hint" data-testid="clan-cap">Clan cap {target.maxClanSize ?? clanCapForServer(target.server ?? null)}{target.maxClanSize != null ? ' (saved explicit cap)' : target.server == null ? ' (server not set: the default)' : ''}</span>
     {/if}
     <NumberField label="Defender kills" min={0} value={target.kills} onchange={(v) => patchInt('kills', v)} />
     {#if resolved?.fortress}
