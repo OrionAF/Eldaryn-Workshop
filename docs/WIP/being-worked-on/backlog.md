@@ -11,7 +11,7 @@
 | 5 | §10 Crusade (solo) | L | Not started |
 | 6 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Not started |
 | - | §12 follow-up: a progress tolerance for builds that never win | S | Not started (see §12 open item) |
-| - | §11 follow-up: Push on the Celestial Trial | S | Not started |
+| - | §11 follow-up: Push on the Celestial Trial | S | Built on rebuild2/PUSHC, not merged |
 | - | §11 Celestial open questions | - | Waits for more server logs |
 | Done | §6 results name owned items (and the Loot bag stats, the interaction badge); §15 Fortress boss on the duel engine; §11 Celestial engine and Optimiser target; §1 Optimiser step list; §3 setup estimates; §10 Push, Fortress shield fix; §12 highest chance to win; §13 glyph pruning; §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target | - | Merged |
 
@@ -129,7 +129,7 @@ The old engine's pick (Elusive Supremacy, Blinding Mark, Mist Veil) is the set t
 
 ## 11. Celestial Trial (party of 2), and party roles
 
-**Status (2026-10-15).** The Celestial engine is merged (slice C1), replay-checked against five server logs. The Optimiser target (C2: partner from my other characters or my opponents, or solo; tank; starter; tactics; difficulty; level) is merged (2026-10-15; simulation.md §Celestial Trial). Follow-up: Push on Celestial (the deepest level cleared at a target rate). Open questions (Overload end and Judgment, NORMAL Overload, stack-player rule) wait for more logs.
+**Status (2026-10-15).** The Celestial engine is merged (slice C1), replay-checked against five server logs. The Optimiser target (C2: partner from my other characters or my opponents, or solo; tank; starter; tactics; difficulty; level) is merged (2026-10-15; simulation.md §Celestial Trial). Push on Celestial (the deepest level cleared at a target rate) is built on rebuild2/PUSHC, not merged (2026-10-15; simulation.md §Push, §Celestial Trial). Open questions (Overload end and Judgment, NORMAL Overload, stack-player rule) wait for more logs.
 
 **Ask** (2026-10-15): can the Celestial Trial be simulated? The user supplied one server fight log
 (Hard, level 85, the user plus a tank partner). It stays outside the repo because it names another

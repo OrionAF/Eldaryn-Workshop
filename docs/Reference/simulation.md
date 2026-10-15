@@ -277,7 +277,7 @@ equal statistics are a tie (no effective-HP or duel-length tie-break).
   attack > 0 and speed > 0). `objectiveKindsFor(kind, target)` leaves it out of the picker.
 - Target kinds and their objectives (the first is the default): dummy `dps`; chapter, dungeon (normal
   and `_hard`), raid, Oblivion `win-chance`, `win-rate`, `push` (§Push); World Boss `dps`; Fortress boss `dps`; custom `dps`, `win-chance`, `win-rate`, `survival`
-  (`dps` stays the default); Celestial Trial `win-chance`, `win-rate`; pvp `pvp-winrate`. Anything else is a retired goal.
+  (`dps` stays the default); Celestial Trial `win-chance`, `win-rate`, `push` (§Push); pvp `pvp-winrate`. Anything else is a retired goal.
 
 ### Win rate
 
@@ -403,8 +403,21 @@ number from 1 to `celestialMaxHoldCount(difficulty)`; the tactics default to the
 difficulty (`CELESTIAL_FINDER_DEFAULT_TACTICS`, Game/pve-content.md §6). `level` defaults to the engine's rule, the
 party's highest level, read once at resolve time from my character and a roster partner's Fighter; an opponent
 partner's typed sheet has no level, so it never sets the scaling. Tank or starter 'partner' needs a partner.
-Label: "Celestial Trial (HARD, L85, with <partner name>)", or "solo". Objectives: the win-rate family only
-(`win-chance` the default, `win-rate`); Push and survival are not offered (backlog §11).
+Label: "Celestial Trial (HARD, L85, with <partner name>)", or "solo". Objectives: the win-rate family
+(`win-chance` the default, `win-rate`) and Push; survival is not offered (backlog §11). An explicit `level`
+must be at least the difficulty's own unlock level (NORMAL 40, HARD 60, Game/pve-content.md §6 [CODE]).
+
+Push on the Celestial Trial. The ladder (`push.js` `ladderOf`) is the party's scaling level: one rung per whole
+level from the difficulty's unlock level to the player level cap 100, labelled `level N` (the result's
+`ladder.unit` is 'level', which the Push UI uses in its sentences). The start rung is the target's resolved
+level (an explicit `level`, else the party's highest). Rising difficulty holds by the data: every level band of
+both difficulties has a positive HP and attack growth per level, so `celestialBossStats` rises on every rung
+(tested), and the adds scale with the boss. Each rung is the same target with that `level`; the partner,
+tank, starter and tactics stay fixed, so the answer is the highest level the party clears at τ with my build
+varied and the partner fixed. A rung's key is the resolved target's, so it carries the level and `partnerKey`:
+changing the partner changes every rung key and so every stage seed and the run key. The partner is passed to
+every rung's sampler and optimisation (and to pool workers). Push's 10 % floor and all its statistics are
+unchanged. A start level outside unlock..100 is an error.
 
 Engine path: `engine/pve/celestial.js` `simulateCelestial`, the party in a fixed order, my build member 0 (as in
 every server log) and the partner member 1. `tank` maps to `tankIndex` (me 0, partner 1; 'auto' leaves it to the
@@ -728,7 +741,8 @@ changes from the current one that clears it.
 the output-cut toggle carries to every floor), and a campaign track: chapters 1-11 or the hard chapters
 12-22, each level 1-10 in order (the track of the start chapter; an app choice, not a game fact: hard
 chapter 1 is scaled from normal chapter 1, pve-content.md §3, so the ladder stays inside one track
-rather than assume where the hard track sits against the normal one). The character model records no progress on any of
+rather than assume where the hard track sits against the normal one), and the Celestial Trial's party scaling
+levels (§Celestial Trial). The character model records no progress on any of
 these, so the start is the user's pick in the target picker.
 
 **Assumption, stated on every run: difficulty rises along the ladder**, so a build that clears rung k
@@ -830,7 +844,7 @@ cancel + resume equals the uninterrupted run apart from wall-clock fields (`push
 **Result.** An `optimiser-result/2` (§Result) with `objective.kind` 'push', no `goal`, `search` null,
 `phases` the four Push phases, `rows` = [the deepest build's row from the optimisation that found it] when
 it confirms deeper than B (else empty), `baseline` that optimisation's baseline row (else B on its last
-confirmed rung), and `push: {target, status: 'pushed'|'no-gain'|'none', ladder: {kind, label, size},
+confirmed rung), and `push: {target, status: 'pushed'|'no-gain'|'none', ladder: {kind, label, size, unit: 'step'|'level'},
 start, baseline: {deepest, label, searched}, reached: {deepest, label, key, foundAt, foundLabel,
 searched}, stop: {index, label, reason: 'top'|'screen'|'not-reached', best: Estimate|null}|null, rungs:
 [{index, label, key, current, build}] (each 'clears'|'fails'|'open'|null, the confirm probe when there is
