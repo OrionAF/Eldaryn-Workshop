@@ -1,12 +1,12 @@
 <script>
   /**
-   * BuildsPresetsPage.svelte - adapter: mounts the pre-redesign PresetsScreen until the slice that owns this
-   * page replaces this file (plan §D). `tab` is the optional third hash segment.
+   * BuildsPresetsPage.svelte - B1 (plan §D U7): the preset compare table. `tab` is the optional third hash segment.
    */
-  import PresetsScreen from '../screens/PresetsScreen.svelte';
+  import { rosterStore } from '../../lib/rosterStore.svelte.js';
+  import PresetCompare from '../builds/PresetCompare.svelte';
 
   // eslint-disable-next-line no-unused-vars
   let { setStatus = () => {}, onNavigate = () => {}, tab = null } = $props();
 </script>
 
-<PresetsScreen {setStatus} {onNavigate} />
+<PresetCompare character={rosterStore.current} {setStatus} />
