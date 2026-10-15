@@ -10,31 +10,23 @@
 //   }
 // Rarity and relic tier keys are the client's upper-case enums (`EPIC`, `GOLD`).
 import { POWER_CONFIG } from '../game/stats.js';
-import { SECONDARY_STAT_POOL, OBLIVION_PRESTIGE, ASCENSION_ABOVE_HUNDRED_STAT_RATE } from '../game/gear.js';
+import { SECONDARY_STAT_POOL, ascensionEffectiveLevel, itemStatLevel as statLevelOf, secondaryStatCeiling } from '../game/gear.js';
+
+export { ascensionEffectiveLevel };
 
 /** The breakdown's terms, in the client's summing order. */
 export const POWER_TERMS = Object.freeze(['equipment', 'sigils', 'enchants', 'transcendence', 'pet', 'mount', 'relics', 'talents', 'awakening', 'level']);
 
 const poolByType = new Map(SECONDARY_STAT_POOL.map((d) => [d.type, d]));
 
-/** gear.md §6 ascensionEffectiveLevel. */
-export const ascensionEffectiveLevel = (L) => (L <= 100 ? L : 100 + (L - 100) * ASCENSION_ABOVE_HUNDRED_STAT_RATE);
-
-/** gear.md §3 itemStatLevel: an Oblivion-realm item counts at ITEM_LEVEL_SCALE of its level. */
-export const itemStatLevel = (item) => (item.realm === 'OBLIVION' || item.realm === 'oblivion' ? item.itemLevel * OBLIVION_PRESTIGE.ITEM_LEVEL_SCALE : item.itemLevel);
-
-// gear.md §4 secondaryStatMaxValue, unrounded (calculateStatQuality rounds it itself)
-function maxValue(def, L) {
-  const frac = Math.min(L, 100) / 100;
-  const base = def.minValue + (def.maxValue - def.minValue) * (0.5 + 0.5 * frac);
-  return L > 100 ? (base * ascensionEffectiveLevel(L)) / 100 : base;
-}
+/** gear.md §3 itemStatLevel of a Power input item ({itemLevel, realm}). */
+export const itemStatLevel = (item) => statLevelOf(item.itemLevel, item.realm);
 
 /** gear.md §5 calculateStatQuality: 1..100 (1 for a type outside the pool or an empty range). */
 export function calculateStatQuality(type, value, statLevel) {
   const def = poolByType.get(type);
   if (!def) return 1;
-  const range = maxValue(def, statLevel) - def.minValue;
+  const range = secondaryStatCeiling(def, statLevel) - def.minValue;
   if (range <= 0) return 1;
   const p = 10 ** def.decimals;
   const span = Math.round((def.minValue + range) * p) / p - def.minValue;

@@ -176,6 +176,8 @@ above") is a legality rule of the build space, not a score: Combat Power gates C
   starts are kept.
 - I1 also fails a row below the floor; I2 and I3 skip a change whose revert is below the floor (it is
   needed for legality, like a bundle).
+- Power counts an equipped Ancient sigil even when its Transcendence node is not allocated (the
+  client's `useTotalPower` has no board check), while the candidate's stats ignore that sigil.
 - A baseline below the floor cannot run: setup shows a blocker, and `optimize` returns `failed` with
   `baselineViolations: [{gate: 'powerFloor'}]`.
 - Turning it on starts at the highest Crusade gate the preset meets (Hard, Mythic or Mythic+N), else

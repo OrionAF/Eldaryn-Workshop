@@ -76,3 +76,19 @@ describe('conduit config (gear.md §7)', () => {
     expect(CONDUIT.types).toEqual(['FLAME', 'EARTHEN', 'DARK']);
   });
 });
+
+describe('item stat-level maths (shared by engine/power.js and model/equipment.js)', () => {
+  it('scales Oblivion items in either realm spelling and leaves base items alone', async () => {
+    const { itemStatLevel, OBLIVION_PRESTIGE } = await import('./gear.js');
+    expect(itemStatLevel(200, 'base')).toBe(200);
+    expect(itemStatLevel(200, 'oblivion')).toBe(200 * OBLIVION_PRESTIGE.ITEM_LEVEL_SCALE);
+    expect(itemStatLevel(200, 'OBLIVION')).toBe(200 * OBLIVION_PRESTIGE.ITEM_LEVEL_SCALE);
+  });
+  it('the ceiling is the pool max at level 100 and grows with the effective level above it', async () => {
+    const { secondaryStatCeiling, ascensionEffectiveLevel, SECONDARY_STAT_POOL } = await import('./gear.js');
+    const def = SECONDARY_STAT_POOL[0];
+    expect(secondaryStatCeiling(def, 100)).toBeCloseTo(def.maxValue, 9);
+    expect(secondaryStatCeiling(def, 0)).toBeCloseTo(def.minValue + (def.maxValue - def.minValue) * 0.5, 9);
+    expect(secondaryStatCeiling(def, 240)).toBeCloseTo((def.maxValue * ascensionEffectiveLevel(240)) / 100, 9);
+  });
+});
