@@ -305,6 +305,11 @@ run, so they are display only: they sit in the echoed target (`target.fortress`)
 sampled statistic, a contrast or a rank. They do change the target key, so a run with other defenders is a
 different run.
 
+Deviations of the displayed credit from the client formula (clan-fortress.md §3.1): the app's two-argument
+`calculateBossShield(aliveDefenders, maxClanSize)` treats the client's `startingDefenders` guard as
+`maxClanSize`, and the fatigue factor is taken as 1. `aliveDefenders` defaults to 0, which is a 0% shield (the
+boss at full damage); set it for a realistic defended boss. These only scale the display, never the ranking.
+
 ### Residual
 
 The optimiser carries a preset's sheet residual onto candidates only when the sheet's status is

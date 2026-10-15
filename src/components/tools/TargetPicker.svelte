@@ -91,6 +91,8 @@
   }
 
   const patch = (p) => (target = { ...target, ...p });
+  /** An emptied or invalid number field leaves the target as it was (resolveTarget would throw on NaN). */
+  const patchInt = (key, v) => { if (Number.isFinite(v)) patch({ [key]: Math.round(v) }); };
   const patchMob = (p) => (target = { ...target, mob: { ...target.mob, ...p } });
 
   /** The target as the result will echo it: fidelity and tagged assumptions. Null while the fields are invalid. */
@@ -150,13 +152,13 @@
   {:else if target.kind === 'fortressBoss'}
     <Select label="Fortress" options={groupOptions} value={target.group} onchange={pickGroup} />
     {#if target.group !== 'CORE'}
-      <NumberField label="Stars" min={1} max={5} value={target.stars} onchange={(v) => patch({ stars: Math.round(v) })} />
+      <NumberField label="Stars" min={1} max={5} value={target.stars} onchange={(v) => patchInt('stars', v)} />
     {/if}
     <div class="two">
-      <NumberField label="Alive defenders" min={0} value={target.aliveDefenders} onchange={(v) => patch({ aliveDefenders: Math.round(v) })} />
-      <NumberField label="Clan size" min={1} value={target.maxClanSize} onchange={(v) => patch({ maxClanSize: Math.round(v) })} />
+      <NumberField label="Alive defenders" min={0} value={target.aliveDefenders} onchange={(v) => patchInt('aliveDefenders', v)} />
+      <NumberField label="Clan size" min={1} value={target.maxClanSize} onchange={(v) => patchInt('maxClanSize', v)} />
     </div>
-    <NumberField label="Defender kills" min={0} value={target.kills} onchange={(v) => patch({ kills: Math.round(v) })} />
+    <NumberField label="Defender kills" min={0} value={target.kills} onchange={(v) => patchInt('kills', v)} />
     {#if resolved?.fortress}
       <span class="hint" data-testid="fortress-shield">
         Boss shield {resolved.fortress.shieldPercent}%. Credited damage is raw x {resolved.fortress.total.toFixed(2)}; the credit never changes which build is best.

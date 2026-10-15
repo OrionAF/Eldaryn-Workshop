@@ -174,6 +174,8 @@ CONTROL_POINTS (ratio → shield%): 1→60, 0.8→50, 0.6→40, 0.5→30, 0.4→
 
 The argument order of `calculateBossShield` (`a0` alive, `a1` guard, `a2` divisor) is read from the bytecode. I assumed `a1` is the starting defender count. [DERIVED]
 
+The app's Fortress boss target (simulation.md, Fortress boss) passes `startingDefenders` as `maxClanSize` (so the zero guard only fires on a non-positive clan size) and takes the fatigue factor as 1. Both only scale the displayed credit. [DERIVED]
+
 The guide says the divisor is the server's max clan size (L910334). `getClanMaxMembers` returns `maxMembersDefault` 50, or `maxMembersOverrides[serverId]` (5:30, 6-10:18, 99:20) (L1045076-1045092, L1045703-1045706). [CODE]
 
 The guide's "Siege Fatigue" is the star vulnerability multiplier (UI string `fatigueValue: '+{{pct}}% DMG'`, L910292). `starVulnerabilityToPercent(m) = round((max(1,m)-1)*100)`. [CODE]
