@@ -1,7 +1,7 @@
 // The 'Highest chance to win' goal and the fast low-rate decisions of both win-rate goals (simulation.md
 // §Win rate): calibration on synthetic arms (no engine), then the goal end to end on a custom mob.
 import { describe, it, expect } from 'vitest';
-import { makeObjective, resolveTarget, objectiveKindsFor, winRateTarget, WIN_RATE_TARGET } from './objectives.js';
+import { makeObjective, resolveTarget, objectiveKindsFor, winRateTarget, WIN_RATE_TARGET, PUSH_TARGET } from './objectives.js';
 import { contrastSets, setOf } from './sampler.js';
 import { race } from './race.js';
 import { optimize } from './search.js';
@@ -54,6 +54,13 @@ describe('win-chance: the goal and its target', () => {
     expect(WIN_RATE_TARGET.min).toBe(0.01);
     expect(winRateTarget(0.01)).toBe(0.01);
     expect(() => winRateTarget(0.009)).toThrow(/between/);
+  });
+
+  it('Push keeps its 10% floor', () => {
+    expect(PUSH_TARGET.min).toBe(0.1);
+    const chapter = resolveTarget({ kind: 'chapter', chapter: 1, level: 1 });
+    expect(makeObjective({ kind: 'push', target: 0.1 }, chapter).spec.target).toBe(0.1);
+    expect(() => makeObjective({ kind: 'push', target: 0.05 }, chapter)).toThrow(/push target must be between 0.1 and 1/);
   });
 });
 
@@ -181,5 +188,16 @@ describe('optimize with the highest chance to win', { timeout: 120000 }, () => {
     expect(r.rows).toEqual([]);
     expect(r.goal).toMatchObject({ mode: 'max', status: 'already', target: null });
     expect(r.headline.text).toMatch(/^Already clears at 100% \(95% CI \d+(\.\d)?%-100%\)\. No change needed\.$/);
+  });
+
+  it('a small sample of wins does not claim that nothing can beat the current build', async () => {
+    // 64 straight wins cannot rule out a 1-point gap (simulation.md §Win rate): the search runs and says 'best'
+    const r = await optimize({
+      character: relicless(), presetId: 'p1', target: { kind: 'custom', mob: { hp: 10, attack: 1, attackSpeed: 1 }, seconds: 10 },
+      objective: { kind: 'win-chance' }, space: only('relics'), effort: { level: 'quick', n0: 8, maxN: 64, randomStarts: 0 }, seed: 1,
+    });
+    expect(r.status).toBe('done');
+    expect(r.goal).toMatchObject({ mode: 'max', status: 'best', target: null });
+    expect(r.headline.text).toMatch(/^No change was shown to raise the chance to win\. The current build wins 100%/);
   });
 });
