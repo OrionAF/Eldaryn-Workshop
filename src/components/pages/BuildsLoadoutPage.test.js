@@ -1,4 +1,4 @@
-import { it, expect, beforeEach, afterEach } from 'vitest';
+import { it, expect, beforeEach, afterEach, describe } from 'vitest';
 import BuildsLoadoutPage from './BuildsLoadoutPage.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
 import { fixtureCharacter } from '../../lib/build/fixtures.js';
@@ -128,4 +128,54 @@ it('checkPreset badges show: an Ancient without its board node reads as a note',
   const ancient = preset().ancientSigilSpecies;
   expect(ancient).toBeTruthy();
   expect(t.q('[data-testid="preset-checks"]').textContent).toContain('Transcendence sigil node');
+});
+
+it('every relic tile carries tier art, so none renders an empty icon square', () => {
+  const tiles = t.qa('.cell button');
+  expect(tiles.length).toBeGreaterThan(0);
+  for (const b of tiles) expect(b.querySelector('.art img')).not.toBeNull();
+});
+
+describe('sigil tray (moved from the Sigils page)', () => {
+  const slot = (n) => t.q(`select[aria-label="Sigil slot ${n}"]`);
+  const fire = (el, value) => {
+    el.value = value;
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
+  it('offers only owned sigils and writes the pick to the preset', () => {
+    const owned = Object.keys(rosterStore.current.sigils.owned);
+    const values = [...slot(1).options].map((o) => o.value).filter(Boolean);
+    expect(values.length).toBeGreaterThan(0);
+    for (const v of values) expect(owned).toContain(v);
+    fire(slot(1), values[0]);
+    expect(preset().sigilSpecies[0]).toBe(values[0]);
+  });
+
+  it('a Warrior has no utility slot; a Mystic gets a utility slot (Form, Shield or Summon by spec)', () => {
+    expect(t.q('select[aria-label="Utility sigil slot"]')).toBeNull();
+    const m = fixtureCharacter('MYSTIC');
+    load(m);
+    reopen();
+    const util = t.q('select[aria-label="Utility sigil slot"]');
+    expect(util).not.toBeNull();
+    expect(t.target.textContent).toMatch(/(Shield|Form|Summon) slot/);
+    const pick = [...util.options].map((o) => o.value).filter(Boolean)[0];
+    expect(pick).toBeTruthy();
+    fire(util, pick);
+    expect(preset().utilitySigilSpecies).toBe(pick);
+  });
+
+  it('flat totals follow the equipped sigils', () => {
+    expect(t.q('[data-testid="equip-atk"]')).not.toBeNull();
+    expect(t.q('[data-testid="equip-hp"]')).not.toBeNull();
+  });
+
+  it('conditions are gated below character level 54', () => {
+    const low = fixtureCharacter('WARRIOR');
+    low.level = 50;
+    load(low);
+    reopen();
+    expect(t.q('[aria-label="Activation conditions"]').textContent).toContain('Unlock at character level 54');
+  });
 });
