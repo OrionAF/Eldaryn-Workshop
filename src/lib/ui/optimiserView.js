@@ -31,6 +31,7 @@ export const OBJECTIVE_LABEL = Object.freeze({
   dps: 'Damage per second',
   survival: 'Survival chance',
   'win-rate': 'Win rate (clear without dying)',
+  push: 'Push (deepest step)',
   'pvp-winrate': 'PVP win rate',
 });
 
@@ -96,6 +97,7 @@ export function viewResult(result) {
     unit,
     kind: result?.objective?.kind ?? null,
     goal: result?.goal ? { status: result.goal.status, target: result.goal.target } : null,
+    push: result?.push ?? null,
     higherIsBetter: hib,
     baseline: result?.baseline ? { changes: [], ...result.baseline } : null,
     rows,
@@ -156,13 +158,45 @@ export function viewRun(run) {
   const hib = run.headline?.higherIsBetter !== false;
   if (!run.detail) return null;
   if (run.schema === 2) {
+    const push = run.headline?.push ? { ...run.headline.push, rungs: run.detail.push?.rungs ?? [] } : null;
     return viewResult({
       objective: { unit, higherIsBetter: hib, kind: run.objective?.kind }, goal: run.headline?.goal ?? null,
-      baseline: run.detail.baseline, rows: run.detail.rows,
+      baseline: run.detail.baseline, rows: run.detail.rows, push,
     });
   }
   const { baseline, rows } = legacyRows(run.detail, unit);
   return { ...viewResult({ objective: { unit, higherIsBetter: true }, baseline, rows }), legacy: true };
+}
+
+// ---- Push ------------------------------------------------------------------------------------
+
+/**
+ * The Push ladder strip (simulation.md §Push): one cell per rung shown, from the start rung. `now`: the
+ * current build clears it (confirmed); `new`: only the suggested build does (confirmed); `stop`: the
+ * first rung not reached; `open`: climbed past without a confirmed claim. `push` is a result's `push`
+ * block or a saved run's (headline.push plus detail.push.rungs).
+ */
+export function ladderStrip(push) {
+  if (!push) return [];
+  const now = push.baseline?.index ?? push.baseline?.deepest ?? null;
+  const reached = push.reached?.index ?? push.reached?.deepest ?? null;
+  const stop = push.stop?.index ?? null;
+  return (push.rungs ?? []).map((r) => {
+    const state = now != null && r.index <= now ? 'now'
+      : reached != null && r.index <= reached ? 'new'
+        : r.index === stop ? 'stop' : 'open';
+    return { index: r.index, label: r.label, state };
+  });
+}
+
+/** The Push block's one-line reading of where the climb stopped. */
+export function pushStopText(push) {
+  const s = push?.stop;
+  if (!s) return '';
+  const pct = (p) => `${Math.round((p ?? 0) * 1000) / 10}%`;
+  if (s.reason === 'top') return 'The climb reached the top of the ladder.';
+  if (s.reason === 'screen') return `Stopped at ${s.label}: no build one change away came plausibly near ${pct(push.target)} (best seen ${pct(s.best?.est)}). Not reached at this effort; the Win rate goal on that step searches further.`;
+  return `Stopped at ${s.label}: the search found no build that reaches ${pct(push.target)} (best ${pct(s.best?.est)}).`;
 }
 
 // ---- change labels --------------------------------------------------------------------------
@@ -357,6 +391,10 @@ export function optimiserJobChips(result) {
   if (result.status === 'failed') return [{ tone: 'warn', text: 'Could not run' }];
   const h = result.headline ?? {};
   const chips = [];
+  if (result.push) {
+    const p = result.push;
+    return [p.status === 'pushed' ? { tone: 'up', text: `Reaches ${p.reached.label}` } : { text: p.baseline?.label ? `Stays at ${p.baseline.label}` : 'No step reached' }];
+  }
   if (result.goal) {
     const g = result.goal.status;
     return [g === 'already' ? { tone: 'up', text: 'Already clears' } : g === 'reached' ? { tone: 'up', text: 'Target reached' } : { tone: 'warn', text: 'Target not reached' }];

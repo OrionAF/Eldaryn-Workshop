@@ -12,7 +12,8 @@
 //   {kind: 'custom', mob: MobSpec, seconds?: 60}      a user-entered mob
 //   {kind: 'pvp', opponentIds: string[], seats}       saved opponents (pvpObjective.js); needs `{character}`
 // An OBJECTIVE is what "better" means: {kind: 'dps'|'survival', seconds?} (survival: custom mobs only) or
-// {kind: 'win-rate', target?: 0.1..1} (clear the step before dying or the time cap; default target 0.95).
+// {kind: 'win-rate', target?: 0.1..1} (clear the step before dying or the time cap; default target 0.95) or
+// {kind: 'push', target?} (the deepest rung of the target's ladder cleared at that rate; search/push.js runs it).
 import { fightRng } from '../engine/rng.js';
 import {
   stableStringify, meanInterval, wilsonInterval, pairedT, pairedProportion,
@@ -27,16 +28,16 @@ import { setOf } from './sampler.js';
 import { resolvePvpTarget, makePvpObjective, PVP_TARGET_KIND, PVP_OBJECTIVE_KIND } from './pvpObjective.js';
 
 // The PVE kinds. The PVP pair is kept apart: it is only valid together and needs the character's opponents.
-export const OBJECTIVE_KINDS = ['dps', 'survival', 'win-rate'];
+export const OBJECTIVE_KINDS = ['dps', 'survival', 'win-rate', 'push'];
 export const TARGET_KINDS = ['dummy', 'chapter', 'dungeon', 'raid', 'oblivion', 'worldBoss', 'custom'];
 
 // The first kind is the target's default (the Optimiser picks it): win rate for content you clear.
 const COMPAT = {
   dummy: ['dps'],
-  chapter: ['win-rate'],
-  dungeon: ['win-rate'],
-  raid: ['win-rate'],
-  oblivion: ['win-rate'],
+  chapter: ['win-rate', 'push'],
+  dungeon: ['win-rate', 'push'],
+  raid: ['win-rate', 'push'],
+  oblivion: ['win-rate', 'push'],
   worldBoss: ['dps'],
   custom: ['dps', 'win-rate', 'survival'],
   [PVP_TARGET_KIND]: [PVP_OBJECTIVE_KIND],
@@ -417,6 +418,15 @@ export function makeObjective(raw = { kind: 'dps' }, target = resolveTarget({ ki
       },
       score: (s) => sumOf(s.main[0]) / Math.max(1, s.n),
     });
+  }
+
+  if (kind === 'push') {
+    // Push (simulation.md §Push) scores each rung with the win-rate objective; this echo names the goal
+    const w = makeObjective({ kind: 'win-rate', target: raw.target }, target);
+    return {
+      ...w, kind, key: stableStringify({ kind, target: w.target }), spec: { kind, target: w.target },
+      label: `Push: deepest step at ${Math.round(w.target * 1000) / 10}%`,
+    };
   }
 
   if (kind === 'win-rate') {
