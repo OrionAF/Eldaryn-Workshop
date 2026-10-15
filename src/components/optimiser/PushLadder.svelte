@@ -11,6 +11,7 @@
   let { push } = $props();
 
   const cells = $derived(ladderStrip(push));
+  const unit = $derived(push.ladder?.unit ?? 'step');
   const STATE = {
     now: { glyph: '●', word: 'current build clears' },
     new: { glyph: '▲', word: 'suggested build clears' },
@@ -41,10 +42,10 @@
   </ul>
   <dl class="facts">
     <div><dt>Now</dt><dd data-testid="push-now">{push.baseline?.label ?? `below ${push.start?.label}`}</dd></div>
-    <div><dt>With changes</dt><dd data-testid="push-reached">{push.status === 'pushed' ? push.reached.label : 'no deeper step found'}</dd></div>
+    <div><dt>With changes</dt><dd data-testid="push-reached">{push.status === 'pushed' ? push.reached.label : `no deeper ${unit} found`}</dd></div>
   </dl>
   {#if push.status === 'pushed' && push.reached?.foundLabel}
-    <p class="hint" data-testid="push-found">The changes below were found and measured on {push.reached.foundLabel}, the first step that build was searched for.</p>
+    <p class="hint" data-testid="push-found">The changes below were found and measured on {push.reached.foundLabel}, the first {unit} that build was searched for.</p>
   {/if}
   <p class="hint" data-testid="push-stop">{pushStopText(push)}</p>
 </section>

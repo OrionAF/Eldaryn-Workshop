@@ -150,7 +150,8 @@ export function resolveCelestialTarget(raw, { character, partner } = {}) {
   if (!CELESTIAL_STARTERS.includes(starter)) throw new Error(`unknown Celestial starter '${starter}'`);
   if (!mate && (tank === 'partner' || starter === 'partner')) throw new Error('Celestial: a solo run has no partner to tank or start');
   const tactics = tacticsOf(raw.tactics, difficulty);
-  const minLevel = CELESTIAL_CONSTANTS.UNLOCK_LEVEL;
+  // each difficulty has its own unlock level (NORMAL 40, HARD 60; Game/pve-content.md §6)
+  const minLevel = celestialDifficulty(difficulty).unlockLevel ?? CELESTIAL_CONSTANTS.UNLOCK_LEVEL;
   if (raw.level != null && !(Number.isInteger(raw.level) && raw.level >= minLevel)) {
     throw new Error(`Celestial level must be a whole number from ${minLevel}, got ${raw.level}`);
   }

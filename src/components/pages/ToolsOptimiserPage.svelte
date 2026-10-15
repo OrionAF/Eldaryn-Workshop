@@ -366,7 +366,7 @@
             <span class="hint" data-testid="win-chance-explain">Finds the build with the best chance to clear this; ties go to the fewest changes. Speed does not matter.</span>
           {/if}
           {#if setup.objective.kind === 'win-rate' || setup.objective.kind === 'push'}
-            <WinRateTarget bind:objective={setup.objective} start={targetLabel} />
+            <WinRateTarget bind:objective={setup.objective} start={targetLabel} rung={setup.target.kind === 'celestial' ? 'level' : 'step'} />
           {/if}
         </section>
 
