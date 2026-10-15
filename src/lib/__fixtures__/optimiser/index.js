@@ -162,7 +162,7 @@ export function pushResult() {
     stop: { index: 6, label: 'step 7', reason: 'screen', best: { est: 0.4, lo: 0.2, hi: 0.6, n: 64, seed: null, level: 0.95, alphaAdj: 0.001, method: 'wilson' } },
     rungs: [rung(2, 'clears', 'clears'), rung(3, 'clears', 'clears'), rung(4, 'fails', 'clears'), rung(5, null, 'clears'), rung(6, null, null)],
     contradictions: [],
-    text: 'Reaches step 6 (now: step 4) at 95%. Step 7 is not reached at this effort: no build one change away comes plausibly near 95% (best seen 40%).',
+    text: 'Reaches step 6 (now: step 4) at 95%. Step 7 is not reached at this effort: no build one change away comes plausibly near 95% and no single change raises the rate (best seen 40%).',
   };
   r.headline = { better: 1, equivalent: 0, unresolved: 0, worseHidden: 0, text: r.push.text };
   return r;

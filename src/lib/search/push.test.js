@@ -92,23 +92,52 @@ describe('Push on a synthetic ladder', () => {
     expect(b.rungs[4]).toMatchObject({ current: 'fails' });
   });
 
-  it('stall case: every build at 0 % on the next rung ends at the screen in few fights, never optimised', async () => {
-    const zero = { B: { changes: 0, p: [1, 1, 1, 0, 0] }, Y: { changes: 1, p: [1, 1, 1, 0, 0] }, Z: { changes: 1, p: [1, 1, 1, 0.02, 0] } };
+  it('stall case: every build at 0 % on the next rung ends at the screen in bounded fights, never optimised', async () => {
+    const zero = { B: { changes: 0, p: [1, 1, 1, 0, 0] }, Y: { changes: 1, p: [1, 1, 1, 0, 0] }, Z: { changes: 1, p: [1, 1, 1, 0.002, 0] } };
     const { env, calls } = synthEnv(zero, { B: ['Y', 'Z'] }, { size: 5 });
     const r = await pushCore(env, opts());
     expect(calls.optimise).toEqual([]);
     expect(r.stop).toMatchObject({ rung: 3, reason: 'screen' });
     expect(r.stop.best.est).toBeLessThan(0.1);
-    // three builds at the first look or two: nothing like z^2 / delta fights per build
+    const s = r.log.find((e) => e.kind === 'screen').out;
+    expect(s).toMatchObject({ go: false, reason: 'below', builds: 3, pairs: 2 });
+    // showing each change flat (less than delta) costs about z^2 / delta fights per build, once per
+    // build: a few thousand fights, not the millions of a full-space win-rate run
     const screenFights = r.log.filter((e) => e.kind === 'screen').flatMap((e) => e.gets).reduce((a, [, n]) => a + n, 0);
-    expect(screenFights).toBeLessThanOrEqual(3 * 2 * EFFORT.n0);
+    expect(screenFights).toBeLessThanOrEqual(3 * 2048);
     const b = pushBlock({ kind: 'dungeon', label: 'D', rungs: env.rungs, start: 0 }, TAU, r);
     expect(b.status).toBe('no-gain');
     expect(b.text).toMatch(/already reaches step 3 at 90%; no change was found that goes deeper\. Step 4 is not reached at this effort/);
   });
 
+  it('optimises when only a two-change build reaches the target and each single change helps partly', async () => {
+    // B 60 %, two one-change neighbours 70 %, their combination 97 % at a 90 % target (the review's case)
+    const combo = {
+      B: { changes: 0, p: [1, 0.6] },
+      X: { changes: 1, p: [1, 0.7] },
+      Y: { changes: 1, p: [1, 0.7] },
+      XY: { changes: 2, p: [1, 0.97] },
+    };
+    const { env, calls } = synthEnv(combo, { B: ['X', 'Y'], X: ['B', 'XY'], Y: ['B', 'XY'] }, { size: 2 });
+    const r = await pushCore(env, opts());
+    const s = r.log.find((e) => e.kind === 'screen').out;
+    expect(s).toMatchObject({ go: true, reason: 'gradient' });
+    expect(calls.optimise.map((c) => c.r)).toEqual([1]);
+    expect(r.best).toMatchObject({ key: 'XY', searched: 1, foundAt: 1 });
+    expect(r.best.confirmed.deepest).toBe(1);
+  });
+
+  it('a change that raises the rate a little, far below the target, still sends the rung to the optimiser', async () => {
+    const weak = { B: { changes: 0, p: [1, 0] }, Z: { changes: 1, p: [1, 0.08] } };
+    const { env, calls } = synthEnv(weak, { B: ['Z'] }, { size: 2, optimiseHook: async () => ({ status: 'not-reached', fights: 0, best: null }) });
+    const r = await pushCore(env, opts());
+    expect(r.log.find((e) => e.kind === 'screen').out).toMatchObject({ go: true, reason: 'gradient' });
+    expect(calls.optimise.length).toBe(1);
+    expect(r.stop).toMatchObject({ rung: 1, reason: 'not-reached' });
+  });
+
   it('the stop rule fires only once every screened build is confidently below the target (at most alpha when one is at it)', async () => {
-    // one neighbour sits exactly at the target, the others at 0 %
+    // one neighbour sits exactly at the target (also a change that raises the rate), the others at 0 %
     const edge = { B: { changes: 0, p: [1, 0] }, Y: { changes: 1, p: [1, TAU] }, Z: { changes: 1, p: [1, 0] } };
     let stops = 0;
     const SEEDS = 200;
