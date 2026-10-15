@@ -26,8 +26,6 @@ export const TARGET_KIND_LABEL = Object.freeze({
 
 export const OBJECTIVE_LABEL = Object.freeze({
   dps: 'Damage per second',
-  'ttk-median': 'Time to kill, median',
-  'ttk-p90': 'Time to kill, slow end (P90)',
   survival: 'Survival chance',
   'win-rate': 'Win rate (clear without dying)',
   'pvp-winrate': 'PVP win rate',
@@ -38,7 +36,8 @@ const neg = (v) => (finite(v) ? -v : null);
 
 /**
  * A Contrast for display: score space (positive = better) in the objective's own unit. A time-to-kill
- * contrast is `θ(X) − θ(Y)` in ms, so a faster build has a negative raw delta; it is flipped here. A TTK
+ * contrast is `θ(X) − θ(Y)` in ms, so a faster build has a negative raw delta; it is flipped here (kill time
+ * is retired, but saved runs of it stay viewable). A TTK
  * contrast that fell back to win rate (`basis: 'winRate'`) is in a different unit from the table, so its
  * numbers move to `winRate` and the table cells stay empty.
  */
@@ -112,6 +111,17 @@ export function targetStanding(row, target) {
   const est = row.aux.winRate?.est;
   const gap = m !== true && finite(est) && est < target ? `${((target - est) * 100).toFixed(1)} pts below target` : '';
   return { verdict: m === true ? 'meets' : m === false ? 'below' : 'open', gap };
+}
+
+/**
+ * The win rate a goal's headline talks about: the current build's when it already clears, else the leading
+ * row's (search.js goalOf: the first row, or the current build when there is none); null without a goal or a rate.
+ */
+export function goalWinRate(view) {
+  if (!view?.goal) return null;
+  const row = view.goal.status === 'already' ? view.baseline : (view.rows[0] ?? view.baseline);
+  const rate = row?.aux?.winRate?.est;
+  return finite(rate) ? rate : null;
 }
 
 /** A saved schema 1 run's entries as rows: positive-is-better deltas, no per-change effects ("not measured"). */
@@ -257,7 +267,7 @@ export function progressLine(progress) {
 
 /** The numbers an effort level means for an objective, as printed on the Effort control. */
 export function effortPlan(level, objective) {
-  const relative = objective?.kind === 'dps' || String(objective?.kind).startsWith('ttk');
+  const relative = objective?.kind === 'dps';
   const e = resolveEffort(level, { deltaKind: relative ? 'relative' : 'absolute' });
   const zone = relative ? `${+(e.delta * 100).toFixed(2)}%` : `${+(e.delta * 100).toFixed(1)} points`;
   return { ...e, zone, relative, sub: `δ ${zone}` };

@@ -17,8 +17,11 @@
     summaryOf,
     setPersistCheckpoints,
   } from '../../lib/jobs.svelte.js';
+  import { retiredGoalBlock } from '../../lib/ui/optimiserSetup.js';
   import RunProgress from '../ui/RunProgress.svelte';
   import Button from '../ui/Button.svelte';
+
+  const retiredOf = (job) => (job.tool === 'optimiser' ? retiredGoalBlock(job.request) : '');
 
   let { id = 'jobs-tray', onclose = () => {} } = $props();
 
@@ -150,10 +153,10 @@
             <Button variant="quiet" size="small" onclick={() => dismissJob(job.id)}>Dismiss</Button>
           {/if}
           {#if job.status === 'cancelled'}
-            <Button variant="secondary" size="small" onclick={() => resumeJob(job.id)}>Resume</Button>
+            <Button variant="secondary" size="small" disabled={!!retiredOf(job)} reason={retiredOf(job)} onclick={() => resumeJob(job.id)}>Resume</Button>
           {/if}
           {#if job.status === 'failed'}
-            <Button variant="secondary" size="small" onclick={() => retryJob(job.id)}>Retry</Button>
+            <Button variant="secondary" size="small" disabled={!!retiredOf(job)} reason={retiredOf(job)} onclick={() => retryJob(job.id)}>Retry</Button>
           {/if}
           {#if job.openRoute && job.status !== 'queued'}
             <Button variant="secondary" size="small" onclick={() => openResult(job.id)}>

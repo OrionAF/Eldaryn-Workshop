@@ -27,12 +27,13 @@
   import { relicSlotCap } from '../../lib/model/legality.js';
   import { presetDuelFighter, opponentFighter, missingStats } from '../../lib/features/duel.js';
   import {
-    normaliseSetup, setupFromRun, requestOf, searchCharacter, signatureOf, runApplyBlock,
+    normaliseSetup, setupFromRun, requestOf, searchCharacter, signatureOf, runApplyBlock, retiredGoalBlock,
   } from '../../lib/ui/optimiserSetup.js';
   import {
     viewResult, progressSegments, progressLine, effortPlan, enabledCount, toggleTotal, optimiserJobChips,
-    fmtDuration, viewRun, OBJECTIVE_LABEL, MEASURED_COST,
+    fmtDuration, viewRun, OBJECTIVE_LABEL, MEASURED_COST, goalWinRate,
   } from '../../lib/ui/optimiserView.js';
+  import { triesPerClear } from '../../lib/ui/winRateFormat.js';
   import WinRateTarget from '../optimiser/WinRateTarget.svelte';
   import { fmtCount } from '../../lib/ui/statsFormat.js';
   import Panel from '../ui/Panel.svelte';
@@ -134,6 +135,7 @@
   const result = $derived(shown?.result ?? null);
   const failedJob = $derived(jobs.at(-1)?.status === 'failed' ? jobs.at(-1) : null);
   const view = $derived(result && result.status !== 'failed' ? viewResult(result) : null);
+  const liveTries = $derived(view ? triesPerClear(goalWinRate(view)) : '');
   const stale = $derived(shown ? isStale(shown) : false);
   const cancelled = $derived(shown?.status === 'cancelled' && !live);
   const resultPreset = $derived(result ? character.presets.find((p) => p.id === result.request.presetId) ?? null : null);
@@ -172,7 +174,7 @@
   }
 
   function runMore(row) {
-    if (live || !shown || stale || !row.runMore) return;
+    if (live || !shown || stale || !row.runMore || retiredGoalBlock(result)) return;
     const meta = { characterId: character.id, presetId: result.request.presetId, presetName: resultPreset?.name ?? '', mode: 'optimizeMore', fromJob: jobKey(shown) };
     start(
       { mode: 'optimizeMore', character: searchCharacter(character), result, rowKeys: [row.key], targetN: row.runMore.targetN },
@@ -265,6 +267,7 @@
   const latestRun = $derived(!openRunId && !dismissedSaved && !result && !live && !failedJob ? (character.runs ?? [])[0] ?? null : null);
   const savedRun = $derived(openedRun ?? latestRun);
   const savedView = $derived(savedRun ? viewRun(savedRun) : null);
+  const savedTries = $derived(savedView ? triesPerClear(goalWinRate(savedView)) : '');
   const showSaved = $derived(!!savedRun && !live);
   function openRun(r) {
     openRunId = r.id;
@@ -376,10 +379,13 @@
           {/snippet}
           <Banner variant="info" lead="Saved run.">
             Saved {new Date(savedRun.at).toLocaleString()}. You can apply a build from it while the character still matches; Run more is off for a saved run.
-            {#snippet action()}<Button variant="ghost" size="small" onclick={() => rerun(savedRun)}>Re-run with settings</Button>{/snippet}
+            {#snippet action()}<Button variant="ghost" size="small" disabled={!!retiredGoalBlock(savedRun)} reason={retiredGoalBlock(savedRun)} onclick={() => rerun(savedRun)}>Re-run with settings</Button>{/snippet}
           </Banner>
           {#if savedRun.headline.text}
-            <div class="headline" role="status"><h3>{savedRun.headline.text}</h3></div>
+            <div class="headline" role="status">
+              <h3>{savedRun.headline.text}</h3>
+              {#if savedTries}<p data-testid="headline-tries">Best win rate: {savedTries}.</p>{/if}
+            </div>
           {/if}
           {#if savedView}
             <OptimiserResults
@@ -415,7 +421,7 @@
           {#if failedJob}
             <Banner variant="error" lead="The run failed.">
               {failedJob.error}
-              {#snippet action()}<Button variant="ghost" size="small" onclick={() => retryJob(failedJob.id)}>Retry</Button>{/snippet}
+              {#snippet action()}<Button variant="ghost" size="small" disabled={!!retiredGoalBlock(failedJob.request)} reason={retiredGoalBlock(failedJob.request)} onclick={() => retryJob(failedJob.id)}>Retry</Button>{/snippet}
             </Banner>
           {/if}
           {#if stale}
@@ -424,7 +430,7 @@
           {#if cancelled}
             <Banner variant="info" lead="Cancelled.">
               These builds are provisional: they were not confirmed on fresh fights.
-              {#snippet action()}<Button variant="ghost" size="small" onclick={() => resumeJob(shown.id)}>Resume</Button>{/snippet}
+              {#snippet action()}<Button variant="ghost" size="small" disabled={!!retiredGoalBlock(shown.request)} reason={retiredGoalBlock(shown.request)} onclick={() => resumeJob(shown.id)}>Resume</Button>{/snippet}
             </Banner>
           {/if}
           {#if result?.status === 'failed'}
@@ -445,6 +451,7 @@
           {#if view}
             <div class="headline" role="status">
               <h3>{result.headline.text}</h3>
+              {#if liveTries}<p data-testid="headline-tries">Best win rate: {liveTries}.</p>{/if}
               {#if result.headline.worseHidden > 0}<p>{result.headline.worseHidden} build{result.headline.worseHidden === 1 ? '' : 's'} measured worse and {result.headline.worseHidden === 1 ? 'is' : 'are'} hidden.</p>{/if}
             </div>
             {#if view.withheld > 0}
@@ -455,7 +462,7 @@
               presetName={resultPreset?.name ?? shown.request.meta.presetName}
               onapply={askApply}
               {applyBlocked}
-              onrunmore={stale ? null : runMore}
+              onrunmore={stale || retiredGoalBlock(result) ? null : runMore}
               unmeasured={(row) => row.provisional}
               busy={!!live}
             />

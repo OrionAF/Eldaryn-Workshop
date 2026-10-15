@@ -32,7 +32,7 @@ it('the goal list leads with win rate for chapter, dungeon, raid and Oblivion, l
   expect(OBJECTIVE_LABEL['win-rate']).toBe('Win rate (clear without dying)');
 });
 
-it('the Target field shows percent (default 95), clamps to 50-100 and explains itself with the target', () => {
+it('the Target field shows percent (default 95), clamps to 10-100 and explains itself with the target', () => {
   const state = { objective: { kind: 'win-rate' } };
   mounted = setup(WinRateTarget, {
     get objective() { return state.objective; },
@@ -43,14 +43,14 @@ it('the Target field shows percent (default 95), clamps to 50-100 and explains i
   expect(ui.q('label').textContent).toMatch(/Target/);
   expect(input.value).toBe('95');
   expect(ui.q('[data-testid="win-rate-explain"]').textContent.replace(/\s+/g, ' ').trim()).toBe(
-    'Finds the build with the fewest changes that clears this at least 95% of the time. Speed does not matter.',
+    'Finds the build with the fewest changes that clears this at least 95% of the time. Speed does not matter. A loss usually costs nothing but time (a chapter level restarts; an Oblivion floor keeps its key), so a lower target is fine for content you can retry.',
   );
   change(input, '80');
   expect(state.objective).toEqual({ kind: 'win-rate', target: 0.8 });
-  change(input, '50');
-  expect(state.objective.target).toBe(0.5);
-  change(input, '20'); // below 50 is refused with an error, the target stays
-  expect(state.objective.target).toBe(0.5);
+  change(input, '10');
+  expect(state.objective.target).toBe(0.1);
+  change(input, '5'); // below 10 is refused with an error, the target stays
+  expect(state.objective.target).toBe(0.1);
   expect(ui.q('.error, [id$="-err"]')?.textContent ?? '').toMatch(/minimum/i);
 });
 
@@ -136,4 +136,21 @@ it('a saved win-rate run keeps the goal, the chips and the win-rate points, and 
   const run = runFromResult(winRateResult('reached'));
   expect(run.detail.rows[0].vsBaseline.winRate).toEqual({ delta: 0.26, lo: 0.21, hi: 0.31 });
   expect(run.detail.rows[0].aux.meetsTarget).toBe(true);
+});
+
+it('every win rate carries "about N tries per clear": rows, baseline and the goal banners', () => {
+  const ui = mountResults(winRateResult('not-reached'));
+  const rows = ui.qa('[data-testid="result-row"]');
+  expect(rows[0].textContent).toMatch(/about 1\.2 tries per clear/); // 82.0 %
+  expect(ui.q('[data-testid="baseline-row"]').textContent).toMatch(/about 1\.4 tries per clear/); // 70.0 %
+  expect(ui.q('[data-testid="goal-not-reached"]').textContent).toMatch(/about 1\.2 tries per clear/); // the leading row
+  const already = mountResults(winRateResult('already'));
+  expect(already.q('[data-testid="goal-already"]').textContent).toMatch(/about 1\.0 tries per clear/);
+  expect(already.q('[data-testid="baseline-row"]').textContent).toMatch(/about 1\.0 tries per clear/);
+});
+
+it('the Target field accepts 10 % and says a loss usually costs nothing but time', () => {
+  mounted = setup(WinRateTarget, { objective: { kind: 'win-rate', target: 0.1 } });
+  expect(mounted.q('input').value).toBe('10');
+  expect(mounted.q('[data-testid="win-rate-explain"]').textContent).toMatch(/A loss usually costs nothing but time/);
 });

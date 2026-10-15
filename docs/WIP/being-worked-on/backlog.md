@@ -210,7 +210,7 @@ formula, not from fights.
 
 **Ask** (2026-10-15): the user agreed to this review of the objectives.
 
-**Remove** (after W2 merges, since W2 is editing the Optimiser page):
+**Remove** (DONE 2026-10-15, slice O1; `simulation.md` §Objectives):
 - **Kill time (median and p90).** No content the app simulates pays for kill speed. Dungeon, raid
   and Oblivion mobs each have a 20-minute cap that never runs out, chapters have no timer, and
   hunting is a server roll with no fight (`combat-pve.md` §1, §14). Kill time also moves in steps of
@@ -220,7 +220,7 @@ formula, not from fights.
   out, it equals win rate, and World Boss pays for damage, not for staying alive. Keep it for
   custom mobs only.
 
-**Change.** Let the win-rate target go down to 10% and show "about N tries per clear" (1 / p) next to
+**Change** (DONE 2026-10-15, slice O1). Let the win-rate target go down to 10% and show "about N tries per clear" (1 / p) next to
 the rate. A loss costs no key or reward on most content: a failed chapter level restarts
 (`combat-pve.md` §14), an Oblivion floor keeps its key on defeat, and the dungeon text says only a
 clear spends a key (`pve-content.md` §4, §11). The default stays 95%.

@@ -12,7 +12,7 @@ import { metricKey } from '../../lib/engine/metrics.js';
 import { searchCharacter } from '../../lib/ui/optimiserSetup.js';
 import { notifications } from '../../lib/notify.svelte.js';
 import { setup, click } from '../ui/testkit.js';
-import { richResult, dpsResult, legacyRun } from '../../lib/__fixtures__/optimiser/index.js';
+import { richResult, dpsResult, legacyRun, ttkResult } from '../../lib/__fixtures__/optimiser/index.js';
 import { setPrefs as setEstimatePrefs, applyPrefs as resetEstimatePrefs } from '../../lib/prefs.svelte.js';
 import { APP_VERSION as ESTIMATE_VERSION } from '../../lib/calibration.js';
 
@@ -388,7 +388,7 @@ it('a saved run survives a reload with its rows and changes', () => {
 it('a blank survival window means the whole fight, not 5 s', () => {
   saveUi({
     optimiserSetups: {
-      [rosterStore.current.id]: { presetId: 'p1', target: { kind: 'chapter', chapter: 1, level: 1 }, objective: { kind: 'survival', seconds: 30 }, effort: 'quick', seed: 1 },
+      [rosterStore.current.id]: { presetId: 'p1', target: { kind: 'custom', mob: { hp: 1000000, attack: 10000, attackSpeed: 1 }, seconds: 60 }, objective: { kind: 'survival', seconds: 30 }, effort: 'quick', seed: 1 },
     },
   });
   mountPage();
@@ -482,4 +482,37 @@ it('S2: shows the run-time estimate under Effort, or a link to calibrate', () =>
   expect(view.q('[data-testid="run-estimate"]').textContent).toMatch(/At least about .* on this device \(estimate\)/);
   localStorage.clear();
   resetEstimatePrefs();
+});
+
+// ---- retired goals stay viewable but cannot be re-run ------------------------------------------------
+
+it('a saved kill-time run stays viewable; Re-run with settings is off with the reason', () => {
+  const r = ttkResult();
+  r.request.characterKey = metricKey('character', searchCharacter(rosterStore.current));
+  rosterStore.addRun(r, { presetName: 'Main' });
+  flushSync();
+  mountPage();
+  expect(text()).toMatch(/Saved/);
+  expect(view.q('[data-testid="optimiser-results"]')).not.toBeNull();
+  const rerun = btn(/^Re-run with settings/);
+  expect(rerun.getAttribute('aria-disabled')).toBe('true');
+  expect(rerun.title).toBe('This goal was retired.');
+});
+
+it('Run history: Re-run with settings is off for a retired goal and on for a live one', () => {
+  rosterStore.addRun(ttkResult(), { presetName: 'Main', id: 'retired' });
+  rosterStore.addRun(dpsResult(), { presetName: 'Main', id: 'live' });
+  flushSync();
+  mountPage({ tab: 'history' });
+  const rerunOf = (i) => {
+    click([...view.target.querySelectorAll('button')].filter((x) => /^Details$/.test(x.textContent.trim()))[i]);
+    const found = [...view.target.querySelectorAll('button')].find((x) => /^Re-run with settings/.test(x.textContent.trim()));
+    return found;
+  };
+  const states = [0, 1].map((i) => {
+    const b = rerunOf(i);
+    return [b.getAttribute('aria-disabled') === 'true', b.title];
+  });
+  expect(states.map((x) => x[0]).sort()).toEqual([false, true]);
+  expect(states.find((x) => x[0])[1]).toBe('This goal was retired.');
 });
