@@ -13,7 +13,8 @@
 | - | §12 open item: the finalist count and the repeated baseline test | S | Not started (see §12) |
 | - | §16 follow-up: measure a Celestial run's fights before/after the pruning | S | Deferred by the user |
 | - | §11 Celestial open questions | - | Waits for more server logs |
-| Done | §12/§3 win-rate tie look and estimate follow-up (e790f69); §3 estimate rebuilt on saved runs and every phase; no stray scrollbars on the Jobs tray and tabs; the run steps explained (68a9f7e); §16 dominance pruning for talents, relics, pets and sigils (Celestial fight-count measurement deferred); §7 PVE replay check (the engine agrees with the real dungeon log on every rule); §9 stat weights chart; §2 Rankings profiles as opponents and Celestial partners; §12 progress tolerance; §11 Push on the Celestial Trial; §6 results name owned items (and the Loot bag stats, the interaction badge); §15 Fortress boss on the duel engine; §11 Celestial engine and Optimiser target; §1 Optimiser step list; §3 setup estimates; §10 Push, Fortress shield fix; §12 highest chance to win; §13 glyph pruning; §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target | - | Merged |
+| - | §13 free fills: two loose ends | XS | Not started. (a) Attribution's Holm families still count the fills, so a paid change's own/needed verdicts run at a slightly stricter level. (b) When F upgrades a saved glyph to a same-type copy and the only fill sorts before it, the socket stays empty (canonical order would shuffle it; simulation.md §Minimise and confirm, Free fills) |
+| Done | Plain-language UI (wording.md) and game-data import hidden behind Settings > Advanced; mount HP and Attack shown at the mount's level, as the game does; §13 free fills of empty glyph sockets after Minimise (landPLAIN, 3,075 tests pass); §12/§3 win-rate tie look and estimate follow-up (e790f69); §3 estimate rebuilt on saved runs and every phase; no stray scrollbars on the Jobs tray and tabs; the run steps explained (68a9f7e); §16 dominance pruning for talents, relics, pets and sigils (Celestial fight-count measurement deferred); §7 PVE replay check (the engine agrees with the real dungeon log on every rule); §9 stat weights chart; §2 Rankings profiles as opponents and Celestial partners; §12 progress tolerance; §11 Push on the Celestial Trial; §6 results name owned items (and the Loot bag stats, the interaction badge); §15 Fortress boss on the duel engine; §11 Celestial engine and Optimiser target; §1 Optimiser step list; §3 setup estimates; §10 Push, Fortress shield fix; §12 highest chance to win; §13 glyph pruning; §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target | - | Merged |
 
 ## 16. Optimiser: exact dominance pruning for talents, relics, pets and sigil slots
 
@@ -112,6 +113,12 @@ express that. See §11.
 - For majors, only the best copy of each type counts.
 
 For the user's Sentinel this cuts about 378 minor-glyph rows per visit to about 80. It replaces the earlier single-socket idea (branch `rebuild2/S1-wip`, now dropped). It follows §14's measured result: mount pruning alone cut the mounts from 11 to 2, but the Fortress run still did not finish in 10 minutes.
+
+**Free fills (2026-10-16).** A win-chance run on Forsaken Mines Hard 2 suggested one major glyph: the
+second socket stayed empty because Relentless Brand and Duskrunner Haste both tied at Quick, and the
+fewest-changes rule dropped them. The user chose to fill such sockets: after Minimise, empty major and
+minor sockets get owned glyphs that act for the build, marked free and not counted as changes (contract:
+simulation.md §Minimise and confirm, Free fills).
 
 **Status:** done (slice G1, branch `rebuild2/G1-r1`). Measured on the user's Sentinel (L85, active preset, 13 usable minors): the `minorGlyphs` domain fell from 377 rows to 78 (378 to 78 counting the baseline). The `majorGlyphs` domain stays at 3 there, since only a few majors act for the spec and running sigils. All 42 major tables are monotone in rarity (a catalogue test checks it), so major pruning is exact for every type. The mount inner ascent and the spec block use the same domains; nothing else enumerates glyph subsets.
 
@@ -452,7 +459,9 @@ build clears the content without dying, not how fast. Ten seconds and fifty are 
 **Status (2026-10-15): replaced.** The capture-guide idea is dropped. Instead every import entry point
 moved to Settings > Data > Import, behind one disclaimer: importing is possible but finicky, it needs
 another app (HTTP Catcher on iPhone) or a PC with HTTP Toolkit, Android usually needs root, and this
-app's own backups always import. The notes below stay as the research record.
+app's own backups always import. The notes below stay as the research record. Since 2026-10-16 that Import
+box is hidden by default: Settings > Advanced > "Show game data import" turns it on, and Data keeps a
+plain "Restore a backup" box (ia.md §5.4).
 
 **Ask** (2026-10-15): can users capture the profile and fight JSON from their phones without HTTP
 Toolkit? Can the app ask the game server for it?
