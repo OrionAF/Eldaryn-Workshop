@@ -224,7 +224,7 @@ it('the Health and Attack fields and slider ends show the level-scaled values th
   expect(atk.value).toBe('28'); // round(25 * 1.1)
   const bounds = [...card.querySelectorAll('.bound')].map((b) => b.textContent.trim());
   expect(bounds).toEqual(['41', '43', '26', '29']); // the Crystal Drake roll range 37-39 / 24-26 at level 2
-  expect(card.querySelector('[data-testid="mount-roll"]').textContent.replace(/\s+/g, ' ')).toContain('level 1: 37%, 25%');
+  expect(card.querySelector('[data-testid="mount-roll"]').textContent.replace(/\s+/g, ' ')).toContain('level 1 roll: 37% HP, 25% ATK');
   setField(hp, '42');
   expect(rosterStore.current.mounts[0].baseHp).toBe(38);
   expect(field(cards()[0], 'Health').value).toBe('42');
