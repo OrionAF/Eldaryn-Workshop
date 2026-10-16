@@ -40,6 +40,13 @@ describe('Push, live', () => {
     expect(full.phases.map((p) => p.id)).toEqual(['climb', 'screen', 'optimise', 'confirm']);
     expect(full.phases.find((p) => p.id === 'optimise').fights).toBeGreaterThan(0);
     expect(JSON.parse(JSON.stringify(full))).toEqual(full);
+    // the first optimised rung's search is what a saved Push run's cost is made of (simulation.md §Estimates)
+    expect(full.optimised).toMatchObject({ rungs: expect.any(Number), search: { strategy: 'exhaustive', evaluated: expect.any(Number) } });
+    expect(full.optimised.index).toBeGreaterThanOrEqual(80);
+    const saved = runFromResult(full, { id: 'push' });
+    expect(saved.cost).toMatchObject({ strategy: 'exhaustive', lanes: 1, rung: { key: full.optimised.key, label: full.optimised.label } });
+    expect(saved.cost.fights.total).toBe(full.optimised.search.fights.total);
+    expect(saved.cost.evaluated).toBe(full.optimised.search.evaluated);
 
     // the real result renders through the view, the ladder strip and a saved run
     const view = viewResult(full);
