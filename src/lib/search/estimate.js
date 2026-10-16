@@ -3,6 +3,7 @@
 // behind it: docs/Reference/simulation.md §Estimates; the procedure it models is §Search (search.js optimize).
 import { BLOCKS } from './space.js';
 import { prepare, enumerateJoint, EXHAUSTIVE_MAX, EFFORT_LEVELS, RANDOM_STARTS } from './search.js';
+import { looksFor } from './sampler.js';
 import { CELESTIAL_TARGET_KIND } from './celestialObjective.js';
 import { PVP_OBJECTIVE_KIND } from './pvpObjective.js';
 import { estimateSeconds } from '../calibration.js';
@@ -46,7 +47,7 @@ export function familyOf(objectiveKind, targetKind) {
 export const PRIOR = Object.freeze({
   dps: { measured: true, search: { exhaustive: [6, 9, 20], local: [6, 9, 20] }, later: [20, 50, 150], share: [0, 0.02, 0.1] },
   fortress: { measured: true, search: { exhaustive: [6, 9, 20], local: [6, 9, 20] }, later: [20, 50, 150], share: [0, 0.02, 0.1] },
-  winrate: { measured: true, search: { exhaustive: [120, 400, 1600], local: [120, 400, 1600] }, later: [100, 1000, 4000], share: [0.002, 0.03, 0.4] },
+  winrate: { measured: true, search: { exhaustive: [120, 380, 1600], local: [120, 380, 1600] }, later: [100, 1000, 4000], share: [0.002, 0.02, 0.6] },
   pvp: { measured: true, search: { exhaustive: [120, 450, 1600], local: [120, 450, 1600] }, later: [100, 2000, 4000], share: [0.002, 0.03, 0.4] },
   celestial: { measured: false, search: { exhaustive: [50, 500, 5000], local: [50, 500, 5000] }, later: [100, 2000, 10000], share: [0, 0.05, 1] },
 });
@@ -98,19 +99,70 @@ const choiceBlocks = (domains) => Math.max(1, Object.values(domains ?? {}).filte
 
 const enabledIds = (space) => BLOCKS.filter((id) => space?.[id] !== false).sort().join(',');
 
-/** A saved run the estimate can learn from: a finished schema 2 optimise run with its cost (model/runs.js). */
-export function usableRun(r) {
-  if (!isObj(r) || r.schema !== 2 || !isObj(r.cost) || r.headline?.aborted || r.headline?.push) return false;
-  if (r.objective?.kind === 'push') return false;
-  return r.cost.fights?.total > 0 && r.headline?.evaluated > 0;
+const isPushRun = (r) => r?.objective?.kind === 'push' || isObj(r?.headline?.push);
+
+/** The phases of one optimisation in a debug summary (inside a Push run, the optimised rungs' own). */
+const SEARCH_PHASES = ['screen', 'search'];
+const LATER_PHASES = ['minimise', 'confirm', 'attribute'];
+
+/**
+ * What a saved run cost, as the estimate reads it (simulation.md §Estimates): from its `cost`, else from its
+ * debug summary (`debug.phases`: builds, fights, wallMs per phase; for a Push run only the optimisation's
+ * phases). A debug-only run has no domains or starts, so it gives fights per build and speed, never builds
+ * per start. null when the run has neither or they hold no search.
+ * @returns {{from: 'cost'|'debug', strategy: string, domains: Object|null, lanes: number, builds: number,
+ *   fights: {search: number, later: number, total: number}, elapsedMs: number|null}|null}
+ */
+export function runCost(r) {
+  const c = r?.cost;
+  if (isObj(c) && c.fights?.total > 0) {
+    const builds = c.evaluated ?? r.headline?.evaluated ?? 0;
+    if (!(builds > 0)) return null;
+    return {
+      from: 'cost', strategy: c.strategy, domains: c.domains ?? null, lanes: c.lanes ?? 1, builds,
+      fights: { search: c.fights.search, later: c.fights.minimise + c.fights.confirm, total: c.fights.total }, elapsedMs: c.elapsedMs ?? null,
+    };
+  }
+  const d = r?.debug;
+  // a PVP run's lanes are not in the summary
+  if (!isObj(d) || !Array.isArray(d.phases) || r.target?.kind === 'pvp') return null;
+  const ph = (ids, k) => d.phases.filter((p) => ids.includes(p.id)).reduce((s, p) => s + (p[k] ?? 0), 0);
+  const search = ph(SEARCH_PHASES, 'fights');
+  const later = ph(LATER_PHASES, 'fights');
+  const builds = d.phases.find((p) => p.id === 'search')?.builds ?? 0;
+  if (!(search > 0) || !(builds > 0)) return null;
+  const inner = ph([...SEARCH_PHASES, ...LATER_PHASES], 'wallMs');
+  const push = isPushRun(r);
+  const wall = push ? inner : d.totals?.wallMs || inner;
+  return {
+    from: 'debug', strategy: (d.blocks ?? []).some((b) => b.id === 'all') ? 'exhaustive' : 'local', domains: null, lanes: 1, builds,
+    fights: { search, later, total: push ? search + later : Math.max(search + later, d.totals?.fights ?? 0) }, elapsedMs: wall > 0 ? wall : null,
+  };
 }
 
-/** The match tiers, strictest first (simulation.md §Estimates). Each is a predicate over (want, run). */
+/** A saved run the estimate can learn from: a finished schema 2 run (optimise or Push) with a cost or a debug summary. */
+export function usableRun(r) {
+  if (!isObj(r) || r.schema !== 2 || r.headline?.aborted) return false;
+  return runCost(r) != null;
+}
+
+/**
+ * The target and objective a saved run stands for in this estimate. A Push run is a Push run to a Push
+ * estimate (its start rung); to any other it is the win-rate search on the rung it optimised (`cost.rung`;
+ * a debug-only Push run does not record that rung).
+ */
+function runView(r, want) {
+  if (!isPushRun(r)) return { targetKey: r.target?.key, objectiveKind: r.objective?.kind };
+  if (want.objectiveKind === 'push') return { targetKey: r.target?.key, objectiveKind: 'push' };
+  return { targetKey: r.cost?.rung?.key ?? null, objectiveKind: 'win-rate' };
+}
+
+/** The match tiers, strictest first (simulation.md §Estimates). Each is a predicate over (want, run, view). */
 const TIERS = [
   { id: 'same', label: 'your past runs of this setup', scaled: false,
-    test: (w, r) => r.target?.key === w.targetKey && r.objective?.kind === w.objectiveKind && r.budget?.level === w.level && enabledIds(r.space) === w.blocks },
+    test: (w, r, v) => v.targetKey === w.targetKey && v.objectiveKind === w.objectiveKind && r.budget?.level === w.level && enabledIds(r.space) === w.blocks },
   { id: 'like', label: 'your past runs like this', scaled: false,
-    test: (w, r) => r.target?.kind === w.targetKind && r.objective?.kind === w.objectiveKind && r.budget?.level === w.level },
+    test: (w, r, v) => r.target?.kind === w.targetKind && v.objectiveKind === w.objectiveKind && r.budget?.level === w.level },
   { id: 'family', label: 'your past runs of the same kind of objective', scaled: false,
     test: (w, r) => r.budget?.level === w.level },
   { id: 'other-effort', label: 'your past runs of the same kind of objective at another Effort', scaled: true, test: () => true },
@@ -118,15 +170,71 @@ const TIERS = [
 
 /**
  * The past runs an estimate learns from: the first tier with any usable run of the same family and
- * strategy, newest HISTORY_MAX of it.
- * @returns {{tier: string, label: string, scaled: boolean, runs: Object[]} | null}
+ * strategy, newest HISTORY_MAX of it, with what each cost (`runCost`, same order).
+ * @returns {{tier: string, label: string, scaled: boolean, runs: Object[], costs: Object[]} | null}
  */
 export function matchHistory(want, history) {
-  const pool = (Array.isArray(history) ? history : []).filter((r) => usableRun(r)
-    && r.cost.strategy === want.strategy && familyOf(r.objective?.kind, r.target?.kind) === want.family);
+  const pool = [];
+  for (const r of Array.isArray(history) ? history : []) {
+    if (!isObj(r) || r.schema !== 2 || r.headline?.aborted) continue;
+    const c = runCost(r);
+    if (!c || c.strategy !== want.strategy) continue;
+    const v = runView(r, want);
+    if (familyOf(v.objectiveKind, r.target?.kind) !== want.family) continue;
+    pool.push({ r, c, v });
+  }
   for (const t of TIERS) {
-    const runs = pool.filter((r) => t.test(want, r)).sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0)).slice(0, HISTORY_MAX);
-    if (runs.length) return { tier: t.id, label: t.label, scaled: t.scaled, runs };
+    const hit = pool.filter((x) => t.test(want, x.r, x.v)).sort((a, b) => (a.r.at < b.r.at ? 1 : a.r.at > b.r.at ? -1 : 0)).slice(0, HISTORY_MAX);
+    if (hit.length) return { tier: t.id, label: t.label, scaled: t.scaled, runs: hit.map((x) => x.r), costs: hit.map((x) => x.c) };
+  }
+  return null;
+}
+
+/**
+ * The win rate's saturated races (simulation.md §Estimates, the tie look): when no build wins, no arm can
+ * leave a race on the rate before the rates tie, so each distinct build raced is sampled to at least the
+ * first look at or after n*, the exact tie point at its race's per-look level (alpha / (arms x looks),
+ * `rateTieN`; the tie look `looksFor` adds usually sits there). `races` are the search's races as
+ * [{arms, weight}] (weight: the share of the builds tried in races of that size).
+ * @returns {{perBuild: number, least: number}|null}  the weighted and the least floor; null when the
+ *   objective has no tie point (not a win rate, or a relative zone)
+ */
+export function saturatedPerBuild(objective, effort, races) {
+  if (typeof objective?.rateTieN !== 'function') return null;
+  if ((effort.deltaKind ?? objective.deltaKind) !== 'absolute' || !(effort.delta > 0)) return null;
+  const at = (arms) => {
+    const o = { n0: effort.n0, maxN: effort.maxN, alpha: effort.alpha / arms, delta: effort.delta, deltaKind: effort.deltaKind, tieLook: effort.tieLook };
+    const looks = looksFor(objective, o);
+    const n = objective.rateTieN({ alpha: o.alpha / looks.length, delta: effort.delta });
+    return looks.find((m) => m >= n) ?? effort.maxN;
+  };
+  const rs = races.filter((x) => x.arms > 1 && x.weight > 0);
+  if (!rs.length) return null;
+  const w = rs.reduce((t, x) => t + x.weight, 0);
+  const sat = rs.map((x) => ({ ...x, n: at(x.arms) }));
+  return { perBuild: sat.reduce((t, x) => t + x.weight * x.n, 0) / w, least: Math.min(...sat.map((x) => x.n)) };
+}
+
+/**
+ * The races a search runs, as saturatedPerBuild reads them: one race of every build (exhaustive), else one
+ * race per block of its values, weighted like sweepBuilds (an assumption: the ascent's share of each block).
+ */
+function racesOf(strategy, domains, exactBuilds, family) {
+  if (strategy === 'exhaustive') return [{ arms: exactBuilds ?? 1, weight: 1 }];
+  const m = SWEEP_MODEL[family] ?? SWEEP_MODEL.winrate;
+  return Object.entries(domains).map(([id, d]) => ({ arms: d, weight: id === 'talents' ? m.talent * (Math.sqrt(d) - 1) : m.base * (d - 1) }));
+}
+
+/**
+ * What past runs say about the win rate at this target: 'none' when a finished run here found no build that
+ * wins (goal `no-wins`), else null. A run in which every build clears the target stops at its first check
+ * (`already`), so no saved search shows that regime.
+ */
+export function regimeOf(want, history) {
+  if (want.family !== 'winrate') return null;
+  for (const r of Array.isArray(history) ? history : []) {
+    if (!isObj(r) || r.schema !== 2 || r.headline?.aborted || isPushRun(r)) continue;
+    if (r.target?.key === want.targetKey && r.headline?.goal?.status === 'no-wins') return 'none';
   }
   return null;
 }
@@ -221,19 +329,25 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
   };
   const match = matchHistory(want, history);
   const choices = choiceBlocks(sizesOf(enabled, sizes));
+  // a known no-wins target: every distinct build is raced to at least its race's tie point (saturatedPerBuild)
+  const regime = regimeOf(want, history);
+  const sat = regime ? saturatedPerBuild(objective, effort, racesOf(strategy, sizesOf(enabled, sizes), exactBuilds, family)) : null;
+  const satFloor = (fpb) => (sat ? fpb.map((x) => Math.max(x, sat.perBuild)) : fpb);
   let band;
   let source;
   if (match) {
     const sc = (r) => effortScale(r.budget?.level, effort.level);
-    const per = match.runs.map((r) => {
-      const c = r.cost;
+    const per = match.runs.map((r, i) => {
+      const c = match.costs[i];
       return {
-        rho: strategy === 'local' ? r.headline.evaluated / (nominalStarts(c.domains) * sweepBuilds(c.domains, family)) : 1,
-        fpb: (c.fights.search / c.lanes / r.headline.evaluated) * sc(r)[1],
-        ratio: (c.fights.minimise + c.fights.confirm) / Math.max(1, c.fights.search),
+        // builds per start need the run's domains: a debug-only run has none (null)
+        rho: strategy !== 'local' ? 1 : c.domains ? c.builds / (nominalStarts(c.domains) * sweepBuilds(c.domains, family)) : null,
+        fpb: (c.fights.search / c.lanes / c.builds) * sc(r)[1],
+        ratio: c.fights.later / Math.max(1, c.fights.search),
       };
     });
-    if (match.tier === 'same') {
+    const known = per.filter((q) => q.rho != null);
+    if (match.tier === 'same' && known.length === per.length) {
       // this very setup: each past run is a point; the range spans them with a margin
       const m = per.length === 1 ? HISTORY_MARGIN.one : HISTORY_MARGIN.more;
       const pts = per.map((q) => {
@@ -245,10 +359,24 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
         return { lo: Math.min(...xs) / m, likely: geo(xs), hi: Math.max(...xs) * m };
       };
       band = { builds: range('builds'), fights: range('fights'), laterShare: geo(pts.map((q) => Math.max(1e-6, q.later))) };
+    } else if (match.tier === 'same') {
+      // this setup, but some runs are debug-only (no builds per start): their fights per build and later ratio
+      // are this setup's, the builds come from the model around the known runs' rate
+      const m = per.length === 1 ? HISTORY_MARGIN.one : HISTORY_MARGIN.more;
+      const rho = known.length ? geo(known.map((q) => q.rho)) : 1;
+      const fpb = per.map((q) => q.fpb);
+      const ratio = per.map((q) => q.ratio);
+      band = banded({
+        unit, lanes,
+        g: SWEEP_MODEL.band.map((x) => x * rho),
+        fpb: [Math.min(...fpb) / m, geo(fpb), Math.max(...fpb) * m],
+        share: [Math.min(...ratio), geo(ratio.map((x) => Math.max(1e-6, x))), Math.max(...ratio)],
+        later: [0, 0, 0],
+      });
     } else {
       // another setup of the same kind: its per-build cost carries over, but how a different space sweeps does
       // not, so builds keep the model's measured spread around the runs' own rate
-      const rho = geo(per.map((q) => q.rho));
+      const rho = known.length ? geo(known.map((q) => q.rho)) : 1;
       const fpb = per.map((q) => q.fpb);
       const ratio = per.map((q) => q.ratio);
       const [sLo, sL, sHi] = match.scaled ? effortScale(match.runs[0].budget?.level, effort.level) : [1, 1, 1];
@@ -260,18 +388,21 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
       band = banded({
         unit, lanes,
         g: strategy === 'local' ? SWEEP_MODEL.band.map((x) => x * rho) : [1, 1, 1],
-        fpb: [
+        fpb: satFloor([
           Math.min(Math.min(...fpb) / HISTORY_MARGIN.one, (mid * pr[0]) / pr[1]) * (sLo / sL), mid,
           Math.max(Math.max(...fpb) * HISTORY_MARGIN.one, (mid * pr[2]) / pr[1]) * (sHi / sL),
-        ],
+        ]),
         share: [Math.min(...ratio), geo(ratio.map((x) => Math.max(1e-6, x))), Math.max(...ratio)],
         later: [0, 0, 0],
       });
     }
     const n = match.runs.length;
+    const fromDebug = match.costs.filter((c) => c.from === 'debug').length;
     source = {
-      kind: 'history', tier: match.tier, runs: n, scaled: match.scaled, measured: true,
-      text: `From ${n === 1 ? 'your past run' : `your ${n} past runs`} ${match.label.replace(/^your past runs /, '')}.`,
+      kind: 'history', tier: match.tier, runs: n, scaled: match.scaled, measured: true, debug: fromDebug,
+      text: `From ${n === 1 ? 'your past run' : `your ${n} past runs`} ${match.label.replace(/^your past runs /, '')}.${fromDebug
+        ? ` ${fromDebug === n ? (n === 1 ? 'It was' : 'They were') : `${fromDebug} of them were`} saved before runs kept their cost: fights per build and speed come from ${fromDebug === 1 ? 'its' : 'their'} debug summary${strategy === 'local' ? ', the builds per start from the model' : ''}.`
+        : ''}`,
     };
   } else {
     const p = PRIOR[family];
@@ -279,7 +410,7 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
     band = banded({
       unit, lanes,
       g: strategy === 'local' ? SWEEP_MODEL.band : [1, 1, 1],
-      fpb: p.search[strategy].map((x, i) => x * sc[i]),
+      fpb: satFloor(p.search[strategy].map((x, i) => x * sc[i])),
       share: p.share,
       later: p.later.map((x, i) => x * sc[i] * lanes * choices),
     });
@@ -306,8 +437,10 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
   assumptions.push('Builds equal in effect (same engine inputs) are raced once, so a few less may be tried.');
 
   // ---- fights ----------------------------------------------------------------------------------------
-  // every build is sampled to at least the first look (§Racing), a hard floor under the range
-  const floor = builds.lo * effort.n0 * lanes;
+  // every build is sampled to at least the first look (§Racing), a hard floor under the range; on a known
+  // no-wins target to at least its race's tie point
+  const floor = builds.lo * Math.max(effort.n0, sat?.least ?? 0) * lanes;
+  if (sat) assumptions.push(`A past run at this target found no build that wins, so every build is sampled to at least the point where two win rates of 0 tie (about ${Math.round(sat.perBuild).toLocaleString('en-US')} fights per build).`);
   const round = (x) => Math.max(1, Math.round(x));
   const perBuild = Math.round((band.fights.likely * (1 - laterShare)) / Math.max(1, band.builds.likely) / lanes);
   const fights = {
@@ -322,7 +455,7 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
   assumptions.push('No run is capped, so an unlucky run with many close builds can go past the range.');
 
   // ---- time --------------------------------------------------------------------------------------
-  const observed = match && (match.tier === 'same' || match.tier === 'like') ? observedRate(match.runs, target) : null;
+  const observed = match && (match.tier === 'same' || match.tier === 'like') ? observedRate(match, target) : null;
   const { kind, time, reason: timeReason, assumption } = observed
     ? { kind: FIGHT_KIND_OF[target.kind] ?? null, time: observedTime(fights, observed), reason: null, assumption: null }
     : estimateTime(fights, target, calibration);
@@ -338,12 +471,12 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
  * Fights per second the matching past runs really ran at (all phases, wall time), or null. Only runs of the
  * same target kind (and for a dummy-kind window the same length) say how fast this target's fights are.
  */
-function observedRate(runs, target) {
-  const same = runs.filter((r) => r.cost.elapsedMs > 0 && r.target?.kind === target.kind
+function observedRate({ runs, costs }, target) {
+  const same = runs.map((r, i) => ({ r, c: costs[i] })).filter(({ r, c }) => c.elapsedMs > 0 && r.target?.kind === target.kind
     && (FIGHT_KIND_OF[target.kind] !== 'dummy' || r.target?.seconds === target.seconds));
   if (!same.length) return null;
-  const fights = same.reduce((s, r) => s + r.cost.fights.total, 0);
-  const ms = same.reduce((s, r) => s + r.cost.elapsedMs, 0);
+  const fights = same.reduce((s, x) => s + x.c.fights.total, 0);
+  const ms = same.reduce((s, x) => s + x.c.elapsedMs, 0);
   return { rate: (fights * 1000) / ms, runs: same.length };
 }
 
