@@ -292,5 +292,32 @@ describe('run cost (simulation.md §Estimates)', () => {
     expect(fix({ ...base.cost, fights: { search: 1 } })).not.toHaveProperty('cost');
     expect(fix({ ...base.cost, starts: 0 })).not.toHaveProperty('cost');
     expect(fix('lots')).not.toHaveProperty('cost');
+    expect(fix({ ...base.cost, rung: { key: '' }, evaluated: 2.5 }).cost).toEqual(base.cost);
+  });
+
+  it('a Push run keeps its first optimised rung\'s search as its cost, with that rung and its builds', () => {
+    const inner = richResult();
+    const push = {
+      ...inner, search: null, stats: { ms: 99999 },
+      // the Optimise phase ran two rungs: the first's share of its time by fights
+      phases: [{ id: 'climb', fights: 50, ms: 400 }, { id: 'optimise', fights: 44016, ms: 17882 }],
+      objective: { kind: 'push', target: 0.95, label: 'Push' },
+      push: { status: 'pushed', target: 0.95, ladder: { kind: 'chapter', label: 'Campaign', size: 110 }, start: { index: 60, label: 'level 7-1' }, baseline: { deepest: null }, reached: { deepest: 61 }, stop: null, rungs: [] },
+      optimised: { index: 61, label: 'level 7-2', key: '{"chapter":7,"kind":"chapter","level":2}', rungs: 2, search: inner.search },
+    };
+    const r = runFromResult(push, { id: 'p' });
+    expect(r.cost).toEqual({
+      strategy: 'local', starts: 2, domains: { relics: 31, talents: 170 }, lanes: 1,
+      fights: { search: 19256, minimise: 1376, confirm: 1376, total: 22008 }, elapsedMs: 8941,
+      evaluated: inner.search.evaluated, rung: { key: '{"chapter":7,"kind":"chapter","level":2}', label: 'level 7-2' },
+    });
+    // the headline keeps counting no builds of its own; a saved run without the new fields still loads
+    expect(r.headline.evaluated).toBe(0);
+    expect(normaliseRun(JSON.parse(JSON.stringify(r)))).toEqual(r);
+    const { evaluated, rung, ...old } = r.cost;
+    expect(normaliseRun({ ...r, cost: old }).cost).toEqual(old);
+    expect([evaluated, rung.label]).toEqual([inner.search.evaluated, 'level 7-2']);
+    // a Push run that optimised nothing has no cost
+    expect(runFromResult({ ...push, optimised: null }, { id: 'q' })).not.toHaveProperty('cost');
   });
 });

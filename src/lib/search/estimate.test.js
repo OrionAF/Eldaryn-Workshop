@@ -3,14 +3,14 @@
 // speed of those runs or the device calibration.
 import { describe, it, expect } from 'vitest';
 import {
-  estimateRun, estimateTime, effortScale, familyOf, matchHistory, usableRun, FIGHT_KIND_OF, LIVE_ENUMERATE_MAX, PRIOR, HISTORY_MAX,
+  estimateRun, estimateTime, effortScale, familyOf, matchHistory, usableRun, runCost, saturatedPerBuild, FIGHT_KIND_OF, LIVE_ENUMERATE_MAX, PRIOR, HISTORY_MAX,
 } from './estimate.js';
 import { optimize, prepare, enumerateJoint } from './search.js';
 import { BLOCKS } from './space.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { presetPower } from '../build/power.js';
 import { normaliseCharacter } from '../model/index.js';
-import { runFromResult } from '../model/runs.js';
+import { runFromResult, normaliseRun } from '../model/runs.js';
 import { cloneAsOpponent } from '../features/duel.js';
 
 const only = (...on) => Object.fromEntries(BLOCKS.map((b) => [b, on.includes(b)]));
@@ -176,18 +176,19 @@ describe('estimateRun: learning from past runs', () => {
     expect(e.fights.hi / e.fights.lo).toBeGreaterThan(same.fights.hi / same.fights.lo);
   });
 
-  it('ignores aborted, Push, cost-less and other-family or other-strategy runs', () => {
+  it('ignores aborted, cost-less and other-family or other-strategy runs', () => {
     const p = pastRun(r0);
     const bad = [
       { ...p, headline: { ...p.headline, aborted: true } },
-      { ...p, objective: { kind: 'push' } },
-      { ...p, headline: { ...p.headline, push: { status: 'pushed' } } },
       { ...p, cost: undefined },
       { ...p, schema: 1 },
       { ...p, cost: { ...p.cost, strategy: 'exhaustive' } },
       { ...p, objective: { kind: 'win-chance' }, target: { kind: 'dungeon', key: 'x' } },
+      // a Push run is a win-rate run: another family than this DPS setup
+      { ...p, objective: { kind: 'push' }, headline: { ...p.headline, push: { status: 'pushed' } } },
     ];
-    expect(bad.slice(0, 5).some(usableRun)).toBe(false);
+    expect(bad.slice(0, 3).some(usableRun)).toBe(false);
+    expect(usableRun(bad.at(-1))).toBe(true);
     expect(estimateRun(r0, { history: bad }).source.kind).toBe('prior');
   });
 
@@ -270,5 +271,140 @@ describe('estimateRun: time', () => {
   it('Push estimates one build search at its start rung', () => {
     const e = estimateRun(req({ space: only('pet'), target: { kind: 'dungeon', id: 'dungeon_1', step: 1 }, objective: { kind: 'push' } }));
     expect(e).toMatchObject({ ok: true, push: true, family: 'winrate' });
+  });
+});
+
+// The user's two real runs (Quick, all blocks, 7 workers; figures from their debug logs, simulation.md
+// §Estimates), as synthetic saved runs on the Warrior fixture's domains: fed back, the estimate of the same
+// setup reproduces their fights and wall time.
+describe('estimateRun: the real runs as history', () => {
+  const quick = (o) => ({ character, presetId: 'p1', effort: 'quick', seed: 1, ...o });
+  /** A saved run of request `r`, as model/runs.js normalises it. */
+  const saved = (r, { cost, debug, headline = {}, at = '2026-10-15T23:46:10.000Z' }) => {
+    const prep = prepare(r);
+    const sizes = prep.space.domainSizes(prep.space.start);
+    const domains = Object.fromEntries(prep.space.blocks.filter((b) => b.enabled).map((b) => [b.id, sizes[b.id] ?? 1]));
+    return normaliseRun({
+      id: `real-${at}`, schema: 2, at, target: { kind: prep.target.kind, key: prep.target.key }, objective: { kind: prep.objective.kind, ...(r.objective.target ? { target: r.objective.target } : {}) },
+      space: prep.requestEcho.space, budget: { level: 'quick' }, headline,
+      ...(cost ? { cost: { domains, lanes: 1, ...cost } } : {}), ...(debug ? { debug } : {}),
+    });
+  };
+  const phase = (id, builds, fights, wallMs) => ({ id, builds, fights, cpuMs: 0, wallMs });
+
+  // run 1: Infernal Temple step 8, highest chance to win; no build won a fight
+  const R1 = quick({ target: { kind: 'dungeon', id: 'dungeon_4', step: 8 }, objective: { kind: 'win-chance' } });
+  const R1_FIGHTS = 16 + 3299320 + 810496 + 38904 + 118784; // 4,267,520
+  const R1_MS = 378458;
+  const run1 = saved(R1, {
+    headline: { evaluated: 4033, goal: { mode: 'max', status: 'no-wins' } },
+    cost: { strategy: 'local', starts: 5, fights: { search: 16 + 3299320, minimise: 810496, confirm: 38904 + 118784 }, elapsedMs: R1_MS },
+  });
+  const run1debug = saved(R1, {
+    headline: { evaluated: 4033, goal: { mode: 'max', status: 'no-wins' } },
+    debug: {
+      level: 'builds',
+      phases: [phase('screen', 2, 16, 400), phase('search', 4033, 3299320, 226000), phase('minimise', 7516, 810496, 132000), phase('confirm', 74, 38904, 6600), phase('attribute', 492, 118784, 14000)],
+      blocks: [{ id: 'sigils', builds: 2330, fights: 2370552, cpuMs: 0, wallMs: 0 }, { id: 'talents', builds: 1119, fights: 765952, cpuMs: 0, wallMs: 0 }],
+      totals: { builds: 12117, fights: R1_FIGHTS, cpuMs: 2374818, wallMs: R1_MS },
+    },
+  });
+
+  it('run 1 (dungeon, no build wins): about 4.27 M fights and about 6 minutes at its observed speed', () => {
+    expect(run1.cost.fights.total).toBe(R1_FIGHTS);
+    const e = estimateRun(R1, { history: [run1], calibration: CAL });
+    expect(e.source).toMatchObject({ kind: 'history', tier: 'same', runs: 1, debug: 0 });
+    expect(e.builds.likely).toBe(4033);
+    expect(e.fights.likely / R1_FIGHTS).toBeCloseTo(1, 4);
+    expect(e.time).toMatchObject({ source: 'observed' });
+    expect(e.time.rate).toBeCloseTo(R1_FIGHTS / (R1_MS / 1000), 6); // 11,276 fights/s
+    expect(e.time.likely).toBeCloseTo(R1_MS / 1000, 1); // 6 min 18 s
+  });
+
+  it('run 1 saved before runs kept their cost: its debug summary gives fights per build and speed, the model the builds', () => {
+    expect(run1debug).not.toHaveProperty('cost');
+    expect(usableRun(run1debug)).toBe(true);
+    const e = estimateRun(R1, { history: [run1debug], calibration: CAL });
+    expect(e.source).toMatchObject({ kind: 'history', tier: 'same', runs: 1, debug: 1 });
+    expect(e.source.text).toMatch(/debug summary, the builds per start from the model/);
+    expect(e.fights.perBuild).toBe(Math.round(3299336 / 4033)); // 818
+    expect(e.fights.laterShare).toBeCloseTo(968184 / R1_FIGHTS, 3);
+    expect(e.builds.likely).toBe(estimateRun(R1).builds.likely); // the model's builds, not the run's
+    expect(e.time.rate).toBeCloseTo(R1_FIGHTS / (R1_MS / 1000), 6);
+    // this fixture's model count is near the run's 4,033 builds, so the total lands near the run's
+    expect(Math.abs(e.fights.likely / R1_FIGHTS - 1)).toBeLessThan(0.15);
+    expect(e.fights.lo).toBeLessThan(R1_FIGHTS);
+    expect(e.fights.hi).toBeGreaterThan(R1_FIGHTS);
+  });
+
+  // run 2: Push from campaign level 7-1 at 95 %, one rung optimised
+  const R2 = quick({ target: { kind: 'chapter', chapter: 7, level: 1 }, objective: { kind: 'push', target: 0.95 } });
+  const RUNG = { kind: 'chapter', chapter: 7, level: 2 }; // illustrative: the log does not say which rung
+  const R2_INNER = 152 + 5854832 + 3323840 + 632 + 2560; // 9,182,016 (the climb, screen and confirm add 90,272)
+  const R2_MS = 1000 + 108000 + 64000; // the optimisation's phases only
+  const pushHeadline = { evaluated: 0, push: { status: 'pushed', target: 0.95, ladder: { kind: 'chapter', label: 'Campaign', size: 110 }, start: { index: 60, label: 'level 7-1' } } };
+  const run2 = saved(R2, {
+    headline: pushHeadline,
+    cost: { strategy: 'local', starts: 5, evaluated: 11266, rung: { key: prepare(quick({ target: RUNG, objective: { kind: 'win-rate', target: 0.95 } })).target.key, label: 'level 7-2' }, fights: { search: 152 + 5854832, minimise: 3323840, confirm: 632 + 2560 }, elapsedMs: R2_MS },
+  });
+
+  it('run 2 (Push): a Push estimate from the same start reproduces its rung search, and a win-rate run on that rung matches it too', () => {
+    expect(run2.cost.rung.label).toBe('level 7-2');
+    const e = estimateRun(R2, { history: [run2], calibration: CAL });
+    expect(e).toMatchObject({ push: true, source: { kind: 'history', tier: 'same' } });
+    expect(e.builds.likely).toBe(11266);
+    expect(e.fights.likely / R2_INNER).toBeCloseTo(1, 4);
+    expect(e.time.rate).toBeCloseTo(R2_INNER / (R2_MS / 1000), 6); // about 53,000 fights/s
+    expect(e.time.likely).toBeCloseTo(R2_MS / 1000, 1);
+    // the same search is a win-rate run on the rung it optimised: this setup there
+    const w = estimateRun(quick({ target: RUNG, objective: { kind: 'win-rate', target: 0.95 } }), { history: [run2] });
+    expect(w.source).toMatchObject({ kind: 'history', tier: 'same' });
+    expect(w.fights.likely / R2_INNER).toBeCloseTo(1, 4);
+    // and a Push run's debug summary counts only the optimisation's phases
+    const dbg = saved(R2, {
+      headline: pushHeadline,
+      debug: {
+        level: 'builds',
+        phases: [phase('push-climb', 11, 928, 5000), phase('push-screen', 782, 84480, 2000), phase('screen', 4, 152, 1000), phase('search', 11266, 5854832, 108000),
+          phase('minimise', 10494, 3323840, 64000), phase('confirm', 20, 632, 0), phase('attribute', 214, 2560, 0), phase('push-confirm', 37, 4864, 9000)],
+        blocks: [], totals: { builds: 22828, fights: 9272288, cpuMs: 976158, wallMs: 188770 },
+      },
+    });
+    expect(runCost(dbg)).toMatchObject({ from: 'debug', builds: 11266, fights: { search: 152 + 5854832, later: 3323840 + 632 + 2560, total: R2_INNER }, elapsedMs: R2_MS });
+    expect(estimateRun(R2, { history: [dbg], calibration: CAL }).time.rate).toBeCloseTo(R2_INNER / (R2_MS / 1000), 6);
+  });
+});
+
+describe('estimateRun: the tie look on a target where no build wins', () => {
+  it('a saturated race resolves at the first look at or after its tie point: n* grows with the race size', () => {
+    const prep = prepare(req({ space: only('sigils'), target: { kind: 'chapter', chapter: 10, level: 7 }, objective: { kind: 'win-chance' }, effort: 'quick' }));
+    const at = (arms) => saturatedPerBuild(prep.objective, prep.effort, [{ arms, weight: 1 }]).perBuild;
+    // 234 arms (run 1's sigil races): 645; 299 arms: 657, the fights per build the tie-look benchmark measured
+    // (W73, chapter 10-7, sigils, no build wins: 196,435 search fights for 299 builds)
+    expect([at(2), at(234), at(299)]).toEqual([409, 645, 657]);
+    expect(at(2)).toBeLessThan(at(10));
+    // DPS has no tie point
+    expect(saturatedPerBuild(prepare(req({ space: only('sigils') })).objective, prep.effort, [{ arms: 10, weight: 1 }])).toBeNull();
+  });
+
+  it('a past no-wins run at the target raises the fights per build and the floor to the tie point', () => {
+    const target = { kind: 'chapter', chapter: 10, level: 7 };
+    const r = req({ space: only('sigils'), target, objective: { kind: 'win-chance' }, effort: 'quick' });
+    const prior = estimateRun(r);
+    // a local run at this target (another strategy: it does not match as history, it only tells the regime)
+    const noWins = { ...pastRun(req({ space: only('talents'), target, objective: { kind: 'win-chance' }, effort: 'quick' })), headline: { evaluated: 100, goal: { mode: 'max', status: 'no-wins' } } };
+    const e = estimateRun(r, { history: [noWins] });
+    expect(e.source.kind).toBe('prior');
+    const prep = prepare(r);
+    const sat = saturatedPerBuild(prep.objective, prep.effort, [{ arms: e.builds.likely, weight: 1 }]);
+    expect(sat.perBuild).toBeGreaterThan(PRIOR.winrate.search.exhaustive[1]);
+    expect(e.fights.perBuild).toBe(Math.round(sat.perBuild));
+    expect(e.fights.lo).toBeGreaterThanOrEqual(e.builds.lo * sat.least);
+    expect(e.fights.lo).toBeGreaterThan(prior.fights.lo);
+    expect(e.fights.likely).toBeGreaterThan(prior.fights.likely);
+    expect(e.assumptions.join(' ')).toMatch(/no build that wins/);
+    // a run that won something, or a run at another target, says nothing
+    expect(estimateRun(r, { history: [{ ...noWins, headline: { evaluated: 100, goal: { mode: 'max', status: 'best' } } }] }).fights).toEqual(prior.fights);
+    expect(estimateRun(r, { history: [{ ...noWins, target: { ...noWins.target, key: 'elsewhere' } }] }).fights).toEqual(prior.fights);
   });
 });

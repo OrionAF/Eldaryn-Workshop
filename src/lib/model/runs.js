@@ -24,9 +24,10 @@
 //   }
 //   steps: [{id, state, reason, pass, tried, fights, improved}]   optional: the search's final per-block rows
 //     (simulation.md §Progress); absent on a run saved before they existed, on a Push run and on a cancelled one
-//   cost: {strategy, starts, domains: {block: values}, lanes, fights: {search, minimise, confirm, total}, elapsedMs}   optional: what
-//     the run cost, which the setup's estimate learns from (simulation.md §Estimates); absent on a run saved
-//     before it existed and on a run that stopped at its first check (no search)
+//   cost: {strategy, starts, domains: {block: values}, lanes, fights: {search, minimise, confirm, total}, elapsedMs,
+//     evaluated?, rung?: {key, label}}   optional: what the run cost, which the setup's estimate learns from
+//     (simulation.md §Estimates); absent on a run saved before it existed and on a run that stopped at its first
+//     check (no search). A Push run's is its first optimised rung's search (`rung`, `evaluated` = its builds)
 //   debug: {level, phases, blocks, totals}   optional: the debug log's summary (model/debugLog.js); only on a
 //     run made with the debug log on (simulation.md §Debug log)
 //   RunEntry = {rank, isBaseline, key, candidate, value, lo, hi, n, score, vsBaseline, changes, lines}
@@ -200,23 +201,35 @@ function normaliseCost(c) {
   if (PHASE_FIGHTS.some((k) => fights[k] == null)) return null;
   const domains = Object.fromEntries(Object.entries(isObj(c.domains) ? c.domains : {})
     .filter(([id, n]) => /^[a-zA-Z]{1,24}$/.test(id) && posInt(n) != null).slice(0, 32));
+  const rung = isObj(c.rung) && typeof c.rung.key === 'string' && c.rung.key ? { key: c.rung.key, label: str(c.rung.label) } : null;
   return {
     strategy: c.strategy, starts: c.starts, domains, lanes: posInt(c.lanes) ?? 1,
     fights: { ...fights, total: fights.search + fights.minimise + fights.confirm },
     elapsedMs: int(c.elapsedMs),
+    // a Push run: the builds its optimised rung's search tried (headline.evaluated stays 0) and that rung
+    ...(posInt(c.evaluated) != null ? { evaluated: c.evaluated } : {}),
+    ...(rung ? { rung } : {}),
   };
 }
 
-/** The cost of a finished result: the search's fight counts and shape (search.js searchSummary), or null. */
+/**
+ * The cost of a finished result: the search's fight counts and shape (search.js searchSummary), or null. A
+ * Push result has no search of its own: its first optimised rung's (push.js `optimised`) stands in, with the
+ * rung it ran on and the Optimise phase's wall time (its share by fights when several rungs were optimised).
+ */
 function costOf(result) {
-  const s = result.search;
+  const o = isObj(result.optimised) ? result.optimised : null;
+  const s = result.search ?? o?.search;
   if (!isObj(s) || !isObj(s.fights)) return null;
   const enabled = (Array.isArray(s.blocks) ? s.blocks : []).filter((b) => b?.enabled);
+  const opt = o && !result.search ? (result.phases ?? []).find((p) => p?.id === 'optimise') : null;
+  const ms = opt ? (opt.fights > 0 ? (opt.ms * s.fights.total) / opt.fights : null) : result.stats?.ms;
   return {
     strategy: s.strategy, starts: s.starts ?? 1,
     domains: Object.fromEntries(enabled.map((b) => [b.id, b.domain ?? 1])),
     lanes: Math.max(1, (result.baseline?.aux?.matchups ?? result.rows?.[0]?.aux?.matchups)?.length ?? 0),
-    fights: s.fights, elapsedMs: Number.isFinite(result.stats?.ms) ? Math.round(result.stats.ms) : null,
+    fights: s.fights, elapsedMs: Number.isFinite(ms) ? Math.round(ms) : null,
+    ...(o && !result.search ? { evaluated: s.evaluated, rung: { key: o.key, label: o.label } } : {}),
   };
 }
 

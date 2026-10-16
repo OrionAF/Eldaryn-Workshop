@@ -569,14 +569,16 @@ function liveEnv(prep, request, ladder, hooks) {
         const fights = res.phases?.reduce((a, p) => a + (p.fights ?? 0), 0) ?? 0;
         if (res.status === 'cancelled') return { status: 'cancelled', fights };
         if (res.status === 'failed') throw new Error(res.error?.message ?? res.headline?.text ?? 'optimise failed');
+        // what this rung's search cost, kept small (it is logged in the checkpoint): the run's `cost` (simulation.md §Estimates)
+        const cost = res.search ? { key: res.target?.key ?? ladder.rungs[r].key, search: costSearchOf(res.search) } : null;
         const g = res.goal;
-        if (g.status === 'already') return { status: 'already', fights, check: g.baseline.check.value };
+        if (g.status === 'already') return { status: 'already', fights, cost, check: g.baseline.check.value };
         if (g.status === 'reached') {
           const row = res.rows.find((x) => x.key === g.bestKey);
-          return { status: 'reached', fights, build: { cand: row.candidate, key: row.key }, row, baseline: res.baseline };
+          return { status: 'reached', fights, cost, build: { cand: row.candidate, key: row.key }, row, baseline: res.baseline };
         }
         const top = res.rows[0] ?? res.baseline;
-        return { status: 'not-reached', fights, best: { key: top.key, ...top.aux.winRate } };
+        return { status: 'not-reached', fights, cost, best: { key: top.key, ...top.aux.winRate } };
       } finally {
         for (const p of opened) p.close();
       }
@@ -675,6 +677,7 @@ export async function push(request, hooks = {}) {
     baseline: baseRow,
     rows,
     search: null,
+    optimised: cancelled ? null : optimisedOf(ladder, core),
     phases: phasesOut(core, phaseMs, cancelled),
     multiplicity: { ...MULTIPLICITY, push: 'fixed-sequence confirm at alpha / reported builds; each climb, screen and optimisation at its own level' },
     warnings: dedupe(warnings),
@@ -683,6 +686,25 @@ export async function push(request, hooks = {}) {
     stats: { ms: Date.now() - t0, workers: 1, fights: fightsTotal },
     ...(log ? { debug: log.finish(debugHeader(prep, echo, jobId)) } : {}),
   };
+}
+
+/** The part of a search summary (search.js searchSummary) a saved run's `cost` reads. */
+const costSearchOf = (s) => ({
+  strategy: s.strategy, starts: s.starts, evaluated: s.evaluated,
+  blocks: (s.blocks ?? []).filter((b) => b.enabled).map((b) => ({ id: b.id, enabled: true, domain: b.domain })),
+  fights: s.fights,
+});
+
+/**
+ * The first optimised rung's search (simulation.md §Push, Result): what a saved Push run's `cost` is made of.
+ * `rungs` counts every rung the climb optimised; null when none was (or none finished a search).
+ */
+function optimisedOf(ladder, core) {
+  const outs = core.log.filter((e) => e.kind === 'optimise' && e.out?.cost).map((e) => e.out.cost);
+  if (!outs.length) return null;
+  const first = outs[0];
+  const index = ladder.rungs.findIndex((x) => x.key === first.key);
+  return { index: index >= 0 ? index : null, label: index >= 0 ? ladder.rungs[index].short : null, key: first.key, rungs: outs.length, search: first.search };
 }
 
 function dedupe(warnings) {

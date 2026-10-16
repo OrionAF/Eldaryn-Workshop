@@ -828,20 +828,43 @@ very unlucky run can still exceed the range; the disclosure says so.
   attribute) depend on the finalists and their changes, not on how many builds were tried: the prior takes
   `later` per block with a choice (in a small space they are most of the run: PVP mount + major glyphs,
   4 104 of 8 328) plus `share` of the search fights (a long search leaves more close finalists: S85 every
-  block on a chapter, 2.1 M after a 7.0 M search). Every build is sampled to n0, so builds `lo` x n0 x lanes
+  block on a chapter, 1.5 M after a 6.2 M search). Every build is sampled to n0, so builds `lo` x n0 x lanes
   is a hard floor. PVP lanes are its matchups.
-- **From history** (`matchHistory`). A saved run is usable when it is schema 2, has `cost` (data-model.md;
-  `model/runs.js`), was not aborted and is not a Push run; it must be of the same family and strategy. Tiers,
-  strictest first, the first with any run wins, newest `HISTORY_MAX` = 8 of it: `same` (same target key,
-  objective kind, Effort level and allowed blocks), `like` (same target kind, objective kind and Effort),
-  `family` (same Effort), `other-effort` (scaled, below). Each past run gives its builds per start relative to
-  `sweepBuilds` of its own domains (its random starts are not saved; the app always uses the default 3), its
-  search fights per build, and its later fights as a ratio to its search.
+- **From history** (`matchHistory`, `runCost`). A saved run is usable when it is schema 2, was not aborted and
+  has `cost` (data-model.md; `model/runs.js`) or, for a run saved before `cost` existed, a debug summary
+  (`debug.phases`, §Debug log); it must be of the same family and strategy. Tiers, strictest first, the first
+  with any run wins, newest `HISTORY_MAX` = 8 of it: `same` (same target key, objective kind, Effort level and
+  allowed blocks), `like` (same target kind, objective kind and Effort), `family` (same Effort),
+  `other-effort` (scaled, below). Each past run gives its builds per start relative to `sweepBuilds` of its own
+  domains (its random starts are not saved; the app always uses the default 3), its search fights per build,
+  and its later fights as a ratio to its search.
+  - **Push runs.** A Push run's `cost` is its first optimised rung's search (§Push, Result: `optimised`), with
+    that rung (`cost.rung`) and its builds (`cost.evaluated`; the headline's `evaluated` stays 0). To a Push
+    estimate it is a Push run at its start rung; to any other estimate it is a `win-rate` run on the rung it
+    optimised, so it also teaches the win-rate family at that target. The user's run 2 (Push from campaign
+    7-1 at 95 %) had 520 search fights per build and later phases at 0.57 of the search, against run 1's 818
+    and 0.29 (no build won), and its fights cost a sixth as much CPU (0.09 against 0.56 ms): per-build cost
+    and speed differ by regime and target, so a past run at the target says more than any calibration.
+  - **Debug-only runs.** From `debug.phases`: search fights = `screen` + `search` fights, later fights =
+    `minimise` + `confirm` + `attribute`, builds = the `search` phase's builds raced, wall time =
+    `totals.wallMs` (for a Push run only those inner phases, fights and `wallMs`, never `push-*`); the
+    strategy is exhaustive when a block row is `all`. Such a run has no domains or starts, so it gives
+    fights per build, the later ratio and the observed speed only; builds per start come from the model
+    (`SWEEP_MODEL.band` around the other runs' rate, or 1), and the UI adds "saved before runs kept their
+    cost: fights per build and speed come from its debug summary". A PVP run's lanes are not in the summary,
+    so a debug-only PVP run is not used.
   - `same`: each run is a point for this setup; `likely` is their geometric mean and `lo` / `hi` their least
     and most divided / multiplied by `HISTORY_MARGIN` (x1.5 for one run, x1.25 for two or more), so one run
-    gives a 2.25x range.
+    gives a 2.25x range. When a debug-only run is among them, the builds use the model's band instead and
+    fights per build keep the runs' own range with that margin.
+  - Checked against the user's runs (`estimate.test.js`, synthetic saved runs on the Warrior fixture's
+    domains): run 1 (Infernal Temple step 8, highest chance, all blocks, 4 033 search builds, 3 299 336
+    search and 968 184 later fights, 378 s wall) fed back gives 4 267 520 fights and 6 min 18 s at its
+    11 276 fights/s; as a debug-only run, 818 fights per build at the same speed and the model's builds; run 2
+    (Push, 11 266 builds, 9 182 016 rung fights in 173 s) gives the same for a Push estimate from 7-1 and for
+    a win-rate estimate on its optimised rung.
   - `like`, `family`, `other-effort`: another setup's per-build cost carries over, but its sweeps do not,
-    and per-build cost differs between setups of one family about as much as the prior allows (159 to 781
+    and per-build cost differs between setups of one family about as much as the prior allows (155 to 766
     win-rate fights per build in the table below). The runs set the centre (builds per start, fights per
     build, later ratio); the spread is the prior's (`SWEEP_MODEL.band`, the prior's fights-per-build band)
     or the runs' own, whichever is wider. On `family` and `other-effort` (another target kind) the centre of
@@ -860,6 +883,21 @@ very unlucky run can still exceed the range; the disclosure says so.
   near-tie needs about 4x (fights ~ 1/δ²). `EFFORT_STEP` = [2, 2.83, 4] per level as lo / likely / hi; the
   prior is stated at Quick, and history from another level is scaled by the likely factor with its own
   spread added to the range.
+- **The tie look on a target where no build wins** (`regimeOf`, `saturatedPerBuild`). When a finished
+  non-Push run at this target key (any win-rate objective) ended `no-wins`, no arm can leave a race on the
+  rate before the two rates tie (§Sequential comparator, the tie look), so each distinct build raced is
+  sampled to at least the first look at or after n*, the exact tie point at its race's per-look level α /
+  (arms x looks) (`rateTieN` at that level over `looksFor`'s schedule; usually the tie look itself). It is
+  computed, not simulated, from the race sizes the search will run: one race of every build (exhaustive),
+  else one race per block of its values, weighted like `sweepBuilds`. Quick: 409 fights for 2 arms, 645 for
+  234 (run 1's sigil races), 657 for 299, which is exactly the 196 435 / 299 search fights per build the
+  tie-look benchmark measured on W73 chapter 10-7 (sigils, no build wins). That weighted value floors the
+  search fights per build (`lo` and `likely`, and `hi` if lower) on the prior and on history from another
+  setup, and the least of them replaces n0 in the hard floor (builds `lo` x n* x lanes); the assumption list
+  says so. Arms tied on the margin go on to later looks, so the tie point bounds the cost from below only.
+  The other saturated regime, every build clearing the target, has no saved search to learn from: such a
+  run stops at its first check (`already`). A partly won target is not floored: there arms leave on the
+  rate long before n* (Dungeon 7 step 6: 156 fights per build).
 - **Time.** When matching history (`same` or `like`, not scaled) has wall times of the same target kind (for a
   dummy-kind window, the same length), time = fights / their observed rate (sum of fights / sum of
   `elapsedMs`), and the basis says so. Otherwise fights / the calibrated speed of the target's fight kind
@@ -869,36 +907,44 @@ very unlucky run can still exceed the range; the disclosure says so.
   boss (duel engine) and PVP are duel-kind (an unmeasured duel counts at the slowest measured speed). A target
   kind not in `FIGHT_KIND_OF`, or no calibration and no observed rate, shows builds and fights and says why
   there is no time. The time range follows the fights range.
-- **Push** runs this search at its start rung; the estimate covers that one search and says so.
+- **Push** runs this search at its start rung; the estimate covers that one search and says so (the climb,
+  screen and confirm around it are small: 90 272 of run 2's 9 272 288 fights, 16 of its 189 s).
 
 **Measured** (`src/lib/search/estimate.bench.test.js`, skipped by default; `ESTIMATE_BENCH=1`, Quick, seed 1,
-the default 3 random starts, one thread, 2026-10-15). Reference characters: the sanitised profile captures in
-`src/lib/__fixtures__/real/` (W72, W73: the Warrior L72 and L73 profiles; S85: Sentinel L85, `oct15b`).
-"Prior" is the estimate with no history. The last column feeds every other measured run as history (the
-tier that matched and its run count). Fed its own run back (`same`), each estimate's likely value equals the
-run's fights, with a x1.5 margin each way. Every actual count is inside the prior range; across setups
-(the last column) the likely value is within 0.2x to 3.1x of the actual, and inside the range in every row.
+the default 3 random starts, one thread; re-measured 2026-10-16 with the tie look, Â§Sequential comparator).
+Reference characters: the sanitised profile captures in `src/lib/__fixtures__/real/` (W72, W73: the Warrior
+L72 and L73 profiles; S85: Sentinel L85, `oct15b`). "Prior" is the estimate with no history. The last column
+feeds every other measured run as history (the tier that matched and its run count). Fed its own run back
+(`same`), each estimate's likely value equals the run's fights, with a x1.5 margin each way. Every actual
+count is inside the prior range; across setups (the last column) the likely value is within 0.24x to 3.0x
+of the actual, and inside the range in every row. The tie look changed only the win-rate rows (DPS, PVP and
+the Fortress boss are unchanged): 2 to 17 % fewer fights, most on the largest searches (S85 every block
+9 150 784 -> 7 726 979, W72 sigils + talents 1 494 832 -> 1 248 332; W72 talents, mount, major glyphs tried
+1 815 builds instead of 1 718 for 689 266 fights instead of 642 784). The win-rate prior moved with them:
+search fights per build `[120, 380, 1600]` (measured 155 to 766, geometric mean 381; was 400) and the later
+share `[0.002, 0.02, 0.6]` (measured 0.003 to 0.24, geometric mean 0.018; the hi end covers the user's Push
+run 2 at 0.57, which the old 0.4 did not).
 
 | Setup | Blocks | Builds: actual (prior lo / likely / hi) | Fights: actual (search + later) | Prior lo / likely / hi | Others as history: tier, lo / likely / hi |
 |---|---|---|---|---|---|
 | S85, dummy 60 s, DPS | sigils | 299 (exact) | 2,440 (2,416 + 24) | 2,392 / 2,795 / 6,728 | like (1): 2,392 / 2,585 / 5,744 |
 | W73, dummy, DPS | minor glyphs, mount | 124 (exact) | 1,072 (992 + 80) | 992 / 1,238 / 3,028 | like (1): 992 / 1,012 / 2,249 |
-| S85, dummy, DPS | talents | 127 (63 / 179 / 393) | 920 (840 + 80) | 542 / 1,690 / 5,584 | like (3): 448 / 1,419 / 7,094 |
-| W73, dummy, DPS | talents, mount, major glyphs | 38 (37 / 107 / 235) | 520 (304 + 216) | 372 / 1,131 / 3,699 | like (3): 336 / 979 / 3,211 |
+| S85, dummy, DPS | talents | 127 (63 / 179 / 393) | 920 (840 + 80) | 542 / 1,690 / 5,584 | like (2): 352 / 1,162 / 5,557 |
+| W73, dummy, DPS | talents, mount, major glyphs | 38 (37 / 107 / 235) | 520 (304 + 216) | 372 / 1,131 / 3,699 | like (2): 296 / 842 / 2,735 |
 | W73, dummy, DPS | all | 8,040 (2,000 / 5,715 / 12,572) | 71,328 (70,360 + 968) | 16,871 / 52,910 / 175,120 | like (2): 8,048 / 26,335 / 109,798 |
-| S85, Chrono Sanctum 6, win chance | sigils | 299 (exact) | 47,744 (47,624 + 120) | 36,052 / 124,188 / 673,760 | family (1): 44,016 / 146,720 / 586,882 |
-| S85, chapter 10-7, win chance | minor glyphs | 78 (exact) | 44,808 (42,760 + 2,048) | 9,479 / 33,136 / 178,720 | family (1): 5,921 / 19,738 / 78,950 |
-| S85, chapter 10-8, win chance | talents | 881 (647 / 1,849 / 4,067) | 687,680 (684,424 + 3,256) | 150,073 / 762,594 / 5,104,815 | like (4): 137,325 / 707,648 / 4,360,065 |
-| W72, chapter 10-3, win chance | talents, mount, major glyphs | 1,718 (990 / 2,827 / 6,220) | 642,784 (641,576 + 1,208) | 229,682 / 1,167,850 / 7,813,641 | like (4): 238,065 / 1,237,018 / 7,536,942 |
-| W72, chapter 10-3, win chance | sigils, talents | 4,794 (1,759 / 5,025 / 11,055) | 1,494,832 (1,378,344 + 116,488) | 407,868 / 2,072,220 / 13,873,401 | like (3): 454,288 / 2,271,412 / 14,423,654 |
-| S85, chapter 10-7, win chance | all | 11,975 (2,324 / 6,641 / 14,610) | 9,150,784 (7,002,664 + 2,148,120) | 539,587 / 2,744,068 / 18,356,950 | like (4): 379,768 / 1,902,370 / 10,006,961 |
+| S85, Chrono Sanctum 6, win chance | sigils | 299 (exact) | 46,566 (46,446 + 120) | 36,052 / 116,892 / 769,440 | family (1): 44,682 / 141,493 / 595,761 |
+| S85, chapter 10-7, win chance | minor glyphs | 78 (exact) | 43,818 (41,770 + 2,048) | 9,479 / 31,233 / 203,680 | family (1): 6,000 / 19,000 / 79,999 |
+| S85, chapter 10-8, win chance | talents | 881 (647 / 1,849 / 4,067) | 678,051 (675,115 + 2,936) | 148,136 / 717,490 / 5,795,672 | like (3): 147,128 / 724,433 / 4,452,875 |
+| W72, chapter 10-3, win chance | talents, mount, major glyphs | 1,815 (990 / 2,827 / 6,220) | 689,266 (685,978 + 3,288) | 226,720 / 1,098,864 / 8,870,298 | like (3): 257,783 / 1,268,262 / 7,805,334 |
+| W72, chapter 10-3, win chance | sigils, talents | 4,795 (1,759 / 5,025 / 11,055) | 1,248,332 (1,180,167 + 68,165) | 402,603 / 1,949,615 / 15,751,336 | like (3): 463,132 / 2,230,006 / 14,023,046 |
+| S85, chapter 10-7, win chance | all | 11,975 (2,324 / 6,641 / 14,610) | 7,726,979 (6,225,444 + 1,501,535) | 532,629 / 2,582,029 / 20,838,889 | like (3): 385,872 / 1,846,133 / 9,956,984 |
 | W73 vs its clone, PVP | mount, major glyphs | 9 (exact) | 8,328 (4,224 + 4,104) | 1,282 / 8,172 / 28,160 | none (prior) |
 | W73, Fortress boss, DPS | sigils | 109 (exact) | 904 (872 + 32) | 872 / 1,051 / 2,548 | none (prior) |
 
-A user run of the same kind as the last win-rate row (Infernal Temple step 8, highest chance to win, Quick,
-every block) had tried 3 278 builds and used 3 965 960 fights by its minimise phase. The S85 prior for that
-setup is 2 324 / 6 641 / 14 610 builds and 0.54 M / 2.7 M / 18.4 M fights (the old estimate: 2 744 to
-2.76 billion fights).
+The user's run 1 (Infernal Temple step 8, highest chance to win, Quick, every block, no build won; before the
+tie look) used 4 267 520 fights over 12 117 builds raced (4 033 in the search) in 6 min 18 s. The S85 prior
+for that setup is 2 324 / 6 641 / 14 610 builds and 0.53 M / 2.6 M / 20.8 M fights (the first estimate:
+2 744 to 2.76 billion fights); fed back as history it gives its own 4.27 M and 6 min 18 s (above).
 
 ## Push
 
@@ -1024,6 +1070,11 @@ searched}, stop: {index, label, reason: 'top'|'screen'|'not-reached', best: Esti
 [{index, label, key, current, build}] (each 'clears'|'fails'|'open'|null, the confirm probe when there is
 one), contradictions, text}`. `headline.text` = `push.text`, "Reaches step N (now: step M) at τ." Warnings
 add `ladder-not-monotone` and `push-unconfirmed`. A saved run keeps the block (`model/runs.js`).
+`optimised: {index, label, key, rungs, search: {strategy, starts, evaluated, blocks, fights}} | null` is the
+first optimised rung's search (the optimisation's `search` summary, trimmed; `rungs` counts every rung the
+climb optimised), carried in that step's checkpoint entry so a resumed run keeps it; null when no rung was
+optimised or the run was cancelled. It holds no wall-clock field: a saved Push run's `cost` (§Estimates)
+takes its time from the `optimise` phase's `ms`, that search's share by fights when several rungs ran.
 
 **On screen.** The goal list offers "Push (deepest step)" for chapters, dungeons, raids and Oblivion, with
 the Target field of §Win rate and a line naming the start rung (`WinRateTarget.svelte`). While it runs, the

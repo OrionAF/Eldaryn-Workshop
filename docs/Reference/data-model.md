@@ -68,9 +68,12 @@ Character = {
                               // optional `debug` {level, phases, blocks, totals} = a debug-logged run's summary, never its rows
                               // (model/debugLog.js normaliseDebugSummary; simulation.md §Debug log)
                               // optional `cost` {strategy, starts, domains: {block: values}, lanes, fights: {search, minimise,
-                              // confirm, total}, elapsedMs} = what a finished run cost, which the setup estimate learns from
-                              // (model/runs.js normaliseCost; simulation.md §Estimates); absent on older runs and on a run that
-                              // stopped at its first check
+                              // confirm, total}, elapsedMs, evaluated?, rung?: {key, label}} = what a finished run cost, which the
+                              // setup estimate learns from (model/runs.js normaliseCost; simulation.md §Estimates); absent on older
+                              // runs and on a run that stopped at its first check. A Push run's is its first optimised rung's
+                              // search: `rung` is that rung and `evaluated` its builds (the headline's `evaluated` stays 0); both
+                              // are optional, so a cost saved before them still loads. A run with no `cost` but a `debug` summary
+                              // still teaches the estimate its fights per build and speed (read, never rewritten)
 }
 
 Preset = { id, name, equipmentSet: 1|2, talentSet: 0|1, petId | null, mountId | null,
