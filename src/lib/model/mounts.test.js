@@ -239,3 +239,16 @@ describe('activeMajorGlyphs (B1)', () => {
     expect(activeMajorGlyphs(c, null, null, [sp])).toEqual({ active: [], inert: [] });
   });
 });
+
+describe('the value the game shows and the roll behind it', () => {
+  it('mountStatAtLevel scales a level-1 roll; mountBaseForValue inverts it at every level', async () => {
+    const { mountStatAtLevel, mountBaseForValue } = await import('./mounts.js');
+    expect(mountStatAtLevel(37, 2)).toBe(41); // Crystal Drake: round(37 * 1.1)
+    expect(mountStatAtLevel(25, 2)).toBe(28); // round(27.5)
+    for (let level = 1; level <= 5; level++) {
+      for (let base = 0; base <= 60; base++) expect(mountBaseForValue(mountStatAtLevel(base, level), level)).toBe(base);
+    }
+    expect(mountBaseForValue(54, 5)).toBe(38); // no roll shows 54 at level 5 (38 -> 53, 39 -> 55): the nearest
+    expect(mountBaseForValue(-3, 2)).toBe(0);
+  });
+});

@@ -32,10 +32,24 @@ export { MOUNT_GLYPH_SOCKETS };
 /** Doc §5: factor = 1 + 0.1 * (level - 1). */
 export const mountLevelFactor = (level) => 1 + MOUNT_LEVEL_STAT_BONUS * (level - 1);
 
+/** Doc §5: one level-1 roll at `level`, in percent points (JS Math.round) - the number the game shows. */
+export const mountStatAtLevel = (base, level) => Math.round(base * mountLevelFactor(level));
+
 /** Doc §5: effective percent points the ridden mount adds (JS Math.round). */
 export function mountEffectiveStats(mount) {
-  const f = mountLevelFactor(mount.level);
-  return { hpPercent: Math.round(mount.baseHp * f), attackPercent: Math.round(mount.baseAtk * f) };
+  return { hpPercent: mountStatAtLevel(mount.baseHp, mount.level), attackPercent: mountStatAtLevel(mount.baseAtk, mount.level) };
+}
+
+/**
+ * The level-1 roll that shows as `value` at `level` (the inverse of mountStatAtLevel). The factor is at
+ * least 1, so distinct rolls show as distinct values; a value no roll gives maps to the nearest one.
+ */
+export function mountBaseForValue(value, level) {
+  const v = Math.max(0, Math.round(Number(value) || 0));
+  const f = mountLevelFactor(level);
+  const near = Math.round(v / f);
+  const tries = [near - 1, near, near + 1].filter((b) => b >= 0);
+  return tries.reduce((best, b) => (Math.abs(mountStatAtLevel(b, level) - v) < Math.abs(mountStatAtLevel(best, level) - v) ? b : best), tries[0]);
 }
 
 /** Level-1 rolls the species can have (doc §3 `level1Roll`, DERIVED): { hp: [lo, hi], atk: [lo, hi] }. */
