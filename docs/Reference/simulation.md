@@ -685,15 +685,19 @@ are unchanged (strict contrasts on fresh seeds).
   empty glyph socket costs nothing to fill, so the minimised build F gets its mount's empty major and minor
   sockets filled (mythic glyphs are not modelled), one socket at a time with the first owned glyph that
   acts for it: unsealed, socketable, not on the mount yet; a major only for the class, spec and running
-  sigils and of a type the mount does not hold; best rarity first, then (minor) the larger rolled value,
+  sigils and of a type the mount does not hold; the baseline's own glyphs on that mount first (they go back
+  to their saved sockets, so that is no change), then best rarity, then (minor) the larger rolled value,
   then the id; kept only when the legal, canonical build still holds it (an inert glyph comes straight
-  back out). A tier whose block is off under Allowed to change is not filled. One more Holm round over the
-  filled build FX's changes must find every change that is not a fill still `better`-needed and no fill
-  `worse` to keep; FX must not be `worse` than F (a fill may put back a glyph F took off, which is then no
-  change) and must still be `better` than the baseline at α / finalists. Otherwise F stands unfilled. A
+  back out) and every socket the baseline holds keeps F's glyph or the baseline's own (canonical order
+  could otherwise shuffle a new glyph into it). A tier whose block is off under Allowed to change is not
+  filled. A change of the filled build FX is a fill when it puts a fill glyph into a socket the baseline
+  has empty. One more Holm round over FX's other changes must find each still `better`-needed, each fill
+  must not be `worse` to keep (its own test at α), FX must not be `worse` than F and must still be
+  `better` than the baseline at α / finalists. Otherwise F stands unfilled. A
   fill is a **free** change: `free: true`, `keptBecause: 'free'`, exempt from I3, and not counted as a
-  change (ranking by fewest changes, `distanceOf` for builds equal in effect, the goal texts and the
-  change summary, which names them last: "· fills 1 empty socket"). The user decided this on 2026-10-16
+  change (ranking by fewest changes, `distanceOf` for builds equal in effect, the goal texts, the saved
+  run's `changes` count and the change summary, which names them last: "· fills 1 empty socket").
+  Attribution's Holm families still include the fills. The user decided this on 2026-10-16
   after a win-chance run left a second major socket empty: both owned glyphs that worked with the build
   tied on clear chance at Quick, so the fewest-changes rule dropped them.
 - **Confirm** (S3): every distinct minimised build against the baseline, sequentially, Holm across

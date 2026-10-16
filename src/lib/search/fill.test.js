@@ -54,8 +54,8 @@ describe('free fills: which glyphs go where (fill.js)', () => {
     expect(fillEmptySockets(inert, inert.start, noMount)).toEqual({ candidate: noMount, glyphs: [] });
   });
 
-  it('a glyph the minimised build took off may come back into a free socket (unless a better one of its type is owned)', () => {
-    for (const [inventory, back] of [[INVENTORY.filter((g) => g.id !== 'warborn2'), 'gl-3'], [INVENTORY, 'warborn2']]) {
+  it('a glyph the minimised build took off goes back first, even when a better one of its type is owned', () => {
+    for (const [inventory, back] of [[INVENTORY.filter((g) => g.id !== 'warborn2'), 'gl-3'], [INVENTORY, 'gl-3']]) {
       const c = withInventory(inventory);
       const space = createBuildSpace(c, 'p1');
       const F = space.legalise({ ...space.start, mountGlyphs: { ...socketsOf(c, space.start), major: ['cataEpic', null] } });
@@ -64,6 +64,22 @@ describe('free fills: which glyphs go where (fill.js)', () => {
       expect(glyphs[0]).toBe(back);
       expect(socketsOf(c, candidate).major).toEqual(expect.arrayContaining(['cataEpic', back]));
     }
+  });
+  it('a fill never lands in a socket the baseline holds: an upgraded glyph keeps its socket', () => {
+    // saved [gl-3, empty]; F upgrades gl-3 to warborn2 (same type). A fill sorting before warborn2 would push it
+    // into socket 2 and read as "gl-3 -> fill"; such a placement is skipped for the next candidate.
+    const c = withInventory([...INVENTORY, major('zz-cata', 'sg-cataclysm-cd', 'Epic')].filter((g) => g.id !== 'cataEpic' && g.id !== 'cata'));
+    const space = createBuildSpace(c, 'p1');
+    const F = space.legalise({ ...space.start, mountGlyphs: { ...socketsOf(c, space.start), major: ['warborn2', null] } });
+    expect(socketsOf(c, F).major).toEqual(['warborn2', null]);
+    const { candidate, glyphs } = fillEmptySockets(space, space.start, F);
+    expect(glyphs).toEqual(['zz-cata', 'crit']);
+    expect(socketsOf(c, candidate).major).toEqual(['warborn2', 'zz-cata']);
+    const early = withInventory([...INVENTORY.filter((g) => g.id !== 'cata')]);
+    const s2 = createBuildSpace(early, 'p1');
+    const F2 = s2.legalise({ ...s2.start, mountGlyphs: { ...socketsOf(early, s2.start), major: ['warborn2', null] } });
+    // cataEpic sorts before warborn2, so placing it would shuffle warborn2 into socket 2: skipped, nothing else fits
+    expect(fillEmptySockets(s2, s2.start, F2).glyphs).toEqual(['crit']);
   });
 });
 
