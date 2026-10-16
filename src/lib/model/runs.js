@@ -83,6 +83,8 @@ function normaliseEntry(e) {
 
 const VERDICTS = ['better', 'worse', 'equivalent', 'unresolved'];
 const KEPT_BECAUSE = ['own-effect', 'interaction', 'power-floor', 'free'];
+/** Changes a row asks for: free fills (simulation.md §Minimise and confirm) are not counted. */
+const paidCount = (row) => (row?.changes ?? []).filter((c) => !c?.free).length;
 /** The Combat Power guard of a run (simulation.md §Build space): a positive whole number, else null. */
 const powerFloorOf = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= 1 ? Math.floor(v) : null);
 const SCOPES = ['preset', 'character', 'mount'];
@@ -350,7 +352,7 @@ export function runFromResult(result, fields = {}) {
       baseline: base?.value ?? null, best: top?.value ?? null,
       gainPct: bestIsBaseline ? 0 : vs?.pct ?? null,
       significant: bestIsBaseline ? null : vs?.significant ?? null,
-      n: top?.n ?? 0, evaluated: result.stats?.tier1 ?? 0, changes: top?.changes?.length ?? 0,
+      n: top?.n ?? 0, evaluated: result.stats?.tier1 ?? 0, changes: paidCount(top),
     },
     // Full describe lines are long text: only the baseline and the top RUN_DETAIL_FULL_LINES keep them;
     // every entry keeps `changes` (what differs from the current build), which is what a reader needs.
@@ -391,7 +393,7 @@ function runFromResultV2(result, fields) {
       baseline: base?.value?.est ?? null, best: (top ?? base)?.value?.est ?? null,
       gainPct: top ? (unit === 'dps' ? vs?.pct ?? null : null) : 0,
       significant: top ? vs?.significant ?? null : null,
-      n: (top ?? base)?.value?.n ?? 0, evaluated: result.search?.evaluated ?? 0, changes: top?.changes?.length ?? 0,
+      n: (top ?? base)?.value?.n ?? 0, evaluated: result.search?.evaluated ?? 0, changes: paidCount(top),
       text: result.headline?.text ?? '',
       goal: normaliseGoal(result.goal),
       ...(result.push ? { push: result.push } : {}),
