@@ -2,8 +2,8 @@
   /**
    * WelcomeScreen.svelte - G0, the first-run page (ia.md §3.1): shown whenever the roster has no
    * character (first visit, after Reset all data, or a backup with none). "Start manually" (name and
-   * class required, level optional) is here; every import, backups included, is a link to
-   * Settings → Import (`#/settings` works with an empty roster).
+   * class required, level optional) is here; restoring a backup (and, while it is switched on, game-data
+   * import) is a link to Settings (`#/settings` works with an empty roster).
    */
   import Panel from './ui/Panel.svelte';
   import Select from './ui/Select.svelte';
@@ -12,6 +12,7 @@
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { CLASSES, classLabel, MAX_PLAYER_LEVEL } from '../lib/game/classes.js';
   import { requestImportFocus } from '../lib/importFlow.svelte.js';
+  import { prefs } from '../lib/prefs.svelte.js';
 
   let name = $state('');
   let selectedClass = $state('');
@@ -42,7 +43,11 @@
     </header>
 
     <p class="import-link" data-testid="welcome-import-link">
-      Have a game profile or a roster backup? <a href="#/settings" onclick={requestImportFocus}>Import it in Settings → Import</a>.
+      {#if prefs.showImport}
+        Have a game profile or a backup? <a href="#/settings" onclick={requestImportFocus}>Import it in Settings → Advanced</a>.
+      {:else}
+        Have a backup from this app? <a href="#/settings" onclick={requestImportFocus}>Restore it in Settings</a>.
+      {/if}
     </p>
 
     <div class="secondary">

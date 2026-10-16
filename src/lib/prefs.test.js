@@ -11,7 +11,7 @@ describe('normalisePrefs', () => {
   it('falls back per field and ignores junk', () => {
     expect(normalisePrefs(null)).toEqual(defaultPrefs());
     expect(normalisePrefs({ density: 'huge', reduceMotion: 'yes', defaultEffort: 'warp', cpuProfile: 'turbo' })).toEqual(defaultPrefs());
-    expect(normalisePrefs({ density: 'compact', defaultEffort: 'thorough' })).toEqual({ density: 'compact', reduceMotion: false, defaultEffort: 'thorough', cpuProfile: 'balanced', calibration: null, dropSets: 'all', debugLog: 'off' });
+    expect(normalisePrefs({ density: 'compact', defaultEffort: 'thorough' })).toEqual({ density: 'compact', reduceMotion: false, defaultEffort: 'thorough', cpuProfile: 'balanced', calibration: null, dropSets: 'all', debugLog: 'off', showImport: false });
     expect(normalisePrefs({ cpuProfile: 'eco' }).cpuProfile).toBe('eco');
   });
   it('the default effort is Standard (plan Q4)', () => {
@@ -59,7 +59,7 @@ describe('stored with the UI state, per device', () => {
     saveUi({ prefs: { reduceMotion: true } });
     const ui = loadUi();
     expect(ui.lastHash).toBe('#/settings');
-    expect(ui.prefs).toEqual({ density: 'compact', reduceMotion: true, defaultEffort: 'standard', cpuProfile: 'balanced', calibration: null, dropSets: 'all', debugLog: 'off' });
+    expect(ui.prefs).toEqual({ density: 'compact', reduceMotion: true, defaultEffort: 'standard', cpuProfile: 'balanced', calibration: null, dropSets: 'all', debugLog: 'off', showImport: false });
   });
   it('a broken stored value yields the defaults', () => {
     localStorage.setItem(UI_KEY, '{"prefs": 7}');

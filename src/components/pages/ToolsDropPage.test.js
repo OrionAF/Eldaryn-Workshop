@@ -145,7 +145,15 @@ const paste = (json) => {
   flushSync();
 };
 
-it('Loot bag: no drop zone or paste box, only a pointer to Settings > Import that asks for focus', () => {
+it('with game-data import hidden (the default) there is no Loot bag tab, and its route shows Single drop', () => {
+  open({ tab: 'bag' });
+  expect([...target.querySelectorAll('[role="tab"]')].map((t) => t.textContent.trim())).toEqual(['Single drop']);
+  expect(target.querySelector('#dc-panel-bag')).toBeNull();
+  expect(target.querySelector('[data-testid="import-pointer"]')).toBeNull();
+});
+
+it('Loot bag: no drop zone or paste box, only a pointer to Settings > Advanced that asks for focus', () => {
+  setPrefs({ showImport: true });
   open({ tab: 'bag' });
   expect(target.querySelector('#dc-panel-bag input[type="file"]')).toBeNull();
   expect(target.querySelector('#dc-panel-bag textarea')).toBeNull();
@@ -155,6 +163,7 @@ it('Loot bag: no drop zone or paste box, only a pointer to Settings > Import tha
   const before = importFlow.focusSeq;
   link.click();
   expect(importFlow.focusSeq).toBe(before + 1);
+  applyPrefs();
 });
 
 it('Loot bag: the batch is a job, rows rank in one DPS table, and a gear edit marks it stale', async () => {
@@ -452,7 +461,7 @@ it('S2: single drop shows an upper-bound estimate that follows the effort, or a 
 
 it('S2: Loot bag shows a neutral note before the import, then an upper-bound estimate from the batch', () => {
   applyPrefs();
-  setPrefs({ calibration: CAL() });
+  setPrefs({ calibration: CAL(), showImport: true });
   open({ tab: 'bag' });
   expect(target.querySelector('[data-testid="run-estimate-bag"]')).not.toBeNull();
   paste(lootBag);

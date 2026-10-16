@@ -188,13 +188,15 @@
 
   // ---- tabs and display -------------------------------------------------------------------------
 
-  const TABS = [
+  // The Verify tab needs game-data import (Settings > Advanced); a log already handed over keeps it.
+  const verifyShown = $derived(prefs.showImport || !!logHandoff);
+  const TABS = $derived([
     { id: 'duel', label: 'Duel' },
-    { id: 'verify', label: 'Verify a fight log' },
-  ];
+    ...(verifyShown ? [{ id: 'verify', label: 'Verify a fight log' }] : []),
+  ]);
   const onTab = (id) => go(formatHash('tools/duel', id === 'verify' ? 'verify' : null), { replace: true });
   $effect(() => {
-    tabId = tab === 'verify' ? 'verify' : 'duel';
+    tabId = tab === 'verify' && verifyShown ? 'verify' : 'duel';
   });
 
   // A fight log handed over by the import dialog: on mount and whenever another one arrives, take it,
@@ -234,7 +236,7 @@
   <Tabs items={TABS} bind:value={tabId} label="Duel sections" idPrefix="duel" onchange={onTab} />
 </div>
 
-{#if tabId === 'verify'}
+{#if tabId === 'verify' && verifyShown}
   <div role="tabpanel" id="duel-panel-verify">
     <VerifyFightLog fighters={verifyFighters} handoff={logHandoff} />
   </div>

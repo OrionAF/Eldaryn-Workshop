@@ -34,6 +34,9 @@ export const prefs = {
   get dropSets() {
     return state.dropSets;
   },
+  get showImport() {
+    return state.showImport;
+  },
 };
 
 /** Change one or more preferences, apply them, and remember them on this device. */
