@@ -29,7 +29,7 @@ import { createDebugLog } from './debugLog.js';
 import { minimise, attribute, holmSequential, holmFixed } from './minimise.js';
 import {
   RESULT_SCHEMA, CHECKPOINT_SCHEMA, PHASES, MULTIPLICITY, estimateOut, contrastOut, targetOut, objectiveOut,
-  headlineOf, rankRows, failedResult, rowViolations, nearestOfEqual, groupTies,
+  headlineOf, rankRows, failedResult, rowViolations, nearestOfEqual, groupTies, paidChanges,
 } from './result.js';
 
 /** The joint space is raced exhaustively at or below this many builds (a strategy switch, not a cap). */
@@ -1014,7 +1014,7 @@ export async function optimize(request, hooks = {}) {
 
     // minimise (S2)
     run.setPhase('minimise');
-    const ctx2 = { space, B, armOf, objective, compare: (X, Y, a) => run.compare(X, Y, S2, a), prefetch: (arms) => run.prefetch(arms, S2, effort.n0) };
+    const ctx2 = { space, B, armOf, objective, fill: true, compare: (X, Y, a) => run.compare(X, Y, S2, a), prefetch: (arms) => run.prefetch(arms, S2, effort.n0) };
     const minimised = new Map();
     for (const F of finals) {
       const m = await minimise(ctx2, F, { alpha: effort.alpha, alphaFinal: effort.alpha / finals.length });
@@ -1024,7 +1024,7 @@ export async function optimize(request, hooks = {}) {
           warnings.push({ code: 'change-dropped-unresolved', severity: 'info', message: `${d.change.label} (${d.change.from} to ${d.change.to}) was dropped: too close to call at ${d.contrast.n} fights.` });
         }
       }
-      if (m.arm.key !== B.key && !minimised.has(m.arm.key)) minimised.set(m.arm.key, { arm: m.arm, decided: m.decided });
+      if (m.arm.key !== B.key && !minimised.has(m.arm.key)) minimised.set(m.arm.key, { arm: m.arm, decided: m.decided, free: new Set(m.free) });
     }
     rowsDraft = [...minimised.values()];
     onCheckpoint(run.checkpoint({ finalists: finals.map((a) => a.key), minimised: Object.fromEntries(rowsDraft.map((r) => [r.arm.key, Object.keys(r.decided)])) }));
@@ -1056,7 +1056,7 @@ export async function optimize(request, hooks = {}) {
     for (const r of shown) {
       const set = await run.getSet(r.arm, S3, r.vs.n);
       const est = objective.estimate(set, { alpha: ALPHA });
-      const changes = r.attr.changes.map((c) => ({ ...c, own: contrastOut(c.own), needed: contrastOut(c.needed) }));
+      const changes = r.attr.changes.map((c) => ({ ...freeMark(c, r.free), own: contrastOut(c.own), needed: contrastOut(c.needed) }));
       rows.push({
         rank: 0, tieGroup: null, isBaseline: false, provisional: false, key: r.arm.key, engineKey: run.ekOf(r.arm), candidate: r.arm.cand,
         value: estimateOut({ ...est.value, seed: S3.seed }), aux: auxOf(prep, est, set, await run.getSet(B, S3, r.vs.n)),
@@ -1068,7 +1068,7 @@ export async function optimize(request, hooks = {}) {
         _primary: objective.primary ? objective.primary(set) : 0,
         _decided: r.decided,
         _sig: `${r.vs.n}|${hashSeed(...set.main.map((l) => l.join(',')))}`,
-        _dist: r.arm.dist,
+        _dist: r.arm.dist - changes.filter((c) => c.free).length,
       });
     }
     // builds equal in effect on this target (bit-identical outcomes, A.5 b): the nearest one stays
@@ -1142,6 +1142,9 @@ export async function optimize(request, hooks = {}) {
   }
 }
 
+/** A change that is a free fill (in `free`, its ids) carries `free: true` and keptBecause 'free'. */
+const freeMark = (c, free) => (free?.has(c.id) ? { ...c, free: true, keptBecause: 'free' } : c);
+
 /** The debug log's header line (simulation.md §Debug log): what was run, at which effort and seed. */
 export function debugHeader(prep, echo, jobId) {
   return {
@@ -1172,7 +1175,7 @@ function goalOf(objective, baseline, rows, check) {
   const reaching = rows.filter((r) => r.aux.meetsTarget === true);
   if (reaching.length) {
     const r = reaching[0];
-    const k = r.changes.length;
+    const k = paidChanges(r).length;
     return {
       target, status: 'reached', baseline: base, bestKey: r.key,
       text: `${reaching.length} build${reaching.length === 1 ? '' : 's'} reach${reaching.length === 1 ? 'es' : ''} ${pctText(target)}. Fewest changes: ${k} change${k === 1 ? '' : 's'}, win rate ${pctText(r.aux.winRate.est)}${ciText(r.aux.winRate)}.`,
@@ -1198,7 +1201,7 @@ function chanceGoalOf(baseline, rows, check) {
   const better = rows.filter((r) => r.vsBaseline?.verdict === 'better');
   const noWins = [baseline, ...rows].every((r) => r.aux.winRate.est === 0);
   const best = (noWins ? better[0] : better.find((r) => r.vsBaseline.basis === 'win-rate')) ?? baseline;
-  const k = best.changes.length;
+  const k = paidChanges(best).length;
   const who = best.isBaseline ? 'the current build' : `${k} change${k === 1 ? '' : 's'}`;
   const w = best.aux.winRate;
   if (noWins) {
@@ -1336,11 +1339,12 @@ export async function optimizeMore(request, hooks = {}) {
     };
     const baseSet = await run.getSet(B, S4, targetN);
     const updated = new Map();
+    const freeOf = new Map(picked.map((x) => [x.key, new Set(x.changes.filter((c) => c.free).map((c) => c.id))]));
     for (let i = 0; i < arms.length; i++) {
       const set = await run.getSet(arms[i], S4, targetN);
       const est = objective.estimate(set, { alpha: ALPHA });
       const attr = await attribute(ctx, arms[i], targetN, { alpha: effort.alpha, seed: S4.seed });
-      const changes = attr.changes.map((c) => ({ ...c, own: contrastOut(c.own), needed: contrastOut(c.needed) }));
+      const changes = attr.changes.map((c) => ({ ...freeMark(c, freeOf.get(picked[i].key)), own: contrastOut(c.own), needed: contrastOut(c.needed) }));
       updated.set(arms[i].key, {
         value: estimateOut({ ...est.value, seed: S4.seed }), aux: auxOf(prep, est, set, baseSet), vsBaseline: contrastOut(vs[i]),
         changes, remainder: attr.remainder,

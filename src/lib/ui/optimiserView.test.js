@@ -218,6 +218,12 @@ describe('change labels (no internal id reaches the UI)', () => {
     expect(changeSummary([glyph(0)])).toBe('1 change · 1 glyph socket');
     expect(changeSummary(changes)).not.toMatch(/minorGlyphs/);
   });
+
+  it('free fills are not changes: the count leaves them out and names them last', () => {
+    const free = { ...glyph(2), free: true, keptBecause: 'free' };
+    expect(changeSummary([...changes.slice(0, 5), free])).toBe('5 changes · Talent set, Talents, Mount, 2 glyph sockets · fills 1 empty socket');
+    expect(changeSummary([changes[0], free, { ...glyph(1), free: true }])).toBe('1 change · Talent set · fills 2 empty sockets');
+  });
   it('names a dimension, never its key', () => {
     expect(dimensionLabel('minorGlyphs')).toBe('Minor glyphs');
     expect(dimensionLabel('talents')).toBe('Talents');

@@ -10,6 +10,8 @@
 import { hashSeed, mulberry32 } from '../engine/rng.js';
 import { meanInterval, censoredQuantile } from '../engine/stats/index.js';
 import { changesOf, revert, addChange, canonicalise } from './effect.js';
+import { fillEmptySockets } from './fill.js';
+import { socketsOf } from './space.js';
 
 /**
  * Holm's step-down over sequential tests: every open test runs at alpha / (m - rejected); the ones
@@ -88,7 +90,42 @@ export async function minimise(ctx, F0, { alpha, alphaFinal }) {
     F = d.Y;
   }
   const vs = await ctx.compare(F, B, alphaFinal);
-  return vs.verdict === 'better' ? { arm: F, decided, dropped, vsBaseline: vs } : { arm: B, decided: {}, dropped, vsBaseline: vs };
+  if (vs.verdict !== 'better') return { arm: B, decided: {}, dropped, vsBaseline: vs, free: [] };
+  const filled = ctx.fill ? await withFreeFills(ctx, F, { alpha, alphaFinal }) : null;
+  return filled ? { ...filled, dropped } : { arm: F, decided, dropped, vsBaseline: vs, free: [] };
+}
+
+/**
+ * Free fills (simulation.md §Minimise and confirm): F with its empty glyph sockets filled (fill.js), kept only
+ * when one more Holm round over all of its changes finds every change that is not a fill still needed and no
+ * fill worse to keep than to leave out, the filled build is not worse than F (a fill may put back a glyph F
+ * took off, which is then no change at all), and it is still better than the baseline at alphaFinal.
+ * @returns {Promise<Object|null>}  minimise's result for the filled build, `free` its fill change ids; null: no fill
+ */
+async function withFreeFills(ctx, F, { alpha, alphaFinal }) {
+  const { space, B } = ctx;
+  const { candidate, glyphs } = fillEmptySockets(space, B.cand, F.cand);
+  if (!glyphs.length) return null;
+  const FX = ctx.armOf(candidate);
+  if (FX.key === F.key) return null;
+  const C = changesOf(space, B.cand, FX.cand);
+  const fills = new Set(glyphs);
+  const isFill = (c) => c.dimension.endsWith('Glyphs') && fills.has(glyphAt(space, FX.cand, c.id));
+  const tests = C.map((c) => ({ c, Y: without(ctx, FX, c) })).filter((t) => t.Y);
+  await ctx.prefetch?.([FX, ...tests.map((t) => t.Y)]);
+  const res = await holmSequential(tests, alpha, (t, a) => ctx.compare(FX, t.Y, a));
+  const ok = tests.every((t, i) => (isFill(t.c) ? res[i].verdict !== 'worse' : res[i].verdict === 'better'));
+  if (!ok) return null;
+  if ((await ctx.compare(FX, F, alpha)).verdict === 'worse') return null;
+  const vs = await ctx.compare(FX, B, alphaFinal);
+  if (vs.verdict !== 'better') return null;
+  return { arm: FX, decided: Object.fromEntries(tests.map((t, i) => [t.c.id, res[i]])), vsBaseline: vs, free: C.filter(isFill).map((c) => c.id) };
+}
+
+/** The glyph id a socket change `glyph:<mount>:<tier>:<i>` puts in place on candidate X (null: emptied). */
+function glyphAt(space, X, id) {
+  const [, , tier, i] = id.split(':');
+  return socketsOf(space.character, X)?.[tier]?.[Number(i)] ?? null;
 }
 
 // ---------------------------------------------------------------------------------------------
