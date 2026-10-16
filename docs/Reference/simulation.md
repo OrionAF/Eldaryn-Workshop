@@ -782,7 +782,7 @@ sanitised fixtures, Quick, seed 1, sigils only; fights before → after, by phas
 |---|---|---|---|---|---|
 | Highest chance, chapter 10-7, Warrior L73 (no build wins) | 306 168 → 196 435 | 1 536 → 1 227 | 1 528 → 1 219 | 309 248 → 198 897 (−36 %) | same (2 rows, `better` on margin) |
 | Highest chance, Dungeon 7 step 6, Sentinel L85 (about half) | 47 608 → 46 430 | 64 → 64 | 56 → 56 | 47 744 → 46 566 (−2.5 %) | same (1 row, `better` on win rate) |
-| Highest chance, chapter 12-1, Sentinel L85 (rarely) | 20 600 → 20 600 | 64 → 64 | 56 → 56 | 20 736 → 20 736 | same |
+| Highest chance, chapter 12-1, Sentinel L85 (rarely) | 20 616 → 20 616 | 64 → 64 | 56 → 56 | 20 736 → 20 736 | same |
 | DPS dummy, sigils (S85) and minor glyphs + mount (W73) | unchanged | unchanged | unchanged | unchanged | identical results |
 
 So a run in which no build wins saves about a third of its fights (the user's run 1 had the same
@@ -852,7 +852,9 @@ very unlucky run can still exceed the range; the disclosure says so.
     fights per build, the later ratio and the observed speed only; builds per start come from the model
     (`SWEEP_MODEL.band` around the other runs' rate, or 1), and the UI adds "saved before runs kept their
     cost: fights per build and speed come from its debug summary". A PVP run's lanes are not in the summary,
-    so a debug-only PVP run is not used.
+    so a debug-only PVP run is not used. A debug-only Push run's inner phases sum every rung it optimised,
+    while a saved `cost` holds only the first optimised rung: fights per build is a ratio and barely moves,
+    but its speed and builds describe the whole climb's searches.
   - `same`: each run is a point for this setup; `likely` is their geometric mean and `lo` / `hi` their least
     and most divided / multiplied by `HISTORY_MARGIN` (x1.5 for one run, x1.25 for two or more), so one run
     gives a 2.25x range. When a debug-only run is among them, the builds use the model's band instead and
