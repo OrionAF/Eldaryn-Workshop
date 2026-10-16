@@ -68,14 +68,14 @@
     {/snippet}
     <div class="debug" data-testid="debug-log">
       <p class="note">
-        {LEVEL_TEXT[summary.level] ?? summary.level}: <span class="num">{fmtCount(totals.builds)}</span> builds,
-        <span class="num">{fmtCount(totals.fights)}</span> fights, <span class="num">{ms(totals.cpuMs)}</span> of compute in
-        <span class="num">{ms(totals.wallMs)}</span>.
-        {#if !getLog}The full log is kept only for the session it ran in.{/if}
+        This shows where the run spent its time. {LEVEL_TEXT[summary.level] ?? summary.level}: <span class="num">{fmtCount(totals.builds)}</span> builds,
+        <span class="num">{fmtCount(totals.fights)}</span> fights, <span class="num">{ms(totals.cpuMs)}</span> of computing in
+        <span class="num">{ms(totals.wallMs)}</span> of real time.
+        {#if !getLog}The full log is kept only until you close the app.{/if}
       </p>
       {#if totals.truncatedFights > 0 || totals.truncatedBuilds > 0}
         <p class="warn" role="status" data-testid="debug-truncated">
-          The log hit its row cap: <span class="num">{fmtCount(totals.truncatedFights ?? 0)}</span> fight rows and
+          The log is full: <span class="num">{fmtCount(totals.truncatedFights ?? 0)}</span> fight rows and
           <span class="num">{fmtCount(totals.truncatedBuilds ?? 0)}</span> build rows were not kept (the totals still count them).
         </p>
       {/if}

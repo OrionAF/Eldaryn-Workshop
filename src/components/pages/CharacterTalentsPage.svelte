@@ -94,7 +94,7 @@
               <span class="fill" style="width: {cap > 0 ? Math.min(100, (spent / cap) * 100) : 0}%"></span>
             </div>
             <span class="points-readout num" data-testid="points">{spent} / {cap} pts</span>
-            <span class="points-note">{cap === 0 ? `Talents unlock at level ${UNLOCK_LEVELS.TALENTS}.` : `Level ${character.level} grants ${cap} of 29.`}</span>
+            <span class="points-note">{cap === 0 ? `Talents unlock at level ${UNLOCK_LEVELS.TALENTS}.` : `Level ${character.level} grants ${cap} of the 29 points.`}</span>
           </div>
           <ConfirmButton
             variant="ghost"

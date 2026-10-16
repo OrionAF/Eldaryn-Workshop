@@ -47,15 +47,15 @@
     max: ['Max', 'Every core but one; may run hot.'],
   };
   const profileOptions = CPU_PROFILES.map((v) => ({ value: v, label: PROFILE_TEXT[v][0].replace(' (default)', '') }));
-  const profileLine = (v) => `${PROFILE_TEXT[v][0]}: ${workersFor(v, cores)} of ${coreCount} cores. ${PROFILE_TEXT[v][1]}`;
+  const profileLine = (v) => `${PROFILE_TEXT[v][0]}: uses ${workersFor(v, cores)} of your device's ${coreCount} cores. ${PROFILE_TEXT[v][1]}`;
 
   const cal = $derived(prefs.calibration);
   const stale = $derived(staleReason(cal, { profile: prefs.cpuProfile }));
   const calJob = $derived([...jobsStore.list].reverse().find((j) => j.tool === CALIBRATE_TOOL && (j.status === 'running' || j.status === 'queued')));
   const busy = $derived(!!calJob || calibrating());
   const STALE_TEXT = {
-    profile: 'Out of date: measured under another CPU profile.',
-    version: 'Out of date: measured on an older version of the app.',
+    profile: 'Out of date: tested with another Speed vs. battery setting.',
+    version: 'Out of date: tested on an older version of the app.',
   };
   const when = (t) => new Date(t).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
   const KIND_LABEL = { dummy: 'Training dummy', dungeon: 'Dungeon step', duel: 'Duel' };
@@ -114,7 +114,7 @@
       <Select
         label="Default effort for new searches"
         value={prefs.defaultEffort}
-        hint="Effort sets only the precision a comparison is resolved to, never a time limit."
+        hint="More effort spots smaller differences and takes longer. It is not a time limit."
         options={[
           { value: 'quick', label: 'Quick' },
           { value: 'standard', label: 'Standard' },
@@ -129,7 +129,7 @@
     <div class="prefs">
       <div class="field">
         <SegmentedControl
-          label="CPU thermal profile"
+          label="Speed vs. battery"
           value={prefs.cpuProfile}
           options={profileOptions}
           onchange={(v) => setPrefs({ cpuProfile: v })}
@@ -139,27 +139,27 @@
             <li class:on={v === prefs.cpuProfile}>{profileLine(v)}</li>
           {/each}
         </ul>
-        <p class="note">A change applies to the next job; a job that is already running keeps its workers.</p>
+        <p class="note">A change applies to the next run. A run that has already started keeps the setting it began with.</p>
       </div>
 
       <div class="field" data-testid="calibration">
-        <span class="micro-label">Speed calibration</span>
+        <span class="micro-label">Speed test</span>
         {#if cal}
           <p class="note" data-testid="calibration-last">
-            Measured {when(cal.measuredAt)} on the {cal.profile} profile with {cal.workers} {cal.workers === 1 ? 'worker' : 'workers'}:
+            Last tested {when(cal.measuredAt)} on the {cal.profile} setting, using {cal.workers} {cal.workers === 1 ? 'core' : 'cores'}:
             {#each Object.entries(cal.fightsPerSec) as [kind, r], i (kind)}{i ? ', ' : ' '}{KIND_LABEL[kind]} <span class="num">{Math.round(r).toLocaleString()}</span> fights/s{/each}.
           </p>
-          {#if stale}<p class="warn" role="status" data-testid="calibration-stale">{STALE_TEXT[stale]} Recalibrate for accurate estimates.</p>{/if}
+          {#if stale}<p class="warn" role="status" data-testid="calibration-stale">{STALE_TEXT[stale]} Run the speed test again for accurate time estimates.</p>{/if}
         {:else}
-          <p class="note">Not calibrated. Run it once to see run-time estimates on the tool pages.</p>
+          <p class="note">No speed test yet. Run one to see time estimates on the tool pages.</p>
         {/if}
         <div class="row">
-          <Button variant="secondary" disabled={busy} loading={busy} busyLabel="Calibrating…" onclick={startCalibration}>
-            {cal ? 'Recalibrate' : 'Calibrate speed'}
+          <Button variant="secondary" disabled={busy} loading={busy} busyLabel="Testing speed…" onclick={startCalibration}>
+            {cal ? 'Run speed test again' : 'Run speed test'}
           </Button>
           {#if calJob}<Button variant="ghost" onclick={() => cancelJob(calJob.id)}>Cancel</Button>{/if}
         </div>
-        <p class="note">Runs fights for about 6 seconds with your active preset (a sample character when you have none). It never runs by itself.</p>
+        <p class="note">Plays fights for about 6 seconds using your active preset (a sample character if you have none). It only runs when you press the button.</p>
       </div>
     </div>
   </Panel>
@@ -170,21 +170,21 @@
     <div class="prefs">
       <div class="field" data-testid="debug-log-pref">
         <SegmentedControl
-          label="Debug: log the search"
+          label="Debug log"
           value={prefs.debugLog}
           options={DEBUG_OPTIONS}
           onchange={(v) => setPrefs({ debugLog: v })}
         />
-        <p class="note">Records every build an Optimiser run tries (and every fight, at the second level) so its Details show where the time went, with a log to download. It never changes a result.</p>
+        <p class="note">Keeps a record of every build an Optimiser run tries (and every fight, if you pick Builds and fights), so its Details show where the time went. You can also download the log. It never changes a result.</p>
         {#if prefs.debugLog === 'fights'}
-          <p class="warn" role="status" data-testid="debug-log-warn">Builds and fights slows runs and can use tens of MB of memory on a long run.</p>
+          <p class="warn" role="status" data-testid="debug-log-warn">The Builds and fights option makes runs slower and can use a lot of memory (tens of MB) on a long run.</p>
         {/if}
       </div>
       <div class="field" data-testid="show-import-pref">
         <Checkbox switch checked={prefs.showImport} label="Show game data import" onchange={(on) => setPrefs({ showImport: on })} />
         <p class="note">
-          For players who capture the game's own data. Adds an Import box here, the Loot bag tab on Drop Check, the
-          fight-log check on Duel and Rankings players on Opponents. Restoring a backup does not need it.
+          Only for players who copy their data out of the game. Adds an Import box here, the Loot bag tab in Drop Check, the
+          fight-log check in Duel and Rankings players in Opponents. You do not need it to restore a backup.
         </p>
       </div>
       {#if prefs.showImport}<ImportSection />{/if}

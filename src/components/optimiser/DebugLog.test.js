@@ -58,7 +58,7 @@ describe('DebugLog', () => {
     ui = setup(DebugLog, { debug: summary });
     expect(ui.qa('[data-testid="debug-phases"] tbody tr')).toHaveLength(2);
     expect(ui.target.querySelector('[data-testid="debug-download"]')).toBeNull();
-    expect(ui.target.textContent).toMatch(/kept only for the session/);
+    expect(ui.target.textContent).toMatch(/kept only until you close the app/);
   });
 });
 

@@ -407,7 +407,7 @@
               options={[{ value: 'all', label: 'All presets' }, ...scopedPresets.map((p) => ({ value: p.id, label: p.name }))]}
               onchange={(v) => (scope = v)}
             />
-            <Checkbox bind:checked={simOn} label={`Simulated DPS (${SECONDS} s dummy)`} />
+            <Checkbox bind:checked={simOn} label={`DPS against a training dummy (${SECONDS} s)`} />
             <div class="block">
               <Checkbox bind:checked={survivalOn} label="Survival vs an enemy" />
               {#if survivalOn}
@@ -426,17 +426,25 @@
                     />
                   {/each}
                 {:else}
-                  <p class="hint">No saved opponents with a complete stat sheet yet. Add one on Opponents.</p>
+                  <p class="hint">No saved opponents with full in-game stats yet. Add one on Opponents.</p>
                 {/if}
                 {#each opponentSet.skipped as k (k.id)}
-                  <p class="hint">{k.name} is skipped: its sheet lacks {k.missing.join(', ')}.</p>
+                  <p class="hint">{k.name} is skipped: its in-game stats are missing {k.missing.join(', ')}.</p>
                 {/each}
               {/if}
             </div>
             <div class="block">
               <span class="cap-label">Effort</span>
               <SegmentedControl label="Effort" bind:value={precision} options={EFFORT} onchange={() => (maxNOverride = null)} />
-              <p class="hint">Effort sets the precision only. Each comparison runs from a small first look until it is resolved, or stops and says "too close to call".</p>
+              <p class="hint">More effort spots smaller differences and takes longer. If an item stays too close to call, the check says so.</p>
+              <details class="basis">
+                <summary>How this works</summary>
+                <p>
+                  Each comparison starts with a few fights and adds more until the item is clearly better or clearly worse, or until it reaches a limit and is reported as too close to call.
+                  Effort sets the smallest difference it tries to spot: {EFFORT.map(({ value: k }) => k).map((k) => `${+(DROP_PRECISION[k].rel * 100).toFixed(2)}%`).join(', ')} of DPS, and {EFFORT.map(({ value: k }) => k).map((k) => +(DROP_PRECISION[k].prob * 100).toFixed(2)).join(', ')} points of survival or win rate (Quick, Standard, Thorough).
+                  The limit is {EFFORT.map(({ value: k }) => k).map((k) => fmtCount(DROP_PRECISION[k].maxN)).join(', ')} fights per build.
+                </p>
+              </details>
               {#if request}<RunEstimate bound="upper" fights={dropFights(request, request.maxN ?? DROP_PRECISION[precision].maxN)} />{/if}
             </div>
             {#snippet footer()}
@@ -459,20 +467,20 @@
               {#if singleJob?.status === 'failed'}
                 <Banner variant="error" lead="The check failed.">{singleJob.error}</Banner>
               {:else if singleJob?.status === 'cancelled'}
-                <Banner variant="info" lead="Cancelled.">Finished presets are shown; the rest show the estimate only.</Banner>
+                <Banner variant="info" lead="Cancelled.">Finished presets are shown; the rest show only the quick estimate.</Banner>
               {/if}
               {#if singleStale}
-                <Banner variant="warn" lead="Stale.">The drop, your gear or the settings changed since this run. Check the drop again for current verdicts.</Banner>
+                <Banner variant="warn" lead="Out of date.">The drop, your gear or the settings changed since this check. Check the drop again for up-to-date verdicts.</Banner>
               {/if}
               {#if !singleJob}
-                <Banner variant="estimate" lead="Not simulated yet.">The figures below are instant auto-attack estimates. Press Check drop for a verdict.</Banner>
+                <Banner variant="estimate" lead="Not checked yet.">The figures below are quick estimates from auto-attacks only. Press Check drop for a real verdict.</Banner>
               {/if}
               {#if !rows.length}
                 <Banner variant="info" lead="Nothing to compare.">No preset wears Set 1. Switch Compare against to Both sets, or give a preset Set 1.</Banner>
               {:else if !anySheet}
                 <p class="hint">
-                  These presets have no in-game stat sheet, so numbers come from the calculated totals.
-                  <button type="button" class="link" onclick={() => onNavigate('builds/sheet')}>Enter a sheet</button> for exact anchoring.
+                  These presets have no in-game stats entered, so the numbers come from the app's own calculation.
+                  <button type="button" class="link" onclick={() => onNavigate('builds/sheet')}>Enter your in-game stats</button> for more exact results.
                 </p>
               {/if}
               {#if singleJob?.status === 'finished' && !singleStale}
@@ -496,7 +504,7 @@
       <div id="dc-panel-bag" role="tabpanel" class="stack">
         <Panel title="Loot bag" scope="tool">
           <p class="hint">
-            Every item of an imported loot bag (or a full game profile) is tried in {dropSets === 'set1' ? 'Set 1 only' : 'every gear set'}. Items of another class are skipped.
+            Every item in an imported loot bag (or a full game profile) is tried in {dropSets === 'set1' ? 'Set 1 only' : 'every gear set'}. Items of another class are skipped.
           </p>
           <ImportPointer what="a loot bag" />
           {#if batchError}<Banner variant="error">{batchError}</Banner>{/if}
@@ -536,7 +544,7 @@
             {/snippet}
             {#if bagJob}<RunProgress segments={segmentsOf(bagJob)} />{/if}
             {#if applied.size}
-              <p class="hint" data-testid="bag-applied">{applied.size} applied item{applied.size === 1 ? '' : 's'} removed from the list.{liveCount ? ' Check again to judge the rest against your new gear.' : ''}</p>
+              <p class="hint" data-testid="bag-applied">{applied.size} applied item{applied.size === 1 ? '' : 's'} removed from the list.{liveCount ? ' Check again to compare the rest with your new gear.' : ''}</p>
             {/if}
             <div class="summary" aria-label="Summary">
               <span class="v up"><span aria-hidden="true">▲</span> <span class="num">{counts.upgrade}</span> upgrade</span>
@@ -550,18 +558,18 @@
             {#if bagJob?.status === 'failed'}
               <Banner variant="error" lead="The check failed.">{bagJob.error}</Banner>
             {:else if bagJob?.status === 'cancelled'}
-              <Banner variant="info" lead="Cancelled.">Unfinished drops show the estimate only.</Banner>
+              <Banner variant="info" lead="Cancelled.">Unfinished drops show only the quick estimate.</Banner>
             {/if}
             {#if bagStale}
-              <Banner variant="warn" lead="Stale.">Your gear, presets or the gear sets compared changed since this check. Check again for current verdicts.</Banner>
+              <Banner variant="warn" lead="Out of date.">Your gear, presets or the gear sets compared changed since this check. Check again for up-to-date verdicts.</Banner>
             {/if}
-            <p class="hint">Simulated DPS only: defence is not measured. {bag.sets === 'set1' ? 'Compared against Set 1 only.' : 'Each drop shows its best gear set.'} A set's verdict covers every preset that wears it.</p>
+            <p class="hint">Only DPS is checked, not defence. {bag.sets === 'set1' ? 'Compared against Set 1 only.' : 'Each drop shows its best gear set.'} A set's verdict covers every preset that wears it.</p>
 
-            <div class="tbl" role="table" aria-label="Drops: change in DPS, 95% intervals">
+            <div class="tbl" role="table" aria-label="Drops: change in DPS, with likely range">
               <div class="trow thead" role="row">
                 <span role="columnheader" class="cap-label">Drop</span>
-                <div role="columnheader"><ForestAxis domain={dpsDomain} title="Δ DPS vs current (%)" format={(x) => `${x}`} /></div>
-                <span role="columnheader" class="cap-label right">Δ · 95% CI</span>
+                <div role="columnheader"><ForestAxis domain={dpsDomain} title="DPS change vs current (%)" format={(x) => `${x}`} /></div>
+                <span role="columnheader" class="cap-label right">Change · likely range</span>
                 <span role="columnheader" class="cap-label">Verdict</span>
               </div>
               {#each ranked as r, i (r.entry.key)}
@@ -587,17 +595,17 @@
                         lo={f.lo}
                         hi={f.hi}
                         tone={bagTone(chip, f)}
-                        label={f.kind === 'sim' ? `${e.name}: ${signedPct(f.est, 1)}, 95% interval ${signedPct(f.lo, 1)} to ${signedPct(f.hi, 1)}` : `${e.name}: estimate ${signedPct(f.est, 1)}, no interval`}
+                        label={f.kind === 'sim' ? `${e.name}: ${signedPct(f.est, 1)}, likely range ${signedPct(f.lo, 1)} to ${signedPct(f.hi, 1)}` : `${e.name}: quick estimate ${signedPct(f.est, 1)}, no range`}
                       />
                     {/if}
                   </div>
                   <div role="cell" class="delta">
                     {#if f?.kind === 'sim'}
                       <span class="v num {bagTone(chip, f)}">{signedPct(f.est, 1)}</span>
-                      <span class="ci num">[{signedPct(f.lo, 1)}, {signedPct(f.hi, 1)}] · N {fmtCount(f.n)}</span>
+                      <span class="ci num">[{signedPct(f.lo, 1)}, {signedPct(f.hi, 1)}] · {fmtCount(f.n)} fights</span>
                     {:else if f}
                       <span class="est num">{signedPct(f.est, 1)}</span>
-                      <span class="ci"><ProvenanceTag kind="estimate" /> no interval</span>
+                      <span class="ci"><ProvenanceTag kind="estimate" /> no range</span>
                     {/if}
                   </div>
                   <div role="cell" class="vd">
@@ -659,6 +667,9 @@
   .equipped { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1); font-size: var(--fs-12); }
   .soft,
   .hint { color: var(--text-soft); font-size: var(--fs-12); margin: 0; }
+  .basis { font-size: var(--fs-12); color: var(--text-muted); }
+  .basis summary { cursor: pointer; color: var(--brass-400); }
+  .basis p { margin: var(--sp-2) 0 0; }
   .link { background: none; border: none; padding: 0; color: var(--brass-200); text-decoration: underline dotted; cursor: pointer; font: inherit; }
   .summary { display: flex; flex-wrap: wrap; gap: var(--sp-4); font-size: var(--fs-13); color: var(--text-soft); }
   .summary .up { color: var(--verdict-up); }

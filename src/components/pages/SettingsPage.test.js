@@ -1,4 +1,4 @@
-// S2: the Performance section of Settings (CPU thermal profile, speed calibration) and the run-time estimate line.
+// S2: the Performance section of Settings (Speed vs. battery, speed test) and the run-time estimate line.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { flushSync } from 'svelte';
 import { setup, click } from '../ui/testkit.js';
@@ -42,18 +42,18 @@ afterEach(() => {
 const text = () => ui.target.textContent.replace(/\s+/g, ' ');
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
-describe('Debug: log the search', () => {
+describe('Debug log', () => {
   it('offers Off / Builds / Builds and fights, warns at the fights level, and remembers the choice on this device', () => {
     ui = setup(SettingsPage);
-    const group = ui.q('[aria-label="Debug: log the search"]');
+    const group = ui.q('[aria-label="Debug log"]');
     expect([...group.querySelectorAll('button')].map((b) => b.textContent.trim())).toEqual(['Off', 'Builds', 'Builds and fights']);
     expect(prefs.debugLog).toBe('off');
     expect(ui.target.querySelector('[data-testid="debug-log-warn"]')).toBeNull();
-    click(ui.q('[aria-label="Debug: log the search"] [data-value="fights"]'));
+    click(ui.q('[aria-label="Debug log"] [data-value="fights"]'));
     expect(prefs.debugLog).toBe('fights');
     expect(loadUi().prefs.debugLog).toBe('fights');
-    expect(ui.q('[data-testid="debug-log-warn"]').textContent).toMatch(/slows runs.*tens of MB/);
-    click(ui.q('[aria-label="Debug: log the search"] [data-value="off"]'));
+    expect(ui.q('[data-testid="debug-log-warn"]').textContent).toMatch(/makes runs slower.*tens of MB/);
+    click(ui.q('[aria-label="Debug log"] [data-value="off"]'));
     expect(loadUi().prefs.debugLog).toBe('off');
   });
 });
@@ -61,20 +61,20 @@ describe('Debug: log the search', () => {
 describe('Performance section', () => {
   it('offers Eco / Balanced / Max with the worker count each means on this device', () => {
     ui = setup(SettingsPage);
-    const group = ui.q('[aria-label="CPU thermal profile"]');
+    const group = ui.q('[aria-label="Speed vs. battery"]');
     expect([...group.querySelectorAll('button')].map((b) => b.textContent.trim())).toEqual(['Eco', 'Balanced', 'Max']);
     const lines = [...ui.target.querySelectorAll('[data-testid="profile-lines"] li')].map((li) => li.textContent);
     expect(lines).toEqual([
-      'Eco: 2 of 8 cores. Battery and laptops on your lap.',
-      'Balanced (default): 4 of 8 cores. Fast without heating the device.',
-      'Max: 7 of 8 cores. Every core but one; may run hot.',
+      "Eco: uses 2 of your device's 8 cores. Battery and laptops on your lap.",
+      "Balanced (default): uses 4 of your device's 8 cores. Fast without heating the device.",
+      "Max: uses 7 of your device's 8 cores. Every core but one; may run hot.",
     ]);
-    expect(text()).toContain('applies to the next job');
+    expect(text()).toContain('applies to the next run');
   });
 
   it('choosing a profile stores it for the next job', () => {
     ui = setup(SettingsPage);
-    click(ui.q('[aria-label="CPU thermal profile"] [data-value="max"]'));
+    click(ui.q('[aria-label="Speed vs. battery"] [data-value="max"]'));
     flushSync();
     expect(prefs.cpuProfile).toBe('max');
     expect(loadUi().prefs.cpuProfile).toBe('max');
@@ -84,12 +84,12 @@ describe('Performance section', () => {
     ui = setup(SettingsPage);
     expect(requests).toHaveLength(0);
     expect(jobsStore.list).toHaveLength(0);
-    expect(text()).toContain('Not calibrated');
+    expect(text()).toContain('No speed test yet');
   });
 
   it('Calibrate speed runs a cancellable job with the current profile and stores the result', async () => {
     ui = setup(SettingsPage);
-    const btn = () => [...ui.target.querySelectorAll('button')].find((b) => /Calibrate speed|Recalibrate|Calibrating/.test(b.textContent));
+    const btn = () => [...ui.target.querySelectorAll('button')].find((b) => /Run speed test|Testing speed/.test(b.textContent));
     click(btn());
     flushSync();
     expect(requests).toHaveLength(1);
@@ -104,15 +104,15 @@ describe('Performance section', () => {
     flushSync();
     expect(loadUi().prefs.calibration).toEqual({ profile: 'balanced', workers: 4, fightsPerSec: { dummy: 500, dungeon: 250 }, measuredAt: expect.any(Number), version: APP_VERSION });
     const last = ui.q('[data-testid="calibration-last"]').textContent.replace(/\s+/g, ' ');
-    expect(last).toContain('balanced profile with 4 workers');
+    expect(last).toContain('balanced setting, using 4 cores');
     expect(last).toContain('Training dummy 500 fights/s');
     expect(ui.q('[data-testid="calibration-stale"]')).toBeNull();
-    expect(btn().textContent.trim()).toBe('Recalibrate');
+    expect(btn().textContent.trim()).toBe('Run speed test again');
   });
 
   it('a cancelled calibration stores nothing', async () => {
     ui = setup(SettingsPage);
-    click([...ui.target.querySelectorAll('button')].find((b) => /Calibrate speed/.test(b.textContent)));
+    click([...ui.target.querySelectorAll('button')].find((b) => /Run speed test/.test(b.textContent)));
     flushSync();
     click([...ui.target.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Cancel'));
     await flush();
@@ -128,7 +128,7 @@ describe('Performance section', () => {
     expect(ui.q('[data-testid="calibration-stale"]')).toBeNull();
     setPrefs({ cpuProfile: 'eco' });
     flushSync();
-    expect(ui.q('[data-testid="calibration-stale"]').textContent).toContain('another CPU profile');
+    expect(ui.q('[data-testid="calibration-stale"]').textContent).toContain('another Speed vs. battery setting');
     setPrefs({ cpuProfile: 'balanced', calibration: { ...cal, version: '0.0.0+old' } });
     flushSync();
     expect(ui.q('[data-testid="calibration-stale"]').textContent).toContain('older version');
@@ -140,7 +140,7 @@ describe('run-time estimate', () => {
     ui = setup(RunEstimate, { fights: { dummy: 1000 } });
     const a = ui.q('[data-testid="run-estimate"] a');
     expect(a.getAttribute('href')).toBe('#/settings');
-    expect(ui.target.textContent).toContain('Calibrate speed to see run-time estimates');
+    expect(ui.target.textContent).toMatch(/speed test|Calibrate speed/i);
   });
 
   it('with one it reads About N min on this device, as an estimate', () => {
@@ -154,22 +154,22 @@ describe('run-time estimate', () => {
     ui = setup(RunEstimate, { fights: { dummy: 100 * 60 * 5 }, bound: 'upper' });
     const t = ui.q('[data-testid="run-estimate"]').textContent;
     expect(t).toContain('Up to about 5 min on this device (estimate).');
-    expect(t).toContain('another CPU profile');
+    expect(t).toContain('another Speed vs. battery setting');
   });
 });
 
-describe('Jobs tray', () => {
+describe('Runs tray', () => {
   it('shows the worker count of a running job', () => {
     startJob({ tool: 'optimize', title: 'Optimiser', request: { mode: 'optimize', workers: 3 } });
     ui = setup(JobsTray);
-    expect(ui.q('[data-testid="job-workers"]').textContent).toBe('3 workers');
+    expect(ui.q('[data-testid="job-workers"]').textContent).toBe('3 cores');
   });
 
   it('a job without an explicit size gets the pool size of the profile at start', () => {
     setPrefs({ cpuProfile: 'eco' });
     startJob({ tool: 'optimize', title: 'Optimiser', request: { mode: 'optimize' } });
     ui = setup(JobsTray);
-    expect(ui.q('[data-testid="job-workers"]').textContent).toBe('2 workers');
+    expect(ui.q('[data-testid="job-workers"]').textContent).toBe('2 cores');
     expect(requests[0].workers).toBe(2);
   });
 });
@@ -229,7 +229,7 @@ describe('Show game data import (Advanced, at the bottom)', () => {
     expect(note).toContain('HTTP Catcher');
     expect(note).toContain('HTTP Toolkit');
     expect(note).toContain('Android usually needs root');
-    expect(note).toContain('Backups exported from this app always import normally');
+    expect(note).toContain('Backups saved with Export always restore normally');
     expect(section.querySelector('input[type="file"]')).not.toBeNull();
     expect(section.querySelector('textarea')).not.toBeNull();
     expect([...ui.target.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Import a file')).toBe(false);

@@ -67,7 +67,7 @@ describe('Awakening store + screen', () => {
     rosterStore.setAwakeningPath('SHADOW');
     rosterStore.setAwakeningLevel(2);
     render(AwakeningScreen);
-    expect(target.querySelector('[data-testid="override-source"]').textContent).toContain('Class override');
+    expect(target.querySelector('[data-testid="override-source"]').textContent).toContain('Bonuses set by your class');
   });
 });
 

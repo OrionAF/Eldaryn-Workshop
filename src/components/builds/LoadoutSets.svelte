@@ -31,7 +31,7 @@
   // below level 58 a preset cannot link a board (transcendence.md §9); a saved link stays selectable so it can be cleared
   const canLink = $derived(transcendenceLinkUnlocked(character.level));
   const boardOptions = $derived([
-    { value: '', label: 'Follow the active board' },
+    { value: '', label: 'Use the active board' },
     ...character.transcendence.presets.map((p) => ({ value: p.id, label: p.name, disabled: !canLink && p.id !== preset.transcendencePresetId })),
   ]);
   // the board the stats run on: below 58 a saved link is ignored for the active board
@@ -40,7 +40,7 @@
     !transcendenceUnlocked(character.level)
       ? `Transcendence unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE}.`
       : `${runs ? `Uses ${runs.name}` : 'No board yet'}${canLink && preset.transcendencePresetId ? '' : ' (the active board)'}. ` +
-          (canLink ? '' : `Linking a board unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE_PRESETS}${preset.transcendencePresetId ? '; the link is ignored until then' : ''}.`),
+          (canLink ? '' : `Choosing a board for this preset unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE_PRESETS}${preset.transcendencePresetId ? '; until then the active board is used' : ''}.`),
   );
 </script>
 

@@ -27,11 +27,11 @@
 
 <section class="import" aria-labelledby="settings-import-h" data-testid="import-section">
   <h3 id="settings-import-h" tabindex="-1" bind:this={heading}>Import</h3>
-  <Banner variant="warn" lead="Importing game data is possible, but finicky.">
+  <Banner variant="warn" lead="Importing game data takes some effort.">
     <span data-testid="import-disclaimer">
-      The game has no export button, so its JSON has to be captured from the game's network traffic. That needs another app
-      (for example HTTP Catcher on iPhone) or a PC running HTTP Toolkit. Android usually needs root. Backups exported from this
-      app always import normally.
+      The game has no export button, so you have to copy your data from the game's internet traffic. That needs another app
+      (for example HTTP Catcher on iPhone) or a PC running HTTP Toolkit. Android usually needs root. Backups saved with Export
+      always restore normally.
     </span>
   </Banner>
   <ImportSource

@@ -24,7 +24,7 @@
     presetName = 'this build',
     onapply = null,
     applyBlocked = '',
-    missingWritesReason = 'Nothing to write.',
+    missingWritesReason = 'Nothing to apply.',
     onrunmore = null,
     unmeasured = () => false,
     busy = false,
@@ -59,7 +59,7 @@
   {#if maxRun && view.goal?.status === 'already'}
     <div class="goal" data-testid="goal-already">
       <Banner variant="success" lead="Already clears every try.">
-        No build can beat the current one by the precision{goalTries ? ` (${goalTries})` : ''}. No changes suggested.
+        No build is clearly better than the current one{goalTries ? ` (${goalTries})` : ''}. No changes suggested.
       </Banner>
     </div>
   {:else if view.goal?.status === 'no-wins'}
@@ -71,7 +71,7 @@
   {:else if maxRun && view.goal?.status === 'best' && bestRow}
     <div class="goal" data-testid="goal-best">
       <Banner variant="success" lead="Best chance to win: {fmtEstimate('p', bestRow.aux.winRate)}.">
-        The first row has the best chance found{goalTries ? ` (${goalTries})` : ''}. Builds within the precision count as equal, and the one with fewer changes ranks first.
+        The first row has the best chance found{goalTries ? ` (${goalTries})` : ''}. Builds too close to tell apart count as equal, and the one with fewer changes ranks first.
       </Banner>
     </div>
   {:else if maxRun && view.goal?.status === 'best'}
@@ -105,7 +105,7 @@
   {/if}
   <div class="sticky">
     <div class="head" role="presentation">
-      <span class="lbl">Value · 95% CI</span>
+      <span class="lbl">Result · likely range</span>
       <ForestAxis domain={view.domain} title={axisTitle} format={(x) => fmtSigned(view.unit, x)} />
       <span class="lbl right">Change</span>
       <span class="lbl">Verdict</span>
@@ -135,7 +135,7 @@
             <p class="note" data-testid="goal-basis">{maxRun
               ? r.vsBaseline.basis === 'margin'
                 ? 'Neither build won a fight, so the verdict compares how far the fights got (the share of the step\'s HP removed).'
-                : 'The verdict compares the win rate; builds within the precision count as equal and the one with fewer changes ranks first.'
+                : 'The verdict compares the win rate; builds too close to tell apart count as equal and the one with fewer changes ranks first.'
               : r.vsBaseline.basis === 'margin'
                 ? 'Both builds win less than the target, so the verdict compares how far the fights got, not the win rate shown.'
                 : 'The verdict counts win rate only up to the target; a build above it gains nothing more.'}</p>
@@ -155,8 +155,8 @@
           {/if}
           {#if r.aux?.matchups?.length}
             <table class="matchups" data-testid="matchups">
-              <caption>Win rate per opponent and seat (each its own N and Wilson interval, not corrected for the number of rows)</caption>
-              <thead><tr><th scope="col">Opponent</th><th scope="col">Seat</th><th scope="col">Win rate</th><th scope="col">N</th><th scope="col">vs current</th></tr></thead>
+              <caption>Win rate against each opponent, as attacker and as defender</caption>
+              <thead><tr><th scope="col">Opponent</th><th scope="col">Seat</th><th scope="col">Win rate</th><th scope="col">Fights</th><th scope="col">vs current</th></tr></thead>
               <tbody>
                 {#each r.aux.matchups as m (m.opponentId + m.seat)}
                   <tr>
@@ -169,9 +169,13 @@
                 {/each}
               </tbody>
             </table>
+            <details class="basis">
+              <summary>How this works</summary>
+              <p>Each row is measured on its own fights. Its likely range is a Wilson interval, and the ranges are not corrected for the number of rows.</p>
+            </details>
           {/if}
           {#if r.aux?.winRate && !winRun}
-            <p class="note">Win rate {fmtEstimate('p', r.aux.winRate)}{r.aux.meanMs != null ? ` · mean time of the wins ${(r.aux.meanMs / 1000).toFixed(2)} s` : ''}</p>
+            <p class="note">Win rate {fmtEstimate('p', r.aux.winRate)}{r.aux.meanMs != null ? ` · average time of the wins ${(r.aux.meanMs / 1000).toFixed(2)} s` : ''}</p>
           {/if}
           <div class="actions">
             <Button variant="ghost" size="small" onclick={() => showBuild(r)}>Show full build</Button>
@@ -222,6 +226,9 @@
   .matchups { margin: var(--sp-2) var(--sp-4) var(--sp-2) var(--sp-8); border-collapse: collapse; font-size: var(--fs-12); color: var(--text-soft); }
   .matchups caption { text-align: left; padding-bottom: var(--sp-1); color: var(--text-muted); }
   .matchups th, .matchups td { text-align: left; padding: calc(var(--sp-1) * 0.5) var(--sp-3) calc(var(--sp-1) * 0.5) 0; font-weight: var(--fw-medium); }
+  .basis { margin: 0 var(--sp-4) var(--sp-2) var(--sp-8); font-size: var(--fs-12); color: var(--text-muted); }
+  .basis summary { cursor: pointer; color: var(--brass-400); }
+  .basis p { margin: var(--sp-2) 0 0; }
   .matchups .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
   .lines { margin: 0; display: grid; gap: var(--sp-2); }
   .lines div { display: grid; gap: calc(var(--sp-1) * 0.5); }

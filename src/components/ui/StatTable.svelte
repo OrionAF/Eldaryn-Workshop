@@ -20,7 +20,7 @@
     <tr>
       <th scope="col">Stat</th>
       {#if mode === 'residual'}
-        <th scope="col" class="r">Base</th><th scope="col" class="r">Residual</th>
+        <th scope="col" class="r">Base</th><th scope="col" class="r">Gap</th>
       {/if}
       <th scope="col" class="r">Value</th>
       {#if mode === 'source'}<th scope="col" class="r">Source</th>{/if}

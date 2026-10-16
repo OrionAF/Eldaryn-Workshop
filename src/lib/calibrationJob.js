@@ -40,10 +40,10 @@ export function startCalibration() {
   const request = { ...calibrationRequest(), workers: jobWorkers() };
   return startJob({
     tool: CALIBRATE_TOOL,
-    title: 'Calibrate speed',
+    title: 'Speed test',
     context: `${profile} profile`,
     request,
-    notice: 'Calibrating speed. It takes about 6 seconds.',
+    notice: 'Speed test started. It takes about 6 seconds.',
     onFinish: (job) => {
       const cal = calibrationFrom(job.result, { profile });
       if (cal) setPrefs({ calibration: cal });

@@ -86,14 +86,14 @@
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <section {id} class="tray" role="dialog" aria-modal="false" aria-labelledby="{id}-h" tabindex="-1" onkeydown={onKeydown}>
   <div class="tray-head">
-    <h2 id="{id}-h">Jobs ({jobs.length})</h2>
+    <h2 id="{id}-h">Runs ({jobs.length})</h2>
     <span class="grow"></span>
     <Button variant="quiet" size="small" disabled={!hasDone} onclick={clearFinished}>Clear finished</Button>
-    <button type="button" class="close" aria-label="Close jobs" onclick={onclose}>×</button>
+    <button type="button" class="close" aria-label="Close runs" onclick={onclose}>×</button>
   </div>
 
   {#if jobs.length === 0}
-    <p class="empty">No jobs yet. Long simulations (Optimiser, Duel, Drop Check, Oblivion) appear here while they run.</p>
+    <p class="empty">No runs yet. Long searches and fight tests (Optimiser, Duel, Drop Check, Oblivion) show up here while they work.</p>
   {/if}
 
   {#each jobs as job (job.id)}
@@ -122,12 +122,12 @@
       {/if}
       {#if job.status === 'cancelled'}
         <p class="note">
-          {#if job.interrupted}Interrupted by a reload.{/if}
-          {job.checkpoint ? 'Progress is saved; Resume continues where it stopped.' : 'Nothing saved to resume from.'}
+          {#if job.interrupted}Stopped when the page was reloaded.{/if}
+          {job.checkpoint ? 'Progress is saved; Resume continues where it stopped.' : 'Nothing was saved, so it cannot continue.'}
         </p>
       {/if}
       {#if stale}
-        <p class="note stale"><span aria-hidden="true">!</span> Stale: the character or preset changed after this ran. Run it again.</p>
+        <p class="note stale"><span aria-hidden="true">!</span> Out of date: your character or preset changed after this ran. Run it again.</p>
       {/if}
 
       {#if job.status === 'finished'}
@@ -141,7 +141,7 @@
 
       <div class="job-foot">
         <span class="time">
-          {#if job.status === 'running'}Elapsed <span class="num">{elapsed(job)}</span>{#if job.workers} · <span class="num" data-testid="job-workers">{job.workers} {job.workers === 1 ? 'worker' : 'workers'}</span>{/if}
+          {#if job.status === 'running'}Elapsed <span class="num">{elapsed(job)}</span>{#if job.workers} · <span class="num" data-testid="job-workers">{job.workers} {job.workers === 1 ? 'core' : 'cores'}</span>{/if}
           {:else if job.status === 'queued'}Waiting for a free slot
           {:else}{st.word} <span class="num">{clock(job.endedAt ?? job.queuedAt)}</span>
             {#if job.startedAt}· took <span class="num">{elapsed(job)}</span>{/if}
@@ -177,11 +177,11 @@
       checked={jobsStore.persistCheckpoints}
       onchange={(e) => setPersistCheckpoints(e.currentTarget.checked)}
     />
-    Keep checkpoints on this device so Resume works after a reload
+    Save progress on this device so Resume works after a reload
   </label>
   <div class="tray-foot" data-testid="tray-foot">
-    Jobs run in the background: keep using the app while they work.
-    {jobsStore.persistCheckpoints ? 'A reload pauses running jobs; Resume picks up from the last checkpoint.' : 'A reload cancels running jobs.'}
+    Runs keep going when you change page.
+    {jobsStore.persistCheckpoints ? 'Reloading the page pauses them; Resume picks up from the last saved point.' : 'Reloading the page cancels them.'}
   </div>
   <div class="sr-only" role="status" aria-live="polite">{announce}</div>
 </section>

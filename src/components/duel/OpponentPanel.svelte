@@ -83,14 +83,14 @@
           />
         {/each}
       </div>
-      <p class="note">Changing class or spec drops sigils and glyphs the new spec cannot use.</p>
+      <p class="note">Changing class or spec removes sigils and glyphs the new spec cannot use.</p>
     </div>
 
     <div class="group">
       <span class="lbl">Stat sheet</span>
       <p class="note">
-        Type the numbers from the opponent's arena profile. Flat rows read "." as a thousands separator ("48.124" is 48124), percentage
-        rows as a decimal point. The engine applies the x8 PVP HP buff itself, so enter plain Health.
+        Type the numbers from the opponent's arena profile. In plain-number rows "." separates thousands ("48.124" is 48124); in percentage
+        rows it is a decimal point. The app adds the x8 PVP Health buff itself, so enter plain Health.
       </p>
       <SheetTable {keys} values={opponent.sheet.values} computed={null} onChange={onSheetChange} />
     </div>

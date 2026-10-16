@@ -230,7 +230,7 @@ export async function runStatWeights(request, { signal, onProgress, sample } = {
     if (damageProbes.length) {
       const b = await take('damage', 'dps', base, null, nDps);
       const measured = [];
-      out.damage = { base: brief('damage', b), bars: [], n: nDps, label: `Mean DPS over ${seconds} s on the training dummy` };
+      out.damage = { base: brief('damage', b), bars: [], n: nDps, label: `Average DPS over ${seconds} s on the training dummy` };
       for (const p of damageProbes) {
         measured.push({ ...p, samples: await take('damage', 'dps', p.fighter, null, nDps) });
         out.damage.bars = chartBars('damage', b, measured);

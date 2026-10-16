@@ -25,11 +25,11 @@
 
 <section class="danger" role="group" aria-label="Danger Zone">
   <h2>Danger zone</h2>
-  <p class="lead">Reset all data permanently deletes, on this device, with no undo:</p>
+  <p class="lead">Reset all data deletes the following from this device for good. You cannot undo it:</p>
   <ul>
     <li>every character, with its presets, gear, stones, talents, pets, mounts, glyphs, sigils, relics and sheets</li>
     <li>saved opponents and run history</li>
-    <li>the version 1 backup copy of your data and the legacy settings key</li>
+    <li>the old-version backup copy of your data and old settings</li>
   </ul>
   <p class="lead">Preferences and the remembered page on this device are kept.</p>
   <div class="row">

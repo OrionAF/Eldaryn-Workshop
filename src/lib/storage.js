@@ -155,7 +155,7 @@ export function parseJsonText(jsonText) {
     return JSON.parse(jsonText);
   } catch (e) {
     const line = syntaxErrorLine(String(jsonText));
-    throw new ImportError(`This is not valid JSON${line ? ` (line ${line})` : ''}: ${e.message}`, { line, cause: e });
+    throw new ImportError(`That file could not be read. Choose a file saved with Export. Details: not valid JSON${line ? ` (line ${line})` : ''}: ${e.message}`, { line, cause: e });
   }
 }
 
@@ -184,7 +184,7 @@ export function importJson(jsonText, roster = emptyRoster(), { now, report } = {
   if (!isGameProfile(parsed)) {
     const imported = normaliseRoster(parsed);
     if (imported.characters.length === 0) {
-      throw new ImportError('This JSON is neither a game profile nor an Eldaryn export with a character, so nothing was imported.');
+      throw new ImportError('This file is neither a game profile nor a backup from this app with a character, so nothing was imported.');
     }
     return { kind: 'roster', roster: imported, character: null };
   }

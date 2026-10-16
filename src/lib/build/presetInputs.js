@@ -154,8 +154,8 @@ export function buildPresetInputs(character, presetId, { realm = 'base' } = {}) 
   const warnings = !ancientDropped
     ? []
     : tr
-      ? [`${preset.ancientSigilSpecies} is ignored: the Transcendence board does not allocate its sigil node.`]
-      : [`${preset.ancientSigilSpecies} is ignored: Transcendence unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE}.`];
+      ? [`${preset.ancientSigilSpecies} is not used: the Transcendence board does not unlock its sigil.`]
+      : [`${preset.ancientSigilSpecies} is not used: Transcendence unlocks at level ${UNLOCK_LEVELS.TRANSCENDENCE}.`];
   const effective = ancientDropped ? { ...preset, ancientSigilSpecies: null } : preset;
   const sigils = calculateSigilBonuses(sigilState(character, effective, spec), cls, spec, formKind);
   const relics = (preset?.relicIds ?? [])

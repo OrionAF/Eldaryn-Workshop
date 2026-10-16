@@ -40,7 +40,7 @@ it('sheet entry reads "." as a thousands separator on flat rows and a decimal po
   expect(preset().sheet.values.totalAttack).toBe(48124);
   expect(preset().sheet.values.totalCritChance).toBe(6.2);
   expect(computePresetStats(rosterStore.current).effective.totalAttack).toBe(48124);
-  expect(t.q('[data-testid="sheet-source"]').textContent).toContain('your sheet');
+  expect(t.q('[data-testid="sheet-source"]').textContent).toContain('your in-game stats');
 });
 
 it('Attack Speed is typed as a percent and stored as a multiplier', () => {
@@ -83,21 +83,21 @@ it('the table is one list: gap, tolerance and status per entered row, and an exp
   expect(t.q('tr[data-key="totalAttack"]').classList.contains('ok')).toBe(true);
   expect(t.q('tr[data-key="totalHp"]').classList.contains('off')).toBe(true);
   expect(t.q('tr[data-key="totalHp"] .status').textContent).toContain('off by');
-  expect(t.q('tr[data-key="totalAttack"] .status').textContent).toContain('explained');
+  expect(t.q('tr[data-key="totalAttack"] .status').textContent).toContain('matches');
   expect(t.q('tr[data-key="totalAttack"]').textContent).toContain('±');
-  expect(t.q('[data-testid="diff-summary"]').textContent).toContain('1/2 explained');
+  expect(t.q('[data-testid="diff-summary"]').textContent).toContain('1/2 match');
 });
 
 it('Absorb into base previews the change, writes it on confirm, and Undo restores it', () => {
   const before = computePresetStats(rosterStore.current).computed.totalAttack;
   enter('totalAttack', String(Math.round(before) + 400));
   const baseBefore = rosterStore.current.baseResidual.attack;
-  click(btn('Absorb into base'));
+  click(btn('Add the difference to base stats'));
   const preview = t.q('[data-testid="absorb-preview"]');
   expect(preview.textContent).toContain('Attack');
   expect(t.q('[data-testid="absorb-reach"]').textContent).toContain(rosterStore.current.presets[0].name);
   expect(rosterStore.current.baseResidual.attack).toBe(baseBefore); // preview wrote nothing
-  click(btn('Absorb'));
+  click(btn('Add'));
   expect(rosterStore.current.baseResidual.attack).toBeGreaterThan(baseBefore);
   const after = computePresetStats(rosterStore.current);
   expect(Math.abs(after.computed.totalAttack - after.sheet.values.totalAttack)).toBeLessThanOrEqual(1);
@@ -107,14 +107,14 @@ it('Absorb into base previews the change, writes it on confirm, and Undo restore
 
 it('Absorb is disabled with a reason while the model already matches the sheet', () => {
   enter('totalAttack', String(Math.round(computePresetStats(rosterStore.current).computed.totalAttack)));
-  const b = btn('Absorb into base');
+  const b = btn('Add the difference to base stats');
   expect(b.getAttribute('aria-disabled')).toBe('true');
   expect(b.title).toContain('already matches');
 });
 
 it('Clear sheet asks twice, then removes the preset sheet', () => {
   enter('totalAttack', '1.000');
-  click(btn('Clear sheet'));
+  click(btn('Clear in-game stats'));
   expect(preset().sheet).not.toBeNull();
   click(btn('Confirm clear'));
   expect(preset().sheet).toBeNull();
@@ -141,8 +141,8 @@ it('a row expands to the model value split by source, with the interaction remai
   click(row);
   const list = t.q('#src-totalAttack');
   expect(list.textContent).toContain('Base stats');
-  expect(list.textContent).toContain('Interaction');
-  expect(list.textContent).toContain('Model total');
+  expect(list.textContent).toContain('Leftover');
+  expect(list.textContent).toContain('App total');
 });
 
 it('the Oblivion realm edits the shared Oblivion sheet once unlocked and names its owner', () => {

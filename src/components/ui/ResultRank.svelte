@@ -110,7 +110,7 @@
   {#if expanded}
     <div id="{id}-body" class="body" role="region" aria-label="Changes in rank {rankText}">
       {#if row.changes.length}
-        <p class="cap">Change · own effect (added alone to the current build, paired seeds); a change that helps only with the others shows its value without it · same axis as above</p>
+        <p class="cap">What each change does on its own, added alone to your current build and tested on the same fights. A change that only helps together with the others shows the result without it.</p>
         {#each row.changes as c (c.id)}
           {@const e = changeEffect(c, row.changes)}
           {@const eff = e.lead}
@@ -133,7 +133,7 @@
                 <span class="v {verdictTone(c.own)}">{fmtContrast(unit, c.own)}</span>
                 <span class="ci">{fmtContrastCi(unit, c.own)}</span>
               {:else}
-                <span class="ci">{unmeasured ? 'not measured' : 'no solo effect'}</span>
+                <span class="ci">{unmeasured ? 'not measured' : 'no effect on its own'}</span>
               {/if}
             </span>
             <span class="verdict">{#if e.chip}<VerdictChip verdict={e.chip.verdict} label={e.chip.label ?? ''} />{/if}</span>
@@ -152,18 +152,18 @@
         {#if row.remainder}
           {@const r = row.remainder}
           <div class="abl remainder">
-            <span class="chg"><i>Interaction remainder</i></span>
-            <CIForest {domain} est={r.delta} tone="est" label="Interaction remainder {fmtSigned(unit, r.delta)}, no interval" />
+            <span class="chg"><i>Left over from combining</i></span>
+            <CIForest {domain} est={r.delta} tone="est" label="Left over from combining the changes {fmtSigned(unit, r.delta)}, no likely range" />
             <span class="delta">
               <span class="v side">{fmtSigned(unit, r.delta)}</span>
-              <span class="ci">no interval</span>
+              <span class="ci">no likely range</span>
             </span>
             <span class="verdict"><VerdictChip verdict="remainder" /></span>
           </div>
         {/if}
       {/if}
       {#if vs?.verdict === 'unresolved' && nNeededText(vs)}
-        <p class="cap">{nNeededText(vs)}{row.runMore ? ` · target N ${fmtCount(row.runMore.targetN)}` : ''}</p>
+        <p class="cap">{nNeededText(vs)}{row.runMore ? ` · run more to reach ${fmtCount(row.runMore.targetN)} fights` : ''}</p>
       {/if}
       {@render footer?.(row)}
     </div>

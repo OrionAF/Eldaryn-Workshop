@@ -93,7 +93,7 @@ export function metricTables(cards) {
           byId.set(m.id, {
             id: m.id,
             title: m.label,
-            axisTitle: dps ? 'Δ DPS vs current (%)' : `Δ ${m.id === 'survival' ? 'survival' : 'PVP win rate'} vs current (pts)`,
+            axisTitle: dps ? 'DPS change vs current (%)' : `${m.id === 'survival' ? 'Survival' : 'PVP win rate'} change vs current (pts)`,
             unit: dps ? 'pct' : 'pts',
             rows: [],
           });

@@ -179,7 +179,7 @@ describe('optimize with a win-rate goal', { timeout: 120000 }, () => {
     expect(r.status).toBe('done');
     expect(r.rows).toEqual([]);
     expect(r.goal).toMatchObject({ status: 'already', target: 0.9 });
-    expect(r.headline.text).toMatch(/^Already clears at 100% \(95% CI \d+(\.\d)?%-100%\)\. No change needed\.$/);
+    expect(r.headline.text).toMatch(/^Already clears at 100% \(likely \d+(\.\d)?%-100%\)\. No change needed\.$/);
     expect(r.baseline.aux.meetsTarget).toBe(true);
     expect(r.baseline.aux.margin.est).toBeGreaterThan(1);
     expect(r.baseline.value).toEqual(r.goal.baseline.winRate);

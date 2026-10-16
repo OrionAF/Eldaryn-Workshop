@@ -82,7 +82,7 @@
 
   const REASONS = {
     unreachable: 'Allocate an adjacent node first',
-    strands: "Can't remove: it would strand connected nodes",
+    strands: "Can't remove: it would cut off other nodes",
     'no-class': 'Choose a class for this character first',
   };
 
@@ -123,7 +123,7 @@
       <div><dt>Offense</dt><dd class="num">{attack.got}/{attack.total}</dd></div>
       <div><dt>Defense</dt><dd class="num">{defense.got}/{defense.total}</dd></div>
     </dl>
-    <p class="hint">Ichor is information, not a budget.</p>
+    <p class="hint">Ichor is only shown for information. The app does not limit how much you use.</p>
     {#if bonuses.length}
       <ul class="bonus-list" aria-label="Allocated bonuses">
         {#each bonuses as [stat, value] (stat)}
@@ -147,7 +147,7 @@
   {#snippet meta()}
     <span class="hint">
       unlocks at level {TRANSCENDENCE_CONSTANTS.unlockLevel} - {classLabel(character.class)}
-      {board.flavor && board.flavor !== 'MAGE' ? board.flavor.toLowerCase() : ''} board · flavour follows the spec of the active preset
+      {board.flavor && board.flavor !== 'MAGE' ? board.flavor.toLowerCase() : ''} board · style follows the specialization of the active preset
     </span>
   {/snippet}
 

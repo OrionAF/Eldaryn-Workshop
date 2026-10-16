@@ -35,7 +35,7 @@ it('New preset adds a column and selects it; clicking a column name switches the
 
 it('Delete is disabled at the two-preset minimum, and the footer says so', () => {
   for (const b of t.qa('thead button').filter((b) => b.textContent.trim() === 'Delete')) expect(b.disabled).toBe(true);
-  expect(t.q('.panel-foot').textContent).toContain('Delete is disabled at 2');
+  expect(t.q('.panel-foot').textContent).toContain('You need at least 2');
 });
 
 it('New preset is disabled at 8 with the reason on the button', () => {
@@ -59,17 +59,17 @@ it('renaming a column writes the preset name', () => {
   expect(rosterStore.current.presets[0].name).toBe('Farm Build');
 });
 
-it('the source row tags a sheet as Sheet, a stale sheet as Stale, otherwise Model', () => {
+it('the source row tags in-game stats as In-game, a stale sheet as Out of date, otherwise App', () => {
   const [a, b] = rosterStore.current.presets;
   const cell = (id) => t.q(`thead th[data-preset-id="${id}"]`) && t.qa('tbody tr')[0].children[rosterStore.current.presets.findIndex((p) => p.id === id) + 1];
-  expect(cell(a.id).textContent).toContain('Model');
+  expect(cell(a.id).textContent).toContain('App');
   rosterStore.setPresetSheet(a.id, { totalAttack: 5000 });
   unmountAndReopen();
-  expect(cell(a.id).textContent).toContain('Sheet');
-  expect(cell(b.id).textContent).toContain('Model');
+  expect(cell(a.id).textContent).toContain('In-game');
+  expect(cell(b.id).textContent).toContain('App');
 });
 
-it('a sheet goes Stale after a gear edit: the column says Stale and shows the model value again', () => {
+it('a sheet goes Stale after a gear edit: the column says Out of date and shows the model value again', () => {
   const a = rosterStore.current.presets[0];
   rosterStore.setPresetSheet(a.id, { totalAttack: 5000 });
   unmountAndReopen();
@@ -79,7 +79,7 @@ it('a sheet goes Stale after a gear edit: the column says Stale and shows the mo
   });
   unmountAndReopen();
   expect(computePresetStats(rosterStore.current, a.id).sheetStatus).toBe('stale');
-  expect(t.qa('tbody tr')[0].children[1].textContent).toContain('Stale');
+  expect(t.qa('tbody tr')[0].children[1].textContent).toContain('Out of date');
   expect(t.q('tr[data-row="totalAttack"]').children[1].textContent).not.toContain('5.000');
 });
 

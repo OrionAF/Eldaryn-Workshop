@@ -99,7 +99,7 @@ it('oblivion unlock reconciles skill caps', () => {
   expect(rosterStore.current.skills.hunting).toBe(10);
 });
 
-it('base stats edit the residual and reset to the client defaults', () => {
+it('base stats edit the residual and reset to the game defaults', () => {
   mountPage();
   const label = view.qa('label').find((l) => l.textContent === 'Attack');
   const atk = document.getElementById(label.htmlFor);
@@ -108,7 +108,7 @@ it('base stats edit the residual and reset to the client defaults', () => {
   atk.dispatchEvent(new Event('blur'));
   flushSync();
   expect(rosterStore.current.baseResidual.attack).toBe(42);
-  click(view.qa('button').find((b) => b.textContent === 'Reset to client defaults'));
+  click(view.qa('button').find((b) => b.textContent === 'Reset to game defaults'));
   expect(rosterStore.current.baseResidual).toEqual(defaultBaseResidual());
 });
 
