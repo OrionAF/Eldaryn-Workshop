@@ -90,6 +90,26 @@ vs baseline; attribution = Holm within a row's changes; Drop Check = Holm over i
 
 - Looks at `n0, 2n0, 4n0, …` below `maxN`, then `maxN` (`lookSchedule`). Each look uses the
   two-sided level `alpha / looks` (Bonferroni over looks).
+- **The tie look** (the Optimiser's races and `compareSets`; `sampler.js` `tieLook` / `looksFor`). On the
+  capped win-rate objective (§Win rate; `objective.rateTieN`, absolute δ > 0) the schedule gains one look
+  at the rate's tie point n*: the smallest n at which two builds with no discordant fight, both never
+  winning or both always winning, are `equivalent` on the rate. `rateTieN({alpha, delta, tau})` reads it
+  off the contrast itself (the same Tango, Wilson and exact bounds the comparator intersects, bisection
+  over n), at the level the look runs at once added: alpha / (L + 1), L the doubling looks. It lands at
+  ln(8 / alpha_look) / δ less about 3 fights: at Quick (δ 0.02) 375 for a single compare, 645 in a race
+  of 234 arms; at Standard (δ 0.01) 761 and 1 303; at Thorough (δ 0.005) 1 539 and 2 628. The look is
+  added only when n0 < n* < maxN and no doubling look lies in [n*, 1.1 n*] (`TIE_LOOK_SLACK`), so
+  between a doubling look and n* there is always room to save fights. Why it is exact and safe: the
+  schedule depends only on the objective, n0, maxN, alpha and δ, never on a fight, so it is fixed before
+  sampling and the Bonferroni split over its L + 1 looks holds as before; each look's own verdict is
+  unchanged. It costs every look of such a comparison a factor L / (L + 1) of its level (about 8 % at
+  Quick), and buys a stop at n* instead of the next doubling look for every pair the rate ties (the
+  saturated case: both at 0 %, or both at 100 %), whose margin then decides or ties. Other objectives
+  (DPS, survival, PVP) and the fixed-n contrasts are untouched. The "already clears" check and Push's
+  rung checks and screen are not paired ties on the rate (one build's Wilson interval against τ; a
+  one-sided flatness bound) and keep the doubling looks. `effort.tieLook: false` restores the doubling
+  schedule (benchmarks only; it is part of the request key). A target goal's both-at-100 % pair ties
+  earlier (its Wilson bounds reach τ − δ first) and gets no look of its own; n* covers it too.
 - Verdict of the interval for θ(X) − θ(Y) (`decide`), in this order: `better` / `worse` when it
   excludes 0 (direction by `higherIsBetter`); `equivalent` when it lies inside (−δ, δ); otherwise
   continue; at `maxN` `unresolved`. So the shown interval excludes 0 ⇔ `significant`.
@@ -411,7 +431,10 @@ time cap (each mob's own cap, or the custom window) is a loss.
 - Cost: with the exact discordant bounds, two builds that never win (or always win) are equal on the
   rate after about ln(8 / alpha) / δ fights: about 900 at Standard with alpha / 60 per test. Tango alone
   needed z² / δ (4 096 fights per arm in the same race). The measured race is in backlog §12. The cost
-  is precision, never a cap.
+  is precision, never a cap. On the doubling looks alone such a pair stopped only at the first look at
+  or after n*: with 234 arms at Quick n* ≈ 647 sits between the looks at 512 and 1 024, so a real run in
+  which no build won took 3 822 of its 3 966 search arms to 1 024 fights. The tie look (§Sequential
+  comparator) puts a look at n* itself; measured saving in §Cost.
 
 **On screen** (Optimiser page, `WinRateTarget.svelte`, `OptimiserResults.svelte`): the goal list leads with
 "Highest chance to win" for chapters, dungeons, raids and Oblivion (the default; hint "Finds the build
@@ -585,7 +608,9 @@ request keys (`budget`, `maxMs`, `finalMs`, `maxEvals`, `maxPasses`) are ignored
 
 All arms are sampled to n0 (every look requests all surviving arms at once, so a worker pool samples
 them in parallel; the decision reads them in arm order once all are in); the leader is the best estimate (`objective.score`). At each look
-every other arm's paired contrast against the leader, at α / (arms × looks), decides:
+every other arm's paired contrast against the leader, at α / (arms × looks), decides. The looks are the
+doubling ones plus, on a win-rate objective, the tie look at n* for α / arms (§Sequential comparator):
+arms that never win (or always win) and differ on progress leave there, not at the next doubling look.
 
 - `worse` (the interval excludes 0 on the losing side): the arm leaves (`eliminated`).
 - `equivalent` (inside ±δ): a tie; it stays.
@@ -713,7 +738,10 @@ sample lengths it requested). A checkpoint is posted after the search, after min
 `{schema: 'optimiser-checkpoint/1', requestKey, characterKey, phase, seeds, log, frontier: {armsN},
 finalists, minimised, confirmed}`. A request with `resumeFrom` replays the log step by step without
 simulating (a step whose kind or inputs differ ends the replay), so cancel + resume equals the
-uninterrupted run apart from wall-clock fields. A checkpoint of another request or character is
+uninterrupted run apart from wall-clock fields. A race's or compare's tie look (§Sequential comparator)
+is one of its inputs (`['tie', n*]`, only when the schedule has one), so a checkpoint written before the
+tie look stops replaying at its first win-rate race or compare and the run goes on live from there; the
+request key is unchanged. A checkpoint of another request or character is
 ignored (warning `checkpoint-ignored`). The plan's `frontier: {start, incumbentKey, block, armsN}`
 is reduced to `{armsN}` on purpose: replaying the log rebuilds the start, incumbent and block. Fight counts are logical (the highest n requested per build
 and stage, times lanes), so they too are identical after a resume. Cancel is soft: sampling stops at
@@ -745,7 +773,21 @@ The full run shared four cores with other jobs, and both rows predate the futili
 are upper figures: since A5 an arm or challenger that cannot beat the leader or incumbent by δ stops
 early (about 5.5× fewer fights per slightly-worse arm on synthetic arms, §Racing), and only a
 contrast that could still go either way by δ, or a futile arm nearer the baseline than the leader,
-runs on towards maxN. Standard and Thorough cost more: n0 doubles. A PVP duel costs several times a dummy fight, per matchup.
+runs on towards maxN. Standard and Thorough cost more: n0 doubles.
+
+The tie look (§Sequential comparator), measured with `tieLook.bench.test.js` (real `optimize()` on the
+sanitised fixtures, Quick, seed 1, sigils only; fights before → after, by phase):
+
+| Setup | Search | Minimise | Confirm | Total | Rows, best build |
+|---|---|---|---|---|---|
+| Highest chance, chapter 10-7, Warrior L73 (no build wins) | 306 168 → 196 435 | 1 536 → 1 227 | 1 528 → 1 219 | 309 248 → 198 897 (−36 %) | same (2 rows, `better` on margin) |
+| Highest chance, Dungeon 7 step 6, Sentinel L85 (about half) | 47 608 → 46 430 | 64 → 64 | 56 → 56 | 47 744 → 46 566 (−2.5 %) | same (1 row, `better` on win rate) |
+| Highest chance, chapter 12-1, Sentinel L85 (rarely) | 20 600 → 20 600 | 64 → 64 | 56 → 56 | 20 736 → 20 736 | same |
+| DPS dummy, sigils (S85) and minor glyphs + mount (W73) | unchanged | unchanged | unchanged | unchanged | identical results |
+
+So a run in which no build wins saves about a third of its fights (the user's run 1 had the same
+shape: 3 822 of 3 966 search arms went to 1 024), and a run with wins saves little, because arms there
+mostly leave on the rate long before n*. A PVP duel costs several times a dummy fight, per matchup.
 The Effort control prints δ, the first look n0 and maxN per level and these measured figures
 (`ui/optimiserView.js` `MEASURED_COST`, `effortPlan`); no run is time-capped. The Optimiser page runs as
 a session job (U3): Cancel keeps the provisional rows and Resume re-starts the task with the job's

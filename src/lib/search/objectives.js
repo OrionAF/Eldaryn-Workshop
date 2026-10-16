@@ -23,6 +23,7 @@ import { fightRng } from '../engine/rng.js';
 import {
   stableStringify, meanInterval, wilsonInterval, pairedT, pairedProportion, binomialUpper,
 } from '../engine/metrics.js';
+import { decide } from '../engine/stats/index.js';
 import { preparePveFighter, simulatePve, trainingDummy, PVE_MODES } from '../engine/pve/fight.js';
 import { chapterMobs, dungeonMobs, raidMobs, oblivionFloorMob, worldBossMob } from '../engine/pve/enemies.js';
 import { raidById } from '../game/fortress.js';
@@ -490,6 +491,43 @@ function cappedWinRateContrast(tau, x, y, alpha, max = false) {
   };
 }
 
+const tieMemo = new Map();
+
+/**
+ * The tie point n* of the capped win-rate contrast (simulation.md §Sequential comparator, the tie look):
+ * the smallest n at which two builds with no discordant fight, both never winning or both always winning,
+ * are `equivalent` on the rate, read off `cappedWinRateContrast` itself (the same Tango, Wilson and exact
+ * bounds the comparator intersects) at the contrast's `alpha` (one look's level) and the absolute zone δ.
+ * Infinity when no n up to 2^22 ties them.
+ * @param {{alpha: number, delta: number, tau?: number}} o
+ */
+export function rateTieN({ alpha, delta, tau = 1 }) {
+  if (!(alpha > 0) || !(delta > 0)) return Infinity;
+  const key = `${alpha}|${delta}|${tau}`;
+  if (tieMemo.has(key)) return tieMemo.get(key);
+  // the margin scores do not enter the rate interval; 0.5 is a loss, 1.5 a win
+  const ties = (n) => [0.5, 1.5].every((v) => {
+    const s = { main: [new Array(n).fill(v)], side: {}, n };
+    return decide(cappedWinRateContrast(tau, s, s, alpha, tau >= 1), delta, true) === 'equivalent';
+  });
+  let hi = 1;
+  while (!ties(hi) && hi <= 2 ** 22) hi *= 2;
+  let out = Infinity;
+  if (hi <= 2 ** 22) {
+    // every bound shrinks with n (no discordance), so the first tying n is found by bisection
+    let lo = hi / 2;
+    if (hi === 1) lo = 0;
+    while (hi - lo > 1) {
+      const m = Math.floor((lo + hi) / 2);
+      if (ties(m)) hi = m;
+      else lo = m;
+    }
+    out = hi;
+  }
+  tieMemo.set(key, out);
+  return out;
+}
+
 /**
  * Lexicographic score: the capped win rate first (one fight moves it by 1/n ≥ 1/131 072, so ×1e6
  * outweighs any margin in [0, 2]), then the mean margin.
@@ -587,6 +625,8 @@ export function makeObjective(raw = { kind: 'dps' }, target = resolveTarget({ ki
         };
       },
       contrast: (x, y, { alpha = 0.05 } = {}) => cappedWinRateContrast(tau, x, y, alpha, max),
+      /** This contrast's tie point at one look's alpha (`rateTieN`; sampler.js `looksFor` adds a look there). */
+      rateTieN: ({ alpha, delta }) => rateTieN({ alpha, delta, tau }),
       /** The capped win rate alone (ranking: rows equal on it are ordered by fewest changes). */
       primary: (s) => Math.min(rateOf(s), tau),
       score: (s) => Math.min(rateOf(s), tau) * SCORE_SCALE + (meanInterval(s.main[0]).est ?? 0),

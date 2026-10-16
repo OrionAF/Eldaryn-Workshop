@@ -1,8 +1,7 @@
 // search/race.js (A4): sequential multi-arm racing with family-wise elimination. Contract:
 // docs/Reference/simulation.md §Search (racing). Pure apart from the injected sample getter: the
 // same arms, getter and effort give the same answer.
-import { lookSchedule } from '../engine/stats/index.js';
-import { contrastSets } from './sampler.js';
+import { contrastSets, looksFor } from './sampler.js';
 
 /**
  * @typedef {Object} RaceArm
@@ -42,7 +41,8 @@ import { contrastSets } from './sampler.js';
  */
 export async function race(arms, { objective, getSet, effort, seed, onLook }) {
   if (!arms.length) throw new RangeError('race: no arms');
-  const looks = lookSchedule(effort.n0, effort.maxN);
+  // the doubling looks plus the win rate's tie look (sampler.js looksFor), fixed before any fight
+  const looks = looksFor(objective, { ...effort, alpha: effort.alpha / arms.length });
   const alphaLook = effort.alpha / arms.length / looks.length;
   if (arms.length === 1) return { winner: 0, leader: 0, ties: [], unresolved: [], eliminated: [], futile: [], looks: 0, n: 0, alphaLook };
   const futility = effort.futility !== false;
