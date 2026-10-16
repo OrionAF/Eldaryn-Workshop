@@ -30,7 +30,7 @@
     try {
       parsed = JSON.parse(source);
     } catch {
-      error = 'That is not valid JSON.';
+      error = 'That file could not be read. Choose a fight log exported from the game.';
       return;
     }
     try {
@@ -55,7 +55,7 @@
   <Panel title="Fight log" level="primary" scope="tool">
     <ImportPointer what="a fight log" />
     <p class="note" data-testid="log-state">{text.trim() ? 'A fight log is loaded.' : 'No fight log imported yet.'}</p>
-    <Checkbox bind:checked={useFighters} disabled={!fighters} label={fighters ? `Hold the simulator to these fighters: ${fighters.label}` : 'Hold the simulator to the fighters (pick a runnable duel first)'} />
+    <Checkbox bind:checked={useFighters} disabled={!fighters} label={fighters ? `Check against these fighters: ${fighters.label}` : 'Check against the duel fighters (set up a duel first)'} />
     {#snippet footer()}
       <Button variant="primary" size="block" disabled={!text.trim()} onclick={() => check()}>Check log again</Button>
     {/snippet}
@@ -68,7 +68,7 @@
       <p class="note">Nothing checked yet. The report lists every rule with its status and what it compared.</p>
     {:else}
       <div class="headline">
-        <h3 data-testid="replay-verdict">{report.ok ? 'No rule failed' : `${report.totalMismatches} mismatch${report.totalMismatches === 1 ? '' : 'es'}`}</h3>
+        <h3 data-testid="replay-verdict">{report.ok ? 'No rule failed' : `${report.totalMismatches} difference${report.totalMismatches === 1 ? '' : 's'} found`}</h3>
         {#if skipped.length}
           <p data-testid="replay-skipped">
             {skipped.length} rule{skipped.length === 1 ? '' : 's'} skipped: nothing was compared for {skipped.length === 1 ? 'it' : 'them'}, so

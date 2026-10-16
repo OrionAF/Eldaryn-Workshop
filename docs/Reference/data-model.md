@@ -291,7 +291,7 @@ The server computes the live stats and adds relics and possibly other sources
    `oblivion.sheet` for the Oblivion realm). While it describes the build (below), the engines
    use it verbatim.
 3. **Validation (tier 3).** `diffSheet(computed, sheet)` compares per key
-   (tolerances: Attack/HP ±1, percent ±0.1, multipliers ±0.01). "Absorb into base"
+   (tolerances: Attack/HP ±1, percent ±0.1, multipliers ±0.01). Absorb ("Add the difference to base stats")
    moves the five base residuals into `baseResidual`; other residuals are carried
    (`build/residual.js`) and added in raw space to every candidate built from that preset.
 

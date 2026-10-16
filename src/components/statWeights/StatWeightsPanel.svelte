@@ -3,7 +3,7 @@
    * StatWeightsPanel.svelte - backlog §9: what one game-sized step of each stat is worth to this preset,
    * simulated (simulation.md §Stat weights). Two forest tables, one per metric (design-system §4.15):
    * DPS on the training dummy and survival against the reference enemy. A bar whose interval spans 0
-   * reads "No measurable effect" and has no rank. The run is a job (jobs.svelte.js); the result is read
+   * reads "No clear effect" and has no rank. The run is a job (jobs.svelte.js); the result is read
    * off the job, never copied.
    *
    * Props: character, preset, realm ('base' | 'oblivion').
@@ -35,8 +35,8 @@
   const result = $derived(job?.result ?? null);
 
   const TITLES = {
-    damage: { title: 'Damage', axis: 'Δ mean DPS vs this preset (%)' },
-    survival: { title: 'Survival', axis: 'Δ chance to survive (points)' },
+    damage: { title: 'Damage', axis: 'Change in average DPS vs this preset (%)' },
+    survival: { title: 'Survival', axis: 'Change in chance to survive (points)' },
   };
   const charts = $derived(
     ['damage', 'survival']
@@ -72,7 +72,7 @@
       notice: 'Stat weights started',
       summarize: (res) => {
         const top = res?.damage?.bars?.find((b) => b.rank === 1);
-        return [{ tone: top ? 'up' : 'warn', text: top ? `Top damage stat: ${top.label}` : 'No measurable damage stat' }];
+        return [{ tone: top ? 'up' : 'warn', text: top ? `Top damage stat: ${top.label}` : 'No stat clearly helps damage' }];
       },
     });
   }
@@ -86,14 +86,17 @@
   {/snippet}
 
   <p class="note">
-    Adds one step of each stat to this preset (the raw total, then the game's soft cap) and measures the change in the
-    client's fight with the same random draws as the preset itself. Damage is simulated against the training dummy;
-    survival against the reference enemy, a dummy that hits back, tuned so this preset survives about half the time.
+    Shows what one more step of each stat is worth to this preset. Damage is tested against the training dummy.
+    Survival is tested against the reference enemy, a dummy that hits back, set so this preset survives about half the time.
   </p>
+  <details class="basis">
+    <summary>How this works</summary>
+    <p>Each stat gets one step added to the raw total, then the game's soft cap is applied. The change is measured in the client's fight, on the same random draws as the preset itself.</p>
+  </details>
   <div class="setup">
     <SegmentedControl
-      label="Precision" bind:value={precision}
-      options={Object.entries(STAT_WEIGHT_PRECISION).map(([value, n]) => ({ value, label: value[0].toUpperCase() + value.slice(1), sub: `N ${fmtCount(n.nDps)} / ${fmtCount(n.nSurvival)}` }))}
+      label="Effort" bind:value={precision}
+      options={Object.entries(STAT_WEIGHT_PRECISION).map(([value, n]) => ({ value, label: value[0].toUpperCase() + value.slice(1), sub: `${fmtCount(n.nDps)} / ${fmtCount(n.nSurvival)} fights` }))}
     />
     <Button variant="primary" disabled={running} loading={running} busyLabel="Simulating…" onclick={run} data-testid="stat-weights-run">Simulate stat weights</Button>
     {#if running}
@@ -112,9 +115,9 @@
   {/if}
   {#if result?.calibration && !result.calibration.inBand}
     <Banner variant="warn" lead="Survival barely measurable.">
-      The reference enemy could not be tuned to a near-even fight for this preset (closest: survives
+      The reference enemy could not be set to an even fight for this preset (closest: you survive
       <span class="num">{Math.round(result.calibration.p * 100)}%</span> at Attack <span class="num">{formatFlat(result.calibration.attack)}</span>),
-      so most survival steps show no measurable effect.
+      so most survival steps show no clear effect.
     </Banner>
   {/if}
 
@@ -127,11 +130,11 @@
         {#if c.kind === 'damage'}<span class="num">{formatFlat(Math.round(c.chart.base.mean))}</span> DPS{:else}<span class="num">{Math.round(c.chart.base.mean * 100)}%</span>{/if}
         over <span class="num">{fmtCount(c.chart.n)}</span> fights per stat.
       </p>
-      <div class="tbl" role="table" aria-label="{c.title} stat weights, simultaneous 95% intervals">
+      <div class="tbl" role="table" aria-label="{c.title} stat weights, with likely ranges">
         <div class="trow thead" role="row">
           <span role="columnheader" class="cap-label">Stat · step</span>
           <div role="columnheader"><ForestAxis domain={c.domain} title={c.axis} format={(t) => String(Number(t.toFixed(3)))} /></div>
-          <span role="columnheader" class="cap-label right">Δ · interval</span>
+          <span role="columnheader" class="cap-label right">Change · likely range</span>
           <span role="columnheader" class="cap-label">Rank</span>
         </div>
         {#each c.rows as r (r.key)}
@@ -143,7 +146,7 @@
               <span class="ci num">[{f(r.lo)}, {f(r.hi)}]{#if r.abs != null} · {r.abs >= 0 ? '+' : '−'}{formatFlat(Math.round(Math.abs(r.abs)))} DPS{/if}</span>
             </div>
             <span role="cell" class="rank" data-testid="rank">
-              {#if r.measurable}<span class="num">#{r.rank}</span>{:else}<span class="muted">No measurable effect</span>{/if}
+              {#if r.measurable}<span class="num">#{r.rank}</span>{:else}<span class="muted">No clear effect</span>{/if}
             </span>
           </div>
         {/each}
@@ -152,14 +155,20 @@
   {/each}
   {#if charts.length}
     <p class="caption">
-      Intervals are simultaneous 95% intervals over each chart's stats (Bonferroni). A stat whose interval spans 0 has no
-      measurable effect at this precision and gets no rank.
+      A stat whose likely range includes 0 has no clear effect at this effort and gets no rank.
     </p>
+    <details class="basis">
+      <summary>How this works</summary>
+      <p>The ranges are simultaneous 95% intervals over each chart's stats (Bonferroni).</p>
+    </details>
   {/if}
 </Panel>
 
 <style>
   .cap-label { font-size: var(--fs-11); font-weight: var(--fw-heavy); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-soft); }
+  .basis { font-size: var(--fs-12); color: var(--text-muted); }
+  .basis summary { cursor: pointer; color: var(--brass-400); }
+  .basis p { margin: var(--sp-2) 0 0; }
   .note, .caption { margin: 0; color: var(--text-muted); font-size: var(--fs-12); }
   .sub { font-size: var(--fs-12); color: var(--text-soft); }
   .setup { display: flex; flex-wrap: wrap; gap: var(--sp-4); align-items: flex-end; margin: var(--sp-3) 0; }

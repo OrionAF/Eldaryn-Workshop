@@ -80,7 +80,7 @@
             </span>
           {/each}
           {#if !block.rows.length}
-            <span class="timing">Fixed at every level (see Game/sigils.md §6)</span>
+            <span class="timing">The same at every level</span>
           {/if}
         </div>
       {/if}

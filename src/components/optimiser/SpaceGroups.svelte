@@ -19,7 +19,7 @@
 
 <div class="space" data-testid="space-picker">
   <div class="head">
-    <span class="count"><span class="num">{enabledCount(space)}</span> of <span class="num">{toggleTotal}</span> may change</span>
+    <span class="count"><span class="num">{enabledCount(space)}</span> of <span class="num">{toggleTotal}</span> parts may change</span>
     <Button variant="ghost" size="small" onclick={() => (space = { ...SPACE_DEFAULTS })}>Reset to defaults</Button>
     <Button variant="ghost" size="small" onclick={() => (space = setGroup(space, null, true))}>All</Button>
     <Button variant="ghost" size="small" onclick={() => (space = setGroup(space, null, false))}>None</Button>

@@ -59,11 +59,11 @@
         label: 'Sigils',
         cells: presets.map((p) => {
           const n = p.sigilSpecies.length + (p.utilitySigilSpecies ? 1 : 0) + (p.ancientSigilSpecies ? 1 : 0);
-          return `${n} equipped (${p.sigilSpecies.length} of ${sigilSlotCap(character.level, character.class)} generic)`;
+          return `${n} equipped (${p.sigilSpecies.length} of ${sigilSlotCap(character.level, character.class)} regular slots)`;
         }),
       },
-      { id: 'board', label: 'Board', cells: presets.map(boardOf) },
-      { id: 'checks', label: 'Checks', cells: presets.map((p) => String(checkPreset(character, p).length)), checks: true },
+      { id: 'board', label: 'Transcendence board', cells: presets.map(boardOf) },
+      { id: 'checks', label: 'Issues', cells: presets.map((p) => String(checkPreset(character, p).length)), checks: true },
     );
     return diffOnly ? out.filter((r) => new Set(r.cells).size > 1) : out;
   });
@@ -157,8 +157,8 @@
   </div>
   {#snippet footer()}
     <span class="hint">
-      {presets.length} of {MAX_PRESETS} presets. Delete is disabled at {MIN_PRESETS} (the minimum) and New at {MAX_PRESETS}.
-      Edit what a preset picks in <a href="#/builds/loadout">Loadout</a>; its stat sheet is in <a href="#/builds/sheet">Stat Sheet</a>.
+      {presets.length} of {MAX_PRESETS} presets. You need at least {MIN_PRESETS} and can have up to {MAX_PRESETS}.
+      Change what a preset uses in <a href="#/builds/loadout">Loadout</a>. Its in-game stats are in <a href="#/builds/sheet">Stat Sheet</a>.
     </span>
   {/snippet}
 </Panel>

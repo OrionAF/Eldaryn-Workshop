@@ -139,7 +139,7 @@ export function loadImportText(text, from = 'import') {
   } catch (e) {
     state.plan = null;
     state.stage = 'choose';
-    state.error = e instanceof ImportError ? e.message : `Could not read this: ${e?.message ?? e}`;
+    state.error = e instanceof ImportError ? e.message : `That file could not be read: ${e?.message ?? e}`;
     return false;
   }
 }
@@ -158,7 +158,7 @@ export async function loadImportFile(file, from = 'import') {
     state.open = true;
     state.stage = 'choose';
     state.from = from;
-    state.error = 'The file could not be read.';
+    state.error = 'That file could not be read. Try choosing it again.';
     return false;
   }
   return loadImportText(text, from);
@@ -196,7 +196,7 @@ export function confirmImport() {
     }
     if (plan.kind === 'opponent') {
       const res = rosterStore.saveRankingsOpponent(plan.opponent);
-      if (!res) throw new ImportError(`At most ${MAX_OPPONENTS} saved opponents. Remove one on the Opponents page first.`);
+      if (!res) throw new ImportError(`You can save at most ${MAX_OPPONENTS} opponents. Remove one on the Opponents page first.`);
       notify(`${res.updated ? 'Updated' : 'Saved'} opponent ${plan.opponent.name} from Rankings`, { kind: 'success' });
       closeImport();
       go('tools/opponents');
@@ -215,7 +215,7 @@ export function confirmImport() {
     go(plan.kind === 'lootBag' ? 'tools/drop' : 'tools/duel');
     return true;
   } catch (e) {
-    state.error = e instanceof ImportError ? e.message : `Import failed: ${e?.message ?? e}`;
+    state.error = e instanceof ImportError ? e.message : `The import did not work: ${e?.message ?? e}`;
     state.stage = 'choose';
     state.plan = null;
     return false;

@@ -47,7 +47,7 @@ describe('result shapes', () => {
 
   it('the headline counts verdicts', () => {
     const rows = ['better', 'better', 'equivalent', 'unresolved'].map((verdict) => ({ provisional: false, vsBaseline: { verdict } }));
-    expect(headlineOf(rows, 1)).toEqual({ better: 2, equivalent: 1, unresolved: 1, worseHidden: 1, text: '2 builds measured better than the current preset. 1 build equivalent. 1 build too close to call.' });
+    expect(headlineOf(rows, 1)).toEqual({ better: 2, equivalent: 1, unresolved: 1, worseHidden: 1, text: '2 builds measured better than the current preset. 1 build about the same. 1 build too close to call.' });
     expect(headlineOf([], 0).text).toBe('No change measured better than the current preset.');
   });
 

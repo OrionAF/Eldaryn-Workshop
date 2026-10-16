@@ -134,7 +134,7 @@
         <NumberField label="Quality (1-100)" nullable value={item.quality} onchange={(n) => emit({ quality: setBounded('quality', n, 1, 100) })} />
         <span class="range" id="{uid}-q">Range 1 to 100</span>
         {#if item.quality == null}
-          <span class="range" data-testid="quality-unknown">Unknown (not in the profile). Left unset: no stat or result here uses item quality; the game's Total Power would read it as 0.</span>
+          <span class="range" data-testid="quality-unknown">Unknown (not in the profile). Left blank: the app's numbers do not use item quality, but the game's Total Power counts it as 0.</span>
         {/if}
         {#if flags.quality}<span class="flag" role="alert">{flags.quality}</span>{/if}
       </div>

@@ -13,8 +13,8 @@ import { SCOPES } from '../search/patch.js';
  * futility stop, so upper figures); no run is time-capped.
  */
 export const MEASURED_COST = Object.freeze({
-  small: { space: 'relics and pet', time: 'about 1 s' },
-  full: { space: 'every block', time: 'about 4 minutes' },
+  small: { space: 'only relics and pet', time: 'about 1 s' },
+  full: { space: 'every part of your build', time: 'about 4 minutes' },
 });
 
 export const TARGET_KIND_LABEL = Object.freeze({
@@ -91,7 +91,7 @@ export function valueNoteOf(row, rows = []) {
   if (!row || finite(row.value?.est)) return null;
   const rate = row.aux?.winRate?.est;
   if (!finite(rate)) return null;
-  const basis = rows.some((r) => r.vsBaseline?.basis === 'winRate') ? 'compared by win rate' : 'too few wins for a time';
+  const basis = rows.some((r) => r.vsBaseline?.basis === 'winRate') ? 'compared by win rate' : 'too few wins to time';
   return `Rarely clears: ${Math.round(rate * 100)}% win rate; ${basis}`;
 }
 
@@ -158,7 +158,7 @@ export function targetStanding(row, target) {
   const m = row?.aux?.meetsTarget;
   if (target == null || typeof m !== 'boolean' && m !== null) return { verdict: null, gap: '' };
   const est = row.aux.winRate?.est;
-  const gap = m !== true && finite(est) && est < target ? `${((target - est) * 100).toFixed(1)} pts below target` : '';
+  const gap = m !== true && finite(est) && est < target ? `${((target - est) * 100).toFixed(1)} points below target` : '';
   return { verdict: m === true ? 'meets' : m === false ? 'below' : 'open', gap };
 }
 
@@ -241,8 +241,8 @@ export function pushStopText(push) {
   if (!s) return '';
   const pct = (p) => `${Math.round((p ?? 0) * 1000) / 10}%`;
   if (s.reason === 'top') return 'The climb reached the top of the ladder.';
-  if (s.reason === 'screen') return `Stopped at ${s.label}: no build one change away came plausibly near ${pct(push.target)} and no single change raised the rate (best seen ${pct(s.best?.est)}). Not reached at this effort; the Win rate goal on that ${push.ladder?.unit ?? 'step'} searches further.`;
-  return `Stopped at ${s.label}: the search found no build that reaches ${pct(push.target)} (best ${pct(s.best?.est)}).`;
+  if (s.reason === 'screen') return `Stopped at ${s.label}: no build one change away came close to ${pct(push.target)}, and no single change raised the win rate (best seen ${pct(s.best?.est)}). Not reached at this effort; the Win rate goal on that ${push.ladder?.unit ?? 'step'} searches further.`;
+  return `Stopped at ${s.label}: no build reached ${pct(push.target)} (best ${pct(s.best?.est)}).`;
 }
 
 // ---- change labels --------------------------------------------------------------------------
@@ -375,7 +375,7 @@ export function effortPlan(level, objective) {
   const relative = objective?.kind === 'dps';
   const e = resolveEffort(level, { deltaKind: relative ? 'relative' : 'absolute' });
   const zone = relative ? `${+(e.delta * 100).toFixed(2)}%` : `${+(e.delta * 100).toFixed(1)} points`;
-  return { ...e, zone, relative, sub: `δ ${zone}` };
+  return { ...e, zone, relative, sub: `spots ${zone} or more` };
 }
 
 // ---- allowed to change ----------------------------------------------------------------------
@@ -476,8 +476,8 @@ export function optimiserJobChips(result) {
 /** Why attribution kept a change (search/minimise.js attribute). */
 export const KEPT_BECAUSE_TEXT = Object.freeze({
   'own-effect': 'Kept for its own effect',
-  interaction: 'Kept for its interaction with other changes',
-  'power-floor': 'Kept to stay at or above the Combat Power floor',
+  interaction: 'Kept because it works with other changes',
+  'power-floor': 'Kept to stay at or above your minimum Combat Power',
 });
 
 const powerNum = (v) => formatFlat(Math.abs(v));

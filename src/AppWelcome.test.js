@@ -105,7 +105,7 @@ it('Settings > Restore a backup with an empty roster: junk shows the reason and 
   send('{"hello": 1}');
   await vi.waitFor(() => {
     flushSync();
-    expect(target.querySelector('[data-testid="restore-backup"] [role="alert"]').textContent).toContain('Valid JSON, but not a roster backup');
+    expect(target.querySelector('[data-testid="restore-backup"] [role="alert"]').textContent).toContain('not a backup from this app');
   });
   expect(rosterStore.roster.characters).toHaveLength(0);
   send(JSON.stringify({ player: { name: 'Hero', class: 'WARRIOR', level: 10 }, equipment: {} }));

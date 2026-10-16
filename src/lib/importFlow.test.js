@@ -29,7 +29,7 @@ describe('junk import', () => {
     const before = text(rosterStore.roster);
     for (const [junk, re] of [
       ['{nope', /not valid JSON/],
-      ['{"hello":1}', /Valid JSON, but not a roster backup/],
+      ['{"hello":1}', /not a backup from this app/],
       ['', /empty/],
       [text({ schemaVersion: 2, characters: [] }), /no characters/],
     ]) {

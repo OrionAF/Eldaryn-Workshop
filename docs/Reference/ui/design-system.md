@@ -417,7 +417,9 @@ Tooltip explains the source. Never coloured as a verdict. Always in its own colu
 
 ### 4.13 VerdictChip
 
-Glyph + word, tinted fill for up/down, neutral for side: `▲ Significant`, `▲ Upgrade · Set 1`,
+Glyph + word, tinted fill for up/down, neutral for side (the live words follow `wording.md`: `▲ Clearly
+better`, `▼ Clearly worse`, `◆ About the same`, `≈ Too close to call`, `Left over`; the original design
+words were): `▲ Significant`, `▲ Upgrade · Set 1`,
 `▼ Downgrade`, `◆ Sidegrade`, `≈ Within noise`, `Remainder` (muted, for interaction rows),
 `Simulating…` / `Queued` (muted outline, for pending states). Pending and estimate rows never
 receive up/down colours. a11y: the word carries the meaning; glyph is `aria-hidden`.

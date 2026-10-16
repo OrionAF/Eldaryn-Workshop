@@ -61,8 +61,8 @@ it('the ladder strip marks rungs the current build clears, rungs only the sugges
   expect(cells[2].getAttribute('aria-label')).toBe('step 5: suggested build clears');
   expect(mounted.q('[data-testid="push-now"]').textContent).toBe('step 4');
   expect(mounted.q('[data-testid="push-reached"]').textContent).toBe('step 6');
-  expect(mounted.q('[data-testid="push-found"]').textContent).toMatch(/measured on step 5/);
-  expect(mounted.q('[data-testid="push-stop"]').textContent).toMatch(/Stopped at step 7: no build one change away came plausibly near 95% and no single change raised the rate \(best seen 40%\)\. Not reached at this effort/);
+  expect(mounted.q('[data-testid="push-found"]').textContent).toMatch(/tested on step 5/);
+  expect(mounted.q('[data-testid="push-stop"]').textContent).toMatch(/Stopped at step 7: no build one change away came close to 95%, and no single change raised the win rate \(best seen 40%\)\. Not reached at this effort/);
   expect(optimiserJobChips(pushResult())).toEqual([{ tone: 'up', text: 'Reaches step 6' }]);
 });
 
@@ -70,7 +70,7 @@ it('a climb stopped by an optimisation that did not reach the target says so, an
   const r = pushResult();
   r.push.stop = { ...r.push.stop, reason: 'not-reached', best: { ...r.push.stop.best, est: 0.81 } };
   mounted = setup(PushLadder, { push: viewResult(r).push });
-  expect(mounted.q('[data-testid="push-stop"]').textContent).toBe('Stopped at step 7: the search found no build that reaches 95% (best 81%).');
+  expect(mounted.q('[data-testid="push-stop"]').textContent).toBe('Stopped at step 7: no build reached 95% (best 81%).');
   expect(mounted.qa('[data-testid="push-strip"] li').at(-1).dataset.state).toBe('stop');
   const saved = viewRun(runFromResult(r, { presetName: 'Main' })).push;
   expect(saved.stop.reason).toBe('not-reached');

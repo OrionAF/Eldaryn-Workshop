@@ -911,7 +911,7 @@ function withholdViolations(space, B, rows, { strict, warnings, decided }) {
   for (const r of rows) {
     const v = rowViolations(space, B.cand, r, { decided: decided(r) });
     if (v.length && strict) throw new Error(`Optimiser invariant violated on row ${r.key}: ${v.join('; ')}`);
-    if (v.length) warnings.push({ code: 'invariant', severity: 'warn', message: `A build was withheld: ${v.join('; ')}` });
+    if (v.length) warnings.push({ code: 'invariant', severity: 'warn', message: `A build was left out: ${v.join('; ')}` });
     else kept.push(r);
   }
   return kept;
@@ -966,7 +966,7 @@ export async function optimize(request, hooks = {}) {
 
   const cp = request.resumeFrom;
   const resumable = cp?.schema === CHECKPOINT_SCHEMA && cp.requestKey === prep.requestKey && cp.characterKey === prep.characterKey && Array.isArray(cp.log);
-  if (cp && !resumable) warnings.push({ code: 'checkpoint-ignored', severity: 'info', message: 'The saved progress belongs to a different request or character; the run started over.' });
+  if (cp && !resumable) warnings.push({ code: 'checkpoint-ignored', severity: 'info', message: 'The saved progress belongs to a different run or character, so the run started over.' });
   const jobId = request.jobId ?? `opt-${prep.requestKey.split(':')[1] ?? 'job'}`;
   // A Push rung's run shares the Push's log (hooks.debugLog) and leaves the result to the Push.
   const log = hooks.debugLog ?? createDebugLog(request.debug);
@@ -1021,7 +1021,7 @@ export async function optimize(request, hooks = {}) {
       for (const d of m.dropped) {
         if (d.contrast.identical) st.merged.sampleIdentical++;
         if (d.contrast.verdict === 'unresolved') {
-          warnings.push({ code: 'change-dropped-unresolved', severity: 'info', message: `${d.change.label} (${d.change.from} to ${d.change.to}) was dropped: too close to call at ${d.contrast.n} fights.` });
+          warnings.push({ code: 'change-dropped-unresolved', severity: 'info', message: `${d.change.label} (${d.change.from} to ${d.change.to}) was removed: too close to call after ${d.contrast.n} fights.` });
         }
       }
       if (m.arm.key !== B.key && !minimised.has(m.arm.key)) minimised.set(m.arm.key, { arm: m.arm, decided: m.decided });
@@ -1158,7 +1158,7 @@ export function powerFloorText(power, floor) {
 
 const pctText = (p) => `${Math.round(p * 1000) / 10}%`;
 const countText = (n) => n.toLocaleString('en-US');
-const ciText = (e) => (e.lo == null || e.hi == null ? '' : ` (95% CI ${pctText(e.lo)}-${pctText(e.hi)})`);
+const ciText = (e) => (e.lo == null || e.hi == null ? '' : ` (likely ${pctText(e.lo)}-${pctText(e.hi)})`);
 
 /**
  * The win-rate verdict (simulation.md §Win rate): 'already' (the baseline meets the target), 'reached'
@@ -1256,7 +1256,7 @@ function alreadyResult(prep, run, B, goal, set, echo, S3, t0) {
 
 function dedupeWarnings(warnings, st) {
   const out = [...warnings];
-  if (st.notSimulable) out.push({ code: 'arms-not-simulable', severity: 'info', message: `${st.notSimulable} build${st.notSimulable === 1 ? '' : 's'} could not be simulated (an engine input is missing) and were skipped.` });
+  if (st.notSimulable) out.push({ code: 'arms-not-simulable', severity: 'info', message: `${st.notSimulable} build${st.notSimulable === 1 ? '' : 's'} could not be simulated (some needed data is missing) and were skipped.` });
   const seen = new Set();
   return out.filter((w) => {
     const k = `${w.code}|${w.message}`;

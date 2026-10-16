@@ -101,16 +101,16 @@
 
 <div class="head">
   <span class="summary num" class:all-good={summary.total > 0 && summary.explained === summary.total} data-testid="diff-summary">
-    {#if hasModel}{summary.explained}/{summary.total} explained{:else}{summary.total}/{rows.length} entered{/if}
+    {#if hasModel}{summary.explained}/{summary.total} match{:else}{summary.total}/{rows.length} entered{/if}
   </span>
 </div>
 <!-- svelte-ignore a11y_no_noninteractive_tabindex (a scrollable region must be focusable) -->
-<div class="scroll" role="region" aria-label="Stat sheet table" tabindex="0">
+<div class="scroll" role="region" aria-label="In-game stats table" tabindex="0">
   <table class="sheet">
     <thead>
       <tr>
-        <th scope="col">Stat</th>{#if hasModel}<th scope="col" class="r">Model</th>{/if}<th scope="col" class="r">Your sheet</th>
-        <th scope="col" class="r">Raw</th>{#if hasModel}<th scope="col" class="r">Gap</th><th scope="col" class="r">Tolerance</th><th scope="col">Status</th>{/if}
+        <th scope="col">Stat</th>{#if hasModel}<th scope="col" class="r">App</th>{/if}<th scope="col" class="r">In-game stats</th>
+        <th scope="col" class="r">Before cap</th>{#if hasModel}<th scope="col" class="r">Gap</th><th scope="col" class="r">Allowed gap</th><th scope="col">Status</th>{/if}
       </tr>
     </thead>
     <tbody>
@@ -127,8 +127,8 @@
               {m.label}
             {/if}
           </th>
-          {#if hasModel}<td class="r num dim" data-label="Model" title="Value the model computes for this stat">{statText(m.key, computed?.[m.key])}</td>{/if}
-          <td class="r" data-label="Your sheet">
+          {#if hasModel}<td class="r num dim" data-label="App" title="The number the app works out for this stat">{statText(m.key, computed?.[m.key])}</td>{/if}
+          <td class="r" data-label="In-game stats">
             <span class="input-wrap">
               <input
                 id={`sheet-${m.key}`}
@@ -138,7 +138,7 @@
                 class:invalid={invalid[m.key]}
                 aria-invalid={invalid[m.key] ? 'true' : 'false'}
                 aria-describedby={invalid[m.key] ? `err-${m.key}` : echo?.key === m.key ? `echo-${m.key}` : undefined}
-                placeholder="from sheet"
+                placeholder="from game"
                 value={drafts[m.key] ?? ''}
                 oninput={(e) => (drafts[m.key] = e.target.value)}
                 onfocus={() => (focusedKey = m.key)}
@@ -150,14 +150,14 @@
             {#if invalid[m.key]}
               <span class="msg err" id="err-{m.key}" role="alert">
                 {isFlatStat(m.key)
-                  ? 'Not a number. Flat stats use "." for thousands: 48.124 is 48124.'
-                  : 'Not a number. Percent stats use "." as the decimal point.'}
+                  ? 'That is not a number. For flat stats, "." separates thousands: 48.124 is 48124.'
+                  : 'That is not a number. For percent stats, "." is the decimal point.'}
               </span>
             {:else if echo?.key === m.key}
               <span class="msg" id="echo-{m.key}">Read as {echo.text}</span>
             {/if}
           </td>
-          <td class="r raw" data-label="Raw">
+          <td class="r raw" data-label="Before cap">
             {#if m.rawKey}
               <span class="input-wrap">
                 <input
@@ -166,8 +166,8 @@
                   inputmode="decimal"
                   class:invalid={invalid[m.rawKey]}
                   aria-invalid={invalid[m.rawKey] ? 'true' : 'false'}
-                  aria-label={`${m.label} raw`}
-                  placeholder="raw"
+                  aria-label={`${m.label} before cap`}
+                  placeholder="before cap"
                   value={drafts[m.rawKey] ?? ''}
                   oninput={(e) => (drafts[m.rawKey] = e.target.value)}
                   onfocus={() => (focusedKey = m.rawKey)}
@@ -180,12 +180,12 @@
           </td>
           {#if hasModel}
           <td class="r num" data-label="Gap" class:warn={s.kind === 'off'}>{s.gap === null ? '-' : gapText(m.key, s.gap)}</td>
-          <td class="r num dim" data-label="Tolerance">±{statText(m.key, toleranceFor(m.key))}</td>
+          <td class="r num dim" data-label="Allowed gap">±{statText(m.key, toleranceFor(m.key))}</td>
           <td class="status" data-label="Status">
-            {#if s.kind === 'ok'}<span class="good"><span aria-hidden="true">✓</span> explained</span>
+            {#if s.kind === 'ok'}<span class="good"><span aria-hidden="true">✓</span> matches</span>
             {:else if s.kind === 'off'}<span class="bad"><span aria-hidden="true">!</span> off by {gapText(m.key, Math.abs(s.gap)).replace(/^[+-]/, '')}</span>
-            {:else if s.kind === 'unknown'}<span class="dim">no model value</span>
-            {:else}<span class="dim">model used</span>{/if}
+            {:else if s.kind === 'unknown'}<span class="dim">no app number</span>
+            {:else}<span class="dim">app's number used</span>{/if}
           </td>
           {/if}
         </tr>
@@ -197,12 +197,12 @@
                 {#each split.rows.filter((r) => r.value !== 0) as r (r.id)}
                   <li><span>{r.label}</span><span class="num">{statText(m.key, r.value)}</span></li>
                 {/each}
-                <li class="rest" title="The pipeline is not additive: percent buckets multiply and soft caps bend. This is what the rows above do not explain on their own.">
-                  <span>Interaction (percent buckets, caps)</span><span class="num">{gapText(m.key, split.rest)}</span>
+                <li class="rest" title="Some bonuses multiply each other and some hit caps, so the rows above do not add up exactly. This row is the leftover.">
+                  <span>Leftover (bonuses that multiply, caps)</span><span class="num">{gapText(m.key, split.rest)}</span>
                 </li>
-                <li class="total"><span>Model total</span><span class="num">{statText(m.key, split.total)}</span></li>
+                <li class="total"><span>App total</span><span class="num">{statText(m.key, split.total)}</span></li>
               </ul>
-              <p class="note">Each source is what the total loses when only that source is removed.</p>
+              <p class="note">Each row shows how much the total drops if you remove only that source.</p>
             </td>
           </tr>
         {/if}

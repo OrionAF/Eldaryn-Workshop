@@ -7,8 +7,8 @@
   let {
     onfile,
     accept = '.json,application/json',
-    label = 'Drop a game profile JSON or click to choose',
-    hint = 'JSON file',
+    label = 'Drop a game profile file or click to choose',
+    hint = 'A .json file',
     error = '',
     summary = '',
     disabled = false,

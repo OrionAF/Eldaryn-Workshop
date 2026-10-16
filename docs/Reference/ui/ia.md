@@ -456,7 +456,7 @@ here.
 | Current | New location |
 |---|---|
 | Close button | G6 is a page; leave via nav |
-| Placeholder text | Replaced by G6 Preferences (density compact/comfortable, reduce motion, default tool effort); Performance adds the CPU profile and speed calibration; Advanced, the last panel (after the Danger zone), holds "Debug: log the search" (Off / Builds / Builds and fights; its log shows in the Optimiser run's Debug log section, design-system §4.39) and, last of all, the "Show game data import" switch (§5.4) |
+| Placeholder text | Replaced by G6 Preferences (density compact/comfortable, reduce motion, default tool effort); Performance adds the CPU profile and speed calibration; Advanced, the last panel (after the Danger zone), holds "Debug log" (Off / Builds / Builds and fights; its log shows in the Optimiser run's Debug log section, design-system §4.39) and, last of all, the "Show game data import" switch (§5.4) |
 | "Reset all data" + type RESET + Confirm reset (exact, case-sensitive; Enter) + Cancel | G6 Danger zone, same RESET rule; adds "Export first" button beside it, a list of what is wiped (every character, presets, collections, opponents, runs, the v1 backup key and the legacy settings key), and an error line on wrong text |
 
 ### 5.4 Import / export and persistence

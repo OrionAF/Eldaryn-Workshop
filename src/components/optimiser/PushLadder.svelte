@@ -22,7 +22,7 @@
   const present = $derived(new Set(cells.map((c) => c.state)));
 </script>
 
-<section class="push" data-testid="push-ladder" aria-label="Push ladder">
+<section class="push" data-testid="push-ladder" aria-label="Push progress">
   <p class="lead">
     <span class="micro">{push.ladder?.label}</span>
     <span class="hint">Target {pct(push.target)}, from {push.start?.label}</span>
@@ -45,7 +45,7 @@
     <div><dt>With changes</dt><dd data-testid="push-reached">{push.status === 'pushed' ? push.reached.label : `no deeper ${unit} found`}</dd></div>
   </dl>
   {#if push.status === 'pushed' && push.reached?.foundLabel}
-    <p class="hint" data-testid="push-found">The changes below were found and measured on {push.reached.foundLabel}, the first {unit} that build was searched for.</p>
+    <p class="hint" data-testid="push-found">The changes below were found and tested on {push.reached.foundLabel}, the first {unit} this build was searched for.</p>
   {/if}
   <p class="hint" data-testid="push-stop">{pushStopText(push)}</p>
 </section>

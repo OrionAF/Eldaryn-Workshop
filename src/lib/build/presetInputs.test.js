@@ -12,7 +12,7 @@ describe('Transcendence level gates in the build (transcendence.md §1, §9)', (
     const c = fixtureCharacter('WARRIOR'); // p1: FLAMEBORN on a default board that allocates its node
     expect(Object.values(boardBonus(at(c, 54))).every((v) => v === 0)).toBe(true);
     expect(at(c, 54).ancientDropped).toBe(true);
-    expect(at(c, 54).warnings).toEqual(['FLAMEBORN is ignored: Transcendence unlocks at level 55.']);
+    expect(at(c, 54).warnings).toEqual(['FLAMEBORN is not used: Transcendence unlocks at level 55.']);
     expect(powerInputs({ ...c, level: 54 }, 'p1').input.transcendenceNodeCount).toBe(0);
     expect(Object.values(boardBonus(at(c, 55))).some((v) => v !== 0)).toBe(true);
     expect(at(c, 55).ancientDropped).toBe(false);

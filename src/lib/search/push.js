@@ -605,7 +605,7 @@ export async function push(request, hooks = {}) {
 
   const cp = request.resumeFrom;
   const resumable = cp?.schema === PUSH_CHECKPOINT_SCHEMA && cp.requestKey === prep.requestKey && cp.characterKey === prep.characterKey && Array.isArray(cp.log);
-  if (cp && !resumable) warnings.push({ code: 'checkpoint-ignored', severity: 'info', message: 'The saved progress belongs to a different request or character; the run started over.' });
+  if (cp && !resumable) warnings.push({ code: 'checkpoint-ignored', severity: 'info', message: 'The saved progress belongs to a different run or character, so the run started over.' });
   const jobId = request.jobId ?? `push-${prep.requestKey.split(':')[1] ?? 'job'}`;
   const log = createDebugLog(request.debug);
   const env = liveEnv(prep, request, ladder, { ...hooks, jobId, debugLog: log });

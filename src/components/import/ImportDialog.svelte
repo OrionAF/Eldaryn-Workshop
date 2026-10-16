@@ -75,7 +75,7 @@
             {:else}
               <ul>{#each plan.diff.lines as line (line)}<li>{line}</li>{/each}</ul>
             {/if}
-            <p class="muted">Game presets update their app copies; presets made in the app, saved opponents and run history are kept. You can undo the update once, in Settings, Data.</p>
+            <p class="muted">Presets that came from the game are updated. Presets you made in the app, saved opponents and run history are kept. You can undo the update once, in Settings, Data.</p>
           </section>
         {:else}
           <section aria-label="What was read">
@@ -84,15 +84,15 @@
               {#each plan.counts.filter((c) => c.count > 0) as c (c.id)}<li><span>{c.label}</span><b>{c.count}</b> <span class="muted">{unitFor(c.count, c.unit)}</span></li>{/each}
             </ul>
             {#if plan.sheet}
-              <p>The game's stat sheet is loaded into preset <b>{plan.sheet.presetName}</b>.</p>
+              <p>Your in-game stats are loaded into preset <b>{plan.sheet.presetName}</b>.</p>
             {:else}
-              <p class="muted">No stat sheet in this profile.</p>
+              <p class="muted">No in-game stats in this profile.</p>
             {/if}
           </section>
         {/if}
         {#if notes.length}
-          <section aria-label="Defaulted or dropped">
-            <h3>Defaulted or dropped</h3>
+          <section aria-label="Filled in or removed">
+            <h3>Filled in or removed</h3>
             <ul>{#each notes as n, i (i)}<li class={n.tone}>{n.text}</li>{/each}</ul>
           </section>
         {/if}
@@ -106,12 +106,12 @@
         <p class="lead"><b>{plan.opponent.name}</b>, {classLabel(plan.opponent.class)}, level {plan.opponent.imported?.level}</p>
         <p>
           {plan.match ? `Refreshes the saved opponent ${plan.match.name} (the same player).` : 'Saved as a new PVP opponent.'}
-          Its stat sheet is the server's own; the {plural(plan.sigils, 'worn sigil')}, altar tier and major glyphs set its moves.
+          Its stats are taken as the game shows them. Its {plural(plan.sigils, 'worn sigil')}, altar tier and major glyphs decide its moves.
         </p>
         {#if plan.full}
           <Banner variant="warn" lead="Opponent library full">Remove a saved opponent on the Opponents page first.</Banner>
         {/if}
-        <p class="muted">Only the display name and the player id (to refresh it later) are kept. Gear, pet, mount and relics are not modelled for an opponent.</p>
+        <p class="muted">Only the display name and the player id (to refresh it later) are kept. Gear, pet, mount and relics are not used for an opponent.</p>
       </div>
     {:else if plan.kind === 'roster'}
       <div class="report">
@@ -123,11 +123,11 @@
           <Banner variant="warn" lead="Replace all characters?">
             This replaces your {plural(plan.replaces.characters, 'character')} and {plural(plan.replaces.presets, 'preset')} with the backup.
           </Banner>
-          <Checkbox checked={importFlow.backupFirst} label="Download my current roster first" onchange={setBackupFirst} />
+          <Checkbox checked={importFlow.backupFirst} label="Download my current characters first" onchange={setBackupFirst} />
         {/if}
         {#if notes.length}
-          <section aria-label="Defaulted or dropped">
-            <h3>Defaulted or dropped</h3>
+          <section aria-label="Filled in or removed">
+            <h3>Filled in or removed</h3>
             <ul>{#each notes as n, i (i)}<li class={n.tone}>{n.text}</li>{/each}</ul>
           </section>
         {/if}
@@ -135,12 +135,12 @@
     {:else if plan.kind === 'lootBag'}
       <div class="report">
         <p class="lead">A loot bag with {plural(plan.items, 'item')}{plan.oblivionItems ? `, ${plan.oblivionItems} for Oblivion` : ''}.</p>
-        <p class="muted">Drop Check judges each item against your sets and presets. Nothing in your roster changes here.</p>
+        <p class="muted">Drop Check judges each item against your sets and presets. Nothing about your characters changes here.</p>
       </div>
     {:else}
       <div class="report">
         <p class="lead">An arena fight log with {plural(plan.ticks, 'event')}.</p>
-        <p class="muted">The replay check compares it with the combat rules. Nothing in your roster changes here.</p>
+        <p class="muted">The replay check compares it with the combat rules. Nothing about your characters changes here.</p>
       </div>
     {/if}
     {#if plan && importFlow.error}<Banner variant="error">{importFlow.error}</Banner>{/if}

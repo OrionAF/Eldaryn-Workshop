@@ -72,7 +72,7 @@ it('rows show the win rate with its 95% CI, a Meets / Below target chip and the 
   const rows = ui.qa('[data-testid="result-row"]');
   expect(rows[0].textContent).toMatch(/82\.0% \(80\.0% to 84\.0%\)/);
   expect(rows[0].querySelector('[data-testid="target-chip"]').textContent).toMatch(/Below target/);
-  expect(rows[0].textContent).toMatch(/13\.0 pts below target/);
+  expect(rows[0].textContent).toMatch(/13\.0 points below target/);
   expect(ui.q('[data-testid="baseline-row"] [data-testid="target-chip"]').textContent).toMatch(/Below target/);
   const ok = mountResults(winRateResult('reached'));
   expect(ok.q('[data-testid="result-row"] [data-testid="target-chip"]').textContent).toMatch(/Meets target/);
@@ -111,7 +111,7 @@ it('when no build reaches the target it says so and lists the closest builds', (
 it('targetStanding: meets, below, open, none', () => {
   const row = (m, est) => ({ aux: { meetsTarget: m, winRate: { est } } });
   expect(targetStanding(row(true, 0.97), 0.95)).toEqual({ verdict: 'meets', gap: '' });
-  expect(targetStanding(row(false, 0.8), 0.95)).toEqual({ verdict: 'below', gap: '15.0 pts below target' });
+  expect(targetStanding(row(false, 0.8), 0.95)).toEqual({ verdict: 'below', gap: '15.0 points below target' });
   expect(targetStanding(row(null, 0.94), 0.95).verdict).toBe('open');
   expect(targetStanding({ aux: {} }, 0.95).verdict).toBeNull();
   expect(targetStanding(row(true, 1), null).verdict).toBeNull();

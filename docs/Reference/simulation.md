@@ -312,7 +312,7 @@ about 3 % (one swing), so races between near-equal builds ran long. `survival` s
 with caps that never run out it equals win rate on a sequence target, and World Boss pays for damage, not
 for staying alive. Drop Check keeps its own survival metric (§Drop Check). A saved setup whose objective is
 retired normalises to the target's default; a saved run of a retired goal is kept and viewable, and its
-Re-run with settings, Run more and Resume are off with the reason "This goal was retired."
+Run again with these settings, Run more and Resume are off with the reason "This goal was retired."
 (`goalRetired`, `retiredGoalBlock`). The engine's censored-quantile statistics stay (`engine/stats`),
 unused by any objective.
 
@@ -438,7 +438,8 @@ time cap (each mob's own cap, or the custom window) is a loss.
 
 **On screen** (Optimiser page, `WinRateTarget.svelte`, `OptimiserResults.svelte`): the goal list leads with
 "Highest chance to win" for chapters, dungeons, raids and Oblivion (the default; hint "Finds the build
-with the best chance to clear this; ties go to the fewest changes. Speed does not matter."), then
+with the best chance to clear this. If builds are equal, it picks the one with the fewest changes. Speed
+does not matter."), then
 "Reach a win rate" with a Target field (percent, 1-100, default 95), then Push. Rows show the win rate
 with its 95 % CI and its tries per clear; a target goal adds a Meets / Below target chip (below the
 target, how many points short). The table has one axis in win-rate points: every contrast, a change's own
@@ -1150,7 +1151,7 @@ in 7 s. A flat 0 % rung stops at the screen after about z² / δ fights per scre
 
 Code: `src/lib/search/debugLog.js` (`createDebugLog`, `debugLogLines`, `debugLogFileName`), the level and the
 saved summary in `src/lib/model/debugLog.js`, the section in `components/optimiser/DebugLog.svelte`. A setting
-for finding what slows a run (Settings > Performance, "Debug: log the search"; data-model.md §5.1): **Off**
+for finding what slows a run (Settings > Advanced, "Debug log"; data-model.md §5.1): **Off**
 (default), **Builds** or **Builds and fights**. The page puts it in the optimise request as `debug: 'builds' |
 'fights'` (L5 never reads prefs); a Push passes its log to each rung's own run, so a Push logs one log.
 
@@ -1245,8 +1246,8 @@ Code: `src/lib/tasks/pool.js` (`createPool`, `inlinePool`, `poolScope`), `tasks/
 
 ### Speed calibration and run-time estimates
 
-Settings > Performance holds the CPU thermal profile (pref `cpuProfile`) and an opt-in **Calibrate
-speed** button; nothing calibrates on load. The `calibrate` task (`tasks/calibrate.js`) runs about 6 s
+Settings > Performance holds the CPU profile, labelled "Speed vs. battery" (pref `cpuProfile`), and an
+opt-in **Run speed test** button (the UI calls calibration a speed test); nothing calibrates on load. The `calibrate` task (`tasks/calibrate.js`) runs about 6 s
 through the pool of the current profile: per fight kind (training dummy, a dungeon step, and a duel when
 the character has an opponent with a complete sheet) one untimed warm-up batch, then batches until the
 kind's slice is spent. It stores `{profile, workers, fightsPerSec by kind, measuredAt, version}` in the
