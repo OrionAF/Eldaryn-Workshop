@@ -682,6 +682,25 @@ are unchanged (strict contrasts on fresh seeds).
   cannot be dropped alone (it is in another change's bundle). The set stands only when F is `better`
   than the baseline at α / finalists; otherwise the finalist collapses into the baseline. A change
   dropped while `unresolved` at maxN is listed (warning `change-dropped-unresolved`).
+- **Free fills** (S2, after a finalist's set stands; `search/fill.js`, `minimise.js withFreeFills`): an
+  empty glyph socket costs nothing to fill, so the minimised build F gets its mount's empty major and minor
+  sockets filled (mythic glyphs are not modelled), one socket at a time with the first owned glyph that
+  acts for it: unsealed, socketable, not on the mount yet; a major only for the class, spec and running
+  sigils and of a type the mount does not hold; the baseline's own glyphs on that mount first (they go back
+  to their saved sockets, so that is no change), then best rarity, then (minor) the larger rolled value,
+  then the id; kept only when the legal, canonical build still holds it (an inert glyph comes straight
+  back out) and every socket the baseline holds keeps F's glyph or the baseline's own (canonical order
+  could otherwise shuffle a new glyph into it). A tier whose block is off under Allowed to change is not
+  filled. A change of the filled build FX is a fill when it puts a fill glyph into a socket the baseline
+  has empty. One more Holm round over FX's other changes must find each still `better`-needed, each fill
+  must not be `worse` to keep (its own test at α), FX must not be `worse` than F and must still be
+  `better` than the baseline at α / finalists. Otherwise F stands unfilled. A
+  fill is a **free** change: `free: true`, `keptBecause: 'free'`, exempt from I3, and not counted as a
+  change (ranking by fewest changes, `distanceOf` for builds equal in effect, the goal texts, the saved
+  run's `changes` count and the change summary, which names them last: "· fills 1 empty socket").
+  Attribution's Holm families still include the fills. The user decided this on 2026-10-16
+  after a win-chance run left a second major socket empty: both owned glyphs that worked with the build
+  tied on clear chance at Quick, so the fewest-changes rule dropped them.
 - **Confirm** (S3): every distinct minimised build against the baseline, sequentially, Holm across
   rows. `worse` rows are hidden (`headline.worseHidden`).
 - **Attribute** (S3, at the row's confirm n): `own(c)` = (B + c) against B and `needed(c)` = F against
@@ -709,7 +728,8 @@ change, except relic and sigil changes (each piece swapped) and talent changes (
 
 `result.js rowViolations` checks every reported row: **I1** the candidate passes `legalityOf` and a
 non-baseline row has changes; **I2** reverting any change alters the engine key (or the change sits
-in another change's bundle); **I3** every change was decided `better`-needed on S2 (or is bundled).
+in another change's bundle); **I3** every change was decided `better`-needed on S2 (or is bundled, or is a
+free fill).
 Test and development builds throw on a violation; a production run withholds the row with warning
 `invariant`.
 
@@ -1120,7 +1140,8 @@ in 7 s. A flat 0 % rung stops at the screen after about z² / δ fights per scre
 - **Change**: `effect.changesOf`'s `{id, dimension, label, from, to, scope, owner, sideEffects,
   bundle}` (a talent change also has `moved`, only the talents whose points changed, "Essence Siphon 2 → 0,
   Focused Casting 0 → 3", which every change list shows instead of `from → to`; saved runs keep it) plus `own: Contrast|null`, `needed: Contrast|null` (null only for a change that cannot be
-  dropped alone) and `keptBecause` (`'own-effect'`, `'interaction'` or `'power-floor'`). Display rule
+  dropped alone) and `keptBecause` (`'own-effect'`, `'interaction'`, `'power-floor'` or `'free'`; a free
+  fill, §Minimise and confirm, also carries `free: true`, and Run more keeps it). Display rule
   (`optimiserView.changeEffect`): a change kept for its interaction, or "Only with" another change (`own`
   exactly 0), leads with `needed` ("Without it") in the value, the axis mark and the badge "Helps with the
   other changes", which is never red; its `own` is secondary text ("Alone on the current build"). Every

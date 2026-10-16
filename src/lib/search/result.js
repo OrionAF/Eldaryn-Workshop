@@ -114,7 +114,7 @@ export function rowViolations(space, B, row, { decided = null } = {}) {
       same = false; // the reverted build cannot fight: the change certainly matters
     }
     if (same) out.push(`I2 inert change ${c.id}: reverting it leaves the engine inputs unchanged`);
-    if (decided && !bundled.has(c.id) && decided[c.id]?.verdict !== 'better') out.push(`I3 change ${c.id} was not decided needed`);
+    if (decided && !bundled.has(c.id) && !c.free && decided[c.id]?.verdict !== 'better') out.push(`I3 change ${c.id} was not decided needed`);
   }
   return out;
 }
@@ -125,18 +125,23 @@ export function assertRow(space, B, row, o) {
   if (v.length) throw new Error(`Optimiser invariant violated on row ${row.rank}: ${v.join('; ')}`);
 }
 
+/** A row's changes that count as changes: free fills (simulation.md §Minimise and confirm) do not. */
+export const paidChanges = (row) => (row?.changes ?? []).filter((c) => !c.free);
+
 /**
- * Rank rows: better by estimate (best first), then equivalent and unresolved by fewest changes. With
+ * Rank rows: better by estimate (best first), then equivalent and unresolved by fewest changes (free fills
+ * not counted). With
  * `primaryOf` (win rate: the capped rate) better rows are ordered by it, then by fewest changes, then
  * by the score, so of the builds that reach the target the one with the fewest changes leads.
  */
 export function rankRows(rows, scoreOf, { primaryOf = null } = {}) {
   const prim = primaryOf ?? (() => 0);
+  const k = (r) => paidChanges(r).length;
   const better = rows.filter((r) => r.vsBaseline?.verdict === 'better')
-    .sort((a, b) => prim(b) - prim(a) || (primaryOf ? a.changes.length - b.changes.length : 0) || scoreOf(b) - scoreOf(a)
-      || a.changes.length - b.changes.length || (a.key < b.key ? -1 : 1));
+    .sort((a, b) => prim(b) - prim(a) || (primaryOf ? k(a) - k(b) : 0) || scoreOf(b) - scoreOf(a)
+      || k(a) - k(b) || (a.key < b.key ? -1 : 1));
   const rest = rows.filter((r) => r.vsBaseline?.verdict !== 'better')
-    .sort((a, b) => a.changes.length - b.changes.length || scoreOf(b) - scoreOf(a) || (a.key < b.key ? -1 : 1));
+    .sort((a, b) => k(a) - k(b) || scoreOf(b) - scoreOf(a) || (a.key < b.key ? -1 : 1));
   return [...better, ...rest].map((r, i) => ({ ...r, rank: i + 1 }));
 }
 

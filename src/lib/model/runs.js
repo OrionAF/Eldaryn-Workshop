@@ -35,7 +35,7 @@
 // Schema 2 (`schema: 2`, redesign plan U8) records an 'optimiser-result/2' result (docs/Reference/simulation.md
 // §Result): `budget` is the request's effort, `characterKey` the snapshot it was measured on, `headline` adds
 // `text` and the verdict counts, and `detail` is {baseline: Row, rows: Row[]} with Row = {rank, tieGroup,
-// isBaseline, key, candidate, value: Estimate, aux, vsBaseline: Contrast|null, changes (each with own, needed,
+// isBaseline, key, candidate, value: Estimate, aux, vsBaseline: Contrast|null, changes (each with own, needed, free,
 // keptBecause, sideEffects), remainder, lines}. Schema 1 runs (no `schema`) keep the RunEntry detail above and
 // show per-change effects as "not measured". `powerFloor` is the run's Combat Power guard (absent: none) and each
 // schema 2 Row keeps its Combat Power as `power` (absent on older runs). A PVE win-rate run also keeps `headline.goal` {status, target, mode?}, each
@@ -82,7 +82,9 @@ function normaliseEntry(e) {
 }
 
 const VERDICTS = ['better', 'worse', 'equivalent', 'unresolved'];
-const KEPT_BECAUSE = ['own-effect', 'interaction', 'power-floor'];
+const KEPT_BECAUSE = ['own-effect', 'interaction', 'power-floor', 'free'];
+/** Changes a row asks for: free fills (simulation.md §Minimise and confirm) are not counted. */
+const paidCount = (row) => (row?.changes ?? []).filter((c) => !c?.free).length;
 /** The Combat Power guard of a run (simulation.md §Build space): a positive whole number, else null. */
 const powerFloorOf = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= 1 ? Math.floor(v) : null);
 const SCOPES = ['preset', 'character', 'mount'];
@@ -113,6 +115,7 @@ function normaliseChange(c) {
     bundle: (Array.isArray(c.bundle) ? c.bundle : []).filter((b) => typeof b === 'string'),
     own: normaliseContrast(c.own), needed: normaliseContrast(c.needed),
     keptBecause: KEPT_BECAUSE.includes(c.keptBecause) ? c.keptBecause : null,
+    ...(c.free === true ? { free: true } : {}),
     ...(typeof c.moved === 'string' && c.moved ? { moved: c.moved } : {}),
   };
 }
@@ -349,7 +352,7 @@ export function runFromResult(result, fields = {}) {
       baseline: base?.value ?? null, best: top?.value ?? null,
       gainPct: bestIsBaseline ? 0 : vs?.pct ?? null,
       significant: bestIsBaseline ? null : vs?.significant ?? null,
-      n: top?.n ?? 0, evaluated: result.stats?.tier1 ?? 0, changes: top?.changes?.length ?? 0,
+      n: top?.n ?? 0, evaluated: result.stats?.tier1 ?? 0, changes: paidCount(top),
     },
     // Full describe lines are long text: only the baseline and the top RUN_DETAIL_FULL_LINES keep them;
     // every entry keeps `changes` (what differs from the current build), which is what a reader needs.
@@ -390,7 +393,7 @@ function runFromResultV2(result, fields) {
       baseline: base?.value?.est ?? null, best: (top ?? base)?.value?.est ?? null,
       gainPct: top ? (unit === 'dps' ? vs?.pct ?? null : null) : 0,
       significant: top ? vs?.significant ?? null : null,
-      n: (top ?? base)?.value?.n ?? 0, evaluated: result.search?.evaluated ?? 0, changes: top?.changes?.length ?? 0,
+      n: (top ?? base)?.value?.n ?? 0, evaluated: result.search?.evaluated ?? 0, changes: paidCount(top),
       text: result.headline?.text ?? '',
       goal: normaliseGoal(result.goal),
       ...(result.push ? { push: result.push } : {}),
