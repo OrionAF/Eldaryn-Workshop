@@ -199,15 +199,43 @@ export function contrastSets(objective, x, y, o = {}) {
   return { ...verdictOf(objective, sliceSet(x, n), sliceSet(y, n), { ...o, open: true }, o.alpha ?? 0.05, o.final ?? true), looks: 1 };
 }
 
+/** A tie look is skipped when a doubling look already sits within this share above n*. */
+export const TIE_LOOK_SLACK = 0.1;
+
 /**
- * Sequential comparison of X against Y (simulation.md §Statistics): looks at n0, 2n0, ... maxN, each
- * at alpha / looks, stopping at the first resolved verdict. `getX(n)` / `getY(n)` return (or
+ * The extra look at the win rate's tie point (simulation.md §Sequential comparator, the tie look), or
+ * null when the schedule gets none. `alpha` is the family's level before the split over looks. Fixed
+ * before any fight is drawn: it reads only the objective, n0, maxN, alpha and δ. n* is taken at
+ * alpha / (looks + 1), the level the look will run at once added.
+ * `tieLook: false` (effort, benchmarks only) gives none.
+ * @param {{n0: number, maxN: number, alpha: number, delta?: number, deltaKind?: string, tieLook?: boolean}} o
+ */
+export function tieLook(objective, { n0, maxN, alpha, delta, deltaKind, tieLook: on = true }) {
+  if (on === false || typeof objective.rateTieN !== 'function') return null;
+  if ((deltaKind ?? objective.deltaKind) !== 'absolute' || !(delta > 0)) return null;
+  const base = lookSchedule(n0, maxN);
+  const n = objective.rateTieN({ alpha: alpha / (base.length + 1), delta });
+  if (!(n > n0 && n < maxN)) return null;
+  if (base.some((m) => m >= n && m <= n * (1 + TIE_LOOK_SLACK))) return null;
+  return n;
+}
+
+/** The look schedule of a comparison or race: `lookSchedule` plus the tie look when there is one. */
+export function looksFor(objective, o) {
+  const base = lookSchedule(o.n0, o.maxN);
+  const t = tieLook(objective, o);
+  return t == null ? base : [...base, t].sort((a, b) => a - b);
+}
+
+/**
+ * Sequential comparison of X against Y (simulation.md §Statistics): looks at n0, 2n0, ... maxN (plus
+ * the win rate's tie look, `looksFor`), each at alpha / looks, stopping at the first resolved verdict. `getX(n)` / `getY(n)` return (or
  * promise) sample sets of at least n fights, typically `sampler.get` calls. With `futility`, it also
  * stops with verdict `futile` once X cannot beat Y by δ (a challenger against an incumbent).
  * @param {{delta?: number, deltaKind?: string, deltaWinRate?: number, alpha?: number, n0: number, maxN: number, seed?: number, B?: number, futility?: boolean}} o
  */
 export async function compareSets(objective, getX, getY, o) {
-  const looks = lookSchedule(o.n0, o.maxN);
+  const looks = looksFor(objective, { ...o, alpha: o.alpha ?? 0.05 });
   const a = perLookAlpha(o.alpha ?? 0.05, looks);
   for (let k = 0; k < looks.length; k++) {
     const n = looks[k];

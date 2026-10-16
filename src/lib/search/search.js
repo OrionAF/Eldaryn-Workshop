@@ -23,7 +23,7 @@ import { dominanceContextOf } from './dominance.js';
 import { candidateEngineKey, changesOf, canonicalise, mergeByEngine, writesOf } from './effect.js';
 import { legalityOf } from './legality.js';
 import { resolveTarget, makeObjective, residualFor, meetsTarget, isWinRateKind } from './objectives.js';
-import { createSampler, compareSets, contrastSets, setOf, isAbort, AbortError } from './sampler.js';
+import { createSampler, compareSets, contrastSets, tieLook, setOf, isAbort, AbortError } from './sampler.js';
 import { race } from './race.js';
 import { createDebugLog } from './debugLog.js';
 import { minimise, attribute, holmSequential, holmFixed } from './minimise.js';
@@ -63,8 +63,9 @@ export function resolveEffort(raw, objective) {
   const maxN = posInt(o.maxN) && o.maxN >= n0 ? o.maxN : Math.max(n0, p.maxN);
   const delta = typeof o.delta === 'number' && o.delta >= 0 ? o.delta : deltaKind === 'relative' ? p.rel : p.prob;
   const randomStarts = Number.isInteger(o.randomStarts) && o.randomStarts >= 0 ? o.randomStarts : RANDOM_STARTS;
-  // futility: false restores the pre-A5 race and accept rule (benchmarks; not an Effort control)
-  return { level, delta, deltaKind, alpha: ALPHA, n0, maxN, randomStarts, futility: o.futility !== false };
+  // futility: false restores the pre-A5 race and accept rule; tieLook: false the look schedule without the
+  // win rate's tie look (both benchmarks only; not Effort controls)
+  return { level, delta, deltaKind, alpha: ALPHA, n0, maxN, randomStarts, futility: o.futility !== false, tieLook: o.tieLook !== false };
 }
 
 /** Phase seeds (I4: the data that decides is never the data reported). */
@@ -127,7 +128,7 @@ export function prepare(request) {
     ...(target.partner ? { partnerKey: target.partner.key } : {}),
     seed, seeds, effort: { level: effort.level, delta: effort.delta, deltaKind: effort.deltaKind, alpha: effort.alpha, n0: effort.n0, maxN: effort.maxN }, characterKey,
   };
-  const requestKey = metricKey('optimise-request', { ...requestEcho, characterKey: undefined, randomStarts: effort.randomStarts, ...(effort.futility ? {} : { futility: false }) });
+  const requestKey = metricKey('optimise-request', { ...requestEcho, characterKey: undefined, randomStarts: effort.randomStarts, ...(effort.futility ? {} : { futility: false }), ...(effort.tieLook ? {} : { tieLook: false }) });
   return { character, partner, preset, target, realm, mode, objective, effort, seed, seeds, warnings, space, characterKey, requestEcho, requestKey };
 }
 
@@ -343,7 +344,7 @@ function createRun(prep, hooks) {
     return out;
   }
 
-  const effortFor = (alpha) => ({ delta: effort.delta, deltaKind: effort.deltaKind, n0: effort.n0, maxN: effort.maxN, alpha });
+  const effortFor = (alpha) => ({ delta: effort.delta, deltaKind: effort.deltaKind, n0: effort.n0, maxN: effort.maxN, alpha, tieLook: effort.tieLook });
 
   const identical = (x, y, n) => x.main.every((lane, j) => {
     const other = y.main[j];
@@ -357,7 +358,9 @@ function createRun(prep, hooks) {
    */
   function compare(X, Y, stage, alpha, { futile = false } = {}) {
     const futility = futile && effort.futility;
-    return step('compare', [stage.id, X.key, Y.key, alpha, ...(futility ? ['futile'] : [])], async () => {
+    // the tie look is part of the step's inputs: a checkpoint from before it stops replaying here
+    const tie = tieLook(objective, effortFor(alpha));
+    return step('compare', [stage.id, X.key, Y.key, alpha, ...(futility ? ['futile'] : []), ...(tie != null ? ['tie', tie] : [])], async () => {
       const c = await compareSets(objective, (n) => getSet(X, stage, n), (n) => getSet(Y, stage, n), { ...effortFor(alpha), futility, seed: stage.seed });
       const [x, y] = [await getSet(X, stage, c.n), await getSet(Y, stage, c.n)];
       if (log) logPair('compare', X, Y, stage, c);
@@ -378,7 +381,8 @@ function createRun(prep, hooks) {
   /** A race on a stage (logged; eliminated and futile arms are kept as counts so checkpoints stay small). */
   function raceArms(list, stage) {
     for (const a of list) st.evaluated.add(a.key);
-    return step('race', [stage.id, ...list.map((a) => a.key), ...(effort.futility ? [] : ['no-futility'])], async () => {
+    const tie = list.length > 1 ? tieLook(objective, effortFor(effort.alpha / list.length)) : null;
+    return step('race', [stage.id, ...list.map((a) => a.key), ...(effort.futility ? [] : ['no-futility']), ...(tie != null ? ['tie', tie] : [])], async () => {
       const r = await race(list, {
         objective, effort: { ...effortFor(effort.alpha), futility: effort.futility }, seed: stage.seed,
         getSet: (a, n) => getSet(a, stage, n),
