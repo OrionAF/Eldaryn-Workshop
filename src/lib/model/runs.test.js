@@ -258,3 +258,39 @@ describe('Combat Power on saved runs', () => {
     expect('powerFloor' in runFromResult(richResult(), { id: 'q' })).toBe(false);
   });
 });
+
+describe('run cost (simulation.md §Estimates)', () => {
+  const v2 = (r = richResult()) => runFromResult(r, { id: 'c', at: '2026-10-01T00:00:00.000Z' });
+
+  it('a finished run keeps what it cost: strategy, starts, enabled block sizes, lanes, fights per phase, wall time', () => {
+    const r = v2();
+    expect(r.cost).toEqual({
+      strategy: 'local', starts: 2, domains: { relics: 31, talents: 170 }, lanes: 1,
+      fights: { search: 19256, minimise: 1376, confirm: 1376, total: 22008 }, elapsedMs: 8941,
+    });
+    expect(normaliseRun(JSON.parse(JSON.stringify(r)))).toEqual(r);
+  });
+
+  it('a PVP run counts its matchups as lanes', () => {
+    const r = runFromResult(pvpResult(), { id: 'pv' });
+    expect(r.cost.lanes).toBe(2); // attacker and defender seats
+  });
+
+  it('a run that stopped at its first check (no search) has no cost', () => {
+    const res = richResult();
+    res.search = null;
+    expect(v2(res)).not.toHaveProperty('cost');
+  });
+
+  it('junk is repaired or the cost dropped: total recomputed, bad sizes and times removed', () => {
+    const base = v2();
+    const fix = (cost) => normaliseRun({ ...base, cost });
+    expect(fix({ ...base.cost, fights: { search: 10, minimise: 2, confirm: 3, total: 999 } }).cost.fights.total).toBe(15);
+    expect(fix({ ...base.cost, domains: { relics: 0, talents: 3.5, pet: 4, 'x y': 2 }, lanes: -1, elapsedMs: -5 }).cost)
+      .toMatchObject({ domains: { pet: 4 }, lanes: 1, elapsedMs: null });
+    expect(fix({ ...base.cost, strategy: 'greedy' })).not.toHaveProperty('cost');
+    expect(fix({ ...base.cost, fights: { search: 1 } })).not.toHaveProperty('cost');
+    expect(fix({ ...base.cost, starts: 0 })).not.toHaveProperty('cost');
+    expect(fix('lots')).not.toHaveProperty('cost');
+  });
+});
