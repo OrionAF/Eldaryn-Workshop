@@ -142,5 +142,5 @@
   .bonus-table thead th { color: var(--text-muted); font-size: var(--fs-12); font-weight: var(--fw-bold); }
   .r { text-align: right !important; }
   .dim { color: var(--text-muted); }
-  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .sr-only { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 </style>

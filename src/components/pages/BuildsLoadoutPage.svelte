@@ -68,5 +68,5 @@
   .title input { width: 100%; font-family: var(--font-display); font-size: var(--fs-20); }
   .hint { color: var(--text-muted); font-size: var(--fs-12); }
   .grid { display: grid; gap: var(--sp-3); margin-top: var(--sp-3); }
-  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .visually-hidden { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 </style>
