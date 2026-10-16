@@ -210,3 +210,22 @@ it('the grids cannot widen their panel: no fixed cap, and the wrappers above the
   expect(rule(css, '.page')).toMatch(/min-width: 0/);
   expect(rule(css, '.page')).toMatch(/overflow-x: auto/);
 });
+
+it('the Health and Attack fields and slider ends show the level-scaled values the game shows; a typed value stores its level-1 roll', async () => {
+  const { setField } = await import('../gear/fieldKit.js');
+  addMountUi('CRYSTAL_DRAKE');
+  const id = rosterStore.current.mounts[0].id;
+  rosterStore.updateMount(id, { level: 2, baseHp: 37, baseAtk: 25 });
+  flushSync();
+  const card = cards()[0];
+  const hp = field(card, 'Health');
+  const atk = field(card, 'Attack');
+  expect(hp.value).toBe('41'); // round(37 * 1.1)
+  expect(atk.value).toBe('28'); // round(25 * 1.1)
+  const bounds = [...card.querySelectorAll('.bound')].map((b) => b.textContent.trim());
+  expect(bounds).toEqual(['41', '43', '26', '29']); // the Crystal Drake roll range 37-39 / 24-26 at level 2
+  expect(card.querySelector('[data-testid="mount-roll"]').textContent.replace(/\s+/g, ' ')).toContain('level 1 roll: 37% HP, 25% ATK');
+  setField(hp, '42');
+  expect(rosterStore.current.mounts[0].baseHp).toBe(38);
+  expect(field(cards()[0], 'Health').value).toBe('42');
+});
