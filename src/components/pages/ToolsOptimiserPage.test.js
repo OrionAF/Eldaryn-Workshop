@@ -479,6 +479,8 @@ it('§3: the Estimate section shows builds, fights and time, or a link to calibr
   expect(view.q('[data-testid="estimate-builds"] .num').textContent).toMatch(/^[\d,]+$/);
   expect(view.q('[data-testid="estimate-fights"] .num').textContent).toMatch(/^[\d,]+$/);
   expect(view.q('[data-testid="estimate-time"] a').getAttribute('href')).toBe('#/settings');
+  // no saved run like this yet: the measured prior, and it says so
+  expect(view.q('[data-testid="estimate-source"]').textContent).toMatch(/reference character/);
   view.done();
   view = null;
   setEstimatePrefs({ calibration: { profile: 'balanced', workers: 4, fightsPerSec: { dummy: 100, dungeon: 100, duel: 100 }, measuredAt: Date.now(), version: ESTIMATE_VERSION } });
