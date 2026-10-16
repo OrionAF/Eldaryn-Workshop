@@ -754,36 +754,109 @@ checkpoint as `resumeFrom`. The page sends the character with `runs: []`, so sav
 
 ### Estimates
 
-Code: `src/lib/search/estimate.js` `estimateRun(request, {calibration})`; UI: the Estimate section of the
-Optimiser setup (`components/optimiser/SetupEstimate.svelte`), recomputed on every setup change. It runs
-`prepare` and reads the build space, never simulates, and returns builds, fights and time, each as
-`lo` / `likely` / `hi` with its basis. Every figure is shown as an estimate (decision Q5).
+Code: `src/lib/search/estimate.js` `estimateRun(request, {calibration, history})`; UI: the Estimate section of the
+Optimiser setup (`components/optimiser/SetupEstimate.svelte`), recomputed on every setup change, with `history` =
+the saved runs of every character in the roster. It runs `prepare` and reads the build space, never simulates,
+and returns builds, fights and time, each as `lo` / `likely` / `hi` with its basis, plus `source` (where the
+per-build cost came from). Every figure is shown as an estimate (decision Q5).
 
-- **Builds (exact).** When the search will be exhaustive (§Strategy) and the joint space holds at most
+**Why a model, not a bound.** Fights per build depend on the objective's noise against δ: a DPS race on a dummy
+settles most arms at the first look (about 8 fights per build at Quick), a win-rate race between near-equal
+builds needs hundreds to thousands. The hard worst case (every comparison at maxN for every possible finalist)
+was the old `hi`; it never happens and spanned six orders of magnitude, so it is gone. No run is capped, so a
+very unlucky run can still exceed the range; the disclosure says so.
+
+- **Families.** `familyOf(objective, target)`: `dps` (DPS on a dummy, World Boss or custom mob), `fortress`
+  (the Fortress boss), `winrate` (win-chance, win-rate, Push and survival: proportions against PVE), `pvp` (PVP duel win
+  rate), `celestial` (Celestial Trial). Runs in one family cost alike per build.
+- **Builds (exhaustive, exact).** When the search will be exhaustive (§Strategy) and the joint space holds at most
   `LIVE_ENUMERATE_MAX` = 1 000 builds, the count is the search's own list (`search.js enumerateJoint`, the
-  domains after legality, glyph and mount dominance) less the builds below the Combat Power floor. It is
-  the run's `search.evaluated` unless builds equal in engine inputs merge (§Builds equal in effect). Between
-  1 000 and `EXHAUSTIVE_MAX` the product of the block sizes stands in (the list can differ from it).
-- **Builds (local, assumed).** One pass of the coordinate ascent races every value of each enabled block
-  (`domainSizes` at the current build), a spec or mount switch plus its inner ascent, and the two-point
-  talent moves (`twoPointMoves`) once per ascent. `lo` is one start converging in one pass; `likely` every
-  start (§Strategy: the baseline, other specs, other gear sets, the talent fill, `randomStarts`) at 3 passes
-  with one inner pass; `hi` every start at 8 outer and 8 inner passes. How many passes an ascent takes
-  depends on what it finds, so 8 is an assumption, not a bound. Domain sizes are taken at the current build.
-- **Fights.** Fights are counted per build, stage and lane (§Progress), so the race rules give the range:
-  `lo` = builds `lo` × n0 × lanes (every arm resolved at the first look, no change found, so no minimise or
-  confirm), plus the goal check of a win-rate goal; `likely` = builds `likely` × 2 n0 × lanes (§Cost:
-  about 2 × n0 per build); `hi` = every comparison at maxN for builds `hi`, the baseline, and every possible
-  finalist (exhaustive: every other build; local: each start's last pass) with its minimise builds
-  (1 + m(m + 1) / 2) and confirm and attribution builds (2 + 2m), m the most changes the enabled blocks
-  allow. PVP lanes are its matchups.
-- **Time.** fights / the calibrated speed of the target's fight kind (§Speed calibration). The calibrated
-  speed is the whole pool's, so it is not divided by the workers again. Kinds (an assumption, labelled):
-  dummy, World Boss and custom mob are dummy-kind windows, scaled by the window over the 60 s calibration
-  fight; chapter, dungeon, raid and Oblivion are dungeon-kind; the Fortress boss (duel engine) and PVP
-  are duel-kind (an unmeasured duel counts at the slowest measured speed). A target kind not in
-  `FIGHT_KIND_OF`, or no calibration, shows builds and fights and says why there is no time.
+  domains after legality, glyph and mount dominance) less the builds below the Combat Power floor. It is the
+  run's `search.evaluated` unless builds equal in engine inputs merge (§Builds equal in effect). Between 1 000
+  and `EXHAUSTIVE_MAX` the product of the block sizes stands in.
+- **Builds (local).** `starts` (`nominalStarts`: the baseline, each other spec, each other gear set, the
+  talent fill, `randomStarts`) times the builds per start, `sweepBuilds` = 1 + `base` x (other values of the
+  fixed-domain blocks) + `talent` x (sqrt(talent moves + 1) - 1), at the current build's domain sizes
+  (`SWEEP_MODEL`: `dps`/`fortress` base 2.5, talent 19; the other families base 1.5, talent 75). `evaluated`
+  counts distinct builds, so a re-sweep around an unchanged incumbent adds little, while each accepted talent
+  move shifts the talent neighbourhood; a win-rate ascent moves points much further than a DPS one (S85: 22
+  sweeps of its 7 talent moves on a chapter, 3 on the dummy). The measured spread around the model is x0.36 to
+  x1.8, so `SWEEP_MODEL.band` = [0.35, 1, 2.2].
+- **Fights.** Search fights = builds x search fights per build x lanes. Later fights (minimise, confirm,
+  attribute) depend on the finalists and their changes, not on how many builds were tried: the prior takes
+  `later` per block with a choice (in a small space they are most of the run: PVP mount + major glyphs,
+  4 104 of 8 328) plus `share` of the search fights (a long search leaves more close finalists: S85 every
+  block on a chapter, 2.1 M after a 7.0 M search). Every build is sampled to n0, so builds `lo` x n0 x lanes
+  is a hard floor. PVP lanes are its matchups.
+- **From history** (`matchHistory`). A saved run is usable when it is schema 2, has `cost` (data-model.md;
+  `model/runs.js`), was not aborted and is not a Push run; it must be of the same family and strategy. Tiers,
+  strictest first, the first with any run wins, newest `HISTORY_MAX` = 8 of it: `same` (same target key,
+  objective kind, Effort level and allowed blocks), `like` (same target kind, objective kind and Effort),
+  `family` (same Effort), `other-effort` (scaled, below). Each past run gives its builds per start relative to
+  `sweepBuilds` of its own domains (its random starts are not saved; the app always uses the default 3), its
+  search fights per build, and its later fights as a ratio to its search.
+  - `same`: each run is a point for this setup; `likely` is their geometric mean and `lo` / `hi` their least
+    and most divided / multiplied by `HISTORY_MARGIN` (x1.5 for one run, x1.25 for two or more), so one run
+    gives a 2.25x range.
+  - `like`, `family`, `other-effort`: another setup's per-build cost carries over, but its sweeps do not,
+    and per-build cost differs between setups of one family about as much as the prior allows (159 to 781
+    win-rate fights per build in the table below). The runs set the centre (builds per start, fights per
+    build, later ratio); the spread is the prior's (`SWEEP_MODEL.band`, the prior's fights-per-build band)
+    or the runs' own, whichever is wider. On `family` and `other-effort` (another target kind) the centre of
+    fights per build is the geometric mean of the runs' and the prior's.
+  - The UI says "From your N past runs like this" (or "of this setup", "of the same kind of objective").
+- **Without history** (`PRIOR`, at Quick, per lane): search fights per build by strategy, later fights per
+  choice block and the later share of the search, each `[lo, likely, hi]`. The build spread and the
+  fights-per-build spread are taken as independent, so they add in quadrature on a log scale
+  (`exp(hypot(ln a, ln b))`); the later terms add straight. The UI says "From runs on a reference
+  character; no run like this on this device yet". The Celestial band is a guess (`measured: false`): a
+  Celestial run was too slow to benchmark (backlog §16 follow-up), and the UI says it is a rough guess. So
+  is the PVP local band: a PVP talent ascent ran over 40 minutes on one thread and was dropped from the
+  benchmark, so `pvp` reuses the win-rate bands (one measured exhaustive run agrees: 469 search fights per
+  build).
+- **Effort scaling** (an assumption, labelled): from one level to the next n0 doubles (x2) and δ halves, so a
+  near-tie needs about 4x (fights ~ 1/δ²). `EFFORT_STEP` = [2, 2.83, 4] per level as lo / likely / hi; the
+  prior is stated at Quick, and history from another level is scaled by the likely factor with its own
+  spread added to the range.
+- **Time.** When matching history (`same` or `like`, not scaled) has wall times of the same target kind (for a
+  dummy-kind window, the same length), time = fights / their observed rate (sum of fights / sum of
+  `elapsedMs`), and the basis says so. Otherwise fights / the calibrated speed of the target's fight kind
+  (§Speed calibration). The calibrated speed is the whole pool's, so it is not divided by the workers again.
+  Kinds (an assumption, labelled): dummy, World Boss and custom mob are dummy-kind windows, scaled by the
+  window over the 60 s calibration fight; chapter, dungeon, raid and Oblivion are dungeon-kind; the Fortress
+  boss (duel engine) and PVP are duel-kind (an unmeasured duel counts at the slowest measured speed). A target
+  kind not in `FIGHT_KIND_OF`, or no calibration and no observed rate, shows builds and fights and says why
+  there is no time. The time range follows the fights range.
 - **Push** runs this search at its start rung; the estimate covers that one search and says so.
+
+**Measured** (`src/lib/search/estimate.bench.test.js`, skipped by default; `ESTIMATE_BENCH=1`, Quick, seed 1,
+the default 3 random starts, one thread, 2026-10-15). Reference characters: the sanitised profile captures in
+`src/lib/__fixtures__/real/` (W72, W73: the Warrior L72 and L73 profiles; S85: Sentinel L85, `oct15b`).
+"Prior" is the estimate with no history. The last column feeds every other measured run as history (the
+tier that matched and its run count). Fed its own run back (`same`), each estimate's likely value equals the
+run's fights, with a x1.5 margin each way. Every actual count is inside the prior range; across setups
+(the last column) the likely value is within 0.2x to 3.1x of the actual, and inside the range in every row.
+
+| Setup | Blocks | Builds: actual (prior lo / likely / hi) | Fights: actual (search + later) | Prior lo / likely / hi | Others as history: tier, lo / likely / hi |
+|---|---|---|---|---|---|
+| S85, dummy 60 s, DPS | sigils | 299 (exact) | 2,440 (2,416 + 24) | 2,392 / 2,795 / 6,728 | like (1): 2,392 / 2,585 / 5,744 |
+| W73, dummy, DPS | minor glyphs, mount | 124 (exact) | 1,072 (992 + 80) | 992 / 1,238 / 3,028 | like (1): 992 / 1,012 / 2,249 |
+| S85, dummy, DPS | talents | 127 (63 / 179 / 393) | 920 (840 + 80) | 542 / 1,690 / 5,584 | like (3): 448 / 1,419 / 7,094 |
+| W73, dummy, DPS | talents, mount, major glyphs | 38 (37 / 107 / 235) | 520 (304 + 216) | 372 / 1,131 / 3,699 | like (3): 336 / 979 / 3,211 |
+| W73, dummy, DPS | all | 8,040 (2,000 / 5,715 / 12,572) | 71,328 (70,360 + 968) | 16,871 / 52,910 / 175,120 | like (2): 8,048 / 26,335 / 109,798 |
+| S85, Chrono Sanctum 6, win chance | sigils | 299 (exact) | 47,744 (47,624 + 120) | 36,052 / 124,188 / 673,760 | family (1): 44,016 / 146,720 / 586,882 |
+| S85, chapter 10-7, win chance | minor glyphs | 78 (exact) | 44,808 (42,760 + 2,048) | 9,479 / 33,136 / 178,720 | family (1): 5,921 / 19,738 / 78,950 |
+| S85, chapter 10-8, win chance | talents | 881 (647 / 1,849 / 4,067) | 687,680 (684,424 + 3,256) | 150,073 / 762,594 / 5,104,815 | like (4): 137,325 / 707,648 / 4,360,065 |
+| W72, chapter 10-3, win chance | talents, mount, major glyphs | 1,718 (990 / 2,827 / 6,220) | 642,784 (641,576 + 1,208) | 229,682 / 1,167,850 / 7,813,641 | like (4): 238,065 / 1,237,018 / 7,536,942 |
+| W72, chapter 10-3, win chance | sigils, talents | 4,794 (1,759 / 5,025 / 11,055) | 1,494,832 (1,378,344 + 116,488) | 407,868 / 2,072,220 / 13,873,401 | like (3): 454,288 / 2,271,412 / 14,423,654 |
+| S85, chapter 10-7, win chance | all | 11,975 (2,324 / 6,641 / 14,610) | 9,150,784 (7,002,664 + 2,148,120) | 539,587 / 2,744,068 / 18,356,950 | like (4): 379,768 / 1,902,370 / 10,006,961 |
+| W73 vs its clone, PVP | mount, major glyphs | 9 (exact) | 8,328 (4,224 + 4,104) | 1,282 / 8,172 / 28,160 | none (prior) |
+| W73, Fortress boss, DPS | sigils | 109 (exact) | 904 (872 + 32) | 872 / 1,051 / 2,548 | none (prior) |
+
+A user run of the same kind as the last win-rate row (Infernal Temple step 8, highest chance to win, Quick,
+every block) had tried 3 278 builds and used 3 965 960 fights by its minimise phase. The S85 prior for that
+setup is 2 324 / 6 641 / 14 610 builds and 0.54 M / 2.7 M / 18.4 M fights (the old estimate: 2 744 to
+2.76 billion fights).
 
 ## Push
 

@@ -3,7 +3,8 @@
    * SetupEstimate.svelte - the Optimiser setup's "Estimate" section (backlog §3): builds to try, fights to
    * simulate and time on this device, recomputed as the setup changes. Every figure is an estimate (decision
    * Q5): search/estimate.js computes it; what is exact and what is assumed is simulation.md §Estimates.
-   * setup: the page's setup as plain data (presetId resolved, PVP opponents filtered); character: the live one.
+   * setup: the page's setup as plain data (presetId resolved, PVP opponents filtered); character: the live one;
+   * history: saved runs of every character, which the estimate learns from (simulation.md §Estimates).
    */
   import { prefs } from '../../lib/prefs.svelte.js';
   import { staleReason, durationText } from '../../lib/calibration.js';
@@ -12,12 +13,12 @@
   import { fmtCount } from '../../lib/ui/statsFormat.js';
   import ProvenanceTag from '../ui/ProvenanceTag.svelte';
 
-  let { setup, character } = $props();
+  let { setup, character, history = [] } = $props();
 
   const cal = $derived(prefs.calibration);
   const est = $derived.by(() => {
     try {
-      return estimateRun(requestOf(setup, character), { calibration: cal });
+      return estimateRun(requestOf(setup, character), { calibration: cal, history });
     } catch (e) {
       return { ok: false, reason: e?.message ?? String(e) };
     }
@@ -25,6 +26,7 @@
   const stale = $derived(cal ? staleReason(cal, { profile: prefs.cpuProfile }) : null);
   const span = (lo, hi) => lo !== hi;
   const dur = (s) => (s < 60 ? 'under a minute' : durationText(s));
+  const about = (s) => (s < 60 ? 'under a minute' : `about ${durationText(s)}`);
 </script>
 
 <section class="estimate" data-testid="setup-estimate">
@@ -57,7 +59,7 @@
         <dt>Time on this device</dt>
         <dd>
           {#if est.time}
-            about <span class="num big">{dur(est.time.likely)}</span>
+            <span class="num big">{about(est.time.likely)}</span>
             <span class="sub">range <span class="num">{dur(est.time.lo)}</span> to <span class="num">{dur(est.time.hi)}</span></span>
           {:else if est.timeReason === 'no-calibration'}
             <span class="sub">Needs a speed calibration. <a href="#/settings">Calibrate speed</a></span>
@@ -67,7 +69,8 @@
         </dd>
       </div>
     </dl>
-    {#if est.time && stale}
+    <p class="hint" data-testid="estimate-source">{est.source.text}</p>
+    {#if est.time && est.time.source === 'calibration' && stale}
       <p class="hint">{stale === 'profile' ? 'The speed was measured under another CPU profile.' : 'The speed was measured on an older build.'}</p>
     {/if}
     {#if est.push}
@@ -76,6 +79,9 @@
     <details class="basis">
       <summary>How this is estimated</summary>
       <ul>
+        <li>{est.source.kind === 'history'
+          ? 'Fights per build, and for a local search the builds per start, come from past runs on this device. The range spans those runs with a margin.'
+          : 'No run like this has finished on this device, so a table measured on a reference character stands in. Once a run like this finishes, the estimate uses it.'}</li>
         <li>Builds: {est.builds.basis}</li>
         <li>Fights: {est.fights.basis}</li>
         {#if est.time}<li>Time: {est.time.basis}</li>{/if}

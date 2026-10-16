@@ -67,6 +67,10 @@ Character = {
                               // `powerFloor` (the run's Combat Power guard) and each Row's `power` are kept when present;
                               // optional `debug` {level, phases, blocks, totals} = a debug-logged run's summary, never its rows
                               // (model/debugLog.js normaliseDebugSummary; simulation.md §Debug log)
+                              // optional `cost` {strategy, starts, domains: {block: values}, lanes, fights: {search, minimise,
+                              // confirm, total}, elapsedMs} = what a finished run cost, which the setup estimate learns from
+                              // (model/runs.js normaliseCost; simulation.md §Estimates); absent on older runs and on a run that
+                              // stopped at its first check
 }
 
 Preset = { id, name, equipmentSet: 1|2, talentSet: 0|1, petId | null, mountId | null,

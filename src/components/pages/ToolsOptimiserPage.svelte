@@ -67,6 +67,8 @@
   const character = $derived(rosterStore.current);
   // the roster's other characters: Celestial partners (their presets are resolved into the request)
   const others = $derived(otherCharacters(character, rosterStore.roster?.characters ?? []));
+  // every character's saved runs: the setup estimate learns from runs like the one being set up
+  const allRuns = $derived((rosterStore.roster?.characters ?? []).flatMap((c) => c.runs ?? []));
 
   // ---- setup, kept per character in the UI key ---------------------------------------------------
 
@@ -397,7 +399,7 @@
           </p>
         </section>
 
-        <SetupEstimate setup={estimateSetup} {character} />
+        <SetupEstimate setup={estimateSetup} {character} history={allRuns} />
 
         {#each blockers as b (b.text)}
           <Banner variant="warn">
