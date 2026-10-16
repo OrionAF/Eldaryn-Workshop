@@ -24,6 +24,9 @@
 //   }
 //   steps: [{id, state, reason, pass, tried, fights, improved}]   optional: the search's final per-block rows
 //     (simulation.md §Progress); absent on a run saved before they existed, on a Push run and on a cancelled one
+//   cost: {strategy, starts, domains: {block: values}, lanes, fights: {search, minimise, confirm, total}, elapsedMs}   optional: what
+//     the run cost, which the setup's estimate learns from (simulation.md §Estimates); absent on a run saved
+//     before it existed and on a run that stopped at its first check (no search)
 //   debug: {level, phases, blocks, totals}   optional: the debug log's summary (model/debugLog.js); only on a
 //     run made with the debug log on (simulation.md §Debug log)
 //   RunEntry = {rank, isBaseline, key, candidate, value, lo, hi, n, score, vsBaseline, changes, lines}
@@ -187,6 +190,36 @@ function normaliseSteps(steps) {
   return rows.length ? rows : null;
 }
 
+const STRATEGIES = ['exhaustive', 'local'];
+const PHASE_FIGHTS = ['search', 'minimise', 'confirm'];
+const posInt = (v) => (Number.isInteger(v) && v >= 1 ? v : null);
+/** A run's cost (simulation.md §Estimates); null when absent or unusable. `total` is recomputed from the phases. */
+function normaliseCost(c) {
+  if (!isObj(c) || !STRATEGIES.includes(c.strategy) || !isObj(c.fights) || posInt(c.starts) == null) return null;
+  const fights = Object.fromEntries(PHASE_FIGHTS.map((k) => [k, int(c.fights[k])]));
+  if (PHASE_FIGHTS.some((k) => fights[k] == null)) return null;
+  const domains = Object.fromEntries(Object.entries(isObj(c.domains) ? c.domains : {})
+    .filter(([id, n]) => /^[a-zA-Z]{1,24}$/.test(id) && posInt(n) != null).slice(0, 32));
+  return {
+    strategy: c.strategy, starts: c.starts, domains, lanes: posInt(c.lanes) ?? 1,
+    fights: { ...fights, total: fights.search + fights.minimise + fights.confirm },
+    elapsedMs: int(c.elapsedMs),
+  };
+}
+
+/** The cost of a finished result: the search's fight counts and shape (search.js searchSummary), or null. */
+function costOf(result) {
+  const s = result.search;
+  if (!isObj(s) || !isObj(s.fights)) return null;
+  const enabled = (Array.isArray(s.blocks) ? s.blocks : []).filter((b) => b?.enabled);
+  return {
+    strategy: s.strategy, starts: s.starts ?? 1,
+    domains: Object.fromEntries(enabled.map((b) => [b.id, b.domain ?? 1])),
+    lanes: Math.max(1, (result.baseline?.aux?.matchups ?? result.rows?.[0]?.aux?.matchups)?.length ?? 0),
+    fights: s.fights, elapsedMs: Number.isFinite(result.stats?.ms) ? Math.round(result.stats.ms) : null,
+  };
+}
+
 function normaliseHeadline(h) {
   const x = isObj(h) ? h : {};
   return {
@@ -264,6 +297,7 @@ export function normaliseRun(raw) {
     applied,
     headline: normaliseHeadline(raw.headline),
     ...(normaliseSteps(raw.steps) ? { steps: normaliseSteps(raw.steps) } : {}),
+    ...(normaliseCost(raw.cost) ? { cost: normaliseCost(raw.cost) } : {}),
     // a run made with the debug log on keeps its per-phase / per-block summary, never its rows
     ...(normaliseDebugSummary(raw.debug) ? { debug: normaliseDebugSummary(raw.debug) } : {}),
     detail: normaliseDetail(raw.detail, schema),
@@ -336,6 +370,7 @@ function runFromResultV2(result, fields) {
     characterKey: req.characterKey,
     applied: fields.applied ?? null,
     steps: result.search?.steps ?? null,
+    cost: costOf(result),
     debug: result.debug?.summary ?? null,
     headline: {
       unit, higherIsBetter: result.objective?.higherIsBetter, tier: 2, aborted: false, truncated: null,
