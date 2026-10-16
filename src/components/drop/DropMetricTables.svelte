@@ -18,16 +18,16 @@
 
   const tables = $derived(metricTables(cards).map((t) => ({ ...t, domain: forestDomain(t.rows) })));
   const num = (t, v) => (t.unit === 'pct' ? signedPct(v, 1) : `${v > 0 ? '+' : ''}${v.toFixed(1)} pts`);
-  const sentence = (t, r) => `${r.label}: ${num(t, r.est)}, 95% interval ${num(t, r.lo)} to ${num(t, r.hi)}, N ${fmtCount(r.n)}`;
-  const chipLabel = { better: 'Better', worse: 'Worse', equivalent: 'Within noise', unresolved: 'Too close to call' };
+  const sentence = (t, r) => `${r.label}: ${num(t, r.est)}, likely range ${num(t, r.lo)} to ${num(t, r.hi)}, ${fmtCount(r.n)} fights`;
+  const chipLabel = { better: 'Clearly better', worse: 'Clearly worse', equivalent: 'About the same', unresolved: 'Too close to call' };
 </script>
 
 {#each tables as t (t.id)}
-  <div class="tbl" role="table" aria-label="{t.title}: change, 95% intervals" data-metric-table={t.id}>
+  <div class="tbl" role="table" aria-label="{t.title}: change, with likely range" data-metric-table={t.id}>
     <div class="trow thead" role="row">
       <span role="columnheader" class="cap-label">{t.title}</span>
       <div role="columnheader"><ForestAxis domain={t.domain} title={t.axisTitle} /></div>
-      <span role="columnheader" class="cap-label right">Δ · 95% CI</span>
+      <span role="columnheader" class="cap-label right">Change · likely range</span>
       <span role="columnheader" class="cap-label">Verdict</span>
     </div>
     {#each t.rows as r (r.key)}
@@ -36,7 +36,7 @@
         <div role="cell"><CIForest domain={t.domain} est={r.est} lo={r.lo} hi={r.hi} tone={r.tone} label={sentence(t, r)} /></div>
         <div role="cell" class="delta">
           <span class="v num {r.tone}">{num(t, r.est)}</span>
-          <span class="ci num">[{num(t, r.lo)}, {num(t, r.hi)}] · N {fmtCount(r.n)}</span>
+          <span class="ci num">[{num(t, r.lo)}, {num(t, r.hi)}] · {fmtCount(r.n)} fights</span>
         </div>
         <span role="cell"><VerdictChip verdict={r.verdict} label={chipLabel[r.verdict] ?? chipLabel.unresolved} /></span>
       </div>

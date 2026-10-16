@@ -24,15 +24,15 @@
   const domain = $derived(forestDomain(items));
   const tone = (v) => (v?.verdict === 'better' ? 'up' : v?.verdict === 'worse' ? 'down' : 'side');
   const sentence = (r) =>
-    `${r.label}: win rate ${pct(r.summary.p)}, 95% interval ${pct(r.summary.lo)} to ${pct(r.summary.hi)}, ${fmtCount(r.summary.n)} duels.`;
+    `${r.label}: win rate ${pct(r.summary.p)}, likely between ${pct(r.summary.lo)} and ${pct(r.summary.hi)}, from ${fmtCount(r.summary.n)} fights.`;
 </script>
 
-<div class="ci-table" role="table" aria-label="Win rate against even, by seat, 95% intervals" data-testid="win-rate-table">
+<div class="ci-table" role="table" aria-label="Win rate by seat, with its likely range" data-testid="win-rate-table">
   <div class="ci-row head" role="row">
     <span class="micro" role="columnheader">Seat</span>
-    <span class="micro" role="columnheader">Win rate · 95% CI</span>
-    <div role="columnheader"><ForestAxis {domain} title="Win rate vs even (pts)" format={(t) => (t > 0 ? `+${t}` : t < 0 ? `−${Math.abs(t)}` : '0')} /></div>
-    <span class="micro r" role="columnheader">vs even</span>
+    <span class="micro" role="columnheader">Win rate · likely range</span>
+    <div role="columnheader"><ForestAxis {domain} title="Points above or below 50%" format={(t) => (t > 0 ? `+${t}` : t < 0 ? `−${Math.abs(t)}` : '0')} /></div>
+    <span class="micro r" role="columnheader">Against 50%</span>
     <span class="micro" role="columnheader">Verdict</span>
   </div>
   {#each items as r (r.id)}
@@ -40,15 +40,15 @@
       <span class="seat" role="cell">{r.label}</span>
       <div class="value" role="cell">
         <span class="v num" data-testid={r.id === items[0].id ? 'win-rate' : undefined}>{pct(r.summary.p)}</span>
-        <span class="ci num" data-testid={r.id === items[0].id ? 'win-ci' : undefined}>[{pct(r.summary.lo)} to {pct(r.summary.hi)}] · N={fmtCount(r.summary.n)}</span>
+        <span class="ci num" data-testid={r.id === items[0].id ? 'win-ci' : undefined}>likely {pct(r.summary.lo)} to {pct(r.summary.hi)} · {fmtCount(r.summary.n)} fights</span>
       </div>
       <div role="cell"><CIForest {domain} est={r.est} lo={r.lo} hi={r.hi} tone={tone(r.v)} label={sentence(r)} /></div>
-      <span class="r num" role="cell">{signed(r.est)} pts</span>
+      <span class="r num" role="cell">{signed(r.est)} points</span>
       <span role="cell">
         {#if partial}
-          <VerdictChip verdict="unresolved" label="Inconclusive / partial" />
+          <VerdictChip verdict="unresolved" label="Not finished" />
         {:else}
-          <VerdictChip verdict={r.v?.verdict ?? 'unresolved'} label={r.v?.verdict === 'better' ? 'Favoured' : r.v?.verdict === 'worse' ? 'Unfavoured' : 'Too close to call'} />
+          <VerdictChip verdict={r.v?.verdict ?? 'unresolved'} label={r.v?.verdict === 'better' ? 'Likely to win' : r.v?.verdict === 'worse' ? 'Likely to lose' : 'Too close to call'} />
         {/if}
       </span>
     </div>

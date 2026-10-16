@@ -64,7 +64,7 @@ it('a change kept for the floor says so', () => {
   r.rows[0].changes[0].keptBecause = 'power-floor';
   view = setup(OptimiserResults, { view: viewResult(r), presetName: 'Main' });
   click(view.q('[data-testid="result-row"] button[aria-expanded]'));
-  expect(view.target.textContent).toContain('Kept to stay at or above the Combat Power floor');
+  expect(view.target.textContent).toContain('Kept to stay at or above your minimum Combat Power');
 });
 
 // ---- the page --------------------------------------------------------------------------------------

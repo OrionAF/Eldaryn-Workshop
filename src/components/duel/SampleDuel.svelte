@@ -38,12 +38,12 @@
   const secs = (ms) => `${(ms / 1000).toFixed(1)} s`;
 </script>
 
-<Panel title="One sample duel (not a statistic)" scope="tool">
+<Panel title="One sample duel (a single fight, not the win rate)" scope="tool">
   {#snippet meta()}
     <span class="note">
       {#if seed != null}seed <span class="num">{seed}</span> · {/if}{won === null ? '' : won ? 'you win' : 'you lose'}{#if traceResult?.totalDuration}{' '}in <span class="num">{secs(traceResult.totalDuration)}</span>{/if}
     </span>
-    <Button variant="ghost" size="small" disabled={rerolling} onclick={onreroll}>Re-roll sample</Button>
+    <Button variant="ghost" size="small" disabled={rerolling} onclick={onreroll}>Show another sample</Button>
   {/snippet}
 
   <div class="tl">

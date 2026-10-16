@@ -52,7 +52,7 @@ describe('Celestial target spec', () => {
     expect([t.maxMs, t.seconds]).toEqual([360000, 360]);
     const ids = t.assumptions.map((a) => a.id);
     for (const a of Object.values(CELESTIAL_ASSUMPTIONS)) expect(ids).toContain(a.key);
-    expect(t.assumptions.find((a) => a.id === 'celestial-partner').label).toMatch(/roster/);
+    expect(t.assumptions.find((a) => a.id === 'celestial-partner').label).toMatch(/your characters/);
     expect(targetOut(t).assumptions.find((a) => a.id === 'celestial-server').tag).toBe('SERVER');
     // an explicit level is echoed and wins; NORMAL has its own default hold count
     expect(resolveHard({ level: 95 }).label).toBe(`Celestial Trial (HARD, L95, with ${warriorChar.name})`);
@@ -138,7 +138,7 @@ describe('Celestial partner', () => {
   it('a dangling reference is a clear error at resolve and normalises to no partner in a saved setup', () => {
     expect(rosterPartnerFor(hard(), [me])).toBeNull();
     expect(() => resolveTarget(hard(), { character: me })).toThrow(/missing \(it may have been deleted\)/);
-    expect(() => resolveRosterPartner(rosterRef, [me])).toThrow(/no longer in the roster/);
+    expect(() => resolveRosterPartner(rosterRef, [me])).toThrow(/no longer one of your characters/);
     expect(() => resolveRosterPartner({ ...rosterRef, presetId: 'gone' }, roster)).toThrow(/no such preset/);
     const saved = { target: hard({ tank: 'partner', starter: 'partner' }), objective: { kind: 'win-rate', target: 0.8 } };
     // the character is gone from the roster

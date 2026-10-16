@@ -4,7 +4,7 @@
    *
    * The set verdict (VerdictChip in the header) is the Holm-judged verdict of every preset wearing the
    * set. Under it the coverage line says what was measured ("DPS only: defence not measured") and which
-   * changed stats nothing judged. Per-preset metric rows show value, delta, 95% interval and N. The
+   * changed stats nothing judged. Per-preset metric rows show value, delta, likely range and fight count. The
    * closed-form figure sits last, labelled ESTIMATE, in muted text: never a verdict, never coloured.
    * Apply is scoped: the first press names the scope and the presets it changes, the second writes.
    *
@@ -16,7 +16,7 @@
   import ProvenanceTag from '../ui/ProvenanceTag.svelte';
   import Button from '../ui/Button.svelte';
   import { chipFor, pctInterval } from '../../lib/features/dropView.js';
-  import { fmtContrast, fmtContrastCi, fmtCount, fmtScalar, nNeededText, verdictText } from '../../lib/ui/statsFormat.js';
+  import { fmtContrast, fmtContrastCi, fmtCount, fmtScalar, nNeededText } from '../../lib/ui/statsFormat.js';
   import { signedPct } from './dropFormat.js';
 
   let { card, phase = 'idle', onapply, onrunmore = null } = $props();
@@ -31,10 +31,13 @@
   function figure(m) {
     if (m.unit === 'dps') {
       const p = pctInterval(m.m);
-      return p ? { text: signedPct(p.est, 2), ci: `95% CI ${signedPct(p.lo, 2)} to ${signedPct(p.hi, 2)}` } : { text: 'n/a', ci: '' };
+      return p ? { text: signedPct(p.est, 2), ci: `likely range ${signedPct(p.lo, 2)} to ${signedPct(p.hi, 2)}` } : { text: 'n/a', ci: '' };
     }
     return { text: fmtContrast('p', m.m.delta), ci: fmtContrastCi('p', m.m.delta) };
   }
+  /** Plain-words verdict of one metric; a close call names the fights it stopped at. */
+  const verdictLine = (c) =>
+    c.verdict === 'better' ? 'Clearly better' : c.verdict === 'worse' ? 'Clearly worse' : c.verdict === 'equivalent' ? 'About the same' : `Too close to call after ${fmtCount(c.n)} fights`;
   const tone = (m) => (m.m.delta.verdict === 'better' ? 'up' : m.m.delta.verdict === 'worse' ? 'down' : 'side');
 
   function apply() {
@@ -52,9 +55,9 @@
   </header>
 
   <p class="coverage" data-coverage={card.basis}>
-    {card.basis === 'sim' ? card.coverageLabel : pending ? 'Simulation not finished' : 'Not simulated yet'}
-    {#if card.notJudged.length}. Not judged: {card.notJudged.join(', ')}{/if}
-    {#if card.unresolved}. Too close to call at the largest run size.{/if}
+    {card.basis === 'sim' ? card.coverageLabel : pending ? 'Check not finished' : 'Not checked yet'}
+    {#if card.notJudged.length}. Not checked: {card.notJudged.join(', ')}{/if}
+    {#if card.unresolved}. Still too close to call after the most fights allowed.{/if}
   </p>
 
   {#if card.basis === 'sim'}
@@ -62,7 +65,7 @@
       {#each card.presets as p (p.presetId)}
         <div class="preset">
           <span class="pname">{p.name}</span>
-          <span class="basis">{p.method === 'anchored' ? (p.approx ? 'anchored on your sheet, approximate' : 'anchored on your sheet') : 'recomputed from gear'}</span>
+          <span class="basis">{p.method === 'anchored' ? (p.approx ? 'based on your in-game stats, approximate' : 'based on your in-game stats') : 'calculated from your gear'}</span>
         </div>
         {#each p.metrics as m (m.id)}
           {@const f = figure(m)}
@@ -70,7 +73,7 @@
             <span class="lbl">{m.label}</span>
             <span class="val num">{fmtScalar(m.unit === 'dps' ? 'dps' : 'p', m.m.before.mean)} → {fmtScalar(m.unit === 'dps' ? 'dps' : 'p', m.m.after.mean)}</span>
             <span class="d num {tone(m)}">{f.text}</span>
-            <span class="ci num">{f.ci} · N {fmtCount(m.m.delta.n)} · {verdictText(m.m.delta)}</span>
+            <span class="ci num">{f.ci} · {fmtCount(m.m.delta.n)} fights · {verdictLine(m.m.delta)}</span>
           </div>
         {/each}
       {/each}
@@ -80,9 +83,9 @@
   <p class="estimate">
     <ProvenanceTag kind="estimate" />
     {#if card.estimatePct != null}
-      Instant estimate (auto-attacks only, no interval): <span class="num est">{signedPct(card.estimatePct, 1)}</span> on {card.setLabel}. Shown for reference; the verdict uses the simulation.
+      Quick estimate (auto-attacks only): <span class="num est">{signedPct(card.estimatePct, 1)}</span> on {card.setLabel}. For reference only; the verdict comes from the simulated fights.
     {:else}
-      No instant estimate for this item.
+      No quick estimate for this item.
     {/if}
   </p>
 
@@ -99,7 +102,7 @@
       </Button>
     {:else}
       <span class="confirm" role="group" aria-label="Confirm apply to {card.setLabel}">
-        <span class="hint">Writes {card.setLabel}; changes {names.join(', ')}.{card.verdict === 'mixed' ? ' This helps some presets and hurts others.' : ''}</span>
+        <span class="hint">This puts the item in {card.setLabel} and changes {names.join(', ')}.{card.verdict === 'mixed' ? ' This helps some presets and hurts others.' : ''}</span>
         <Button variant="primary" size="small" confirming onclick={apply}>Confirm apply</Button>
         <Button variant="ghost" size="small" onclick={() => (confirming = false)}>Cancel</Button>
       </span>

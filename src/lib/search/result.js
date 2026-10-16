@@ -74,9 +74,9 @@ export function headlineOf(rows, worseHidden) {
   const unresolved = count('unresolved');
   const builds = (n) => `${n} build${n === 1 ? '' : 's'}`;
   let text = better ? `${builds(better)} measured better than the current preset.` : 'No change measured better than the current preset.';
-  if (equivalent) text += ` ${builds(equivalent)} equivalent.`;
+  if (equivalent) text += ` ${builds(equivalent)} about the same.`;
   if (unresolved) text += ` ${builds(unresolved)} too close to call.`;
-  if (rows.some((r) => r.provisional)) text = `Provisional: ${rows.length} build${rows.length === 1 ? '' : 's'} not confirmed.`;
+  if (rows.some((r) => r.provisional)) text = `Not final: ${rows.length} build${rows.length === 1 ? '' : 's'} not yet confirmed.`;
   return { better, equivalent, unresolved, worseHidden, text };
 }
 

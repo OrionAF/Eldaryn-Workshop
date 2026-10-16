@@ -2,10 +2,10 @@
 // Optimiser page's "What the steps mean" list. Wording follows simulation.md §Seeds and phases,
 // §Racing and §Minimise and confirm. Other tools' phase ids have no entry and get no hint.
 export const RUN_PHASES = [
-  { id: 'screen', label: 'Screen', text: 'Checks your current build and takes its first measurements. Every other build is compared against it.' },
-  { id: 'search', label: 'Search', text: 'Tries other builds block by block and races each against the best so far. Builds that clearly lose stop early.' },
-  { id: 'minimise', label: 'Minimise', text: 'For each best build, undoes the changes that do not measurably help, so you change as little as possible.' },
-  { id: 'confirm', label: 'Confirm', text: 'Measures each remaining build against your current one on fresh fights, so a gain is not luck from the search.' },
+  { id: 'screen', label: 'Screen', text: 'Checks your current build and takes its first measurements. Every other build is compared with it.' },
+  { id: 'search', label: 'Search', text: 'Tries other builds, one part of your build at a time, and pits each against the best so far. Builds that clearly lose stop early.' },
+  { id: 'minimise', label: 'Minimise', text: 'For each best build, undoes the changes that do not clearly help, so you change as little as possible.' },
+  { id: 'confirm', label: 'Confirm', text: 'Tests each remaining build against your current one on fresh fights, so a gain is not just luck.' },
   { id: 'attribute', label: 'Attribute', text: 'Works out what each kept change adds on its own, and which ones only help together.' },
 ];
 

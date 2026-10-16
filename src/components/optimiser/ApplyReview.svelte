@@ -31,7 +31,7 @@
   {#snippet children()}
     {#if row}
       <div class="review" data-testid="apply-review">
-        <p class="lead">Choose what to write. A group you switch off stays as it is now.</p>
+        <p class="lead">Choose what to change. A group you switch off stays as it is.</p>
         {#each row.writes as g, i (g.title + i)}
           <div class="group" class:off={!on(i)} data-testid="write-group">
             <Checkbox checked={on(i)} label={g.title} onchange={() => flip(i)} />
@@ -48,11 +48,11 @@
         {/each}
         {#if effects.length}
           <Banner variant="warn" lead="Other presets change too.">
-            {effects.map((e) => e.name).join(', ')} use{effects.length === 1 ? 's' : ''} what these groups write. Re-run to measure them against it.
+            {effects.map((e) => e.name).join(', ')} use{effects.length === 1 ? 's' : ''} what these groups change. Run the Optimiser again to check {effects.length === 1 ? 'it' : 'them'}.
           </Banner>
         {/if}
         {#if error}<Banner variant="error" lead="Not applied.">{error}</Banner>{/if}
-        <p class="note">After applying, the preset's stat sheet is checked against the new build; measure again to see the result.</p>
+        <p class="note">After you apply, this preset's in-game stats are checked against the new build. Run the Optimiser again to see the result.</p>
       </div>
     {/if}
   {/snippet}

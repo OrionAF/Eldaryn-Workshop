@@ -42,7 +42,7 @@ export function partnerRefOf(raw) {
   if (raw == null) return null;
   if (!isObj(raw)) throw new Error('Celestial partner must be null or {source, ...}');
   if (raw.source === 'character') {
-    if (!isId(raw.characterId) || !isId(raw.presetId)) throw new Error('Celestial partner from the roster needs characterId and presetId');
+    if (!isId(raw.characterId) || !isId(raw.presetId)) throw new Error('Celestial partner from your characters needs characterId and presetId');
     return { source: 'character', characterId: raw.characterId, presetId: raw.presetId };
   }
   if (raw.source === 'opponent') {
@@ -61,7 +61,7 @@ export function partnerRefOf(raw) {
  */
 export function resolveRosterPartner(ref, characters = []) {
   const c = (characters ?? []).find((x) => x?.id === ref?.characterId);
-  if (!c) throw new Error('Celestial partner: that character is no longer in the roster');
+  if (!c) throw new Error('Celestial partner: that character is no longer one of your characters');
   const p = (c.presets ?? []).find((x) => x.id === ref.presetId);
   if (!p) throw new Error(`Celestial partner: ${c.name || 'that character'} has no such preset any more`);
   return {
@@ -87,7 +87,7 @@ export function rosterPartnerFor(targetSpec, characters) {
 function partnerOf(ref, { character, partner }) {
   if (ref.source === 'character') {
     if (!partner || partner.source !== 'character' || partner.characterId !== ref.characterId || partner.presetId !== ref.presetId || !isObj(partner.fighter)) {
-      throw new Error('Celestial partner: that roster character or preset is missing (it may have been deleted)');
+      throw new Error('Celestial partner: that character or preset is missing (it may have been deleted)');
     }
     const f = partner.fighter;
     return {
@@ -124,7 +124,7 @@ function tacticsOf(raw, difficulty) {
 const partnerLabel = (p) => {
   if (!p) return { id: 'celestial-partner', label: 'Solo: a party of one.' };
   if (p.source === 'character') {
-    return { id: 'celestial-partner', label: `Partner: ${p.name}'s preset${p.detail ? ` ${p.detail}` : ''} from the roster, as saved now; fixed for every build.` };
+    return { id: 'celestial-partner', label: `Partner: ${p.name}'s preset${p.detail ? ` ${p.detail}` : ''} from your characters, as saved now; fixed for every build.` };
   }
   if (p.imported) {
     return { id: 'celestial-partner', label: `Partner: ${p.name}, imported from Rankings (level ${p.level}); its server sheet, sigils and glyphs are taken as given, with no talents modelled. The party scales by the higher level. Fixed for every build.` };

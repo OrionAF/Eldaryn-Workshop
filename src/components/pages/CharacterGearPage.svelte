@@ -169,7 +169,7 @@
     </div>
   {:else}
     <div role="tabpanel" id="gear-view-panel-stones">
-      <Panel title={realm === 'oblivion' ? 'Oblivion pool' : 'Base pool (Set 1 and Set 2)'} scope={realm === 'oblivion' ? 'oblivion' : null}>
+      <Panel title={realm === 'oblivion' ? 'Oblivion stones' : 'Stones for Set 1 and Set 2'} scope={realm === 'oblivion' ? 'oblivion' : null}>
         <div class="stones-layout">
           {#key realm}
             <StoneForm

@@ -8,19 +8,19 @@
   import Textarea from '../ui/Textarea.svelte';
   import Button from '../ui/Button.svelte';
 
-  let { onfile, ontext, error = '', label = 'Drop a JSON file here, or click to choose', primary = false } = $props();
+  let { onfile, ontext, error = '', label = 'Drop a file here, or click to choose', primary = false } = $props();
   let text = $state('');
 </script>
 
 <div class="source">
-  <DropZone {onfile} {label} hint="Game profile, Rankings profile, roster backup, loot bag or fight log" {error} />
+  <DropZone {onfile} {label} hint="Game profile, Rankings profile, backup, loot bag or fight log" {error} />
   <details class="paste" open={!primary}>
-    <summary>Or paste the JSON</summary>
-    <Textarea label="Pasted JSON" rows={5} placeholder={'{ ... }'} bind:value={text} />
-    <div class="row"><Button variant="secondary" disabled={!text.trim()} onclick={() => ontext(text)}>Read pasted JSON</Button></div>
+    <summary>Or paste the text</summary>
+    <Textarea label="Pasted text" rows={5} placeholder={'{ ... }'} bind:value={text} />
+    <div class="row"><Button variant="secondary" disabled={!text.trim()} onclick={() => ontext(text)}>Read pasted text</Button></div>
   </details>
   <p class="kinds">
-    Accepted: your <b>game profile</b> (becomes a character, or updates one), an Eldaryn <b>roster backup</b>, a
+    Accepted: your <b>game profile</b> (becomes a character, or updates one), an Eldaryn <b>backup</b>, a
     <b>Rankings profile</b> (another player, saved as an opponent), a <b>loot bag</b> (new drops for Drop Check) and an arena <b>fight log</b> (for the replay check).
   </p>
 </div>

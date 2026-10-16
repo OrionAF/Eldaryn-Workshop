@@ -509,9 +509,9 @@ export function estimateTime(fights, target, calibration) {
     kind,
     time: {
       lo: secs(fights.lo), likely: secs(fights.likely), hi: secs(fights.hi), rate, workers: w, source: 'calibration',
-      basis: `Fights divided by this device's measured ${kind} speed (${Math.round(rate)} fights/s with ${w} worker${w === 1 ? '' : 's'})${scale !== 1 ? `, scaled to a ${target.seconds} s fight` : ''}.`,
+      basis: `Fights divided by this device's measured ${kind} speed (${Math.round(rate)} fights/s using ${w} core${w === 1 ? '' : 's'})${scale !== 1 ? `, scaled to a ${target.seconds} s fight` : ''}.`,
     },
     reason: null,
-    assumption: `${target.label || target.kind} fights are assumed to cost like the calibration's ${kind} fight${measured ? '' : ' (not measured: the slowest measured speed is used)'}.`,
+    assumption: `${target.label || target.kind} fights are assumed to cost like the speed test's ${kind} fight${measured ? '' : ' (not measured: the slowest measured speed is used)'}.`,
   };
 }

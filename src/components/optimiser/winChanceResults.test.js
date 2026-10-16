@@ -42,7 +42,7 @@ describe('the setup', () => {
     const opts = options(ui);
     expect(opts.indexOf('Highest chance to win')).toBeGreaterThanOrEqual(0);
     expect(opts.indexOf('Reach a win rate')).toBe(opts.indexOf('Highest chance to win') + 1);
-    expect(ui.q('[data-testid="win-chance-explain"]').textContent.trim()).toBe('Finds the build with the best chance to clear this; ties go to the fewest changes. Speed does not matter.');
+    expect(ui.q('[data-testid="win-chance-explain"]').textContent.trim()).toBe('Finds the build with the best chance to clear this. If builds are equal, it picks the one with the fewest changes. Speed does not matter.');
     expect(ui.q('[data-testid="win-rate-target"]')).toBeNull();
   });
 

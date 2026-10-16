@@ -52,8 +52,8 @@
 
   const banTitle = (s) =>
     !bans.includes(s.type) && bans.length >= maxBans
-      ? `All ${maxBans} ban slots are used. Slots = Attunement effect + class bonus ${attunementBonus(character.class)}.`
-      : 'A banned secondary stat is removed from the drop roll table.';
+      ? `All ${maxBans} ban slots are used. Slots come from the Attunement skill plus a class bonus of ${attunementBonus(character.class)}.`
+      : 'A banned secondary stat can no longer appear on drops.';
 
   function remapped(group) {
     return Object.entries(FORTRESS_BUFFS[group].combat).map(([stat, value]) => ({
@@ -119,8 +119,8 @@
 
     <Panel title="Attunement">
       <p class="note">
-        {bans.length} / {maxBans} ban slots (Attunement skill effect + class bonus {attunementBonus(character.class)}). A banned
-        secondary stat is removed from the drop roll table.
+        {bans.length} / {maxBans} ban slots (from the Attunement skill plus a class bonus of {attunementBonus(character.class)}). A banned
+        secondary stat can no longer appear on drops.
       </p>
       <div class="chips">
         {#each bannableStats(character.class) as s (s.type)}
@@ -141,8 +141,8 @@
 
     <Panel title="Clan fortress">
       <p class="note">
-        Owned buffs, character-wide. Top and Bottom are exclusive; Core stacks with either. Combat stats are shown as remapped for
-        {character.class ? classLabel(character.class) : 'this class'}.
+        Buffs you own, shared by all presets. You can own Top or Bottom, not both; Core works with either. Combat stats are shown as
+        {character.class ? classLabel(character.class) : 'this class'} receives them.
       </p>
       <div class="fortress">
         <fieldset class="side">

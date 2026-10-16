@@ -103,7 +103,7 @@
     jobId = startJob({
       tool: 'duel',
       title: `${meta.myName} vs ${meta.theirName}`,
-      context: `${meta.seat === 'both' ? 'both seats' : `${meta.seat} seat`} · N ${fmtCount(meta.n)}${meta.seat === 'both' ? ' each' : ''}`,
+      context: `${meta.seat === 'both' ? 'both seats' : `${meta.seat} seat`} · ${fmtCount(meta.n)} fights${meta.seat === 'both' ? ' each' : ''}`,
       request: { ...request, meta },
       signature: sig(),
       currentSignature: sig,
@@ -180,7 +180,7 @@
       const r = await runOptimizerTask({ mode: 'duel', attacker, defender, n: 0, seed: SEED, trace: true, traceSeed: Math.floor(Math.random() * 1e9) }).promise;
       if (jobId === forJob) reroll = { jobId: forJob, trace: r.trace, traceResult: r.traceResult };
     } catch (e) {
-      setStatus(`Sample duel failed: ${e.message}`);
+      setStatus(`Could not show another sample: ${e.message}`);
     } finally {
       rerolling = false;
     }
@@ -188,13 +188,15 @@
 
   // ---- tabs and display -------------------------------------------------------------------------
 
-  const TABS = [
+  // The Verify tab needs game-data import (Settings > Advanced); a log already handed over keeps it.
+  const verifyShown = $derived(prefs.showImport || !!logHandoff);
+  const TABS = $derived([
     { id: 'duel', label: 'Duel' },
-    { id: 'verify', label: 'Verify a fight log' },
-  ];
+    ...(verifyShown ? [{ id: 'verify', label: 'Verify a fight log' }] : []),
+  ]);
   const onTab = (id) => go(formatHash('tools/duel', id === 'verify' ? 'verify' : null), { replace: true });
   $effect(() => {
-    tabId = tab === 'verify' ? 'verify' : 'duel';
+    tabId = tab === 'verify' && verifyShown ? 'verify' : 'duel';
   });
 
   // A fight log handed over by the import dialog: on mount and whenever another one arrives, take it,
@@ -224,9 +226,9 @@
     { value: 'both', label: 'Both' },
   ];
   const effortOptions = [
-    { value: 'quick', label: 'Quick', sub: `N ${fmtCount(EFFORT.quick)}` },
-    { value: 'standard', label: 'Standard', sub: `N ${fmtCount(EFFORT.standard)}` },
-    { value: 'thorough', label: 'Thorough', sub: `N ${fmtCount(EFFORT.thorough)}` },
+    { value: 'quick', label: 'Quick', sub: `${fmtCount(EFFORT.quick)} fights` },
+    { value: 'standard', label: 'Standard', sub: `${fmtCount(EFFORT.standard)} fights` },
+    { value: 'thorough', label: 'Thorough', sub: `${fmtCount(EFFORT.thorough)} fights` },
   ];
 </script>
 
@@ -234,7 +236,7 @@
   <Tabs items={TABS} bind:value={tabId} label="Duel sections" idPrefix="duel" onchange={onTab} />
 </div>
 
-{#if tabId === 'verify'}
+{#if tabId === 'verify' && verifyShown}
   <div role="tabpanel" id="duel-panel-verify">
     <VerifyFightLog fighters={verifyFighters} handoff={logHandoff} />
   </div>
@@ -267,7 +269,7 @@
           <span class="lbl">Effort</span>
           <SegmentedControl label="Effort" options={effortOptions} bind:value={effort} />
           <RunEstimate fights={duelFights(perSeat, seat === 'both' ? 2 : 1)} />
-          <span class="hint">Duels per seat. Seed <span class="num">{SEED}</span>. Effort sets precision only; "Run more" tightens a result.</span>
+          <span class="hint">Fights per seat. More effort spots smaller differences and takes longer. Seed <span class="num">{SEED}</span>: the same seed gives the same result.</span>
         </div>
         {#each blockers as b (b.text)}
           <Banner variant="warn">
@@ -277,7 +279,7 @@
         {/each}
         {#if !blockers.length && blankRows.length}
           <Banner variant="info" lead="Blank rows use neutral values.">
-            {opponent.name}'s sheet leaves {blankRows.join(', ')} blank; the duel reads them as 0 (Crit Damage 150%).
+            {opponent.name}'s sheet leaves {blankRows.join(', ')} blank, so the duel counts them as 0 (Crit Damage as 150%).
           </Banner>
         {/if}
         {#snippet footer()}
@@ -303,22 +305,22 @@
             <div data-testid="duel-progress"><RunProgress {segments} /></div>
           {/if}
           {#if job.status === 'failed'}
-            <Banner variant="error" lead="The duel failed.">{job.error}</Banner>
+            <Banner variant="error" lead="The duel could not finish.">{job.error}</Banner>
           {/if}
           {#if stale}
             <Banner variant="warn" lead="Setup changed since this run.">The preset or the opponent is not what was simulated. Run again for a current result.</Banner>
           {/if}
           {#if job.status === 'cancelled'}
             <Banner variant="info" lead="Cancelled.">
-              Showing the duels finished so far.
+              Showing the fights finished so far.
               {#snippet action()}<Button variant="ghost" size="small" onclick={() => resumeJob(job.id)}>Resume</Button>{/snippet}
             </Banner>
           {/if}
           {#if tableRows.length}
             <div class="headline" data-testid="duel-result">
               {#if partial}
-                <h3 data-testid="duel-partial">Inconclusive / partial</h3>
-                <p>Only one seat has duels so far. The Both-seats result and its verdict appear once both seats finish.</p>
+                <h3 data-testid="duel-partial">Not finished yet</h3>
+                <p>Only one seat has fights so far. The result for both seats appears once both finish.</p>
               {:else}
                 <h3>{duelHeadline(verdict, meta.myName)}</h3>
                 <p data-testid="duel-verdict">{duelVerdictText(verdict)}</p>
@@ -326,23 +328,27 @@
             </div>
             <WinRateTable rows={tableRows} {partial} />
             <dl class="facts">
-              <div><dt>Mean duration</dt><dd>{seats.total.meanMs != null ? `${(seats.total.meanMs / 1000).toFixed(1)} s` : 'n/a'}</dd></div>
-              <div><dt>Timeouts</dt><dd>{seats.total.timeoutShare != null ? `${(seats.total.timeoutShare * 100).toFixed(1)}%` : 'n/a'}</dd></div>
+              <div><dt>Average length</dt><dd>{seats.total.meanMs != null ? `${(seats.total.meanMs / 1000).toFixed(1)} s` : 'n/a'}</dd></div>
+              <div><dt>Ran out of time</dt><dd>{seats.total.timeoutShare != null ? `${(seats.total.timeoutShare * 100).toFixed(1)}%` : 'n/a'}</dd></div>
               <div><dt>Seed</dt><dd>{meta.seed}</dd></div>
             </dl>
-            <p class="note">Ties and timeouts at equal HP go to the defender, as in the game's engine. The engine applies the x8 PVP HP buff.</p>
+            <p class="note">A tie, or running out of time with equal Health, goes to the defender, as in the game. The x8 PVP Health buff is already included.</p>
+            <details class="basis">
+              <summary>How this works</summary>
+              <p>Each fight is simulated with the game's own combat rules. The likely range is a 95% interval on the win rate. A result is clearly better or worse only when the whole range is on one side of 50%. Otherwise it is too close to call, and the estimate of how many fights would settle it assumes you want to spot a difference of at least 3 points.</p>
+            </details>
             <div class="more">
-              <Button variant="secondary" disabled={!canMore || stale} reason={stale ? 'Setup changed since this run.' : meta.n >= MAX_N ? 'At the largest N.' : ''} onclick={runMore}>
-                Run more ({fmtCount(nextN)} per seat)
+              <Button variant="secondary" disabled={!canMore || stale} reason={stale ? 'Setup changed since this run.' : meta.n >= MAX_N ? 'Already at the most fights allowed.' : ''} onclick={runMore}>
+                Run more fights ({fmtCount(nextN)} per seat)
               </Button>
             </div>
           {:else if busy}
-            <p class="note">Simulating…</p>
+            <p class="note">Running…</p>
           {/if}
         </Panel>
 
         {#if columns.length && meta}
-          <Panel title="Fighters as simulated" scope="tool">
+          <Panel title="Stats used in the fight" scope="tool">
             <FightersTable rows={columns} myName={preset.name} theirName={opponent.name} />
           </Panel>
         {/if}
@@ -361,10 +367,10 @@
         {/if}
       {:else}
         <Panel title="Result" level="primary" scope="tool">
-          <EmptyState title="No duel run yet" text="Pick a preset, an opponent and a seat, then run. The win rate appears here with its interval." />
+          <EmptyState title="No duel run yet" text="Pick a preset, an opponent and a seat, then run. The win rate appears here with its likely range." />
         </Panel>
         {#if columns.length}
-          <Panel title="Fighters as simulated" scope="tool">
+          <Panel title="Stats used in the fight" scope="tool">
             <FightersTable rows={columns} myName={preset.name} theirName={opponent.name} />
           </Panel>
         {/if}
@@ -393,4 +399,7 @@
   .facts dt { color: var(--text-muted); font-size: var(--fs-11); text-transform: uppercase; letter-spacing: var(--track-label); }
   .facts dd { margin: 0; font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--text-ink); }
   .more { display: flex; gap: var(--sp-2); }
+  .basis { font-size: var(--fs-12); color: var(--text-muted); }
+  .basis summary { cursor: pointer; color: var(--text-soft); }
+  .basis p { margin: var(--sp-2) 0 0; }
 </style>

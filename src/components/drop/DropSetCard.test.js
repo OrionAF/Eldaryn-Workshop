@@ -20,9 +20,9 @@ it('states the coverage, what was not judged, the preset metric row and a scope-
   t = setup(DropSetCard, { card: card(), onapply: () => {} });
   const text = t.target.textContent;
   expect(text).toContain('DPS only: defence not measured');
-  expect(text).toContain('Not judged: Health %');
+  expect(text).toContain('Not checked: Health %');
   expect(text).toContain('+10.00%');
-  expect(text).toContain('N 512');
+  expect(text).toContain('512 fights');
   expect(t.q('.scope-chip').textContent).toContain('Gear Set 1');
   expect(t.q('.scope-chip').textContent).toContain('also Farm, Boss');
   expect(t.q('.vchip.up').textContent).toContain('Upgrade');
@@ -52,7 +52,7 @@ it('a card without a simulation shows no metric rows and a neutral chip', () => 
   t = setup(DropSetCard, { card: card({ basis: 'closed', presets: [] }), phase: 'running', onapply: () => {} });
   expect(t.q('.vchip').textContent).toContain('Simulating');
   expect(t.q('.met')).toBeNull();
-  expect(t.q('.coverage').textContent).toContain('Simulation not finished');
+  expect(t.q('.coverage').textContent).toContain('Check not finished');
 });
 
 it('Apply asks first, naming the set and the presets it changes', () => {
@@ -61,7 +61,7 @@ it('Apply asks first, naming the set and the presets it changes', () => {
   const apply = [...t.qa('button')].find((b) => b.textContent.includes('Apply to Set 1'));
   click(apply);
   expect(onapply).not.toHaveBeenCalled();
-  expect(t.q('.confirm').textContent).toContain('Writes Set 1; changes Farm, Boss');
+  expect(t.q('.confirm').textContent).toContain('This puts the item in Set 1 and changes Farm, Boss');
   expect(t.q('.confirm').textContent).toContain('helps some presets and hurts others');
   click([...t.qa('button')].find((b) => b.textContent.includes('Confirm apply')));
   expect(onapply).toHaveBeenCalledWith('set1');

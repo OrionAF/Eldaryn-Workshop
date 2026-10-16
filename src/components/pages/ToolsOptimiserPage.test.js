@@ -64,17 +64,17 @@ it('shows the five setup steps with the effort budgets printed and no time cap',
   mountPage();
   const t = text();
   for (const step of ['Build to improve', 'Fight', 'Maximise', 'Allowed to change', 'Effort']) expect(t).toContain(step);
-  expect(view.q('[data-testid="effort-plan"]').textContent).toMatch(/Resolves differences of 0\.5%/);
-  expect(view.q('[data-testid="effort-plan"]').textContent).toMatch(/N 16 and stops.*N 32,768/);
-  expect(view.q('[data-testid="effort-cost"]').textContent).toMatch(/not capped.*every block about 4 minutes/);
-  expect(view.q('[data-testid="plan-summary"]').textContent).toMatch(/13 of 13 dimensions against Training dummy, 60 s/);
+  expect(view.q('[data-testid="effort-plan"]').textContent).toMatch(/Spots differences of 0\.5% or more/);
+  expect(view.q('[data-testid="effort-plan"]').textContent).toMatch(/starts with 16 fights.*up to 32,768/);
+  expect(view.q('[data-testid="effort-cost"]').textContent).toMatch(/no time limit.*about 4 minutes when it may change every part of your build/);
+  expect(view.q('[data-testid="plan-summary"]').textContent).toMatch(/13 of 13 parts of your build against Training dummy, 60 s/);
   expect(view.q('[data-testid="relic-cap"]')).not.toBeNull();
 });
 
 it('the Effort control shows each level with its indifference zone', () => {
   mountPage();
   const labels = [...view.qa('[aria-label="Effort"] button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim());
-  expect(labels).toEqual(['Quickδ 1%', 'Standardδ 0.5%', 'Thoroughδ 0.25%']);
+  expect(labels).toEqual(['Quickspots 1% or more', 'Standardspots 0.5% or more', 'Thoroughspots 0.25% or more']);
 });
 
 it('starts a job whose request has the effort level, the toggles and a run-free character', async () => {
@@ -97,7 +97,7 @@ it('renders a finished result: sticky baseline, tie groups, verdicts, and saves 
   expect(view.qa('[data-testid="result-row"]')).toHaveLength(3);
   expect(text()).toContain('2 builds measured better than the current preset');
   expect(text()).toMatch(/1 build measured worse and is hidden/);
-  expect(view.q('[data-testid="how-to-read"]').textContent).toMatch(/Significant/);
+  expect(view.q('[data-testid="how-to-read"]').textContent).toMatch(/Clearly better/);
   expect(view.q('[data-testid="search-summary"]').textContent).toMatch(/builds tried/);
   await vi.waitFor(() => expect(rosterStore.current.runs).toHaveLength(1));
   const run = rosterStore.current.runs[0];
@@ -194,7 +194,7 @@ it('a cancelled run shows provisional rows and offers Resume', async () => {
   mountPage();
   click(btn(/^Optimise Main/));
   await vi.waitFor(() => expect(text()).toMatch(/Cancelled\./));
-  expect(text()).toMatch(/provisional/);
+  expect(text()).toMatch(/not final/);
   expect(view.qa('[data-testid="result-row"]')[0].textContent).toMatch(/Simulating/);
   click(view.qa('[data-testid="result-row"] button[aria-expanded]')[0]);
   const apply = btn(/^Apply to/);
@@ -279,18 +279,18 @@ it('with no run yet the results pane says so', () => {
 
 // ---- Run history ---------------------------------------------------------------------------------
 
-it('the history tab lists runs; a legacy run opens with "not measured"; Re-run with settings loads its setup', () => {
+it('the history tab lists runs; a legacy run opens with "not measured"; Run again with these settings loads its setup', () => {
   rosterStore.addRun(legacyRun('old'), {});
   flushSync();
   mountPage({ tab: 'history' });
   const row = view.q('[data-testid="run-row"]');
   expect(row.textContent).toMatch(/Old run/);
-  expect(row.textContent).toMatch(/before per-change effects/);
+  expect(row.textContent).toMatch(/older run/);
   click([...row.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Details'));
-  expect(row.textContent).toMatch(/Per-change effects: not measured/);
+  expect(row.textContent).toMatch(/Changes not measured one by one/);
   click(row.querySelector('[data-testid="baseline-row"]') ? row.querySelector('[data-testid="result-row"] button[aria-expanded]') : null);
   expect(row.querySelector('[data-testid="result-row"]').textContent).toMatch(/not measured/);
-  click(btn(/^Re-run with settings$/));
+  click(btn(/^Run again with these settings$/));
   const saved = loadUi().optimiserSetups[rosterStore.current.id];
   expect(saved).toMatchObject({ seed: 3, target: { kind: 'dummy', seconds: 60 }, objective: { kind: 'dps' } });
 });
@@ -508,7 +508,7 @@ it('§3: the estimate updates live when an allowed-to-change toggle changes', ()
 
 // ---- retired goals stay viewable but cannot be re-run ------------------------------------------------
 
-it('a saved kill-time run stays viewable; Re-run with settings is off with the reason', () => {
+it('a saved kill-time run stays viewable; Run again with these settings is off with the reason', () => {
   const r = ttkResult();
   r.request.characterKey = metricKey('character', searchCharacter(rosterStore.current));
   rosterStore.addRun(r, { presetName: 'Main' });
@@ -516,19 +516,19 @@ it('a saved kill-time run stays viewable; Re-run with settings is off with the r
   mountPage();
   expect(text()).toMatch(/Saved/);
   expect(view.q('[data-testid="optimiser-results"]')).not.toBeNull();
-  const rerun = btn(/^Re-run with settings/);
+  const rerun = btn(/^Run again with these settings/);
   expect(rerun.getAttribute('aria-disabled')).toBe('true');
   expect(rerun.title).toBe('This goal was retired.');
 });
 
-it('Run history: Re-run with settings is off for a retired goal and on for a live one', () => {
+it('Run history: Run again with these settings is off for a retired goal and on for a live one', () => {
   rosterStore.addRun(ttkResult(), { presetName: 'Main', id: 'retired' });
   rosterStore.addRun(dpsResult(), { presetName: 'Main', id: 'live' });
   flushSync();
   mountPage({ tab: 'history' });
   const rerunOf = (i) => {
     click([...view.target.querySelectorAll('button')].filter((x) => /^Details$/.test(x.textContent.trim()))[i]);
-    const found = [...view.target.querySelectorAll('button')].find((x) => /^Re-run with settings/.test(x.textContent.trim()));
+    const found = [...view.target.querySelectorAll('button')].find((x) => /^Run again with these settings/.test(x.textContent.trim()));
     return found;
   };
   const states = [0, 1].map((i) => {

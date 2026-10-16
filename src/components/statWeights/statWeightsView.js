@@ -39,6 +39,6 @@ export function weightRows(kind, bars) {
 /** The visually hidden sentence of a row. */
 export function rowSentence(kind, r) {
   const f = chartFormat(kind);
-  const head = r.measurable ? `rank ${r.rank}` : 'no measurable effect';
-  return `${r.label} ${r.unit}: ${f(r.est)}, interval ${f(r.lo)} to ${f(r.hi)}, ${head}`;
+  const head = r.measurable ? `rank ${r.rank}` : 'no clear effect';
+  return `${r.label} ${r.unit}: ${f(r.est)}, likely range ${f(r.lo)} to ${f(r.hi)}, ${head}`;
 }

@@ -70,14 +70,14 @@ it('the Stat Sheet page runs stat weights as a job for the active preset and ren
   expect(target.querySelector('[data-testid="chart-label-damage"]').textContent).toContain('training dummy');
   expect(target.querySelector('[data-testid="chart-label-survival"]').textContent).toContain('reference enemy');
 
-  // largest first, ranked; an interval spanning 0 reads "No measurable effect" and has no rank
+  // largest first, ranked; an interval spanning 0 reads "No clear effect" and has no rank
   const rows = [...damage.querySelectorAll('[data-stat]')];
   expect(rows.map((r) => r.dataset.stat)).toEqual(['totalAttackSpeed', 'totalCritChance', 'totalSpellDamage']);
   expect(rows[0].querySelector('[data-testid="rank"]').textContent.trim()).toBe('#1');
-  expect(rows[2].querySelector('[data-testid="rank"]').textContent.trim()).toBe('No measurable effect');
+  expect(rows[2].querySelector('[data-testid="rank"]').textContent.trim()).toBe('No clear effect');
   expect(rows[2].textContent).not.toContain('#');
   const block = survival.querySelector('[data-stat="totalBlockChance"]');
-  expect(block.querySelector('[data-testid="rank"]').textContent.trim()).toBe('No measurable effect');
+  expect(block.querySelector('[data-testid="rank"]').textContent.trim()).toBe('No clear effect');
   expect(survival.querySelector('[data-stat="totalHpRegen"]').textContent).toContain('+8.0 pts');
   // each chart has one labelled axis and every row an interval mark
   expect(damage.querySelectorAll('.axis').length).toBe(1);

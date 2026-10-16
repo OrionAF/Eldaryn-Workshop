@@ -33,11 +33,11 @@
   }
 </script>
 
-<Modal bind:open title="Absorb the sheet gap into base stats">
+<Modal bind:open title="Add the difference to your base stats">
   {#snippet children()}
     <p class="lead">
-      The gap between your sheet and the model moves into the character's base stats, so the model reproduces the sheet.
-      Gaps on other stats stay as carried residuals.
+      The difference between your in-game stats and the app's numbers is added to your base stats, so the app then matches your in-game stats.
+      Differences on other stats stay as they are.
     </p>
     <table class="preview" data-testid="absorb-preview">
       <thead><tr><th scope="col">Base stat</th><th scope="col" class="r">Now</th><th scope="col" class="r">After</th></tr></thead>
@@ -54,13 +54,13 @@
       </tbody>
     </table>
     <p class="reach" data-testid="absorb-reach">
-      Base stats are shared: this reaches {character.presets.length === 1 ? 'the preset' : 'all'}
+      Base stats are shared, so this changes {character.presets.length === 1 ? 'the preset' : 'all'}
       <b>{character.presets.map((p) => p.name).join(', ')}</b>.
     </p>
   {/snippet}
   {#snippet footer()}
     <Button variant="ghost" onclick={() => (open = false)}>Cancel</Button>
-    <Button variant="primary" disabled={changed.length === 0} onclick={confirm}>Absorb</Button>
+    <Button variant="primary" disabled={changed.length === 0} onclick={confirm}>Add</Button>
   {/snippet}
 </Modal>
 

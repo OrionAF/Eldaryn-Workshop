@@ -248,7 +248,7 @@ describe('estimateRun: time', () => {
     const fortress = estimateRun(req({ space: only('pet'), target: { kind: 'fortressBoss', group: 'TOP' } }), { calibration: CAL });
     expect(fortress.kind).toBe('duel');
     expect(fortress.time.likely).toBeCloseTo(fortress.fights.likely / 150, 9);
-    expect(fortress.assumptions.join(' ')).toMatch(/assumed to cost like the calibration's duel fight/);
+    expect(fortress.assumptions.join(' ')).toMatch(/assumed to cost like the speed test's duel fight/);
     expect(FIGHT_KIND_OF).toMatchObject({ pvp: 'duel', fortressBoss: 'duel', chapter: 'dungeon', raid: 'dungeon', oblivion: 'dungeon' });
   });
 

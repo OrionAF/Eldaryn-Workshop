@@ -277,17 +277,17 @@ export function residualFor(presetStats) {
     return {
       residual,
       warnings: Object.keys(residual).length
-        ? [{ code: 'residual-applied', severity: 'info', message: "The confirmed stat sheet's gap to the computed stats is carried onto every candidate." }]
+        ? [{ code: 'residual-applied', severity: 'info', message: "The gap between your in-game stats and the app's numbers is carried onto every build." }]
         : [],
     };
   }
   if (status === 'none') return { residual: {}, warnings: [] };
-  const why = status === 'stale' ? 'no longer matches this build' : 'is not confirmed for this build';
+  const why = status === 'stale' ? 'no longer match this build' : 'are not confirmed for this build';
   return {
     residual: {},
     warnings: [{
       code: status === 'stale' ? 'sheet-stale' : 'sheet-unverified', severity: 'warn',
-      message: `The stat sheet ${why}, so candidates are measured on computed stats only.`,
+      message: `Your in-game stats ${why}, so builds are measured on the app's numbers only.`,
     }],
   };
 }

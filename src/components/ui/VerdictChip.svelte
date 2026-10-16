@@ -8,14 +8,14 @@
    */
   let { verdict = 'unresolved', label = '' } = $props();
   const KINDS = {
-    better: ['▲', 'Significant', 'up'],
-    worse: ['▼', 'Downgrade', 'down'],
-    equivalent: ['◆', 'Equivalent', 'side'],
-    unresolved: ['≈', 'Inconclusive', 'side'],
-    remainder: ['', 'Remainder', 'muted'],
+    better: ['▲', 'Clearly better', 'up'],
+    worse: ['▼', 'Clearly worse', 'down'],
+    equivalent: ['◆', 'About the same', 'side'],
+    unresolved: ['≈', 'Too close to call', 'side'],
+    remainder: ['', 'Left over', 'muted'],
     meets: ['✓', 'Meets target', 'up'],
     below: ['', 'Below target', 'side'],
-    open: ['≈', 'Target unresolved', 'side'],
+    open: ['≈', 'Target too close to call', 'side'],
     pending: ['', 'Simulating…', 'pending'],
     queued: ['', 'Queued', 'pending'],
   };

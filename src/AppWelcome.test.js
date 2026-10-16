@@ -88,7 +88,7 @@ it('Welcome: the start button says what is missing while disabled, and the level
   done();
 });
 
-it('Settings > Import with an empty roster: junk shows the reason and creates nothing; a profile is reported, then created and Welcome is left', async () => {
+it('Settings > Restore a backup with an empty roster: junk shows the reason and creates nothing; a profile is reported, then created and Welcome is left', async () => {
   const { target, done } = await mountWelcome();
   expect(target.querySelector('[data-testid="welcome-import-link"] a').getAttribute('href')).toBe('#/settings');
   history.replaceState(null, '', '#/settings'); // what following the Welcome link does
@@ -97,7 +97,7 @@ it('Settings > Import with an empty roster: junk shows the reason and creates no
   await tick();
   flushSync();
   expect(location.hash).toBe('#/settings');
-  const input = target.querySelector('[data-testid="import-section"] input[type="file"]');
+  const input = target.querySelector('[data-testid="restore-backup"] input[type="file"]');
   const send = (text) => {
     Object.defineProperty(input, 'files', { value: [new File([text], 'x.json')], configurable: true });
     input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -105,7 +105,7 @@ it('Settings > Import with an empty roster: junk shows the reason and creates no
   send('{"hello": 1}');
   await vi.waitFor(() => {
     flushSync();
-    expect(target.querySelector('[data-testid="import-section"] [role="alert"]').textContent).toContain('Valid JSON, but not a roster backup');
+    expect(target.querySelector('[data-testid="restore-backup"] [role="alert"]').textContent).toContain('not a backup from this app');
   });
   expect(rosterStore.roster.characters).toHaveLength(0);
   send(JSON.stringify({ player: { name: 'Hero', class: 'WARRIOR', level: 10 }, equipment: {} }));

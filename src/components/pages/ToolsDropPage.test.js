@@ -115,9 +115,9 @@ it('editing the drop after a run marks the result stale instead of showing it as
   btn('Check drop').click();
   flushSync();
   await settle();
-  expect(target.textContent).not.toContain('Stale.');
+  expect(target.textContent).not.toContain('Out of date.');
   change(q('Attack'), '20.000');
-  expect(target.textContent).toContain('Stale.');
+  expect(target.textContent).toContain('Out of date.');
 });
 
 it('Apply names its scope first and writes only after the confirm', async () => {
@@ -130,7 +130,7 @@ it('Apply names its scope first and writes only after the confirm', async () => 
   btn('Apply to Set 2…').click();
   flushSync();
   expect(rosterStore.current.equipment.set2.items.WEAPON.primaryStats.attack).toBe(1000);
-  expect(card('set2').textContent).toContain('Writes Set 2');
+  expect(card('set2').textContent).toContain('This puts the item in Set 2');
   btn('Confirm apply').click();
   flushSync();
   expect(rosterStore.current.equipment.set2.items.WEAPON.primaryStats.attack).toBe(9000);
@@ -145,7 +145,15 @@ const paste = (json) => {
   flushSync();
 };
 
-it('Loot bag: no drop zone or paste box, only a pointer to Settings > Import that asks for focus', () => {
+it('with game-data import hidden (the default) there is no Loot bag tab, and its route shows Single drop', () => {
+  open({ tab: 'bag' });
+  expect([...target.querySelectorAll('[role="tab"]')].map((t) => t.textContent.trim())).toEqual(['Single drop']);
+  expect(target.querySelector('#dc-panel-bag')).toBeNull();
+  expect(target.querySelector('[data-testid="import-pointer"]')).toBeNull();
+});
+
+it('Loot bag: no drop zone or paste box, only a pointer to Settings > Advanced that asks for focus', () => {
+  setPrefs({ showImport: true });
   open({ tab: 'bag' });
   expect(target.querySelector('#dc-panel-bag input[type="file"]')).toBeNull();
   expect(target.querySelector('#dc-panel-bag textarea')).toBeNull();
@@ -155,6 +163,7 @@ it('Loot bag: no drop zone or paste box, only a pointer to Settings > Import tha
   const before = importFlow.focusSeq;
   link.click();
   expect(importFlow.focusSeq).toBe(before + 1);
+  applyPrefs();
 });
 
 it('Loot bag: the batch is a job, rows rank in one DPS table, and a gear edit marks it stale', async () => {
@@ -166,10 +175,10 @@ it('Loot bag: the batch is a job, rows rank in one DPS table, and a gear edit ma
   expect(rows).toHaveLength(4);
   expect(target.querySelectorAll('.tbl .axis')).toHaveLength(1);
   expect(target.querySelector('.summary').textContent).toContain('upgrade');
-  expect(target.textContent).not.toContain('Stale.');
+  expect(target.textContent).not.toContain('Out of date.');
   rosterStore.setEquipmentItem('set1', 'WEAPON', gear(5000));
   flushSync();
-  expect(target.textContent).toContain('Stale.');
+  expect(target.textContent).toContain('Out of date.');
   // rows expand to one card per gear set
   rows[0].querySelector('.toggle').click();
   flushSync();
@@ -233,7 +242,7 @@ it('Compare against: Set 1 only simulates and shows only Set 1, and the choice i
   // back to both sets: the Set-1-only run is stale, and the next check covers Set 2 again
   pickSets('Both sets').click();
   flushSync();
-  expect(target.textContent).toContain('Stale.');
+  expect(target.textContent).toContain('Out of date.');
   btn('Check drop').click();
   flushSync();
   await settle();
@@ -248,12 +257,12 @@ it('Compare against on the Loot bag: Set 1 only marks the bag stale and Check ag
   const all = calls[0].items.length;
   pickSets('Set 1 only').click();
   flushSync();
-  expect(target.textContent).toContain('Stale.');
+  expect(target.textContent).toContain('Out of date.');
   btn('Check again').click();
   flushSync();
   await settle();
   expect(calls[1].items.length).toBeLessThan(all);
-  expect(target.textContent).not.toContain('Stale.');
+  expect(target.textContent).not.toContain('Out of date.');
   target.querySelector('.trow.rank .toggle').click();
   flushSync();
   expect(target.querySelector('.expand [data-set="set2"]')).toBeNull();
@@ -452,7 +461,7 @@ it('S2: single drop shows an upper-bound estimate that follows the effort, or a 
 
 it('S2: Loot bag shows a neutral note before the import, then an upper-bound estimate from the batch', () => {
   applyPrefs();
-  setPrefs({ calibration: CAL() });
+  setPrefs({ calibration: CAL(), showImport: true });
   open({ tab: 'bag' });
   expect(target.querySelector('[data-testid="run-estimate-bag"]')).not.toBeNull();
   paste(lootBag);

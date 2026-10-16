@@ -37,7 +37,7 @@ it('the totals live in the inspector, not the page body', () => {
   const outlet = setup(InspectorOutlet);
   expect(target.textContent).not.toContain('Ichor in use');
   expect(outlet.target.textContent).toContain('Ichor in use');
-  expect(outlet.target.textContent).toContain('information, not a budget');
+  expect(outlet.target.textContent).toContain('only shown for information');
   expect(outlet.target.textContent).toContain('No nodes allocated');
   node('at 0,-1').click();
   flushSync();

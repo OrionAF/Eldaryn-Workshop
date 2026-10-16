@@ -64,7 +64,7 @@ describe('estimates', () => {
     expect(estimateText(cal(), { dummy: 400 * 180 }, { bound: 'upper' })).toBe('Up to about 3 min on this device (estimate).');
     expect(estimateText(cal(), { dummy: 400 * 180 }, { bound: 'lower' })).toBe('At least about 3 min on this device (estimate).');
     expect(estimateText(cal(), { dummy: 100 })).toBe('Takes under a minute on this device (estimate).');
-    expect(estimateText(cal(), { dummy: 400 * 180 }, { stale: 'profile' })).toContain('another CPU profile');
+    expect(estimateText(cal(), { dummy: 400 * 180 }, { stale: 'profile' })).toContain('another Speed vs. battery setting');
   });
   it('formats long runs in hours', () => {
     expect(durationText(80 * 60)).toBe('1 h 20 min');

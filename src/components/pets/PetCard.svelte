@@ -51,7 +51,7 @@
 
   {#if altarLevel != null}
     <p class="base-stats preview" data-testid="pet-preview">
-      Altar L{altarLevel} T{altarTier}:
+      Altar level {altarLevel}, tier {altarTier}:
       ATK <span class="num">{formatFlat(petFlatAttack(def.baseAttack, altarLevel, altarTier))}</span>
       <span class="sep">|</span>
       HP <span class="num">{formatFlat(petFlatHp(def.baseHp, altarLevel, altarTier))}</span>

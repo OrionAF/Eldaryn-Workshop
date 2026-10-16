@@ -53,7 +53,7 @@
     {/if}
   {:else if info?.tier === 'major'}
     <p class="effect">{majorText(glyph.glyphType, glyph.rarity)}</p>
-    {#if inertIn.length}<p class="warn" data-testid="glyph-inert">Inert in {inertIn.join(', ')}: its sigil is not equipped</p>{/if}
+    {#if inertIn.length}<p class="warn" data-testid="glyph-inert">Does nothing in {inertIn.join(', ')}: its sigil is not equipped</p>{/if}
   {:else}
     <p class="effect">{glyphText(glyph)}</p>
   {/if}

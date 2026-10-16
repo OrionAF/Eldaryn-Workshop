@@ -8,10 +8,10 @@
 
   let { kind = 'model' } = $props();
   const INFO = {
-    sheet: ['Sheet', 'Entered from the in-game stat sheet.'],
-    model: ['Model', 'Computed by the engine from the build.'],
-    estimate: ['Estimate', 'Instant closed-form estimate with no interval. It never ranks anything.'],
-    stale: ['Stale', 'The sheet was entered for an older build and may no longer match.'],
+    sheet: ['In-game', 'Entered from your in-game stats.'],
+    model: ['App', 'Worked out by the app from your build.'],
+    estimate: ['Estimate', 'A quick estimate with no likely range. It never ranks anything.'],
+    stale: ['Out of date', 'These in-game stats were entered for an older build and may no longer match.'],
   };
   const info = $derived(INFO[kind] ?? INFO.model);
 </script>

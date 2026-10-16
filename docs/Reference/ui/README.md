@@ -5,6 +5,8 @@
 
 - `design-system.md` is authoritative for tokens, type, panel levels, focus, breakpoints and every
   component's states. Its §5 amends `ia.md`.
+- `wording.md` is the voice of every user-facing string: plain words for players, the term glossary,
+  and where precise detail goes.
 - `ia.md` is the information architecture: three task areas (Character, Builds, Tools), the global
   chrome, the flows, and the parity table. Code comments cite it as `ia.md §n`.
 - `tokens.css` and `components.css` are the reference CSS. The tokens live in `src/app.css`, and

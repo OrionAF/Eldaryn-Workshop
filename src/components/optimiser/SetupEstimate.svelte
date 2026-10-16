@@ -39,7 +39,7 @@
         <dt>Builds to try</dt>
         <dd>
           {#if est.builds.exact}
-            <span class="num big">{fmtCount(est.builds.likely)}</span> <span class="sub">exactly, before builds equal in effect merge</span>
+            <span class="num big">{fmtCount(est.builds.likely)}</span> <span class="sub">exactly, before builds with the same effect are merged</span>
           {:else if span(est.builds.lo, est.builds.hi)}
             about <span class="num big">{fmtCount(est.builds.likely)}</span>
             <span class="sub">range <span class="num">{fmtCount(est.builds.lo)}</span> to <span class="num">{fmtCount(est.builds.hi)}</span></span>
@@ -64,19 +64,19 @@
               <span class="sub">range <span class="num">{dur(est.time.lo)}</span> to <span class="num">{dur(est.time.hi)}</span></span>
             {/if}
           {:else if est.timeReason === 'no-calibration'}
-            <span class="sub">Needs a speed calibration. <a href="#/settings">Calibrate speed</a></span>
+            <span class="sub"><a href="#/settings">Run a speed test</a> to see time estimates.</span>
           {:else}
-            <span class="sub">No calibrated fight is like this target's yet, so there is no time estimate.</span>
+            <span class="sub">Your speed test has not measured a fight like this one, so there is no time estimate.</span>
           {/if}
         </dd>
       </div>
     </dl>
     <p class="hint" data-testid="estimate-source">{est.source.text}</p>
     {#if est.time && est.time.source === 'calibration' && stale}
-      <p class="hint">{stale === 'profile' ? 'The speed was measured under another CPU profile.' : 'The speed was measured on an older build.'}</p>
+      <p class="hint">{stale === 'profile' ? 'Your speed test used a different Speed vs. battery setting.' : 'Your speed test was run on an older version of the app.'}</p>
     {/if}
     {#if est.push}
-      <p class="hint" data-testid="estimate-push">Push: this covers the build search at the start rung. The climb adds a search for each rung it optimises, so a Push run takes longer.</p>
+      <p class="hint" data-testid="estimate-push">Push: this covers the first step only. Each further step adds its own search, so a Push run takes longer.</p>
     {/if}
     <details class="basis">
       <summary>How this is estimated</summary>

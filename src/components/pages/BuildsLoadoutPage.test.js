@@ -78,7 +78,7 @@ describe('Transcendence board picker', () => {
   it('at 55-57 it offers no link: the preset follows the active board', () => {
     withBoards(56, null);
     expect(board().disabled).toBe(true);
-    expect(t.target.textContent).toContain('Linking a board unlocks at level 58');
+    expect(t.target.textContent).toContain('Choosing a board for this preset unlocks at level 58');
   });
 
   it('below 58 a saved link to another board can still be cleared', () => {
@@ -93,7 +93,7 @@ describe('Transcendence board picker', () => {
   it('at 55-57 a saved link says the preset runs the active board; below 55 no board counts', () => {
     withBoards(56, 'bare');
     expect(t.target.textContent).toContain('Uses Default (the active board)');
-    expect(t.target.textContent).toContain('the link is ignored until then');
+    expect(t.target.textContent).toContain('until then the active board is used');
     withBoards(54, 'bare');
     expect(t.target.textContent).toContain('Transcendence unlocks at level 55');
   });
@@ -136,7 +136,7 @@ it('a level-0 relic cannot be equipped and links to Relics', () => {
   const c = rosterStore.current;
   const def = relicsForClass(c.class).find((d) => !(c.relics[d.id] > 0));
   expect(def).toBeTruthy();
-  expect(t.qa('.cell').some((cell) => cell.textContent.includes(def.name) && cell.textContent.includes('Level 0: set on Relics'))).toBe(true);
+  expect(t.qa('.cell').some((cell) => cell.textContent.includes(def.name) && cell.textContent.includes('Level 0: set it on Relics'))).toBe(true);
   const tile = t.qa('.cell button').find((b) => b.textContent.includes(def.name));
   click(tile);
   expect(preset().relicIds).not.toContain(def.id);

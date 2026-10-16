@@ -17,7 +17,7 @@
 {#if cal}
   {#if text}<p class="run-estimate" data-testid="run-estimate">{text}</p>{/if}
 {:else}
-  <p class="run-estimate" data-testid="run-estimate"><a href="#/settings">Calibrate speed</a> to see run-time estimates.</p>
+  <p class="run-estimate" data-testid="run-estimate"><a href="#/settings">Run a speed test</a> to see time estimates.</p>
 {/if}
 
 <style>

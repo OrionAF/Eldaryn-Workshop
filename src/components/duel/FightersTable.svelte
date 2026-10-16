@@ -12,7 +12,7 @@
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex (a scrollable region must be keyboard reachable) -->
-<div class="scroll" tabindex="0" role="region" aria-label="Fighters as simulated">
+<div class="scroll" tabindex="0" role="region" aria-label="Stats used in the fight">
   <table class="stat-table" data-testid="fighters-table">
     <thead>
       <tr><th scope="col">Stat</th><th scope="col" class="r">{myName}</th><th scope="col" class="r">{theirName}</th></tr>

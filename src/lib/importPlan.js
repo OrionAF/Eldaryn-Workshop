@@ -77,15 +77,15 @@ export function describeReportEntry(e) {
     case 'conditionConflict':
       return { tone: 'warn', text: `Sigil ${e.species}: two conditions were set, kept "${e.kept}".` };
     case 'secondaryClamped':
-      return { tone: 'warn', text: `${e.slot} secondary ${e.type}: ${e.from} is above the game's ceiling, set to ${e.to}.` };
+      return { tone: 'warn', text: `${e.slot} secondary ${e.type}: ${e.from} is above the game's maximum, lowered to ${e.to}.` };
     case 'conduitDropped':
       return { tone: 'warn', text: `${e.slot} conduit ${e.type} is not allowed on a ${e.rarity} item, removed.` };
     case 'itemLevelAboveAscension':
       return { tone: 'warn', text: `${e.slot ?? 'An item'} is above your ascension step.` };
     case 'dropped':
-      return { tone: 'warn', text: `Dropped ${e.count ?? ''} ${e.what ?? 'references'}${e.reason ? `: ${e.reason}` : ''}.`.replace('  ', ' ') };
+      return { tone: 'warn', text: `Removed ${e.count ?? ''} ${e.what ?? 'entries'}${e.reason ? `: ${e.reason}` : ''}.`.replace('  ', ' ') };
     case 'defaulted':
-      return { tone: 'info', text: `Defaulted ${e.what ?? 'a value'}${e.count ? ` on ${e.count} items` : ''}${e.reason ? `: ${e.reason}` : ''}.` };
+      return { tone: 'info', text: `Filled in a default for ${e.what ?? 'a value'}${e.count ? ` on ${e.count} items` : ''}${e.reason ? `: ${e.reason}` : ''}.` };
     default:
       return { tone: 'info', text: String(e.kind) };
   }
@@ -109,7 +109,7 @@ function normalisationNotes(profile, norm) {
   const notes = [];
   for (const [from, to, what] of COLLECTIONS) {
     const n = size(at(profile, from)) - size(at(norm, to));
-    if (n > 0) notes.push({ kind: 'dropped', what, count: n, reason: 'not in the game catalogue or not allowed for this class and level' });
+    if (n > 0) notes.push({ kind: 'dropped', what, count: n, reason: 'the game does not have them, or they are not allowed for this class and level' });
   }
   let noQuality = 0;
   for (const set of Object.values(norm.equipment ?? {})) {
@@ -129,11 +129,11 @@ const sameName = (a, b) => String(a).trim().toLowerCase() === String(b).trim().t
  * @param {{now?: string, character?: object}} [opts]  `character`: where a Rankings profile would be saved
  */
 export function planImport(text, roster, { now, character: into } = {}) {
-  if (typeof text !== 'string' || !text.trim()) throw new ImportError('There is nothing to import: the file or pasted text is empty.');
+  if (typeof text !== 'string' || !text.trim()) throw new ImportError('There is nothing to read: the file or pasted text is empty. Choose a file saved with Export.');
   const parsed = parseJsonText(text);
   const kind = detectKind(parsed);
   if (!kind) {
-    throw new ImportError('Valid JSON, but not a roster backup, game profile, loot bag or fight log, so nothing was imported.');
+    throw new ImportError('This file is not a backup from this app, a game profile, a loot bag or a fight log, so nothing was imported. Choose a file saved with Export.');
   }
 
   if (kind === 'opponent') {
@@ -173,7 +173,7 @@ export function planImport(text, roster, { now, character: into } = {}) {
     }
     const incoming = normaliseRoster(parsed);
     if (incoming.characters.length === 0) {
-      throw new ImportError('This backup has no characters, so nothing was imported. Your current data was left as it is.');
+      throw new ImportError('This backup has no characters, so nothing was restored. Your current data was left as it is.');
     }
     return {
       kind,
