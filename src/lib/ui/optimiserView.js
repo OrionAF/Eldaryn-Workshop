@@ -264,9 +264,11 @@ export const dimensionLabel = (dimension) => DIMENSION_LABEL[dimension] ?? (/^[A
 
 /**
  * "8 changes · Talent set, Talents, Mount, Relics, Sigils, 3 glyph sockets": each dimension once, every
- * glyph socket counted together.
+ * glyph socket counted together; free fills are not changes and are named last ("· fills 1 empty socket").
  */
-export function changeSummary(changes = []) {
+export function changeSummary(all = []) {
+  const changes = all.filter((c) => !c.free);
+  const fills = all.length - changes.length;
   const parts = [];
   let sockets = 0;
   for (const c of changes) {
@@ -278,7 +280,8 @@ export function changeSummary(changes = []) {
     if (!parts.includes(l)) parts.push(l);
   }
   const text = parts.map((p) => p ?? `${sockets} glyph socket${sockets === 1 ? '' : 's'}`).join(', ');
-  return `${changes.length} change${changes.length === 1 ? '' : 's'}${text ? ` · ${text}` : ''}`;
+  const free = fills ? ` · fills ${fills} empty socket${fills === 1 ? '' : 's'}` : '';
+  return `${changes.length} change${changes.length === 1 ? '' : 's'}${text ? ` · ${text}` : ''}${free}`;
 }
 
 /** The label of one change id: from the row's own changes when it lists it, else read from the id's shape. */
@@ -478,6 +481,7 @@ export const KEPT_BECAUSE_TEXT = Object.freeze({
   'own-effect': 'Kept for its own effect',
   interaction: 'Kept for its interaction with other changes',
   'power-floor': 'Kept to stay at or above the Combat Power floor',
+  free: 'Fills an empty socket with a glyph you own. It made no clear difference in this fight and is not counted as a change',
 });
 
 const powerNum = (v) => formatFlat(Math.abs(v));

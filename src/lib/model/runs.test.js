@@ -254,6 +254,9 @@ describe('Combat Power on saved runs', () => {
     expect(r.detail.rows[0].power).toBe(21500);
     expect(r.detail.rows[1]).not.toHaveProperty('power');
     expect(r.detail.rows[0].changes[0].keptBecause).toBe('power-floor');
+    const fill = runFromResult({ ...res, rows: [{ ...res.rows[0], changes: [{ ...res.rows[0].changes[0], keptBecause: 'free', free: true }] }, ...res.rows.slice(1)] }, { id: 'f' });
+    expect(fill.detail.rows[0].changes[0]).toMatchObject({ keptBecause: 'free', free: true });
+    expect(r.detail.rows[0].changes[0]).not.toHaveProperty('free');
     expect('powerFloor' in normaliseRun({ ...r, powerFloor: -3 })).toBe(false);
     expect('powerFloor' in runFromResult(richResult(), { id: 'q' })).toBe(false);
   });
