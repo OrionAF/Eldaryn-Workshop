@@ -4,7 +4,8 @@
 
 | Order | Item | Size | Status |
 |---|---|---|---|
-| 1 | §5 Let the Optimiser change stones, board, Awakening and relics | L | Next (builds on §16's dominance rules) |
+| - | Minimise batch drop as the default | S | Study done (branch claude/jovial-jang-9b3384, not merged); needs one check on the user's Chapter 7-1 Push (§3) |
+| 1 | §5 Let the Optimiser change stones, board, Awakening and relics | L | On hold by the user (builds on §16's dominance rules) |
 | 2 | §10 Arena reward weighting | S | Not started (§2 is merged) |
 | 3 | §10 Crusade (solo) | L | Paused by the user (WIP 08c51c3 on rebuild2/CRUSADE, not reviewed); a client port labelled unverified |
 | 4 | §10 Crusade (group) | M | Not started; needs the solo port. Hell Crusade: Normal needs 1 player, Hard 2, Mythic and Mythic+ 3 (client `minPlayers`); partners as on the Celestial target; the boss always hits the Tank holder (else Control), a lethal hit goes to the healthiest other player, no holder means highest HP (client `BOSS_TARGETING` and `resolveCrusadeFocus`, unconfirmed against the server) |
@@ -12,7 +13,7 @@
 | - | §12 open item: the finalist count and the repeated baseline test | S | Not started (see §12) |
 | - | §16 follow-up: measure a Celestial run's fights before/after the pruning | S | Deferred by the user |
 | - | §11 Celestial open questions | - | Waits for more server logs |
-| Done | §16 dominance pruning for talents, relics, pets and sigils (Celestial fight-count measurement deferred); §7 PVE replay check (the engine agrees with the real dungeon log on every rule); §9 stat weights chart; §2 Rankings profiles as opponents and Celestial partners; §12 progress tolerance; §11 Push on the Celestial Trial; §6 results name owned items (and the Loot bag stats, the interaction badge); §15 Fortress boss on the duel engine; §11 Celestial engine and Optimiser target; §1 Optimiser step list; §3 setup estimates; §10 Push, Fortress shield fix; §12 highest chance to win; §13 glyph pruning; §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target | - | Merged |
+| Done | §12/§3 win-rate tie look and estimate follow-up (e790f69); §3 estimate rebuilt on saved runs and every phase; no stray scrollbars on the Jobs tray and tabs; the run steps explained (68a9f7e); §16 dominance pruning for talents, relics, pets and sigils (Celestial fight-count measurement deferred); §7 PVE replay check (the engine agrees with the real dungeon log on every rule); §9 stat weights chart; §2 Rankings profiles as opponents and Celestial partners; §12 progress tolerance; §11 Push on the Celestial Trial; §6 results name owned items (and the Loot bag stats, the interaction badge); §15 Fortress boss on the duel engine; §11 Celestial engine and Optimiser target; §1 Optimiser step list; §3 setup estimates; §10 Push, Fortress shield fix; §12 highest chance to win; §13 glyph pruning; §14 mount pruning; §4 win-rate goal; §8 imports moved to Settings; §10 retired kill time and survival, Combat Power and its guard, Fortress boss target | - | Merged |
 
 ## 16. Optimiser: exact dominance pruning for talents, relics, pets and sigil slots
 
@@ -272,6 +273,29 @@ of fights to simulate.
 Estimate section of the setup (`components/optimiser/SetupEstimate.svelte`); it replaces the old
 interpolated Optimiser line under Effort. What is exact and what is assumed: simulation.md §Estimates.
 Push estimates the start rung's build search only.
+
+**Rebuilt (2026-10-16, 1e9be74).** The first version's range was useless: for the user's Infernal Temple 8
+win-chance run it said about 81,296 fights, range 2,744 to 2,764,439,552, and the run used 4,267,520 fights
+in 6 min 18 s. The old top was the theoretical worst case, and the likely value left out minimise and
+confirm. A saved run now keeps its `cost` (fights per phase, elapsed time, starts, domains). The estimate
+learns fights per build, builds per start and speed from matching past runs on this device. Without one,
+a prior measured on the fixtures stands in. All 13 measured setups fall inside their no-history range.
+Win-rate ranges are still 20–34× wide without history, and 2.25× with one run of the same setup.
+
+**Win-rate tie look and estimate follow-up (merged 2026-10-16, e790f69; 3,054 tests pass).** When no
+build wins, a race can call the rates equal only after n* fights (645 for a 234-arm race at Quick), but the
+doubling looks jumped from 512 to 1,024. Races and sequential compares on win-rate objectives now take one
+extra look at n* (`objectives.js rateTieN`, `sampler.js looksFor`), fixed before sampling, so the
+guarantees are unchanged (simulation.md §Sequential comparator). Measured: a no-wins chapter 10-7 run
+−35.7% fights, all blocks on chapter 10-7 −16%, a half-winning dungeon −2.5%, DPS bit-identical; one
+talents run took a longer path (+7%). The estimate re-measured its win-rate prior, learns from Push runs
+and from runs saved with only a debug summary, and floors fights per build at n* after a no-wins run at
+the target. Open: an "every build wins" regime cannot be learned (such runs stop at the first check).
+
+**Related, not merged.** Batch-drop Minimise study (branch `claude/jovial-jang-9b3384`, c8592a9,
+`docs/WIP/being-worked-on/minimise-batch-drop.md`): opt-in `effort.batchDrop`, never changed a row in 15
+paired runs, 0–25% fewer Minimise fights. It recommends one more check on the user's Chapter 7-1 Push before
+it becomes the default.
 
 ## 9. Stat weights chart (like the v1 one)
 
