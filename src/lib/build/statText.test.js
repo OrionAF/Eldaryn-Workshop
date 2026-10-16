@@ -43,11 +43,11 @@ describe('owned items, named so copies are told apart', () => {
     const other = { ...c, pets: { ...c.pets, owned: [pet, { ...pet, id: 'pet-b', secondaries: [] }] } };
     expect(petText(other, pet)).not.toContain('identical');
   });
-  it('a mount: level and its base rolls', () => {
+  it('a mount: level and what it adds there, as the game shows it', () => {
     const m = c.mounts[0];
     expect(mountText(c, m)).toMatch(/level 3/);
-    expect(mountText(c, m)).toContain('HP 7');
-    expect(mountText(c, m)).toContain('Attack 7');
+    expect(mountText(c, m)).toContain('+8% HP'); // round(7 * 1.2)
+    expect(mountText(c, m)).toContain('+8% Attack');
   });
   it('a glyph: rarity and stat; identical copies said once', () => {
     const g = c.glyphs[0];

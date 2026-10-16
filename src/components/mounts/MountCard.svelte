@@ -4,11 +4,13 @@
    *
    * A mount is { species, rarity, baseHp, baseAtk, level, glyphs }. baseHp/baseAtk are the level-1 rolls in percent
    * points; the contribution when ridden is round(base * (1 + 0.1 * (level - 1))) (Game/mounts-glyphs.md §5).
-   * The sliders span the species' level-1 roll envelope (§3, derived), widened if a saved value falls outside it.
+   * The fields and slider ends show that contribution at the mount's level, as the game's mount list does; a typed
+   * value is stored as the roll that gives it (mountBaseForValue). The sliders step through the species' level-1
+   * roll envelope (§3, derived), widened if a saved value falls outside it.
    * Six socket buttons (3 minor / 2 major / 1 mythic) open the glyph picker.
    */
   import { mountBySpecies } from '../../lib/game/mountsGlyphs.js';
-  import { MOUNT_MAX_LEVEL, mountEffectiveStats, mountRollBounds } from '../../lib/model/mounts.js';
+  import { MOUNT_MAX_LEVEL, mountEffectiveStats, mountRollBounds, mountStatAtLevel, mountBaseForValue } from '../../lib/model/mounts.js';
   import { glyphTypeInfo } from '../../lib/model/glyphs.js';
   import { mountImage } from '../../lib/assets/mounts.js';
   import { glyphImage } from '../../lib/assets/glyphs.js';
@@ -26,6 +28,7 @@
   const hpRange = $derived([Math.min(bounds.hp[0], mount.baseHp), Math.max(bounds.hp[1], mount.baseHp)]);
   const atkRange = $derived([Math.min(bounds.atk[0], mount.baseAtk), Math.max(bounds.atk[1], mount.baseAtk)]);
   const effective = $derived(mountEffectiveStats(mount));
+  const atLevel = (base) => mountStatAtLevel(base, mount.level);
   const art = $derived(mountImage(mount.species));
   const riddenBy = $derived(presets.filter((p) => p.mountId === mount.id).map((p) => p.name));
   const rideItems = $derived(presets.map((p) => ({ id: p.id, label: p.name, checked: p.mountId === mount.id, meta: p.mountId && p.mountId !== mount.id ? 'rides another' : '' })));
@@ -57,24 +60,25 @@
   />
 
   <div class="stat-block">
-    <NumberField label="Base Health" value={mount.baseHp} min={0} unit="%" onchange={(v) => onPatch({ baseHp: Math.round(v) })} />
+    <NumberField label="Health" value={effective.hpPercent} min={0} unit="%" onchange={(v) => onPatch({ baseHp: mountBaseForValue(v, mount.level) })} />
     <div class="slider-row">
-      <span class="bound">{hpRange[0]}</span>
-      <Slider min={hpRange[0]} max={hpRange[1]} step={1} value={mount.baseHp} ariaLabel="{species?.name} base health percent" oninput={(v) => onPatch({ baseHp: v })} />
-      <span class="bound">{hpRange[1]}</span>
+      <span class="bound">{atLevel(hpRange[0])}</span>
+      <Slider min={hpRange[0]} max={hpRange[1]} step={1} value={mount.baseHp} ariaLabel="{species?.name} health percent" ariaValueText="{effective.hpPercent}%" oninput={(v) => onPatch({ baseHp: v })} />
+      <span class="bound">{atLevel(hpRange[1])}</span>
     </div>
   </div>
   <div class="stat-block">
-    <NumberField label="Base Attack" value={mount.baseAtk} min={0} unit="%" onchange={(v) => onPatch({ baseAtk: Math.round(v) })} />
+    <NumberField label="Attack" value={effective.attackPercent} min={0} unit="%" onchange={(v) => onPatch({ baseAtk: mountBaseForValue(v, mount.level) })} />
     <div class="slider-row">
-      <span class="bound">{atkRange[0]}</span>
-      <Slider min={atkRange[0]} max={atkRange[1]} step={1} value={mount.baseAtk} ariaLabel="{species?.name} base attack percent" oninput={(v) => onPatch({ baseAtk: v })} />
-      <span class="bound">{atkRange[1]}</span>
+      <span class="bound">{atLevel(atkRange[0])}</span>
+      <Slider min={atkRange[0]} max={atkRange[1]} step={1} value={mount.baseAtk} ariaLabel="{species?.name} attack percent" ariaValueText="{effective.attackPercent}%" oninput={(v) => onPatch({ baseAtk: v })} />
+      <span class="bound">{atLevel(atkRange[1])}</span>
     </div>
   </div>
 
-  <p class="effective" aria-label="Ridden bonus">
-    Ridden: <span class="stat-num">+{effective.hpPercent}%</span> HP, <span class="stat-num">+{effective.attackPercent}%</span> ATK
+  <p class="effective" data-testid="mount-roll">
+    Ridden: <span class="stat-num">+{effective.hpPercent}%</span> HP, <span class="stat-num">+{effective.attackPercent}%</span> ATK at level {mount.level}{#if mount.level > 1}
+      (level 1 roll: <span class="stat-num">{mount.baseHp}%</span> HP, <span class="stat-num">{mount.baseAtk}%</span> ATK){/if}
   </p>
 
   <div class="sockets" role="group" aria-label="Glyph sockets">
