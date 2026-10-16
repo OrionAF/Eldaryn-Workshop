@@ -60,7 +60,9 @@
         <dd>
           {#if est.time}
             <span class="num big">{about(est.time.likely)}</span>
-            <span class="sub">range <span class="num">{dur(est.time.lo)}</span> to <span class="num">{dur(est.time.hi)}</span></span>
+            {#if span(dur(est.time.lo), dur(est.time.hi))}
+              <span class="sub">range <span class="num">{dur(est.time.lo)}</span> to <span class="num">{dur(est.time.hi)}</span></span>
+            {/if}
           {:else if est.timeReason === 'no-calibration'}
             <span class="sub">Needs a speed calibration. <a href="#/settings">Calibrate speed</a></span>
           {:else}
