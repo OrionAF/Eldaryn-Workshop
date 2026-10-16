@@ -10,6 +10,8 @@
 import { hashSeed, mulberry32 } from '../engine/rng.js';
 import { meanInterval, censoredQuantile } from '../engine/stats/index.js';
 import { changesOf, revert, addChange, canonicalise } from './effect.js';
+import { fillEmptySockets } from './fill.js';
+import { socketsOf, savedSockets } from './space.js';
 
 /**
  * Holm's step-down over sequential tests: every open test runs at alpha / (m - rejected); the ones
@@ -88,7 +90,53 @@ export async function minimise(ctx, F0, { alpha, alphaFinal }) {
     F = d.Y;
   }
   const vs = await ctx.compare(F, B, alphaFinal);
-  return vs.verdict === 'better' ? { arm: F, decided, dropped, vsBaseline: vs } : { arm: B, decided: {}, dropped, vsBaseline: vs };
+  if (vs.verdict !== 'better') return { arm: B, decided: {}, dropped, vsBaseline: vs, free: [] };
+  const filled = ctx.fill ? await withFreeFills(ctx, F, { alpha, alphaFinal }) : null;
+  return filled ? { ...filled, dropped } : { arm: F, decided, dropped, vsBaseline: vs, free: [] };
+}
+
+/**
+ * Free fills (simulation.md §Minimise and confirm): F with its empty glyph sockets filled (fill.js). A change is
+ * a fill when it puts a fill glyph into a socket the baseline has empty; one into a baseline glyph's socket
+ * replaces that glyph, so it is paid like any other. The filled build FX is kept only when one more Holm round
+ * over its paid changes finds each still needed, no fill is worse to keep than to leave out (each at alpha),
+ * FX is not worse than F (a fill may put back a glyph F took off, which is then no change at all), and FX is
+ * still better than the baseline at alphaFinal.
+ * @returns {Promise<Object|null>}  minimise's result for the filled build, `free` its fill change ids; null: no fill
+ */
+async function withFreeFills(ctx, F, { alpha, alphaFinal }) {
+  const { space, B } = ctx;
+  const { candidate, glyphs } = fillEmptySockets(space, B.cand, F.cand);
+  if (!glyphs.length) return null;
+  const FX = ctx.armOf(candidate);
+  if (FX.key === F.key) return null;
+  const C = changesOf(space, B.cand, FX.cand);
+  const fills = new Set(glyphs);
+  const isFill = (c) => c.dimension.endsWith('Glyphs') && glyphAt(space, B.cand, c.id) == null && fills.has(glyphAt(space, FX.cand, c.id));
+  const tests = C.map((c) => ({ c, Y: without(ctx, FX, c) })).filter((t) => t.Y);
+  const paid = tests.filter((t) => !isFill(t.c));
+  const free = tests.filter((t) => isFill(t.c));
+  await ctx.prefetch?.([FX, ...tests.map((t) => t.Y)]);
+  const paidRes = await holmSequential(paid, alpha, (t, a) => ctx.compare(FX, t.Y, a));
+  if (paidRes.some((r) => r.verdict !== 'better')) return null;
+  const freeRes = [];
+  for (const t of free) freeRes.push(await ctx.compare(FX, t.Y, alpha));
+  if (freeRes.some((r) => r.verdict === 'worse')) return null;
+  if ((await ctx.compare(FX, F, alpha)).verdict === 'worse') return null;
+  const vs = await ctx.compare(FX, B, alphaFinal);
+  if (vs.verdict !== 'better') return null;
+  const decided = Object.fromEntries([...paid.map((t, i) => [t.c.id, paidRes[i]]), ...free.map((t, i) => [t.c.id, freeRes[i]])]);
+  return { arm: FX, decided, vsBaseline: vs, free: C.filter(isFill).map((c) => c.id) };
+}
+
+/**
+ * The glyph id in the socket of change `glyph:<mount>:<tier>:<i>` on candidate X (null: empty). A candidate on
+ * another mount sees that mount's saved sockets, as changesOf does.
+ */
+function glyphAt(space, X, id) {
+  const [, m, tier, i] = id.split(':');
+  const rows = X.mountId === m ? socketsOf(space.character, X) : savedSockets(space.character, m);
+  return rows?.[tier]?.[Number(i)] ?? null;
 }
 
 // ---------------------------------------------------------------------------------------------
