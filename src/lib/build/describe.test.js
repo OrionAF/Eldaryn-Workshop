@@ -18,7 +18,7 @@ describe('describeBuild', () => {
     expect(line(lines, 'Relics')).toContain('Iron Heart');
     expect(line(lines, 'Sigils')).toContain('Berserk Stance');
     expect(line(lines, 'Ancient sigil')).toBe('Flameborn');
-    expect(line(lines, 'Mount')).toMatch(/^Night Wolf \(level 3 · HP 7, Attack 7\)$/);
+    expect(line(lines, 'Mount')).toMatch(/^Night Wolf \(level 3 · \+8% HP, \+8% Attack\)$/);
     expect(line(lines, 'Major glyphs')).toContain('Warhaste Emblem (Rare)');
     expect(line(lines, 'Transcendence')).toBe('Default (77 nodes)');
     expect(lines.every((l) => typeof l.label === 'string' && typeof l.value === 'string')).toBe(true);

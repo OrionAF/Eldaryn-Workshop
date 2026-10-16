@@ -581,7 +581,7 @@ here.
 |---|---|
 | Header hint (unlock level, socket counts, only ridden counts) | C7 context header subline |
 | Mount species select + Add mount + same-species hint | C7 Mounts tab "+ Add mount" (picker with art); the new card opens with its rolls focused |
-| MountCard StarRating level, Base HP/ATK sliders, effective "Ridden:" bonus, used by | C7 mount card (bronze per-mount frame for the sockets section); rolls get number fields beside the sliders |
+| MountCard StarRating level, Base HP/ATK sliders, effective "Ridden:" bonus, used by | C7 mount card (bronze per-mount frame for the sockets section); rolls get number fields beside the sliders. Fields and slider ends show the value at the mount's level, as the game's mount list does (Game/mounts-glyphs.md §5); a typed value is stored as the level-1 roll that gives it, and the "Ridden:" line names the level-1 roll from level 2 on |
 | Six socket buttons → GlyphPickerModal (filtered list, "Also on", sealed disabled, Empty this socket) | C7 mount card sockets (larger, art) → same picker dialog |
 | "Ride with <active preset>" toggle | C7 card "Ridden in ▾" menu with each preset named; primary control is B2 Mount picker |
 | Remove mount | C7 card ConfirmButton |

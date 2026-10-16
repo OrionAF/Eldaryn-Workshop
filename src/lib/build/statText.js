@@ -14,6 +14,7 @@ import { petDisplayName } from '../game/pets.js';
 import { mountBySpecies } from '../game/mountsGlyphs.js';
 import { isMultiplierStat } from '../model/equipment.js';
 import { glyphSecondaryDef, glyphSecondaryValue, glyphTypeInfo } from '../model/glyphs.js';
+import { mountStatAtLevel } from '../model/mounts.js';
 import { formatFlat, formatPct } from '../format.js';
 
 const POOL_LABEL = new Map(SECONDARY_STAT_POOL.map((s) => [s.type, s.label]));
@@ -75,11 +76,12 @@ export function petText(character, pet) {
   return `${name}${bits ? ` (${bits})` : ''}${twinsText(character.pets?.owned, pet, petSig)}`;
 }
 
-/** "Night Wolf (level 3 · HP 7, Attack 7)": level and its base rolls. */
+/** "Night Wolf (level 3 · +8% HP, +8% Attack)": level and what it adds there, as the game shows it. */
 export function mountText(character, mount) {
   if (!mount) return 'None';
   const name = mountBySpecies(mount.species)?.name ?? mount.species;
-  const rolls = [mount.baseHp != null ? `HP ${formatFlat(mount.baseHp)}` : '', mount.baseAtk != null ? `Attack ${formatFlat(mount.baseAtk)}` : ''].filter(Boolean).join(', ');
+  const at = (base) => `+${formatFlat(mountStatAtLevel(base, mount.level))}%`;
+  const rolls = [mount.baseHp != null ? `${at(mount.baseHp)} HP` : '', mount.baseAtk != null ? `${at(mount.baseAtk)} Attack` : ''].filter(Boolean).join(', ');
   return `${name} (level ${mount.level}${rolls ? ` · ${rolls}` : ''})${twinsText(character.mounts, mount, mountSig)}`;
 }
 
