@@ -270,7 +270,8 @@ simulation.md §Celestial Trial) and
 `prefs` (`density`, `reduceMotion`, `defaultEffort`, `cpuProfile`: `eco` | `balanced` (default) | `max`,
 the worker-pool size of a job, simulation.md §Worker pool; `dropSets`: `all` (default) | `set1`, the gear
 sets Drop Check compares against, simulation.md §Drop Check; `debugLog`: `off` (default) | `builds` | `fights`,
-the Optimiser's debug log level, simulation.md §Debug log; a stored value without it loads as `off`). Every read and write is try/catch-guarded, a
+the Optimiser's debug log level, simulation.md §Debug log; a stored value without it loads as `off`; `showImport`: `false`
+(default) | `true`, whether game-data import is shown, ia.md §5.4). Every read and write is try/catch-guarded, a
 missing or broken value falls back to the defaults, and nothing in the roster depends on it. It is not
 exported with the roster. Session jobs (`lib/jobs.svelte.js`) are not persisted; the optional resume
 checkpoints use IndexedDB, opt-in.

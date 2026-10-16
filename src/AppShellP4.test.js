@@ -4,6 +4,7 @@ import App from './App.svelte';
 import { rosterStore } from './lib/rosterStore.svelte.js';
 import { syncRouter } from './lib/router.svelte.js';
 import { loadImportText, resetImportFlow } from './lib/importFlow.svelte.js';
+import { applyPrefs, setPrefs } from './lib/prefs.svelte.js';
 import { inspector } from './lib/inspector.svelte.js';
 import { resetNotifications } from './lib/notify.svelte.js';
 import { unitFor } from './components/import/importUnits.js';
@@ -17,8 +18,10 @@ afterEach(() => {
   inspector.clear();
 });
 
-function mountApp({ empty, hash }) {
+function mountApp({ empty, hash, showImport = false }) {
   localStorage.clear();
+  applyPrefs();
+  if (showImport) setPrefs({ showImport: true });
   rosterStore.roster.characters.splice(0);
   if (!empty) rosterStore.addCharacter('Aria', 'WARRIOR');
   history.replaceState(null, '', hash ?? (empty ? '#/welcome' : '#/character/overview'));
@@ -32,7 +35,7 @@ function mountApp({ empty, hash }) {
 }
 
 it('Settings with an empty roster: the Import section is reachable and shows one import dialog for a report', async () => {
-  const target = mountApp({ empty: true, hash: '#/settings' });
+  const target = mountApp({ empty: true, hash: '#/settings', showImport: true });
   expect(location.hash).toBe('#/settings'); // not redirected to Welcome
   expect(target.querySelector('[data-testid="import-section"]')).not.toBeNull();
   expect(target.querySelector('.welcome-shell')).toBeNull();
@@ -43,7 +46,7 @@ it('Settings with an empty roster: the Import section is reachable and shows one
 });
 
 it('a rejected file shows its reason in the Settings Import section, with no dialog', async () => {
-  const target = mountApp({ empty: true, hash: '#/settings' });
+  const target = mountApp({ empty: true, hash: '#/settings', showImport: true });
   loadImportText('{ "a": 1,\n  "b": }');
   flushSync();
   await tick();
@@ -51,10 +54,12 @@ it('a rejected file shows its reason in the Settings Import section, with no dia
   expect(document.querySelector('dialog[open]')).toBeNull();
 });
 
-it('Welcome links to Settings, Import instead of hosting an import panel', () => {
+it('Welcome links to Settings to restore a backup instead of hosting an import panel', () => {
   const target = mountApp({ empty: true });
   const link = target.querySelector('[data-testid="welcome-import-link"] a');
   expect(link.getAttribute('href')).toBe('#/settings');
+  expect(link.textContent).toBe('Restore it in Settings');
+  expect(target.textContent).not.toMatch(/game profile|JSON/);
   expect(target.querySelector('input[type="file"]')).toBeNull();
   expect(target.textContent).not.toContain('Import your game profile');
 });

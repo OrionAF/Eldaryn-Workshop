@@ -75,9 +75,11 @@
     { value: 'all', label: 'Both sets' },
     { value: 'set1', label: 'Set 1 only' },
   ];
+  // The Loot bag tab needs game-data import (Settings > Advanced); a bag already loaded keeps it.
+  const bagShown = $derived(prefs.showImport || !!bag);
   const TABS = $derived([
     { id: 'single', label: 'Single drop' },
-    { id: 'bag', label: 'Loot bag', count: bag ? liveCount : undefined },
+    ...(bagShown ? [{ id: 'bag', label: 'Loot bag', count: bag ? liveCount : undefined }] : []),
   ]);
 
   const character = $derived(rosterStore.current);
@@ -337,7 +339,7 @@
   const chipOf = (best) => (best ? chipFor(best.verdict, best.basis, bagRowState) : { verdict: 'queued', label: 'Queued' });
 
   $effect(() => {
-    view = tab === 'bag' ? 'bag' : 'single';
+    view = tab === 'bag' && bagShown ? 'bag' : 'single';
   });
 
   // A loot bag handed over by the import dialog: on mount and whenever another one arrives, take it,
@@ -360,7 +362,7 @@
       <Tabs items={TABS} bind:value={view} label="Drop Check" idPrefix="dc" onchange={pickTab} />
     </div>
 
-    {#if view === 'single'}
+    {#if view !== 'bag' || !bagShown}
       <div id="dc-panel-single" role="tabpanel" class="grid">
         <div class="col setup">
           <Panel title="Drop" scope="tool">

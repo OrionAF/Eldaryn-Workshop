@@ -148,7 +148,14 @@ it('Verify: a handed-over log that is not JSON is reported without throwing', ()
   expect(view.q('[role="alert"]').textContent).toMatch(/not valid JSON/);
 });
 
-it('Verify: no drop zone or paste box, only a pointer to Settings > Import', () => {
+it('with game-data import hidden (the default) there is no Verify tab, and its route shows the duel', () => {
+  view = setup(ToolsDuelPage, { tab: 'verify' });
+  expect([...view.target.querySelectorAll('[role="tab"]')].map((t) => t.textContent.trim())).toEqual(['Duel']);
+  expect(view.target.querySelector('#duel-panel-verify')).toBeNull();
+});
+
+it('Verify: no drop zone or paste box, only a pointer to Settings > Advanced', () => {
+  setEstimatePrefs({ showImport: true });
   view = setup(ToolsDuelPage, { tab: 'verify' });
   expect(view.q('#duel-panel-verify input[type="file"]')).toBeNull();
   expect(view.q('#duel-panel-verify textarea')).toBeNull();
@@ -156,6 +163,7 @@ it('Verify: no drop zone or paste box, only a pointer to Settings > Import', () 
   expect(link.getAttribute('href')).toBe('#/settings');
   expect(link.textContent).toContain('Import a fight log in Settings');
   expect(view.q('[data-testid="log-state"]').textContent).toContain('No fight log');
+  resetEstimatePrefs();
 });
 
 it('a cancelled Both-seats run with one seat shows no verdict and no Both-seats row, only a partial label', async () => {

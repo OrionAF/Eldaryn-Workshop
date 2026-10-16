@@ -1,9 +1,10 @@
 <script>
   /**
-   * ImportSection.svelte - the one place to import (ia.md G3): the capture disclaimer, then the file
-   * drop, paste and file picker. It hands text to lib/importFlow.svelte.js, whose report dialog (mounted
-   * in the shell) takes over; a rejected text shows its reason here. Focus requests from the tool pages'
-   * pointer links (requestImportFocus) land on the heading.
+   * ImportSection.svelte - game-data import (ia.md G3, §5.4), shown in Settings > Advanced only while the
+   * "Show game data import" preference is on: the capture disclaimer, then the file drop, paste and file
+   * picker. It hands text to lib/importFlow.svelte.js, whose report dialog (mounted in the shell) takes
+   * over; a rejected text shows its reason here unless it came from the Data panel's restore box. Focus
+   * requests from the tool pages' pointer links (requestImportFocus) land on the heading.
    */
   import Banner from '../ui/Banner.svelte';
   import ImportSource from './ImportSource.svelte';
@@ -33,7 +34,11 @@
       app always import normally.
     </span>
   </Banner>
-  <ImportSource onfile={loadImportFile} ontext={loadImportText} error={importFlow.error} />
+  <ImportSource
+    onfile={(f) => loadImportFile(f)}
+    ontext={(t) => loadImportText(t)}
+    error={importFlow.from === 'restore' ? '' : importFlow.error}
+  />
 </section>
 
 <style>

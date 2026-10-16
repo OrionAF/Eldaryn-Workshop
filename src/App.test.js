@@ -5,6 +5,7 @@ import { rosterStore } from './lib/rosterStore.svelte.js';
 import { syncRouter, go, router } from './lib/router.svelte.js';
 import { notify, resetNotifications } from './lib/notify.svelte.js';
 import { resetImportFlow } from './lib/importFlow.svelte.js';
+import { applyPrefs, setPrefs } from './lib/prefs.svelte.js';
 
 let target, app;
 
@@ -239,6 +240,7 @@ it('phone area bar: Character / Builds / Tools (no Import tab), the current area
 });
 
 it('Import (Settings): junk shows the specific reason in the section and changes nothing; a profile is reported, then created', async () => {
+  setPrefs({ showImport: true });
   open('#/settings');
   const before = JSON.stringify(rosterStore.roster);
   const input = q('[data-testid="import-section"] input[type="file"]');
@@ -269,17 +271,20 @@ it('Import (Settings): junk shows the specific reason in the section and changes
   flushSync();
   expect(q('h1').textContent).toBe('Overview');
   expect(q('div[aria-label="Notifications"]').textContent).toContain('Created Profile Hero from a game profile');
+  localStorage.clear();
+  applyPrefs();
 });
 
-it('Settings route renders Data, Preferences and the RESET danger zone', () => {
+it('Settings route renders Data, Preferences and the RESET danger zone; game-data import stays hidden', () => {
   open('#/settings');
   expect(q('h1').textContent).toBe('Data & Settings');
-  expect(q('[data-testid="import-disclaimer"]').textContent).toMatch(/finicky|network traffic/i);
-  expect(q('[data-testid="import-section"]').textContent).toContain('HTTP Toolkit');
+  expect(q('[data-testid="restore-backup"] input[type="file"]')).not.toBeNull();
+  expect(q('[data-testid="import-section"]')).toBeNull();
+  expect(q('[data-testid="show-import-pref"]')).not.toBeNull();
   expect(q('[aria-label="Danger Zone"]')).not.toBeNull();
   expect(byText('button', 'Export all characters')).toBeTruthy();
   expect(byText('button', 'Export Aria')).toBeTruthy();
-  expect(qa('h2').map((h) => h.textContent.trim())).toEqual(expect.arrayContaining(['Data', 'Preferences', 'Danger zone']));
+  expect(qa('h2').map((h) => h.textContent.trim())).toEqual(expect.arrayContaining(['Data', 'Preferences', 'Danger zone', 'Advanced']));
 });
 
 it('switching characters raises a "Switched to" notification and keeps the page', () => {

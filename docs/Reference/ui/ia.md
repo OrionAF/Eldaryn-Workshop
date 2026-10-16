@@ -28,7 +28,7 @@ Ids (C/B/T/G) are used in the flows and the parity table.
 GLOBAL (top bar, not an area)
   G1  Character switcher          (menu: switch, new, rename, class, delete)
   G2  Preset + realm context      (active preset, Base/Oblivion realm)
-  G3  Import                      (Settings > Data > Import: one drop zone / paste / picker for every JSON kind)
+  G3  Import                      (Settings > Advanced > Import, hidden until switched on: one drop zone / paste / picker for every JSON kind)
   G4  Jobs tray                   (running and finished simulations)
   G5  Activity log                (every status message of the session)
   G6  Data & Settings page        (export, storage, preferences, danger zone)
@@ -67,7 +67,7 @@ TOOLS  (simulations; read the character, write only through an explicit Apply)
 | G0 Welcome | WelcomeScreen (create first character, import roster/profile, privacy note); adds paste, drag-drop, capture help |
 | G1 Character switcher | Sidebar "⇄ Change character" picker, ✎ edit panel (rename, class, delete), "+ New Character", banner avatar/name/class |
 | G2 Context | Banner context line; the hidden "active preset" that Mounts, Relics, Awakening, Transcendence and Sigils silently depend on; Oblivion screen's global realm toggle (`oblivion.activeRealm`) |
-| G3 Import | Sidebar Import, Welcome "Import from file", Drop Check "Load .json file"/paste, Duel replay file/paste: one entry point that detects the JSON kind and routes it. **Now lives only in Settings > Data > Import** (P9): no top-bar button, no phone tab, no import box on Welcome, Drop Check or Duel; those show a link to it |
+| G3 Import | Sidebar Import, Welcome "Import from file", Drop Check "Load .json file"/paste, Duel replay file/paste: one entry point that detects the JSON kind and routes it. **Now lives only in Settings > Advanced > Import** (P9), and only while "Show game data import" is on (§5.4): no top-bar button, no phone tab, no import box on Welcome, Drop Check or Duel; those show a link to it |
 | G4 Jobs tray | Optimiser progress bar/Cancel, Duel progress/Cancel, Drop Check "Simulating (done/total)", batch "Checking done/total", Oblivion "floor N: done/n"/Cancel |
 | G5 Activity log | The banner toast pill (all setStatus messages), with history |
 | G6 Data & Settings | SettingsPanel (Reset all data, RESET confirm), Sidebar Export, privacy note, storage behaviour from storage.js |
@@ -199,6 +199,10 @@ warnings sticky with a close button; every message is also written to G5.
 > `#/settings`, which works with an empty roster; the import report dialog is unchanged (steps 3-5
 > below). Drop Check's Loot bag tab and Duel's Verify tab show "Import a loot bag / fight log in
 > Settings → Import" and still show what was handed over. The text below describes the pre-P9 Welcome.
+>
+> **Hidden-import amendment (2026-10-16).** Game-data import is off by default (§5.4). Welcome then
+> links to Settings only to restore a backup ("Have a backup from this app? Restore it in Settings"),
+> and the link focuses Data > Restore a backup; with import on it reads as above and focuses Advanced > Import.
 
 1. **G0 Welcome**, full screen over a dark stone backdrop with the crest. Primary panel:
    "Import your game profile". A large drop zone accepts a file, drag-drop or pasted JSON. Under it,
@@ -452,14 +456,15 @@ here.
 | Current | New location |
 |---|---|
 | Close button | G6 is a page; leave via nav |
-| Placeholder text | Replaced by G6 Preferences (density compact/comfortable, reduce motion, default tool effort); Performance adds the CPU profile, speed calibration and "Debug: log the search" (Off / Builds / Builds and fights; its log shows in the Optimiser run's Debug log section, design-system §4.39) |
+| Placeholder text | Replaced by G6 Preferences (density compact/comfortable, reduce motion, default tool effort); Performance adds the CPU profile and speed calibration; Advanced, the last panel (after the Danger zone), holds "Debug: log the search" (Off / Builds / Builds and fights; its log shows in the Optimiser run's Debug log section, design-system §4.39) and, last of all, the "Show game data import" switch (§5.4) |
 | "Reset all data" + type RESET + Confirm reset (exact, case-sensitive; Enter) + Cancel | G6 Danger zone, same RESET rule; adds "Export first" button beside it, a list of what is wiped (every character, presets, collections, opponents, runs, the v1 backup key and the legacy settings key), and an error line on wrong text |
 
 ### 5.4 Import / export and persistence
 
 | Current | New location |
 |---|---|
-| Roster import (v1/v2) replaces everything silently | G3 → "Replace all characters?" confirm with counts and an offered auto-download of the current roster first |
+| Game-data import shown to everyone | Off by default, per device (`prefs.showImport`, data-model.md §5.1): most players never capture the game's network traffic. While off, nothing outside the switch mentions import or JSON: no Import box in Settings, no Loot bag tab on Drop Check, no Verify tab on Duel, no Rankings line on Opponents, and Welcome links only to restoring a backup. A loot bag or fight log already loaded keeps its tab. Switching it on adds the G3 Import box under the switch in Settings > Advanced |
+| Roster import (v1/v2) replaces everything silently | G6 Data "Restore a backup" (always shown; same flow, its errors show in that box) or G3 → "Replace all characters?" confirm with counts and an offered auto-download of the current roster first |
 | Profile import → new character (" (imported)" suffix) | G3 → report → "Create character" (kept) or new "Update <name>" (§3.2) |
 | Drop Check "Load .json file" / paste textarea / "Check these drops" | T1 Loot bag tab (kept) and G3 routing for loot bags |
 | Duel replay file / paste | T3 Verify tab (kept) and G3 routing for fight logs |

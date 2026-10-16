@@ -1,7 +1,7 @@
 /**
  * importFlow.svelte.js - the state machine behind the G3 import dialog (ia.md §3.1, §3.2, §5.4).
  *
- * One flow for the single entry point (Settings > Data > Import): the text goes
+ * One flow for both Settings entry points (Data > Restore a backup, and Advanced > Import): the text goes
  * through planImport (importPlan.js), the dialog shows what it is and what will happen, and only
  * `confirmImport` writes. Junk never reaches the roster: a failed plan sets `error` and nothing else.
  * Loot bags and fight logs are not imported here; they are handed to their tool page, which collects
@@ -32,6 +32,8 @@ let state = $state({
   focusSeq: 0,
   /** true from a pointer link's request until the Import section has taken the focus */
   focusPending: false,
+  /** which Settings box the last text came from ('import' or 'restore'), so only that box shows the error */
+  from: 'import',
 });
 
 /** The last "Update <name>": the character as it was, for the one-step undo. */
@@ -70,6 +72,9 @@ export const importFlow = {
   },
   get focusPending() {
     return state.focusPending;
+  },
+  get from() {
+    return state.from;
   },
   /** {name, at} of the update that can still be undone, or null. */
   get undo() {
@@ -115,11 +120,14 @@ export function backToChoose() {
 /**
  * Read `text` (a file's contents or pasted JSON). On success the report is shown; on failure the dialog
  * stays on the choose step with the specific reason, and nothing has been written.
+ * @param {string} text
+ * @param {'import'|'restore'} [from] the Settings box it came from
  * @returns {boolean} whether a report is shown
  */
-export function loadImportText(text) {
+export function loadImportText(text, from = 'import') {
   state.open = true;
   state.text = text;
+  state.from = from;
   try {
     const plan = planImport(text, rosterStore.roster, { character: rosterStore.current });
     state.plan = plan;
@@ -136,8 +144,8 @@ export function loadImportText(text) {
   }
 }
 
-/** Read a File (or Blob) and load its text. */
-export async function loadImportFile(file) {
+/** Read a File (or Blob) and load its text. `from` as for loadImportText. */
+export async function loadImportFile(file, from = 'import') {
   let text;
   try {
     text = typeof file.text === 'function' ? await file.text() : await new Promise((resolve, reject) => {
@@ -149,10 +157,11 @@ export async function loadImportFile(file) {
   } catch {
     state.open = true;
     state.stage = 'choose';
+    state.from = from;
     state.error = 'The file could not be read.';
     return false;
   }
-  return loadImportText(text);
+  return loadImportText(text, from);
 }
 
 /** A tool page takes the loot bag / fight log text once (null when none is waiting). */
@@ -228,4 +237,6 @@ export function resetImportFlow() {
   closeImport();
   lastUpdate = null;
   handoff = null;
+  state.from = 'import';
+  state.focusPending = false;
 }

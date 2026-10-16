@@ -98,3 +98,13 @@ it('the cloned opponent\'s sheet table has no empty Model column', () => {
   expect(heads).not.toContain('Model');
   expect(heads).toContain('Your sheet');
 });
+
+it('the Rankings import line shows only while game-data import is switched on', async () => {
+  const { setPrefs, applyPrefs } = await import('../../lib/prefs.svelte.js');
+  expect(view.target.querySelector('[data-testid="rankings-import-note"]')).toBeNull();
+  setPrefs({ showImport: true });
+  flushSync();
+  expect(view.q('[data-testid="rankings-import-note"] a').textContent).toContain('Import a player from Rankings');
+  localStorage.clear();
+  applyPrefs();
+});

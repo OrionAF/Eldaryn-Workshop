@@ -1,17 +1,19 @@
 <script>
   /**
-   * SettingsPage.svelte - G6 route (`#/settings`): Data (export, Import, the one-step undo of "Update <name>",
-   * where the data lives), Preferences (per device, lib/prefs.svelte.js) and the Danger zone. ia.md §5.3, §5.4.
+   * SettingsPage.svelte - G6 route (`#/settings`): Data (export, restore a backup, the one-step undo of
+   * "Update <name>", where the data lives), Preferences and Performance (per device, lib/prefs.svelte.js),
+   * the Danger zone, and Advanced last: the debug log and the switch that shows game-data import. ia.md §5.3, §5.4.
    */
   import Panel from '../ui/Panel.svelte';
   import Button from '../ui/Button.svelte';
   import Checkbox from '../ui/Checkbox.svelte';
   import Select from '../ui/Select.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
+  import DropZone from '../ui/DropZone.svelte';
   import ImportSection from '../import/ImportSection.svelte';
   import DangerZone from '../settings/DangerZone.svelte';
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
-  import { importFlow, undoLastUpdate } from '../../lib/importFlow.svelte.js';
+  import { importFlow, undoLastUpdate, loadImportFile, consumeImportFocus } from '../../lib/importFlow.svelte.js';
   import { prefs, setPrefs } from '../../lib/prefs.svelte.js';
   import { CPU_PROFILES, workersFor } from '../../lib/tasks/cpuProfile.js';
   import { staleReason } from '../../lib/calibration.js';
@@ -23,6 +25,18 @@
   let { setStatus = () => {} } = $props();
 
   const current = $derived(rosterStore.current);
+
+  // ---- Restore a backup ----------------------------------------------------------------------
+  // While game-data import is hidden, a pointer link's focus request lands here instead (ImportSection
+  // takes it when shown).
+  let restoreHeading = $state(null);
+  const reduce = () => globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  $effect(() => {
+    void importFlow.focusSeq;
+    if (prefs.showImport || !restoreHeading || !importFlow.focusPending || !consumeImportFocus()) return;
+    restoreHeading.scrollIntoView?.({ block: 'start', behavior: reduce() ? 'auto' : 'smooth' });
+    restoreHeading.focus?.({ preventScroll: true });
+  });
 
   // ---- Performance ---------------------------------------------------------------------------
   const cores = globalThis.navigator?.hardwareConcurrency;
@@ -52,7 +66,7 @@
 <div class="settings">
   <Panel title="Data">
     <p class="note">
-      Your characters are saved in this browser only (local storage). Export keeps a copy you can restore on any device.
+      Your characters are saved in this browser only. Export downloads a backup file you can restore here or on another device.
     </p>
     <div class="row">
       <Button variant="secondary" onclick={() => rosterStore.exportDownload()}>Export all characters</Button>
@@ -65,7 +79,15 @@
         {current ? `Export ${current.name}` : 'Export this character'}
       </Button>
     </div>
-    <ImportSection />
+    <section class="restore" aria-labelledby="settings-restore-h" data-testid="restore-backup">
+      <h3 id="settings-restore-h" tabindex="-1" bind:this={restoreHeading}>Restore a backup</h3>
+      <DropZone
+        onfile={(f) => loadImportFile(f, 'restore')}
+        label="Choose a backup file, or drop it here"
+        hint="A file saved with Export"
+        error={importFlow.from === 'restore' ? importFlow.error : ''}
+      />
+    </section>
     {#if importFlow.undo}
       <div class="undo" role="status">
         <span>{importFlow.undo.name} was updated from a game profile.</span>
@@ -139,7 +161,13 @@
         </div>
         <p class="note">Runs fights for about 6 seconds with your active preset (a sample character when you have none). It never runs by itself.</p>
       </div>
+    </div>
+  </Panel>
 
+  <DangerZone />
+
+  <Panel title="Advanced" scope="global" scopeLabel="This device">
+    <div class="prefs">
       <div class="field" data-testid="debug-log-pref">
         <SegmentedControl
           label="Debug: log the search"
@@ -152,10 +180,16 @@
           <p class="warn" role="status" data-testid="debug-log-warn">Builds and fights slows runs and can use tens of MB of memory on a long run.</p>
         {/if}
       </div>
+      <div class="field" data-testid="show-import-pref">
+        <Checkbox switch checked={prefs.showImport} label="Show game data import" onchange={(on) => setPrefs({ showImport: on })} />
+        <p class="note">
+          For players who capture the game's own data. Adds an Import box here, the Loot bag tab on Drop Check, the
+          fight-log check on Duel and Rankings players on Opponents. Restoring a backup does not need it.
+        </p>
+      </div>
+      {#if prefs.showImport}<ImportSection />{/if}
     </div>
   </Panel>
-
-  <DangerZone />
 
   <p class="privacy">100% local: everything runs in your browser and saves to this device only. Nothing is sent to a server.</p>
 </div>
@@ -164,6 +198,8 @@
   .settings { display: grid; gap: var(--sp-4); max-width: 44rem; }
   .row { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
   .note { margin: 0 0 var(--sp-3); font-size: var(--fs-13); color: var(--text-soft); }
+  .restore { display: grid; gap: var(--sp-2); margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--line-hairline); }
+  h3 { margin: 0; font-size: var(--fs-16); }
   .undo { display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-3); font-size: var(--fs-13); }
   .warn { margin: var(--sp-3) 0 0; font-size: var(--fs-13); color: var(--verdict-down); }
   .prefs { display: grid; gap: var(--sp-4); }
