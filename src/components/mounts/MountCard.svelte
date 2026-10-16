@@ -77,8 +77,7 @@
   </div>
 
   <p class="effective" data-testid="mount-roll">
-    Ridden: <span class="stat-num">+{effective.hpPercent}%</span> HP, <span class="stat-num">+{effective.attackPercent}%</span> ATK at level {mount.level}{#if mount.level > 1}
-      (level 1 roll: <span class="stat-num">{mount.baseHp}%</span> HP, <span class="stat-num">{mount.baseAtk}%</span> ATK){/if}
+    Ridden: <span class="stat-num">+{effective.hpPercent}%</span> HP, <span class="stat-num">+{effective.attackPercent}%</span> ATK at level {mount.level}{#if mount.level > 1}{' '}(level 1 roll: <span class="stat-num">{mount.baseHp}%</span> HP, <span class="stat-num">{mount.baseAtk}%</span> ATK){/if}
   </p>
 
   <div class="sockets" role="group" aria-label="Glyph sockets">

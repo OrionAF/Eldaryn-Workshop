@@ -39,7 +39,7 @@
     <header class="hero">
       <div class="brand">ELDARYN<br />WORKSHOP</div>
       <h1>Welcome</h1>
-      <p class="subtitle">Bring in your character, or start from scratch. Everything stays on this device.</p>
+      <p class="subtitle">{prefs.showImport ? 'Bring in your character, or start from scratch.' : 'Create your character to get started.'} Everything stays on this device.</p>
     </header>
 
     <p class="import-link" data-testid="welcome-import-link">
