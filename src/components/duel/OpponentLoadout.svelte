@@ -117,7 +117,7 @@
   {/if}
 
   <div class="group">
-    <span class="cap-label">Major glyphs - {opponent.majorGlyphs.length}/{MOUNT_GLYPH_SOCKETS.major} (inert without their sigil)</span>
+    <span class="cap-label">Major glyphs - {opponent.majorGlyphs.length}/{MOUNT_GLYPH_SOCKETS.major} (do nothing without their sigil)</span>
     <div class="chip-list">
       {#each majors as def (def.id)}
         <Chip label={def.name} size="compact" selected={!!glyph(def.id)} onClick={() => toggleGlyph(def.id)} />

@@ -38,7 +38,7 @@
   const totals = $derived(awakening.path ? awakeningBonuses(awakening.path, awakening.level, character.class, spec) : {});
   const otherTotals = $derived(other ? awakeningBonuses(other, awakening.level, character.class, spec) : {});
   const sourceText = $derived(
-    info?.source === 'spec' ? `Spec override (${spec})` : info?.source === 'class' ? `Class override (${classLabel(character.class)})` : 'Path default',
+    info?.source === 'spec' ? `Bonuses set by your specialization (${spec})` : info?.source === 'class' ? `Bonuses set by your class (${classLabel(character.class)})` : 'Standard bonuses for this path',
   );
   const keys = $derived(
     [...new Set([...Object.keys(info?.bundle ?? {}), ...Object.keys(otherInfo?.bundle ?? {})])].filter((k) => info?.bundle[k] || otherInfo?.bundle[k]),
@@ -46,7 +46,7 @@
 </script>
 
 <Panel title="Awakening" scope="character">
-  {#snippet meta()}<span class="sub">one path, shared by all presets · bundle follows the spec of {preset.name}</span>{/snippet}
+  {#snippet meta()}<span class="sub">one path, shared by all presets · bonuses follow the specialization of {preset.name}</span>{/snippet}
   <div class="path-selector" role="group" aria-label="Awakening path">
     {#each Object.entries(AWAKENING_PATHS) as [key, path] (key)}
       <button type="button" class="path-card" class:active={awakening.path === key} aria-pressed={awakening.path === key} onclick={() => rosterStore.setAwakeningPath(key)}>

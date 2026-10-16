@@ -228,7 +228,7 @@
     start(
       { mode: 'optimizeMore', character: searchCharacter(character), ...partnerOf(result.target), result: measured, rowKeys: [row.key], targetN: row.runMore.targetN },
       meta,
-      { title: `Re-measure rank ${row.rank}`, context: `${result.target.label} · N ${fmtCount(row.runMore.targetN)}` },
+      { title: `Re-measure rank ${row.rank}`, context: `${result.target.label} · ${fmtCount(row.runMore.targetN)} fights` },
     );
   }
 
@@ -368,10 +368,10 @@
               value={setup.objective.seconds ?? null}
               onchange={(v) => (setup.objective = v == null ? { kind: 'survival' } : { kind: 'survival', seconds: Math.round(v) })}
             />
-            <span class="hint">Empty means the whole fight.</span>
+            <span class="hint">Leave empty to survive the whole fight.</span>
           {/if}
           {#if setup.objective.kind === 'win-chance'}
-            <span class="hint" data-testid="win-chance-explain">Finds the build with the best chance to clear this; ties go to the fewest changes. Speed does not matter.</span>
+            <span class="hint" data-testid="win-chance-explain">Finds the build with the best chance to clear this. If builds are equal, it picks the one with the fewest changes. Speed does not matter.</span>
           {/if}
           {#if setup.objective.kind === 'win-rate' || setup.objective.kind === 'push'}
             <WinRateTarget bind:objective={setup.objective} start={targetLabel} rung={setup.target.kind === 'celestial' ? 'level' : 'step'} />
@@ -389,14 +389,20 @@
           <SegmentedControl label="Effort" stack options={effortOptions} value={setup.effort} onchange={(v) => (setup.effort = v)} />
           <NumberField label="Seed" min={1} value={setup.seed} onchange={(v) => (setup.seed = Math.max(1, Math.round(v)))} />
           <p class="hint" data-testid="effort-plan">
-            Resolves differences of <span class="num">{plan.zone}</span>. Each comparison starts at N <span class="num">{fmtCount(plan.n0)}</span> and stops when it is resolved or at N <span class="num">{fmtCount(plan.maxN)}</span> per build, where it is reported as too close to call.
+            Spots differences of <span class="num">{plan.zone}</span> or more. Each build starts with <span class="num">{fmtCount(plan.n0)}</span> fights and gets up to <span class="num">{fmtCount(plan.maxN)}</span> if the result is still unclear. After that it is called too close to call.
           </p>
+          <details class="phases" data-testid="effort-plan-details">
+            <summary>How this works</summary>
+            <p class="hint">
+              The search resolves differences of <span class="num">{plan.zone}</span>. It compares each build with the best so far on the same fights, starting at <span class="num">{fmtCount(plan.n0)}</span> fights per comparison and adding more until the result is clear or <span class="num">{fmtCount(plan.maxN)}</span> fights per build is reached.
+            </p>
+          </details>
           <!-- measured cost: docs/Reference/simulation.md §Cost -->
           <p class="hint" data-testid="effort-cost">
-            Run time is not capped. Measured at Quick: {MEASURED_COST.small.space} {MEASURED_COST.small.time}, {MEASURED_COST.full.space} {MEASURED_COST.full.time}. Standard and Thorough take longer; PVP several times longer.
+            Runs have no time limit. Quick takes {MEASURED_COST.small.time} when it may change {MEASURED_COST.small.space}, and {MEASURED_COST.full.time} when it may change {MEASURED_COST.full.space}. Standard and Thorough take longer; PVP takes several times longer.
           </p>
           <p class="hint" data-testid="plan-summary">
-            Searches <span class="num">{enabledCount(setup.space)}</span> of <span class="num">{toggleTotal}</span> dimensions{targetLabel ? ` against ${targetLabel}` : ''}. The same seed reproduces the same result.
+            Tries changing <span class="num">{enabledCount(setup.space)}</span> of <span class="num">{toggleTotal}</span> parts of your build{targetLabel ? ` against ${targetLabel}` : ''}. The same seed gives the same result.
           </p>
         </section>
 
@@ -432,8 +438,8 @@
             <Button variant="ghost" size="small" onclick={() => { openRunId = null; dismissedSaved = true; }}>Close</Button>
           {/snippet}
           <Banner variant="info" lead="Saved run.">
-            Saved {new Date(savedRun.at).toLocaleString()}. You can apply a build from it while the character still matches; Run more is off for a saved run.
-            {#snippet action()}<Button variant="ghost" size="small" disabled={!!retiredGoalBlock(savedRun)} reason={retiredGoalBlock(savedRun)} onclick={() => rerun(savedRun)}>Re-run with settings</Button>{/snippet}
+            Saved {new Date(savedRun.at).toLocaleString()}. You can apply a build from it while your character is unchanged. Run more is not available for a saved run.
+            {#snippet action()}<Button variant="ghost" size="small" disabled={!!retiredGoalBlock(savedRun)} reason={retiredGoalBlock(savedRun)} onclick={() => rerun(savedRun)}>Run again with these settings</Button>{/snippet}
           </Banner>
           {#if savedRun.headline.text}
             <div class="headline" role="status">
@@ -449,16 +455,16 @@
               unmeasured={() => savedRun.schema !== 2}
               onapply={(row) => askApplySaved(savedRun, row)}
               applyBlocked={runApplyBlock(savedRun, character)}
-              missingWritesReason="This run was saved before it could be applied. Re-run with settings."
+              missingWritesReason="This run was saved before it could be applied. Run it again with these settings."
             />
           {:else}
-            <p class="hint" data-testid="saved-compacted">Detail compacted to keep storage small; the headline above is kept. Pin a run to keep its detail.</p>
+            <p class="hint" data-testid="saved-compacted">The details of this run were trimmed to save space; the summary above is kept. Pin a run to keep its details.</p>
           {/if}
         </Panel>
         {#if savedRun.debug}<DebugLog debug={savedRun.debug} />{/if}
       {:else if !result && !live && !failedJob}
         <Panel title="Results" level="primary" scope="tool">
-          <EmptyState title="No run yet" text="Choose what to improve and what to fight, then press Optimise. Builds appear here with the change in your preset's result and a 95% interval." />
+          <EmptyState title="No run yet" text="Choose what to improve and what to fight, then press Optimise. Better builds appear here, each with the likely range of its gain." />
         </Panel>
       {:else}
         <Panel title={result ? `${result.request ? (resultPreset?.name ?? shown.request.meta.presetName) : ''} vs ${result.target.label}` : 'Running'} level="primary" scope="tool" {stale}>
@@ -500,17 +506,17 @@
             </Banner>
           {/if}
           {#if stale}
-            <Banner variant="warn" lead="Setup changed since this run.">The character or the preset is not what was measured. Run again for a current result; Apply and Run more are off.</Banner>
+            <Banner variant="warn" lead="Setup changed since this run.">Your character or preset has changed since the run. Run again for an up-to-date result. Apply and Run more are not available until then.</Banner>
           {/if}
           {#if cancelled}
             <Banner variant="info" lead="Cancelled.">
-              These builds are provisional: they were not confirmed on fresh fights.
+              These builds are not final: they were not yet checked on fresh fights.
               {#snippet action()}<Button variant="ghost" size="small" disabled={!!retiredGoalBlock(shown.request)} reason={retiredGoalBlock(shown.request)} onclick={() => resumeJob(shown.id)}>Resume</Button>{/snippet}
             </Banner>
           {/if}
           {#if result?.status === 'failed'}
             <Banner variant="error" lead="Cannot optimise yet.">
-              {result.error?.message ?? 'The current preset breaks a game rule; fix it first.'}
+              {result.error?.message ?? 'The current preset breaks a game rule. Fix it first.'}
               {#snippet action()}<Button variant="ghost" size="small" onclick={() => go('#/builds/loadout')}>Open Loadout</Button>{/snippet}
             </Banner>
             {#if result.baselineViolations?.length}
@@ -531,7 +537,7 @@
             </div>
             {#if view.push}<PushLadder push={view.push} />{/if}
             {#if view.withheld > 0}
-              <Banner variant="error" lead="Rows withheld.">{view.withheld} result{view.withheld === 1 ? '' : 's'} listed no change to the preset and {view.withheld === 1 ? 'was' : 'were'} not shown.</Banner>
+              <Banner variant="error" lead="Some builds are hidden.">{view.withheld} build{view.withheld === 1 ? '' : 's'} would not change your preset, so {view.withheld === 1 ? 'it is' : 'they are'} not shown.</Banner>
             {/if}
             <OptimiserResults
               {view}
@@ -544,8 +550,8 @@
             />
             {#if result.search}
               <p class="hint" data-testid="search-summary">
-                {fmtCount(result.search.evaluated)} builds tried over {result.search.blocks.filter((b) => b.enabled).length} dimensions, {fmtCount(result.search.fights?.total)} fights.
-                {#if result.search.unresolved?.length}{result.search.unresolved.length} neighbouring comparison{result.search.unresolved.length === 1 ? '' : 's'} stayed too close to call at the largest N.{/if}
+                {fmtCount(result.search.evaluated)} builds tried across {result.search.blocks.filter((b) => b.enabled).length} parts of your build, {fmtCount(result.search.fights?.total)} fights.
+                {#if result.search.unresolved?.length}{result.search.unresolved.length} comparison{result.search.unresolved.length === 1 ? '' : 's'} stayed too close to call even after the most fights allowed.{/if}
               </p>
             {/if}
           {/if}
@@ -554,12 +560,12 @@
         {#if result && result.status !== 'failed'}
           <Panel title="How to read this" scope="tool">
             <ul class="read" data-testid="how-to-read">
-              <li><b>Significant</b> means the whole 95% interval of the paired difference is above zero, corrected for the number of rows. <b>Equivalent</b> means it sits inside ±{result.request.effort.deltaKind === 'relative' ? `${+(result.request.effort.delta * 100).toFixed(2)}%` : `${+(result.request.effort.delta * 100).toFixed(1)} points`}. <b>Inconclusive</b> means it was still open at N {fmtCount(result.request.effort.maxN)}.</li>
-              <li>Each change was measured alone on the current build with the same fights. The interaction remainder is what the changes add together beyond their separate effects; it has no interval.</li>
+              <li><b>Clearly better</b> means the whole likely range of the gain is above zero. <b>About the same</b> means the difference stays within ±{result.request.effort.deltaKind === 'relative' ? `${+(result.request.effort.delta * 100).toFixed(2)}%` : `${+(result.request.effort.delta * 100).toFixed(1)} points`}. <b>Too close to call</b> means it was still unclear after {fmtCount(result.request.effort.maxN)} fights.</li>
+              <li>Each change was tested alone on your current build, on the same fights. The last row shows what the changes add together beyond their separate effects; it has no likely range.</li>
               {#if result.request.mode === 'pvp'}
-                <li>Win rates pool every opponent and seat with equal N, each with a Wilson interval. Ties and timeouts at equal HP go to the defender. Your side is computed stats plus the preset's sheet residual when its sheet is fresh.</li>
+                <li>Win rates combine every opponent and seat, with the same number of fights for each. Ties and timeouts at equal HP go to the defender. Your side uses the app's numbers, plus the gap to your in-game stats when those are up to date.</li>
               {:else}
-                <li>Builds are scored as computed stats plus the preset's sheet residual when its sheet is fresh. Verify a pick in game or on Duel.</li>
+                <li>Builds use the app's numbers, plus the gap to your in-game stats when those are up to date. Check a pick in the game or on Duel.</li>
               {/if}
               {#each result.target.assumptions as a (a.id)}
                 <li><b>{a.tag}</b> {a.label}{a.value ? `: ${a.value}` : ''}</li>

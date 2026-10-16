@@ -52,7 +52,7 @@ it('Enter with the wrong text clears nothing', () => {
 it('lists what is wiped and offers Export first', () => {
   const { q, qa, done } = setup(DangerZone);
   expect(q('ul').textContent).toMatch(/every character/);
-  expect(q('ul').textContent).toMatch(/version 1 backup/);
+  expect(q('ul').textContent).toMatch(/old-version backup/);
   expect(qa('button').some((b) => b.textContent.trim() === 'Export first')).toBe(true);
   done();
 });

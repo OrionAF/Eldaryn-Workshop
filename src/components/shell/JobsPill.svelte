@@ -16,8 +16,8 @@
   const running = $derived(jobsStore.running);
   const label = $derived(
     total === 0
-      ? 'Jobs: none'
-      : `Jobs: ${running} running, ${jobsStore.list.filter((j) => j.status !== 'running' && j.status !== 'queued').length} finished`,
+      ? 'Runs: none'
+      : `Runs: ${running} running, ${jobsStore.list.filter((j) => j.status !== 'running' && j.status !== 'queued').length} finished`,
   );
 
   function close() {
@@ -44,7 +44,7 @@
     <circle class="track" cx="10" cy="10" r="7.5" />
     {#if running > 0}<circle class="arc" cx="10" cy="10" r="7.5" stroke-dasharray="16 32" />{/if}
   </svg>
-  <span class="jobs-lbl">Jobs</span>
+  <span class="jobs-lbl">Runs</span>
   {#if running > 0}<span class="count" data-testid="jobs-running">{running}</span>{/if}
 </button>
 

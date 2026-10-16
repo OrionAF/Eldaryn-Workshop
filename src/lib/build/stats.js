@@ -37,9 +37,9 @@ function statusOf(sheet, presetId, key) {
 }
 
 const WARN = {
-  foreign: 'The Oblivion sheet was entered for another preset: computed stats are used here.',
-  stale: 'The stat sheet is out of date (the build changed since it was entered): computed stats are used.',
-  unverified: 'The stat sheet has not been confirmed to match this build.',
+  foreign: 'These Oblivion stats were entered for another preset, so the numbers from the app are used here.',
+  stale: 'Your in-game stats are out of date (the build changed since you typed them), so the numbers from the app are used.',
+  unverified: 'Your in-game stats have not been confirmed to match this build.',
 };
 
 /**

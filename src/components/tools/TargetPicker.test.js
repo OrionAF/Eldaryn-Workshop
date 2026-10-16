@@ -215,7 +215,7 @@ it('the Celestial partner picker offers my other characters (then a preset) and 
   expect(withChar.state.target.partner.presetId).toBe(tankPreset.id);
 
   const seats = remount(withChar.state);
-  expect(seats.ui.q('[data-testid="fidelity"]').textContent).toMatch(/from the roster/);
+  expect(seats.ui.q('[data-testid="fidelity"]').textContent).toMatch(/from your characters/);
   segButton(seats.ui, 'celestial-tank', 'Partner').click();
   flushSync();
   expect(seats.state.target.tank).toBe('partner');

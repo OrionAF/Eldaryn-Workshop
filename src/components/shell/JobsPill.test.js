@@ -32,12 +32,12 @@ describe('JobsPill and tray', () => {
   it('is a labelled pill that shows the count and a spinner only while a job runs', async () => {
     await fresh();
     const pill = ui.q('.jobs-pill');
-    expect(pill.textContent).toContain('Jobs');
+    expect(pill.textContent).toContain('Runs');
     expect(ui.q('.arc')).toBeNull();
     startJob({ tool: 'optimize', title: 'Optimiser · Boss build', context: 'vs Warden', request: { mode: 'optimize' } });
     flushSync();
     expect(ui.q('.arc')).not.toBeNull();
-    expect(pill.getAttribute('aria-label')).toBe('Jobs: 1 running, 0 finished');
+    expect(pill.getAttribute('aria-label')).toBe('Runs: 1 running, 0 finished');
     expect(ui.q('.count').textContent).toBe('1');
   });
 
@@ -63,11 +63,11 @@ describe('JobsPill and tray', () => {
     startJob({ tool: 'optimize', title: 'Optimiser · Boss build', request: { mode: 'optimize' } });
     click(ui.q('.jobs-pill'));
     const foot = () => ui.q('[data-testid="tray-foot"]').textContent.replace(/\s+/g, ' ');
-    expect(foot()).toContain('keep using the app');
-    expect(foot()).toContain('A reload cancels running jobs.');
+    expect(foot()).toContain('Runs keep going when you change page');
+    expect(foot()).toContain('Reloading the page cancels them.');
     click(ui.q('.keep input'));
     flushSync();
-    expect(foot()).toContain('A reload pauses running jobs; Resume picks up from the last checkpoint.');
+    expect(foot()).toContain('Reloading the page pauses them; Resume picks up from the last saved point.');
   });
 
   it('failed job shows the error and Retry; Escape closes the tray and refocuses the pill', async () => {
@@ -94,6 +94,6 @@ describe('JobsPill count', () => {
     await vi.waitFor(() => expect(jobsStore.list[0].status).toBe('cancelled'));
     flushSync();
     expect(ui.q('.count')).toBeNull();
-    expect(ui.q('.jobs-pill').getAttribute('aria-label')).toBe('Jobs: 0 running, 1 finished');
+    expect(ui.q('.jobs-pill').getAttribute('aria-label')).toBe('Runs: 0 running, 1 finished');
   });
 });

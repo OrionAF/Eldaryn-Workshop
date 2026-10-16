@@ -162,12 +162,12 @@ it('a major glyph whose sigil is not equipped is inert in the presets that ride 
   const c = rosterStore.current;
   rosterStore.setMountSocket(c.mounts[0].id, 'major', 0, c.glyphs[0].id);
   flushSync();
-  expect(target.textContent).not.toContain('Inert in');
+  expect(target.textContent).not.toContain('Does nothing in');
   const p0 = rosterStore.current.presets[0];
   rosterStore.setPresetMount(p0.id, c.mounts[0].id);
   flushSync();
   const glyphCard = target.querySelector(`[data-glyph-id="${c.glyphs[0].id}"]`);
-  expect(glyphCard.textContent).toContain(`Inert in ${p0.name}: its sigil is not equipped`);
+  expect(glyphCard.textContent).toContain(`Does nothing in ${p0.name}: its sigil is not equipped`);
 });
 
 it('Ridden in names every preset, checks the riders, and rides from the menu', () => {

@@ -66,7 +66,7 @@
           <span class="meta num">{when(run.at)}</span>
           {#if run.pinned}<span class="tag">pinned</span>{/if}
           {#if run.applied}<span class="tag">applied</span>{/if}
-          {#if run.schema !== 2}<span class="tag">before per-change effects</span>{/if}
+          {#if run.schema !== 2}<span class="tag">older run</span>{/if}
           {#if h.aborted}<span class="tag">cancelled</span>{/if}
           <span class="spacer"></span>
           {#if onopen}
@@ -80,7 +80,7 @@
           <span>{run.target.label}</span>
           <span>{run.objective.label}</span>
           <span class="num">{fmtScalar(h.unit, h.baseline)} to {fmtScalar(h.unit, h.best)}{#if gain(h)}, {gain(h)}{/if}</span>
-          <span class="num">N {fmtCount(h.n)}, {fmtCount(h.evaluated)} builds tried</span>
+          <span class="num">{fmtCount(h.n)} fights, {fmtCount(h.evaluated)} builds tried</span>
         </div>
         {#if h.text}<p class="text">{h.text}</p>{/if}
 
@@ -91,14 +91,14 @@
                 <span class="lbl">Name</span>
                 <input type="text" value={run.name} aria-label="Run name" onchange={(e) => rosterStore.setRunName(run.id, e.currentTarget.value)} />
               </label>
-              <Button variant="secondary" size="small" disabled={!!retiredGoalBlock(run)} reason={retiredGoalBlock(run)} onclick={() => onrerun(run)}>Re-run with settings</Button>
+              <Button variant="secondary" size="small" disabled={!!retiredGoalBlock(run)} reason={retiredGoalBlock(run)} onclick={() => onrerun(run)}>Run again with these settings</Button>
               <ConfirmAction label="Delete" confirmLabel="Confirm delete" onConfirm={() => rosterStore.deleteRun(run.id)} />
             </div>
             <Textarea label="Notes" rows={2} value={run.notes} oninput={(v) => rosterStore.setRunNotes(run.id, v)} />
             <StepList id="run-steps-{run.id}" title="Search steps" steps={searchStepRows(run.steps)} />
             {#if run.schema !== 2}
-              <Banner variant="info" lead="Per-change effects: not measured.">
-                This run was saved before each change was measured on its own. Its values and intervals are as recorded.
+              <Banner variant="info" lead="Changes not measured one by one.">
+                This run was saved before each change was measured on its own. Its numbers and likely ranges are as recorded.
               </Banner>
             {/if}
             {#if view}
@@ -108,10 +108,10 @@
                 unmeasured={() => run.schema !== 2}
                 onapply={onapply ? (row) => onapply(run, row) : null}
                 applyBlocked={runApplyBlock(run, rosterStore.current)}
-                missingWritesReason="This run was saved before it could be applied. Re-run with settings."
+                missingWritesReason="This run was saved before it could be applied. Run it again with these settings."
               />
             {:else}
-              <p class="hint">Detail compacted to keep storage small; the headline above is kept.</p>
+              <p class="hint">The details were removed to save space. The summary above is kept.</p>
             {/if}
           </div>
         {/if}

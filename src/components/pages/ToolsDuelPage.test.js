@@ -69,7 +69,7 @@ it('a blank-row opponent shows the rows the duel will default and lists the miss
   const setup_ = view.q('[data-testid="duel-setup"]').textContent;
   expect(setup_).toContain('Blank rows use neutral values');
   expect(setup_).toContain('Crit Chance');
-  // Fighters as simulated marks the defaulted cells and shows HP after the x8 buff
+  // Stats used in the fight marks the defaulted cells and shows HP after the x8 buff
   const cells = view.qa('[data-testid="fighters-table"] td[data-defaulted="true"]');
   expect(cells.length).toBeGreaterThan(0);
   expect(view.q('[data-testid="fighters-table"]').textContent).toContain('x8 PVP');
@@ -95,13 +95,13 @@ it('Both seats: one job, three rows, the Wilson verdict with nNeeded, and Run mo
   expect(view.qa('[data-testid^="win-row-"]').map((r) => r.dataset.testid)).toEqual(['win-row-total', 'win-row-attack', 'win-row-defend']);
   // the defender row is the complement of the swapped run (their 0.51 as attacker -> my 0.49)
   expect(view.q('[data-testid="win-row-defend"]').textContent).toContain('49.0%');
-  expect(view.q('[data-testid="win-ci"]').textContent).toContain('N=1,600');
-  expect(view.q('[data-testid="duel-verdict"]').textContent).toMatch(/Too close to call at N=1,600: about N=[\d,]+ would resolve a 3-pt edge/);
+  expect(view.q('[data-testid="win-ci"]').textContent).toContain('1,600 fights');
+  expect(view.q('[data-testid="duel-verdict"]').textContent).toMatch(/Too close to call after 1,600 fights. Around [0-9,]+ fights should show whether a 3-point lead is real/);
 
   click(buttonByText(/Run more/));
   await vi.waitFor(() => expect(calls.length).toBe(2));
   expect(calls[1].n).toBe(3200);
-  await vi.waitFor(() => expect(view.q('[data-testid="win-ci"]').textContent).toContain('N=6,400'));
+  await vi.waitFor(() => expect(view.q('[data-testid="win-ci"]').textContent).toContain('6,400 fights'));
 });
 
 it('Defender seat puts me in the defender slot and reads the complement', async () => {
@@ -114,7 +114,7 @@ it('Defender seat puts me in the defender slot and reads the complement', async 
   expect(calls[0].both).toBe(false);
   expect(calls[0].defender.class).toBe('WARRIOR'); // mine
   expect(view.q('[data-testid="win-rate"]').textContent).toBe('80.0%');
-  expect(view.q('[data-testid="duel-verdict"]').textContent).toContain('Favoured');
+  expect(view.q('[data-testid="duel-verdict"]').textContent).toContain('Likely to win');
 });
 
 it('the result survives leaving the page and an edited opponent marks it stale', async () => {
@@ -145,10 +145,17 @@ it('Verify: an unrecognised log shows rules as skipped, not passed', () => {
 it('Verify: a handed-over log that is not JSON is reported without throwing', () => {
   view = setup(VerifyFightLog, { handoff: { text: '{nope', n: 1 } });
   flushSync();
-  expect(view.q('[role="alert"]').textContent).toMatch(/not valid JSON/);
+  expect(view.q('[role="alert"]').textContent).toMatch(/could not be read/);
 });
 
-it('Verify: no drop zone or paste box, only a pointer to Settings > Import', () => {
+it('with game-data import hidden (the default) there is no Verify tab, and its route shows the duel', () => {
+  view = setup(ToolsDuelPage, { tab: 'verify' });
+  expect([...view.target.querySelectorAll('[role="tab"]')].map((t) => t.textContent.trim())).toEqual(['Duel']);
+  expect(view.target.querySelector('#duel-panel-verify')).toBeNull();
+});
+
+it('Verify: no drop zone or paste box, only a pointer to Settings > Advanced', () => {
+  setEstimatePrefs({ showImport: true });
   view = setup(ToolsDuelPage, { tab: 'verify' });
   expect(view.q('#duel-panel-verify input[type="file"]')).toBeNull();
   expect(view.q('#duel-panel-verify textarea')).toBeNull();
@@ -156,6 +163,7 @@ it('Verify: no drop zone or paste box, only a pointer to Settings > Import', () 
   expect(link.getAttribute('href')).toBe('#/settings');
   expect(link.textContent).toContain('Import a fight log in Settings');
   expect(view.q('[data-testid="log-state"]').textContent).toContain('No fight log');
+  resetEstimatePrefs();
 });
 
 it('a cancelled Both-seats run with one seat shows no verdict and no Both-seats row, only a partial label', async () => {
@@ -167,8 +175,8 @@ it('a cancelled Both-seats run with one seat shows no verdict and no Both-seats 
   await vi.waitFor(() => expect(view.q('[data-testid="win-row-attack"]')).not.toBeNull());
   expect(view.q('[data-testid="win-row-total"]')).toBeNull();
   expect(view.q('[data-testid="duel-verdict"]')).toBeNull();
-  expect(view.q('[data-testid="duel-partial"]').textContent).toMatch(/inconclusive \/ partial/i);
-  expect(view.q('[data-testid="win-row-attack"]').textContent).not.toMatch(/Favoured|Unfavoured/);
+  expect(view.q('[data-testid="duel-partial"]').textContent).toMatch(/not finished yet/i);
+  expect(view.q('[data-testid="win-row-attack"]').textContent).not.toMatch(/Clearly better|Clearly worse/);
 });
 
 it('the setup (seat, effort, preset) survives leaving the page and the Run label matches', () => {

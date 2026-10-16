@@ -138,7 +138,7 @@
     <NumberField label="Quality (1-100)" nullable min={1} max={100} value={selected.quality} onchange={setQuality} />
 
     <Checkbox checked={selected.activated} label="Activated" onchange={(v) => patch({ activated: v })} />
-    {#if !selected.activated}<p class="hint">An inactive stone adds nothing to the build (stones.md §1), even when socketed.</p>{/if}
+    {#if !selected.activated}<p class="hint">An inactive stone adds nothing to your build, even when socketed.</p>{/if}
 
     <div class="amplify">
       <span class="label" id="amplify-label">Amplify (+0 to +{MAX_AMPLIFY_LEVEL})</span>

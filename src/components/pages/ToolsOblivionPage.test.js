@@ -57,9 +57,9 @@ it('scan: runs as a job with Standard N and the output cut off; labels the estim
   await vi.waitFor(() => expect(jobsStore.list[0].status).toBe('finished'));
   flushSync();
   const t = target.textContent;
-  expect(t).toContain('the server resolves the real fight');
-  expect(t).toContain('Sampling range');
-  expect(target.querySelector('[data-testid="max-floor"]').textContent).toBe('30+ (scan cap)');
+  expect(t).toContain('the game server decides the real fight');
+  expect(t).toContain('Likely range');
+  expect(target.querySelector('[data-testid="max-floor"]').textContent).toBe('30+ (scan limit)');
   expect(target.querySelector('tr[data-floor="2"]').textContent).toContain('30');
   expect(t).toContain('Each fight is cut off');
   // the wide floors table scrolls inside its own focusable region, never the page
@@ -67,14 +67,14 @@ it('scan: runs as a job with Standard N and the output cut off; labels the estim
   expect(region.getAttribute('tabindex')).toBe('0');
   expect(region.querySelector('table.floors')).not.toBeNull();
   // the "started" note went with the job
-  expect(notifications.toasts.map((x) => x.message)).not.toContain('Floor scan started');
+  expect(notifications.toasts.map((x) => x.message)).not.toContain('Floor run started');
 });
 
 it('the three scan steppers carry visible labels, not only aria-labels', () => {
   rosterStore.setOblivionUnlocked(true);
   mountPage();
   const fields = [...target.querySelectorAll('.setup .field')];
-  expect(fields.map((f) => f.querySelector('.micro-label').textContent.trim())).toEqual(['From floor', 'To floor', 'Win threshold %']);
+  expect(fields.map((f) => f.querySelector('.micro-label').textContent.trim())).toEqual(['From floor', 'To floor', 'Win chance needed %']);
   for (const f of fields) expect(f.querySelector('[role="group"]').getAttribute('aria-label')).toBe(f.querySelector('.micro-label').textContent.trim());
 });
 

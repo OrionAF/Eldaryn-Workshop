@@ -63,12 +63,12 @@ export function describeBuild(character, presetOrId, { realm = 'base', talentAll
   const usable = { has: (sp) => isSigilSpeciesActiveForSpec(sp, cls, spec) };
   const item = (sp, ok, extra = null) => {
     if (!sp) return null;
-    const reason = !owns(character, sp) ? 'not owned' : ok && !ok.has(sp) ? `not usable on ${spec ?? 'this spec'}` : extra;
+    const reason = !owns(character, sp) ? 'not owned' : ok && !ok.has(sp) ? `cannot be used on ${spec ?? 'this spec'}` : extra;
     return { sp, name: sigilName(sp), reason };
   };
   const generic = (preset.sigilSpecies ?? []).map((sp) => item(sp, usable));
   const utility = item(preset.utilitySigilSpecies, usable);
-  const ancient = item(preset.ancientSigilSpecies, null, ancientActive(preset.ancientSigilSpecies, tr) ? null : 'Transcendence board lacks its node');
+  const ancient = item(preset.ancientSigilSpecies, null, ancientActive(preset.ancientSigilSpecies, tr) ? null : 'Transcendence board does not unlock it');
   const equipped = [...generic, utility, ancient].filter((s) => s && !s.reason).map((s) => s.sp);
 
   const mount = preset.mountId ? (character.mounts ?? []).find((m) => m.id === preset.mountId) : null;
@@ -83,7 +83,7 @@ export function describeBuild(character, presetOrId, { realm = 'base', talentAll
   const { active, inert } = activeMajorGlyphs(character, mount, spec, equipped);
   lines.push(itemsLine('Major glyphs', [
     ...active.map((g) => ({ name: glyphName(g), reason: null })),
-    ...inert.map((g) => ({ name: glyphName(g), reason: 'sigil is not equipped' })),
+    ...inert.map((g) => ({ name: glyphName(g), reason: 'its sigil is not equipped' })),
   ]));
   lines.push(line('Mythic glyph', join(loadout.mythics.map(glyphName))));
 

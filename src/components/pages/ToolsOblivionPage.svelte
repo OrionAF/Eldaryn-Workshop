@@ -68,7 +68,7 @@
       signature: jobSignature({ characterKey: id, inputs: floorScanInputs(character, o) }),
       currentSignature: () => jobSignature({ characterKey: id, inputs: floorScanInputs(rosterStore.current, opts) }),
       openRoute: 'tools/oblivion',
-      notice: 'Floor scan started',
+      notice: 'Floor run started',
       summarize: (r) => [{ tone: r?.maxFloor ? 'up' : 'warn', text: r?.maxFloor ? `Floor ${r.maxFloor} (estimate)` : 'No floor reached' }],
     });
   }
@@ -76,7 +76,7 @@
   const pct = (p) => `${(p * 100).toFixed(0)}%`;
   const secs = (ms) => (ms == null ? '-' : `${(ms / 1000).toFixed(1)}s`);
   const maxLabel = $derived(
-    result?.maxFloor == null ? '-' : result.scanCapped ? `${result.maxFloor}+ (scan cap)` : String(result.maxFloor),
+    result?.maxFloor == null ? '-' : result.scanCapped ? `${result.maxFloor}+ (scan limit)` : String(result.maxFloor),
   );
 </script>
 
@@ -97,39 +97,39 @@
           <div><span class="cap-label">Attack</span><strong class="num">{stats?.totalAttack == null ? '-' : formatFlat(stats.totalAttack)}</strong></div>
           <div><span class="cap-label">HP</span><strong class="num">{stats?.totalHp == null ? '-' : formatFlat(stats.totalHp)}</strong></div>
           <div>
-            <span class="cap-label">Highest scanned floor at {threshold}%+</span>
+            <span class="cap-label">Highest floor won {threshold}%+ of the time</span>
             <strong class="num" data-testid="max-floor">{stale ? '-' : maxLabel}</strong>
           </div>
           <div><span class="cap-label">Oblivion Level</span><strong class="num">{character.oblivion.level}</strong>
             <a href="#character/overview">Edit</a></div>
         </div>
-        <p class="caption">Model estimate: the server resolves the real fight. Gear for this realm is on the <a href="#character/gear">Gear page, Oblivion tab</a>.</p>
+        <p class="caption">An estimate: the game server decides the real fight. Gear for this realm is on the <a href="#character/gear">Gear page, Oblivion tab</a>.</p>
       </Panel>
 
-      <Panel title="Scan setup" scope="tool">
+      <Panel title="Floor setup" scope="tool">
         <div class="setup">
           <div class="field"><span class="micro-label" aria-hidden="true">From floor</span><Stepper label="From floor" bind:value={from} min={1} max={to} /></div>
           <div class="field"><span class="micro-label" aria-hidden="true">To floor</span><Stepper label="To floor" bind:value={to} min={from} max={LAST_FLOOR} /></div>
-          <div class="field"><span class="micro-label" aria-hidden="true">Win threshold %</span><Stepper label="Win threshold %" bind:value={threshold} min={50} max={99} /></div>
+          <div class="field"><span class="micro-label" aria-hidden="true">Win chance needed %</span><Stepper label="Win chance needed %" bind:value={threshold} min={50} max={99} /></div>
           <SegmentedControl
             label="Effort" bind:value={effort}
-            options={Object.entries(FLOOR_EFFORT).map(([value, n]) => ({ value, label: value[0].toUpperCase() + value.slice(1), sub: `N ${n}` }))}
+            options={Object.entries(FLOOR_EFFORT).map(([value, n]) => ({ value, label: value[0].toUpperCase() + value.slice(1), sub: `${n} fights per floor` }))}
           />
           <RunEstimate bound="upper" fights={oblivionFights(to - from + 1, FLOOR_EFFORT[effort] ?? FLOOR_EFFORT.standard)} />
           <Checkbox label="Apply the instability output cut" bind:checked={applyOutputCut} />
         </div>
         <div class="actions">
-          <Button variant="primary" disabled={running} loading={running} busyLabel="Scanning…" onclick={scan}>Simulate floors {from}-{to}</Button>
+          <Button variant="primary" disabled={running} loading={running} busyLabel="Running…" onclick={scan}>Simulate floors {from}-{to}</Button>
           {#if running}
             <Button variant="ghost" onclick={() => cancelJob(job.id)}>Cancel</Button>
             {#if job?.progress?.floor}<span class="num muted">floor {job.progress.floor}: {job.progress.done}/{job.progress.n}</span>{/if}
           {/if}
         </div>
-        {#if job?.status === 'failed'}<Banner variant="error" lead="Scan failed">{job.error}</Banner>{/if}
+        {#if job?.status === 'failed'}<Banner variant="error" lead="The floor run failed">{job.error}</Banner>{/if}
       </Panel>
 
       {#if stale}
-        <Banner variant="warn" lead="Out of date">The build or scan setup changed since this scan. Run it again.</Banner>
+        <Banner variant="warn" lead="Out of date">Your build or setup changed since this run. Run it again.</Banner>
       {/if}
       {#if job?.status === 'cancelled'}
         <Banner variant="info" lead="Cancelled">
@@ -150,8 +150,8 @@
           <thead>
             <tr>
               <th>Floor</th><th class="r">Instability</th><th class="r">Net strain</th>
-              <th class="r">Win %</th><th class="r">Sampling range</th>
-              <th class="r">Wins</th><th class="r">Deaths</th><th class="r">Timeouts</th><th class="r">N</th><th class="r">Median clear</th>
+              <th class="r">Win %</th><th class="r">Likely range</th>
+              <th class="r">Wins</th><th class="r">Deaths</th><th class="r">Ran out of time</th><th class="r">Fights</th><th class="r">Typical clear time</th>
             </tr>
           </thead>
           <tbody>
@@ -175,7 +175,7 @@
           </tbody>
         </table>
         </div>
-        <p class="caption">Sampling range is the 95% interval of the simulated win rate, not a game value.</p>
+        <p class="caption">Likely range: where the real win rate probably lies, judged from the fights simulated. It is not a value from the game.</p>
       </Panel>
     {/if}
   </section>

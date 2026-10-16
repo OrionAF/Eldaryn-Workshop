@@ -68,13 +68,13 @@
   function absorb(base) {
     undo = { before: { ...character.baseResidual }, presetName: preset.name };
     rosterStore.setBaseResidual(base);
-    notify('Absorbed the sheet gap into the character base stats.', { kind: 'success' });
+    notify("Added the difference to your character's base stats.", { kind: 'success' });
   }
   function undoAbsorb() {
     if (!undo) return;
     rosterStore.setBaseResidual(undo.before);
     undo = null;
-    notify('Restored the base stats from before the absorb.', { kind: 'info' });
+    notify('Base stats put back as they were.', { kind: 'info' });
   }
 </script>
 
@@ -82,45 +82,45 @@
   <Tabs items={tabItems} value={realm} label="Realm" idPrefix="sheet" onchange={(v) => (chosen = v)} />
 
   {#if undo}
-    <Banner variant="info" lead="Absorbed.">
-      The gap was moved into the base stats, which every preset shares.
+    <Banner variant="info" lead="Done.">
+      The difference was added to your base stats. Every preset shares them.
       {#snippet action()}<Button variant="ghost" size="small" onclick={undoAbsorb}>Undo</Button>{/snippet}
     </Banner>
   {/if}
 
-  <Panel title="Your sheet vs the model" level="primary" scope={realm === 'oblivion' ? 'oblivion' : 'preset'}>
+  <Panel title="Your in-game stats vs the app's numbers" level="primary" scope={realm === 'oblivion' ? 'oblivion' : 'preset'}>
     {#snippet meta()}
       <span class="source" data-testid="sheet-source">
-        {stats.source === 'sheet' ? 'Using your sheet where entered' : 'Using computed totals'}
+        {stats.source === 'sheet' ? 'Using your in-game stats where entered' : "Using the app's numbers"}
       </span>
       {#if stats.sheetStatus === 'stale'}<ProvenanceTag kind="stale" />{:else if stats.source === 'sheet'}<ProvenanceTag kind="sheet" />{:else}<ProvenanceTag kind="model" />{/if}
       {#if needsConfirm}
-        <Button variant="secondary" size="small" data-testid="sheet-confirm" onclick={confirmSheet}>Confirm sheet matches this build</Button>
+        <Button variant="secondary" size="small" data-testid="sheet-confirm" onclick={confirmSheet}>Confirm these match this build</Button>
       {/if}
-      <Button variant="ghost" size="small" disabled={absorbOpen || !absorbable} reason={absorbable ? '' : 'The model already matches the sheet on the five base stats.'} onclick={() => (absorbOpen = true)}>
-        Absorb into base
+      <Button variant="ghost" size="small" disabled={absorbOpen || !absorbable} reason={absorbable ? '' : "The app already matches your in-game stats on the five base stats."} onclick={() => (absorbOpen = true)}>
+        Add the difference to base stats
       </Button>
-      <ConfirmButton variant="danger" size="small" label="Clear sheet" confirmLabel="Confirm clear" prompt="Clear this sheet?" disabled={!stats.sheet} onConfirm={() => writeSheet({})} />
+      <ConfirmButton variant="danger" size="small" label="Clear in-game stats" confirmLabel="Confirm clear" prompt="Clear these in-game stats?" disabled={!stats.sheet} onConfirm={() => writeSheet({})} />
     {/snippet}
 
     {#if realm === 'oblivion'}
       <p class="note" data-testid="oblivion-owner">
         {#if owner}
-          This Oblivion sheet belongs to <b>{owner.name}</b>{owner.id === preset.id ? '' : '; it applies only to that preset'}.
+          These Oblivion stats belong to <b>{owner.name}</b>{owner.id === preset.id ? '' : '. They only apply to that preset'}.
         {:else}
-          The Oblivion sheet is shared by the realm and applies to the preset it was entered for. Entering numbers here makes
-          <b>{preset.name}</b> its owner.
+          One set of Oblivion stats is shared by the whole realm, and it applies to the preset it was entered for. If you type numbers here,
+          they will apply to <b>{preset.name}</b>.
         {/if}
       </p>
     {/if}
     {#if needsConfirm}
-      <Banner variant="warn" lead={stats.sheetStatus === 'stale' ? 'Stale.' : 'Unconfirmed.'}>
+      <Banner variant="warn" lead={stats.sheetStatus === 'stale' ? 'Out of date.' : 'Not confirmed.'}>
         <span data-testid="sheet-status">{stats.warnings[stats.warnings.length - 1]}</span>
       </Banner>
     {/if}
     <p class="note">
-      Type the numbers from the in-game character sheet. Leave a row blank to use the model's value. Flat rows read "." as a
-      thousands separator ("48.124" is 48124); percentage rows read it as a decimal point.
+      Type the numbers from your in-game character sheet. Leave a row blank to use the app's number. In flat rows, "." separates
+      thousands ("48.124" is 48124). In percentage rows, it is a decimal point.
     </p>
     <SheetTable
       {keys}

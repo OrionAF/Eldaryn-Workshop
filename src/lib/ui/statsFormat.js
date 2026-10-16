@@ -52,7 +52,7 @@ export function fmtContrast(unit, c) {
 }
 
 /**
- * "95% CI lo to hi", signed in every unit. A DPS contrast whose headline is relative (`pct`) prints its bounds
+ * "likely range lo to hi" (the 95% interval), signed in every unit. A DPS contrast whose headline is relative (`pct`) prints its bounds
  * in the same percent (pct / delta is 1 / the starting DPS), so the headline and its interval share a unit.
  */
 export function fmtContrastCi(unit, c) {
@@ -60,18 +60,18 @@ export function fmtContrastCi(unit, c) {
   if (unit === 'dps' && finite(c.pct) && finite(c.delta) && c.delta !== 0) {
     const k = c.pct / c.delta;
     const pct = (x) => withSign(`${(Math.abs(x * k) * 100).toFixed(2)}%`, x * k);
-    return `95% CI ${pct(c.lo)} to ${pct(c.hi)}`;
+    return `likely range ${pct(c.lo)} to ${pct(c.hi)}`;
   }
-  return `95% CI ${fmtSigned(unit, c.lo)} to ${fmtSigned(unit, c.hi)}`;
+  return `likely range ${fmtSigned(unit, c.lo)} to ${fmtSigned(unit, c.hi)}`;
 }
 
-/** Plain-words verdict; an unresolved comparison names the N it stopped at. */
+/** Plain-words verdict; an unresolved comparison says how many fights it stopped at. */
 export function verdictText(c) {
   if (!c) return '';
-  if (c.verdict === 'better') return 'Better';
-  if (c.verdict === 'worse') return 'Worse';
-  if (c.verdict === 'equivalent') return 'Equivalent';
-  return `Too close to call at ${fmtCount(c.n)}`;
+  if (c.verdict === 'better') return 'Clearly better';
+  if (c.verdict === 'worse') return 'Clearly worse';
+  if (c.verdict === 'equivalent') return 'About the same';
+  return `Too close to call after ${fmtCount(c.n)} fights`;
 }
 
 /** How many fights the comparator estimates it needs, or ''. */

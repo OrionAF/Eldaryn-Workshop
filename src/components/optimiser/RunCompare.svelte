@@ -27,8 +27,8 @@
 
 <div class="compare" data-testid="run-compare">
   {#if !comparable}
-    <Banner variant="info" lead="Different questions.">
-      These runs used a different fight, objective or preset, so their values are not on one scale. Compare what changed, not the numbers.
+    <Banner variant="info" lead="Not a like-for-like comparison.">
+      These runs used a different fight, goal or preset, so you cannot compare their numbers directly. Compare what changed instead.
     </Banner>
   {/if}
   <table>
@@ -38,8 +38,8 @@
       <tr><th scope="row">Preset</th><td>{a.presetName || 'n/a'}</td><td>{b.presetName || 'n/a'}</td></tr>
       <tr><th scope="row">Fight</th><td>{a.target?.label}</td><td>{b.target?.label}</td></tr>
       <tr><th scope="row">Maximise</th><td>{a.objective?.label}</td><td>{b.objective?.label}</td></tr>
-      <tr><th scope="row">Precision</th><td class="num">{a.budget?.level ?? 'n/a'}{a.budget?.maxN ? `, up to N ${fmtCount(a.budget.maxN)}` : ''}, seed {a.seed}</td><td class="num">{b.budget?.level ?? 'n/a'}{b.budget?.maxN ? `, up to N ${fmtCount(b.budget.maxN)}` : ''}, seed {b.seed}</td></tr>
-      <tr><th scope="row">Current build</th><td class="num">{A.v?.baseline ? fmtEstimate(A.unit, A.v.baseline.value) : 'detail compacted'}</td><td class="num">{B.v?.baseline ? fmtEstimate(B.unit, B.v.baseline.value) : 'detail compacted'}</td></tr>
+      <tr><th scope="row">Effort and seed</th><td class="num">{a.budget?.level ?? 'n/a'}{a.budget?.maxN ? `, up to ${fmtCount(a.budget.maxN)} fights per build` : ''}, seed {a.seed}</td><td class="num">{b.budget?.level ?? 'n/a'}{b.budget?.maxN ? `, up to ${fmtCount(b.budget.maxN)} fights per build` : ''}, seed {b.seed}</td></tr>
+      <tr><th scope="row">Current build</th><td class="num">{A.v?.baseline ? fmtEstimate(A.unit, A.v.baseline.value) : 'details not saved'}</td><td class="num">{B.v?.baseline ? fmtEstimate(B.unit, B.v.baseline.value) : 'details not saved'}</td></tr>
       <tr><th scope="row">Best build</th><td class="num">{A.top ? fmtEstimate(A.unit, A.top.value) : 'none beat the current build'}</td><td class="num">{B.top ? fmtEstimate(B.unit, B.top.value) : 'none beat the current build'}</td></tr>
       <tr>
         <th scope="row">Best vs current</th>

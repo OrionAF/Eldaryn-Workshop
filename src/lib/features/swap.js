@@ -536,7 +536,7 @@ export function verdictFor(row, simResult = null) {
   const verdict = up && down ? 'mixed' : unresolved.length ? 'inconclusive' : up ? 'upgrade' : down ? 'downgrade' : 'sidegrade';
   const everything = coverage.includes('survival') || coverage.includes('pvp');
   const notJudged = everything ? [] : Object.keys(row?.rawDelta ?? {}).filter((k) => !DPS_STAT_KEYS.has(k));
-  const coverageLabel = !coverage.length ? 'Closed-form auto-attack estimate'
+  const coverageLabel = !coverage.length ? 'Quick estimate from auto-attacks only'
     : everything ? coverage.map((c) => COVERAGE_LABEL[c]).join(', ')
       : 'DPS only: defence not measured';
   return { verdict, basis, estimate: basis === 'closed', signals, unresolved, coverage, coverageLabel, notJudged };

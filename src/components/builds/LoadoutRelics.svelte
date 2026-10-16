@@ -51,7 +51,7 @@
           <ItemTile name={def.name} art={relicImage(def.tier)} selected={on} disabled={lv === 0 && !on} onclick={() => toggle(def)}>
             {#snippet meta()}Level {lv}{/snippet}
           </ItemTile>
-          {#if lv === 0 && !on}<a class="hint" href="#/character/relics">Level 0: set on Relics</a>{/if}
+          {#if lv === 0 && !on}<a class="hint" href="#/character/relics">Level 0: set it on Relics</a>{/if}
         </div>
       {/each}
     </div>

@@ -42,7 +42,7 @@
       <h3 class="tier-title">Tier {tier.tier}</h3>
       {#if i > 0}
         <span class="tier-badge" class:unlocked>
-          {unlocked ? 'Unlocked' : `Locked - needs ${remaining(i)} more pts in earlier tiers`}
+          {unlocked ? 'Unlocked' : `Locked - spend ${remaining(i)} more points in earlier tiers`}
         </span>
       {/if}
     </div>

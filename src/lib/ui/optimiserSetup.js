@@ -140,7 +140,7 @@ export const RETIRED_GOAL_REASON = 'This goal was retired.';
 
 /**
  * '' when the goal of a saved run or of a job request ({target, objective}) can still be run, else
- * RETIRED_GOAL_REASON. Drives the disabled state of Re-run with settings, Run more and Resume; the
+ * RETIRED_GOAL_REASON. Drives the disabled state of Run again with these settings, Run more and Resume; the
  * saved run itself stays viewable.
  */
 export function retiredGoalBlock(spec) {
@@ -149,7 +149,7 @@ export function retiredGoalBlock(spec) {
   return t && o && goalRetired(t, o) ? RETIRED_GOAL_REASON : '';
 }
 
-/** The setup a saved run was made with ("Re-run with settings"), validated against today's character. */
+/** The setup a saved run was made with ("Run again with these settings"), validated against today's character. */
 export function setupFromRun(run, character, defaultEffort = 'standard', characters = undefined) {
   const level = run.budget?.level;
   return normaliseSetup(
@@ -185,8 +185,8 @@ export const runIsStale = (run, character) => !run?.characterKey || !character |
 export function runApplyBlock(run, character) {
   if (!run || !character) return 'Nothing to apply.';
   if (!character.presets.some((p) => p.id === run.presetId)) return 'That preset no longer exists.';
-  if (run.schema !== 2) return 'This run was saved before it could be applied. Re-run with settings.';
-  if (runIsStale(run, character)) return 'The character changed since this run. Re-run with settings before applying.';
+  if (run.schema !== 2) return 'This run was saved before it could be applied. Run it again with these settings.';
+  if (runIsStale(run, character)) return 'The character changed since this run. Run it again with these settings before applying.';
   return '';
 }
 

@@ -37,7 +37,7 @@ describe('planImport errors name the case and write nothing', () => {
 
   it('empty text', () => expect(message('  ')).toMatch(/empty/));
   it('invalid JSON names the line', () => expect(message('{\n"a": 1,\n"b": }')).toMatch(/not valid JSON \(line 3\)/));
-  it('valid JSON of an unknown shape', () => expect(message('{"hello": 1}')).toMatch(/Valid JSON, but not a roster backup, game profile, loot bag or fight log/));
+  it('valid JSON of an unknown shape', () => expect(message('{"hello": 1}')).toMatch(/not a backup from this app, a game profile, a loot bag or a fight log/));
   it('a backup with zero characters says so', () => expect(message(text({ schemaVersion: 2, characters: [] }))).toMatch(/no characters/));
   it('leaves the roster untouched', () => expect(JSON.stringify(roster)).toBe(snapshot));
 });
@@ -70,7 +70,7 @@ describe('planImport', () => {
     const plan = planImport(text(p), emptyRoster());
     const dropped = plan.report.find((e) => e.kind === 'dropped' && e.what === 'mounts');
     expect(dropped?.count).toBeGreaterThanOrEqual(1);
-    expect(describeReportEntry(dropped).text).toMatch(/Dropped \d+ mounts/);
+    expect(describeReportEntry(dropped).text).toMatch(/Removed \d+ mounts/);
   });
 
   it('a roster backup says how many characters it replaces', () => {

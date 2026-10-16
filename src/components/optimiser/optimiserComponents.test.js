@@ -57,8 +57,8 @@ it('the interaction remainder is shown with no interval and no verdict colour', 
   const ui = mountResults(richResult());
   toggle(ui, 0);
   const rem = ui.q('.remainder');
-  expect(rem.textContent).toMatch(/Interaction remainder/);
-  expect(rem.textContent).toMatch(/no interval/);
+  expect(rem.textContent).toMatch(/Left over from combining/);
+  expect(rem.textContent).toMatch(/no likely range/);
   expect(rem.querySelector('.up, .down')).toBeNull();
 });
 
@@ -68,7 +68,7 @@ it('the remainder never prints an interval, even when a saved row carries bounds
   const ui = mountResults(result);
   toggle(ui, 0);
   const rem = ui.q('.remainder');
-  expect(rem.textContent).toMatch(/no interval/);
+  expect(rem.textContent).toMatch(/no likely range/);
   expect(rem.textContent).not.toMatch(/95% CI/);
 });
 
@@ -77,9 +77,9 @@ it('a row that is too close to call says how many fights would settle it and off
   const ui = mountResults(richResult(), { onrunmore });
   toggle(ui, 2);
   const rows = ui.qa('[data-testid="result-row"]');
-  expect(rows[2].textContent).toMatch(/Too close to call at/);
+  expect(rows[2].textContent).toMatch(/Too close to call after/);
   expect(rows[2].textContent).toMatch(/about 2,400 fights needed/);
-  expect(rows[2].textContent).toMatch(/target N 4,096/);
+  expect(rows[2].textContent).toMatch(/run more to reach 4,096 fights/);
   click([...rows[2].querySelectorAll('button')].find((b) => b.textContent.trim() === 'Run more'));
   expect(onrunmore).toHaveBeenCalledOnce();
   expect(onrunmore.mock.calls[0][0].key).toBe(richResult().rows[2].key);
@@ -236,7 +236,7 @@ it('Allowed to change toggles by group, resets, and prints the relic cap', () =>
 
 it('counts the blocks that may change', () => {
   mounted = setup(SpaceGroups, { space: { ...SPACE_DEFAULTS, sigils: false, utility: false, ancient: false, conditions: false }, relicCap: 2 });
-  expect(mounted.q('.count').textContent).toMatch(/9 of 13 may change/);
+  expect(mounted.q('.count').textContent).toMatch(/9 of 13 parts may change/);
 });
 
 it('with no open relic slot the relic note says so', () => {
@@ -251,7 +251,7 @@ it('compares two runs side by side and warns when they asked different questions
   const b = runFromResult(ttkResult(), { id: 'b', name: 'Second', presetName: 'Main' });
   mounted = setup(RunCompare, { a, b });
   const t = mounted.q('[data-testid="run-compare"]').textContent;
-  expect(t).toMatch(/Different questions/);
+  expect(t).toMatch(/Not a like-for-like comparison/);
   expect(t).toMatch(/First/);
   expect(t).toMatch(/Second/);
   expect(t).toMatch(/Best vs current/);
@@ -261,7 +261,7 @@ it('two runs of the same question compare without the warning', () => {
   const a = runFromResult(richResult(), { id: 'a', name: 'First', presetName: 'Main' });
   const b = runFromResult(dpsResult(), { id: 'b', name: 'Second', presetName: 'Main' });
   mounted = setup(RunCompare, { a, b });
-  expect(mounted.q('[data-testid="run-compare"]').textContent).not.toMatch(/Different questions/);
+  expect(mounted.q('[data-testid="run-compare"]').textContent).not.toMatch(/Not a like-for-like comparison/);
   flushSync();
 });
 

@@ -187,7 +187,7 @@ describe('optimize with the highest chance to win', { timeout: 120000 }, () => {
     });
     expect(r.rows).toEqual([]);
     expect(r.goal).toMatchObject({ mode: 'max', status: 'already', target: null });
-    expect(r.headline.text).toMatch(/^Already clears at 100% \(95% CI \d+(\.\d)?%-100%\)\. No change needed\.$/);
+    expect(r.headline.text).toMatch(/^Already clears at 100% \(likely \d+(\.\d)?%-100%\)\. No change needed\.$/);
   });
 
   it('a small sample of wins does not claim that nothing can beat the current build', async () => {

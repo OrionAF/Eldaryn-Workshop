@@ -148,7 +148,7 @@ describe('optimize: too close to call (A.8, A.9)', { timeout: 120000 }, () => {
     const r = await optimize({ ...req, seed: 3 });
     const w = r.warnings.filter((x) => x.code === 'change-dropped-unresolved');
     expect(w.length).toBeGreaterThan(0);
-    expect(w[0].message).toMatch(new RegExp(`too close to call at ${TINY.maxN} fights`));
+    expect(w[0].message).toMatch(new RegExp(`too close to call after ${TINY.maxN} fights`));
   });
 });
 

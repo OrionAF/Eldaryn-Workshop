@@ -161,8 +161,8 @@
   const resolved = $derived(resolvedFull.target ? targetOut(resolvedFull.target) : null);
   const fidelityText = $derived(
     resolved?.fidelity === 'server-model'
-      ? 'The server runs this fight. The app models it from the client\'s own tables: a model, not exact rules.'
-      : 'Fought with the client\'s own rules.',
+      ? 'The game server runs this fight, so the app can only estimate it from the game\'s own tables. Results are close, not exact.'
+      : 'Fought with the game\'s own rules.',
   );
 </script>
 
@@ -276,7 +276,7 @@
     <NumberField label="Defender kills" min={0} value={target.kills} onchange={(v) => patchInt('kills', v)} />
     {#if resolved?.fortress}
       <span class="hint" data-testid="fortress-shield">
-        Boss shield {Number(resolved.fortress.shieldPercent.toFixed(1))}%{target.shieldPercent == null ? ` (${target.aliveDefenders} alive of a ${resolved.fortress.clanCap} cap)` : ''}. Credited damage is raw x {resolved.fortress.total.toFixed(2)}; the credit never changes which build is best.
+        Boss shield {Number(resolved.fortress.shieldPercent.toFixed(1))}%{target.shieldPercent == null ? ` (${target.aliveDefenders} alive of a ${resolved.fortress.clanCap} cap)` : ''}. Damage counted toward the shield is your raw damage x {resolved.fortress.total.toFixed(2)}. This never changes which build is best.
       </span>
     {/if}
   {:else if target.kind === 'custom'}

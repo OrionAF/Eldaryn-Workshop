@@ -78,7 +78,7 @@
     if (p.relicsDropped > 0) lines.push(`${p.relicsDropped} equipped relic${p.relicsDropped === 1 ? '' : 's'} (slots unlock with level)`);
     if (p.awakeningPointsLost > 0) lines.push(`${p.awakeningPointsLost} Awakening level${p.awakeningPointsLost === 1 ? '' : 's'}`);
     for (const name of p.flagged ?? []) lines.push(`${name} is kept, but presets that use it are flagged and cannot be optimised until switched back`);
-    for (const name of p.inert ?? []) lines.push(`${name} stops counting (kept, but inert below its unlock level)`);
+    for (const name of p.inert ?? []) lines.push(`${name} stops counting (kept, but does nothing below its unlock level)`);
     return lines;
   }
   function applyLevel(n) {
@@ -159,13 +159,13 @@
     <Panel title="Oblivion" scope="oblivion">
       <Checkbox checked={unlocked} label="Oblivion unlocked" onchange={onOblivion} />
       <p class="note">
-        Unlocking adds the Oblivion realm (its own gear loadout and stone pool, and the Oblivion floors tool) and one extra
+        Unlocking adds the Oblivion realm (its own gear and stones, and the Oblivion floors tool) and one extra
         level on the Oblivion skills. Locking returns skills to their normal cap.
       </p>
     </Panel>
 
     <Panel title="Base stats">
-      <p class="note">Tier-1 base stats before any gear, defaults to the client's own values. To fit these to a pasted sheet, use Absorb on the Stat Sheet page.</p>
+      <p class="note">Your starting stats before any gear. They begin at the game's own values. To match them to your in-game stats, use "Add the difference to base stats" on the Stat Sheet page.</p>
       <div class="residual">
         {#each RESIDUAL_KEYS as key (key)}
           <NumberField
@@ -179,7 +179,7 @@
         {/each}
       </div>
       <div class="actions">
-        <Button variant="ghost" disabled={isDefault} onclick={() => rosterStore.setBaseResidual(defaultBaseResidual())}>Reset to client defaults</Button>
+        <Button variant="ghost" disabled={isDefault} onclick={() => rosterStore.setBaseResidual(defaultBaseResidual())}>Reset to game defaults</Button>
         <Button variant="ghost" onclick={() => onNavigate('builds/sheet')}>Open Stat Sheet</Button>
       </div>
     </Panel>

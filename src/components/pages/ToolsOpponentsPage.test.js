@@ -95,6 +95,16 @@ it('Clone defaults "as spec" to the preset\'s own talent-set spec, and follows t
 it('the cloned opponent\'s sheet table has no empty Model column', () => {
   click(buttonByText(/^Clone$/));
   const heads = view.qa('[data-testid="opponent-editor"] thead th').map((th) => th.textContent.trim());
-  expect(heads).not.toContain('Model');
-  expect(heads).toContain('Your sheet');
+  expect(heads).not.toContain('App');
+  expect(heads).toContain('In-game stats');
+});
+
+it('the Rankings import line shows only while game-data import is switched on', async () => {
+  const { setPrefs, applyPrefs } = await import('../../lib/prefs.svelte.js');
+  expect(view.target.querySelector('[data-testid="rankings-import-note"]')).toBeNull();
+  setPrefs({ showImport: true });
+  flushSync();
+  expect(view.q('[data-testid="rankings-import-note"] a').textContent).toContain('Import a player from Rankings');
+  localStorage.clear();
+  applyPrefs();
 });

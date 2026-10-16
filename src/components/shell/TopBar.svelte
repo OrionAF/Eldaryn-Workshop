@@ -2,7 +2,7 @@
   /**
    * TopBar.svelte - the global chrome (ia.md §2.1, design-system §4.1): brand, G1 character switcher,
    * G2 preset + realm, the Jobs pill slot (filled by the job store slice), save state, G5 activity
-   * bell and G6 settings (import lives in Settings, Data). Sticky, one row; collapses by CSS only.
+   * bell and G6 settings (import lives in Settings, Advanced). Sticky, one row; collapses by CSS only.
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { notifications } from '../../lib/notify.svelte.js';

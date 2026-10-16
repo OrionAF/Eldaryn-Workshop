@@ -88,7 +88,7 @@ export function estimateText(cal, fights, { bound = 'about', stale = null } = {}
   const d = durationText(s);
   const lead = bound === 'upper' ? 'Up to about' : bound === 'lower' ? 'At least about' : 'About';
   const phrase = d === 'under a minute' ? `${bound === 'upper' ? 'Up to' : bound === 'lower' ? 'At least' : 'Takes'} under a minute` : `${lead} ${d}`;
-  const old = stale === 'profile' ? ' Measured under another CPU profile.' : stale === 'version' ? ' Measured on an older build.' : '';
+  const old = stale === 'profile' ? ' Measured with another Speed vs. battery setting.' : stale === 'version' ? ' Measured on an older version of the app.' : '';
   return `${phrase} on this device (estimate).${old}`;
 }
 

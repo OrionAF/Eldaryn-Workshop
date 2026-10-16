@@ -105,7 +105,7 @@ export function winRateResult(status = 'reached') {
     r.baseline.aux = wrAux(0.99, 0.98, 1, true);
     r.rows = [];
     r.search = null;
-    r.goal = { target: 0.95, status, baseline: { winRate: r.baseline.value, meetsTarget: true, check: { meets: true, n: 2048, value: r.baseline.value } }, bestKey: r.baseline.key, text: 'Already clears at 99% (95% CI 98%-100%). No change needed.' };
+    r.goal = { target: 0.95, status, baseline: { winRate: r.baseline.value, meetsTarget: true, check: { meets: true, n: 2048, value: r.baseline.value } }, bestKey: r.baseline.key, text: 'Already clears at 99% (likely 98%-100%). No change needed.' };
     r.headline = { better: 0, equivalent: 0, unresolved: 0, worseHidden: 0, text: r.goal.text };
     return r;
   }
@@ -128,7 +128,7 @@ export function winRateResult(status = 'reached') {
   b.remainder = null;
   r.goal = {
     target: 0.95, status, baseline: { winRate: r.baseline.value, meetsTarget: false, check: { meets: false, n: 2048, value: r.baseline.value } }, bestKey: a.key,
-    text: reached ? '1 build reaches 95%. Fewest changes: 1 change, win rate 96% (95% CI 95%-97%).' : 'No build was shown to reach 95%. The best build wins 82% (95% CI 80%-84%).',
+    text: reached ? '1 build reaches 95%. Fewest changes: 1 change, win rate 96% (likely 95%-97%).' : 'No build was shown to reach 95%. The best build wins 82% (likely 80%-84%).',
   };
   r.headline = { better: 2, equivalent: 0, unresolved: 0, worseHidden: 0, text: r.goal.text };
   return r;
@@ -164,10 +164,10 @@ export function winChanceResult(kind = 'best') {
   }
   const best = kind === 'no-gain' ? r.baseline : (r.rows[0] ?? r.baseline);
   const text = {
-    best: 'Best chance to win: 96% (95% CI 95%-97%) with 1 change; the current build wins 70%.',
+    best: 'Best chance to win: 96% (likely 95%-97%) with 1 change; the current build wins 70%.',
     'no-wins': "No build won any of 2,048 fights; the build that gets furthest (1 change) removes 60% of the step's HP.",
-    already: 'Already clears at 99% (95% CI 98%-100%). No change needed.',
-    'no-gain': 'No change was shown to raise the chance to win. The current build wins 70% (95% CI 68%-72%).',
+    already: 'Already clears at 99% (likely 98%-100%). No change needed.',
+    'no-gain': 'No change was shown to raise the chance to win. The current build wins 70% (likely 68%-72%).',
   }[kind];
   r.goal = { mode: 'max', target: null, status, baseline: { winRate: r.baseline.value, check: r.goal.baseline.check }, bestKey: best.key, text };
   r.headline = { ...r.headline, text };

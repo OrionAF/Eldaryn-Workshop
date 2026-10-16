@@ -7,6 +7,7 @@
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { go } from '../../lib/router.svelte.js';
   import { requestImportFocus } from '../../lib/importFlow.svelte.js';
+  import { prefs } from '../../lib/prefs.svelte.js';
   import { SPECS, classLabel } from '../../lib/game/classes.js';
   import { MAX_OPPONENTS } from '../../lib/model/opponents.js';
   import { opponentFighter, missingStats } from '../../lib/features/duel.js';
@@ -97,12 +98,18 @@
     {#if selected}
       <Button variant="ghost" onclick={() => go('#/tools/duel')}>Duel an opponent</Button>
     {/if}
-    <p class="note" data-testid="rankings-import-note">
-      <a href="#/settings" onclick={requestImportFocus}>Import a player from Rankings in Settings → Import</a>.
-      {#if selected?.imported}
-        {selected.name} came from Rankings (level {selected.imported.level}){selected.imported.importedAt ? `, ${selected.imported.importedAt.slice(0, 10)}` : ''}: import the same player's profile again to refresh it.
-      {/if}
-    </p>
+    {#if prefs.showImport}
+      <p class="note" data-testid="rankings-import-note">
+        <a href="#/settings" onclick={requestImportFocus}>Import a player from Rankings in Settings → Advanced</a>.
+        {#if selected?.imported}
+          {selected.name} came from Rankings (level {selected.imported.level}){selected.imported.importedAt ? `, ${selected.imported.importedAt.slice(0, 10)}` : ''}: import the same player's profile again to refresh it.
+        {/if}
+      </p>
+    {:else if selected?.imported}
+      <p class="note" data-testid="rankings-import-note">
+        {selected.name} came from Rankings (level {selected.imported.level}){selected.imported.importedAt ? `, ${selected.imported.importedAt.slice(0, 10)}` : ''}.
+      </p>
+    {/if}
   </div>
 
   <div class="editor">

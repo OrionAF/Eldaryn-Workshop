@@ -46,7 +46,7 @@
 </div>
 
 {#if tier === 'major' && types.length === 0}
-  <p class="hint">No major glyphs exist for this class. Choose a class on the Character screen.</p>
+  <p class="hint">No major glyphs exist for this class. Choose a class on the Overview page.</p>
 {/if}
 
 <style>

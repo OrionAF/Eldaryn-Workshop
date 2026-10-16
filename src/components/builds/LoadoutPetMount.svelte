@@ -88,20 +88,20 @@
     </div>
   {/if}
   {#if mount && sockets}
-    <section class="sockets" aria-label="Mount sockets (read-only)" data-testid="mount-sockets">
+    <section class="sockets" aria-label="Mount sockets (view only)" data-testid="mount-sockets">
       <ScopeChip scope="mount" target={mountLabel(character, mount.id)} sideEffects={others} />
       <ul>
-        <li>Minor glyphs: <b class="num">{sockets.minors}</b> of 3 socketed</li>
+        <li>Minor glyphs: <b class="num">{sockets.minors}</b> of 3 placed</li>
         <li>
           Major glyphs:
-          {#if sockets.active.length}<b>{sockets.active.join(', ')}</b>{:else}none active{/if}
+          {#if sockets.active.length}<b>{sockets.active.join(', ')}</b>{:else}none working{/if}
           {#if sockets.inert.length}
-            <span class="inert" data-testid="inert-glyphs">Inert, its sigil is not equipped: {sockets.inert.join(', ')}</span>
+            <span class="inert" data-testid="inert-glyphs">Not working, its sigil is not equipped: {sockets.inert.join(', ')}</span>
           {/if}
         </li>
         <li>Mythic glyph: {sockets.mythics.length ? sockets.mythics.join(', ') : 'none'}</li>
       </ul>
-      <span class="hint">Sockets belong to the mount. <a href="#/character/mounts">Edit sockets</a> in Mounts & Glyphs.</span>
+      <span class="hint">Glyphs belong to the mount. Change them in <a href="#/character/mounts">Mounts & Glyphs</a>.</span>
     </section>
   {/if}
 </Panel>

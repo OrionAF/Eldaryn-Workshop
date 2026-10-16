@@ -97,7 +97,7 @@
       </div>
       {#if tier > EVOLVE_TIER_CAP}
         <Banner variant="warn" lead="Tier {tier} cannot be reached by evolving.">
-          The Altar only evolves to tier {EVOLVE_TIER_CAP}. Use higher tiers only if your game shows one; the numbers are scaled as entered.
+          The Altar only evolves to tier {EVOLVE_TIER_CAP}. Only use a higher tier if your game shows one. The app uses the tier you enter.
         </Banner>
       {/if}
       {#if tier < EVOLVE_TIER_CAP}

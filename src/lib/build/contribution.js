@@ -8,10 +8,10 @@ import { buildPresetInputs } from './presetInputs.js';
 
 /** Source rows in display order. `arg` indexes presetInputs `args`; relics share args[5] with the stones. */
 export const CONTRIBUTION_SOURCES = [
-  { id: 'base', label: 'Base stats and carried residual', arg: 0 },
+  { id: 'base', label: 'Base stats and the gap from the game', arg: 0 },
   { id: 'gear', label: 'Gear set', arg: 1 },
   { id: 'stones', label: 'Enchant stones', arg: 5 },
-  { id: 'relics', label: 'Relics (assumed to add like stone bundles)', relics: true },
+  { id: 'relics', label: 'Relics (assumed to add up like enchant stones)', relics: true },
   { id: 'talents', label: 'Talents', arg: 2 },
   { id: 'pet', label: 'Pet', arg: 3 },
   { id: 'mount', label: 'Mount and glyphs', arg: 10 },

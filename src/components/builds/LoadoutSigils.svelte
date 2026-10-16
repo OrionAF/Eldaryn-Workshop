@@ -76,7 +76,7 @@
 </script>
 
 <Panel title="Sigils" scope="preset">
-  {#snippet meta()}<span class="note">Altar tier <span class="num">{tier}</span> (character-wide)</span>{/snippet}
+  {#snippet meta()}<span class="note">Altar tier <span class="num">{tier}</span> (same for all presets)</span>{/snippet}
   <div class="sigil-slots">
     {#each [0, 1, 2] as i (i)}
       {#if i < slots}
@@ -130,16 +130,16 @@
   </div>
 
   <p class="totals">
-    Flat from equipped sigils: Attack <span class="num" data-testid="equip-atk">{formatFlat(totals.attack)}</span>
+    Bonus from equipped sigils: Attack <span class="num" data-testid="equip-atk">{formatFlat(totals.attack)}</span>
     · Health <span class="num" data-testid="equip-hp">{formatFlat(totals.hp)}</span>
   </p>
 
   <section class="conditions" aria-label="Activation conditions">
     <h3>Activation conditions</h3>
     {#if !conditionsOpen}
-      <p class="hint">Unlock at character level {SIGIL_CONDITIONS_LEVEL}. Until then every sigil casts on cooldown.</p>
+      <p class="hint">Unlock at character level {SIGIL_CONDITIONS_LEVEL}. Until then every sigil fires as soon as it is ready.</p>
     {:else if equipped.length === 0}
-      <p class="hint">Equip a sigil to set when it fires.</p>
+      <p class="hint">Equip a sigil to choose when it fires.</p>
     {:else}
       {#each equipped as sp (sp)}
         {@const options = sigilConditionOptions(sp, spec)}
@@ -155,7 +155,7 @@
           </div>
         {/if}
       {/each}
-      <p class="hint">Damage and debuff conditions apply only in PvP; in PvE they always fire on cooldown. Buff and heal conditions apply everywhere.</p>
+      <p class="hint">Damage and debuff conditions only work in PvP; in PvE those sigils fire as soon as they are ready. Buff and heal conditions work everywhere.</p>
     {/if}
   </section>
 </Panel>

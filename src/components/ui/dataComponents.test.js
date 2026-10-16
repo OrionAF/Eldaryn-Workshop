@@ -13,7 +13,7 @@ import { forestDomain } from '../../lib/ui/forestScale.js';
 const M = '−';
 
 it('ProvenanceTag: one class per kind, never a verdict class', () => {
-  for (const [kind, word] of [['sheet', 'Sheet'], ['model', 'Model'], ['estimate', 'Estimate'], ['stale', 'Stale']]) {
+  for (const [kind, word] of [['sheet', 'In-game'], ['model', 'App'], ['estimate', 'Estimate'], ['stale', 'Out of date']]) {
     const t = setup(ProvenanceTag, { kind });
     expect(t.q('.prov').classList.contains(kind)).toBe(true);
     expect(t.q('.prov').textContent).toBe(word);
@@ -28,14 +28,14 @@ it('VerdictChip: inconclusive and equivalent exist; only better/worse are colour
     t.done();
     return out;
   };
-  expect(read('unresolved').text).toContain('Inconclusive');
-  expect(read('equivalent').text).toContain('Equivalent');
+  expect(read('unresolved').text).toContain('Too close to call');
+  expect(read('equivalent').text).toContain('About the same');
   expect(read('better').cls).toContain('up');
   expect(read('worse').cls).toContain('down');
   for (const v of ['unresolved', 'equivalent', 'remainder', 'pending', 'queued']) {
     expect(read(v).cls).not.toMatch(/\b(up|down)\b/);
   }
-  expect(read('remainder').text).toBe('Remainder');
+  expect(read('remainder').text).toBe('Left over');
 });
 
 it('VerdictChip: the glyph is aria-hidden', () => {
@@ -64,7 +64,7 @@ it('StatTable: real table, flat vs percent formatting, residual colouring', () =
   expect(s.qa('thead th[scope="col"]').length).toBe(3);
   expect(s.qa('tbody tr')[0].textContent).toContain('12.345');
   expect(s.qa('tbody tr')[1].textContent).toContain('12.5');
-  expect(s.qa('.prov').map((e) => e.textContent)).toEqual(['Sheet', 'Model']);
+  expect(s.qa('.prov').map((e) => e.textContent)).toEqual(['In-game', 'App']);
   s.done();
   const r = setup(StatTable, { rows, mode: 'residual', footer: 'Sheet vs model 9 / 10 explained' });
   const cells = r.qa('tbody tr')[0].querySelectorAll('td');
@@ -183,10 +183,10 @@ const domain = forestDomain([{ est: 1000, lo: -3000, hi: 5000 }]);
 
 it('ResultRank: a ms CI spanning zero keeps its signs and is not coloured', () => {
   const t = setup(ResultRank, { row: row(), unit: 'ms', domain });
-  expect(t.q('.delta .ci').textContent).toBe(`95% CI ${M}3.00 s to +5.00 s`);
+  expect(t.q('.delta .ci').textContent).toBe(`likely range ${M}3.00 s to +5.00 s`);
   expect(t.q('.delta .v').className).not.toMatch(/\b(up|down)\b/);
-  expect(t.q('.vchip').textContent).toContain('Inconclusive');
-  expect(t.q('.n').textContent).toBe('Too close to call at 800');
+  expect(t.q('.vchip').textContent).toContain('Too close to call');
+  expect(t.q('.n').textContent).toBe('Too close to call after 800 fights');
   t.done();
 });
 
@@ -206,8 +206,8 @@ it('ResultRank: toggle controls the body; expanded lists changes, scope, remaind
   expect(abl[0].textContent).toContain('Without it');
   expect(abl[1].textContent).toContain('also Boss build');
   const rem = t.q('.remainder');
-  expect(rem.textContent).toContain('Remainder');
-  expect(rem.textContent).toContain('no interval');
+  expect(rem.textContent).toContain('Left over');
+  expect(rem.textContent).toContain('no likely range');
   expect(rem.querySelector('.bar')).toBeNull();
   expect(rem.querySelector('.v').className).not.toMatch(/\b(up|down)\b/);
   expect(rem.querySelector('.forest').className).toContain('is-est');
@@ -233,7 +233,7 @@ it('ResultRank: a change with an exactly zero own effect reads "Only with: <driv
   const dep = t.qa('.abl')[1];
   expect(dep.textContent).toContain('Only with: Talent set');
   expect(dep.textContent).toContain('700');
-  expect(dep.textContent).not.toContain('Equivalent');
+  expect(dep.textContent).not.toContain('About the same');
   expect(dep.querySelector('.vchip').textContent).toContain('Helps with the other changes');
   expect(dep.querySelector('.vchip.down')).toBeNull();
   expect(t.qa('.abl')[0].querySelector('.vchip')).not.toBeNull();
