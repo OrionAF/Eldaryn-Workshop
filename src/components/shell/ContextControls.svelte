@@ -57,7 +57,7 @@
   .preset { min-width: 160px; max-width: 240px; }
   .realm { display: grid; gap: 4px; }
   .realm .micro-label { font-size: var(--fs-12); letter-spacing: 0; text-transform: none; }
-  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .sr-only { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   @media (max-width: 700px) {
     .realm .micro-label { display: none; }
     /* the labels go (the controls keep their accessible names) so both fit one 44px row under the first */

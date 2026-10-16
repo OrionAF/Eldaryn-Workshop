@@ -50,6 +50,7 @@
   import RunProgress from '../ui/RunProgress.svelte';
   import StepList from '../ui/StepList.svelte';
   import { searchStepRows } from '../../lib/ui/searchSteps.js';
+  import { RUN_PHASES } from '../../lib/ui/runPhases.js';
   import TargetPicker from '../tools/TargetPicker.svelte';
   import { rosterPartnerFor } from '../../lib/search/celestialObjective.js';
   import SpaceGroups from '../optimiser/SpaceGroups.svelte';
@@ -467,6 +468,15 @@
 
           {#if segments.length}
             <div data-testid="optimiser-progress"><RunProgress {segments} /></div>
+            <details class="phases" data-testid="phase-help">
+              <summary>What the steps mean</summary>
+              <dl>
+                {#each RUN_PHASES as ph (ph.id)}
+                  <dt>{ph.label}</dt>
+                  <dd>{ph.text}</dd>
+                {/each}
+              </dl>
+            </details>
           {/if}
           {#if stepRows.length}
             <div data-testid="search-steps"><StepList id="optimiser-search-steps" title="Search steps" steps={stepRows} /></div>
@@ -567,6 +577,11 @@
 
 <style>
   .page-tabs { margin-bottom: var(--sp-4); }
+  .phases { margin-top: var(--sp-2); font-size: var(--fs-12); color: var(--text-muted); }
+  .phases summary { cursor: pointer; color: var(--brass-400); }
+  .phases dl { margin: var(--sp-2) 0 0; display: grid; gap: 4px; }
+  .phases dt { color: var(--text-ink); font-weight: var(--fw-bold); }
+  .phases dd { margin: 0 0 var(--sp-1); color: var(--text-soft); }
   .panes { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
   .panes > * { min-width: 0; }
   @media (max-width: 1100px) { .panes { grid-template-columns: minmax(0, 1fr); } }

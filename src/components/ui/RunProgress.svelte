@@ -8,10 +8,14 @@
    * The caption under a segment is `text`, else "done/total", else the state word. The bar fills
    * to done/total when both are known, fully when done. Each segment is a role=progressbar.
    *
+   * A known phase id carries its plain-language explanation (lib/ui/runPhases.js) as the label's title and
+   * the bar's aria-description; other ids get none.
+   *
    * In a narrow container (the Jobs tray, a phone) the per-segment labels cannot fit, so a container
    * query hides them and shows one line for the current step instead ("Step 2 of 5 · Search · 4/6").
    */
   import { fmtCount } from '../../lib/ui/statsFormat.js';
+  import { phaseHint } from '../../lib/ui/runPhases.js';
 
   let { segments = [] } = $props();
 
@@ -49,12 +53,14 @@
     {#each segments as s (s.id)}
       {@const f = fraction(s)}
       {@const cap = caption(s)}
+      {@const hint = phaseHint(s.id)}
       <div class="seg-step is-{stateOf(s)}" title="{s.label}: {cap.text}">
-        <div class="lbl"><b>{s.label}</b><span class:num={cap.numeric}>{cap.text}</span></div>
+        <div class="lbl"><b title={hint || undefined}>{s.label}</b><span class:num={cap.numeric}>{cap.text}</span></div>
         <div
           class="bar"
           role="progressbar"
           aria-label={s.label}
+          aria-description={hint || undefined}
           aria-valuemin="0"
           aria-valuemax="100"
           aria-valuenow={Math.round(f * 100)}
