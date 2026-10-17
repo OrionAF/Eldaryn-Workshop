@@ -57,7 +57,7 @@ describe('Awakening store + screen', () => {
     rosterStore.setAwakeningLevel(40);
     expect(rosterStore.current.awakening).toEqual({ path: 'SHADOW', level: 15 });
     rosterStore.setAwakeningPath('RADIANT');
-    expect(rosterStore.current.awakening).toEqual({ path: 'RADIANT', level: 0 });
+    expect(rosterStore.current.awakening).toEqual({ path: 'RADIANT', level: 1 });
     rosterStore.setAwakeningLevel(3);
     rosterStore.resetAwakening();
     expect(rosterStore.current.awakening).toEqual({ path: null, level: 0 });
@@ -162,16 +162,48 @@ describe('Relics page: slots and Equipped in', () => {
 });
 
 describe('Awakening page: cap by level', () => {
+  it('edits actual level, shows fourteen spent upgrades at level fifteen and survives persistence', () => {
+    seed('MYSTIC');
+    rosterStore.setTalentSetSpec(0, 'MYSTIC_MAGE');
+    rosterStore.setAwakeningPath('SHADOW');
+    expect(rosterStore.current.awakening.level).toBe(1);
+    render(AwakeningScreen);
+    expect(field('Awakening level').value).toBe('1');
+    expect(target.querySelector('[data-testid="awakening-level"]').textContent).toContain('0 upgrades spent');
+    setField(field('Awakening level'), '15');
+    expect(rosterStore.current.awakening.level).toBe(15);
+    expect(target.querySelector('[data-testid="awakening-level"]').textContent).toContain('14 upgrades spent');
+    const row = [...target.querySelectorAll('tr')].find((r) => r.textContent.includes('Spell Damage'));
+    expect(row.textContent).toContain('+30');
+    expect(JSON.parse(localStorage.getItem('eldaryn_optimiser_state_v2')).characters.find((c) => c.id === rosterStore.current.id).awakening.level).toBe(15);
+    rosterStore.setAwakeningPath('RADIANT');
+    flushSync();
+    expect(rosterStore.current.awakening.level).toBe(1);
+    setField(field('Awakening level'), '15');
+    expect(rosterStore.current.awakening.level).toBe(15);
+    expect(target.querySelector('[data-testid="other-path"]').textContent).toContain('+37.5');
+  });
+
+  it('a selected locked path activates at level45 with zero upgrades', () => {
+    rosterStore.setCharacterLevel(44);
+    rosterStore.setAwakeningPath('SHADOW');
+    expect(rosterStore.current.awakening.level).toBe(0);
+    rosterStore.setCharacterLevel(45);
+    expect(rosterStore.current.awakening.level).toBe(1);
+    render(AwakeningScreen);
+    expect(field('Awakening level').value).toBe('1');
+    expect(target.querySelector('[data-testid="points-cap"]').textContent).toBe('/ 1 levels');
+  });
   it('the points field stops at what the level allows, and Max goes there', () => {
     rosterStore.setCharacterLevel(50);
     rosterStore.setAwakeningPath('SHADOW');
     render(AwakeningScreen);
     // The cap is written beside the field once: the old "0 / 6 points" readout drew the value a second time.
-    expect(target.querySelector('[data-testid="points-cap"]').textContent).toBe('/ 6 points');
+    expect(target.querySelector('[data-testid="points-cap"]').textContent).toBe('/ 6 levels');
     expect(target.textContent).not.toContain('0 / 6');
-    const input = field('Awakening points');
+    const input = field('Awakening level');
     setField(input, '9');
-    expect(rosterStore.current.awakening.level).toBe(0);
+    expect(rosterStore.current.awakening.level).toBe(1);
     expect(target.querySelector('[role="alert"]').textContent).toContain('maximum');
     setField(input, '4');
     expect(rosterStore.current.awakening.level).toBe(4);

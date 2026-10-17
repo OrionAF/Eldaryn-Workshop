@@ -1,8 +1,8 @@
 <script>
   /**
-   * CharacterAwakeningPage.svelte (C9) - path (Shadow / Radiant) and points, character-wide. The points
-   * cap is what the character level allows (one per level from 45 to 59, legality.awakeningPointsForLevel),
-   * never above the game's 15. Which bundle applies (spec override > class override > path default,
+   * CharacterAwakeningPage.svelte (C9) - character-wide path and actual bonus level.
+   * The level starts at one; player level caps it at15. Upgrades spent is a secondary readout.
+   * Which bundle applies (spec override > class override > path default,
    * awakening.json calc.precedence) follows the active preset's talent spec.
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
@@ -30,6 +30,7 @@
   const character = $derived(rosterStore.current);
   const awakening = $derived(character.awakening);
   const cap = $derived(Math.min(AWAKENING_CONSTANTS.maxPoints, awakeningPointsForLevel(character.level)));
+  const upgrades = $derived(Math.max(0, awakening.level - 1));
   const preset = $derived(character.presets.find((p) => p.id === character.activePresetId) ?? character.presets[0]);
   const spec = $derived(character.talentSets?.[preset?.talentSet === 1 ? 1 : 0]?.spec ?? null);
   const info = $derived(awakening.path ? awakeningBundle(awakening.path, character.class, spec) : null);
@@ -66,14 +67,14 @@
     <div class="points-row">
       <div class="points-field">
         <NumberField
-          label="Awakening points"
+          label="Awakening level"
           value={awakening.level}
-          min={0}
+          min={cap > 0 ? 1 : 0}
           max={cap}
           disabled={cap === 0}
           onchange={(v) => rosterStore.setAwakeningLevel(v)}
         />
-        <span class="of num" data-testid="points-cap">/ {cap} points</span>
+        <span class="of num" data-testid="points-cap">/ {cap} levels</span>
       </div>
       <Button variant="ghost" disabled={awakening.level >= cap} onclick={() => rosterStore.setAwakeningLevel(cap)}>Max</Button>
       <ConfirmButton
@@ -86,16 +87,17 @@
       />
     </div>
 
+    <p class="hint" data-testid="awakening-level"><span class="num">{upgrades}</span> upgrades spent. Choosing a path grants level 1; each upgrade adds one level.</p>
     <p class="hint source" data-testid="override-source">{sourceText} - {info.highlights.join(', ')}</p>
 
     <table class="bonus-table" data-testid="other-path">
-      <caption class="sr-only">Bonuses at {awakening.level} points</caption>
+      <caption class="sr-only">Bonuses at Awakening level {awakening.level}</caption>
       <thead>
         <tr>
           <th scope="col">Stat</th>
           <th scope="col" class="r">{AWAKENING_PATHS[awakening.path].name}</th>
-          <th scope="col" class="r">Per point</th>
-          <th scope="col" class="r">{AWAKENING_PATHS[other].name} at the same points</th>
+          <th scope="col" class="r">Per level</th>
+          <th scope="col" class="r">{AWAKENING_PATHS[other].name} at the same level</th>
         </tr>
       </thead>
       <tbody>
