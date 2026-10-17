@@ -33,7 +33,7 @@
   let buildRow = $state(null);
   let drawer = $state(false);
 
-  const AXIS_TITLE = { dps: 'Change in DPS vs current', ms: 'Time saved vs current (positive is faster)', p: 'Change in chance vs current' };
+  const AXIS_TITLE = { dps: 'Change in DPS vs current', ms: 'Time saved vs current (positive is faster)', p: 'Change in chance vs current', influence: 'Change in Influence from wins per attack vs current' };
   // A PVE win-rate run (either win-rate goal): one axis in win-rate points and tries per clear on every row; a
   // target goal adds a Meets / Below target chip per row. A Push run's rows are win-rate rows measured on the
   // step the build was found for (simulation.md §Push).
@@ -155,23 +155,25 @@
           {/if}
           {#if r.aux?.matchups?.length}
             <table class="matchups" data-testid="matchups">
-              <caption>Win rate against each opponent, as attacker and as defender</caption>
-              <thead><tr><th scope="col">Opponent</th><th scope="col">Seat</th><th scope="col">Win rate</th><th scope="col">Fights</th><th scope="col">vs current</th></tr></thead>
+              <caption>{view.unit === 'influence' ? 'Influence from wins against each selected opponent' : 'Win rate against each opponent, as attacker and as defender'}</caption>
+              <thead><tr><th scope="col">Opponent</th><th scope="col">Seat</th><th scope="col">{view.unit === 'influence' ? 'Influence per attack' : 'Win rate'}</th><th scope="col">Fights</th><th scope="col">vs current</th></tr></thead>
               <tbody>
                 {#each r.aux.matchups as m (m.opponentId + m.seat)}
                   <tr>
                     <th scope="row">{m.name}</th>
                     <td>{SEAT[m.seat]}</td>
-                    <td class="num">{fmtEstimate('p', m.value)}</td>
+                    <td class="num">{fmtEstimate(view.unit, m.value)}</td>
                     <td class="num">{m.value?.n ?? 0}</td>
-                    <td class="num">{m.vsBaseline ? `${fmtContrast('p', m.vsBaseline)} ${fmtContrastCi('p', m.vsBaseline)}` : ''}</td>
+                    <td class="num">{m.vsBaseline ? `${fmtContrast(view.unit, m.vsBaseline)} ${fmtContrastCi(view.unit, m.vsBaseline)}` : ''}</td>
                   </tr>
                 {/each}
               </tbody>
             </table>
             <details class="basis">
               <summary>How this works</summary>
-              <p>Each row is measured on its own fights. Its likely range is a Wilson interval, and the ranges are not corrected for the number of rows.</p>
+              {#if view.unit === 'influence'}
+                <p>Each attempt pays the displayed Influence only when it wins. The combined result gives each selected opponent equal weight. Exact binomial limits cover the reward-scaled win rates; paired comparisons reuse the same fights. Loss rewards and matchmaking are unknown.</p>
+              {:else}<p>Each row is measured on its own fights. Its likely range is a Wilson interval, and the ranges are not corrected for the number of rows.</p>{/if}
             </details>
           {/if}
           {#if r.aux?.winRate && !winRun}

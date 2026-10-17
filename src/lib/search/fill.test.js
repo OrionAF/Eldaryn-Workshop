@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { createBuildSpace, socketsOf } from './space.js';
 import { candidateEngineKey } from './effect.js';
 import { fillCandidates, fillEmptySockets } from './fill.js';
-import { minimise } from './minimise.js';
+import { minimise, attribute } from './minimise.js';
+import { changesOf } from './effect.js';
 import { rowViolations } from './result.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { normaliseCharacter } from '../model/index.js';
@@ -78,12 +79,40 @@ describe('free fills: which glyphs go where (fill.js)', () => {
     const early = withInventory([...INVENTORY.filter((g) => g.id !== 'cata')]);
     const s2 = createBuildSpace(early, 'p1');
     const F2 = s2.legalise({ ...s2.start, mountGlyphs: { ...socketsOf(early, s2.start), major: ['warborn2', null] } });
-    // cataEpic sorts before warborn2, so placing it would shuffle warborn2 into socket 2: skipped, nothing else fits
-    expect(fillEmptySockets(s2, s2.start, F2).glyphs).toEqual(['crit']);
+    // cataEpic sorts first, but the same-type paid replacement retains the saved socket.
+    const filled = fillEmptySockets(s2, s2.start, F2);
+    expect(filled.glyphs).toEqual(['cataEpic', 'crit']);
+    expect(socketsOf(early, filled.candidate).major).toEqual(['warborn2', 'cataEpic']);
+    const ids = Object.values(socketsOf(early, filled.candidate)).flat().filter(Boolean);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(s2.legalise(filled.candidate)).toEqual(filled.candidate);
+    expect(fillEmptySockets(s2, s2.start, filled.candidate)).toEqual({ candidate: filled.candidate, glyphs: [] });
   });
 });
 
 describe('free fills in minimise', () => {
+  it('free fills never join either paid attribution family, including fixed-n Run more', async () => {
+    const space = createBuildSpace(withInventory(INVENTORY), 'p1');
+    const armOf = (cand) => ({ key: space.key(cand), cand });
+    const B = armOf(space.start);
+    const paid = space.legalise({ ...space.start, equipmentSet: 2, relicIds: [] });
+    const filled = fillEmptySockets(space, B.cand, paid).candidate;
+    const free = new Set(changesOf(space, paid, filled).map((c) => c.id));
+    const run = async (cand, fills) => {
+      const calls = [];
+      const ctx = { space, B, armOf, objective: { statistic: 'mean' },
+        contrastAt: async (X, Y, n, alpha) => { calls.push({ x: X.cand.equipmentSet, y: Y.cand.equipmentSet, alpha }); return { alphaAdj: alpha, significant: false, verdict: 'unresolved' }; },
+        getSet: async () => ({ n: 8, main: [[1, 1, 1, 1, 1, 1, 1, 1]], side: {} }) };
+      const result = await attribute(ctx, armOf(cand), 8, { alpha: .05, seed: 9, free: fills });
+      return { result, calls };
+    };
+    const before = await run(paid, new Set());
+    const after = await run(filled, free);
+    expect(after.calls).toEqual(before.calls);
+    expect(after.result.changes.filter((c) => !c.free).map((c) => [c.id, c.own, c.needed])).toEqual(before.result.changes.map((c) => [c.id, c.own, c.needed]));
+    expect(after.result.changes.filter((c) => c.free).every((c) => c.own === null && c.needed === null && c.keptBecause === 'free')).toBe(true);
+    expect(after.result.remainder).toBeNull();
+  });
   // A stub run: every change of the build is needed ('better'), the baseline is beaten, and a test of a fill
   // (the build against itself without one of `fills`) answers `fillVerdict`.
   function setup({ fillVerdict = 'equivalent', paidVerdict = 'better', fill = true } = {}) {

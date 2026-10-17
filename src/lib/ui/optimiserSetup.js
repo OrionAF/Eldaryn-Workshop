@@ -89,6 +89,12 @@ export function normaliseSetup(raw, character, defaultEffort = 'standard', chara
   const allowed = objectiveKindsFor(out.target.kind, out.target.kind === 'pvp' ? null : out.target);
   const o = r.objective && typeof r.objective === 'object' ? strip(r.objective, OBJECTIVE_ECHO) : null;
   out.objective = o && allowed.includes(o.kind) ? o : { kind: allowed[0] };
+  if (out.objective.kind === 'arena-reward') {
+    const position = (v) => Number.isSafeInteger(v) && v > 0 ? v : null;
+    out.objective = { kind: 'arena-reward', rank: typeof o.rank === 'string' ? o.rank : '', position: position(o.position),
+      opponentPositions: Object.fromEntries(out.target.opponentIds.filter((id) => position(o.opponentPositions?.[id]) != null).map((id) => [id, o.opponentPositions[id]])) };
+    out.target = { ...out.target, seats: 'attacker' };
+  }
   if (out.objective.kind === 'survival' && !(Number.isFinite(out.objective.seconds) && out.objective.seconds >= 5)) delete out.objective.seconds;
   if (out.objective.kind === 'win-chance') out.objective = { kind: 'win-chance' }; // no target: it maximises the clear rate
   const bound = out.objective.kind === 'push' ? PUSH_TARGET : WIN_RATE_TARGET;
