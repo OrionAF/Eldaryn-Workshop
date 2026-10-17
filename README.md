@@ -15,8 +15,9 @@ Enter your in-game stat sheet on a preset and the app shows, stat by stat, how f
 calculation is from the game's.
 
 Static client-side app: Vite + Svelte 5, no backend, persists to `localStorage` in your browser
-(plus explicit Export/Import for `.json` backups). Game mechanics are documented in
-`docs/Reference/Game/`; `CONTEXT.md` has the glossary.
+(plus explicit Export/Import for `.json` backups). Game references in `docs/Reference/Game/`
+and the glossary in `CONTEXT.md` are kept locally and are not included in a clone.
+The app's required catalogues are tracked in `src/data/game/`.
 
 ## Development
 
@@ -24,10 +25,13 @@ Static client-side app: Vite + Svelte 5, no backend, persists to `localStorage` 
 npm install
 npm run dev       # dev server with hot reload
 npm test          # run the Vitest suite
-npm run sync:data # copy docs/Reference/Game/data/*.json into src/data/game
+npm run sync:data # optional: refresh catalogues from local docs/Reference/Game/data
 npm run build     # production build to dist/
 npm run preview   # serve the production build locally
 ```
+
+Running and building the app do not require the local `docs/` or `graphify-out/` folders.
+`sync:data` requires the local reference files; the data parity tests skip when they are absent.
 
 ## Running it
 

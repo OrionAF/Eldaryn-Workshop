@@ -1,10 +1,49 @@
-/EldarynTracker
-/.claude
-/.agents
-/skills-lock.json
-node_modules
-dist
-*.local
-.DS_Store
+# Local reference material and the separate legacy project
+/docs/
+/graphify-out/
+/EldarynTracker/
 
-# Internal planning/domain notes - kept locally, not published to the public repo.
+# Local assistant configuration and working notes
+/.claude/
+/.agents/
+/.codex/
+/skills-lock.json
+/AGENTS.md
+/CLAUDE.md
+/CONTEXT.md
+/RTK.md
+
+# Dependencies, builds, and caches
+node_modules/
+/dist/
+.vite/
+.cache/
+*.tsbuildinfo
+
+# Test and profiling output (keep tests and snapshots tracked)
+/coverage/
+/playwright-report/
+/test-results/
+/blob-report/
+*.cpuprofile
+*.heapprofile
+
+# Local environment, logs, and scratch files
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.local
+*.local.*
+*.log
+*.tmp
+*.swp
+*.swo
+*~
+
+# Editor and operating-system metadata
+/.vscode/
+/.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
