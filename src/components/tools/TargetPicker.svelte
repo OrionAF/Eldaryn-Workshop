@@ -178,10 +178,12 @@
         {/each}
       </div>
     </div>
-    <div class="field" data-testid="pvp-seats">
+      {#if objective.kind !== 'arena-reward'}
+      <div class="field" data-testid="pvp-seats">
       <span class="lbl">My seat</span>
       <SegmentedControl label="My seat" options={seatOptions} value={target.seats} onchange={(v) => patch({ seats: v })} />
     </div>
+      {:else}<p class="hint">Arena rewards use your attacking seat.</p>{/if}
   {:else if target.kind === 'celestial'}
     <div class="field" data-testid="celestial-difficulty">
       <span class="lbl">Difficulty</span>

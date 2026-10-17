@@ -25,7 +25,8 @@
   } from '../../lib/jobs.svelte.js';
   import { debugLogFileName } from '../../lib/search/debugLog.js';
   import DebugLog from '../optimiser/DebugLog.svelte';
-  import { resolveTarget, objectiveKindsFor } from '../../lib/search/objectives.js';
+  import { resolveTarget, objectiveKindsFor, makeObjective } from '../../lib/search/objectives.js';
+  import ArenaRewardInputs from '../optimiser/ArenaRewardInputs.svelte';
   import { relicSlotCap } from '../../lib/model/legality.js';
   import { presetDuelFighter, opponentFighter, missingStats } from '../../lib/features/duel.js';
   import {
@@ -101,7 +102,9 @@
   const resolvedFull = $derived.by(() => {
     const t = $state.snapshot(setup.target);
     try {
-      return { target: resolveTarget(t, targetContext(t, character, others)), error: '' };
+      const target = resolveTarget(t, targetContext(t, character, others));
+      if (setup.objective.kind === 'arena-reward') makeObjective($state.snapshot(setup.objective), target);
+      return { target, error: '' };
     } catch (e) {
       return { target: null, error: e?.message ?? String(e) };
     }
@@ -117,10 +120,10 @@
     }
   });
   const relicCap = $derived(relicSlotCap(character.level, character.extraRelicSlots));
-  const plan = $derived(effortPlan(setup.effort, setup.objective));
+  const plan = $derived(effortPlan(setup.effort, setup.objective, setup.target));
   const effortOptions = $derived(
     EFFORTS.map((level) => {
-      const p = effortPlan(level, setup.objective);
+      const p = effortPlan(level, setup.objective, setup.target);
       return { value: level, label: level[0].toUpperCase() + level.slice(1), sub: p.sub };
     }),
   );
@@ -145,6 +148,7 @@
     if (!isPvp) return [];
     if (!opponents.length) return [{ text: 'PVP needs a saved opponent.', fix: 'Open Opponents', to: '#/tools/opponents' }];
     if (!pvpIds.length) return [{ text: 'Pick at least one opponent.' }];
+    if (setup.objective.kind === 'arena-reward' && resolvedFull.error) return [{ text: resolvedFull.error }];
     const out = [];
     try {
       for (const m of missingStats(presetDuelFighter(character, preset.id))) out.push({ text: `${preset.name} has no ${m}.`, fix: 'Open Stat Sheet', to: '#/builds/sheet' });
@@ -357,7 +361,13 @@
 
         <section class="step">
           <h3><span class="n">III</span> Maximise</h3>
-          <Select label="Objective" options={objectiveOptions} value={setup.objective.kind} onchange={(v) => (setup.objective = { kind: v })} />
+            <Select label="Objective" options={objectiveOptions} value={setup.objective.kind} onchange={(v) => {
+              setup.objective = { kind: v };
+              if (v === 'arena-reward') setup.target = { ...setup.target, seats: 'attacker' };
+            }} />
+            {#if setup.objective.kind === 'arena-reward'}
+              <ArenaRewardInputs bind:objective={setup.objective} target={setup.target} {opponents} />
+            {/if}
           {#if setup.objective.kind === 'survival'}
             <NumberField
               label="Survive for (s)"
@@ -560,9 +570,11 @@
         {#if result && result.status !== 'failed'}
           <Panel title="How to read this" scope="tool">
             <ul class="read" data-testid="how-to-read">
-              <li><b>Clearly better</b> means the whole likely range of the gain is above zero. <b>About the same</b> means the difference stays within ±{result.request.effort.deltaKind === 'relative' ? `${+(result.request.effort.delta * 100).toFixed(2)}%` : `${+(result.request.effort.delta * 100).toFixed(1)} points`}. <b>Too close to call</b> means it was still unclear after {fmtCount(result.request.effort.maxN)} fights.</li>
+              <li><b>Clearly better</b> means the whole likely range of the gain is above zero. <b>About the same</b> means the difference stays within ±{result.objective.unit === 'influence' ? `${+result.request.effort.delta.toFixed(3)} Influence per attack` : result.request.effort.deltaKind === 'relative' ? `${+(result.request.effort.delta * 100).toFixed(2)}%` : `${+(result.request.effort.delta * 100).toFixed(1)} points`}. <b>Too close to call</b> means it was still unclear after {fmtCount(result.request.effort.maxN)} fights.</li>
               <li>Each change was tested alone on your current build, on the same fights. The last row shows what the changes add together beyond their separate effects; it has no likely range.</li>
-              {#if result.request.mode === 'pvp'}
+              {#if result.objective.unit === 'influence'}
+                <li>Client reward-table Influence multiplied by your chance to win. Equal attempts against the selected opponents; attacking only. This assumes the displayed reward applies to a win. Loss rewards and game matchmaking are unknown.</li>
+              {:else if result.request.mode === 'pvp'}
                 <li>Win rates combine every opponent and seat, with the same number of fights for each. Ties and timeouts at equal HP go to the defender. Your side uses the app's numbers, plus the gap to your in-game stats when those are up to date.</li>
               {:else}
                 <li>Builds use the app's numbers, plus the gap to your in-game stats when those are up to date. Check a pick in the game or on Duel.</li>

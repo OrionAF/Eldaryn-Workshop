@@ -213,9 +213,10 @@ export function holmFixed(pairs, alpha, contrastAt, n) {
  * = F against F without c, both Holm within the row; keptBecause; and the interaction remainder.
  * @returns {Promise<{changes: Object[], remainder: Object|null}>}
  */
-export async function attribute(ctx, F, n, { alpha, seed }) {
+export async function attribute(ctx, F, n, { alpha, seed, free = new Set() }) {
   const { space, B, objective } = ctx;
-  const C = changesOf(space, B.cand, F.cand);
+  const all = changesOf(space, B.cand, F.cand);
+  const C = all.filter((c) => !free.has(c.id));
   const withOnly = C.map((c) => ctx.armOf(canonicalise(space, B.cand, space.legalise(addChange(space, B.cand, F.cand, c))).candidate));
   // a change added alone may fall below the Combat Power floor: that build is never measured (own effect null)
   const soloOk = withOnly.map((X) => !space.admissible || space.admissible(X.cand));
@@ -229,18 +230,20 @@ export async function attribute(ctx, F, n, { alpha, seed }) {
   const neededT = await holmFixed(testable.map(([Y]) => [F, Y]), alpha, ctx.contrastAt, n);
   const needed = new Array(C.length).fill(null);
   testable.forEach(([, i], j) => { needed[i] = neededT[j]; });
-  const changes = C.map((c, i) => ({
+  const attributed = C.map((c, i) => ({
     ...c,
     own: own[i],
     needed: needed[i],
     keptBecause: own[i]?.significant && gainOf(own[i]) > 0 ? 'own-effect' : heldByFloor(ctx, F, c) ? 'power-floor' : 'interaction',
   }));
   let remainder = null;
-  if (C.length >= 2 && soloOk.every(Boolean)) {
+  if (C.length === all.length && C.length >= 2 && soloOk.every(Boolean)) {
     const sets = [];
     for (const X of [F, B, ...withOnly]) sets.push(await ctx.getSet(X, n));
     const [fs, bs, ...os] = sets;
     remainder = remainderOf(objective, fs, bs, os, { alpha, seed });
   }
+  const byId = new Map(attributed.map((c) => [c.id, c]));
+  const changes = all.map((c) => byId.get(c.id) ?? { ...c, free: true, own: null, needed: null, keptBecause: 'free' });
   return { changes, remainder };
 }

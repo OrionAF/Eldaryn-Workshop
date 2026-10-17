@@ -120,11 +120,18 @@ function arrangeList(saved, desired) {
 }
 
 /** Saved glyphs stay in their saved sockets; new ones fill the free sockets left to right, sorted. */
-function arrangeRow(savedRow, desired, size) {
+function arrangeRow(savedRow, desired, size, typeOf) {
   const want = new Set(desired);
   const row = Array.from({ length: size }, (_, i) => (want.has(savedRow?.[i]) ? savedRow[i] : null));
   const placed = new Set(row.filter(Boolean));
   const added = [...want].filter((x) => !placed.has(x)).sort(byString);
+  // A replacement of the saved glyph's type keeps that paid socket, even when a free fill sorts first.
+  for (let i = 0; i < size; i++) {
+    if (row[i] != null || savedRow?.[i] == null) continue;
+    const type = typeOf(savedRow[i]);
+    const j = type == null ? -1 : added.findIndex((id) => typeOf(id) === type);
+    if (j >= 0) row[i] = added.splice(j, 1)[0];
+  }
   for (let i = 0; i < size && added.length; i++) if (row[i] == null) row[i] = added.shift();
   return row;
 }
@@ -193,13 +200,15 @@ export function canonical(character, presetOrId, cand) {
   let mountGlyphs = null;
   if (mountId && cand.mountGlyphs) {
     const saved = savedSockets(character, mountId);
+    const glyphs = new Map((character.glyphs ?? []).map((g) => [g.id, g]));
     const rows = {};
     let same = true;
     for (const tier of GLYPH_TIERS) {
       const want = uniq(cand.mountGlyphs[tier]);
       const have = uniq(saved[tier]);
       if (want.length !== have.length || want.some((id) => !have.includes(id))) same = false;
-      rows[tier] = arrangeRow(saved[tier], want, MOUNT_GLYPH_SOCKETS[tier]);
+      const typeOf = (id) => tier === 'minor' ? glyphs.get(id)?.secondary?.stat : glyphs.get(id)?.glyphType;
+      rows[tier] = arrangeRow(saved[tier], want, MOUNT_GLYPH_SOCKETS[tier], typeOf);
     }
     mountGlyphs = same ? null : rows;
   }

@@ -246,6 +246,40 @@ it('a PVP run sends the chosen opponents and seat', async () => {
   await settle();
 });
 
+it('requires explicit Arena reward inputs, sends attacking rewards and retains setup', async () => {
+  loadCharacter({ opponent: true });
+  mountPage();
+  const choose = (value) => {
+    const select = view.qa('select').find((s) => [...s.options].some((o) => o.value === value));
+    select.value = value;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    flushSync();
+  };
+  choose('pvp');
+  choose('arena-reward');
+  expect(view.q('[data-testid="pvp-seats"]')).toBeNull();
+  expect(btn(/^Optimise Main/).getAttribute('aria-disabled')).toBe('true');
+  choose('INITIATE');
+  for (const [label, value] of [['Your Arena position', '10'], ['Tanky Arena position', '7']]) {
+    const input = view.qa('input').find((i) => i.closest('.field')?.querySelector('label')?.textContent === label);
+    input.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('blur'));
+    flushSync();
+  }
+  expect(text()).toContain('30 Influence per win');
+  expect(view.q('[data-testid="effort-plan"]').textContent).toContain('Influence per attack');
+  click(btn(/^Optimise Main/));
+  expect(requests[0]).toMatchObject({ target: { seats: 'attacker' }, objective: {
+    kind: 'arena-reward', rank: 'INITIATE', position: 10, opponentPositions: { 'opp-a': 7 },
+  } });
+  await settle();
+  view.done(); view = null;
+  mountPage();
+  expect(view.q('[data-testid="arena-reward-inputs"]')).not.toBeNull();
+  expect(text()).toContain('30 Influence per win');
+});
+
 it('keeps the setup per character across a remount, and a new character starts from the defaults', () => {
   mountPage();
   const seed = view.qa('input').find((i) => i.closest('.field')?.querySelector('label')?.textContent.trim() === 'Seed');

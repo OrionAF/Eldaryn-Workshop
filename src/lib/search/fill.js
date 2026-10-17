@@ -42,9 +42,9 @@ export function fillCandidates(space, cand, tier, first = new Set()) {
  * `F` (a minimised candidate) with every empty major and minor socket of its mount filled, one socket at a
  * time with the first fill candidate that lands in the legal build and changes the engine inputs (an inert
  * glyph is no fill). The baseline's own glyphs on the mount go back first: they return to their saved sockets
- * and leave the free ones for new glyphs. A placement that would move a new glyph into a socket the baseline
- * holds (canonical order can shuffle F's own new glyphs) is skipped: that socket would read as a replaced glyph,
- * not a fill. Tiers whose block is off under Allowed to change stay as they are.
+ * and leave the free ones for new glyphs. Canonical assignment keeps same-type paid replacements in their saved
+ * sockets before placing sorted fills; a placement moving an unrelated paid glyph is still skipped.
+ * Tiers whose block is off under Allowed to change stay as they are.
  * @returns {{candidate: Object, glyphs: string[]}}  `glyphs`: the glyph ids added (none: `candidate` is F)
  */
 export function fillEmptySockets(space, B, F) {

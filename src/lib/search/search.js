@@ -61,7 +61,7 @@ export function resolveEffort(raw, objective) {
   const posInt = (v) => Number.isInteger(v) && v >= 1;
   const n0 = posInt(o.n0) ? o.n0 : EFFORT_N0[level];
   const maxN = posInt(o.maxN) && o.maxN >= n0 ? o.maxN : Math.max(n0, p.maxN);
-  const delta = typeof o.delta === 'number' && o.delta >= 0 ? o.delta : deltaKind === 'relative' ? p.rel : p.prob;
+  const delta = typeof o.delta === 'number' && o.delta >= 0 ? o.delta : deltaKind === 'relative' ? p.rel : p.prob * (objective.deltaScale ?? 1);
   const randomStarts = Number.isInteger(o.randomStarts) && o.randomStarts >= 0 ? o.randomStarts : RANDOM_STARTS;
   // futility: false restores the pre-A5 race and accept rule; tieLook: false the look schedule without the
   // win rate's tie look (both benchmarks only; not Effort controls)
@@ -865,7 +865,8 @@ function auxOf(prep, est, set, baseSet) {
       let vs = null;
       if (set && baseSet) {
         const lane = (s) => setOf([s.main[j]], {});
-        vs = contrastOut(contrastSets(prep.objective, lane(set), lane(baseSet), { alpha: ALPHA, delta: prep.effort.delta, deltaKind: prep.effort.deltaKind }));
+          const obj = prep.objective.matchupContrast ? { ...prep.objective, contrast: (x, y, o) => prep.objective.matchupContrast(j, x, y, o) } : prep.objective;
+          vs = contrastOut(contrastSets(obj, lane(set), lane(baseSet), { alpha: ALPHA, delta: prep.effort.delta, deltaKind: prep.effort.deltaKind }));
       }
       return { ...m, value: estimateOut(m.value), vsBaseline: vs };
     });
@@ -1045,7 +1046,7 @@ export async function optimize(request, hooks = {}) {
     };
     for (const r of rowsDraft) {
       if (r.vs.verdict === 'worse') continue;
-      r.attr = await attribute(ctx3, r.arm, r.vs.n, { alpha: effort.alpha, seed: S3.seed });
+      r.attr = await attribute(ctx3, r.arm, r.vs.n, { alpha: effort.alpha, seed: S3.seed, free: r.free });
     }
 
     // assemble
@@ -1343,7 +1344,7 @@ export async function optimizeMore(request, hooks = {}) {
     for (let i = 0; i < arms.length; i++) {
       const set = await run.getSet(arms[i], S4, targetN);
       const est = objective.estimate(set, { alpha: ALPHA });
-      const attr = await attribute(ctx, arms[i], targetN, { alpha: effort.alpha, seed: S4.seed });
+      const attr = await attribute(ctx, arms[i], targetN, { alpha: effort.alpha, seed: S4.seed, free: freeOf.get(picked[i].key) });
       const changes = attr.changes.map((c) => ({ ...freeMark(c, freeOf.get(picked[i].key)), own: contrastOut(c.own), needed: contrastOut(c.needed) }));
       updated.set(arms[i].key, {
         value: estimateOut({ ...est.value, seed: S4.seed }), aux: auxOf(prep, est, set, baseSet), vsBaseline: contrastOut(vs[i]),

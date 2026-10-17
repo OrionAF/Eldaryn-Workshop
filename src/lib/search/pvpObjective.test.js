@@ -26,7 +26,7 @@ const OBJ = { kind: 'pvp-winrate' };
 describe('pvp target', () => {
   it('is its own target kind whose only objective is the win rate (the PVE lists are untouched)', () => {
     expect(TARGET_KINDS).not.toContain('pvp');
-    expect(objectiveKindsFor('pvp')).toEqual(['pvp-winrate']);
+    expect(objectiveKindsFor('pvp')).toEqual(['pvp-winrate', 'arena-reward']);
     expect(objectiveKindsFor('dummy')).not.toContain('pvp-winrate');
   });
 

@@ -19,12 +19,14 @@ export function fmtScalar(unit, v) {
   if (!finite(v)) return 'n/a';
   if (unit === 'ms') return sec(v);
   if (unit === 'p') return pct1(v);
+  if (unit === 'influence') return `${+v.toFixed(3)} Influence`;
   return formatFlat(v);
 }
 
 function body(unit, abs) {
   if (unit === 'ms') return sec(abs);
   if (unit === 'p') return `${(abs * 100).toFixed(1)} pts`;
+  if (unit === 'influence') return `${+abs.toFixed(3)} Influence`;
   return formatFlat(abs).replace(/^-/, '');
 }
 

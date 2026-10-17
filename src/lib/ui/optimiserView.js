@@ -7,6 +7,7 @@ import { fmtCount } from './statsFormat.js';
 import { formatFlat } from '../format.js';
 import { resolveEffort } from '../search/search.js';
 import { SCOPES } from '../search/patch.js';
+import { arenaRewardConfig } from '../search/arenaRewardObjective.js';
 
 /**
  * Measured cost of the Quick level on the Warrior fixture (simulation.md §Cost: measured before the A5
@@ -37,6 +38,7 @@ export const OBJECTIVE_LABEL = Object.freeze({
   'win-rate': 'Reach a win rate',
   push: 'Push (deepest step)',
   'pvp-winrate': 'PVP win rate',
+  'arena-reward': 'Arena Influence from wins',
 });
 
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -374,10 +376,16 @@ export function progressLine(progress) {
 // ---- effort ---------------------------------------------------------------------------------
 
 /** The numbers an effort level means for an objective, as printed on the Effort control. */
-export function effortPlan(level, objective) {
+export function effortPlan(level, objective, target) {
   const relative = objective?.kind === 'dps';
-  const e = resolveEffort(level, { deltaKind: relative ? 'relative' : 'absolute' });
-  const zone = relative ? `${+(e.delta * 100).toFixed(2)}%` : `${+(e.delta * 100).toFixed(1)} points`;
+  let deltaScale;
+  if (objective?.kind === 'arena-reward') {
+    try { deltaScale = arenaRewardConfig(objective, target).scale; } catch { /* incomplete form */ }
+  }
+  const e = resolveEffort(level, { deltaKind: relative ? 'relative' : 'absolute', deltaScale });
+  const zone = objective?.kind === 'arena-reward'
+    ? deltaScale == null ? 'a reward difference (enter Arena positions)' : `${+e.delta.toFixed(3)} Influence per attack`
+    : relative ? `${+(e.delta * 100).toFixed(2)}%` : `${+(e.delta * 100).toFixed(1)} points`;
   return { ...e, zone, relative, sub: `spots ${zone} or more` };
 }
 
