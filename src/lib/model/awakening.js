@@ -1,5 +1,5 @@
 // model/awakening.js - persisted field `awakening: { path, level }` (rebuild-plan §3).
-// path 'SHADOW' | 'RADIANT' | null; level 0..maxPoints (15), forced to 0 without a path
+// Actual bonus level: 1..15 with an unlocked path, 0 while locked or without a path.
 // (awakening.md §3-§4, data/awakening.json).
 //
 // Domain contract (§3 "Normalisation layout"): partial-character functions, see model/index.js.
@@ -15,7 +15,7 @@ function build(pathRaw, levelRaw, playerLevel) {
   const path = key && AWAKENING_PATHS[key] ? key : null;
   const n = Math.floor(Number(levelRaw));
   const cap = Math.min(AWAKENING_CONSTANTS.maxPoints, awakeningPointsForLevel(playerLevel));
-  const level = path && Number.isFinite(n) ? Math.max(0, Math.min(cap, n)) : 0;
+  const level = path && cap > 0 ? Math.max(1, Math.min(cap, Number.isFinite(n) ? n : 1)) : 0;
   return { awakening: { path, level } };
 }
 

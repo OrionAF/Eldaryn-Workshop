@@ -59,6 +59,15 @@ describe('relics model', () => {
 });
 
 describe('awakening model', () => {
+  it('preserves actual levels and gives only an unlocked chosen path its base level', () => {
+    for (const path of ['SHADOW', 'RADIANT']) {
+      for (const level of [1, 6, 14, 15]) expect(normaliseAwakening({ awakening: { path, level } }, { level: 85 }).awakening.level).toBe(level);
+      expect(normaliseAwakening({ awakening: { path, level: 0 } }, { level: 45 }).awakening.level).toBe(1);
+      expect(normaliseAwakening({ awakening: { path, level: 15 } }, { level: 44 }).awakening.level).toBe(0);
+      for (const points of [7, 14, 15]) expect(migrateAwakeningFromV1({ awakening: { path, points } }).value.awakening.level).toBe(points);
+      expect(migrateAwakeningFromV1({ awakening: { path, points: 0 } }).value.awakening.level).toBe(1);
+    }
+  });
   it('normalises path and clamps level to 15', () => {
     expect(normaliseAwakening({ awakening: { path: 'shadow', level: 99 } }).awakening).toEqual({ path: 'SHADOW', level: 15 });
     expect(normaliseAwakening({ awakening: { path: 'BOGUS', level: 5 } }).awakening).toEqual({ path: null, level: 0 });
