@@ -115,6 +115,7 @@ export function newCharacter(name = 'New Character', cls = null) {
   const c = { ...defaultCore(name, cls) };
   for (const d of DOMAINS) Object.assign(c, d.defaults());
   Object.assign(c, defaultPresets());
+  sigils.reconcileSigils(c);
   return c;
 }
 

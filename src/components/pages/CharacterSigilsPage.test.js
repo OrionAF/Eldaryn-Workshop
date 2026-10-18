@@ -50,17 +50,17 @@ describe('collection', () => {
   });
 
   it('typing a level owns the sigil and shows its derived flat stats (Common Health L5 = 1819)', () => {
-    const c = card('Defense Stance');
+    const c = card('Defense Aura');
     const input = c.querySelector('input.level-input');
     input.value = '5';
     input.dispatchEvent(new Event('change', { bubbles: true }));
     flushSync();
     expect(rosterStore.current.sigils.owned.DEFENSE_STANCE).toEqual({ level: 5 });
     // sigils.md §4: 1300 * 1.4 floors to 1819 in IEEE doubles; tier 2 triples it (5459)
-    expect(card('Defense Stance').querySelector('[data-testid="hp"]').textContent).toBe('1.819');
+    expect(card('Defense Aura').querySelector('[data-testid="hp"]').textContent).toBe('1.819');
     rosterStore.setSigilAltarTier(2);
     flushSync();
-    expect(card('Defense Stance').querySelector('[data-testid="hp"]').textContent).toBe('5.459');
+    expect(card('Defense Aura').querySelector('[data-testid="hp"]').textContent).toBe('5.459');
   });
 
   it('the stepper goes down to not owned, which unequips the sigil', () => {
@@ -104,7 +104,7 @@ describe('altar', () => {
     [...dialog.querySelectorAll('button')].find((b) => b.textContent === 'Evolve to tier 2').click();
     flushSync();
     expect(rosterStore.current.sigils.altarTier).toBe(2);
-    expect(Object.keys(rosterStore.current.sigils.owned)).toEqual(['FLAMEBORN']);
+    expect(Object.keys(rosterStore.current.sigils.owned).sort()).toEqual(['BATTLE_STANCE', 'FLAMEBORN', 'GUARDIAN_STANCE']);
   });
 
   it('Evolve names the presets that lose an equipped sigil', () => {
@@ -177,7 +177,7 @@ describe('Equip in menu', () => {
     flushSync();
     rosterStore.setPresetSigils(preset().id, { species: ['CATACLYSM'] });
     own('DEFENSE_STANCE', 1);
-    const full = openMenu('Defense Stance')[0];
+    const full = openMenu('Defense Aura')[0];
     expect(full.getAttribute('aria-disabled')).toBe('true');
     expect(full.textContent).toContain('no free slot');
     const checked = openMenu('Cataclysm')[0];

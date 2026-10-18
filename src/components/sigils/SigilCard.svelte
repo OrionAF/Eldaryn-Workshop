@@ -8,7 +8,7 @@
    */
   import { rarityClass, formatFlat } from '../../lib/format.js';
   import { sigilImage } from '../../lib/assets.js';
-  import { MAX_SIGIL_LEVEL, isFormSigil } from '../../lib/model/sigils.js';
+  import { MAX_SIGIL_LEVEL, isFormSigil, isGrantedSigil } from '../../lib/model/sigils.js';
   import Menu from '../ui/Menu.svelte';
   import { getSigilBonusAttack, getSigilBonusHp } from '../../lib/engine/sources/sigilScale.js';
   import { sigilSpellBlocks } from './sigilView.js';
@@ -19,7 +19,7 @@
   const owned = $derived(level > 0);
   const ancient = $derived(def.rarity === 'Ancient');
   // Ancients are unique and Form sigils are granted, not forged: both stay at level 1 (model/sigils.js clampSigilLevel).
-  const fixed = $derived(ancient || isFormSigil(def.species));
+  const fixed = $derived(ancient || isFormSigil(def.species) || isGrantedSigil(def.species));
   let details = $state(false);
   let menuOpen = $state(false);
   // Show level-1 numbers for a sigil that is not owned yet, so the card still reads as a catalogue.
@@ -38,7 +38,7 @@
 
   {#if fixed}
     <label class="owned-toggle">
-      <input type="checkbox" checked={owned} aria-label="{def.name} owned" onchange={(e) => onLevel(def.species, e.currentTarget.checked ? 1 : 0)} />
+      <input type="checkbox" checked={owned} disabled={isGrantedSigil(def.species)} aria-label="{def.name} owned" onchange={(e) => onLevel(def.species, e.currentTarget.checked ? 1 : 0)} />
       <span>{owned ? (ancient ? 'Unlocked (level 1)' : 'Owned (fixed at level 1)') : ancient ? 'Not unlocked' : 'Not owned (level is fixed at 1)'}</span>
     </label>
   {:else}

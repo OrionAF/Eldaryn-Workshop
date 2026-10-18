@@ -1,7 +1,7 @@
 <script>
   /**
    * LoadoutSigils.svelte - B2 sigil tray (ia.md §5.7, §5.11): generic slots by unlock level, the utility
-   * slot (Summon / Shield / Form by spec, none for Warrior and Sentinel) and the Ancient slot. Activation
+   * slot (Stance / Summon / Shield / Form by spec, none for Sentinel) and the Ancient slot. Activation
    * conditions are CHARACTER-wide (sigils.md §7): changing one reaches every preset that equips the
    * sigil, and the ScopeChip names those presets.
    */

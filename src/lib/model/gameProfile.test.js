@@ -4,6 +4,25 @@ import { normaliseCharacter, normaliseRoster, newRoster, SCHEMA_VERSION } from '
 import { resolveTranscendencePreset, checkPreset } from './legality.js';
 import { prepare } from '../search/search.js';
 import { legalityOf } from '../search/legality.js';
+import { buildFighter } from '../build/fighter.js';
+
+it('2.7.4 profile imports preserve all four Warrior stance utility picks and old auras', () => {
+  for (const species of ['BATTLE_STANCE', 'GUARDIAN_STANCE', 'WARBREAKER_STANCE', 'JUGGERNAUT_STANCE']) {
+    const f = fixture();
+    f.sigilState.ownedSigils.push({ species, level: 8 });
+    f.sigilState.utilitySlotSpecies = species;
+    f.presets = [];
+    const c = normaliseCharacter(gameProfileToCharacter(f));
+    const p = c.presets.find((p) => p.id === c.activePresetId);
+    expect(p.utilitySigilSpecies).toBe(species);
+    const base = buildFighter(c, p.id);
+    const oblivion = buildFighter(c, p.id, { realm: 'oblivion' });
+    expect(base.utility.species).toBe(species);
+    expect(oblivion.utility).toEqual(base.utility);
+    expect(base.stats.stanceDazeChance ?? base.stats.stanceShieldBashChance).toBeGreaterThan(0);
+    expect(normaliseCharacter(JSON.parse(JSON.stringify(c))).presets).toEqual(c.presets);
+  }
+});
 
 // A small hand-written profile in the shape of the player-profile response. Every value is invented.
 // Ids and secrets (player id, clan, shop, economy) exist only to prove they are never copied.

@@ -1,6 +1,6 @@
 {
- "source": "Eldaryn 2.7.0 client, decompiled.js: module 3950 L1066475-1070529 (definitions L1068802-1070529, getSigilSpellScaled L1067622-1068262, constants L1068802-1068870, altar fns L1066838-1066975, forge odds L1066976-1067034 + L1068910-1068960), module 3145 L668383-668986 (unlock levels), module 3969 L1095537-1096574 (calculateSigilBonuses)",
- "extracted": "2026-10-14",
+ "source": "Eldaryn 2.7.0 client, decompiled.js: module 3950 L1066475-1070529 (definitions L1068802-1070529, getSigilSpellScaled L1067622-1068262, constants L1068802-1068870, altar fns L1066838-1066975, forge odds L1066976-1067034 + L1068910-1068960), module 3145 L668383-668986 (unlock levels), module 3969 L1095537-1096574 (calculateSigilBonuses); 2.7.4 production OTA: STANCE definitions L1075736-1075808, scaling L1073898-1074078; aura display names L1075498/L1075517",
+ "extracted": "2026-10-17",
  "schema": "catalogue[]: one entry per sigil species. spell params are LEVEL-1 values; attackPercent/value fields scale by getSigilSpellScaled (see sigils.md section 5) and are clamped by the max* sibling. druidVariant {name, spell?, formSpell?{BEAR, WOLF}} is the Mystic Druid variant (sigils.md section 12); every druidVariant spell and formSpell carries the client spellType.",
  "rarityBase": {
   "Common": {
@@ -572,7 +572,7 @@
   {
    "id": "berserk-stance",
    "species": "BERSERK_STANCE",
-   "name": "Berserk Stance",
+   "name": "Berserk Aura",
    "class": "Warrior",
    "rarity": "Common",
    "baseAttack": 166,
@@ -586,7 +586,7 @@
   {
    "id": "defense-stance",
    "species": "DEFENSE_STANCE",
-   "name": "Defense Stance",
+   "name": "Defense Aura",
    "class": "Warrior",
    "rarity": "Common",
    "baseAttack": 166,
@@ -2095,6 +2095,100 @@
      "maxCritChanceReduction": 50
     }
    }
+  },
+  {
+   "species": "BATTLE_STANCE",
+   "id": "battle-stance",
+   "name": "Battle Stance",
+   "rarity": "Common",
+   "class": "Warrior",
+   "spellType": "STANCE",
+   "spell": {
+    "spellType": "STANCE",
+    "stance": "OFFENSE",
+    "attackMult": 1.04,
+    "daze": {
+     "chancePercent": 5,
+     "durationMs": 3000,
+     "penFactor": 0.5
+    }
+   },
+   "baseAttack": 166,
+   "baseHp": 1300,
+   "granted": true,
+   "description": "Fight on the front foot: +4% Attack. Every swing you make, landed or not, has a 5% chance to Daze the enemy for 3s. A Dazed enemy dodges your swings less: half of your Penetration cuts its Miss Chance (40 Penetration = 20% less Miss)."
+  },
+  {
+   "species": "GUARDIAN_STANCE",
+   "id": "guardian-stance",
+   "name": "Guardian Stance",
+   "rarity": "Common",
+   "class": "Warrior",
+   "spellType": "STANCE",
+   "spell": {
+    "spellType": "STANCE",
+    "stance": "DEFENSE",
+    "attackMult": 0.97,
+    "hpPercent": 6,
+    "spellResist": 3,
+    "shieldBash": {
+     "chancePercent": 4,
+     "stunMs": 750
+    }
+   },
+   "baseAttack": 166,
+   "baseHp": 1300,
+   "granted": true,
+   "description": "Raise your guard: +6% HP and +3% Spell Resist for −3% Attack. Every swing you block has a 4% chance to Shield Bash the attacker, stunning it for 0.75s. The Spell Resist counts like gear, so the usual soft cap applies."
+  },
+  {
+   "species": "WARBREAKER_STANCE",
+   "id": "warbreaker-stance",
+   "name": "Warbreaker Stance",
+   "rarity": "Rare",
+   "class": "Warrior",
+   "spellType": "STANCE",
+   "spell": {
+    "spellType": "STANCE",
+    "stance": "OFFENSE",
+    "attackMult": 1.05,
+    "maxAttackMult": 1.07,
+    "daze": {
+     "chancePercent": 7,
+     "maxChancePercent": 10,
+     "durationMs": 4000,
+     "penFactor": 1
+    }
+   },
+   "baseAttack": 1140,
+   "baseHp": 8400,
+   "description": "The stance of a breaker of lines: +5% Attack (up to +7%). Every swing you make, landed or not, has a 7% chance (up to 10%) to Daze the enemy for 4s. A Dazed enemy dodges your swings less: your full Penetration cuts its Miss Chance (40 Penetration = 40% less Miss)."
+  },
+  {
+   "species": "JUGGERNAUT_STANCE",
+   "id": "juggernaut-stance",
+   "name": "Juggernaut Stance",
+   "rarity": "Rare",
+   "class": "Warrior",
+   "spellType": "STANCE",
+   "spell": {
+    "spellType": "STANCE",
+    "stance": "DEFENSE",
+    "attackMult": 0.95,
+    "hpPercent": 9,
+    "maxHpPercent": 12,
+    "spellResist": 5,
+    "maxSpellResist": 7,
+    "shieldBash": {
+     "chancePercent": 6,
+     "maxChancePercent": 9,
+     "stunMs": 1000,
+     "maxStunMs": 1500
+    }
+   },
+   "baseAttack": 1140,
+   "baseHp": 8400,
+   "description": "Become an unmovable wall: +9% HP (up to +12%) and +5% Spell Resist (up to +7%) for −5% Attack. Every swing you block has a 6% chance (up to 9%) to Shield Bash the attacker, stunning it for 1s (up to 1.5s). The Spell Resist counts like gear, so the usual soft cap applies."
   }
  ]
 }

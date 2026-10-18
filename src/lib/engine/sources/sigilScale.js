@@ -60,6 +60,23 @@ const capOpt = (v, max) => Math.min(v, max == null ? Infinity : max);
 export function getSigilSpellScaled(spell, level, spellType = spellTypeOf(spell)) {
   const scale = 1 + (level - 1) * SPELL_GROWTH;
   switch (spellType) {
+    case 'STANCE': {
+      const grow = (value, max, digits = 1) => max == null ? value : Math.min(fix(value * scale, digits), max);
+      const out = { ...spell };
+      if (spell.maxAttackMult != null && spell.attackMult > 1) {
+        out.attackMult = fix(1 + grow(spell.attackMult - 1, spell.maxAttackMult - 1, 3), 3);
+      }
+      if (spell.hpPercent != null) out.hpPercent = grow(spell.hpPercent, spell.maxHpPercent);
+      if (spell.spellResist != null) out.spellResist = grow(spell.spellResist, spell.maxSpellResist);
+      if (spell.daze) out.daze = { ...spell.daze, chancePercent: grow(spell.daze.chancePercent, spell.daze.maxChancePercent) };
+      if (spell.shieldBash) out.shieldBash = {
+        ...spell.shieldBash,
+        chancePercent: grow(spell.shieldBash.chancePercent, spell.shieldBash.maxChancePercent),
+        stunMs: spell.shieldBash.maxStunMs == null ? spell.shieldBash.stunMs
+          : Math.min(Math.round(spell.shieldBash.stunMs * scale / 100) * 100, spell.shieldBash.maxStunMs),
+      };
+      return out;
+    }
     case 'AURA': {
       // L1068238-1068260: ATTACK_SPEED aura values keep 2 decimals, every other aura 1; no cap
       const digits = spell.bonusStat === 'ATTACK_SPEED' ? 2 : 1;

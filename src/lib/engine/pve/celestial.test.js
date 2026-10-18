@@ -4,6 +4,7 @@ import { describe, it, expect } from 'vitest';
 import {
   simulateCelestial, celestialBossStats, celestialAddStats, celestialRolls, celestialMaxHoldCount,
   defaultTankIndex, CELESTIAL_ASSUMPTIONS,
+  celestialFuryPowerMultiplier, celestialHolderFuryShare,
 } from './celestial.js';
 import { laneRng } from '../rng.js';
 
@@ -25,6 +26,42 @@ const run = (o) => simulateCelestial({ difficulty: 'HARD', log: true, rolls: scr
 const rows = (r, type) => r.log.filter((t) => t.type === type);
 // a boss no synthetic party can kill inside the window that matters
 const TOUGH = 1;
+
+describe('2.7.4 stance adapter', () => {
+  it('Mythic reference helpers use uncapped square-root scaling and half evading-holder share only', () => {
+    expect(celestialFuryPowerMultiplier(100)).toBe(2.6);
+    expect(celestialFuryPowerMultiplier(400)).toBe(4.2);
+    expect(celestialFuryPowerMultiplier(1600)).toBe(7.4);
+    expect(celestialFuryPowerMultiplier(100, 'NORMAL')).toBe(1);
+    expect(celestialFuryPowerMultiplier(100, 'HARD')).toBe(1);
+    expect(celestialHolderFuryShare(true)).toBe(.5);
+    expect(celestialHolderFuryShare(false)).toBe(1);
+    expect(celestialHolderFuryShare(true, 'HARD')).toBe(1);
+  });
+  it('Daze is applied to living bosses and adds; Shield Bash stuns each blocking target attacker', () => {
+    const stance = {
+      totalHp: 1e12, totalBlockChance: 100, stanceDazeChance: 100,
+      stanceDazeDurationMs: 4000, stanceDazePenFactor: 1,
+      stanceShieldBashChance: 100, stanceShieldBashStunMs: 1500,
+    };
+    const result = run({
+      party: [tank(stance)], tankIndex: 0, rng: () => 0,
+      tactics: { focus: 'HOLD', holdCount: 1 }, rolls: scripted({ avoid: () => true }),
+    });
+    for (const type of ['boss_dazed', 'add_dazed', 'boss_paralyzed', 'add_paralyzed', 'boss_paralyze', 'add_paralyze']) {
+      expect(rows(result, type).length, type).toBeGreaterThan(0);
+    }
+    expect(rows(result, 'boss_dazed')[0].dazeMs).toBe(4000);
+    expect(rows(result, 'add_paralyzed')[0]).toMatchObject({ stunSource: 'SHIELD_BASH', paralyzeMs: 1500 });
+  });
+  it('stance proc logs and draws leave the same result with logging off', () => {
+    const opts = { party: [tank({ totalHp: 1e12, totalBlockChance: 100, stanceShieldBashChance: 50, stanceShieldBashStunMs: 1500 })], tankIndex: 0 };
+    const a = run({ ...opts, rng: laneRng(321) });
+    const b = run({ ...opts, log: false, rng: laneRng(321) });
+    const { log, ...summary } = a;
+    expect(b).toEqual(summary);
+  });
+});
 
 describe('boss and add scaling', () => {
   it('HARD level 85 and 95 match the server logs (bossMaxHp, add HP, attack)', () => {

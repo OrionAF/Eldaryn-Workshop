@@ -2,6 +2,7 @@
 // Rules: Game/combat-pvp.md §5-§7. Entities are plain mutable objects (core/entity.js shape plus the
 // status fields paralyzedMs, fearedMs, silencedMs, staggerStacks, blinded); rng is always the last
 // randomness argument and draws happen in the client's order (draw order is behaviour).
+import { rollStanceDaze, dazedMissChance, rollShieldBash } from '../core/stances.js';
 import { PVP_RATING } from '../../game/stats.js';
 import { rollAttackDamage, rollPenetrationCritMult, rollDisruption, PARALYZE_DURATION_MS, STAGGER_STUN_MS } from '../core/rolls.js';
 import { absorbWithShield, regenShieldRefillAmount } from '../core/shield.js';
@@ -108,9 +109,18 @@ export function processAttack(atk, def, t, atkIsAttacker, maxHp, defMinion, rng,
     events.push(extra ? Object.assign(ev, extra) : ev);
   };
 
+  const rollDaze = () => {
+    if (def.hp <= 0) return;
+    const r = rollStanceDaze(atk, def.dazedMs ?? 0, lane(X, 'daze'));
+    if (r.procced) {
+      def.dazedMs = r.dazedMs;
+      emit(`${T}_dazed`, 0, { dazeMs: r.durationMs });
+    }
+  };
+
   if (atk.paralyzedMs > 0) { emit(`${S}_paralyze`, 0); return events; } // L1452886-1452892, 1453817-1453841
   if (atk.fearedMs > 0) { emit(`${S}_fear`, 0); return events; } // L1452895-1452901, 1453788-1453816
-  if (atk.blinded) { atk.blinded = false; emit(`${S}_blind`, 0); return events; } // L1452903-1452905, 1453755-1453787
+  if (atk.blinded) { atk.blinded = false; emit(`${S}_blind`, 0); rollDaze(); return events; } // L1452903-1452905, 1453755-1453787
 
   if (defMinion && defMinion.alive) { // L1452906-1452912, 1453570-1453754
     const roll = rollAttackDamage(atk, X);
@@ -129,18 +139,27 @@ export function processAttack(atk, def, t, atkIsAttacker, maxHp, defMinion, rng,
     return events;
   }
 
-  const avoid = def.blockChance + def.missChance;
+  const miss = dazedMissChance(def.missChance, def.dazedMs ?? 0, atk);
+  const avoid = def.blockChance + miss;
   if (avoid > 0 && lane(X, 'avoid')() * 100 < avoid) { // L1452914-1452927: one roll for block and miss together
     // AVOIDED path L1453403-1453569
     let dealt = 0;
-    if (atk.penetration > 0 && def.missChance === 0) {
+    if (atk.penetration > 0 && miss === 0) {
       const base = Math.round((atk.attack * atk.penetration) / 100);
       const raw = Math.round(base * rollPenetrationCritMult(atk, X));
       dealt = mitigate(raw, atk, def);
       strike(def, dealt);
       applyLifesteal(atk, dealt, cap);
     }
-    emit(`${T}_${def.missChance > 0 ? 'miss' : 'block'}`, dealt);
+    emit(`${T}_${miss > 0 ? 'miss' : 'block'}`, dealt);
+    if (miss === 0 && def.hp > 0) {
+      const stun = rollShieldBash(def, lane(X, 'bash'));
+      if (stun > 0) {
+        atk.paralyzedMs = Math.max(atk.paralyzedMs ?? 0, stun);
+        emit(`${S}_paralyzed`, 0, { paralyzeMs: stun, stunSource: 'SHIELD_BASH', shieldBash: true });
+      }
+    }
+    rollDaze();
     return events;
   }
 
@@ -183,5 +202,6 @@ export function processAttack(atk, def, t, atkIsAttacker, maxHp, defMinion, rng,
       } else emit(`${T}_feared`, 0, { fearMs: d.fearedMs });
     }
   }
+  rollDaze();
   return events;
 }

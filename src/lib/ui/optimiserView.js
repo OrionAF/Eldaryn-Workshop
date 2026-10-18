@@ -251,6 +251,7 @@ export function pushStopText(push) {
 
 /** What each change dimension (effect.js `changesOf`) is called on screen. */
 export const DIMENSION_LABEL = Object.freeze({
+  stones: 'Stone assignment',
   equipmentSet: 'Gear set', spec: 'Talent set', talents: 'Talents', pet: 'Pet', mount: 'Mount', relics: 'Relics', sigils: 'Sigils',
   utility: 'Utility sigil', ancient: 'Ancient sigil', transcendence: 'Transcendence', conditions: 'Sigil conditions',
   minorGlyphs: 'Minor glyphs', majorGlyphs: 'Major glyphs', mythicGlyphs: 'Mythic glyphs',
@@ -393,7 +394,7 @@ export function effortPlan(level, objective, target) {
 
 /** The space toggles in the order of the four step groups (ia.md §3.3; keys are search/space.js BLOCKS). */
 export const SPACE_GROUPS = Object.freeze([
-  { id: 'gear', label: 'Gear', items: [['equipmentSet', 'Gear set']] },
+  { id: 'gear', label: 'Gear', items: [['equipmentSet', 'Gear set'], ['stones', 'Re-slot owned stones']] },
   { id: 'talents', label: 'Talents', items: [['spec', 'Talent set'], ['talents', 'Talent points']] },
   { id: 'companions', label: 'Companions', items: [['pet', 'Pet'], ['mount', 'Mount'], ['minorGlyphs', 'Minor glyphs'], ['majorGlyphs', 'Major glyphs']] },
   { id: 'relics', label: 'Relics', items: [['relics', 'Relics']] },
@@ -432,6 +433,7 @@ export function applyPlan(row, excluded = []) {
     if (!off.has(i)) return;
     if (g.scope !== 'character') return;
     if (g.changeIds.some((id) => id.startsWith('talents:'))) cand.talentAllocation = null;
+    else if (g.changeIds.some((id) => id.startsWith('stones:'))) delete cand.stoneAssignment;
     else cand.sigilConditions = {};
   });
   // A character-scope group stays on when any of its groups does; the dropped one was reset above.

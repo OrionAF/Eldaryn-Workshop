@@ -9,7 +9,7 @@ import { fixtureCharacter } from '../build/fixtures.js';
 import { normaliseCharacter } from '../model/index.js';
 
 // The WARRIOR fixture: preset p1 rides mount-a (major [gl-3 Warborn Fury cooldown, empty], minor [gl-1, gl-2,
-// empty]) and runs Berserk Stance, Warborn Fury and Cataclysm.
+// empty]) and runs Berserk Aura, Warborn Fury and Cataclysm.
 const major = (id, glyphType, rarity) => ({ id, glyphType, rarity, sealed: false, secondary: null });
 const minor = (id, stat, quality) => ({ id, glyphType: 'g-tempest', rarity: 'Legendary', sealed: false, secondary: { stat, quality } });
 

@@ -13,6 +13,7 @@
 // 'disrupt'), so the order within each lane is the order above.
 // Silence has no consumer in the PVE engine: it is stored, counted down and returned, but nothing in
 // processCombatTick or the shared fight loop reads it (the spell pass is fed silencedMs 0).
+import { rollStanceDaze, dazedMissChance, rollShieldBash, tickDazedMs } from '../core/stances.js';
 import {
   applyDamageReduction,
   rollAttackDamage,
@@ -52,6 +53,7 @@ export const REGEN_PULSES_PER_SEC = 10;
  * @typedef {Object} TickOptions
  * @property {number|null} [attackerMaxHp]  clamp for regen/lifesteal; null/undefined = player.maxHp
  * @property {boolean} [defenderBlinded=false]
+ * @property {number} [defenderDazedMs=0]
  * @property {number} [defenderParalyzedMs=0]
  * @property {number} [defenderSilencedMs=0]
  * @property {number} [defenderStaggerStacks=0]
@@ -72,6 +74,7 @@ export const REGEN_PULSES_PER_SEC = 10;
  * @property {TickTimers} timers
  * @property {Array<Object>} events  {timestamp, type, damage, attackerHp, defenderHp, ...extra}
  * @property {boolean} defenderBlinded
+ * @property {number} defenderDazedMs
  * @property {number} defenderParalyzedMs
  * @property {number} defenderSilencedMs
  * @property {number} defenderStaggerStacks
@@ -112,12 +115,13 @@ function enemyLifesteal(enemy, hpNow, damage) {
 
 /** The TickResult (see processCombatTick). */
 function tickResult(atkHp, defHp, attackerTimer, defenderTimer, regenTimer, events, blinded, paralyzedMs, silencedMs,
-  staggerStacks, feared, atkShield, defShield, dealt) {
+  staggerStacks, feared, atkShield, defShield, dealt, dazedMs) {
   return {
     attackerHp: atkHp,
     defenderHp: defHp,
     timers: { attackerTimer, defenderTimer, regenTimer },
     events,
+    defenderDazedMs: dazedMs,
     defenderBlinded: blinded,
     defenderParalyzedMs: paralyzedMs,
     defenderSilencedMs: silencedMs,
@@ -148,6 +152,7 @@ function tickResult(atkHp, defHp, attackerTimer, defenderTimer, regenTimer, even
 export function processCombatTick(player, enemy, attackerHp, defenderHp, timers, dtMs, timestamp, opts, rng) {
   const {
     attackerMaxHp,
+    defenderDazedMs = 0,
     defenderBlinded = false,
     defenderParalyzedMs = 0,
     defenderSilencedMs = 0,
@@ -162,6 +167,7 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
   } = opts ?? {};
   const maxHp = attackerMaxHp == null ? player.maxHp : attackerMaxHp;
 
+  let dazedMs = tickDazedMs(defenderDazedMs, dtMs);
   let paralyzedMs = Math.max(0, defenderParalyzedMs - dtMs);
   let silencedMs = Math.max(0, defenderSilencedMs - dtMs);
   let feared = Math.max(0, defenderFearedMs - dtMs);
@@ -206,7 +212,8 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
   if (attackerTimerAcc >= playerInterval) {
     attackerTimer = attackerTimerAcc - playerInterval;
     const P = lane(rng, 'player');
-    const negate = enemy.blockChance + enemy.missChance;
+    const miss = dazedMissChance(enemy.missChance, dazedMs, player);
+    const negate = enemy.blockChance + miss;
     const negated = negate > 0 ? lane(P, 'avoid')() * 100 < negate : false;
     if (!negated) {
       const roll = rollAttackDamage(player, P);
@@ -271,7 +278,7 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
     } else {
       // penetration path (L1086762-1086884): only when the defender's Miss is exactly 0
       let shown = 0;
-      if (player.penetration > 0 && enemy.missChance === 0) {
+      if (player.penetration > 0 && miss === 0) {
         const base = Math.round((player.attack * player.penetration) / 100);
         const mult = rollPenetrationCritMult(player, P);
         const d = cutBy(mitigateInline(Math.round(base * mult), enemy.damageReduction), attackerOutputMult);
@@ -284,17 +291,24 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
       }
       events.push({
         timestamp,
-        type: enemy.missChance > 0 ? 'defender_miss' : 'defender_block',
+        type: miss > 0 ? 'defender_miss' : 'defender_block',
         damage: shown,
         attackerHp: atkHp,
         defenderHp: defHp,
       });
     }
+    if (defHp > 0) {
+      const daze = rollStanceDaze(player, dazedMs, lane(P, 'daze'));
+      if (daze.procced) {
+        dazedMs = daze.dazedMs;
+        events.push({ timestamp, type: 'defender_dazed', damage: 0, attackerHp: atkHp, defenderHp: defHp, dazeMs: daze.durationMs });
+      }
+    }
     // the kill check belongs to the swing branch (L1086896); a no-swing tick goes straight to the minion
     if (defHp <= 0) {
       events.push({ timestamp, type: 'defender_dead', damage: 0, attackerHp: atkHp, defenderHp: 0 });
       return tickResult(atkHp, 0, attackerTimer, defenderTimerAcc, regenTimer, events, blinded,
-        paralyzedMs, silencedMs, staggerStacks, feared, atkShield, defShield, dealt);
+        paralyzedMs, silencedMs, staggerStacks, feared, atkShield, defShield, dealt, dazedMs);
     }
   }
 
@@ -317,7 +331,7 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
       if (defHp <= 0) {
         events.push({ timestamp, type: 'defender_dead', damage: 0, attackerHp: atkHp, defenderHp: 0 });
         return tickResult(atkHp, 0, attackerTimer, defenderTimerAcc, regenTimer, events, blinded,
-          paralyzedMs, silencedMs, staggerStacks, feared, atkShield, defShield, dealt);
+          paralyzedMs, silencedMs, staggerStacks, feared, atkShield, defShield, dealt, dazedMs);
       }
     }
   }
@@ -393,16 +407,23 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
           defenderHp: defHp,
         });
         atkHp = newHp;
+        if (player.missChance === 0 && atkHp > 0) {
+          const stun = rollShieldBash(player, lane(E, 'bash'));
+          if (stun > 0) {
+            paralyzedMs = Math.max(paralyzedMs, stun);
+            events.push({ timestamp, type: 'defender_paralyzed', damage: 0, attackerHp: atkHp, defenderHp: defHp, paralyzeMs: stun, stunSource: 'SHIELD_BASH', shieldBash: true });
+          }
+        }
       }
       if (atkHp <= 0) {
         atkHp = 0;
         return tickResult(atkHp, defHp, attackerTimer, defenderTimer, regenTimer, events, blinded,
-          paralyzedMs, silencedMs, staggerStacks, feared, atkShield, defShield, dealt);
+          paralyzedMs, silencedMs, staggerStacks, feared, atkShield, defShield, dealt, dazedMs);
       }
     }
   }
   return tickResult(atkHp, defHp, attackerTimer, defenderTimer, regenTimer, events, blinded,
-    paralyzedMs, silencedMs, staggerStacks, feared, atkShield, defShield, dealt);
+    paralyzedMs, silencedMs, staggerStacks, feared, atkShield, defShield, dealt, dazedMs);
 }
 
 // port of routeSpellHealToMinion L1095017-1095364

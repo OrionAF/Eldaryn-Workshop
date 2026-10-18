@@ -111,7 +111,7 @@ export function absorbIntoBase(base, computed, residual, ctx = {}) {
     return isNum(v) ? v : 0;
   };
   const r4 = (x) => fix(Math.max(0, x), 4);
-  next.attack = r4(next.attack + take('totalAttack') / ((1 + num(computed?.totalAttackPercent) / 100) * (fc?.attackMult ?? 1)));
+  next.attack = r4(next.attack + take('totalAttack') / ((1 + num(computed?.totalAttackPercent) / 100) * (fc?.attackMult ?? 1) * (ctx.stanceConfig?.attackMult ?? 1)));
   next.hp = r4(next.hp + take('totalHp') / (1 + num(computed?.totalHealthPercent) / 100));
   next.attackSpeed = r4(next.attackSpeed + take('totalAttackSpeed') / (fc?.attackSpeedMult ?? 1));
   next.critChance = r4(next.critChance + take('totalCritChance'));

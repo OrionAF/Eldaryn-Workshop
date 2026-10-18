@@ -46,6 +46,7 @@ export function candidateWrites(character, presetId, cand) {
       transcendencePresetId: link,
     },
     character: {
+      ...(cand.stoneAssignment ? { stoneAssignment: { setKey: cand.stoneAssignment.setKey, slots: { ...cand.stoneAssignment.slots } } } : {}),
       talentAllocation: cand.talentAllocation ? { talentSet: cand.talentSet, allocation: { ...cand.talentAllocation } } : null,
       sigilConditions: { ...(cand.sigilConditions ?? {}) },
     },
@@ -69,6 +70,12 @@ export function applyCandidate(character, presetId, cand, { include = SCOPES } =
     out.presets = character.presets.map((p) => (p.id === presetId ? { ...p, ...w.preset } : p));
   }
   if (on.has('character')) {
+    const stones = w.character.stoneAssignment;
+    if (stones) {
+      out.equipment = { ...character.equipment, [stones.setKey]: {
+        ...character.equipment[stones.setKey], enchantSlots: { ...stones.slots },
+      } };
+    }
     const ta = w.character.talentAllocation;
     if (ta) out.talentSets = character.talentSets.map((s, i) => (i === ta.talentSet ? { ...s, allocation: ta.allocation } : s));
     const conds = Object.entries(w.character.sigilConditions);

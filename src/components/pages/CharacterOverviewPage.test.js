@@ -56,7 +56,7 @@ it('lowering the level previews what it drops and writes nothing until confirmed
   commit(view.q('input[aria-label="Level"]'), '10');
   const dialog = view.q('dialog[open]');
   expect(dialog).not.toBeNull();
-  expect(dialog.textContent).toContain('Defense Stance unequipped from');
+  expect(dialog.textContent).toContain('Defense Aura unequipped from');
   expect(rosterStore.current.level).toBe(60); // preview only
   expect(rosterStore.current.presets[0].sigilSpecies).toEqual(['DEFENSE_STANCE']);
   click([...dialog.querySelectorAll('button')].find((b) => b.textContent.includes('Lower level')));

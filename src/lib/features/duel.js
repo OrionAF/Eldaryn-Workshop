@@ -121,7 +121,7 @@ export function fromMySide(summary, mySide = 'attacker') {
 const SWING_KINDS = new Set(['hit', 'crit']);
 const LOST_SWING = new Set(['blind', 'paralyze', 'fear']);
 const AVOID_KINDS = new Set(['miss', 'block']);
-const DISRUPT_KINDS = new Set(['blinded', 'paralyzed', 'silenced', 'feared', 'staggered']);
+const DISRUPT_KINDS = new Set(['blinded', 'paralyzed', 'silenced', 'feared', 'staggered', 'dazed']);
 /** Kinds whose `damage` is dealt by the side the prefix names. */
 const DAMAGE_KINDS = new Set(['hit', 'crit', 'spell_damage', 'spell_dot_tick', 'spell_debuff_tick', 'minion_hit', 'minion_crit', 'thorns_reflect']);
 /** Kinds whose prefix names the side the event happened TO (the avoider, the afflicted, the minion's owner). */

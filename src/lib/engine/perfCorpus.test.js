@@ -97,7 +97,7 @@ function corpus(c, opponent) {
   return out;
 }
 
-// recorded from the engine before the E5 speed pass
+// E5 baseline, with intended 2.7.4 PvP cast-lockout outcomes refreshed after focused recovery/effect tests.
 const EXPECTED = {
   'WARRIOR_DPS': {
     dummy: ['9f294683', '1a64cff3'],
@@ -132,8 +132,8 @@ const EXPECTED = {
     oblivion: ['eeb6cf7f', 'b535f618'],
     'oblivion-cut': ['3e832d3b', 'a34aa220'],
     worldBoss: ['4bc48bf8', 'f20391b9'],
-    'pvp-attacker': ['fd0ac9aa', 'd78368cf'],
-    'pvp-defender': ['b17e4cd9', '2d2375df'],
+    'pvp-attacker': ['38b754ee', '6eab6062'],
+    'pvp-defender': ['b17e4cd9', '84f6fb7d'],
   },
   'SENTINEL_DISRUPTION': {
     dummy: ['dd659239', '9d6abd07'],
@@ -144,8 +144,8 @@ const EXPECTED = {
     oblivion: ['7ca7ab08', '5fd8dea6'],
     'oblivion-cut': ['9c49706d', 'f899d67e'],
     worldBoss: ['c52ee51f', 'ce388574'],
-    'pvp-attacker': ['f6bed081', '32ed0b3f'],
-    'pvp-defender': ['5abb3e0d', '51d54a5f'],
+    'pvp-attacker': ['9e2e9477', '31fc0df3'],
+    'pvp-defender': ['fe4153a3', '66695222'],
   },
   'MYSTIC_MAGE': {
     dummy: ['d134e994', '7038e609'],
@@ -217,7 +217,7 @@ const EXPECTED = {
     'oblivion-cut': ['ba9ce0fe', '5f28d90c'],
     worldBoss: ['a35100a9', 'e818bd99'],
     'pvp-attacker': ['3d3a9068', 'b7415709'],
-    'pvp-defender': ['3ace0b5e', '6990c0fa'],
+    'pvp-defender': ['38894bec', '3ac05705'],
   },
   'REAL_WARRIOR_L72': {
     dummy: ['754f8475', '3fafb564'],

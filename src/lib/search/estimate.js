@@ -97,7 +97,7 @@ export function sweepBuilds(domains, family) {
 /** Blocks with a choice (more than one value): what the later phases' cost grows with. */
 const choiceBlocks = (domains) => Math.max(1, Object.values(domains ?? {}).filter((n) => n > 1).length);
 
-const enabledIds = (space) => BLOCKS.filter((id) => space?.[id] !== false).sort().join(',');
+const enabledIds = (space) => BLOCKS.filter((id) => id === 'stones' ? space?.stones === true : space?.[id] !== false).sort().join(',');
 
 const isPushRun = (r) => r?.objective?.kind === 'push' || isObj(r?.headline?.push);
 
@@ -296,6 +296,7 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
   let jointSize = 1;
   for (const id of enabled) jointSize *= sizes[id] ?? 1;
   const talentsLocal = enabled.has('talents') && (sizes.talents ?? 1) > 1;
+  const stonesLocal = enabled.has('stones') && (sizes.stones ?? 1) > 1;
   // one sweep from one start: the current build plus every other value of each allowed block
   const sweep = 1 + [...enabled].reduce((s, id) => s + Math.max(0, (sizes[id] ?? 1) - 1), 0);
 
@@ -304,7 +305,7 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
   let exactBuilds = null;
   let exactBasis = '';
   let starts = null;
-  if (!talentsLocal && jointSize <= EXHAUSTIVE_MAX) {
+  if (!talentsLocal && !stonesLocal && jointSize <= EXHAUSTIVE_MAX) {
     strategy = 'exhaustive';
     const list = jointSize <= LIVE_ENUMERATE_MAX ? enumerateJoint(space, B, enabled) : null;
     if (list) {

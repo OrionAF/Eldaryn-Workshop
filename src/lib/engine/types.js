@@ -215,6 +215,11 @@
  * Attack/HP are floored; Attack Speed / Crit Damage totals are multipliers to 2 dp.
  * `raw*` is present only when the raw value exceeds the soft cap.
  * @typedef {Object} ComputedStats
+ * @property {number} [stanceDazeChance]
+ * @property {number} [stanceDazeDurationMs]
+ * @property {number} [stanceDazePenFactor]
+ * @property {number} [stanceShieldBashChance]
+ * @property {number} [stanceShieldBashStunMs]
  * @property {number} totalAttack
  * @property {number} totalHp
  * @property {number} totalAttackSpeed

@@ -19,6 +19,22 @@ function fixture(cls, edit = () => {}, opts) {
 const spent = (space, c) => pointsSpent(c.talentAllocation ?? space.character.talentSets[c.talentSet].allocation);
 const block = (space, id) => space.blocks.find((b) => b.id === id);
 
+it('2.7.4 utility search enumerates every owned Warrior stance with distinct engine inputs', () => {
+  const c = fixture('WARRIOR', (c) => {
+    c.sigils.owned.WARBREAKER_STANCE = { level: 5 };
+    c.sigils.owned.JUGGERNAUT_STANCE = { level: 5 };
+  });
+  const space = createBuildSpace(c, 'p1');
+  const candidates = block(space, 'utility').domain(space.start);
+  expect(candidates.map((c) => c.utilitySigilSpecies)).toEqual(['BATTLE_STANCE', 'GUARDIAN_STANCE', 'WARBREAKER_STANCE', 'JUGGERNAUT_STANCE']);
+  expect(new Set(candidates.map((c) => space.key(c))).size).toBe(4);
+  for (const cand of candidates) {
+    const fighter = space.fighterOf(cand);
+    expect(fighter.utility.species).toBe(cand.utilitySigilSpecies);
+    expect(fighter.stats.stanceDazeChance ?? fighter.stats.stanceShieldBashChance).toBeGreaterThan(0);
+  }
+});
+
 describe('candidateOf / canonical / materialise', () => {
   it('the start candidate reproduces the preset: same fighter as buildFighter', () => {
     for (const cls of ['WARRIOR', 'SENTINEL', 'MYSTIC', 'NECROMANCER']) {

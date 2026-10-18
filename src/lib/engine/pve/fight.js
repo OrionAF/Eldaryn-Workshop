@@ -26,6 +26,8 @@ import {
   advanceMinionRespawn, elapseMinionRespawn, resummonIfDead, openingSummonWindowMs, openingSwingTimerStart,
   minionSummonMeta, soulLinkHeal, killMinion, isMinionAlive, createMinion,
 } from '../core/minions.js';
+import { STANCE_FIELDS } from '../core/stances.js';
+import { getEquippedStanceConfig, stanceRuntimeFields } from '../sources/stance.js';
 import { createPlayerEntity, createMobEntity } from '../core/entity.js';
 import {
   buildCombatSpells, getEquippedShieldConfig, getEquippedSummonConfig, getEquippedFormConfig,
@@ -307,6 +309,7 @@ export function simulateFight(player, enemy, ctx, rng) {
     timers = { ...opening };
   }
 
+  let dazedMs = 0;
   let blinded = false;
   let paralyzedMs = 0;
   let silencedMs = 0;
@@ -641,6 +644,7 @@ export function simulateFight(player, enemy, ctx, rng) {
     // 7. processCombatTick (L1088954)
     // one options object per fight, refilled each tick (processCombatTick reads it and keeps nothing)
     tickOpts.attackerMaxHp = buffedMaxHp;
+    tickOpts.defenderDazedMs = dazedMs;
     tickOpts.defenderBlinded = blinded;
     tickOpts.defenderParalyzedMs = paralyzedMs;
     tickOpts.defenderSilencedMs = silencedMs;
@@ -653,6 +657,7 @@ export function simulateFight(player, enemy, ctx, rng) {
     hp = t.attackerHp;
     enemyHp = t.defenderHp;
     timers = t.timers;
+    dazedMs = t.defenderDazedMs;
     blinded = t.defenderBlinded;
     paralyzedMs = t.defenderParalyzedMs;
     silencedMs = t.defenderSilencedMs;
@@ -842,6 +847,7 @@ export function sigilStateOf(fighter) {
 
 /** The player entity fields the PVE engine reads (tick, spell pass, buffs, transforms), all numbers. */
 export const PVE_PLAYER_KEYS = Object.freeze([
+  ...STANCE_FIELDS,
   'maxHp', 'attack', 'attackSpeed', 'doubleHit', 'critChance', 'critDamage', 'lifesteal', 'hpRegen',
   'damageReduction', 'blockChance', 'missChance', 'blindChance', 'paralyzeChance', 'penetration',
   'disruptionChance', 'spellDamage', 'spellResist', 'spellCritChance', 'spellVamp',
@@ -876,7 +882,7 @@ export function preparePveFighter(fighter) {
   const { mods, combat } = glyphCombatMods(fighter.glyphMods ?? [], cls, spec);
   const formCfg = getEquippedFormConfig(state, cls, spec);
   const formKind = formCfg?.form ?? null;
-  const entity = createPlayerEntity(stats);
+  const entity = createPlayerEntity({ ...stats, ...stanceRuntimeFields(getEquippedStanceConfig(state, cls)) });
   assertPositive('player', entity, ['maxHp', 'attack', 'attackSpeed']);
   assertFiniteEntity('player', entity, PVE_PLAYER_KEYS);
   const player = { disruptionEffect: entity.disruptionEffect };

@@ -12,6 +12,7 @@ import { calculatePetBonuses } from '../engine/sources/pet.js';
 import { calculateStoneBonuses } from '../engine/sources/stones.js';
 import { calculateRelicBonuses, emptyRelicBonuses } from '../engine/sources/relic.js';
 import { calculateMountBonuses } from '../engine/sources/mount.js';
+import { getEquippedStanceConfig } from '../engine/sources/stance.js';
 import { calculateSigilBonuses } from '../engine/sources/sigilPassive.js';
 import { calculateFortressBonuses } from '../engine/sources/fortress.js';
 import { sigilBySpecies } from '../game/sigils.js';
@@ -173,7 +174,8 @@ export function buildPresetInputs(character, presetId, { realm = 'base' } = {}) 
   const { mount, glyphs } = mountInput(character, preset);
   const mounts = calculateMountBonuses(mount, glyphs);
 
-  const ctx = { playerClass: cls, formConfig, activeSpec: spec };
+  const stanceConfig = getEquippedStanceConfig(sigilState(character, effective, spec), cls);
+  const ctx = { playerClass: cls, formConfig, activeSpec: spec, ...(stanceConfig ? { stanceConfig } : {}) };
   return {
     // base, equipment, talents, pet, sigils, stones, awakening, a7, fortress, transcendence, mounts
     args: [character.baseResidual, equipment, talents, pet, sigils, stones, awakening, undefined, fortress, transcendence, mounts],

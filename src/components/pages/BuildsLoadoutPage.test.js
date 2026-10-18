@@ -159,7 +159,7 @@ const selectFor = (root, text) => {
 
 it('a condition names the other presets that equip the sigil (CHARACTER scope) and writes character-wide', () => {
   const [a, b] = rosterStore.current.presets;
-  const sp = a.sigilSpecies[1]; // WARBORN_FURY offers HP conditions; slot 0 (Berserk Stance) does not
+  const sp = a.sigilSpecies[1]; // WARBORN_FURY offers HP conditions; slot 0 (Berserk Aura) does not
   rosterStore.setPresetSigils(b.id, { species: [sp] });
   reopen();
   const sel = selectFor(t.target, /activation condition$/);
