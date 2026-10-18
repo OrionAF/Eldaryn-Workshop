@@ -22,9 +22,9 @@ describe('asset coverage', () => {
     expect(missing).toEqual([]);
   });
 
-  it('every sigil in both class catalogues has art', () => {
+  it('every sigil in all class catalogues has art', () => {
     const missing = [];
-    for (const cls of ['WARRIOR', 'SENTINEL']) {
+    for (const cls of ['WARRIOR', 'SENTINEL', 'MYSTIC', 'NECROMANCER']) {
       for (const def of ownableSigils(cls)) {
         if (!sigilImage(def.class, def.id)) missing.push(`${cls}/${def.id}`);
       }
