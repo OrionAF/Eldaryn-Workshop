@@ -563,7 +563,7 @@ function liveEnv(prep, request, ladder, hooks) {
       try {
         const res = await optimize({
           character: prep.character, partner: prep.partner, presetId: prep.preset.id, realm: request.realm, target: ladder.rungs[r].spec,
-          objective: { kind: 'win-rate', target: tau }, space: request.space, effort: request.effort, seed: prep.seed, powerFloor: request.powerFloor,
+          objective: { kind: 'win-rate', target: tau }, space: request.space, effort: request.effort, seed: prep.seed, powerFloor: request.powerFloor, relicBudget: request.relicBudget,
           resumeFrom, jobId: hooks.jobId,
         }, { signal: hooks.signal, onProgress, onCheckpoint, pool, strict: hooks.strict, ...(log ? { debugLog: log, debugRung: ladder.rungs[r].short } : {}) });
         const fights = res.phases?.reduce((a, p) => a + (p.fights ?? 0), 0) ?? 0;

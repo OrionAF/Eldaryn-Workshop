@@ -27,11 +27,12 @@ import { subsetsUpTo } from './combinatorics.js';
 import { engineView, paretoFilter } from './dominance.js';
 import { EngineInputError } from '../engine/validate.js';
 import { canonicalStoneAssignment, stoneAssignmentNeighbours, stoneSetKey } from './stoneAssignments.js';
+import { canonicalRelicLevels, normaliseRelicBudget, relicLevel, relicProgressionAllowed, relicProgressionNeighbours } from './relicProgression.js';
 
 /** Search blocks in their fixed order (A.3). */
 export const BLOCKS = Object.freeze([
   'spec', 'equipmentSet', 'sigils', 'utility', 'ancient', 'conditions', 'relics', 'pet', 'mount',
-  'transcendence', 'minorGlyphs', 'majorGlyphs', 'talents', 'stones',
+  'transcendence', 'minorGlyphs', 'majorGlyphs', 'talents', 'stones', 'relicUpgrades', 'relicPurchases',
 ]);
 
 /** Blocks whose values the stat-dominance filter prunes (simulation.md §Build space, Dominance). */
@@ -46,14 +47,15 @@ const BLOCK_VALUE = {
 /** No dominance assumption: every stat compared, no damage-only projection (search/dominance.js dominanceContextOf). */
 const NO_DOMINANCE_CONTEXT = Object.freeze({ harmless: false, fortressMaxDamage: null, otherThorns: null });
 
-/** Block toggles (all on by default). */
-export const SPACE_DEFAULTS = Object.freeze(Object.fromEntries(BLOCKS.map((b) => [b, true])));
+/** Paid progression requires explicit opt-in; existing loadout blocks default on. */
+export const SPACE_DEFAULTS = Object.freeze(Object.fromEntries(BLOCKS.map((b) => [b, !['relicUpgrades', 'relicPurchases'].includes(b)])));
 
 /** What a block writes (data-model.md §2). */
 export const BLOCK_SCOPE = Object.freeze({
   spec: 'preset', equipmentSet: 'preset', sigils: 'preset', utility: 'preset', ancient: 'preset',
   conditions: 'character', relics: 'preset', pet: 'preset', mount: 'preset', transcendence: 'preset',
   minorGlyphs: 'mount', majorGlyphs: 'mount', talents: 'character', stones: 'character',
+  relicUpgrades: 'character', relicPurchases: 'character',
 });
 
 export { candidateWrites as candidatePatch };
@@ -228,6 +230,8 @@ export function canonical(character, presetOrId, cand) {
     sigilConditions: {},
   };
   const equipped = new Set(equippedOf(out));
+  const relicLevels = canonicalRelicLevels(character, cand.relicLevels);
+  if (relicLevels) out.relicLevels = relicLevels;
   const stoneAssignment = canonicalStoneAssignment(character, cand.stoneAssignment);
   if (stoneAssignment) out.stoneAssignment = stoneAssignment;
   for (const sp of Object.keys(cand.sigilConditions ?? {}).sort(byString)) {
@@ -290,11 +294,12 @@ export function conditionOptionsFor(species, spec, mode) {
  *   dominance context (search/dominance.js dominanceContextOf), default: no target assumption
  */
 export function createBuildSpace(character, presetOrId, {
-  realm = 'base', mode = 'pve', residual = {}, toggles, powerFloor = null, dominance = NO_DOMINANCE_CONTEXT,
+  realm = 'base', mode = 'pve', residual = {}, toggles, powerFloor = null, relicBudget, dominance = NO_DOMINANCE_CONTEXT,
 } = {}) {
   const preset = presetOf(character, presetOrId);
   const presetId = preset.id;
   const on = { ...SPACE_DEFAULTS };
+  const medals = normaliseRelicBudget(relicBudget);
   for (const b of BLOCKS) if (toggles && b in toggles) on[b] = !!toggles[b];
   const cls = character.class;
   const L = LEVEL(character);
@@ -345,7 +350,9 @@ export function createBuildSpace(character, presetOrId, {
     if (!(slots > 0 && owned[anc] && ancient.has(anc) && isSigilSpeciesActiveForSpec(anc, cls, spec) && ancientActive(anc, runningBoardOf(character, c)))) {
       c.ancientSigilSpecies = null;
     }
-    c.relicIds = c.relicIds.filter((id) => classRelics.has(id) && character.relics?.[id] > 0).slice(0, relicCap);
+    c.relicIds = c.relicIds.filter((id) => classRelics.has(id) && relicLevel(character, c, id) > 0).slice(0, relicCap);
+    // Progression of an unequipped relic cannot improve this build.
+    if (c.relicLevels) c.relicLevels = Object.fromEntries(Object.entries(c.relicLevels).filter(([id]) => c.relicIds.includes(id)));
     if (c.petId && !petIds.has(c.petId)) c.petId = null;
     if (c.mountId && !(mountIds.has(c.mountId) && mountsUnlocked(L))) {
       c.mountId = null;
@@ -432,6 +439,12 @@ export function createBuildSpace(character, presetOrId, {
 
   // --- block domains --------------------------------------------------------------------------
   const domains = {
+    relicUpgrades(c) {
+      return relicProgressionNeighbours(character, c, { cap: relicCap, upgrades: true, budget: medals, legalise });
+    },
+    relicPurchases(c) {
+      return relicProgressionNeighbours(character, c, { purchase: true, cap: relicCap, upgrades: on.relicUpgrades, budget: medals, legalise });
+    },
     stones(c) {
       return stoneAssignmentNeighbours(character, c, realm).map(legalise);
     },
@@ -478,7 +491,7 @@ export function createBuildSpace(character, presetOrId, {
     },
     relics(c) {
       if (relicCap === 0) return [];
-      const pool = relicsForClass(cls).map((r) => r.id).filter((id) => character.relics?.[id] > 0);
+      const pool = relicsForClass(cls).map((r) => r.id).filter((id) => relicLevel(character, c, id) > 0);
       // full sets only: every relic bonus is a positive stat (Game/relics.md §2, §7), so a free slot never beats one more relic
       const full = Math.min(relicCap, pool.length);
       return subsetsUpTo(pool, full).filter((s) => s.length === full).map((relicIds) => legalise({ ...c, relicIds }));
@@ -592,7 +605,7 @@ export function createBuildSpace(character, presetOrId, {
   const visit = (id, c) => {
     const mk = `${id}|${key(c)}`;
     if (!domainMemo.has(mk)) {
-      const values = distinct(c, domains[id](canon(c)));
+      const values = distinct(c, domains[id](canon(c))).filter((v) => relicProgressionAllowed(character, v, on, medals));
       if (!DOMINANCE_BLOCKS.includes(id) || values.length === 0) domainMemo.set(mk, { values, pruned: [] });
       else {
         // an illegal incumbent (a saved preset legality would repair) dominates nothing
@@ -640,6 +653,7 @@ export function createBuildSpace(character, presetOrId, {
     realm,
     mode,
     toggles: on,
+    relicBudget: medals,
     start: candidateOf(character, preset),
     blocks,
     key,
@@ -651,7 +665,7 @@ export function createBuildSpace(character, presetOrId, {
     powerFloor: floor,
     powerOf,
     /** False only when a Combat Power floor is set and the candidate's Power is below it. */
-    admissible: (c) => floor == null || powerOf(c) >= floor,
+    admissible: (c) => relicProgressionAllowed(character, c, on, medals) && (floor == null || powerOf(c) >= floor),
     /** Owned mounts the mount block never tries because another owned mount dominates them: [{id, by}]. */
     prunedMounts: (c) => {
       if (!(on.mount && mountsUnlocked(L))) return [];

@@ -252,6 +252,7 @@ export function pushStopText(push) {
 /** What each change dimension (effect.js `changesOf`) is called on screen. */
 export const DIMENSION_LABEL = Object.freeze({
   stones: 'Stone assignment',
+  relicUpgrades: 'Relic upgrades', relicPurchases: 'Relic purchases',
   equipmentSet: 'Gear set', spec: 'Talent set', talents: 'Talents', pet: 'Pet', mount: 'Mount', relics: 'Relics', sigils: 'Sigils',
   utility: 'Utility sigil', ancient: 'Ancient sigil', transcendence: 'Transcendence', conditions: 'Sigil conditions',
   minorGlyphs: 'Minor glyphs', majorGlyphs: 'Major glyphs', mythicGlyphs: 'Mythic glyphs',
@@ -397,7 +398,7 @@ export const SPACE_GROUPS = Object.freeze([
   { id: 'gear', label: 'Gear', items: [['equipmentSet', 'Gear set'], ['stones', 'Re-slot owned stones']] },
   { id: 'talents', label: 'Talents', items: [['spec', 'Talent set'], ['talents', 'Talent points']] },
   { id: 'companions', label: 'Companions', items: [['pet', 'Pet'], ['mount', 'Mount'], ['minorGlyphs', 'Minor glyphs'], ['majorGlyphs', 'Major glyphs']] },
-  { id: 'relics', label: 'Relics', items: [['relics', 'Relics']] },
+  { id: 'relics', label: 'Relics', items: [['relics', 'Owned relic selection'], ['relicUpgrades', 'Upgrade relics'], ['relicPurchases', 'Buy relics']] },
   { id: 'sigils', label: 'Sigils', items: [['sigils', 'Sigils'], ['utility', 'Utility sigil'], ['ancient', 'Ancient sigil'], ['conditions', 'Sigil conditions']] },
   { id: 'transcendence', label: 'Transcendence', items: [['transcendence', 'Board']] },
 ]);
@@ -424,6 +425,7 @@ export const toggleTotal = SPACE_GROUPS.reduce((n, g) => n + g.items.length, 0);
 export function applyPlan(row, excluded = []) {
   const off = new Set(excluded);
   const cand = { ...row.candidate };
+  if (cand.relicLevels) cand.relicLevels = { ...cand.relicLevels };
   const kept = new Set();
   row.writes.forEach((g, i) => {
     if (off.has(i)) return;
@@ -434,12 +436,23 @@ export function applyPlan(row, excluded = []) {
     if (g.scope !== 'character') return;
     if (g.changeIds.some((id) => id.startsWith('talents:'))) cand.talentAllocation = null;
     else if (g.changeIds.some((id) => id.startsWith('stones:'))) delete cand.stoneAssignment;
+    else if (g.changeIds.some((id) => id.startsWith('relicLevel:'))) {
+      for (const id of g.changeIds) if (id.startsWith('relicLevel:')) delete cand.relicLevels?.[id.slice(11)];
+      if (cand.relicLevels && !Object.keys(cand.relicLevels).length) delete cand.relicLevels;
+    }
     else cand.sigilConditions = {};
   });
   // A character-scope group stays on when any of its groups does; the dropped one was reset above.
   // Nothing excluded: every scope, so the store checks the whole candidate's legality before writing.
   const include = off.size === 0 ? [...SCOPES] : SCOPES.filter((s) => kept.has(s));
-  return { cand, include, writesCount: row.writes.length - off.size };
+  const presetIndex = row.writes.findIndex((g) => g.scope === 'preset');
+  const purchases = (row.changes ?? []).filter((c) => c.dimension === 'relicPurchases');
+  const splitPurchase = purchases.some((c) => {
+    const i = row.writes.findIndex((g) => g.changeIds.includes(c.id));
+    return i >= 0 && presetIndex >= 0 && off.has(i) !== off.has(presetIndex);
+  });
+  return { cand, include, writesCount: row.writes.length - off.size,
+    ...(splitPurchase ? { blockReason: 'Apply relic purchases and their equipment changes together, or switch both off.' } : {}) };
 }
 
 /** Every distinct other preset an Apply of these groups changes, with the reasons. */

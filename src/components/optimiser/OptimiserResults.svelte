@@ -17,6 +17,7 @@
   import { triesPerClear } from '../../lib/ui/winRateFormat.js';
   import { goalWinRate, fortressDamage } from '../../lib/ui/optimiserView.js';
   import { isWinRateKind } from '../../lib/search/objectives.js';
+  import { medalCostText } from '../../lib/search/relicProgression.js';
   import { fmtSigned, fmtEstimate, fmtContrast, fmtContrastCi } from '../../lib/ui/statsFormat.js';
 
   let {
@@ -153,6 +154,9 @@
               (x {view.fortress.total.toFixed(2)}: shield {view.fortress.shieldPercent}%, contribution x {view.fortress.contributionBonus.toFixed(2)}, stars x {view.fortress.starVulnerability.toFixed(2)}).
             </p>
           {/if}
+          {#each r.changes.filter((c) => c.medalCost) as c (c.id)}
+            <p class="note num" data-testid="relic-cost">{c.label}: {medalCostText(c.medalCost)}</p>
+          {/each}
           {#if r.aux?.matchups?.length}
             <table class="matchups" data-testid="matchups">
               <caption>{view.unit === 'influence' ? 'Influence from wins against each selected opponent' : 'Win rate against each opponent, as attacker and as defender'}</caption>

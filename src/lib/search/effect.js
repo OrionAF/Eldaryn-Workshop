@@ -23,6 +23,7 @@ import { GLYPH_TIERS, MOUNT_GLYPH_SOCKETS } from '../model/glyphs.js';
 import { EngineInputError } from '../engine/validate.js';
 import { savedSockets, conditionOf, relicName, glyphLabel, sameAlloc } from './space.js';
 import { legalityOf } from './legality.js';
+import { relicLevel, relicCost, relicSpend } from './relicProgression.js';
 
 // PVE casts DAMAGE and DEBUFF spells on cooldown whatever their condition (combat-pve.md §10.1), and a
 // TRANSFORM never passes the cast check, so their stored condition is not an input there.
@@ -119,6 +120,16 @@ export function changesOf(space, B0, X0, { bundles = true } = {}) {
     out.push({ id, dimension, label, from, to, scope, owner, sideEffects, bundle: [], ...extra });
   };
   const presetOwner = { presetId: space.presetId };
+  for (const id of [...new Set([...Object.keys(B.relicLevels ?? {}), ...Object.keys(X.relicLevels ?? {})])].sort()) {
+    const from = relicLevel(character, B, id);
+    const to = relicLevel(character, X, id);
+    if (from === to) continue;
+    const purchase = !(character.relics?.[id] > 0);
+    push(`relicLevel:${id}`, purchase ? 'relicPurchases' : 'relicUpgrades', `${purchase ? 'Buy' : 'Upgrade'} ${relicName(id)}`,
+      from ? `Level ${from}` : 'Not owned', to ? `Level ${to}` : 'Not owned', 'character', { relicId: id },
+      otherPresets(space, (p) => p.relicIds?.includes(id), `also equips ${relicName(id)}`),
+      { medalCost: to > 0 ? relicCost(character, id, to) : null });
+  }
   const stoneSets = [...new Set([B.stoneAssignment?.setKey, X.stoneAssignment?.setKey].filter(Boolean))];
   for (const setKey of stoneSets) {
     const from = stoneSlots(character, B, setKey);
@@ -205,6 +216,20 @@ function withPart(space, target0, source0, id) {
   const { character } = space;
   const t = space.canonical(target0);
   const s = space.canonical(source0);
+  if (id.startsWith('relicLevel:')) {
+    const relicId = id.slice(11);
+    const levels = { ...t.relicLevels };
+    if (s.relicLevels?.[relicId] != null) levels[relicId] = s.relicLevels[relicId];
+    else delete levels[relicId];
+    // A purchase is a compound move: ownership and the equipment choice enabling its effect.
+    const relicIds = !character.relics?.[relicId] && s.relicIds.includes(relicId) ? [...s.relicIds] : t.relicIds;
+    return { ...t, relicIds, relicLevels: levels };
+  }
+  if (id === 'relics') {
+    const levels = { ...t.relicLevels };
+    for (const relicId of s.relicIds) if (!character.relics?.[relicId] && s.relicLevels?.[relicId]) levels[relicId] = s.relicLevels[relicId];
+    return { ...t, relicIds: [...s.relicIds], relicLevels: levels };
+  }
   if (id.startsWith('stones:')) {
     const setKey = id.slice(7);
     const assignment = { setKey, slots: { ...stoneSlots(character, s, setKey) } };
@@ -293,11 +318,17 @@ export function mergeByEngine(space, arms, { mode = space.mode, base = space.sta
       k = `unfightable:${order.length}`; // nothing to compare it with: its own arm
     }
     const n = changesOf(space, base, a, { bundles: false }).length;
+    const spend = relicSpend(space.character, a);
     const prev = best.get(k);
     if (!prev) {
-      best.set(k, { a, n });
+      best.set(k, { a, n, spend });
       order.push(k);
-    } else if (n < prev.n) best.set(k, { a, n });
+    } else {
+      const tiers = Object.keys(spend);
+      const cheaper = tiers.every((tier) => spend[tier] <= prev.spend[tier]) && tiers.some((tier) => spend[tier] < prev.spend[tier]);
+      const dearer = tiers.every((tier) => spend[tier] >= prev.spend[tier]) && tiers.some((tier) => spend[tier] > prev.spend[tier]);
+      if (cheaper || (!dearer && n < prev.n)) best.set(k, { a, n, spend });
+    }
   }
   return { arms: order.map((k) => best.get(k).a), merged: arms.length - order.length };
 }
@@ -310,11 +341,11 @@ export function mergeByEngine(space, arms, { mode = space.mode, base = space.sta
 export function writesOf(space, B, X, changes = changesOf(space, B, X, { bundles: false })) {
   const groups = new Map();
   for (const c of changes) {
-    const k = c.scope === 'preset' ? 'preset' : c.scope === 'mount' ? `mount:${c.owner.mountId}` : /^(talents|stones):/.test(c.id) ? c.id : 'conditions';
+    const k = c.scope === 'preset' ? 'preset' : c.scope === 'mount' ? `mount:${c.owner.mountId}` : /^(talents|stones|relicLevel):/.test(c.id) ? c.id : 'conditions';
     if (!groups.has(k)) {
       const title = c.scope === 'preset' ? `Preset ${space.preset.name}`
         : c.scope === 'mount' ? `${mountLabel(space.character, c.owner.mountId)} sockets`
-          : /^(talents|stones):/.test(c.id) ? c.label : 'Sigil conditions';
+          : /^(talents|stones|relicLevel):/.test(c.id) ? c.label : 'Sigil conditions';
       const owner = c.scope === 'preset' ? { presetId: space.presetId } : k === 'conditions' ? { species: [] } : { ...c.owner };
       groups.set(k, { scope: c.scope, title, owner, changeIds: [], sideEffects: [] });
     }

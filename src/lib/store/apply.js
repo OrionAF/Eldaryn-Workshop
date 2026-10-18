@@ -5,6 +5,7 @@
 import { normaliseCharacter } from '../model/index.js';
 import { applyCandidate as writeCandidate, SCOPES } from '../search/patch.js';
 import { legalityOf } from '../search/legality.js';
+import { relicLevelViolations } from '../search/relicProgression.js';
 
 export function createApplyStore(ctx) {
   /**
@@ -22,7 +23,15 @@ export function createApplyStore(ctx) {
       const r = legalityOf(plain, presetId, cand);
       if (!r.ok) return { ok: false, violations: r.violations };
     }
-    const next = normaliseCharacter(writeCandidate(plain, presetId, cand, { include }));
+    if (include.includes('character')) {
+      const errors = relicLevelViolations(plain, cand);
+      if (errors.length) return { ok: false, violations: errors.map((detail) => ({ gate: 'relics', field: 'relicLevels', detail })) };
+    }
+    const written = writeCandidate(plain, presetId, cand, { include });
+    if (include.includes('preset') && cand.relicIds.some((id) => !(written.relics?.[id] > 0))) {
+      return { ok: false, violations: [{ gate: 'relics', field: 'relicIds', detail: 'Apply a relic purchase together with its equipment change.' }] };
+    }
+    const next = normaliseCharacter(written);
     const roster = ctx.roster();
     const i = roster.characters.findIndex((x) => x.id === c.id);
     roster.characters[i] = next;

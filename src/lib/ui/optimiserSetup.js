@@ -10,6 +10,7 @@ import { metricKey } from '../engine/metrics.js';
 import { jobSignature } from '../jobs.svelte.js';
 import { crusadePowerRequirement } from '../game/pveContent.js';
 import { formatFlat } from '../format.js';
+import { normaliseRelicBudget } from '../search/relicProgression.js';
 
 /** Keys a stored target/objective carries beyond the spec itself (the result's echo adds them). */
 const TARGET_ECHO = ['label', 'key', 'mode', 'fidelity', 'assumptions'];
@@ -27,6 +28,7 @@ export const defaultSetup = (defaultEffort = 'standard') => ({
   objective: { kind: 'dps' },
   space: { ...SPACE_DEFAULTS },
   powerFloor: null,
+  relicBudget: normaliseRelicBudget(null),
   effort: EFFORT_LEVELS.includes(defaultEffort) ? defaultEffort : 'standard',
   seed: 1,
 });
@@ -106,6 +108,7 @@ export function normaliseSetup(raw, character, defaultEffort = 'standard', chara
     for (const k of Object.keys(SPACE_DEFAULTS)) if (typeof r.space[k] === 'boolean') out.space[k] = r.space[k];
   }
   out.powerFloor = normalisePowerFloor(r.powerFloor);
+  out.relicBudget = normaliseRelicBudget(r.relicBudget);
   if (EFFORT_LEVELS.includes(r.effort)) out.effort = r.effort;
   if (Number.isInteger(r.seed) && r.seed >= 1) out.seed = r.seed;
   return out;
@@ -167,6 +170,7 @@ export function setupFromRun(run, character, defaultEffort = 'standard', charact
       objective: run.objective,
       space: run.space,
       powerFloor: run.powerFloor,
+      relicBudget: run.relicBudget,
       effort: EFFORT_LEVELS.includes(level) ? level : undefined,
       seed: run.seed,
     },
@@ -212,6 +216,7 @@ export function requestOf(setup, character, characters = []) {
     target: JSON.parse(JSON.stringify(setup.target)),
     objective: JSON.parse(JSON.stringify(setup.objective)),
     space: { ...setup.space },
+    relicBudget: normaliseRelicBudget(setup.relicBudget),
     ...(setup.powerFloor != null ? { powerFloor: setup.powerFloor } : {}),
     effort: setup.effort,
     seed: setup.seed,

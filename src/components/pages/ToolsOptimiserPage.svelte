@@ -390,7 +390,7 @@
 
         <section class="step">
           <h3><span class="n">IV</span> Allowed to change</h3>
-          <SpaceGroups bind:space={setup.space} {relicCap} />
+          <SpaceGroups bind:space={setup.space} bind:relicBudget={setup.relicBudget} {relicCap} />
           <PowerGuard bind:floor={setup.powerFloor} {currentPower} />
         </section>
 
