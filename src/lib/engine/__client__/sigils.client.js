@@ -42,6 +42,25 @@ export function getSigilSpellScaled(a0, a1) {
   const r2 = 1 + (a1 - 1) * SPELL_GROWTH_PER_LEVEL; // _closure2_slot0
   const r4 = 1;
   const t = r1.spellType;
+  // 2.7.4 L1073918-1074078 (grow only when a maximum exists).
+  if (t === 'STANCE') {
+    function grow(value, maximum, precision) {
+      if (maximum == null) return value;
+      return Math.min(parseFloat((value * r2).toFixed(precision)), maximum);
+    }
+    const result = { ...r1 };
+    result.attackMult = r1.maxAttackMult != null && r1.attackMult > r4
+      ? parseFloat((r4 + grow(r1.attackMult - r4, r1.maxAttackMult - r4, 3)).toFixed(3)) : r1.attackMult;
+    if (r1.hpPercent != null) result.hpPercent = grow(r1.hpPercent, r1.maxHpPercent, r4);
+    if (r1.spellResist != null) result.spellResist = grow(r1.spellResist, r1.maxSpellResist, r4);
+    if (r1.daze) result.daze = { ...r1.daze, chancePercent: grow(r1.daze.chancePercent, r1.daze.maxChancePercent, r4) };
+    if (r1.shieldBash) {
+      const bash = r1.shieldBash;
+      result.shieldBash = { ...bash, chancePercent: grow(bash.chancePercent, bash.maxChancePercent, r4),
+        stunMs: bash.maxStunMs != null ? Math.min(Math.round(bash.stunMs * r2 / 100) * 100, bash.maxStunMs) : bash.stunMs };
+    }
+    return result;
+  }
   if (t === 'AURA') {
     // case 2236
     const digits = r1.bonusStat === 'ATTACK_SPEED' ? 2 : r4;

@@ -23,6 +23,40 @@ const run = (runtimes, over = {}, rng = none()) => {
   return { events, ...input };
 };
 
+describe('2.7.4 PvP cast lockout', () => {
+  for (const field of ['silencedMs', 'paralyzedMs', 'fearedMs']) {
+    it(`${field} blocks new casts while cooldown progresses, then casts on release`, () => {
+      const rts = ready([cfg('BLADE', blade())]);
+      rts[0].cooldownRemaining = 200;
+      const caster = duelist({ [field]: 500 });
+      expect(run(rts, { caster }).events).toEqual([]);
+      expect(rts[0].cooldownRemaining).toBe(100);
+      expect(run(rts, { caster }).events).toEqual([]);
+      expect(rts[0].cooldownRemaining).toBe(0);
+      caster[field] = 0;
+      expect(run(rts, { caster }).events.map((e) => e.type)).toEqual(['attacker_spell_cast', 'attacker_spell_damage']);
+    });
+    it(`${field} preserves ongoing DoT ticks and active buffs`, () => {
+      const rts = ready([cfg('FIRE', blade({ isDoT: true, durationMs: 3000, tickIntervalMs: 100 }))]);
+      run(rts);
+      expect(run(rts, { caster: duelist({ [field]: 1000 }) }).events.some((e) => e.type === 'attacker_spell_dot_tick')).toBe(true);
+      const buffs = ready([cfg('BUFF', { spellType: 'BUFF', effects: [{ stat: 'ATTACK_PERCENT', value: 20 }], durationMs: 3000, cooldownMs: 8000 })]);
+      run(buffs);
+      run(buffs, { caster: duelist({ [field]: 1000 }) });
+      expect(buffs[0].isEffectActive).toBe(true);
+      expect(buffs[0].effectRemaining).toBe(2900);
+    });
+  }
+  it('the longest timer wins and blind does not lock casting', () => {
+    const rts = ready([cfg('BLADE', blade())]);
+    const caster = duelist({ silencedMs: 0, paralyzedMs: 0, fearedMs: 100 });
+    expect(run(rts, { caster }).events).toEqual([]);
+    caster.fearedMs = 0;
+    caster.blinded = true;
+    expect(run(rts, { caster }).events).toHaveLength(2);
+  });
+});
+
 describe('mapSpellEventType (L1453845-1453856)', () => {
   it('prefixes the caster side', () => {
     expect(mapSpellEventType('spell_damage', 'attacker')).toBe('attacker_spell_damage');

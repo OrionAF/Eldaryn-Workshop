@@ -102,7 +102,7 @@ export function anchoredDeltaDetailed(sheet, rawDelta, ctx = {}) {
   const dPctH = num(d.totalHealthPercent);
   if (typeof values.totalAttack === 'number' && (num(d.totalAttack) || dPctA)) {
     const r = anchorProduct(values.totalAttack, values.totalAttackPercent, num(d.totalAttack), dPctA,
-      fc?.attackMult ?? 1, ex?.attackFlat, ex?.attackPercent);
+      (fc?.attackMult ?? 1) * (ctx.stanceConfig?.attackMult ?? 1), ex?.attackFlat, ex?.attackPercent);
     out.totalAttack = r.total;
     if (dPctA) out.totalAttackPercent = r.pct;
     if (r.error) errors.totalAttack = r.error;

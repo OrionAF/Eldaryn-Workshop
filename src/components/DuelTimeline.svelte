@@ -56,11 +56,11 @@
     if (mark === 'end') return `${at} - time up`;
     const who = nameOf(lane);
     const { kind } = parseEventType(ev.type);
-    const what = (ev.spell?.name ? `${ev.spell.name} ` : '') + kind.replace(/_/g, ' ');
+    const what = (ev.stunSource === 'SHIELD_BASH' ? 'Shield Bash ' : '') + (ev.spell?.name ? `${ev.spell.name} ` : '') + kind.replace(/_/g, ' ');
     if (mark === 'death') return `${at} - ${who} died`;
     const num = amount > 0 ? ` ${formatFlat(Math.round(amount))}` : '';
     const flags = `${ev.isCrit ? ' CRIT' : ''}${ev.doubleHit ? ' double hit' : ''}`;
-    return `${at} - ${who}: ${what}${num}${flags}`;
+    return `${at} - ${who}: ${what}${num}${flags}${ev.dazeMs ? ` (${secs(ev.dazeMs)}s)` : ev.paralyzeMs ? ` (${secs(ev.paralyzeMs)}s)` : ''}`;
   }
 </script>
 

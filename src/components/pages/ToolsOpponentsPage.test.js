@@ -56,7 +56,7 @@ it('clones a preset as another spec, duplicates and deletes', () => {
 it('the editor edits spec and sigils and keeps the store normalised', () => {
   click(buttonByText(/\+ New opponent/));
   const chip = (label) => view.qa('.chip').find((b) => b.textContent.trim() === label);
-  click(chip('Berserk Stance'));
+  click(chip('Berserk Aura'));
   expect(opp()[0].sigils).toEqual([{ species: 'BERSERK_STANCE', level: 1 }]);
   click(chip('Mystic · Mage'));
   expect(opp()[0]).toMatchObject({ class: 'MYSTIC', spec: 'MYSTIC_MAGE', sigils: [] });

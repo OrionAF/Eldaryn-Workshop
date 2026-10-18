@@ -16,7 +16,7 @@ describe('describeBuild', () => {
     expect(line(lines, 'Talents')).toMatch(/^Arms - Sharpened Blade 5\/5/);
     expect(line(lines, 'Pet').startsWith(`${petDisplayName('INFERNAL_DRAKE', true)} (Legendary`)).toBe(true); // altar tier 2: evolved name
     expect(line(lines, 'Relics')).toContain('Iron Heart');
-    expect(line(lines, 'Sigils')).toContain('Berserk Stance');
+    expect(line(lines, 'Sigils')).toContain('Berserk Aura');
     expect(line(lines, 'Ancient sigil')).toBe('Flameborn');
     expect(line(lines, 'Mount')).toMatch(/^Night Wolf \(level 3 · \+8% HP, \+8% Attack\)$/);
     expect(line(lines, 'Major glyphs')).toContain('Warhaste Emblem (Rare)');
@@ -67,7 +67,7 @@ describe('describeBuild', () => {
     expect(fighterRuns).toBeGreaterThan(0);
   });
 
-  const LABELS = ['Gear set', 'Talents', 'Pet', 'Mount', 'Minor glyphs', 'Major glyphs', 'Mythic glyph', 'Relics', 'Sigils', 'Utility sigil', 'Ancient sigil', 'Conditions', 'Transcendence'];
+  const LABELS = ['Gear set', 'Talents', 'Pet', 'Mount', 'Minor glyphs', 'Major glyphs', 'Mythic glyph', 'Relics', 'Sigils', 'Stance', 'Ancient sigil', 'Conditions', 'Transcendence'];
 
   it('emits the same labels in the same order for any build (B1, #91)', () => {
     const bare = { ...c.presets[0], petId: null, mountId: null, relicIds: [], sigilSpecies: [], utilitySigilSpecies: null, ancientSigilSpecies: null };
@@ -75,7 +75,7 @@ describe('describeBuild', () => {
       expect(describeBuild(c, p).map((l) => l.label)).toEqual(LABELS);
     }
     const lines = describeBuild(c, bare);
-    expect(line(lines, 'Utility sigil')).toBe('None');
+    expect(line(lines, 'Stance')).toBe('None');
     expect(line(lines, 'Ancient sigil')).toBe('None');
   });
 

@@ -64,8 +64,10 @@ export function isFormSigil(species) {
 }
 
 /** Ancients are unique and stay level 1 (sigils.md §3, §9); so do Form sigils. */
+export const isGrantedSigil = (species) => !!sigilBySpecies(species)?.granted;
+
 export function clampSigilLevel(species, level) {
-  if (isAncient(sigilBySpecies(species)) || isFormSigil(species)) return 1;
+  if (isAncient(sigilBySpecies(species)) || isFormSigil(species) || isGrantedSigil(species)) return 1;
   return clampInt(level, 1, MAX_SIGIL_LEVEL, 1);
 }
 
@@ -85,7 +87,7 @@ export function slotUnlockLevel(n, playerClass) {
 
 // --- Eligibility ---
 
-/** Utility-slot sigils for a class/spec (Summon, Shield or Form); empty for Warrior/Sentinel. */
+/** Class-slot sigils (Stance, Summon, Shield or Form); empty for Sentinel. */
 export function utilitySigils(playerClass, spec) {
   const type = utilitySlotSpellType(playerClass, spec);
   if (!type) return [];
@@ -256,6 +258,9 @@ export function reconcileSigils(character) {
   const cls = character.class;
   const owned = character.sigils?.owned ?? {};
   const slots = cls ? maxSigilSlots(character.level ?? 100, cls) : 0;
+  if (slots > 0 && character.sigils) {
+    for (const def of ownableSigils(cls)) if (def.granted) owned[def.species] = { level: 1 };
+  }
   for (const p of character.presets ?? []) {
     const spec = presetSpec(character, p);
     const utilityType = utilitySlotSpellType(cls, spec);

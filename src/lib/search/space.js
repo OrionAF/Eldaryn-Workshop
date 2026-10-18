@@ -26,11 +26,12 @@ import { applyCandidate, candidateWrites } from './patch.js';
 import { subsetsUpTo } from './combinatorics.js';
 import { engineView, paretoFilter } from './dominance.js';
 import { EngineInputError } from '../engine/validate.js';
+import { canonicalStoneAssignment, stoneAssignmentNeighbours, stoneSetKey } from './stoneAssignments.js';
 
 /** Search blocks in their fixed order (A.3). */
 export const BLOCKS = Object.freeze([
   'spec', 'equipmentSet', 'sigils', 'utility', 'ancient', 'conditions', 'relics', 'pet', 'mount',
-  'transcendence', 'minorGlyphs', 'majorGlyphs', 'talents',
+  'transcendence', 'minorGlyphs', 'majorGlyphs', 'talents', 'stones',
 ]);
 
 /** Blocks whose values the stat-dominance filter prunes (simulation.md §Build space, Dominance). */
@@ -52,7 +53,7 @@ export const SPACE_DEFAULTS = Object.freeze(Object.fromEntries(BLOCKS.map((b) =>
 export const BLOCK_SCOPE = Object.freeze({
   spec: 'preset', equipmentSet: 'preset', sigils: 'preset', utility: 'preset', ancient: 'preset',
   conditions: 'character', relics: 'preset', pet: 'preset', mount: 'preset', transcendence: 'preset',
-  minorGlyphs: 'mount', majorGlyphs: 'mount', talents: 'character',
+  minorGlyphs: 'mount', majorGlyphs: 'mount', talents: 'character', stones: 'character',
 });
 
 export { candidateWrites as candidatePatch };
@@ -227,6 +228,8 @@ export function canonical(character, presetOrId, cand) {
     sigilConditions: {},
   };
   const equipped = new Set(equippedOf(out));
+  const stoneAssignment = canonicalStoneAssignment(character, cand.stoneAssignment);
+  if (stoneAssignment) out.stoneAssignment = stoneAssignment;
   for (const sp of Object.keys(cand.sigilConditions ?? {}).sort(byString)) {
     const v = cand.sigilConditions[sp] || DEFAULT_CONDITION;
     if (equipped.has(sp) && v !== storedCondition(character, sp)) out.sigilConditions[sp] = v;
@@ -326,6 +329,7 @@ export function createBuildSpace(character, presetOrId, {
    */
   function legalise(c0) {
     const c = canon(c0);
+    if (c.stoneAssignment && c.stoneAssignment.setKey !== stoneSetKey(c, realm)) delete c.stoneAssignment;
     const spec = specOf(c);
     if (c.talentAllocation) {
       const clean = sanitiseAllocation(c.talentAllocation, spec, talentCap);
@@ -428,6 +432,9 @@ export function createBuildSpace(character, presetOrId, {
 
   // --- block domains --------------------------------------------------------------------------
   const domains = {
+    stones(c) {
+      return stoneAssignmentNeighbours(character, c, realm).map(legalise);
+    },
     // Compound: the switch plus its legality bundle; the inner ascent over the spec's picks is the driver's.
     spec(c) {
       const other = c.talentSet === 1 ? 0 : 1;

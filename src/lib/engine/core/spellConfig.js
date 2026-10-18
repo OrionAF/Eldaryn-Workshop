@@ -12,7 +12,7 @@ import { applySigilGlyphMods } from './glyphMods.js';
 
 /** @typedef {import('../sources/sigilPassive.js').SigilState & {ownedSigils: Array<{species: string, level: number, activationCondition?: string}>}} SpellSigilState */
 
-const PASSIVE_TYPES = new Set(['AURA', 'STACK', 'SHIELD', 'FORM', 'SUMMON']);
+const PASSIVE_TYPES = new Set(['AURA', 'STACK', 'SHIELD', 'FORM', 'SUMMON', 'STANCE']);
 
 /** Level-scaled copy of a catalogue spell with its type attached. */
 function scaledWithType(spell, level, spellType) {

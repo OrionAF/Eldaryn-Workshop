@@ -14,6 +14,7 @@ import { enemyDealsDamage } from './objectives.js';
 
 /** Inputs compared for equality, never as "more is better" (Chrono Flux timing, Dominion, Oblivion power). */
 const EQUAL_KEYS = new Set([
+  'stanceDazeChance', 'stanceDazeDurationMs', 'stanceDazePenFactor', 'stanceShieldBashChance', 'stanceShieldBashStunMs',
   'totalFlameConduit', 'totalEarthenConduit', 'totalDarkConduit', 'totalDominion', 'totalOblivionPower',
 ]);
 

@@ -236,7 +236,7 @@ it('Allowed to change toggles by group, resets, and prints the relic cap', () =>
 
 it('counts the blocks that may change', () => {
   mounted = setup(SpaceGroups, { space: { ...SPACE_DEFAULTS, sigils: false, utility: false, ancient: false, conditions: false }, relicCap: 2 });
-  expect(mounted.q('.count').textContent).toMatch(/9 of 13 parts may change/);
+  expect(mounted.q('.count').textContent).toMatch(/10 of 14 parts may change/);
 });
 
 it('with no open relic slot the relic note says so', () => {

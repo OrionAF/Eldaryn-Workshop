@@ -28,8 +28,9 @@ export function sigilClasses(sigil) {
   return (sigil.classes ?? [sigil.class]).map((c) => c.toUpperCase());
 }
 
-/** Utility slot spell type per class and spec (sigils.md §2). Warrior and Sentinel have none. */
+/** Utility slot spell type per class and spec (sigils.md §2, §15). Sentinel has none. */
 export function utilitySlotSpellType(playerClass, spec) {
+  if (playerClass === 'WARRIOR') return 'STANCE';
   if (playerClass === 'NECROMANCER') return 'SUMMON';
   if (playerClass === 'MYSTIC') return spec === 'MYSTIC_DRUID' ? 'FORM' : 'SHIELD';
   return null;

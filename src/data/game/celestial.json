@@ -1,5 +1,5 @@
 {
-  "source": "Eldaryn 2.7.0 decompiled.js module 4150 (L1156882-1160944); season tiers L1777405-1777716",
+  "source": "Eldaryn 2.7.0 decompiled.js module 4150 (L1156882-1160944); season tiers L1777405-1777716; 2.7.4 OTA Mythic burden config L1172417-1172443 (2.7.2 rules); ranking helper L1920137 and patch notes L2108128-2108217",
   "notes": "Server-authoritative fight; these are the shared constants/helpers. Level axis: NORMAL/HARD = character level (client shows drops at player.level), MYTHIC = Oblivion Level. Exact server rule for the party's boss level (max/avg of both players, or committed level) is UNRESOLVED. MYTHIC boss HP is additionally multiplied server-side by partyPowerHpMultiplier (not included in table). Tables extend beyond unlock (playable flag) and beyond any known cap.",
   "constants": {
     "MAP_ID": "celestial_trial",
@@ -29,7 +29,8 @@
     "glyphChance": "getGlyphRarityChances(tierCfg, level) L1157088: per rarity, linear interpolation between anchor levels, clamped to first/last anchor. Each rarity rolled independently (rand < chance), winner = random participant.",
     "holderSwings": "celestialHolderSwings(p, level, diff, adds) L1157609 = p.totalHp*max(0.1,1-hpPerAdd*adds) / (boss.attack*(1-min(.95,max(0,DR*(1-drPerAdd*adds))/100))*(1-min(.95,min(95,block+miss)/100*max(0,1-blockPerAdd*adds)))*(1+damageTakenPerAdd*adds))",
     "autoHoldCount": "celestialAutoHoldCount L1159593: largest n in [bounds.max..bounds.min] with holderSwings >= 20",
-    "maxHoldCount": "getCelestialMaxHoldCount L1159404 = max(1, min(maxAlive, overload.enabled ? addsThreshold : maxAlive))"
+    "maxHoldCount": "getCelestialMaxHoldCount L1159404 = max(1, min(maxAlive, overload.enabled ? addsThreshold : maxAlive))",
+    "mythicBlockFury": "2.7.2/2.7.4: Oblivion Power bonus = 0.16 * sqrt(max(0, holderPower)), uncapped (+160% at100, +320% at400). Evading holder receives 0.5 of Fury on own attacks; partner receives 1. Existing legacy max/half-point config fields are superseded by positive furyOblivionSqrtCoefficient."
   },
   "committedLevelMap": {
     "NORMAL": {
@@ -597,7 +598,7 @@
           "spellId": "GATEKEEPERS_BURDEN",
           "name": "Gatekeeper's Burden",
           "tag": "DEBUFF",
-          "text": "Party-wide curse scaling with living adds: per add -DR, -Block, -HP regen, -Max HP, +damage taken, -healing; NORMAL grants +attackPerAdd party Attack per add. HARD/MYTHIC: DR/Block not stripped; Block Fury: each block +attackPerBlockStack party Attack (cap maxBlockStacks stacks, decays blockFuryDecayPerSec stacks/s); dodge/blind pays controlFuryFraction of a block. MYTHIC: tank's Oblivion Power raises Block Fury value up to +furyOblivionMaxBonus (half point furyOblivionHalfPoint)."
+          "text": "Party-wide curse scaling with living adds: per add -DR, -Block, -HP regen, -Max HP, +damage taken, -healing; NORMAL grants +attackPerAdd party Attack per add. HARD/MYTHIC: DR/Block are not stripped; each block grants +attackPerBlockStack party Attack, capped at maxBlockStacks and decaying by blockFuryDecayPerSec; dodge/blind grants controlFuryFraction of a block. MYTHIC ONLY (2.7.2+): uncapped Block Fury bonus = 0.16 * sqrt(holder Oblivion Power); evading holder keeps 50% on own attacks, partner 100%."
         },
         {
           "spellId": "JUDGMENT_STRIKE",
@@ -974,7 +975,9 @@
           "furyOblivionMaxBonus": 2,
           "furyOblivionHalfPoint": 120,
           "controlResonanceFloor": 15,
-          "controlResonanceSpan": 60
+          "controlResonanceSpan": 60,
+          "controlHolderFuryShare": 0.5,
+          "furyOblivionSqrtCoefficient": 0.16
         },
         "JUDGMENT_STRIKE": {
           "enabled": true,
@@ -1011,5 +1014,12 @@
       },
       "provenScore": 3
     }
+  },
+  "rankings": {
+    "source": "2.7.4 OTA buildCelestialClassRanks L1920137; patch notes L2108150-2108154",
+    "individualScope": "CLASS",
+    "seasonRewardsScope": "CLASS",
+    "bestTime": "Best time from any duo",
+    "topDuos": "Unchanged"
   }
 }

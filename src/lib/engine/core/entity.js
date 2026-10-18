@@ -4,6 +4,11 @@
 
 /**
  * @typedef {Object} Entity
+ * @property {number} stanceDazeChance
+ * @property {number} stanceDazeDurationMs
+ * @property {number} stanceDazePenFactor
+ * @property {number} stanceShieldBashChance
+ * @property {number} stanceShieldBashStunMs
  * @property {number} maxHp        current max HP (buffs may raise it via getBuffedMaxHp)
  * @property {number} rawMaxHp     unbuffed max HP (player: pvpBaseHp when given, else totalHp)
  * @property {number} hp
@@ -32,6 +37,8 @@
  * @property {number} shieldMax
  */
 
+import { STANCE_FIELDS } from './stances.js';
+
 const orZero = (v) => (v == null ? 0 : v);
 
 // port of createPlayerEntity L1087500-1087588
@@ -45,6 +52,7 @@ const orZero = (v) => (v == null ? 0 : v);
 export function createPlayerEntity(stats) {
   const s = stats;
   return {
+    ...Object.fromEntries(STANCE_FIELDS.map((key) => [key, orZero(s[key])])),
     maxHp: s.totalHp,
     rawMaxHp: s.pvpBaseHp == null ? s.totalHp : s.pvpBaseHp,
     hp: s.totalHp,
@@ -83,6 +91,7 @@ export function createPlayerEntity(stats) {
  */
 export function createMobEntity(mob) {
   return {
+    ...Object.fromEntries(STANCE_FIELDS.map((key) => [key, 0])),
     maxHp: mob.hp,
     rawMaxHp: mob.hp,
     hp: mob.hp,

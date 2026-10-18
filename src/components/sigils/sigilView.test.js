@@ -12,7 +12,7 @@ describe('sigilView', () => {
   });
 
   it('auras: percent stats use 1 decimal, Attack Speed 2 decimals and no percent sign', () => {
-    // Berserk Stance L10: 4 * 1.72 = 6.88 -> 6.9. Hawk Focus L5: 0.1 * 1.32 = 0.132 -> 0.13.
+    // Berserk Aura L10: 4 * 1.72 = 6.88 -> 6.9. Hawk Focus L5: 0.1 * 1.32 = 0.132 -> 0.13.
     expect(sigilSpellBlocks('BERSERK_STANCE', 10)[0].rows).toEqual([{ label: 'Attack', value: '+6.9%' }]);
     expect(sigilSpellBlocks('HAWK_FOCUS', 5)[0].rows).toEqual([{ label: 'Attack Speed', value: '+0.13' }]);
   });

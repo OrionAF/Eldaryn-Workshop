@@ -44,6 +44,7 @@
   const usedBy = (species) => character.presets.filter((p) => equippedIn(p, species)).map((p) => p.name);
 
   function noteFor(def) {
+    if (def.granted) return 'Granted free at level 25; stays level 1 and survives Altar evolution.';
     if (def.rarity === 'Ancient') return 'Unlocked from the Transcendence board; unique, stays level 1.';
     if (!isSigilSpeciesActiveForSpec(def.species, character.class, spec)) {
       return spec === 'MYSTIC_DRUID' ? 'Not usable as a Druid.' : 'Druid only.';
@@ -63,7 +64,7 @@
 
   // --- Evolve: destructive, so it lists what it takes before it runs ---
   let evolveOpen = $state(false);
-  const destroyed = $derived(Object.keys(owned).filter((sp) => sigilBySpecies(sp)?.rarity !== 'Ancient'));
+  const destroyed = $derived(Object.keys(owned).filter((sp) => sigilBySpecies(sp)?.rarity !== 'Ancient' && !sigilBySpecies(sp)?.granted));
   const losingPresets = $derived(
     character.presets
       .map((p) => ({ name: p.name, lost: destroyed.filter((sp) => equippedIn(p, sp)) }))
@@ -84,6 +85,7 @@
   <div class="sigils">
     <p class="hint">
       {classLabel(character.class)} · sigils unlock at level {sigilUnlockLevel(character.class)} · levels set each sigil's stats; each preset equips its own
+      {#if character.class === 'WARRIOR'} · choose your fourth-slot stance in Loadout{/if}
     </p>
 
     <Panel title="Sigil Altar">
@@ -103,7 +105,7 @@
       {#if tier < EVOLVE_TIER_CAP}
         <div class="danger-zone">
           <Button variant="danger" onclick={() => (evolveOpen = true)}>Evolve Altar</Button>
-          <span class="hint">Destroys every owned sigil except Ancients. Shows what is lost first.</span>
+          <span class="hint">Destroys forged sigils. Ancients and free stances stay. Shows what is lost first.</span>
         </div>
       {/if}
     </Panel>

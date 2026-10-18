@@ -7,6 +7,9 @@
 //   mergeByEngine(space, arms)   one arm per engineKey, the one with the fewest changes kept
 //   writesOf(space, B, X)        the changes grouped as Apply review shows them (A.11)
 import { metricKey } from '../engine/metrics.js';
+import { BASE_SLOTS, slotDisplayName } from '../game/gear.js';
+import { stoneText } from '../build/statText.js';
+import { stonePool, stoneSlots } from './stoneAssignments.js';
 import { preparePveFighter } from '../engine/pve/fight.js';
 import { fighterDuelArgs } from '../engine/pvp/resolver.js';
 import { fortressPlayerDuelArgs } from '../engine/pve/fortressBoss.js';
@@ -116,6 +119,22 @@ export function changesOf(space, B0, X0, { bundles = true } = {}) {
     out.push({ id, dimension, label, from, to, scope, owner, sideEffects, bundle: [], ...extra });
   };
   const presetOwner = { presetId: space.presetId };
+  const stoneSets = [...new Set([B.stoneAssignment?.setKey, X.stoneAssignment?.setKey].filter(Boolean))];
+  for (const setKey of stoneSets) {
+    const from = stoneSlots(character, B, setKey);
+    const to = stoneSlots(character, X, setKey);
+    const changed = BASE_SLOTS.filter((slot) => (from[slot] ?? null) !== (to[slot] ?? null));
+    if (!changed.length) continue;
+    const stones = new Map(stonePool(character, setKey).map((s) => [s.id, s]));
+    const label = (slots) => changed.map((slot) => {
+      const stone = stones.get(slots[slot]);
+      return `${slotDisplayName(slot)}: ${stoneText(stone)}`;
+    }).join(', ');
+    push(`stones:${setKey}`, 'stones', `${setKey === 'oblivion' ? 'Oblivion' : `Set ${setKey.slice(3)}`} stones`,
+      label(from), label(to), 'character', { setKey },
+      otherPresets(space, (p) => setKey === 'oblivion' || `set${p.equipmentSet === 2 ? 2 : 1}` === setKey,
+        `also uses ${setKey} stone sockets`));
+  }
   if (space.realm !== 'oblivion' && X.equipmentSet !== B.equipmentSet) {
     push('equipmentSet', 'equipmentSet', 'Gear set', `Set ${B.equipmentSet}`, `Set ${X.equipmentSet}`, 'preset', presetOwner);
   }
@@ -186,6 +205,13 @@ function withPart(space, target0, source0, id) {
   const { character } = space;
   const t = space.canonical(target0);
   const s = space.canonical(source0);
+  if (id.startsWith('stones:')) {
+    const setKey = id.slice(7);
+    const assignment = { setKey, slots: { ...stoneSlots(character, s, setKey) } };
+    const equipmentSet = s.stoneAssignment?.setKey === setKey && setKey !== 'oblivion'
+      ? Number(setKey.slice(3)) : t.equipmentSet;
+    return { ...t, equipmentSet, stoneAssignment: assignment };
+  }
   const field = { equipmentSet: 'equipmentSet', pet: 'petId', relics: 'relicIds', sigils: 'sigilSpecies', utility: 'utilitySigilSpecies', ancient: 'ancientSigilSpecies', transcendence: 'transcendencePresetId' }[id];
   if (field) return { ...t, [field]: s[field] };
   if (id === 'spec') return { ...t, talentSet: s.talentSet, talentAllocation: s.talentAllocation };
@@ -284,11 +310,11 @@ export function mergeByEngine(space, arms, { mode = space.mode, base = space.sta
 export function writesOf(space, B, X, changes = changesOf(space, B, X, { bundles: false })) {
   const groups = new Map();
   for (const c of changes) {
-    const k = c.scope === 'preset' ? 'preset' : c.scope === 'mount' ? `mount:${c.owner.mountId}` : c.id.startsWith('talents:') ? c.id : 'conditions';
+    const k = c.scope === 'preset' ? 'preset' : c.scope === 'mount' ? `mount:${c.owner.mountId}` : /^(talents|stones):/.test(c.id) ? c.id : 'conditions';
     if (!groups.has(k)) {
       const title = c.scope === 'preset' ? `Preset ${space.preset.name}`
         : c.scope === 'mount' ? `${mountLabel(space.character, c.owner.mountId)} sockets`
-          : c.id.startsWith('talents:') ? c.label : 'Sigil conditions';
+          : /^(talents|stones):/.test(c.id) ? c.label : 'Sigil conditions';
       const owner = c.scope === 'preset' ? { presetId: space.presetId } : k === 'conditions' ? { species: [] } : { ...c.owner };
       groups.set(k, { scope: c.scope, title, owner, changeIds: [], sideEffects: [] });
     }

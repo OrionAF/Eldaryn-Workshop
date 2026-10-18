@@ -11,6 +11,7 @@ import { DEFAULT_CONDITION, ENEMY_CONDITIONS, SELF_CONDITIONS } from '../model/s
 import { glyphTypeInfo, GLYPH_TIERS, MOUNT_GLYPH_SOCKETS } from '../model/glyphs.js';
 import { stableStringify } from '../engine/metrics.js';
 import { candidateOf, canonical, materialise, savedSockets } from './space.js';
+import { stoneAssignmentViolations } from './stoneAssignments.js';
 
 const CONDITIONS = new Set([DEFAULT_CONDITION, ...ENEMY_CONDITIONS, ...SELF_CONDITIONS]);
 // advisory checkPreset entries that are hard gates for a candidate: the optimiser never suggests an
@@ -25,6 +26,7 @@ function structural(character, presetId, cand, add) {
   const preset = (character.presets ?? []).find((p) => p.id === presetId);
   if (!preset) return add('structural', 'presetId', `Unknown preset ${presetId}`);
   if (!cand || typeof cand !== 'object') return add('structural', 'candidate', 'Not an object');
+  for (const message of stoneAssignmentViolations(character, cand.stoneAssignment)) add('stones', 'stoneAssignment', message);
   if (cand.equipmentSet !== 1 && cand.equipmentSet !== 2) add('structural', 'equipmentSet', 'Must be 1 or 2');
   if (cand.talentSet !== 0 && cand.talentSet !== 1) add('structural', 'talentSet', 'Must be 0 or 1');
   for (const f of ['petId', 'mountId', 'utilitySigilSpecies', 'ancientSigilSpecies', 'transcendencePresetId']) {

@@ -8,6 +8,7 @@ import {
   FORTRESS_BOSSES, FORTRESS_CONSTANTS, BOSS_SHIELD_CONTROL_POINTS, FORTRESS_STARS, CONTRIBUTION_BONUS,
 } from '../../game/fortress.js';
 import { simulateArenaPvP, fighterDuelArgs, completeDuelStats } from '../pvp/resolver.js';
+import { STANCE_FIELDS } from '../core/stances.js';
 
 export const FORTRESS_BOSS_GROUPS = Object.freeze(Object.keys(FORTRESS_BOSSES));
 export const MAX_SHIELD_PERCENT = 60;
@@ -75,6 +76,7 @@ const dropBlindBuff = (cfg) => {
 export function fortressPlayerDuelArgs(fighter, rules = FORTRESS_FIGHT_RULES) {
   const args = fighterDuelArgs(fighter);
   let stats = rules.pvpHpBuff ? args.stats : completeDuelStats(fighter.stats, fighter.class, args.stackCtx.form).stats;
+  if (!rules.pvpHpBuff) for (const key of STANCE_FIELDS) if (args.stats[key] != null) stats[key] = args.stats[key];
   if (!rules.pvpRatings) stats = { ...stats, totalPvpAttack: 0, totalPvpDefense: 0 };
   let spells = args.spells;
   if (!rules.bossBlindable) {

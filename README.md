@@ -44,3 +44,5 @@ published, so the GitHub Pages workflow (`.github/workflows/deploy.yml`) is manu
 `EldarynTracker/` (gitignored, not part of the deployed app) is the original Python/Streamlit
 prototype and gear-data collection tooling this app was ported from. It's kept locally as
 historical reference only.
+
+The local optimiser includes the targeted Eldaryn 2.7.4 upgrade: Warrior stances, renamed auras and PvP cast lockout. Celestial class-ranking/Mythic rule references are refreshed; the fight simulator remains Normal/Hard. Source/version boundaries: [game references](docs/Reference/Game/README.md) and [2.7.4 evidence](docs/2.7.4/README.md). Do not publish the extracted catalogues.

@@ -5,9 +5,9 @@ import {
 } from './sigils.js';
 
 describe('game/sigils catalogue', () => {
-  it('has 58 species with unique keys', () => {
-    expect(SIGIL_CATALOGUE).toHaveLength(58);
-    expect(new Set(SIGIL_CATALOGUE.map((s) => s.species)).size).toBe(58);
+  it('has 62 species with unique keys', () => {
+    expect(SIGIL_CATALOGUE).toHaveLength(62);
+    expect(new Set(SIGIL_CATALOGUE.map((s) => s.species)).size).toBe(62);
   });
   it('spot values', () => {
     expect(sigilBySpecies('BERSERK_STANCE')).toMatchObject({ rarity: 'Common', baseAttack: 166, baseHp: 1300 });
@@ -31,7 +31,7 @@ describe('game/sigils catalogue', () => {
     expect(utilitySlotSpellType('NECROMANCER', 'NECROMANCER_DEATHLORD')).toBe('SUMMON');
     expect(utilitySlotSpellType('MYSTIC', 'MYSTIC_MAGE')).toBe('SHIELD');
     expect(utilitySlotSpellType('MYSTIC', 'MYSTIC_DRUID')).toBe('FORM');
-    expect(utilitySlotSpellType('WARRIOR', 'WARRIOR_TANK')).toBeNull();
+    expect(utilitySlotSpellType('WARRIOR', 'WARRIOR_TANK')).toBe('STANCE');
   });
 });
 

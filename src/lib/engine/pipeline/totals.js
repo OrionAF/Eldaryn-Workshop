@@ -1,5 +1,6 @@
 // calculateTotalStats: the client's stat-sheet pipeline (rebuild-plan §2.3; semantics in
 // docs/Reference/Game/stats.md §3). Pure; takes the already-aggregated source bonus objects.
+import { stanceRuntimeFields } from '../sources/stance.js';
 import { capConfig, applySoftCap } from '../core/caps.js';
 import { SLOT_ORDER } from '../../game/gear.js';
 import { disruptionEffectFor } from '../core/disruption.js';
@@ -275,9 +276,12 @@ export function calculateTotalStatsExact(
   }
 
   // 5. Attack / HP (L1217135-1217177)
-  const attackMult = formConfig?.attackMult ?? 1;
+  const stanceConfig = ctx?.stanceConfig;
+  acc.healthPercent += num(stanceConfig?.hpPercent);
+  acc.spellResist += num(stanceConfig?.spellResist);
+  const attackMult = (formConfig?.attackMult ?? 1) * (stanceConfig?.attackMult ?? 1);
   const gearHpMult = formConfig?.gearHpMult ?? 1;
-  const out = {};
+  const out = stanceRuntimeFields(stanceConfig);
   out.totalAttack = Math.floor(acc.attack * (1 + acc.attackPercent / 100) * attackMult);
   out.totalHp = Math.floor(
     (acc.hp + acc.gearHp * (gearHpMult - 1)) * (1 + acc.healthPercent / 100),

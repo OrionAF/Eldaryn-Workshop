@@ -3,6 +3,18 @@
 /graphify-out/
 /EldarynTracker/
 
+# Local leaderboard collector (separate from the optimiser app)
+/scripts/collect-leaderboard.cmd
+/scripts/collect_leaderboard.py
+/scripts/collector-gui*
+/scripts/collector_gui*
+/scripts/collector_job.py
+/scripts/collector_library.py
+/scripts/setup-collector-gui.cmd
+/scripts/test_collect_leaderboard.py
+/scripts/test_collector_*.py
+/scripts/__pycache__/
+
 # Local assistant configuration and working notes
 /.claude/
 /.agents/

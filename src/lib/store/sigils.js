@@ -44,7 +44,7 @@ export function createSigilsStore(ctx) {
       if (c.sigils.altarTier >= EVOLVE_TIER_CAP) return false;
       c.sigils.altarTier += 1;
       for (const sp of Object.keys(c.sigils.owned)) {
-        if (sigilBySpecies(sp)?.rarity !== 'Ancient') delete c.sigils.owned[sp];
+        if (sigilBySpecies(sp)?.rarity !== 'Ancient' && !sigilBySpecies(sp)?.granted) delete c.sigils.owned[sp];
       }
       ctx.reconcile(c);
       return true;

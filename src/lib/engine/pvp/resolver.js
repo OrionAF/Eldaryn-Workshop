@@ -6,6 +6,8 @@
 // Draw order is behaviour. Per tick: attacker spell crits, defender spell crits, DoT crits of the
 // debuffs on the defender, then on the attacker, the attacker's swing (pvp/attack.js order), the
 // attacker's minion crit, the defender's swing, the defender's minion crit.
+import { tickDazedMs } from '../core/stances.js';
+import { getEquippedStanceConfig, stanceRuntimeFields } from '../sources/stance.js';
 import { ARENA_CONSTANTS } from '../../game/combatPvp.js';
 import { processAttack, applyRegen, pvpRatingToFraction } from './attack.js';
 import { applyPvpHpBuff } from './hpBuff.js';
@@ -84,10 +86,11 @@ export function completeDuelStats(stats, playerClass, form = null) {
   return { stats: out, defaulted };
 }
 
-const STATUS_FIELDS = ['blinded', 'paralyzedMs', 'silencedMs', 'staggerStacks', 'fearedMs'];
+const STATUS_FIELDS = ['blinded', 'paralyzedMs', 'silencedMs', 'staggerStacks', 'fearedMs', 'dazedMs'];
 
 // The client reads these status fields off the entity without creating them; they start here.
 function initStatus(e) {
+  e.dazedMs = 0;
   e.blinded = false;
   e.paralyzedMs = 0;
   e.silencedMs = 0;
@@ -97,6 +100,7 @@ function initStatus(e) {
 
 // L1456166-1456265: each status timer counts down by one tick, floored at 0.
 function countDown(e, dtMs) {
+  e.dazedMs = tickDazedMs(e.dazedMs, dtMs);
   if (e.paralyzedMs > 0) e.paralyzedMs = Math.max(0, e.paralyzedMs - dtMs);
   if (e.silencedMs > 0) e.silencedMs = Math.max(0, e.silencedMs - dtMs);
   if (e.fearedMs > 0) e.fearedMs = Math.max(0, e.fearedMs - dtMs);
@@ -533,6 +537,7 @@ export function fighterDuelArgs(f) {
   };
   const glyphs = glyphCombatMods(f.glyphMods ?? [], playerClass, spec);
   const { stats } = completeDuelStats(f.stats, playerClass, form);
+  Object.assign(stats, stanceRuntimeFields(getEquippedStanceConfig(state, playerClass)));
   return {
     stats: applyPvpHpBuff(stats),
     spells: buildCombatSpells(state, playerClass, spec, form, glyphs.mods),

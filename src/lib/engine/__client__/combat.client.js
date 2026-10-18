@@ -108,7 +108,8 @@ const arg = (v, dflt) => (v !== undefined ? v : dflt);
 // (player, enemy, attackerHp, defenderHp, timers, dtMs, timestamp, attackerMaxHp, defenderBlinded,
 //  defenderParalyzedMs, defenderSilencedMs, defenderStaggerStacks, defenderFearedMs, attackerShieldHp,
 //  defenderShieldHp, healBudget, blocksShieldOverflow, minion), then the injected rng.
-export function processCombatTick(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, rng) {
+export function processCombatTick(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, rng, defenderDazedMs = 0) {
+  let dazed = Math.max(0, defenderDazedMs - a5);
   const P = a0; // r44
   const E = a1; // r39
   const dt = a5; // r27
@@ -180,7 +181,9 @@ export function processCombatTick(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a
 
   if (atkTimerAcc >= pInterval) {
     atkTimer = atkTimerAcc - pInterval; // r13
-    const negateP = E.blockChance + E.missChance; // r4
+    const miss = E.missChance > 0 && dazed > 0 && P.stanceDazePenFactor > 0 && P.penetration > 0
+      ? E.missChance * (1 - Math.min(1, P.stanceDazePenFactor * P.penetration / 100)) : E.missChance;
+    const negateP = E.blockChance + miss; // r4
     let negated = negateP > 0;
     if (negated) negated = rng() * 100 < negateP;
     if (!negated) {
@@ -243,7 +246,7 @@ export function processCombatTick(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a
       let ah = hp; // r28
       let dh = a3; // r25
       let shown = 0; // r47
-      if (P.penetration > 0 && E.missChance === 0) {
+      if (P.penetration > 0 && miss === 0) {
         const base = Math.round(P.attack * P.penetration / 100); // r50
         const r58 = Math.round(base * rollPenetrationCritMult(P, rng));
         let d = r58;
@@ -255,8 +258,13 @@ export function processCombatTick(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a
         shown = d;
         ah = lifesteal(hp, d);
       }
-      events.push({ timestamp: ts, type: E.missChance > 0 ? 'defender_miss' : 'defender_block', damage: shown, attackerHp: ah, defenderHp: dh });
+      events.push({ timestamp: ts, type: miss > 0 ? 'defender_miss' : 'defender_block', damage: shown, attackerHp: ah, defenderHp: dh });
       dealt = dl; defShield = sh; atkHp = ah; defHp = dh;
+    }
+    // 2.7.4 L1093800+: after all swing paths, before death/minion processing.
+    if (defHp > 0 && P.stanceDazeChance > 0 && P.stanceDazeDurationMs > 0 && rng() * 100 < P.stanceDazeChance) {
+      dazed = Math.max(dazed, P.stanceDazeDurationMs);
+      events.push({ timestamp: ts, type: 'defender_dazed', damage: 0, attackerHp: atkHp, defenderHp: defHp, dazeMs: P.stanceDazeDurationMs });
     }
     // L1086886-1086896
     if (defHp <= 0) {
@@ -264,7 +272,7 @@ export function processCombatTick(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a
       return {
         attackerHp: atkHp, defenderHp: 0,
         timers: { attackerTimer: atkTimer, defenderTimer: defTimerAcc, regenTimer },
-        events, defenderBlinded: blinded, defenderParalyzedMs: paralyzed, defenderSilencedMs: silenced,
+        events, defenderDazedMs: dazed, defenderBlinded: blinded, defenderParalyzedMs: paralyzed, defenderSilencedMs: silenced,
         defenderStaggerStacks: stacks, defenderFearedMs: feared, attackerShieldHp: atkShield,
         defenderShieldHp: defShield, attackerDamageDealt: dealt,
       };
@@ -287,7 +295,7 @@ export function processCombatTick(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a
         return {
           attackerHp: atkHp, defenderHp: 0,
           timers: { attackerTimer: atkTimer, defenderTimer: defTimerAcc, regenTimer },
-          events, defenderBlinded: blinded, defenderParalyzedMs: paralyzed, defenderSilencedMs: silenced,
+          events, defenderDazedMs: dazed, defenderBlinded: blinded, defenderParalyzedMs: paralyzed, defenderSilencedMs: silenced,
           defenderStaggerStacks: stacks, defenderFearedMs: feared, attackerShieldHp: atkShield,
           defenderShieldHp: defShield, attackerDamageDealt: dealt,
         };
@@ -311,7 +319,7 @@ export function processCombatTick(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a
   const deadReturn = (shieldNow, defHpNow) => ({
     attackerHp: 0, defenderHp: defHpNow,
     timers: { attackerTimer: atkTimer, defenderTimer: defTimer, regenTimer },
-    events, defenderBlinded: blinded, defenderParalyzedMs: paralyzed, defenderSilencedMs: silenced,
+    events, defenderDazedMs: dazed, defenderBlinded: blinded, defenderParalyzedMs: paralyzed, defenderSilencedMs: silenced,
     defenderStaggerStacks: stacks, defenderFearedMs: feared, attackerShieldHp: shieldNow,
     defenderShieldHp: defShield, attackerDamageDealt: dealt,
   });
@@ -374,6 +382,11 @@ export function processCombatTick(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a
           dh = enemyLifesteal(defHp, shown);
         }
         events.push({ timestamp: ts, type: P.missChance > 0 ? 'attacker_miss' : 'attacker_block', damage: shown, attackerHp: newHp, defenderHp: dh });
+        if (P.missChance === 0 && newHp > 0 && P.stanceShieldBashChance > 0 && P.stanceShieldBashStunMs > 0 && rng() * 100 < P.stanceShieldBashChance) {
+          paralyzed = Math.max(paralyzed, P.stanceShieldBashStunMs);
+          events.push({ timestamp: ts, type: 'defender_paralyzed', damage: 0, attackerHp: newHp, defenderHp: dh,
+            paralyzeMs: P.stanceShieldBashStunMs, stunSource: 'SHIELD_BASH', shieldBash: true });
+        }
         if (newHp <= 0) return deadReturn(newShield, dh);
         outAtkShield = newShield; outAtkHp = newHp; outDefHp = dh;
       }
@@ -384,7 +397,7 @@ export function processCombatTick(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a
   return {
     attackerHp: outAtkHp, defenderHp: outDefHp,
     timers: { attackerTimer: atkTimer, defenderTimer: defTimer, regenTimer },
-    events, defenderBlinded: outBlinded, defenderParalyzedMs: paralyzed, defenderSilencedMs: silenced,
+    events, defenderDazedMs: dazed, defenderBlinded: outBlinded, defenderParalyzedMs: paralyzed, defenderSilencedMs: silenced,
     defenderStaggerStacks: stacks, defenderFearedMs: feared, attackerShieldHp: outAtkShield,
     defenderShieldHp: defShield, attackerDamageDealt: dealt,
   };

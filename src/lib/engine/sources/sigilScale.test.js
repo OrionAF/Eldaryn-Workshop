@@ -57,7 +57,7 @@ describe('sigil stat scaling (L1067546-1067621, L1066773-1066807)', () => {
 
 describe('getSigilSpellScaled (L1067622-1068264)', () => {
   it('scale is 1 + (level-1)*0.08', () => {
-    // Berserk Stance Attack% 4 at L5: 4*1.32 = 5.28 -> toFixed(1) 5.3
+    // Berserk Aura Attack% 4 at L5: 4*1.32 = 5.28 -> toFixed(1) 5.3
     expect(scaled('BERSERK_STANCE', 5).bonusValue).toBe(5.3);
     expect(scaled('BERSERK_STANCE', 1).bonusValue).toBe(4);
   });

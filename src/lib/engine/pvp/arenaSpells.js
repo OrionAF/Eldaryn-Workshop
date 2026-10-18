@@ -7,6 +7,7 @@
 // silencedMs, blinded and the shield flags). `rng` is always the last argument; the only draws are the
 // spell crit rolls inside processSpellsTick (draw order is behaviour).
 import { PVP_RATING } from '../../game/stats.js';
+import { castLockoutMs } from '../core/stances.js';
 import { processSpellsTick } from '../core/spells.js';
 import { applyDebuff, computeDebuffModifiers } from '../core/debuffs.js';
 import { getBuffedMaxHp } from '../core/buffs.js';
@@ -109,6 +110,8 @@ export function routeSpellHealToMinion(minion, result, ownerMaxHp) {
 
 // The processSpellsTick input, one shared object refilled on every call: processSpellsTick reads it and
 // keeps nothing, and it never re-enters this function (saves an allocation per caster per tick).
+export { castLockoutMs } from '../core/stances.js';
+
 const SPELL_INPUT = {
   maxHp: 0, dtMs: 0, timestamp: 0, attack: 0, healReductionPercent: 0, hp: 0, enemyHp: 0, enemyMaxHp: 0,
   offensiveConditions: true, selfConditionsMet: false, spellDamage: 0, targetSpellResist: 0, spellCritChance: 0,
@@ -161,7 +164,7 @@ export function processArenaSpells(runtimes, input, rng) {
   si.spellCritChance = caster.spellCritChance;
   si.critDamage = caster.critDamage;
   si.spellVamp = caster.spellVamp;
-  si.silencedMs = caster.silencedMs ?? 0;
+  si.silencedMs = castLockoutMs(caster);
   si.healingMult = 1 - defFraction;
   si.healBaseMaxHp = caster.rawMaxHp;
   si.minionAlive = isMinionAlive(casterMinion);

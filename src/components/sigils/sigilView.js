@@ -48,6 +48,16 @@ export function spellRows(spell, type) {
   const rows = [];
   const add = (label, value) => rows.push({ label, value });
   switch (type) {
+    case 'STANCE':
+      add('Attack', `${spell.attackMult >= 1 ? '+' : ''}${num((spell.attackMult - 1) * 100)}%`);
+      if (spell.hpPercent) add('Health', `+${pct(spell.hpPercent)}`);
+      if (spell.spellResist) add('Spell Resist (before cap)', `+${pct(spell.spellResist)}`);
+      if (spell.daze) {
+        add('Daze per swing', `${pct(spell.daze.chancePercent)} for ${secs(spell.daze.durationMs)}`);
+        add('Dazed enemy Miss reduction', `${num(spell.daze.penFactor * 100)}% of your Penetration`);
+      }
+      if (spell.shieldBash) add('Shield Bash per block', `${pct(spell.shieldBash.chancePercent)} for ${secs(spell.shieldBash.stunMs)}`);
+      return rows;
     case 'AURA':
       add(statName(spell.bonusStat), spell.bonusStat === 'ATTACK_SPEED' ? `+${num(spell.bonusValue)}` : `+${num(spell.bonusValue)}%`);
       return rows;

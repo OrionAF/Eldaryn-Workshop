@@ -43,7 +43,7 @@
       {/if}
     </div>
   {/each}
-  <p class="note">Gear, stones, levels, Awakening and pet/mount rolls never change.</p>
+  <p class="note">Stone assignment uses only owned stones in the selected realm. Other presets sharing that gear set are affected. Gear items, stone rolls/levels, Awakening and pet/mount rolls stay fixed.</p>
 </div>
 
 <style>

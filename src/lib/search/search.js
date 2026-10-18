@@ -481,6 +481,7 @@ function createRun(prep, hooks) {
  * The exhaustive race's arms before the race's own filters; search/estimate.js counts the same list.
  */
 export function enumerateJoint(space, base, enabled) {
+  if (enabled.has('stones') && (space.domainSizes(base).stones ?? 1) > 1) return null;
   const ids = BLOCKS.filter((id) => enabled.has(id));
   const blockById = new Map(space.blocks.map((b) => [b.id, b]));
   const out = new Map([[space.key(base), base]]);
@@ -585,6 +586,7 @@ async function searchPhase(prep, run) {
     }
   }
   const talentsLocal = enabled.has('talents') && (sizes.talents ?? 1) > 1;
+  const stonesLocal = enabled.has('stones') && (sizes.stones ?? 1) > 1;
 
   /** Canonical (inert changes reverted, A.5) arm of a candidate. */
   const canonArm = (a) => {
@@ -823,7 +825,7 @@ async function searchPhase(prep, run) {
   }
 
   let out = null;
-  if (!talentsLocal && jointSize <= EXHAUSTIVE_MAX) {
+  if (!talentsLocal && !stonesLocal && jointSize <= EXHAUSTIVE_MAX) {
     const cands = enumerate();
     if (cands) out = await exhaustive(cands);
   }

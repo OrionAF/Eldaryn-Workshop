@@ -89,7 +89,7 @@ export function describeBuild(character, presetOrId, { realm = 'base', talentAll
 
   lines.push(itemsLine('Relics', (preset.relicIds ?? []).map((id) => ({ name: relicById(id)?.name ?? id, reason: character.relics?.[id] > 0 ? null : 'not owned' }))));
   lines.push(itemsLine('Sigils', generic));
-  lines.push(itemsLine('Utility sigil', utility ? [utility] : []));
+  lines.push(itemsLine(cls === 'WARRIOR' ? 'Stance' : 'Utility sigil', utility ? [utility] : []));
   lines.push(itemsLine('Ancient sigil', ancient ? [ancient] : []));
 
   // Conditions the Fighter applies: only from the level gate on, and never the default (fighter.js).

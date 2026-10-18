@@ -16,6 +16,18 @@ import { isMultiplierStat } from '../model/equipment.js';
 import { glyphSecondaryDef, glyphSecondaryValue, glyphTypeInfo } from '../model/glyphs.js';
 import { mountStatAtLevel } from '../model/mounts.js';
 import { formatFlat, formatPct } from '../format.js';
+import { STONE_TYPES } from '../game/stones.js';
+
+/** An owned stone described by the rolls and levels shown in its inventory tile. */
+export function stoneText(stone) {
+  if (!stone) return 'None';
+  const name = STONE_TYPES.find((type) => type.enum === stone.type)?.name ?? 'Stone';
+  const details = (stone.stats ?? []).map((s) => statLine(s.type, s.value));
+  if (stone.quality != null) details.push(`Quality ${stone.quality}`);
+  if (stone.oblivionLevel != null) details.push(`Grade ${stone.oblivionLevel}`);
+  details.push(`Amplify ${stone.amplifyLevel ?? 0}`);
+  return `${name} · ${details.join(', ')}`;
+}
 
 const POOL_LABEL = new Map(SECONDARY_STAT_POOL.map((s) => [s.type, s.label]));
 const RATINGS = new Set(['PVP_ATTACK', 'PVP_DEFENSE']);

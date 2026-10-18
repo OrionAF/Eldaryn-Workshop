@@ -1,3 +1,4 @@
+import { rollStanceDaze, rollShieldBash, tickDazedMs } from '../core/stances.js';
 // Celestial Trial (NORMAL and HARD): a party of 1-2 fighters against the Empyrean Gatekeeper and its
 // Halo Breach adds. The fight is server-run and no client simulator exists, so this loop is built from
 // the client's config (Game/pve-content.md §6) and the rules read from the 2026-10-15 server logs
@@ -31,6 +32,17 @@ const C_BLOCK = ceilingFor('BLOCK_CHANCE');
 const C_MISS = ceilingFor('MISS_CHANCE');
 const C_DR = ceilingFor('DAMAGE_REDUCTION');
 
+/** Reference-only Mythic Fury scaling; this does not enable Mythic fights (pve-content.md addendum). */
+export function celestialFuryPowerMultiplier(power, difficulty = 'MYTHIC') {
+  const cfg = celestialDifficulty(difficulty)?.spells?.GATEKEEPERS_BURDEN;
+  if (!(cfg?.furyOblivionSqrtCoefficient > 0)) return 1;
+  return 1 + cfg.furyOblivionSqrtCoefficient * Math.sqrt(Math.max(0, power));
+}
+
+export function celestialHolderFuryShare(evaded, difficulty = 'MYTHIC') {
+  return evaded ? celestialDifficulty(difficulty)?.spells?.GATEKEEPERS_BURDEN?.controlHolderFuryShare ?? 1 : 1;
+}
+
 const note = (key, text) => Object.freeze({ key, text });
 /** Labels for the modelling choices of the Celestial mode (combat-pve.md §20). */
 export const CELESTIAL_ASSUMPTIONS = Object.freeze({
@@ -44,6 +56,7 @@ export const CELESTIAL_ASSUMPTIONS = Object.freeze({
   maxAlive: note('celestial-max-alive', 'No add spawns while the cap of living adds is reached (never reached in a log).'),
   furyStacking: note('celestial-fury-stacking', 'Block Fury and the per-add attack bonus multiply (no difficulty has both).'),
   enemyTactics: note('celestial-enemy-tactics', 'The boss and the adds attack the tank (the logged tactics); the "adds target everyone" tactic is not modelled.'),
+  stances: note('celestial-stances', 'Warrior stances use the shared combat rules here. Their timing in Celestial has not been checked against a server log. Shield Bash requires zero Miss Chance because the combined avoid roll labels other avoids as misses.'),
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -280,6 +293,7 @@ export function simulateCelestial(o) {
   let bossHp = bossStats.hp;
   let bossTimer = 0;
   let bossBlinded = false;
+  let bossDazedMs = 0;
   let paralyzedMs = 0;
   let judgmentTimer = 0;
   let fury = 0;
@@ -409,6 +423,10 @@ export function simulateCelestial(o) {
       if (t.hp > cap) t.hp = cap;
     }
     const addId = add ? add.id : -1;
+    if (add?.paralyzedMs > 0) {
+      emit({ type: 'add_paralyze', damage: 0, playerIndex: t.i, addId });
+      return;
+    }
     if (kind !== 'judgment') {
       const v = t.view;
       const avoid = (applyCombatCeiling(v.blockChance, C_BLOCK) + applyCombatCeiling(v.missChance, C_MISS))
@@ -419,6 +437,14 @@ export function simulateCelestial(o) {
         if (isSp) {
           thorns += t.stacks.blockReflect(0);
           t.stacks.onEvaded();
+        }
+        if (v.missChance === 0 && t.hp > 0) {
+          const stun = rollShieldBash(v, lane(rng, `p${t.i}:bash`));
+          if (stun > 0) {
+            if (add) add.paralyzedMs = Math.max(add.paralyzedMs ?? 0, stun);
+            else paralyzedMs = Math.max(paralyzedMs, stun);
+            emit({ type: add ? 'add_paralyzed' : 'boss_paralyzed', damage: 0, playerIndex: t.i, addId, paralyzeMs: stun, stunSource: 'SHIELD_BASH', shieldBash: true });
+          }
         }
         t.fluxAvoided += 1;
         return;
@@ -458,6 +484,11 @@ export function simulateCelestial(o) {
     // 0. clocks: Block Fury decay, boss paralysis, Judgment timer (frozen while paralyzed)
     if (furyOn) fury = Math.max(0, fury - furyDecay);
     paralyzedMs = Math.max(0, paralyzedMs - CELESTIAL_TICK_MS);
+    for (const add of adds) {
+      add.paralyzedMs = Math.max(0, (add.paralyzedMs ?? 0) - CELESTIAL_TICK_MS);
+      add.dazedMs = tickDazedMs(add.dazedMs, CELESTIAL_TICK_MS);
+    }
+    bossDazedMs = tickDazedMs(bossDazedMs, CELESTIAL_TICK_MS);
     if (JS && paralyzedMs <= 0) judgmentTimer += CELESTIAL_TICK_MS;
 
     // 1. Halo Breach
@@ -547,6 +578,13 @@ export function simulateCelestial(o) {
         lifesteal(m, first);
         m.fluxHits += 1;
         if (add.hp <= 0) killAdd(add, m.i);
+        else {
+          const daze = rollStanceDaze(v, add.dazedMs ?? 0, lane(rng, `p${m.i}:daze`));
+          if (daze.procced) {
+            add.dazedMs = daze.dazedMs;
+            emit({ type: 'add_dazed', damage: 0, playerIndex: m.i, addId: add.id, dazeMs: daze.durationMs });
+          }
+        }
         continue;
       }
       const dbl = rolls.double(m.i, v.doubleHit, ts);
@@ -570,6 +608,11 @@ export function simulateCelestial(o) {
       if (v.paralyzeChance > 0 && paralyzedMs <= 0 && rolls.paralyze(m.i, v.paralyzeChance, ts)) {
         paralyzedMs = PARALYZE_DURATION_MS;
         emit({ type: 'boss_paralyzed', damage: 0, playerIndex: m.i, addId: -1 });
+      }
+      const daze = rollStanceDaze(v, bossDazedMs, lane(rng, `p${m.i}:daze`));
+      if (daze.procced) {
+        bossDazedMs = daze.dazedMs;
+        emit({ type: 'boss_dazed', damage: 0, playerIndex: m.i, addId: -1, dazeMs: daze.durationMs });
       }
     }
 

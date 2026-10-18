@@ -56,7 +56,9 @@ describe('search steps: one row per block (simulation.md §Progress, searchSteps
     const rows = byId(result.search.steps);
     expect(rows.relics).toMatchObject({ state: 'skipped', reason: 'off', tried: 0 });
     expect(rows.mount).toMatchObject({ state: 'skipped', reason: 'off' });
-    for (const id of ['utility', 'transcendence', 'minorGlyphs']) expect(rows[id]).toMatchObject({ state: 'skipped', reason: 'nothing-to-try', tried: 0 });
+    for (const id of ['transcendence', 'minorGlyphs']) expect(rows[id]).toMatchObject({ state: 'skipped', reason: 'nothing-to-try', tried: 0 });
+    expect(rows.utility).toMatchObject({ state: 'done', reason: null });
+    expect(rows.utility.tried).toBeGreaterThan(0);
     expect(rows.pet).toMatchObject({ state: 'done', reason: null });
   });
 
@@ -79,6 +81,7 @@ describe('search steps: one row per block (simulation.md §Progress, searchSteps
     expect(rows.relics).toMatchObject({ state: 'done', pass: 1, improved: true });
     expect(rows.relics.tried).toBeGreaterThan(1);
     expect(rows.relics.fights).toBeGreaterThan(0);
+    expect(rows.utility).toMatchObject({ state: 'skipped', reason: 'off' });
     expect(rows.pet).toMatchObject({ state: 'skipped', reason: 'off' });
     expect(seen.some((p) => p.searchSteps && byId(p.searchSteps).relics.state === 'running')).toBe(true);
   });

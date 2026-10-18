@@ -101,6 +101,8 @@ export function normaliseSetup(raw, character, defaultEffort = 'standard', chara
   if ((out.objective.kind === 'win-rate' || out.objective.kind === 'push') && !(Number.isFinite(out.objective.target) && out.objective.target >= bound.min && out.objective.target <= bound.max)) delete out.objective.target;
 
   if (r.space && typeof r.space === 'object') {
+    // An older saved setup did not permit writes to equipment-set stone sockets.
+    if (!Object.hasOwn(r.space, 'stones')) out.space.stones = false;
     for (const k of Object.keys(SPACE_DEFAULTS)) if (typeof r.space[k] === 'boolean') out.space[k] = r.space[k];
   }
   out.powerFloor = normalisePowerFloor(r.powerFloor);
