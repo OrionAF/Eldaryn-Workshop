@@ -12,6 +12,7 @@
   import ScopeChip from '../ui/ScopeChip.svelte';
   import Banner from '../ui/Banner.svelte';
   import { applyPlan, changesOfGroup, sideEffectsOf } from '../../lib/ui/optimiserView.js';
+  import { medalCostText } from '../../lib/search/relicProgression.js';
 
   let { open = $bindable(false), row = null, presetName = '', error = '', onconfirm = () => {} } = $props();
 
@@ -38,7 +39,9 @@
             <ScopeChip scope={g.scope} target={g.title} sideEffects={g.sideEffects.map((s) => s.name)} />
             <ul class="changes">
               {#each changesOfGroup(row, g) as c (c.id)}
-                <li>{#if c.moved}{c.label}: {c.moved}{:else}{c.label}: {c.from} <span class="arrow">→</span> <b>{c.to}</b>{/if}</li>
+                <li>{#if c.moved}{c.label}: {c.moved}{:else}{c.label}: {c.from} <span class="arrow">→</span> <b>{c.to}</b>{/if}
+                  {#if c.medalCost}<p class="note num">{medalCostText(c.medalCost)}</p>{/if}
+                </li>
               {/each}
             </ul>
             {#each g.sideEffects as s (s.presetId + s.reason)}
@@ -52,6 +55,8 @@
           </Banner>
         {/if}
         {#if error}<Banner variant="error" lead="Not applied.">{error}</Banner>{/if}
+        {#if plan?.blockReason}<Banner variant="warn">{plan.blockReason}</Banner>{/if}
+        {#if row.changes.some((c) => c.medalCost)}<p class="note">Medal costs are estimates. Apply changes your local character only; purchase or upgrade in-game separately.</p>{/if}
         <p class="note">After you apply, this preset's in-game stats are checked against the new build. Run the Optimiser again to see the result.</p>
       </div>
     {/if}
@@ -60,9 +65,9 @@
     <Button variant="ghost" onclick={() => (open = false)}>Cancel</Button>
     <Button
       variant="primary"
-      disabled={!plan || plan.writesCount === 0}
-      reason={plan && plan.writesCount === 0 ? 'Switch at least one group on.' : ''}
-      onclick={() => plan && onconfirm({ cand: plan.cand, include: plan.include })}
+      disabled={!plan || plan.writesCount === 0 || !!plan.blockReason}
+      reason={plan?.blockReason || (plan && plan.writesCount === 0 ? 'Switch at least one group on.' : '')}
+      onclick={() => plan && !plan.blockReason && onconfirm({ cand: plan.cand, include: plan.include })}
     >
       Apply {plan ? plan.writesCount : 0} group{plan?.writesCount === 1 ? '' : 's'}
     </Button>

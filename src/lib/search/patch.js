@@ -46,6 +46,7 @@ export function candidateWrites(character, presetId, cand) {
       transcendencePresetId: link,
     },
     character: {
+      ...(cand.relicLevels ? { relicLevels: { ...cand.relicLevels } } : {}),
       ...(cand.stoneAssignment ? { stoneAssignment: { setKey: cand.stoneAssignment.setKey, slots: { ...cand.stoneAssignment.slots } } } : {}),
       talentAllocation: cand.talentAllocation ? { talentSet: cand.talentSet, allocation: { ...cand.talentAllocation } } : null,
       sigilConditions: { ...(cand.sigilConditions ?? {}) },
@@ -70,6 +71,7 @@ export function applyCandidate(character, presetId, cand, { include = SCOPES } =
     out.presets = character.presets.map((p) => (p.id === presetId ? { ...p, ...w.preset } : p));
   }
   if (on.has('character')) {
+    if (w.character.relicLevels) out.relics = { ...character.relics, ...w.character.relicLevels };
     const stones = w.character.stoneAssignment;
     if (stones) {
       out.equipment = { ...character.equipment, [stones.setKey]: {

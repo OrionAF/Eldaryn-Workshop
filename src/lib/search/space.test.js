@@ -96,11 +96,11 @@ describe('candidateOf / canonical / materialise', () => {
 });
 
 describe('block domains', () => {
-  it('has the documented blocks, all on by default; toggles switch one off', () => {
+  it('has the documented blocks, with paid progression off by default; toggles switch one off', () => {
     const c = fixtureCharacter('WARRIOR');
     const space = createBuildSpace(c, 'p1', { toggles: { relics: false } });
     expect(space.blocks.map((b) => b.id)).toEqual(BLOCKS);
-    expect(Object.values(SPACE_DEFAULTS).every(Boolean)).toBe(true);
+    expect(Object.entries(SPACE_DEFAULTS).filter(([, on]) => !on).map(([id]) => id)).toEqual(['relicUpgrades', 'relicPurchases']);
     expect(block(space, 'relics').enabled).toBe(false);
     expect(block(space, 'relics').domain(space.start)).toEqual([]);
   });

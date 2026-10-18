@@ -9,8 +9,10 @@
   import Button from '../ui/Button.svelte';
   import { SPACE_GROUPS, setGroup, enabledCount, toggleTotal } from '../../lib/ui/optimiserView.js';
   import { SPACE_DEFAULTS } from '../../lib/search/space.js';
+  import NumberField from '../ui/NumberField.svelte';
+  import { MEDAL_TIERS, normaliseRelicBudget } from '../../lib/search/relicProgression.js';
 
-  let { space = $bindable(), relicCap = 0 } = $props();
+  let { space = $bindable(), relicCap = 0, relicBudget = $bindable(normaliseRelicBudget(null)) } = $props();
 
   const flip = (key) => (space = { ...space, [key]: !space[key] });
   const groupOn = (g) => g.items.every(([k]) => space[k]);
@@ -43,6 +45,16 @@
       {/if}
     </div>
   {/each}
+  {#if space.relicUpgrades || space.relicPurchases}
+    <div class="group" data-testid="relic-budget">
+      <span class="cap-label">Medal spending limits</span>
+      {#each MEDAL_TIERS as tier (tier)}
+        <NumberField label={`${tier[0].toUpperCase() + tier.slice(1)} medal budget`} value={relicBudget[tier]} min={0} max={Number.MAX_SAFE_INTEGER} flat
+          onchange={(value) => (relicBudget = normaliseRelicBudget({ ...relicBudget, [tier]: Math.floor(value) }))} />
+      {/each}
+      <p class="note">Costs are catalogue estimates; check prices in-game. Purchases assume level 1. No medal exchanges or extra slots are included. Apply updates your local build only.</p>
+    </div>
+  {/if}
   <p class="note">Stone assignment uses only owned stones in the selected realm. Other presets sharing that gear set are affected. Gear items, stone rolls/levels, Awakening and pet/mount rolls stay fixed.</p>
 </div>
 

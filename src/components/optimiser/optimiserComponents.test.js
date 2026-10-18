@@ -4,7 +4,7 @@ import OptimiserResults from './OptimiserResults.svelte';
 import ApplyReview from './ApplyReview.svelte';
 import SpaceGroups from './SpaceGroups.svelte';
 import RunCompare from './RunCompare.svelte';
-import { setup, click } from '../ui/testkit.js';
+import { setup, click, type, key } from '../ui/testkit.js';
 import { viewResult, viewRun } from '../../lib/ui/optimiserView.js';
 import { runFromResult } from '../../lib/model/runs.js';
 import { SPACE_DEFAULTS } from '../../lib/search/space.js';
@@ -236,7 +236,40 @@ it('Allowed to change toggles by group, resets, and prints the relic cap', () =>
 
 it('counts the blocks that may change', () => {
   mounted = setup(SpaceGroups, { space: { ...SPACE_DEFAULTS, sigils: false, utility: false, ancient: false, conditions: false }, relicCap: 2 });
-  expect(mounted.q('.count').textContent).toMatch(/10 of 14 parts may change/);
+  expect(mounted.q('.count').textContent).toMatch(/10 of 16 parts may change/);
+});
+
+it('shows separate opt-in relic controls and commits medal budgets to the setup', () => {
+  const state = { space: { ...SPACE_DEFAULTS }, relicBudget: { bronze: 0, silver: 0, gold: 0 } };
+  mounted = setup(SpaceGroups, {
+    get space() { return state.space; }, set space(v) { state.space = v; },
+    get relicBudget() { return state.relicBudget; }, set relicBudget(v) { state.relicBudget = v; },
+    relicCap: 2,
+  });
+  expect(mounted.q('[data-testid="relic-budget"]')).toBeNull();
+  click(mounted.qa('button').find((el) => el.textContent.trim() === 'Upgrade relics'));
+  expect(state.space.relicUpgrades).toBe(true);
+  expect(state.space.relicPurchases).toBe(false);
+  mounted.done();
+  mounted = setup(SpaceGroups, { space: state.space,
+    get relicBudget() { return state.relicBudget; }, set relicBudget(v) { state.relicBudget = v; }, relicCap: 2 });
+  const input = mounted.q('[data-testid="relic-budget"] input');
+  type(input, '75'); key(input, 'Enter');
+  expect(state.relicBudget).toEqual({ bronze: 75, silver: 0, gold: 0 });
+  expect(mounted.q('[data-testid="relic-budget"]').textContent).toMatch(/catalogue estimates/);
+});
+
+it('renders saved relic cost estimates in expanded results and Apply review', () => {
+  const result = richResult();
+  result.rows[0].changes[0].medalCost = { tier: 'bronze', amount: 75, estimated: true };
+  const saved = runFromResult(result, { presetName: 'Main' });
+  mounted = setup(OptimiserResults, { view: viewRun(saved), presetName: 'Main' });
+  toggle(mounted, 0);
+  expect(mounted.q('[data-testid="relic-cost"]').textContent).toMatch(/Estimated cost: 75 bronze medals/);
+  mounted.done();
+  mounted = setup(ApplyReview, { open: true, row: saved.detail.rows[0], presetName: 'Main' });
+  expect(document.body.textContent).toMatch(/Estimated cost: 75 bronze medals/);
+  expect(document.body.textContent).toMatch(/local character only/);
 });
 
 it('with no open relic slot the relic note says so', () => {

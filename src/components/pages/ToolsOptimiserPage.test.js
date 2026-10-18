@@ -67,7 +67,7 @@ it('shows the five setup steps with the effort budgets printed and no time cap',
   expect(view.q('[data-testid="effort-plan"]').textContent).toMatch(/Spots differences of 0\.5% or more/);
   expect(view.q('[data-testid="effort-plan"]').textContent).toMatch(/starts with 16 fights.*up to 32,768/);
   expect(view.q('[data-testid="effort-cost"]').textContent).toMatch(/no time limit.*about 4 minutes when it may change every part of your build/);
-  expect(view.q('[data-testid="plan-summary"]').textContent).toMatch(/14 of 14 parts of your build against Training dummy, 60 s/);
+  expect(view.q('[data-testid="plan-summary"]').textContent).toMatch(/14 of 16 parts of your build against Training dummy, 60 s/);
   expect(view.q('[data-testid="relic-cap"]')).not.toBeNull();
 });
 
