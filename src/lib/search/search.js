@@ -84,6 +84,8 @@ export const moreSeed = (seed, targetKey, k) => hashSeed('more', seed, targetKey
 function togglesOf(raw) {
   if (!raw || typeof raw !== 'object') return undefined;
   const t = { ...raw };
+  // A saved permission map predating board writes must not silently gain that permission.
+  if (!Object.hasOwn(t, 'boardAllocation')) t.boardAllocation = false;
   if ('talentSet' in t && !('spec' in t)) t.spec = !!t.talentSet;
   if ('glyphs' in t) {
     if (!('minorGlyphs' in t)) t.minorGlyphs = !!t.glyphs;
@@ -118,13 +120,14 @@ export function prepare(request) {
   }
   const powerFloor = normalisePowerFloor(request.powerFloor);
   const space = createBuildSpace(character, preset, {
-    realm, mode, residual, toggles: togglesOf(request.space), powerFloor, relicBudget: request.relicBudget, dominance: dominanceContextOf(target, mode),
+    realm, mode, residual, toggles: togglesOf(request.space), powerFloor, relicBudget: request.relicBudget, boardIchorBudget: request.boardIchorBudget, dominance: dominanceContextOf(target, mode),
   });
   const characterKey = metricKey('character', character);
   const requestEcho = {
     presetId: preset.id, realm, mode, target: target.spec, objective: objective.spec, space: space.toggles,
     ...(powerFloor != null ? { powerFloor } : {}),
     relicBudget: space.relicBudget,
+    boardIchorBudget: space.boardIchorBudget,
     // the partner's build is an input of every fight: a changed partner is a different run
     ...(target.partner ? { partnerKey: target.partner.key } : {}),
     seed, seeds, effort: { level: effort.level, delta: effort.delta, deltaKind: effort.deltaKind, alpha: effort.alpha, n0: effort.n0, maxN: effort.maxN }, characterKey,
@@ -484,6 +487,7 @@ function createRun(prep, hooks) {
 export function enumerateJoint(space, base, enabled) {
   if (enabled.has('stones') && (space.domainSizes(base).stones ?? 1) > 1) return null;
   if (enabled.has('relicUpgrades') || enabled.has('relicPurchases')) return null;
+  if (enabled.has('boardAllocation')) return null;
   const ids = BLOCKS.filter((id) => enabled.has(id));
   const blockById = new Map(space.blocks.map((b) => [b.id, b]));
   const out = new Map([[space.key(base), base]]);
@@ -589,7 +593,7 @@ async function searchPhase(prep, run) {
   }
   const talentsLocal = enabled.has('talents') && (sizes.talents ?? 1) > 1;
   const stonesLocal = enabled.has('stones') && (sizes.stones ?? 1) > 1;
-  const relicsLocal = enabled.has('relicUpgrades') || enabled.has('relicPurchases');
+  const relicsLocal = enabled.has('relicUpgrades') || enabled.has('relicPurchases') || enabled.has('boardAllocation');
 
   /** Canonical (inert changes reverted, A.5) arm of a candidate. */
   const canonArm = (a) => {
@@ -1316,7 +1320,7 @@ export async function optimizeMore(request, hooks = {}) {
   const { character, result } = request ?? {};
   if (!result || result.schema !== RESULT_SCHEMA || result.status !== 'done') throw new Error('optimizeMore: needs a finished optimiser result');
   const r = result.request;
-  const prep = prepare({ character, partner: request.partner, presetId: r.presetId, realm: r.realm, target: r.target, objective: r.objective, space: r.space, powerFloor: r.powerFloor, relicBudget: r.relicBudget, effort: r.effort, seed: r.seed });
+  const prep = prepare({ character, partner: request.partner, presetId: r.presetId, realm: r.realm, target: r.target, objective: r.objective, space: r.space, powerFloor: r.powerFloor, relicBudget: r.relicBudget, boardIchorBudget: r.boardIchorBudget, effort: r.effort, seed: r.seed });
   if (prep.characterKey !== r.characterKey) throw new Error('optimizeMore: the character has changed since this run; run the optimiser again');
   if ((prep.target.partner?.key ?? null) !== (r.partnerKey ?? null)) throw new Error('optimizeMore: the Celestial partner has changed since this run; run the optimiser again');
   const targetN = Number.isInteger(request.targetN) && request.targetN >= 2 ? request.targetN : null;

@@ -253,6 +253,7 @@ export function pushStopText(push) {
 export const DIMENSION_LABEL = Object.freeze({
   stones: 'Stone assignment',
   relicUpgrades: 'Relic upgrades', relicPurchases: 'Relic purchases',
+  boardAllocation: 'Board allocation', awakening: 'Awakening',
   equipmentSet: 'Gear set', spec: 'Talent set', talents: 'Talents', pet: 'Pet', mount: 'Mount', relics: 'Relics', sigils: 'Sigils',
   utility: 'Utility sigil', ancient: 'Ancient sigil', transcendence: 'Transcendence', conditions: 'Sigil conditions',
   minorGlyphs: 'Minor glyphs', majorGlyphs: 'Major glyphs', mythicGlyphs: 'Mythic glyphs',
@@ -400,7 +401,8 @@ export const SPACE_GROUPS = Object.freeze([
   { id: 'companions', label: 'Companions', items: [['pet', 'Pet'], ['mount', 'Mount'], ['minorGlyphs', 'Minor glyphs'], ['majorGlyphs', 'Major glyphs']] },
   { id: 'relics', label: 'Relics', items: [['relics', 'Owned relic selection'], ['relicUpgrades', 'Upgrade relics'], ['relicPurchases', 'Buy relics']] },
   { id: 'sigils', label: 'Sigils', items: [['sigils', 'Sigils'], ['utility', 'Utility sigil'], ['ancient', 'Ancient sigil'], ['conditions', 'Sigil conditions']] },
-  { id: 'transcendence', label: 'Transcendence', items: [['transcendence', 'Board']] },
+  { id: 'transcendence', label: 'Transcendence', items: [['transcendence', 'Saved board'], ['boardAllocation', 'Reallocate board']] },
+  { id: 'awakening', label: 'Awakening', items: [['awakening', 'Path and actual level']] },
 ]);
 
 /** Set every toggle of one group (or all groups when `groupId` is null) to `on`. */
@@ -436,6 +438,8 @@ export function applyPlan(row, excluded = []) {
     if (g.scope !== 'character') return;
     if (g.changeIds.some((id) => id.startsWith('talents:'))) cand.talentAllocation = null;
     else if (g.changeIds.some((id) => id.startsWith('stones:'))) delete cand.stoneAssignment;
+    else if (g.changeIds.some((id) => id.startsWith('board:'))) delete cand.boardAllocation;
+    else if (g.changeIds.includes('awakening')) delete cand.awakening;
     else if (g.changeIds.some((id) => id.startsWith('relicLevel:'))) {
       for (const id of g.changeIds) if (id.startsWith('relicLevel:')) delete cand.relicLevels?.[id.slice(11)];
       if (cand.relicLevels && !Object.keys(cand.relicLevels).length) delete cand.relicLevels;
@@ -451,8 +455,12 @@ export function applyPlan(row, excluded = []) {
     const i = row.writes.findIndex((g) => g.changeIds.includes(c.id));
     return i >= 0 && presetIndex >= 0 && off.has(i) !== off.has(presetIndex);
   });
+  const boardDependency = (row.changes ?? []).some((c) => c.id === 'transcendence' || (c.id === 'ancient' && c.bundle?.some((id) => id.startsWith('board:'))));
+  const boardIndex = row.writes.findIndex((g) => g.changeIds.some((id) => id.startsWith('board:')));
+  const splitBoard = boardDependency && boardIndex >= 0 && presetIndex >= 0 && off.has(boardIndex) !== off.has(presetIndex);
   return { cand, include, writesCount: row.writes.length - off.size,
-    ...(splitPurchase ? { blockReason: 'Apply relic purchases and their equipment changes together, or switch both off.' } : {}) };
+    ...(splitPurchase ? { blockReason: 'Apply relic purchases and their equipment changes together, or switch both off.' }
+      : splitBoard ? { blockReason: 'Apply this board allocation and its board/Ancient choices together, or switch both off.' } : {}) };
 }
 
 /** Every distinct other preset an Apply of these groups changes, with the reasons. */

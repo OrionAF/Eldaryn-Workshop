@@ -157,6 +157,9 @@
           {#each r.changes.filter((c) => c.medalCost) as c (c.id)}
             <p class="note num" data-testid="relic-cost">{c.label}: {medalCostText(c.medalCost)}</p>
           {/each}
+          {#each r.changes.filter((c) => c.costNote) as c (c.id)}
+            <p class="note num" data-testid="source-cost">{c.label}: {c.costNote}</p>
+          {/each}
           {#if r.aux?.matchups?.length}
             <table class="matchups" data-testid="matchups">
               <caption>{view.unit === 'influence' ? 'Influence from wins against each selected opponent' : 'Win rate against each opponent, as attacker and as defender'}</caption>

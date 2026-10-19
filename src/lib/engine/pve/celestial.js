@@ -252,8 +252,20 @@ export function simulateCelestial(o) {
   const JS = S.JUDGMENT_STRIKE.enabled ? S.JUDGMENT_STRIKE : null;
   const OV = S.CELESTIAL_OVERLOAD.enabled ? S.CELESTIAL_OVERLOAD : null;
   const per = (k) => (BU ? BU[k] ?? 0 : 0);
-  const furyOn = per('maxBlockStacks') > 0;
-  const furyDecay = (per('blockFuryDecayPerSec') * CELESTIAL_TICK_MS) / 1000;
+  // Difficulty coefficients are fixed during a fight; keep their lookups out of the tick loop.
+  // See combat-pve.md §20.3 and simulation.md §Exact kernel performance.
+  const maxBlockStacks = per('maxBlockStacks');
+  const blockFuryDecayPerSec = per('blockFuryDecayPerSec');
+  const healingReductionPerAdd = per('healingReductionPerAdd');
+  const hpPerAdd = per('hpPerAdd');
+  const attackPerAdd = per('attackPerAdd');
+  const attackPerBlockStack = per('attackPerBlockStack');
+  const blockChancePerAdd = per('blockChancePerAdd');
+  const damageReductionPerAdd = per('damageReductionPerAdd');
+  const damageTakenPerAdd = per('damageTakenPerAdd');
+  const hpRegenPerAdd = per('hpRegenPerAdd');
+  const furyOn = maxBlockStacks > 0;
+  const furyDecay = (blockFuryDecayPerSec * CELESTIAL_TICK_MS) / 1000;
   const bossStats = celestialBossStats(level, difficulty);
   const addStats = celestialAddStats(level, difficulty);
   const bossInterval = Math.round(1000 / bossStats.attackSpeed);
@@ -307,11 +319,11 @@ export function simulateCelestial(o) {
   let tickFrom = 0;
 
   const n = () => adds.length;
-  const healMult = () => Math.max(0, 1 - per('healingReductionPerAdd') * n());
-  const baseMax = (m) => Math.round(m.sheetHp * (1 - per('hpPerAdd') * n()));
+  const healMult = () => Math.max(0, 1 - healingReductionPerAdd * n());
+  const baseMax = (m) => Math.round(m.sheetHp * (1 - hpPerAdd * n()));
   const stackHpPct = (m) => (m.stacks ? m.stacks.selfModifiers().hpPercent : 0);
   const capOf = (m, stackPct = stackHpPct(m)) => getBuffedMaxHp(baseMax(m), m.buffHpPct + stackPct);
-  const attackMult = () => (1 + per('attackPerAdd') * n()) * (1 + per('attackPerBlockStack') * fury);
+  const attackMult = () => (1 + attackPerAdd * n()) * (1 + attackPerBlockStack * fury);
   const hpsNow = () => M.map((m) => m.hp);
   const emit = (ev) => {
     if (!log) return ev;
@@ -430,9 +442,9 @@ export function simulateCelestial(o) {
     if (kind !== 'judgment') {
       const v = t.view;
       const avoid = (applyCombatCeiling(v.blockChance, C_BLOCK) + applyCombatCeiling(v.missChance, C_MISS))
-        * (1 - per('blockChancePerAdd') * n());
+        * (1 - blockChancePerAdd * n());
       if (avoid > 0 && rolls.avoid(t.i, avoid, ts, addId)) {
-        if (t.i === tankIndex && furyOn) fury = Math.min(per('maxBlockStacks'), fury + 1);
+        if (t.i === tankIndex && furyOn) fury = Math.min(maxBlockStacks, fury + 1);
         emit({ type: add ? 'add_block' : 'player_block', damage: 0, playerIndex: t.i, addId });
         if (isSp) {
           thorns += t.stacks.blockReflect(0);
@@ -451,10 +463,10 @@ export function simulateCelestial(o) {
       }
     }
     const drBase = applyCombatCeiling(t.view.damageReduction, C_DR);
-    const dr = (isSp && snapMods ? applyBulwarkDr(drBase, snapMods) : drBase) * (1 - per('damageReductionPerAdd') * n());
+    const dr = (isSp && snapMods ? applyBulwarkDr(drBase, snapMods) : drBase) * (1 - damageReductionPerAdd * n());
     const m = kind === 'judgment' ? JS.attackMultiplier : 1;
     const ovl = overload && (kind === 'boss' || (kind === 'judgment' && overloadJudgment)) ? ovlMult : 1;
-    const dmg = Math.round(A * m * (1 - dr / 100) * (1 + per('damageTakenPerAdd') * n()) * ovl);
+    const dmg = Math.round(A * m * (1 - dr / 100) * (1 + damageTakenPerAdd * n()) * ovl);
     t.hp -= dmg;
     t.fluxTaken += 1;
     if (kind !== 'judgment' && isSp) {
@@ -514,7 +526,7 @@ export function simulateCelestial(o) {
       if (ts % REGEN_GRID_MS === 0 && m.player.hpRegen > 0) {
         const cap = capOf(m);
         if (m.hp < cap) {
-          const pulse = Math.round(((m.sheetHp * m.player.hpRegen) / 100 / 10) * (1 - per('hpRegenPerAdd') * n()));
+          const pulse = Math.round(((m.sheetHp * m.player.hpRegen) / 100 / 10) * (1 - hpRegenPerAdd * n()));
           m.hp = Math.min(cap, m.hp + pulse);
           emit({ type: 'player_regen', damage: 0, playerIndex: m.i, addId: -1 });
         }

@@ -24,6 +24,11 @@ import { EngineInputError } from '../engine/validate.js';
 import { savedSockets, conditionOf, relicName, glyphLabel, sameAlloc } from './space.js';
 import { legalityOf } from './legality.js';
 import { relicLevel, relicCost, relicSpend } from './relicProgression.js';
+import { allocationOf, boardKeyOf, boardCapacity, savedBoard } from './boardAllocation.js';
+import { boardGraph, setTotalCost } from '../transcendence.js';
+import { effectiveTranscendencePreset, ancientActive } from '../model/legality.js';
+import { statLabel, formatNodeStat } from '../build/transcendenceText.js';
+import { awakeningOf, awakeningLabel, awakeningCostNote } from './awakeningChoices.js';
 
 // PVE casts DAMAGE and DEBUFF spells on cooldown whatever their condition (combat-pve.md §10.1), and a
 // TRANSFORM never passes the cast check, so their stored condition is not an input there.
@@ -120,6 +125,27 @@ export function changesOf(space, B0, X0, { bundles = true } = {}) {
     out.push({ id, dimension, label, from, to, scope, owner, sideEffects, bundle: [], ...extra });
   };
   const presetOwner = { presetId: space.presetId };
+  const beforeAwakening = awakeningOf(character, B), afterAwakening = awakeningOf(character, X);
+  if (beforeAwakening.path !== afterAwakening.path || beforeAwakening.level !== afterAwakening.level) {
+    push('awakening', 'awakening', 'Awakening', awakeningLabel(beforeAwakening), awakeningLabel(afterAwakening), 'character', {},
+      otherPresets(space, () => true, 'shares character-wide Awakening'), { costNote: awakeningCostNote(character, afterAwakening) });
+  }
+  for (const boardId of [...new Set([B.boardAllocation?.boardId, X.boardAllocation?.boardId].filter(Boolean))]) {
+    const from = allocationOf(character, B, boardId), to = allocationOf(character, X, boardId);
+    if (setEq(from, to)) continue;
+    const key = boardKeyOf(character, X), graph = boardGraph(key);
+    const nodeText = (id) => {
+      const n = graph?.byId.get(id);
+      const stats = (n?.stats ?? []).map((s) => `${statLabel(s.stat)} ${formatNodeStat(s.stat, s.value)}`).join(', ');
+      return `${n?.name ?? (n?.kind === 'sigil' ? 'Ancient Sigil' : 'Node')} (${n?.col}, ${n?.row})${stats ? `: ${stats}` : ''}`;
+    };
+    const removed = from.filter((id) => !to.includes(id)), added = to.filter((id) => !from.includes(id));
+    push(`board:${boardId}`, 'boardAllocation', `Board allocation (${savedBoard(character, boardId)?.name ?? 'Board'})`,
+      removed.length ? removed.map(nodeText).join('; ') : 'No removed nodes', added.length ? added.map(nodeText).join('; ') : 'No added nodes',
+      'character', { boardId }, otherPresets(space, (p) => effectiveTranscendencePreset(character, p)?.id === boardId,
+        'shares this board; its stats and Ancient sigil availability may change'),
+      { costNote: `Ichor in use: ${setTotalCost(key, from)} → ${setTotalCost(key, to)}; capacity ${boardCapacity(character, X, boardId, space.boardIchorBudget)}. Live reset charges unknown.` });
+  }
   for (const id of [...new Set([...Object.keys(B.relicLevels ?? {}), ...Object.keys(X.relicLevels ?? {})])].sort()) {
     const from = relicLevel(character, B, id);
     const to = relicLevel(character, X, id);
@@ -216,6 +242,20 @@ function withPart(space, target0, source0, id) {
   const { character } = space;
   const t = space.canonical(target0);
   const s = space.canonical(source0);
+  if (id === 'awakening') return { ...t, awakening: { ...awakeningOf(character, s) } };
+  if (id.startsWith('board:')) {
+    const boardId = id.slice(6);
+    return { ...t, transcendencePresetId: s.boardAllocation?.boardId === boardId ? s.transcendencePresetId : t.transcendencePresetId,
+      boardAllocation: { boardId, allocatedNodeIds: [...allocationOf(character, s, boardId)] } };
+  }
+  if (id === 'transcendence') return { ...t, transcendencePresetId: s.transcendencePresetId, boardAllocation: s.boardAllocation };
+  if (id === 'ancient') {
+    const board = savedBoard(character, t.transcendencePresetId);
+    const ids = t.boardAllocation?.allocatedNodeIds ?? board?.allocatedNodeIds ?? [];
+    const needsBoard = s.ancientSigilSpecies && !ancientActive(s.ancientSigilSpecies, ids);
+    return { ...t, ancientSigilSpecies: s.ancientSigilSpecies,
+      ...(needsBoard ? { transcendencePresetId: s.transcendencePresetId, boardAllocation: s.boardAllocation } : {}) };
+  }
   if (id.startsWith('relicLevel:')) {
     const relicId = id.slice(11);
     const levels = { ...t.relicLevels };
@@ -341,11 +381,12 @@ export function mergeByEngine(space, arms, { mode = space.mode, base = space.sta
 export function writesOf(space, B, X, changes = changesOf(space, B, X, { bundles: false })) {
   const groups = new Map();
   for (const c of changes) {
-    const k = c.scope === 'preset' ? 'preset' : c.scope === 'mount' ? `mount:${c.owner.mountId}` : /^(talents|stones|relicLevel):/.test(c.id) ? c.id : 'conditions';
+    const separate = c.id === 'awakening' || /^(talents|stones|relicLevel|board):/.test(c.id);
+    const k = c.scope === 'preset' ? 'preset' : c.scope === 'mount' ? `mount:${c.owner.mountId}` : separate ? c.id : 'conditions';
     if (!groups.has(k)) {
       const title = c.scope === 'preset' ? `Preset ${space.preset.name}`
         : c.scope === 'mount' ? `${mountLabel(space.character, c.owner.mountId)} sockets`
-          : /^(talents|stones|relicLevel):/.test(c.id) ? c.label : 'Sigil conditions';
+          : separate ? c.label : 'Sigil conditions';
       const owner = c.scope === 'preset' ? { presetId: space.presetId } : k === 'conditions' ? { species: [] } : { ...c.owner };
       groups.set(k, { scope: c.scope, title, owner, changeIds: [], sideEffects: [] });
     }

@@ -11,6 +11,7 @@ import { jobSignature } from '../jobs.svelte.js';
 import { crusadePowerRequirement } from '../game/pveContent.js';
 import { formatFlat } from '../format.js';
 import { normaliseRelicBudget } from '../search/relicProgression.js';
+import { normaliseIchorBudget } from '../search/boardAllocation.js';
 
 /** Keys a stored target/objective carries beyond the spec itself (the result's echo adds them). */
 const TARGET_ECHO = ['label', 'key', 'mode', 'fidelity', 'assumptions'];
@@ -29,6 +30,7 @@ export const defaultSetup = (defaultEffort = 'standard') => ({
   space: { ...SPACE_DEFAULTS },
   powerFloor: null,
   relicBudget: normaliseRelicBudget(null),
+  boardIchorBudget: null,
   effort: EFFORT_LEVELS.includes(defaultEffort) ? defaultEffort : 'standard',
   seed: 1,
 });
@@ -105,10 +107,12 @@ export function normaliseSetup(raw, character, defaultEffort = 'standard', chara
   if (r.space && typeof r.space === 'object') {
     // An older saved setup did not permit writes to equipment-set stone sockets.
     if (!Object.hasOwn(r.space, 'stones')) out.space.stones = false;
+    if (!Object.hasOwn(r.space, 'boardAllocation')) out.space.boardAllocation = false;
     for (const k of Object.keys(SPACE_DEFAULTS)) if (typeof r.space[k] === 'boolean') out.space[k] = r.space[k];
   }
   out.powerFloor = normalisePowerFloor(r.powerFloor);
   out.relicBudget = normaliseRelicBudget(r.relicBudget);
+  out.boardIchorBudget = normaliseIchorBudget(r.boardIchorBudget);
   if (EFFORT_LEVELS.includes(r.effort)) out.effort = r.effort;
   if (Number.isInteger(r.seed) && r.seed >= 1) out.seed = r.seed;
   return out;
@@ -171,6 +175,7 @@ export function setupFromRun(run, character, defaultEffort = 'standard', charact
       space: run.space,
       powerFloor: run.powerFloor,
       relicBudget: run.relicBudget,
+      boardIchorBudget: run.boardIchorBudget,
       effort: EFFORT_LEVELS.includes(level) ? level : undefined,
       seed: run.seed,
     },
@@ -217,6 +222,7 @@ export function requestOf(setup, character, characters = []) {
     objective: JSON.parse(JSON.stringify(setup.objective)),
     space: { ...setup.space },
     relicBudget: normaliseRelicBudget(setup.relicBudget),
+    boardIchorBudget: normaliseIchorBudget(setup.boardIchorBudget),
     ...(setup.powerFloor != null ? { powerFloor: setup.powerFloor } : {}),
     effort: setup.effort,
     seed: setup.seed,

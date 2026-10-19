@@ -11,8 +11,9 @@
   import { SPACE_DEFAULTS } from '../../lib/search/space.js';
   import NumberField from '../ui/NumberField.svelte';
   import { MEDAL_TIERS, normaliseRelicBudget } from '../../lib/search/relicProgression.js';
+  import { normaliseIchorBudget } from '../../lib/search/boardAllocation.js';
 
-  let { space = $bindable(), relicCap = 0, relicBudget = $bindable(normaliseRelicBudget(null)) } = $props();
+  let { space = $bindable(), relicCap = 0, relicBudget = $bindable(normaliseRelicBudget(null)), boardIchorBudget = $bindable(null) } = $props();
 
   const flip = (key) => (space = { ...space, [key]: !space[key] });
   const groupOn = (g) => g.items.every(([k]) => space[k]);
@@ -45,6 +46,16 @@
       {/if}
     </div>
   {/each}
+  {#if space.boardAllocation}
+    <div class="group" data-testid="board-budget">
+      <NumberField label="Total Ichor capacity per board" value={boardIchorBudget} min={0} max={Number.MAX_SAFE_INTEGER} flat nullable
+        onchange={(value) => (boardIchorBudget = normaliseIchorBudget(value == null ? null : Math.floor(value)))} />
+      <p class="note">Leave blank to reuse each saved board's current Ichor allocation. Enter your total earned capacity to allow more. Boards share capacity, not spending. Equipped Ancient nodes stay allocated. No new board is purchased; any live reset charge is unknown.</p>
+    </div>
+  {/if}
+  {#if space.awakening}
+    <p class="note" data-testid="awakening-cost-warning">Path changes affect every preset. The gem price for a path reset is unknown; check in-game. Levels use earned Awakening points, including the initial path level. Apply changes your local character only.</p>
+  {/if}
   {#if space.relicUpgrades || space.relicPurchases}
     <div class="group" data-testid="relic-budget">
       <span class="cap-label">Medal spending limits</span>
@@ -55,7 +66,7 @@
       <p class="note">Costs are catalogue estimates; check prices in-game. Purchases assume level 1. No medal exchanges or extra slots are included. Apply updates your local build only.</p>
     </div>
   {/if}
-  <p class="note">Stone assignment uses only owned stones in the selected realm. Other presets sharing that gear set are affected. Gear items, stone rolls/levels, Awakening and pet/mount rolls stay fixed.</p>
+  <p class="note">Stone assignment uses only owned stones in the selected realm. Other presets sharing that gear set are affected. Gear items, stone rolls/levels and pet/mount rolls stay fixed.</p>
 </div>
 
 <style>

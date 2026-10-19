@@ -13,6 +13,8 @@ import { stableStringify } from '../engine/metrics.js';
 import { candidateOf, canonical, materialise, savedSockets } from './space.js';
 import { stoneAssignmentViolations } from './stoneAssignments.js';
 import { relicLevelViolations } from './relicProgression.js';
+import { boardAllocationViolations } from './boardAllocation.js';
+import { awakeningViolations } from './awakeningChoices.js';
 
 const CONDITIONS = new Set([DEFAULT_CONDITION, ...ENEMY_CONDITIONS, ...SELF_CONDITIONS]);
 // advisory checkPreset entries that are hard gates for a candidate: the optimiser never suggests an
@@ -29,6 +31,8 @@ function structural(character, presetId, cand, add) {
   if (!cand || typeof cand !== 'object') return add('structural', 'candidate', 'Not an object');
   for (const message of stoneAssignmentViolations(character, cand.stoneAssignment)) add('stones', 'stoneAssignment', message);
   for (const message of relicLevelViolations(character, cand)) add('relics', 'relicLevels', message);
+  for (const message of boardAllocationViolations(character, cand)) add('boardAllocation', 'boardAllocation', message);
+  for (const message of awakeningViolations(character, cand)) add('awakening', 'awakening', message);
   if (cand.equipmentSet !== 1 && cand.equipmentSet !== 2) add('structural', 'equipmentSet', 'Must be 1 or 2');
   if (cand.talentSet !== 0 && cand.talentSet !== 1) add('structural', 'talentSet', 'Must be 0 or 1');
   for (const f of ['petId', 'mountId', 'utilitySigilSpecies', 'ancientSigilSpecies', 'transcendencePresetId']) {

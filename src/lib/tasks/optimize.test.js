@@ -17,10 +17,11 @@ function request(extra = {}) {
 
 describe("task 'optimize'", { timeout: 120000 }, () => {
   it('forwards relic budgets and opt-in permissions through the worker boundary', async () => {
-    const req = request({ relicBudget: { bronze: 3, silver: 0, gold: 0 }, space: { ...RELICS_ONLY, relicUpgrades: true } });
+    const req = request({ relicBudget: { bronze: 3, silver: 0, gold: 0 }, boardIchorBudget: 123, space: { ...RELICS_ONLY, relicUpgrades: true } });
     const r = await runTask('optimize', req);
     expect(r.status).toBe('done');
     expect(r.request.relicBudget).toEqual(req.relicBudget);
+    expect(r.request.boardIchorBudget).toBe(123);
     expect(r.request.space).toMatchObject({ relicUpgrades: true, relicPurchases: false });
   });
   it('ignores a stale v2 flag on the request', async () => {
