@@ -15,11 +15,11 @@ import { push as runPush, PUSH_KIND } from '../search/push.js';
 import { poolScope } from './pool.js';
 
 export async function optimize(request = {}, { signal, onProgress, onCheckpoint, pool } = {}) {
-  const { character, partner, presetId, realm, target, objective, space, effort, seed, powerFloor, relicBudget, resumeFrom, jobId, debug } = request;
+  const { character, partner, presetId, realm, target, objective, space, effort, seed, powerFloor, relicBudget, boardIchorBudget, resumeFrom, jobId, debug } = request;
   const scope = poolScope(pool);
   try {
     const run = objective?.kind === PUSH_KIND ? runPush : runOptimize;
-    return await run({ character, partner, presetId, realm, target, objective, space, effort, seed, powerFloor, relicBudget, resumeFrom, jobId, debug }, { signal, onProgress, onCheckpoint, pool: pool && scope.open });
+    return await run({ character, partner, presetId, realm, target, objective, space, effort, seed, powerFloor, relicBudget, boardIchorBudget, resumeFrom, jobId, debug }, { signal, onProgress, onCheckpoint, pool: pool && scope.open });
   } finally {
     scope.close();
   }

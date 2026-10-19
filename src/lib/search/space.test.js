@@ -100,7 +100,7 @@ describe('block domains', () => {
     const c = fixtureCharacter('WARRIOR');
     const space = createBuildSpace(c, 'p1', { toggles: { relics: false } });
     expect(space.blocks.map((b) => b.id)).toEqual(BLOCKS);
-    expect(Object.entries(SPACE_DEFAULTS).filter(([, on]) => !on).map(([id]) => id)).toEqual(['relicUpgrades', 'relicPurchases']);
+    expect(Object.entries(SPACE_DEFAULTS).filter(([, on]) => !on).map(([id]) => id)).toEqual(['relicUpgrades', 'relicPurchases', 'awakening']);
     expect(block(space, 'relics').enabled).toBe(false);
     expect(block(space, 'relics').domain(space.start)).toEqual([]);
   });

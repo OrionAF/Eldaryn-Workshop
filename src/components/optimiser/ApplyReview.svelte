@@ -41,6 +41,7 @@
               {#each changesOfGroup(row, g) as c (c.id)}
                 <li>{#if c.moved}{c.label}: {c.moved}{:else}{c.label}: {c.from} <span class="arrow">→</span> <b>{c.to}</b>{/if}
                   {#if c.medalCost}<p class="note num">{medalCostText(c.medalCost)}</p>{/if}
+                  {#if c.costNote}<p class="note num">{c.costNote}</p>{/if}
                 </li>
               {/each}
             </ul>

@@ -278,7 +278,9 @@ describe('estimateRun: time', () => {
 // §Estimates), as synthetic saved runs on the Warrior fixture's domains: fed back, the estimate of the same
 // setup reproduces their fights and wall time.
 describe('estimateRun: the real runs as history', () => {
-  const quick = (o) => ({ character, presetId: 'p1', effort: 'quick', seed: 1, ...o });
+  // Preserve the permissions of these historical measurements when new blocks are introduced.
+  const quick = (o) => ({ character, presetId: 'p1', effort: 'quick', seed: 1,
+    space: only(...BLOCKS.filter((id) => !['relicUpgrades', 'relicPurchases', 'boardAllocation', 'awakening'].includes(id))), ...o });
   /** A saved run of request `r`, as model/runs.js normalises it. */
   const saved = (r, { cost, debug, headline = {}, at = '2026-10-15T23:46:10.000Z' }) => {
     const prep = prepare(r);

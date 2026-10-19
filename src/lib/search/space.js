@@ -28,11 +28,13 @@ import { engineView, paretoFilter } from './dominance.js';
 import { EngineInputError } from '../engine/validate.js';
 import { canonicalStoneAssignment, stoneAssignmentNeighbours, stoneSetKey } from './stoneAssignments.js';
 import { canonicalRelicLevels, normaliseRelicBudget, relicLevel, relicProgressionAllowed, relicProgressionNeighbours } from './relicProgression.js';
+import { canonicalBoardAllocation, boardAllocationNeighbours, boardAllocationAllowed, normaliseIchorBudget } from './boardAllocation.js';
+import { canonicalAwakening, awakeningNeighbours, awakeningViolations } from './awakeningChoices.js';
 
 /** Search blocks in their fixed order (A.3). */
 export const BLOCKS = Object.freeze([
   'spec', 'equipmentSet', 'sigils', 'utility', 'ancient', 'conditions', 'relics', 'pet', 'mount',
-  'transcendence', 'minorGlyphs', 'majorGlyphs', 'talents', 'stones', 'relicUpgrades', 'relicPurchases',
+  'transcendence', 'minorGlyphs', 'majorGlyphs', 'talents', 'stones', 'relicUpgrades', 'relicPurchases', 'boardAllocation', 'awakening',
 ]);
 
 /** Blocks whose values the stat-dominance filter prunes (simulation.md §Build space, Dominance). */
@@ -48,7 +50,7 @@ const BLOCK_VALUE = {
 const NO_DOMINANCE_CONTEXT = Object.freeze({ harmless: false, fortressMaxDamage: null, otherThorns: null });
 
 /** Paid progression requires explicit opt-in; existing loadout blocks default on. */
-export const SPACE_DEFAULTS = Object.freeze(Object.fromEntries(BLOCKS.map((b) => [b, !['relicUpgrades', 'relicPurchases'].includes(b)])));
+export const SPACE_DEFAULTS = Object.freeze(Object.fromEntries(BLOCKS.map((b) => [b, !['relicUpgrades', 'relicPurchases', 'awakening'].includes(b)])));
 
 /** What a block writes (data-model.md §2). */
 export const BLOCK_SCOPE = Object.freeze({
@@ -56,6 +58,7 @@ export const BLOCK_SCOPE = Object.freeze({
   conditions: 'character', relics: 'preset', pet: 'preset', mount: 'preset', transcendence: 'preset',
   minorGlyphs: 'mount', majorGlyphs: 'mount', talents: 'character', stones: 'character',
   relicUpgrades: 'character', relicPurchases: 'character',
+  boardAllocation: 'character', awakening: 'character',
 });
 
 export { candidateWrites as candidatePatch };
@@ -151,12 +154,14 @@ export function savedSockets(character, mountId) {
 
 /** The board a candidate stands for (a transcendence preset object, or null). */
 export function boardOf(character, cand) {
-  return resolveTranscendencePreset(character, { transcendencePresetId: cand.transcendencePresetId ?? null });
+  const board = resolveTranscendencePreset(character, { transcendencePresetId: cand.transcendencePresetId ?? null });
+  return board && cand.boardAllocation?.boardId === board.id ? { ...board, allocatedNodeIds: cand.boardAllocation.allocatedNodeIds } : board;
 }
 
 /** The board a candidate's stats run on: boardOf with the level gates applied, as the build does. */
 export function runningBoardOf(character, cand) {
-  return effectiveTranscendencePreset(character, { transcendencePresetId: cand.transcendencePresetId ?? null });
+  const board = effectiveTranscendencePreset(character, { transcendencePresetId: cand.transcendencePresetId ?? null });
+  return board && cand.boardAllocation?.boardId === board.id ? { ...board, allocatedNodeIds: cand.boardAllocation.allocatedNodeIds } : board;
 }
 
 /** The character-wide condition of a sigil (ON_COOLDOWN when none is stored). */
@@ -230,6 +235,10 @@ export function canonical(character, presetOrId, cand) {
     sigilConditions: {},
   };
   const equipped = new Set(equippedOf(out));
+  const boardAllocation = canonicalBoardAllocation(character, cand.boardAllocation);
+  if (boardAllocation) out.boardAllocation = boardAllocation;
+  const awakening = canonicalAwakening(character, cand.awakening);
+  if (awakening) out.awakening = awakening;
   const relicLevels = canonicalRelicLevels(character, cand.relicLevels);
   if (relicLevels) out.relicLevels = relicLevels;
   const stoneAssignment = canonicalStoneAssignment(character, cand.stoneAssignment);
@@ -294,12 +303,16 @@ export function conditionOptionsFor(species, spec, mode) {
  *   dominance context (search/dominance.js dominanceContextOf), default: no target assumption
  */
 export function createBuildSpace(character, presetOrId, {
-  realm = 'base', mode = 'pve', residual = {}, toggles, powerFloor = null, relicBudget, dominance = NO_DOMINANCE_CONTEXT,
+  realm = 'base', mode = 'pve', residual = {}, toggles, powerFloor = null, relicBudget, boardIchorBudget, dominance = NO_DOMINANCE_CONTEXT,
 } = {}) {
   const preset = presetOf(character, presetOrId);
   const presetId = preset.id;
   const on = { ...SPACE_DEFAULTS };
   const medals = normaliseRelicBudget(relicBudget);
+  const ichor = normaliseIchorBudget(boardIchorBudget);
+  const progressionAllowed = (c) => relicProgressionAllowed(character, c, on, medals)
+    && boardAllocationAllowed(character, c, on.boardAllocation, ichor)
+    && (!c.awakening || (on.awakening && !awakeningViolations(character, c).length));
   for (const b of BLOCKS) if (toggles && b in toggles) on[b] = !!toggles[b];
   const cls = character.class;
   const L = LEVEL(character);
@@ -334,6 +347,7 @@ export function createBuildSpace(character, presetOrId, {
    */
   function legalise(c0) {
     const c = canon(c0);
+    if (c.boardAllocation && c.boardAllocation.boardId !== runningBoardOf(character, { ...c, boardAllocation: undefined })?.id) delete c.boardAllocation;
     if (c.stoneAssignment && c.stoneAssignment.setKey !== stoneSetKey(c, realm)) delete c.stoneAssignment;
     const spec = specOf(c);
     if (c.talentAllocation) {
@@ -439,6 +453,8 @@ export function createBuildSpace(character, presetOrId, {
 
   // --- block domains --------------------------------------------------------------------------
   const domains = {
+    boardAllocation(c) { return boardAllocationNeighbours(character, c, ichor).map(legalise); },
+    awakening(c) { return awakeningNeighbours(character, c).map(legalise); },
     relicUpgrades(c) {
       return relicProgressionNeighbours(character, c, { cap: relicCap, upgrades: true, budget: medals, legalise });
     },
@@ -605,7 +621,7 @@ export function createBuildSpace(character, presetOrId, {
   const visit = (id, c) => {
     const mk = `${id}|${key(c)}`;
     if (!domainMemo.has(mk)) {
-      const values = distinct(c, domains[id](canon(c))).filter((v) => relicProgressionAllowed(character, v, on, medals));
+      const values = distinct(c, domains[id](canon(c))).filter(progressionAllowed);
       if (!DOMINANCE_BLOCKS.includes(id) || values.length === 0) domainMemo.set(mk, { values, pruned: [] });
       else {
         // an illegal incumbent (a saved preset legality would repair) dominates nothing
@@ -654,6 +670,7 @@ export function createBuildSpace(character, presetOrId, {
     mode,
     toggles: on,
     relicBudget: medals,
+    boardIchorBudget: ichor,
     start: candidateOf(character, preset),
     blocks,
     key,
@@ -665,7 +682,7 @@ export function createBuildSpace(character, presetOrId, {
     powerFloor: floor,
     powerOf,
     /** False only when a Combat Power floor is set and the candidate's Power is below it. */
-    admissible: (c) => relicProgressionAllowed(character, c, on, medals) && (floor == null || powerOf(c) >= floor),
+    admissible: (c) => progressionAllowed(c) && (floor == null || powerOf(c) >= floor),
     /** Owned mounts the mount block never tries because another owned mount dominates them: [{id, by}]. */
     prunedMounts: (c) => {
       if (!(on.mount && mountsUnlocked(L))) return [];

@@ -46,6 +46,8 @@ export function candidateWrites(character, presetId, cand) {
       transcendencePresetId: link,
     },
     character: {
+      ...(cand.boardAllocation ? { boardAllocation: { boardId: cand.boardAllocation.boardId, allocatedNodeIds: [...cand.boardAllocation.allocatedNodeIds] } } : {}),
+      ...(cand.awakening ? { awakening: { ...cand.awakening } } : {}),
       ...(cand.relicLevels ? { relicLevels: { ...cand.relicLevels } } : {}),
       ...(cand.stoneAssignment ? { stoneAssignment: { setKey: cand.stoneAssignment.setKey, slots: { ...cand.stoneAssignment.slots } } } : {}),
       talentAllocation: cand.talentAllocation ? { talentSet: cand.talentSet, allocation: { ...cand.talentAllocation } } : null,
@@ -71,6 +73,10 @@ export function applyCandidate(character, presetId, cand, { include = SCOPES } =
     out.presets = character.presets.map((p) => (p.id === presetId ? { ...p, ...w.preset } : p));
   }
   if (on.has('character')) {
+    if (w.character.awakening) out.awakening = w.character.awakening;
+    const board = w.character.boardAllocation;
+    if (board) out.transcendence = { ...character.transcendence, presets: character.transcendence.presets.map((p) =>
+      p.id === board.boardId ? { ...p, allocatedNodeIds: [...board.allocatedNodeIds] } : p) };
     if (w.character.relicLevels) out.relics = { ...character.relics, ...w.character.relicLevels };
     const stones = w.character.stoneAssignment;
     if (stones) {

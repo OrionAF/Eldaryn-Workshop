@@ -3,6 +3,7 @@
 // behind it: docs/Reference/simulation.md §Estimates; the procedure it models is §Search (search.js optimize).
 import { BLOCKS } from './space.js';
 import { normaliseRelicBudget } from './relicProgression.js';
+import { normaliseIchorBudget } from './boardAllocation.js';
 import { prepare, enumerateJoint, EXHAUSTIVE_MAX, EFFORT_LEVELS, RANDOM_STARTS } from './search.js';
 import { looksFor } from './sampler.js';
 import { CELESTIAL_TARGET_KIND } from './celestialObjective.js';
@@ -98,7 +99,7 @@ export function sweepBuilds(domains, family) {
 /** Blocks with a choice (more than one value): what the later phases' cost grows with. */
 const choiceBlocks = (domains) => Math.max(1, Object.values(domains ?? {}).filter((n) => n > 1).length);
 
-const enabledIds = (space) => BLOCKS.filter((id) => ['stones', 'relicUpgrades', 'relicPurchases'].includes(id) ? space?.[id] === true : space?.[id] !== false).sort().join(',');
+const enabledIds = (space) => BLOCKS.filter((id) => ['stones', 'relicUpgrades', 'relicPurchases', 'boardAllocation', 'awakening'].includes(id) ? space?.[id] === true : space?.[id] !== false).sort().join(',');
 
 const isPushRun = (r) => r?.objective?.kind === 'push' || isObj(r?.headline?.push);
 
@@ -162,7 +163,8 @@ function runView(r, want) {
 const TIERS = [
   { id: 'same', label: 'your past runs of this setup', scaled: false,
     test: (w, r, v) => v.targetKey === w.targetKey && v.objectiveKind === w.objectiveKind && r.budget?.level === w.level && enabledIds(r.space) === w.blocks
-      && JSON.stringify(normaliseRelicBudget(r.relicBudget)) === JSON.stringify(normaliseRelicBudget(w.relicBudget)) },
+      && JSON.stringify(normaliseRelicBudget(r.relicBudget)) === JSON.stringify(normaliseRelicBudget(w.relicBudget))
+      && normaliseIchorBudget(r.boardIchorBudget) === normaliseIchorBudget(w.boardIchorBudget) },
   { id: 'like', label: 'your past runs like this', scaled: false,
     test: (w, r, v) => r.target?.kind === w.targetKind && v.objectiveKind === w.objectiveKind && r.budget?.level === w.level },
   { id: 'family', label: 'your past runs of the same kind of objective', scaled: false,
@@ -299,7 +301,7 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
   for (const id of enabled) jointSize *= sizes[id] ?? 1;
   const talentsLocal = enabled.has('talents') && (sizes.talents ?? 1) > 1;
   const stonesLocal = enabled.has('stones') && (sizes.stones ?? 1) > 1;
-  const relicsLocal = enabled.has('relicUpgrades') || enabled.has('relicPurchases');
+  const relicsLocal = enabled.has('relicUpgrades') || enabled.has('relicPurchases') || enabled.has('boardAllocation');
   // one sweep from one start: the current build plus every other value of each allowed block
   const sweep = 1 + [...enabled].reduce((s, id) => s + Math.max(0, (sizes[id] ?? 1) - 1), 0);
 
@@ -331,6 +333,7 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
     family, strategy, level: effort.level, targetKey: target.key, targetKind: target.kind, objectiveKind: objective.kind,
     blocks: enabledIds(Object.fromEntries(BLOCKS.map((id) => [id, enabled.has(id)]))),
     relicBudget: space.relicBudget,
+    boardIchorBudget: space.boardIchorBudget,
   };
   const match = matchHistory(want, history);
   const choices = choiceBlocks(sizesOf(enabled, sizes));

@@ -6,6 +6,9 @@ import { normaliseCharacter } from '../model/index.js';
 import { applyCandidate as writeCandidate, SCOPES } from '../search/patch.js';
 import { legalityOf } from '../search/legality.js';
 import { relicLevelViolations } from '../search/relicProgression.js';
+import { boardAllocationViolations } from '../search/boardAllocation.js';
+import { awakeningViolations } from '../search/awakeningChoices.js';
+import { ancientActive, effectiveTranscendencePreset } from '../model/legality.js';
 
 export function createApplyStore(ctx) {
   /**
@@ -24,10 +27,18 @@ export function createApplyStore(ctx) {
       if (!r.ok) return { ok: false, violations: r.violations };
     }
     if (include.includes('character')) {
-      const errors = relicLevelViolations(plain, cand);
-      if (errors.length) return { ok: false, violations: errors.map((detail) => ({ gate: 'relics', field: 'relicLevels', detail })) };
+      const errors = [
+        ...relicLevelViolations(plain, cand).map((detail) => ({ gate: 'relics', field: 'relicLevels', detail })),
+        ...boardAllocationViolations(plain, cand).map((detail) => ({ gate: 'boardAllocation', field: 'boardAllocation', detail })),
+        ...awakeningViolations(plain, cand).map((detail) => ({ gate: 'awakening', field: 'awakening', detail })),
+      ];
+      if (errors.length) return { ok: false, violations: errors };
     }
     const written = writeCandidate(plain, presetId, cand, { include });
+    const selected = written.presets.find((p) => p.id === presetId);
+    if ((include.includes('preset') || cand.boardAllocation) && selected.ancientSigilSpecies && !ancientActive(selected.ancientSigilSpecies, effectiveTranscendencePreset(written, selected))) {
+      return { ok: false, violations: [{ gate: 'ancientBoard', field: 'boardAllocation', detail: 'The equipped Ancient sigil requires its node on the selected board.' }] };
+    }
     if (include.includes('preset') && cand.relicIds.some((id) => !(written.relics?.[id] > 0))) {
       return { ok: false, violations: [{ gate: 'relics', field: 'relicIds', detail: 'Apply a relic purchase together with its equipment change.' }] };
     }

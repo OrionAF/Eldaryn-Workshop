@@ -217,7 +217,7 @@ describe('optimize: coverage (#52, #57, #70)', { timeout: 120000 }, () => {
     // 299 sets in all: the ones tried plus the ones dominance pruned (heal sigils are interchangeable on the dummy)
     const sigils = r.search.blocks.find((b) => b.id === 'sigils');
     expect(sigils.domain + sigils.pruned.length).toBe(299);
-    expect(r.search.blocks.filter((b) => !b.enabled).map((b) => b.id)).toEqual(['relicUpgrades', 'relicPurchases']);
+    expect(r.search.blocks.filter((b) => !b.enabled).map((b) => b.id)).toEqual(['relicUpgrades', 'relicPurchases', 'awakening']);
     expect(r.search.blocks.map((b) => b.status).filter((s) => s === 'not-reached')).toEqual([]);
   }, 120000);
 

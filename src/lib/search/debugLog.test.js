@@ -74,6 +74,7 @@ describe('debug log', { timeout: 600000 }, () => {
 
   it('Builds: one row per build raced, with its phase, block and pass, and fight counts that sum to the run', async () => {
     let checked = 0;
+    let searched = 0;
     for (const req of cases) {
       const r = await optimize({ ...req, debug: 'builds' });
       if (r.status !== 'done') continue;
@@ -87,7 +88,8 @@ describe('debug log', { timeout: 600000 }, () => {
       for (const p of summary.phases) expect(p.fights).toBe(sum(builds.filter((b) => b.phase === p.id).map((b) => b.fights)));
       // the search's rows name the block and pass the step list shows
       const search = builds.filter((b) => b.phase === 'search');
-      expect(search.length).toBeGreaterThan(0);
+      // A sampled set of permissions can have no legal alternatives (e.g. zero paid budget).
+      searched += search.length;
       for (const b of search) {
         expect([...BLOCKS, 'all']).toContain(b.block);
         expect(b.pass).toBeGreaterThanOrEqual(1);
@@ -103,6 +105,7 @@ describe('debug log', { timeout: 600000 }, () => {
       expect(r.debug.slowest.length).toBe(Math.min(20, builds.length));
     }
     expect(checked).toBeGreaterThan(0);
+    expect(searched).toBeGreaterThan(0);
   });
 
   it('Builds and fights: one row per fight, per build matching the build rows, including the pool workers\' fights', async () => {

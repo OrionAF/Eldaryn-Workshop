@@ -5,6 +5,8 @@ import { normaliseCharacter } from '../model/index.js';
 import { applyCandidate } from '../search/patch.js';
 import { candidateOf } from '../search/space.js';
 import { relicsForClass } from '../game/relics.js';
+import { boardKeyFor, canRemoveNode } from '../transcendence.js';
+import { sigilBySpecies } from '../game/sigils.js';
 
 let fixture;
 beforeEach(() => {
@@ -14,6 +16,24 @@ beforeEach(() => {
 });
 
 const plain = () => JSON.parse(JSON.stringify(rosterStore.current));
+
+it('writes board allocations and Awakening locally, preserving other boards, and rejects malformed partial writes', () => {
+  const c = plain(), board = c.transcendence.presets[0];
+  const required = sigilBySpecies(c.presets[0].ancientSigilSpecies)?.transcendenceNode;
+  const leaf = board.allocatedNodeIds.find((id) => id !== required && canRemoveNode(boardKeyFor(c.class), board.allocatedNodeIds, id));
+  expect(leaf).toBeTruthy();
+  const cand = { ...candidateOf(c, 'p1'), boardAllocation: { boardId: board.id, allocatedNodeIds: board.allocatedNodeIds.filter((id) => id !== leaf) },
+    awakening: { path: 'RADIANT', level: 15 } };
+  expect(rosterStore.applyCandidate('p1', { ...cand, boardAllocation: { ...cand.boardAllocation, allocatedNodeIds: ['core'] } }, { include: ['character'] }).ok).toBe(false);
+  expect(rosterStore.applyCandidate('p1', { ...cand, awakening: { path: 'RADIANT', level: 16 } }, { include: ['character'] }).ok).toBe(false);
+  expect(plain()).toEqual(c);
+  expect(rosterStore.applyCandidate('p1', cand, { include: ['character'] }).ok).toBe(true);
+  const next = plain();
+  expect(next.awakening).toEqual(cand.awakening);
+  expect(next.transcendence.presets[0].allocatedNodeIds).toEqual(cand.boardAllocation.allocatedNodeIds);
+  expect(next.transcendence.activePresetId).toBe(c.transcendence.activePresetId);
+  expect(JSON.parse(localStorage.getItem('eldaryn_optimiser_state_v2')).characters[0].awakening).toEqual(cand.awakening);
+});
 
 it('applies a relic purchase locally and rejects equipment-only purchases or partial downgrades', () => {
   const c = plain();

@@ -225,7 +225,7 @@ it('Allowed to change toggles by group, resets, and prints the relic cap', () =>
   });
   const ui = mounted;
   expect(ui.q('[data-testid="relic-cap"]').textContent).toMatch(/4 relic slots/);
-  expect(ui.qa('[data-group]').map((g) => g.dataset.group)).toEqual(['gear', 'talents', 'companions', 'relics', 'sigils', 'transcendence']);
+  expect(ui.qa('[data-group]').map((g) => g.dataset.group)).toEqual(['gear', 'talents', 'companions', 'relics', 'sigils', 'transcendence', 'awakening']);
   const sigils = ui.q('[data-group="sigils"]');
   click([...sigils.querySelectorAll('button')].find((b) => b.textContent.trim() === 'none'));
   expect([state.space.sigils, state.space.utility, state.space.ancient, state.space.conditions]).toEqual([false, false, false, false]);
@@ -236,7 +236,31 @@ it('Allowed to change toggles by group, resets, and prints the relic cap', () =>
 
 it('counts the blocks that may change', () => {
   mounted = setup(SpaceGroups, { space: { ...SPACE_DEFAULTS, sigils: false, utility: false, ancient: false, conditions: false }, relicCap: 2 });
-  expect(mounted.q('.count').textContent).toMatch(/10 of 16 parts may change/);
+  expect(mounted.q('.count').textContent).toMatch(/11 of 18 parts may change/);
+});
+
+it('edits explicit Ichor capacity and explains saved capacity and unknown Awakening prices', () => {
+  const state = { budget: null };
+  mounted = setup(SpaceGroups, { space: { ...SPACE_DEFAULTS, awakening: true },
+    get boardIchorBudget() { return state.budget; }, set boardIchorBudget(v) { state.budget = v; } });
+  const input = mounted.q('[data-testid="board-budget"] input');
+  expect(input.value).toBe('');
+  type(input, '123'); key(input, 'Enter');
+  expect(state.budget).toBe(123);
+  expect(mounted.q('[data-testid="board-budget"]').textContent).toMatch(/reuse each saved board/);
+  expect(mounted.q('[data-testid="awakening-cost-warning"]').textContent).toMatch(/gem price.*unknown/);
+});
+
+it('keeps board/Awakening cost notes when viewing saved results and Apply review', () => {
+  const result = richResult();
+  result.rows[0].changes[0].costNote = 'Path reset: gem price unknown; check in-game.';
+  const run = runFromResult(result, { presetName: 'Main' });
+  mounted = setup(OptimiserResults, { view: viewRun(run), presetName: 'Main' });
+  toggle(mounted, 0);
+  expect(mounted.q('[data-testid="source-cost"]').textContent).toMatch(/gem price unknown/);
+  mounted.done();
+  mounted = setup(ApplyReview, { open: true, row: run.detail.rows[0], presetName: 'Main' });
+  expect(document.body.textContent).toMatch(/gem price unknown/);
 });
 
 it('shows separate opt-in relic controls and commits medal budgets to the setup', () => {

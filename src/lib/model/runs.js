@@ -117,6 +117,7 @@ function normaliseChange(c) {
     keptBecause: KEPT_BECAUSE.includes(c.keptBecause) ? c.keptBecause : null,
     ...(c.free === true ? { free: true } : {}),
     ...(typeof c.moved === 'string' && c.moved ? { moved: c.moved } : {}),
+    ...(typeof c.costNote === 'string' && c.costNote ? { costNote: c.costNote } : {}),
     ...(isObj(c.medalCost) && ['bronze', 'silver', 'gold'].includes(c.medalCost.tier) && Number.isSafeInteger(c.medalCost.amount) && c.medalCost.amount >= 0
       ? { medalCost: { tier: c.medalCost.tier, amount: c.medalCost.amount, estimated: true } } : {}),
   };
@@ -309,6 +310,7 @@ export function normaliseRun(raw) {
     objective: plain(raw.objective),
     seed: num(raw.seed) ?? 1,
     space: plain(raw.space),
+    ...(Number.isSafeInteger(raw.boardIchorBudget) && raw.boardIchorBudget >= 0 ? { boardIchorBudget: raw.boardIchorBudget } : {}),
     ...(isObj(raw.relicBudget) ? { relicBudget: Object.fromEntries(['bronze', 'silver', 'gold'].map((tier) => [tier,
       Number.isSafeInteger(raw.relicBudget[tier]) && raw.relicBudget[tier] >= 0 ? raw.relicBudget[tier] : 0])) } : {}),
     ...(powerFloorOf(raw.powerFloor) != null ? { powerFloor: powerFloorOf(raw.powerFloor) } : {}),
@@ -386,6 +388,7 @@ function runFromResultV2(result, fields) {
     seed: req.seed,
     space: req.space,
     relicBudget: req.relicBudget,
+    boardIchorBudget: req.boardIchorBudget,
     powerFloor: req.powerFloor ?? null,
     budget: req.effort,
     characterKey: req.characterKey,
