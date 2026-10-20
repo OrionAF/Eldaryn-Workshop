@@ -389,7 +389,7 @@
             </ul>
             <ItemEditor value={drop.item} {realm} {...{ slot }} class={character.class} onchange={(item) => rosterStore.setDropItem(item)} />
             {#if dropRows.length}
-              <StatTable rows={dropRows} caption="Stats of this drop" />
+              <StatTable rows={dropRows} playerClass={character.class} caption="Stats of this drop" />
             {/if}
             <Button variant="ghost" size="small" onclick={() => { rosterStore.discardDrop(); setStatus?.('Drop discarded'); }}>Discard this drop</Button>
           </Panel>

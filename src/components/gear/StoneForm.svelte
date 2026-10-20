@@ -16,6 +16,7 @@
   import { stoneRecipe, STONE_STAT_DEFS, MAX_AMPLIFY_LEVEL } from '../../lib/model/stones.js';
   import { slotLabel, statLabel, toDisplay, fromDisplay } from './gearFormat.js';
   import { formatFlat } from '../../lib/format.js';
+  import { orderStats } from '../../lib/ui/statOrder.js';
   import ConfirmButton from '../ConfirmButton.svelte';
   import Checkbox from '../ui/Checkbox.svelte';
   import Select from '../ui/Select.svelte';
@@ -53,7 +54,7 @@
   }
   function freeOptions(i) {
     const taken = new Set([...recipe.guaranteed, ...(choiceStat ? [choiceStat] : []), ...freeKeys.filter((k, j) => j !== i && k)]);
-    return recipe.freePool.filter((e) => !taken.has(e));
+    return orderStats(recipe.freePool.filter((e) => !taken.has(e)), cls);
   }
   const canAdd = $derived(freeKeys.every((k) => k));
 

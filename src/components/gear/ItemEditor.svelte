@@ -13,6 +13,7 @@
   import { RARITIES, secondaryPoolFor, SECONDARY_STAT_POOL, CONDUIT } from '../../lib/game/gear.js';
   import { emptyItem, maxItemLevel, secondarySlots, conduitAllowed, secondaryStatMaxValue, itemStatLevel, itemWarnings } from '../../lib/model/equipment.js';
   import { slotLabel, statLabel, toDisplay, fromDisplay } from './gearFormat.js';
+  import { orderStats } from '../../lib/ui/statOrder.js';
   import Select from '../ui/Select.svelte';
   import NumberField from '../ui/NumberField.svelte';
   import Button from '../ui/Button.svelte';
@@ -34,7 +35,7 @@
   const bump = (key) => (epoch = { ...epoch, [key]: (epoch[key] ?? 0) + 1 });
 
   const item = $derived(value ?? emptyItem());
-  const pool = $derived(cls ? secondaryPoolFor(cls) : SECONDARY_STAT_POOL);
+  const pool = $derived(orderStats(cls ? secondaryPoolFor(cls) : SECONDARY_STAT_POOL, cls, (stat) => stat.type));
   const rowCount = $derived(secondarySlots(item.rarity));
   const typeOptions = (i) => [{ value: '', label: 'None' }, ...optionsFor(i).map((s) => ({ value: s.type, label: s.label }))];
   const rarityOptions = [{ value: '', label: 'Unknown' }, ...RARITIES.map((r) => ({ value: r.id, label: r.name }))];

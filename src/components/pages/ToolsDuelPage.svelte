@@ -28,6 +28,7 @@
     requiredStatsText,
   } from '../../lib/features/duel.js';
   import { fmtCount } from '../../lib/ui/statsFormat.js';
+  import { orderStats, orderedStatLabel } from '../../lib/ui/statOrder.js';
   import { duelVerdictText, duelHeadline, duelJobChips } from '../../lib/ui/duelFormat.js';
   import Panel from '../ui/Panel.svelte';
   import Tabs from '../ui/Tabs.svelte';
@@ -212,7 +213,8 @@
     });
   });
 
-  const columns = $derived(opponent && !blockers.length ? simulatedColumns(mine, theirs) : []);
+  const columns = $derived(opponent && !blockers.length ? orderStats(simulatedColumns(mine, theirs), character.class, (row) => row.key)
+    .map((row) => ({ ...row, label: orderedStatLabel(row.key, row.label, character.class) })) : []);
   const verifyFighters = $derived(
     opponent && !blockers.length
       ? { ...arrange(mine, theirs, 'attacker'), label: `${preset.name} vs ${opponent.name}` }

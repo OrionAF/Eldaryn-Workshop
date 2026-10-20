@@ -9,13 +9,14 @@
    */
   import { glyphTypeInfo, glyphSecondaryDef, glyphSecondaryQuality, glyphSecondaryValue, GLYPH_SECONDARY_STATS } from '../../lib/model/glyphs.js';
   import { glyphImage } from '../../lib/assets/glyphs.js';
+  import { orderStats } from '../../lib/ui/statOrder.js';
   import ConfirmButton from '../ConfirmButton.svelte';
   import Select from '../ui/Select.svelte';
   import NumberField from '../ui/NumberField.svelte';
   import Button from '../ui/Button.svelte';
   import { TIER_LABELS, glyphText, majorText, rarityClass, secondaryUnit, statLabel } from './mountsView.js';
 
-  let { glyph, mountName = null, inertIn = [], onUpdate, onRemove } = $props();
+  let { glyph, playerClass = null, mountName = null, inertIn = [], onUpdate, onRemove } = $props();
 
   const info = $derived(glyphTypeInfo(glyph.glyphType));
   const art = $derived(glyphImage(info?.tier, glyph.rarity));
@@ -23,7 +24,7 @@
   const value = $derived(glyph.secondary ? glyphSecondaryValue(glyph.secondary) : '');
   const def = $derived(glyphSecondaryDef(stat));
 
-  const statOptions = [{ value: '', label: 'None entered' }, ...GLYPH_SECONDARY_STATS.map((s) => ({ value: s, label: statLabel(s) }))];
+  const statOptions = $derived([{ value: '', label: 'None entered' }, ...orderStats(GLYPH_SECONDARY_STATS, playerClass).map((s) => ({ value: s, label: statLabel(s) }))]);
 
   function setStat(next) {
     onUpdate({ secondary: next ? { stat: next, quality: glyphSecondaryQuality(next, value === '' ? 0 : value) } : null });

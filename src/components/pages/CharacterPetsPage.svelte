@@ -24,6 +24,7 @@
   import Modal from '../Modal.svelte';
   import { tierChangeLosses } from '../../lib/build/usage.js';
   import PetCard from '../pets/PetCard.svelte';
+  import { orderStats } from '../../lib/ui/statOrder.js';
 
   // eslint-disable-next-line no-unused-vars
   let { setStatus = () => {}, onNavigate = () => {}, tab = null } = $props();
@@ -32,7 +33,7 @@
   const altar = $derived(character.pets.altar);
   const owned = $derived(character.pets.owned);
   const evolved = $derived(altar.tier >= 2);
-  const types = $derived(secondaryTypesFor(character.class));
+  const types = $derived(orderStats(secondaryTypesFor(character.class), character.class));
   const species = PET_SPECIES.toSorted((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || a.name.localeCompare(b.name));
 
   let newSpecies = $state(species[0].id);

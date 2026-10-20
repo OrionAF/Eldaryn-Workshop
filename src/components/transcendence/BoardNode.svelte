@@ -3,19 +3,20 @@
    * TranscendenceNode.svelte - one node in the Transcendence grid, positioned
    * absolutely by its caller (TranscendenceGrid) via CSS custom properties.
    * Shape encodes rarity (circle/square/hexagon/large hexagon), a small
-   * inline SVG icon encodes category (sword/shield/scroll) - the first icon
-   * assets in the app (everywhere else uses plain Unicode glyphs).
+   * extracted emblem encodes stat category; sockets retain their scroll symbol.
    *
    * Purely presentational + a click handler - adjacency/unlock validity is
    * decided by the caller (the store rejects an invalid allocation), this component just reflects `unlocked`/`unlockable`
    * state and forwards taps/hovers.
    */
   import { KIND_LABEL } from './statLabels.js';
+  import { transcendenceImage } from '../../lib/assets/transcendence.js';
 
   let { node, unlocked = false, unlockable = false, highlighted = false, onSelect = null, onHover = null } = $props();
 
   const SIDE_ICON = { attack: 'sword', defense: 'shield' };
   const icon = $derived(node.kind === 'socket' ? 'scroll' : (SIDE_ICON[node.side] ?? null));
+  const emblem = $derived(transcendenceImage(node));
   const inert = $derived(node.kind === 'socket' || node.kind === 'start');
 </script>
 
@@ -33,7 +34,9 @@
   onpointerenter={(e) => onHover?.(node, e.clientX, e.clientY)}
   onpointerleave={() => onHover?.(null)}
 >
-  {#if icon === 'sword'}
+  {#if emblem}
+    <img class="emblem" src={emblem} alt="" draggable="false" />
+  {:else if icon === 'sword'}
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
       <!-- blade -->
       <path d="M19.5 3 9.5 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
@@ -163,5 +166,11 @@
   .icon {
     width: 55%;
     height: 55%;
+  }
+  .emblem {
+    width: 90%;
+    height: 90%;
+    object-fit: contain;
+    pointer-events: none;
   }
 </style>

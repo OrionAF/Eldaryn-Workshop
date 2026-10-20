@@ -11,3 +11,4 @@ export * from './assets/pets.js';
 export * from './assets/sigils.js';
 export * from './assets/glyphs.js';
 export * from './assets/relics.js';
+export * from './assets/transcendence.js';

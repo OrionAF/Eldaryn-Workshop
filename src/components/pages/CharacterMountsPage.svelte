@@ -137,6 +137,7 @@
             <div class="glyph-grid">
               {#each group.items as glyph (glyph.id)}
                 <GlyphCard
+                  playerClass={character.class}
                   {glyph}
                   mountName={mountList(mountsOfGlyph(glyph.id))}
                   inertIn={inert.get(glyph.id) ?? []}
