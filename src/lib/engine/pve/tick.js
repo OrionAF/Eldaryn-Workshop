@@ -352,10 +352,11 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
       // the enemy hits the minion (L1087238-1087328); the crit draw happens even at 0% crit
       const isCrit = lane(E, 'crit')() * 100 < enemy.critChance;
       const raw = isCrit ? Math.round(enemy.attack * enemy.critDamage) : enemy.attack;
-      const r = damageMinion(minion, raw);
+      const r = damageMinion(minion, raw, { swing: true, penetration: enemy.penetration }, lane(E, 'minion-block'));
       defHp = enemyLifesteal(enemy, defHp, r.dealt);
       events.push({
         timestamp, type: 'minion_damaged', damage: r.dealt, attackerHp: atkHp, defenderHp: defHp,
+        ...(r.blocked ? { minionBlocked: true } : {}),
         ...(isCrit ? { isCrit: true } : {}),
       });
       if (r.died) {
@@ -363,6 +364,13 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
           timestamp, type: 'minion_dead', damage: 0, attackerHp: atkHp, defenderHp: defHp,
           ...minionDeathMeta(minion),
         });
+      }
+      if (r.thorns > 0 && defHp > 0) {
+        const reflected = Math.min(defHp, cutBy(r.thorns, attackerOutputMult));
+        defHp -= reflected;
+        dealt += reflected;
+        events.push({ timestamp, type: 'minion_thorns', damage: reflected, attackerHp: atkHp, defenderHp: defHp });
+        if (defHp <= 0) events.push({ timestamp, type: 'defender_dead', damage: 0, attackerHp: atkHp, defenderHp: 0 });
       }
     } else {
       const negate = player.blockChance + player.missChance;

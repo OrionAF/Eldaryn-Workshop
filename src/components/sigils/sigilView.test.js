@@ -2,6 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { spellRows, sigilSpellBlocks, statName, conditionLabel } from './sigilView.js';
 
 describe('sigilView', () => {
+  it('shows the 2.7.5 curse stack limit and level-scaled damage', () => {
+    const rows = sigilSpellBlocks('TYRANTS_BURDEN', 100)[0].rows;
+    expect(rows).toContainEqual({ label: 'Damage', value: '130% of Attack' });
+    expect(rows).toContainEqual({ label: 'Attack down', value: '5% per stack, up to 20%' });
+  });
   it('shows scaled numbers from sigilScale: Blade of Judgment 80% grows 8% per level, capped at 120', () => {
     // L5: scale 1 + 4*0.08 = 1.32; 80 * 1.32 = 105.6. L20: 80 * 2.52 = 201.6 -> cap 120.
     expect(sigilSpellBlocks('BLADE_OF_JUDGMENT', 5)[0].rows).toEqual([

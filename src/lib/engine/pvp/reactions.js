@@ -54,12 +54,14 @@ const IRON_BASTION = 'IRON_BASTION';
 export const ATTACKER_DAMAGE_EVENTS = new Set([
   'attacker_hit', 'attacker_crit', 'defender_block', 'defender_miss', 'attacker_spell_damage',
   'attacker_spell_dot_tick', 'attacker_spell_debuff_tick', 'attacker_thorns_reflect', 'defender_minion_damaged',
+  'attacker_minion_thorns',
 ]);
 
 /** Event types whose `damage` the defender side dealt (closure slot 15). */
 export const DEFENDER_DAMAGE_EVENTS = new Set([
   'defender_hit', 'defender_crit', 'attacker_block', 'attacker_miss', 'defender_spell_damage',
   'defender_spell_dot_tick', 'defender_spell_debuff_tick', 'defender_thorns_reflect', 'attacker_minion_damaged',
+  'defender_minion_thorns',
 ]);
 
 // port of shieldBaseFor L1455714-1455733

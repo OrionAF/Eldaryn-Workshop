@@ -9,7 +9,7 @@
 import { PVP_RATING } from '../../game/stats.js';
 import { castLockoutMs } from '../core/stances.js';
 import { processSpellsTick } from '../core/spells.js';
-import { applyDebuff, computeDebuffModifiers } from '../core/debuffs.js';
+import { applyDebuff, computeDebuffModifiers, weakenedAttack } from '../core/debuffs.js';
 import { getBuffedMaxHp } from '../core/buffs.js';
 import { absorbWithShield, shieldRefillAmount } from '../core/shield.js';
 import {
@@ -154,7 +154,7 @@ export function processArenaSpells(runtimes, input, rng) {
   si.maxHp = caster.maxHp;
   si.dtMs = dtMs;
   si.timestamp = timestamp;
-  si.attack = caster.attack;
+  si.attack = weakenedAttack(caster.attack, casterDebuffs);
   si.healReductionPercent = woundPercent;
   si.hp = caster.hp;
   si.enemyHp = target.hp;

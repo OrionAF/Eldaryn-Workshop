@@ -126,15 +126,24 @@ export function processAttack(atk, def, t, atkIsAttacker, maxHp, defMinion, rng,
     const roll = rollAttackDamage(atk, X);
     const strikes = [{ damage: roll.damage, isCrit: roll.isCrit, doubleHit: false }];
     if (roll.isDoubleHit) strikes.push({ damage: roll.doubleHitDamage, isCrit: false, doubleHit: true });
+    let thorns = 0;
     for (const s of strikes) {
       if (!defMinion.alive) break;
-      const r = damageMinion(defMinion, s.damage);
+      const r = damageMinion(defMinion, s.damage, { swing: !s.doubleHit, followUp: s.doubleHit, penetration: atk.penetration }, lane(X, 'minion-block'));
+      thorns += r.thorns ?? 0;
       applyLifesteal(atk, r.dealt, cap);
       const extra = {};
       if (s.isCrit) extra.isCrit = true;
       if (s.doubleHit) extra.doubleHit = true;
+      if (r.blocked) extra.minionBlocked = true;
       emit(`${T}_minion_damaged`, r.dealt, extra);
       if (r.died) emit(`${T}_minion_dead`, 0, minionDeathMeta(defMinion));
+    }
+    if (thorns > 0 && atk.hp > 0 && def.hp > 0) {
+      const absorbed = absorbWithShield(atk.shieldHp, thorns);
+      atk.shieldHp = absorbed.shieldHp;
+      atk.hp -= absorbed.hpDamage;
+      emit(`${T}_minion_thorns`, thorns);
     }
     return events;
   }

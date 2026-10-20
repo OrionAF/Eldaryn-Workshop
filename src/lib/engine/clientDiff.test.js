@@ -87,10 +87,10 @@ describe('caps (stats.md §2, L1080181-1080486)', () => {
   const valueFor = (g, cfg) => g.num(-10, Math.max(cfg.hard, cfg.soft) * 1.5 + 5,
     [cfg.soft, cfg.hard, 0, -0, Infinity, -Infinity, cfg.soft + 1e-9, cfg.hard - 1e-9]);
 
-  it('the catalogue soft caps and combat ceilings are the client literals', () => {
+  it('caps match the 2.7.0 literals except the verified 2.7.5 Spell Resist update', () => {
     for (const s of STATS) {
       const id = s.enumName;
-      expect(caps.capConfig(id), id).toStrictEqual(C.SOFT_CAPS[id] ?? null);
+      expect(caps.capConfig(id), id).toStrictEqual(id === 'SPELL_RESIST' ? { soft: 40, hard: 90 } : C.SOFT_CAPS[id] ?? null);
       expect(caps.ceilingFor(id), id).toBe(C.COMBAT_CEILINGS[id] ?? null);
     }
     for (const id of [...ids, ...Object.keys(C.COMBAT_CEILINGS)]) expect(STATS.some((s) => s.enumName === id), id).toBe(true);

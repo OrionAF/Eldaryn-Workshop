@@ -73,6 +73,7 @@ export const SIDE_EVENT_KINDS = Object.freeze([
   'hit', 'crit', 'miss', 'block', 'blind', 'blinded', 'paralyze', 'paralyzed', 'fear', 'feared',
   'silenced', 'staggered', 'dazed', 'regen', 'thorns_reflect', 'dead',
   'minion_summoned', 'minion_hit', 'minion_crit', 'minion_damaged', 'minion_dead', 'minion_heal',
+  'minion_thorns',
   'spell_cast', 'spell_damage', 'spell_dot_tick', 'spell_heal_tick', 'spell_buff_start', 'spell_end',
   'spell_debuff_applied', 'spell_debuff_stack', 'spell_debuff_tick', 'spell_debuff_expired',
   'minion_buff', 'minion_buff_end',

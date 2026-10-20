@@ -5,9 +5,9 @@ import {
 } from './sigils.js';
 
 describe('game/sigils catalogue', () => {
-  it('has 62 species with unique keys', () => {
-    expect(SIGIL_CATALOGUE).toHaveLength(62);
-    expect(new Set(SIGIL_CATALOGUE.map((s) => s.species)).size).toBe(62);
+  it('has 64 species with unique keys', () => {
+    expect(SIGIL_CATALOGUE).toHaveLength(64);
+    expect(new Set(SIGIL_CATALOGUE.map((s) => s.species)).size).toBe(64);
   });
   it('spot values', () => {
     expect(sigilBySpecies('BERSERK_STANCE')).toMatchObject({ rarity: 'Common', baseAttack: 166, baseHp: 1300 });
@@ -59,7 +59,7 @@ describe('sigilsForClassSpec', () => {
     expect(sigilsForClassSpec('WARRIOR', 'WARRIOR_DPS').map((s) => s.species)).toContain('FLAMEBORN');
     expect(sigilsForClassSpec('SENTINEL', 'SENTINEL_DISRUPTION').map((s) => s.species)).toContain('STORMCALLER');
     expect(sigilsForClassSpec('SENTINEL', 'SENTINEL_DISRUPTION').map((s) => s.species)).not.toContain('EARTHWARDEN');
-    expect(sigilsForClassSpec('NECROMANCER', 'NECROMANCER_DOOMWEAVER')).toHaveLength(10);
+    expect(sigilsForClassSpec('NECROMANCER', 'NECROMANCER_DOOMWEAVER')).toHaveLength(12);
     expect(sigilsForClassSpec('MYSTIC', 'MYSTIC_MAGE')).toHaveLength(15);
     expect(sigilsForClassSpec('MYSTIC', 'MYSTIC_DRUID')).toHaveLength(15);
   });

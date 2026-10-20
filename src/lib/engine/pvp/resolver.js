@@ -19,7 +19,7 @@ import {
   EMPTY_BUFF_MODIFIERS,
 } from '../core/spells.js';
 import {
-  initDebuffState, processDebuffsTick, computeDebuffModifiers, slowedAttackSpeed,
+  initDebuffState, processDebuffsTick, computeDebuffModifiers, slowedAttackSpeed, weakenedAttack,
 } from '../core/debuffs.js';
 import { applyBuffsToEntity, hasActiveBuffs, getBuffedMaxHp } from '../core/buffs.js';
 import { absorbWithShield } from '../core/shield.js';
@@ -285,6 +285,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     undoCrit();
     undoStack();
     atk.hp = atkE.hp;
+    atk.shieldHp = atkE.shieldHp;
     def.hp = defE.hp;
     def.shieldHp = defE.shieldHp;
     syncStatus(A, isAttacker ? atkE : defE);
@@ -415,16 +416,21 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
 
     // the attacker swings first (L1456989-1457109) ...
     const undoElusiveA = R.applyElusiveToSwinger(aE, aStack);
+    const attackA = aE.attack;
+    aE.attack = weakenedAttack(attackA, aDebuffs);
     const intervalA = Math.round(1000 / slowedAttackSpeed(aE.attackSpeed, aDebuffs));
     if (swingA >= intervalA) {
       swingA -= intervalA;
       swing(aE, dE, A, D, t, true, aMaxHp, dMin, aDebuffs, dStack, aStack);
     }
+    aE.attack = attackA;
     undoElusiveA();
     if (aMin) R.minionStrike(aMin, 'attacker', D, dE, dStack, aStack);
 
     // ... then the defender, even if the attacker's swing killed it (L1457110-1457230)
     const undoElusiveD = R.applyElusiveToSwinger(dE, dStack);
+    const attackD = dE.attack;
+    dE.attack = weakenedAttack(attackD, dDebuffs);
     const intervalD = Math.round(1000 / slowedAttackSpeed(dE.attackSpeed, dDebuffs));
     if (swingD >= intervalD) {
       swingD -= intervalD;
@@ -438,6 +444,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
         swing(dE, aE, D, A, t, false, dMaxHp, aMin, dDebuffs, aStack, dStack);
       }
     }
+    dE.attack = attackD;
     undoElusiveD();
     if (dMin) R.minionStrike(dMin, 'defender', A, aE, aStack, dStack);
 

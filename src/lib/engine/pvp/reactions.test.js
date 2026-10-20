@@ -261,8 +261,10 @@ describe('tagShieldSnapshots / tagMinionSnapshots (L1455280-1455346)', () => {
 describe('finishMinionTick / killMinionsOfDead (L1455347-1455562)', () => {
   it('event sets partition the damage events', () => {
     for (const t of ATTACKER_DAMAGE_EVENTS) expect(DEFENDER_DAMAGE_EVENTS.has(t)).toBe(false);
-    expect(ATTACKER_DAMAGE_EVENTS.size).toBe(9);
-    expect(DEFENDER_DAMAGE_EVENTS.size).toBe(9);
+    expect(ATTACKER_DAMAGE_EVENTS.size).toBe(10);
+    expect(DEFENDER_DAMAGE_EVENTS.size).toBe(10);
+    expect(ATTACKER_DAMAGE_EVENTS.has('attacker_minion_thorns')).toBe(true);
+    expect(DEFENDER_DAMAGE_EVENTS.has('defender_minion_thorns')).toBe(true);
   });
 
   it('soul-link heals each minion from its own side\'s damage, logging the HP gained', () => {

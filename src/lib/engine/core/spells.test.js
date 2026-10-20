@@ -98,14 +98,14 @@ describe('momentum (L1089596-1089841)', () => {
 });
 
 describe('processSpellsTick: DAMAGE hit, modSpellDmg and k (L1090892-1090927, L1091897-1092198)', () => {
-  // trace: base floor(1000*55/100)=550; x(1+20/100)=660; R=min(70,60)=60 -> k=0.4; floor(264)=264
-  it('k = 1 - min(R, SPELL_RESIST.hard 60)/100 after the Spell Damage multiplier', () => {
+  // 2.7.5: floor(1000*.55)=550; x1.2=660; resist 70 is below the new hard cap.
+  it('k uses the 2.7.5 Spell Resist hard cap after the Spell Damage multiplier', () => {
     const rts = ready([cfg('BLADE', blade())]);
     const r = processSpellsTick(rts, { ...base, spellDamage: 20, targetSpellResist: 70 }, none());
-    expect(r.targetHpDelta).toBe(-264);
+    expect(r.targetHpDelta).toBe(-198);
     expect(r.events).toEqual([
       { timestamp: 5000, type: 'spell_cast', value: 0, spell: ref('BLADE') },
-      { timestamp: 5000, type: 'spell_damage', value: 264, spell: ref('BLADE') },
+      { timestamp: 5000, type: 'spell_damage', value: 198, spell: ref('BLADE') },
     ]);
     expect(rts[0].cooldownRemaining).toBe(8000);
     expect(Object.keys(r)).toEqual(['ownerHpDelta', 'ownerVampHeal', 'targetHpDelta', 'events', 'buffModifiers', 'newDebuffs']);
