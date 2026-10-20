@@ -5,7 +5,7 @@
 
 import { lane } from '../rng.js';
 
-/** @typedef {'BLEED'|'POISON'|'WOUND'|'SLOW'|'CRIT_DOWN'} DebuffType */
+/** @typedef {'BLEED'|'POISON'|'WOUND'|'SLOW'|'CRIT_DOWN'|'ATTACK_DOWN'} DebuffType */
 
 export const DEBUFF_TYPES = Object.freeze({
   BLEED: 'BLEED',
@@ -13,10 +13,13 @@ export const DEBUFF_TYPES = Object.freeze({
   WOUND: 'WOUND',
   SLOW: 'SLOW',
   CRIT_DOWN: 'CRIT_DOWN',
+  ATTACK_DOWN: 'ATTACK_DOWN',
 });
 
 /** Cap on the summed SLOW reduction, percent (module constant slot1 = 50, L1093998). */
 export const SLOW_REDUCTION_CAP = 50;
+/** [CODE, 2.7.5] Game/updates-2.7.5.md §3. */
+export const ATTACK_REDUCTION_CAP = 50;
 /** Cap on the summed WOUND regen reduction, percent (computeDebuffModifiers, min(sum, 100)). */
 export const WOUND_REDUCTION_CAP = 100;
 /** Default crit multiplier of a damage-over-time tick. */
@@ -28,7 +31,7 @@ export const DEFAULT_DOT_CRIT_MULT = 1.5;
  * @property {DebuffType} type
  * @property {{durationMs: number, maxStacks: number, tickIntervalMs?: number,
  *   regenReductionPercent?: number, attackSpeedReductionPercent?: number,
- *   critChanceReduction?: number}} config
+ *   critChanceReduction?: number, attackReductionPerStack?: number}} config
  * @property {number} [damagePerTickFlat]  one stack's damage per tick (> 0 for a DoT)
  * @property {number} [critChance]  percent, tick crit chance
  * @property {number} [critMult]    default 1.5
@@ -94,6 +97,7 @@ export function newFeeder(slot, spec) {
     regenReductionPercent: n0(c.regenReductionPercent),
     attackSpeedReductionPercent: n0(c.attackSpeedReductionPercent),
     critChanceReduction: n0(c.critChanceReduction),
+    ...(c.attackReductionPerStack ? { attackReductionPerStack: c.attackReductionPerStack } : {}),
   };
 }
 
@@ -128,6 +132,7 @@ export function feedSharedInstance(inst, spec, slot) {
         regenReductionPercent: inst.regenReductionPercent,
         attackSpeedReductionPercent: n0(inst.attackSpeedReductionPercent),
         critChanceReduction: n0(inst.critChanceReduction),
+        ...(inst.attackReductionPerStack ? { attackReductionPerStack: inst.attackReductionPerStack } : {}),
       },
     ];
     inst.partyFeeders = feeders;
@@ -153,6 +158,7 @@ export function feedSharedInstance(inst, spec, slot) {
     inst.attackSpeedReductionPercent = fe.attackSpeedReductionPercent;
   }
   if (fe.critChanceReduction > n0(inst.critChanceReduction)) inst.critChanceReduction = fe.critChanceReduction;
+  if (n0(fe.attackReductionPerStack) > n0(inst.attackReductionPerStack)) inst.attackReductionPerStack = fe.attackReductionPerStack;
   if (!inst.isPermanent) {
     let longest = 0;
     for (const f of feeders) if (isLiveFeeder(f) && f.remainingMs > longest) longest = f.remainingMs;
@@ -196,6 +202,7 @@ export function applyDebuff(state, spec, timestamp, ctx = null) {
     };
     if (cfg.attackSpeedReductionPercent) d.attackSpeedReductionPercent = cfg.attackSpeedReductionPercent;
     if (cfg.critChanceReduction) d.critChanceReduction = cfg.critChanceReduction;
+    if (cfg.attackReductionPerStack) d.attackReductionPerStack = cfg.attackReductionPerStack;
     d.damagePerTickFlat = dptSpec;
     d.stackDamages = dptSpec > 0 ? [dptSpec] : [];
     d.tickIntervalMs = n0(cfg.tickIntervalMs);
@@ -260,7 +267,9 @@ export function computeDebuffModifiers(state) {
   let wound = 0;
   let slow = 0;
   let critDown = 0;
+  let attackDown = 0;
   for (const d of state) {
+    if (d.type === DEBUFF_TYPES.ATTACK_DOWN && d.attackReductionPerStack > 0) attackDown += d.stacks * d.attackReductionPerStack;
     if (d.type === DEBUFF_TYPES.WOUND && d.regenReductionPercent > 0) wound += d.regenReductionPercent;
     if (d.type === DEBUFF_TYPES.SLOW) {
       const v = n0(d.attackSpeedReductionPercent);
@@ -274,7 +283,15 @@ export function computeDebuffModifiers(state) {
   const out = { regenReductionPercent: Math.min(wound, WOUND_REDUCTION_CAP) };
   if (slow > 0) out.attackSpeedReductionPercent = Math.min(slow, SLOW_REDUCTION_CAP);
   if (critDown > 0) out.critChanceReduction = critDown;
+  if (attackDown > 0) out.attackReductionPercent = Math.min(attackDown, ATTACK_REDUCTION_CAP);
   return out;
+}
+
+/** [CODE, 2.7.5] Applies to current attack, without mutating its source; Game/updates-2.7.5.md §3. */
+export function weakenedAttack(attack, state) {
+  if (!state?.length) return attack;
+  const reduction = computeDebuffModifiers(state).attackReductionPercent ?? 0;
+  return reduction > 0 ? Math.floor(attack * (1 - reduction / 100)) : attack;
 }
 
 // port of processDebuffsTick L1093653-1093868

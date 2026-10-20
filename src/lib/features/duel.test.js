@@ -178,6 +178,12 @@ describe('duel task', () => {
   });
 });
 
+it('counts Greater Demon thorns as damage dealt by the minion owner', () => {
+  const event = { type: 'attacker_minion_thorns', damage: 14 };
+  expect(classifyDuelEvent(event)).toEqual({ lane: 'attacker', mark: 'damage', amount: 14 });
+  expect(traceSummary([event]).attacker.damage).toBe(14);
+});
+
 describe('opponents with sparse sheets (plan E3)', () => {
   const sparse = (spec, values, utility) => {
     const o = newOpponent(spec, 'Sparse');

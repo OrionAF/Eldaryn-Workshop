@@ -68,6 +68,7 @@ export function spellRows(spell, type) {
       if (spell.slow) add('Slow', pct(spell.slow.attackSpeedReductionPercent));
       if (spell.wound) add('Wound (regen)', `-${pct(spell.wound.regenReductionPercent)}`);
       if (spell.critDown) add('Crit Chance down', pct(spell.critDown.critChanceReduction));
+      if (spell.attackDown) add('Attack down', `${pct(spell.attackDown.reductionPerStack)} per stack, up to ${pct(spell.attackDown.reductionPerStack * spell.attackDown.maxStacks)}`);
       if (spell.paralyzeMs) add('Paralyze', secs(spell.paralyzeMs));
       if (spell.fearMs) add('Fear', secs(spell.fearMs));
       if (spell.silenceMs) add('Silence', secs(spell.silenceMs));

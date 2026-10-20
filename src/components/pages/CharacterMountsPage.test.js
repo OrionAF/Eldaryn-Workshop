@@ -146,6 +146,24 @@ it('a minor glyph secondary is entered as stat + value', () => {
   expect(target.textContent).toContain('0.6-5');
 });
 
+it('shows and edits Crit Damage as percent while saving its fractional roll', async () => {
+  const { glyphSecondaryValue } = await import('../../lib/model/glyphs.js');
+  const { setField } = await import('../gear/fieldKit.js');
+  addGlyphUi({ tier: 'minor', glyphType: 'g-quick' });
+  pick(field(target, 'Secondary stat'), 'critDamage');
+  setField(field(target, 'Secondary value'), '9');
+  expect(field(target, 'Secondary value').value).toBe('9');
+  expect(target.querySelector('.glyph-card .unit').textContent).toBe('%');
+  expect(target.textContent).toContain('Range 5-30%');
+  expect(glyphSecondaryValue(rosterStore.current.glyphs[0].secondary)).toBe(0.09);
+  setField(field(target, 'Secondary value'), '10');
+  expect(rosterStore.current.glyphs[0].secondary.quality).toBeCloseTo(0.2);
+  pick(field(target, 'Secondary stat'), 'attackSpeed');
+  setField(field(target, 'Secondary value'), '0.06');
+  expect(glyphSecondaryValue(rosterStore.current.glyphs[0].secondary)).toBe(0.06);
+  expect(target.querySelector('.glyph-card .unit')).toBeNull();
+});
+
 it('a character with a different class sees that class\'s majors after switching', () => {
   showTab('Glyph inventory');
   rosterStore.setCharacterClass(rosterStore.current.id, 'MYSTIC');

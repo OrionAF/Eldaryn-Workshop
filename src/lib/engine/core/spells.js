@@ -358,7 +358,7 @@ export function processSpellsTick(runtimes, input, rng) {
   const mom = () => (hasMomentum ? momentumBonuses(runtimes) ?? ZERO_MOMENTUM : ZERO_MOMENTUM);
   const resistMult = 1 - Math.min(targetSpellResist, SPELL_RESIST_HARD) / 100;
 
-  // modSpellDmg L1090892-1090927. `k` of the old docs is resistMult: 1 - min(R, 60)/100.
+  // modSpellDmg L1090892-1090927; resist cap follows Game/updates-2.7.5.md §1.
   const modSpellDmg = (base) => {
     if (base <= 0) return 0;
     const pct = spellDamage + activeSpellStatBuff('SPELL_DAMAGE') + mom().spellDamagePercent;
@@ -442,6 +442,16 @@ export function processSpellsTick(runtimes, input, rng) {
         const base = spell.attackPercent ? Math.floor((attack * spell.attackPercent) / 100) : spell.damagePerTick ?? 0;
         dealSpellDamage(base, crit, 'spell_dot_tick', spellRef);
         if (spell.blindOnTick) blinded = true;
+        // The first DoT tick is immediate on the next engine tick. Later applications
+        // retain the original end time, including at the stack cap (updates-2.7.5.md §3).
+        if (spell.attackDown && Math.floor(((spell.durationMs ?? 0) - rt.effectRemaining) / (spell.tickIntervalMs ?? 1000)) + 1 <= spell.attackDown.maxStacks) {
+          newDebuffs.push({
+            type: DEBUFF_TYPES.ATTACK_DOWN,
+            config: { durationMs: rt.effectRemaining, maxStacks: spell.attackDown.maxStacks, attackReductionPerStack: spell.attackDown.reductionPerStack },
+            damagePerTickFlat: 0,
+            source: spellRef,
+          });
+        }
         rt.nextTickIn += spell.tickIntervalMs ?? 1000;
       }
       if (spell.spellType === 'HEAL' && rt.nextTickIn <= 0) {

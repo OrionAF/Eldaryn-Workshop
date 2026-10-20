@@ -12,7 +12,7 @@ import { rollStanceDaze, rollShieldBash, tickDazedMs } from '../core/stances.js'
 import { processSpellsTick, triggerTransformSpell, hasPendingTransform, isTransformActive, transformFireCount,
   activeBuffThornsPercent, isSpellBuffActive, computeActiveBuffModifiers } from '../core/spells.js';
 import { applyBuffsToEntity, hasActiveBuffs, getBuffedMaxHp } from '../core/buffs.js';
-import { initDebuffState, applyDebuff, processDebuffsTick } from '../core/debuffs.js';
+import { initDebuffState, applyDebuff, processDebuffsTick, weakenedAttack } from '../core/debuffs.js';
 import { applyBulwarkDr, applyElusiveBuff, createStackCombat } from '../core/stacks.js';
 import { CHRONO_FLUX, clampChronoFlux, chronoFluxGainDivisor } from '../core/chronoFlux.js';
 import { applyCombatCeiling, ceilingFor } from '../core/caps.js';
@@ -57,6 +57,8 @@ export const CELESTIAL_ASSUMPTIONS = Object.freeze({
   furyStacking: note('celestial-fury-stacking', 'Block Fury and the per-add attack bonus multiply (no difficulty has both).'),
   enemyTactics: note('celestial-enemy-tactics', 'The boss and the adds attack the tank (the logged tactics); the "adds target everyone" tactic is not modelled.'),
   stances: note('celestial-stances', 'Warrior stances use the shared combat rules here. Their timing in Celestial has not been checked against a server log. Shield Bash requires zero Miss Chance because the combined avoid roll labels other avoids as misses.'),
+  attackDown: note('celestial-attack-down', 'Attack Down uses the shared party debuff rules against the boss and Judgment Strike. This Celestial timing has not been checked against a server log.'),
+  minions: note('celestial-minions', 'Summoned minions are not simulated in Celestial. Necromancer summon builds need server evidence before their Celestial results can be treated as reliable.'),
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -304,6 +306,7 @@ export function simulateCelestial(o) {
   let ts = CELESTIAL_START_MS;
   let bossHp = bossStats.hp;
   let bossTimer = 0;
+  const bossAttackDown = initDebuffState();
   let bossBlinded = false;
   let bossDazedMs = 0;
   let paralyzedMs = 0;
@@ -426,6 +429,7 @@ export function simulateCelestial(o) {
   let thorns = 0;
   // one swing against the current target; `kind` 'boss' | 'judgment' | add
   const swingAt = (A, kind, add) => {
+    if (!add) A = weakenedAttack(A, bossAttackDown);
     const t = target();
     if (!t) return;
     const isSp = t === sp && t.stacks != null;
@@ -554,7 +558,11 @@ export function simulateCelestial(o) {
         if (res.targetParalyzeMs && bossHp > 0) paralyzedMs = Math.max(paralyzedMs, res.targetParalyzeMs);
         if (res.targetBlinded && bossHp > 0) bossBlinded = true;
         const applied = [];
-        if (res.newDebuffs) for (const spec of res.newDebuffs) applied.push(applyDebuff(m.debuffs, spec, ts));
+        if (res.newDebuffs) for (const spec of res.newDebuffs) {
+          applied.push(spec.type === 'ATTACK_DOWN'
+            ? applyDebuff(bossAttackDown, spec, ts, { partySlot: m.i })
+            : applyDebuff(m.debuffs, spec, ts));
+        }
         if (log) {
           for (const a of applied) {
             emit({
@@ -629,6 +637,13 @@ export function simulateCelestial(o) {
     }
 
     // 3. DoTs on the boss, per owner
+    if (bossAttackDown.length > 0) {
+      const d = processDebuffsTick(bossAttackDown, CELESTIAL_TICK_MS, ts, rng);
+      if (log) for (const ev of d.events) emit({
+        type: 'spell_debuff_expired', damage: 0, addId: -1, spell: ev.source,
+        debuffStacks: ev.stacks, debuffMaxStacks: ev.maxStacks, debuffPermanent: ev.permanent, damagePerTick: 0,
+      });
+    }
     for (const m of M) {
       if (m.debuffs.length === 0) continue;
       const d = processDebuffsTick(m.debuffs, CELESTIAL_TICK_MS, ts, rng);

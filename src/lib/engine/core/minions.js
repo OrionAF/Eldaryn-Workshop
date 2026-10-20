@@ -1,6 +1,7 @@
 // Necromancer minion state and swings. Formulas: docs/Reference/Game/classes.md §7.
 // All functions mutate the passed minion in place, as the client does, unless noted.
 import { applyCombatCeiling, ceilingFor, capConfig, softCapGainFromSheet } from './caps.js';
+import { sigilBySpecies } from '../../game/sigils.js';
 
 /** OPENING_FIRST_SWING_MIN_MS (module 3968 closure constant). */
 export const OPENING_FIRST_SWING_MIN_MS = 400;
@@ -26,6 +27,9 @@ export function minionAttackSpeed(playerAttackSpeed, totalMinionAttackSpeed) {
  */
 export function createMinion(d, p, stats) {
   if (!d) return null;
+  const tiers = sigilBySpecies(d.species)?.dominionTiers;
+  const level = Number.isFinite(stats.totalDominion) ? Math.max(1, Math.min(tiers?.length ?? 1, Math.floor(stats.totalDominion))) : 1;
+  const dominion = tiers?.[level - 1];
   const atk = (stats.totalMinionAttack ?? 0) / 100;
   const hpb = (stats.totalMinionHealth ?? 0) / 100;
   return {
@@ -46,6 +50,7 @@ export function createMinion(d, p, stats) {
     respawnCooldownMs: d.respawnCooldownMs ?? 0,
     respawnMs: 0,
     summonCastMs: d.summonCastMs ?? 0,
+    ...(dominion && (dominion.blockChance > 0 || dominion.damageReduction > 0 || dominion.thornsPercent > 0) ? { dominion } : {}),
   };
 }
 
@@ -199,17 +204,29 @@ export function endMinionFrenzy(m) {
 }
 
 // port of damageMinion: clamps to hp; on death ends buffs and starts the respawn timer.
-export function damageMinion(m, amount) {
+export function damageMinion(m, amount, context = null, rng = null) {
   if (!m.alive || !(amount > 0)) return { dealt: 0, died: false };
+  let blocked = false;
+  if (m.dominion) {
+    const block = applyCombatCeiling(m.dominion.blockChance, ceilingFor('BLOCK_CHANCE'));
+    if (context?.swing && block > 0 && rng() * 100 < block) {
+      blocked = true;
+      amount = context.penetration > 0 ? Math.round(amount * context.penetration / 100) : 0;
+    }
+    amount = mitigateMinionHit(amount, applyCombatCeiling(m.dominion.damageReduction, ceilingFor('DAMAGE_REDUCTION')));
+  }
+  if (!(amount > 0)) return { dealt: 0, died: false, ...(blocked ? { blocked: true } : {}) };
+  const thorns = !blocked && (context?.swing || context?.followUp) ? Math.round(amount * (m.dominion?.thornsPercent ?? 0) / 100) : 0;
+  const extra = { ...(blocked ? { blocked: true } : {}), ...(thorns > 0 ? { thorns } : {}) };
   const dealt = Math.min(m.hp, amount);
   m.hp -= dealt;
-  if (m.hp > 0) return { dealt, died: false };
+  if (m.hp > 0) return { dealt, died: false, ...extra };
   endMinionEmpower(m);
   endMinionFrenzy(m);
   m.hp = 0;
   m.alive = false;
   m.respawnMs = m.respawnCooldownMs;
-  return { dealt, died: true };
+  return { dealt, died: true, ...extra };
 }
 
 // port of killMinion: instant kill with no respawn timer. Returns true if it was alive.

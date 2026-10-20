@@ -50,9 +50,10 @@
 </div>
 
 <style>
-  .field { display: grid; gap: 4px; min-width: 0; }
+  .field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; }
   label { font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }
   .select {
+    min-width: 0;
     position: relative;
     display: flex;
     align-items: center;
@@ -67,6 +68,7 @@
   select {
     appearance: none;
     flex: 1;
+    width: 100%;
     min-width: 0;
     height: 100%;
     padding: 0 var(--sp-3);

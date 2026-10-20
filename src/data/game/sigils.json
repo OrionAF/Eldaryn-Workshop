@@ -1,6 +1,7 @@
 {
  "source": "Eldaryn 2.7.0 client, decompiled.js: module 3950 L1066475-1070529 (definitions L1068802-1070529, getSigilSpellScaled L1067622-1068262, constants L1068802-1068870, altar fns L1066838-1066975, forge odds L1066976-1067034 + L1068910-1068960), module 3145 L668383-668986 (unlock levels), module 3969 L1095537-1096574 (calculateSigilBonuses); 2.7.4 production OTA: STANCE definitions L1075736-1075808, scaling L1073898-1074078; aura display names L1075498/L1075517",
- "extracted": "2026-10-17",
+ "extracted": "2026-10-20",
+ "updates275": "Overlord's Pact and Tyrant's Burden: 2.7.5 decompiled.js L1076209 onward; Greater Demon Dominion tiers: L1103080-L1103096; updates-2.7.5.md §§2-3. Live availability is SERVER/UNRESOLVED.",
  "schema": "catalogue[]: one entry per sigil species. spell params are LEVEL-1 values; attackPercent/value fields scale by getSigilSpellScaled (see sigils.md section 5) and are clamped by the max* sibling. druidVariant {name, spell?, formSpell?{BEAR, WOLF}} is the Mystic Druid variant (sigils.md section 12); every druidVariant spell and formSpell carries the client spellType.",
  "rarityBase": {
   "Common": {
@@ -2189,6 +2190,59 @@
    "baseAttack": 1140,
    "baseHp": 8400,
    "description": "Become an unmovable wall: +9% HP (up to +12%) and +5% Spell Resist (up to +7%) for −5% Attack. Every swing you block has a 6% chance (up to 9%) to Shield Bash the attacker, stunning it for 1s (up to 1.5s). The Spell Resist counts like gear, so the usual soft cap applies."
+  },
+  {
+   "id": "overlords-pact",
+   "species": "OVERLORDS_PACT",
+   "dominionTiers": [
+    { "blockChance": 0, "damageReduction": 0, "thornsPercent": 0 },
+    { "blockChance": 10, "damageReduction": 10, "thornsPercent": 0 },
+    { "blockChance": 20, "damageReduction": 20, "thornsPercent": 0 },
+    { "blockChance": 20, "damageReduction": 20, "thornsPercent": 20 },
+    { "blockChance": 30, "damageReduction": 30, "thornsPercent": 20 }
+   ],
+   "name": "Overlord's Pact",
+   "class": "Necromancer",
+   "rarity": "Legendary",
+   "baseAttack": 9000,
+   "baseHp": 58000,
+   "icon": "👑",
+   "spellType": "SUMMON",
+   "spell": {
+    "minion": "GREATER_DEMON",
+    "attackPercent": 44,
+    "maxAttackPercent": 88,
+    "hpPercent": 150,
+    "maxHpPercent": 300,
+    "respawnCooldownMs": 10000,
+    "summonCastMs": 1500
+   },
+   "description": "Binds a crowned Greater Demon to your will, summoned at the start of every fight. It hurls fireballs from its staff and is the mightiest of all minions in both health and power. Enemies attack the Greater Demon while it stands. A fallen Greater Demon returns a few seconds later.",
+   "citation": "2.7.5 decompiled.js L1076209-L1076224; updates-2.7.5.md §2"
+  },
+  {
+   "id": "tyrants-burden",
+   "species": "TYRANTS_BURDEN",
+   "name": "Tyrant's Burden",
+   "class": "Necromancer",
+   "rarity": "Legendary",
+   "baseAttack": 9000,
+   "baseHp": 58000,
+   "icon": "⛓️",
+   "spellType": "DAMAGE",
+   "spell": {
+    "baseDamage": 0,
+    "isDoT": true,
+    "attackPercent": 90,
+    "maxAttackPercent": 130,
+    "damagePerTick": 0,
+    "tickIntervalMs": 2000,
+    "durationMs": 12000,
+    "cooldownMs": 18000,
+    "attackDown": { "reductionPerStack": 5, "maxStacks": 4 }
+   },
+   "description": "Shackles your foe with a tyrant's burden that deals damage every 2 seconds for 12 seconds. The curse drains their strength: it lowers their Attack by 5% at once and by 5% more with every tick, down to −20% until it ends. Recasting never pushes it past −20%.",
+   "citation": "2.7.5 decompiled.js L1076225 onward; updates-2.7.5.md §2"
   }
  ]
 }

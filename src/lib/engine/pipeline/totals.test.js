@@ -237,7 +237,7 @@ describe('calculateTotalStats (L1215735-1217872)', () => {
       ['DAMAGE_REDUCTION', 'rawDamageReduction', 31], ['BLOCK_CHANCE', 'rawBlockChance', 41],
       ['MISS_CHANCE', 'rawMissChance', 51], ['BLIND_CHANCE', 'rawBlindChance', 31],
       ['PARALYZE_CHANCE', 'rawParalyzeChance', 9], ['PENETRATION', 'rawPenetration', 31],
-      ['SPELL_RESIST', 'rawSpellResist', 31], ['SPELL_VAMP', 'rawSpellVamp', 41],
+      ['SPELL_RESIST', 'rawSpellResist', 41], ['SPELL_VAMP', 'rawSpellVamp', 41],
       ['DISRUPTION_CHANCE', 'rawDisruptionChance', 11], ['MINION_CRIT_CHANCE', 'rawMinionCritChance', 51],
       ['MINION_LIFESTEAL', 'rawMinionLifesteal', 41], ['SOUL_LINK', 'rawSoulLink', 41],
     ];

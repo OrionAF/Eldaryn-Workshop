@@ -15,15 +15,23 @@ export const rarityClass = (rarity) => (RARITIES.includes(rarity) ? `rarity-${ra
 /** Camel-case stat key to words: 'critChance' -> 'Crit Chance'. */
 export const statLabel = glyphStatLabel;
 
-/** Unit suffix of a pool stat: the two-decimal stats (speed, crit damage) are fractions, the rest percent points (doc §9). */
+/** Display conversion only; stored glyph quality and engine units stay unchanged (Game/mounts-glyphs.md §9). */
+export function secondaryDisplayValue(stat, value) {
+  return stat === 'critDamage' ? Number((value * 100).toFixed(2)) : value;
+}
+
+export function secondaryInputValue(stat, value) {
+  return stat === 'critDamage' ? value / 100 : value;
+}
+
 export function secondaryUnit(stat) {
-  return glyphSecondaryDef(stat)?.decimals === 2 ? '' : '%';
+  return stat !== 'critDamage' && glyphSecondaryDef(stat)?.decimals === 2 ? '' : '%';
 }
 
 /** '+4.2% Crit Chance' for a rolled secondary, or null. */
 export function secondaryText(secondary) {
   if (!secondary) return null;
-  return `+${glyphSecondaryValue(secondary)}${secondaryUnit(secondary.stat)} ${statLabel(secondary.stat)}`;
+  return `+${secondaryDisplayValue(secondary.stat, glyphSecondaryValue(secondary))}${secondaryUnit(secondary.stat)} ${statLabel(secondary.stat)}`;
 }
 
 const EFFECT_PARTS = {

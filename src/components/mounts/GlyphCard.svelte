@@ -14,7 +14,7 @@
   import Select from '../ui/Select.svelte';
   import NumberField from '../ui/NumberField.svelte';
   import Button from '../ui/Button.svelte';
-  import { TIER_LABELS, glyphText, majorText, rarityClass, secondaryUnit, statLabel } from './mountsView.js';
+  import { TIER_LABELS, glyphText, majorText, rarityClass, secondaryUnit, secondaryDisplayValue, secondaryInputValue, statLabel } from './mountsView.js';
 
   let { glyph, playerClass = null, mountName = null, inertIn = [], onUpdate, onRemove } = $props();
 
@@ -30,7 +30,7 @@
     onUpdate({ secondary: next ? { stat: next, quality: glyphSecondaryQuality(next, value === '' ? 0 : value) } : null });
   }
   function setValue(n) {
-    if (stat && Number.isFinite(n)) onUpdate({ secondary: { stat, quality: glyphSecondaryQuality(stat, n) } });
+    if (stat && Number.isFinite(n)) onUpdate({ secondary: { stat, quality: glyphSecondaryQuality(stat, secondaryInputValue(stat, n)) } });
   }
 </script>
 
@@ -48,8 +48,8 @@
     </div>
     {#if def}
       <div class="field">
-        <NumberField label="Secondary value" unit={secondaryUnit(stat)} {value} onchange={setValue} />
-        <span class="range">Range {def.minValue}-{def.maxValue}</span>
+        <NumberField label="Secondary value" unit={secondaryUnit(stat)} value={secondaryDisplayValue(stat, value)} onchange={setValue} />
+        <span class="range">Range {secondaryDisplayValue(stat, def.minValue)}-{secondaryDisplayValue(stat, def.maxValue)}{secondaryUnit(stat)}</span>
       </div>
     {/if}
   {:else if info?.tier === 'major'}
@@ -97,5 +97,5 @@
   .warn { margin: 0; font-size: var(--fs-11); color: var(--status-warn); }
   .where { margin: 0; font-size: var(--fs-11); color: var(--text-muted); }
   .range { font-family: var(--font-data); font-size: var(--fs-11); color: var(--text-muted); }
-  .field { display: grid; gap: var(--sp-1); width: 100%; text-align: left; }
+  .field { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: var(--sp-1); width: 100%; text-align: left; }
 </style>

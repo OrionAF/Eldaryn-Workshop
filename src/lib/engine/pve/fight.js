@@ -16,7 +16,7 @@
 import { processSpellsTick, isTransformActive, hasPendingTransform, triggerTransformSpell, transformFireCount,
   activeBuffThornsPercent, isSpellBuffActive, initSpellRuntimes } from '../core/spells.js';
 import { applyBuffsToEntity, hasActiveBuffs, getBuffedMaxHp } from '../core/buffs.js';
-import { initDebuffState, applyDebuff, processDebuffsTick, slowedAttackSpeed } from '../core/debuffs.js';
+import { initDebuffState, applyDebuff, processDebuffsTick, slowedAttackSpeed, weakenedAttack } from '../core/debuffs.js';
 import { applySunderToTarget, applyBulwarkDr, applyElusiveBuff, createStackCombat } from '../core/stacks.js';
 import { CHRONO_FLUX, clampChronoFlux, chronoFluxFromEvents } from '../core/chronoFlux.js';
 import {
@@ -638,7 +638,8 @@ export function simulateFight(player, enemy, ctx, rng) {
     }
     if (debuffs.length > 0) {
       const slowed = slowedAttackSpeed(enemyNow.attackSpeed, debuffs);
-      if (slowed !== enemyNow.attackSpeed) enemyNow = { ...enemyNow, attackSpeed: slowed };
+      const attack = weakenedAttack(enemyNow.attack, debuffs);
+      if (slowed !== enemyNow.attackSpeed || attack !== enemyNow.attack) enemyNow = { ...enemyNow, attackSpeed: slowed, attack };
     }
 
     // 7. processCombatTick (L1088954)
