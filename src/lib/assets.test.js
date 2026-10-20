@@ -32,7 +32,7 @@ describe('asset coverage', () => {
     expect(missing).toEqual([]);
   });
 
-  it('every minor/major glyph tier-rarity pair resolves, falling back where art is absent', () => {
+  it('every minor/major glyph tier-rarity pair has its own art', () => {
     const missing = [];
     for (const tier of ['minor', 'major']) {
       for (const rarity of GLYPH_RARITIES) {
@@ -57,10 +57,12 @@ describe('assetUrl', () => {
     expect(petImage('Rime Wyrm')).toBe(assetUrl('pet_ryme_wyrm'));
     // Typo'd sigil id kept for persistence; art is under the correct spelling.
     expect(sigilImage('Warrior', 'berserkt-stance')).toBe(assetUrl('sigils_warrior_berserk_stance'));
-    // No Epic/Legendary major art yet - borrows the (unused) mythic icon.
-    expect(glyphImage('major', 'Epic')).toBe(assetUrl('glyph_mythic'));
-    expect(glyphImage('major', 'Legendary')).toBe(assetUrl('glyph_mythic'));
-    expect(glyphImage('minor', 'Legendary')).toBe(assetUrl('glyph_mythic'));
+    expect(glyphImage('major', 'Epic')).toBe(assetUrl('glyph_major_epic'));
+    expect(glyphImage('major', 'Legendary')).toBe(assetUrl('glyph_major_legendary'));
+    expect(glyphImage('minor', 'Legendary')).toBe(assetUrl('glyph_minor_legendary'));
+    expect(glyphImage('major', 'Epic')).not.toBe(assetUrl('glyph_mythic'));
+    expect(glyphImage('major', 'Legendary')).not.toBe(assetUrl('glyph_mythic'));
+    expect(glyphImage('minor', 'Legendary')).not.toBe(assetUrl('glyph_mythic'));
   });
 
   it('Moss Beetle and Moss Warden share the same artwork', () => {

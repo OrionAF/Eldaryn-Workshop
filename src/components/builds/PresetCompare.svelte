@@ -18,6 +18,7 @@
   import { SET_LABELS, petLabel, mountLabel, talentSetLabel, transcendenceLabel, filledSlots } from './presetLabels.js';
   import { effectiveTranscendencePreset } from '../../lib/model/legality.js';
   import { statText } from './statText.js';
+  import { orderStats } from '../../lib/ui/statOrder.js';
 
   let { character, setStatus = () => {} } = $props();
 
@@ -44,7 +45,7 @@
 
   const rows = $derived.by(() => {
     const out = [];
-    for (const key of HEADLINE) {
+    for (const key of orderStats(HEADLINE, character.class)) {
       if (!shown.has(key)) continue;
       out.push({ id: key, label: LABEL[key], cells: presets.map((p) => statText(key, stats[p.id].effective[key])), mono: true });
     }

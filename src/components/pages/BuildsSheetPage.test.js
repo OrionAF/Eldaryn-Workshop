@@ -34,6 +34,26 @@ const swordItem = {
   rarity: 'ETERNAL', itemLevel: 200, quality: 80, primaryStats: { attack: 4200, hp: 0 }, secondaryStats: [],
 };
 
+it('updates the displayed order and Fear label when the selected class changes', () => {
+  const keys = () => t.qa('tr[data-key]').map((row) => row.dataset.key);
+  rosterStore.setCharacterClass(rosterStore.current.id, 'MYSTIC');
+  flushSync();
+  expect(keys().slice(0, 7)).toEqual(['totalAttack', 'totalAttackPercent', 'totalHp', 'totalHealthPercent',
+    'totalAttackSpeed', 'totalCritChance', 'totalSpellCritChance']);
+  expect(t.q('#sheet-totalAttackPercent').getAttribute('aria-label')).toBe('Attack %');
+  expect(t.q('#sheet-totalHealthPercent').getAttribute('aria-label')).toBe('Health %');
+  rosterStore.setCharacterClass(rosterStore.current.id, 'SENTINEL');
+  flushSync();
+  expect(keys().indexOf('totalDoubleHit')).toBe(keys().indexOf('totalCritDamage') + 1);
+  expect(t.q('#sheet-totalSpellCritChance')).toBeNull();
+  rosterStore.setCharacterClass(rosterStore.current.id, 'NECROMANCER');
+  flushSync();
+  expect(keys().slice(0, 6)).toEqual(['totalAttack', 'totalAttackPercent', 'totalHp', 'totalHealthPercent',
+    'totalAttackSpeed', 'totalSpellCritChance']);
+  expect(t.q('#sheet-totalDisruptionChance').getAttribute('aria-label')).toBe('Fear Chance');
+  expect(keys().indexOf('totalMinionAttackSpeed')).toBeLessThan(keys().indexOf('totalMinionCritChance'));
+});
+
 it('sheet entry reads "." as a thousands separator on flat rows and a decimal point on percent rows', () => {
   enter('totalAttack', '48.124');
   enter('totalCritChance', '6.2');

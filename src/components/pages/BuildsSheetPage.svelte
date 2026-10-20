@@ -123,6 +123,7 @@
       thousands ("48.124" is 48124). In percentage rows, it is a decimal point.
     </p>
     <SheetTable
+      playerClass={character.class}
       {keys}
       values={sheetValues}
       computed={stats.computed}

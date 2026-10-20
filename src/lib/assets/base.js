@@ -20,8 +20,6 @@
  *   - the sigil id `berserkt-stance` carries a typo, but it's a PERSISTED key
  *     (character.sigilValues / preset.sigilIds), so renaming it would need a
  *     migration - the display name is fixed in the sigil catalogue instead;
- *   - three glyph tier/rarity combinations have no art yet and borrow the
- *     mythic icon (there are no Mythic glyphs in game, so it's unused).
  */
 
 const MODULES = import.meta.glob('../../assets/*.png', { eager: true, query: '?url', import: 'default' });
@@ -40,9 +38,6 @@ const ALIASES = {
   sigils_warrior_flameborn: 'sigils_flameborn_sigil',
   sigils_sentinel_flameborn: 'sigils_flameborn_sigil',
   sigils_sentinel_stormcaller: 'sigils_stormcaller_sigil',
-  glyph_major_epic: 'glyph_mythic',
-  glyph_major_legendary: 'glyph_mythic',
-  glyph_minor_legendary: 'glyph_mythic',
 };
 
 /** Bundled URL for an asset key (no extension), or null when there's no art. */

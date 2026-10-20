@@ -9,6 +9,7 @@
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { classLabel } from '../../lib/game/classes.js';
+  import { orderStats } from '../../lib/ui/statOrder.js';
   import { transcendenceBoard, TRANSCENDENCE_CONSTANTS } from '../../lib/game/transcendence.js';
   import {
     boardKeyFor, allocCost, removeRefund, setTotalCost, canAllocateNode, sideProgress, transcendenceBonuses,
@@ -41,7 +42,7 @@
   const boardKey = $derived(boardKeyFor(character.class, spec));
   const board = $derived(boardKey ? transcendenceBoard(boardKey) : null);
   const spent = $derived(boardKey ? setTotalCost(boardKey, ids) : 0);
-  const bonuses = $derived(boardKey ? Object.entries(transcendenceBonuses(boardKey, ids)) : []);
+  const bonuses = $derived(boardKey ? orderStats(Object.entries(transcendenceBonuses(boardKey, ids)), character.class, ([key]) => key) : []);
   const attack = $derived(boardKey ? sideProgress(boardKey, 'attack', ids) : { got: 0, total: 0 });
   const defense = $derived(boardKey ? sideProgress(boardKey, 'defense', ids) : { got: 0, total: 0 });
   const users = $derived(boardUsers(character, active.id));
@@ -49,7 +50,7 @@
   // Node Filter: highlight nodes with any selected stat. Session-only UI state.
   let filterStats = $state([]);
   const filterSet = $derived(new Set(filterStats));
-  const filterOptions = $derived(board ? [...new Set(board.nodes.flatMap((n) => n.stats.map((s) => s.stat)))] : []);
+  const filterOptions = $derived(board ? orderStats([...new Set(board.nodes.flatMap((n) => n.stats.map((s) => s.stat)))], character.class) : []);
   const toggleFilter = (key) => (filterStats = filterStats.includes(key) ? filterStats.filter((k) => k !== key) : [...filterStats, key]);
 
   // Registered while the page shows a board; the release clears the slot when the page goes away.

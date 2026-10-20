@@ -30,6 +30,11 @@ const node = (label) => target.querySelector(`button[aria-label*="${label}"]`);
 it('renders the whole board and starts empty', () => {
   render();
   expect(target.querySelectorAll('button.tnode')).toHaveLength(279);
+  expect(target.querySelectorAll('button.tnode.minor img.emblem')).toHaveLength(255);
+  expect(target.querySelectorAll('button.tnode.notable img.emblem')).toHaveLength(14);
+  expect(target.querySelector('button.tnode.socket img.emblem')).toBeNull();
+  expect(target.querySelector('button.tnode.start img.emblem')).toBeNull();
+  expect(target.querySelector('button.tnode.sigil img.emblem')).toBeNull();
 });
 
 it('the totals live in the inspector, not the page body', () => {

@@ -8,9 +8,11 @@
    * `footer` is an optional summary line.
    */
   import { formatStat } from '../../lib/format.js';
+  import { orderStats, orderedStatLabel } from '../../lib/ui/statOrder.js';
   import ProvenanceTag from './ProvenanceTag.svelte';
 
-  let { rows = [], mode = 'source', caption = '', footer = '' } = $props();
+  let { rows = [], mode = 'source', caption = '', footer = '', playerClass = null } = $props();
+  const displayed = $derived(orderStats(rows, playerClass, (row) => row.key));
   const fmt = (key, v) => (v == null ? '-' : formatStat(key, v));
 </script>
 
@@ -27,9 +29,9 @@
     </tr>
   </thead>
   <tbody>
-    {#each rows as r (r.key)}
+    {#each displayed as r (r.key)}
       <tr>
-        <th scope="row" class="lbl">{r.label}</th>
+        <th scope="row" class="lbl">{orderedStatLabel(r.key, r.label, playerClass)}</th>
         {#if mode === 'residual'}
           <td class="r dim">{fmt(r.key, r.base)}</td>
           <td class="r" class:up={r.residual > 0} class:dim={!r.residual}>{fmt(r.key, r.residual)}</td>

@@ -12,11 +12,13 @@
   import { sheetKeyMeta, parseSheetInput, toleranceFor } from '../../lib/engine/pipeline/sheet.js';
   import { contributionRows } from '../../lib/build/contribution.js';
   import { statNumber, statText, gapText, isFlatStat } from './statText.js';
+  import { orderStats, orderedStatLabel } from '../../lib/ui/statOrder.js';
 
   /** @type {{keys: string[], values: Object<string, number>, computed: Object, contributions?: (() => Object)|null, onChange: (key: string, value: number|null) => void}} */
-  let { keys, values, computed, contributions = null, onChange } = $props();
+  let { keys, values, computed, contributions = null, onChange, playerClass = null } = $props();
 
-  const rows = $derived(keys.map((k) => sheetKeyMeta(k)).filter(Boolean));
+  const rows = $derived(orderStats(keys, playerClass).map((k) => sheetKeyMeta(k)).filter(Boolean)
+    .map((m) => ({ ...m, label: orderedStatLabel(m.key, m.label, playerClass) })));
   // No computed build (an opponent's sheet has none): the Model, Gap, Tolerance and Status columns would be
   // empty on every row, so they are not drawn.
   const hasModel = $derived(computed != null);
