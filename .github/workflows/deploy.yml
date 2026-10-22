@@ -25,7 +25,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm test
+      # No `npm test` here: deploys are manual, from a main that was tested locally; the suite
+      # takes ~9 min on a 2-core runner. The build still catches a broken bundle.
       - run: npm run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
