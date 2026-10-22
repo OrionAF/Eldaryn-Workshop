@@ -14,6 +14,7 @@
   import Button from '../ui/Button.svelte';
   import Banner from '../ui/Banner.svelte';
   import Drawer from '../ui/Drawer.svelte';
+  import RecommendedTree from '../transcendence/RecommendedTree.svelte';
   import { triesPerClear } from '../../lib/ui/winRateFormat.js';
   import { goalWinRate, fortressDamage } from '../../lib/ui/optimiserView.js';
   import { isWinRateKind } from '../../lib/search/objectives.js';
@@ -213,6 +214,11 @@
         <p class="note">This saved run kept no build lines for this row.</p>
       {/each}
     </dl>
+    {#if buildRow.board}
+      {#key buildRow.key}
+        <RecommendedTree board={buildRow.board} baseline={buildRow === view.baseline ? null : (view.baseline?.board ?? null)} />
+      {/key}
+    {/if}
   {/if}
 </Drawer>
 

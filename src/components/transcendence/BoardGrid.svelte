@@ -18,7 +18,7 @@
   import { fitView } from './boardView.js';
   import Button from '../ui/Button.svelte';
 
-  let { boardKey, nodes, allocatedIds = [], highlightStats = null, onSelect = null, onHover = null } = $props();
+  let { boardKey, nodes, allocatedIds = [], highlightStats = null, highlightIds = null, readOnly = false, compact = false, onActivate = null, onSelect = null, onHover = null } = $props();
 
   // Same 700px breakpoint as the rest of the mobile nav contract - nodes are
   // the only interaction on this screen, so they need a real touch target
@@ -36,7 +36,7 @@
 
   const CELL_SIZE = $derived(isMobile ? 40 : 32);
   const NODE_SIZE = $derived(isMobile ? 32 : 24);
-  const MIN_ZOOM = 0.25;
+  const MIN_ZOOM = $derived(compact ? 0.1 : 0.25);
   const MAX_ZOOM = 2.5;
 
   const allocatedSet = $derived(new Set(allocatedIds));
@@ -180,16 +180,19 @@
 </script>
 
 <div class="board-wrap">
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions (pointer pan/zoom; a compact preview's keyboard path is its caller's own button) -->
 <div
   class="viewport"
+  class:compact
   role="application"
-  aria-label="Transcendence board - draggable and zoomable"
+  aria-label={readOnly ? 'Recommended Transcendence tree - read only' : 'Transcendence board - draggable and zoomable'}
   bind:this={viewportEl}
   onpointerdown={onViewportPointerDown}
   onpointermove={onViewportPointerMove}
   onpointerup={onViewportPointerUp}
   onpointercancel={onViewportPointerUp}
   onwheel={onWheel}
+  onclick={() => { if (!moved) onActivate?.(); }}
 >
   <div
     class="canvas"
@@ -199,19 +202,21 @@
       <BoardNode
         {node}
         unlocked={allocatedSet.has(node.id)}
-        unlockable={canAllocateNode(boardKey, allocatedIds, node.id)}
-        highlighted={!!highlightStats?.size && node.stats.some((s) => highlightStats.has(s.stat))}
+        unlockable={!readOnly && canAllocateNode(boardKey, allocatedIds, node.id)}
+        {readOnly}
+        highlighted={!!highlightIds?.has(node.id) || (!!highlightStats?.size && node.stats.some((s) => highlightStats.has(s.stat)))}
         onSelect={handleSelect}
         {onHover}
       />
     {/each}
   </div>
 </div>
-<div class="tools" role="group" aria-label="Board view">
+{#if !compact}<div class="tools" role="group" aria-label="Board view">
   <Button variant="ghost" size="small" aria-label="Zoom in" onclick={() => zoomBy(1.25)}>+</Button>
   <Button variant="ghost" size="small" aria-label="Zoom out" onclick={() => zoomBy(1 / 1.25)}>−</Button>
   <Button variant="ghost" size="small" aria-label="Reset view" onclick={resetView}>⟲</Button>
 </div>
+{/if}
 </div>
 
 <style>
@@ -232,6 +237,7 @@
   .viewport:active {
     cursor: grabbing;
   }
+  .viewport.compact { height: 18rem; min-height: 0; cursor: zoom-in; }
   .canvas {
     position: absolute;
     top: 0;

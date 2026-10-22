@@ -49,6 +49,17 @@
 // ROSTER_RUN_BYTE_BUDGET across every character with enforceRosterRunsBudget.
 
 import { normaliseDebugSummary } from './debugLog.js';
+import { transcendenceBoard } from '../game/transcendence.js';
+
+/** Historical display data, never an Apply input; reject incomplete or unknown trees. */
+export function normaliseRunBoard(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const board = transcendenceBoard(raw.boardKey);
+  if (!board || !Array.isArray(raw.allocatedNodeIds)) return null;
+  const known = new Set(board.nodes.map(n => n.id));
+  if (!raw.allocatedNodeIds.every(id => typeof id === 'string' && known.has(id))) return null;
+  return { boardKey: raw.boardKey, name: typeof raw.name === 'string' ? raw.name : 'Transcendence', allocatedNodeIds: [...new Set(raw.allocatedNodeIds)] };
+}
 
 export const RUN_KIND = 'optimise';
 export const RUN_DETAIL_LIMIT = 50;      // runs that keep their detail (pinned exempt)
@@ -152,6 +163,7 @@ function normaliseRow(r) {
     provisional: false,
     key: str(r.key),
     candidate: plain(r.candidate),
+    ...(normaliseRunBoard(r.board) ? { board: normaliseRunBoard(r.board) } : {}),
     writes: (Array.isArray(r.writes) ? r.writes : []).map(normaliseWrite).filter(Boolean),
     value: normaliseEstimate(r.value),
     aux: {
@@ -406,9 +418,9 @@ function runFromResultV2(result, fields) {
       goal: normaliseGoal(result.goal),
       ...(result.push ? { push: result.push } : {}),
     },
-    // Full describe lines are long text: only the baseline and the top RUN_DETAIL_FULL_LINES keep them.
+    // Full describe lines and the evaluated tree are long: only the baseline and the top RUN_DETAIL_FULL_LINES keep them.
     detail: {
-      baseline: base, rows: (result.rows ?? []).map((r, i) => (i < RUN_DETAIL_FULL_LINES ? r : { ...r, lines: [] })),
+      baseline: base, rows: (result.rows ?? []).map(({ board, ...r }, i) => (i < RUN_DETAIL_FULL_LINES ? { ...r, ...(board ? { board } : {}) } : { ...r, lines: [] })),
       ...(result.push ? { push: { rungs: result.push.rungs } } : {}),
     },
   });
