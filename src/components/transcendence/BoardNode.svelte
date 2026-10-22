@@ -131,6 +131,11 @@
     color: var(--tc-sigil);
   }
   .tnode.inert { cursor: default; }
+  /* The Soon and cost pills hang below the node into the next row. Larger nodes' pills reach further,
+     so they stack higher: a socket's pill over a notable below it, a notable's over a minor. */
+  .tnode.unlockable { z-index: 1; }
+  .tnode.notable.unlockable { z-index: 2; }
+  .tnode.socket { z-index: 3; }
 
   /* Reachable: a dashed ring and the Ichor cost; allocated: a solid ring with a glow (the game's
      two states differ in line style and the cost badge, not in colour alone). */
