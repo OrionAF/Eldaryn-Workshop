@@ -18,6 +18,7 @@
   let {
     open = $bindable(false),
     title = '',
+    wide = false,
     labelledBy = undefined,
     onclose = () => {},
     children,
@@ -57,6 +58,7 @@
 <dialog
   bind:this={dialog}
   class="modal"
+  class:wide
   aria-labelledby={labelledBy ?? (title ? `${uid}-title` : undefined)}
   aria-label={!title && !labelledBy ? 'Dialog' : undefined}
   onclick={onBackdropClick}
@@ -96,6 +98,8 @@
     overflow: hidden;
     box-shadow: var(--elev-3);
   }
+
+  .modal.wide { width: min(var(--modal-wide-w), calc(100vw - 32px)); }
 
   .modal::backdrop {
     background: var(--surface-scrim);

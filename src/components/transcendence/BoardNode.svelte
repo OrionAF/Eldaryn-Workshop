@@ -12,7 +12,7 @@
   import { KIND_LABEL } from './statLabels.js';
   import { transcendenceImage } from '../../lib/assets/transcendence.js';
 
-  let { node, unlocked = false, unlockable = false, highlighted = false, onSelect = null, onHover = null } = $props();
+  let { node, unlocked = false, unlockable = false, highlighted = false, readOnly = false, onSelect = null, onHover = null } = $props();
 
   const SIDE_ICON = { attack: 'sword', defense: 'shield' };
   const icon = $derived(node.kind === 'socket' ? 'scroll' : (SIDE_ICON[node.side] ?? null));
@@ -27,12 +27,15 @@
   class:unlockable
   class:highlighted
   class:inert
-  disabled={inert}
+  class:read-only={readOnly}
+  disabled={inert && !readOnly}
   style="--col: {node.col + 13}; --row: {node.row + 25};"
-  aria-label="{KIND_LABEL[node.kind]} {node.name} at {node.col},{node.row}"
+  aria-label="{KIND_LABEL[node.kind]} {node.name} at {node.col},{node.row}{readOnly ? (unlocked ? ', allocated' : ', not allocated') : ''}"
   onclick={() => onSelect?.(node)}
   onpointerenter={(e) => onHover?.(node, e.clientX, e.clientY)}
   onpointerleave={() => onHover?.(null)}
+  onfocus={(e) => { const r = e.currentTarget.getBoundingClientRect(); onHover?.(node, r.right, r.top); }}
+  onblur={() => onHover?.(null)}
 >
   {#if emblem}
     <img class="emblem" src={emblem} alt="" draggable="false" />
@@ -153,6 +156,7 @@
   .tnode.unlocked:hover {
     background: var(--brass-200);
   }
+  .tnode.read-only { cursor: help; }
 
   /* Node-filter match ring - an outline (not the border) so it layers on
      top of the unlockable/unlocked border colors without replacing them.

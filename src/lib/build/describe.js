@@ -13,6 +13,18 @@ import { glyphTypeInfo } from '../model/glyphs.js';
 import { DEFAULT_CONDITION, SIGIL_CONDITIONS_LEVEL, conditionLabel } from '../model/sigils.js';
 import { ancientActive } from '../model/legality.js';
 import { presetSpec, equipSetKey, resolvePreset, transcendencePreset } from './presetInputs.js';
+import { boardKeyFor } from '../transcendence.js';
+import { transcendenceBoard } from '../game/transcendence.js';
+
+/** Capture the evaluated board, independently of later edits to the character. */
+export function describeBoard(character, presetOrId) {
+  const preset = typeof presetOrId === 'string' || presetOrId == null ? resolvePreset(character, presetOrId) : presetOrId;
+  const board = transcendencePreset(character, preset);
+  const boardKey = boardKeyFor(character.class, presetSpec(character, preset));
+  return board && transcendenceBoard(boardKey)
+    ? { boardKey, name: board.name, allocatedNodeIds: [...board.allocatedNodeIds] }
+    : null;
+}
 
 const NONE = 'None';
 const join = (list) => (list.length ? list.join(', ') : NONE);

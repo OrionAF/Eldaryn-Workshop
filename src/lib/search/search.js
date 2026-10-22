@@ -12,7 +12,7 @@ import { EngineInputError } from '../engine/validate.js';
 import { NEUTRAL_VALUE_TEXT } from '../engine/pvp/resolver.js';
 import { computePresetStats } from '../build/stats.js';
 import { resolvePreset } from '../build/presetInputs.js';
-import { describeBuild } from '../build/describe.js';
+import { describeBuild, describeBoard } from '../build/describe.js';
 import { talentSpec } from '../game/talents.js';
 import { pointsSpent, sanitiseAllocation } from '../model/talents.js';
 import { talentPointsForLevel } from '../model/legality.js';
@@ -888,8 +888,12 @@ function auxOf(prep, est, set, baseSet) {
   return aux;
 }
 
-function lineOf(space, cand) {
-  return describeBuild(...space.describeArgs(cand)).map((l) => ({ label: l.label, value: l.value, ...(l.inactive ? { inactive: l.inactive } : {}) }));
+function descriptionOf(space, cand) {
+  const args = space.describeArgs(cand);
+  return {
+    lines: describeBuild(...args).map((l) => ({ label: l.label, value: l.value, ...(l.inactive ? { inactive: l.inactive } : {}) })),
+    board: describeBoard(...args),
+  };
 }
 
 function nextLook(n, need) {
@@ -911,7 +915,7 @@ async function provisionalRow(prep, run, arm, B, stages) {
   return {
     rank: 0, tieGroup: null, isBaseline: arm.key === B.key, provisional: true, key: arm.key, engineKey: run.ekOf(arm),
     candidate: arm.cand, value, aux: {}, vsBaseline: null, changes, power: space.powerOf(arm.cand), remainder: null,
-    writes: arm.key === B.key ? [] : writesOf(space, B.cand, arm.cand, changes), runMore: null, lines: lineOf(space, arm.cand),
+    writes: arm.key === B.key ? [] : writesOf(space, B.cand, arm.cand, changes), runMore: null, ...descriptionOf(space, arm.cand),
   };
 }
 
@@ -1073,7 +1077,7 @@ export async function optimize(request, hooks = {}) {
         vsBaseline: contrastOut(r.vs), changes, power: space.powerOf(r.arm.cand),
         remainder: r.attr.remainder, writes: writesOf(space, B.cand, r.arm.cand, changes),
         runMore: r.vs.verdict === 'unresolved' ? { targetN: nextLook(r.vs.n, r.vs.nNeeded), reason: 'unresolved' } : null,
-        lines: lineOf(space, r.arm.cand),
+        ...descriptionOf(space, r.arm.cand),
         _score: objective.score(set),
         _primary: objective.primary ? objective.primary(set) : 0,
         _decided: r.decided,
@@ -1091,7 +1095,7 @@ export async function optimize(request, hooks = {}) {
     const baseline = {
       rank: 0, tieGroup: null, isBaseline: true, provisional: false, key: B.key, engineKey: run.ekOf(B), candidate: B.cand,
       value: estimateOut({ ...baseEst.value, seed: S3.seed }), aux: auxOf(prep, baseEst, null, null), vsBaseline: null, changes: [], power: space.powerOf(B.cand),
-      remainder: null, writes: [], runMore: null, lines: lineOf(space, B.cand),
+      remainder: null, writes: [], runMore: null, ...descriptionOf(space, B.cand),
     };
     const rowsOut = ranked.map(({ _score, _primary, _decided, _sig, _dist, ...r }) => r);
     st.phaseState.attribute = 'done';
@@ -1238,7 +1242,7 @@ function alreadyResult(prep, run, B, goal, set, echo, S3, t0) {
   const baseline = {
     rank: 0, tieGroup: null, isBaseline: true, provisional: false, key: B.key, engineKey: run.ekOf(B), candidate: B.cand,
     value, aux: auxOf(prep, est, null, null), vsBaseline: null, changes: [], remainder: null, writes: [], runMore: null,
-    lines: lineOf(space, B.cand),
+    ...descriptionOf(space, B.cand),
   };
   const text = `Already clears at ${pctText(value.est)}${ciText(value)}. No change needed.`;
   const st = run.st;

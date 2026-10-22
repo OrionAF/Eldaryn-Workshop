@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { fixtureCharacter } from './fixtures.js';
-import { describeBuild } from './describe.js';
+import { describeBuild, describeBoard } from './describe.js';
 import { petDisplayName } from '../game/pets.js';
 import { buildFighter } from './fighter.js';
 import { SIGIL_CATALOGUE, sigilClasses, isSigilSpeciesActiveForSpec } from '../game/sigils.js';
@@ -110,5 +110,16 @@ describe('describeBuild', () => {
     expect(line(describeBuild(e, 'p1'), 'Conditions')).toContain('My HP at or below 40%');
     e.level = 40;
     expect(line(describeBuild(e, 'p1'), 'Conditions')).toBe('None');
+  });
+});
+
+describe('describeBoard', () => {
+  it('captures the evaluated tree as a copy, so later edits to the character never change it', () => {
+    const c = fixtureCharacter('WARRIOR');
+    const b = describeBoard(c, 'p1');
+    expect(b).toMatchObject({ boardKey: 'WARRIOR', name: 'Default' });
+    expect(b.allocatedNodeIds).toHaveLength(77);
+    c.transcendence.presets[0].allocatedNodeIds.length = 0;
+    expect(b.allocatedNodeIds).toHaveLength(77);
   });
 });

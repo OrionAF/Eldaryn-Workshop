@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
   defaultRuns, normaliseRuns, normaliseRun, migrateRunsFromV1, runFromResult, sortRuns, compactRuns,
-  enforceRunsBudget, RUN_DETAIL_LIMIT, RUN_DETAIL_RESULTS, RUN_DETAIL_FULL_LINES, RUN_KIND,
+  enforceRunsBudget, normaliseRunBoard, RUN_DETAIL_LIMIT, RUN_DETAIL_RESULTS, RUN_DETAIL_FULL_LINES, RUN_KIND,
 } from './runs.js';
 import { normaliseCharacter, migrateCharacterFromV1, newCharacter } from './index.js';
-import { richResult, pvpResult, ttkResult } from '../__fixtures__/optimiser/index.js';
+import { richResult, pvpResult, ttkResult, dpsResult } from '../__fixtures__/optimiser/index.js';
+import { transcendenceBoard } from '../game/transcendence.js';
 
 const entry = (rank, o = {}) => ({
   rank, isBaseline: rank === 0, key: `k${rank}`, candidate: { relicIds: ['a'], talentAllocation: null },
@@ -322,5 +323,26 @@ describe('run cost (simulation.md §Estimates)', () => {
     expect([evaluated, rung.label]).toEqual([inner.search.evaluated, 'level 7-2']);
     // a Push run that optimised nothing has no cost
     expect(runFromResult({ ...push, optimised: null }, { id: 'q' })).not.toHaveProperty('cost');
+  });
+});
+
+describe('run boards', () => {
+  const nodes = transcendenceBoard('WARRIOR').nodes.slice(0, 3).map((n) => n.id);
+  const board = { boardKey: 'WARRIOR', name: 'Default', allocatedNodeIds: nodes };
+
+  it('normaliseRunBoard keeps a known tree and rejects unknown boards or nodes', () => {
+    expect(normaliseRunBoard({ ...board, allocatedNodeIds: [...nodes, nodes[0]] })).toEqual(board);
+    expect(normaliseRunBoard({ ...board, boardKey: 'NOPE' })).toBeNull();
+    expect(normaliseRunBoard({ ...board, allocatedNodeIds: [...nodes, 'n_99,99'] })).toBeNull();
+    expect(normaliseRunBoard({ boardKey: 'WARRIOR' })).toBeNull();
+  });
+
+  it('a saved schema 2 run keeps the tree on the baseline and the top rows only', () => {
+    const res = dpsResult();
+    res.baseline = { ...res.baseline, board };
+    const many = Array.from({ length: RUN_DETAIL_FULL_LINES + 2 }, (_, i) => ({ ...res.rows[0], key: `k${i}`, rank: i + 1, board }));
+    const d = normaliseRun(runFromResult({ ...res, rows: many }, { id: 'x' })).detail;
+    expect(d.baseline.board).toEqual(board);
+    expect(d.rows.map((r) => !!r.board)).toEqual(many.map((_, i) => i < RUN_DETAIL_FULL_LINES));
   });
 });

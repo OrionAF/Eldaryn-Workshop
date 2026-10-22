@@ -231,6 +231,7 @@
   --drawer-w: 420px;
   --drawer-w-compact: 380px;
   --modal-w: 560px;
+  --modal-wide-w: 1100px;
   --row-h: 32px;
   --control-h: 32px;
   --hit: 44px;      /* touch target on coarse pointers / phone */

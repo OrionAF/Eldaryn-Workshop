@@ -15,7 +15,7 @@ import { OBLIVION_FLOORS } from '../game/pveContent.js';
 import { celestialDifficulty } from '../game/celestial.js';
 import { MAX_PLAYER_LEVEL } from '../game/classes.js';
 import { dungeonSteps, raidSteps } from '../engine/pve/enemies.js';
-import { describeBuild } from '../build/describe.js';
+import { describeBuild, describeBoard } from '../build/describe.js';
 import { resolveTarget, makeObjective, meetsTarget } from './objectives.js';
 import { createSampler, AbortError, isAbort } from './sampler.js';
 import { candidateEngineKey, changesOf } from './effect.js';
@@ -443,8 +443,12 @@ export async function pushCore(env, opts) {
 const pctText = (p) => `${Math.round(p * 1000) / 10}%`;
 const cap1 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-function lineOf(space, cand) {
-  return describeBuild(...space.describeArgs(cand)).map((l) => ({ label: l.label, value: l.value, ...(l.inactive ? { inactive: l.inactive } : {}) }));
+function descriptionOf(space, cand) {
+  const args = space.describeArgs(cand);
+  return {
+    lines: describeBuild(...args).map((l) => ({ label: l.label, value: l.value, ...(l.inactive ? { inactive: l.inactive } : {}) })),
+    board: describeBoard(...args),
+  };
 }
 
 /** The real environment: the build space, a win-rate objective per rung, `optimize` per rung. */
@@ -760,7 +764,7 @@ function baselineRowOf(space, B, core, tau, delta) {
   return {
     rank: 0, tieGroup: null, isBaseline: true, provisional: false, key: B.key, engineKey: null, candidate: B.cand,
     value, aux: { winRate: value, meetsTarget: v ? meetsTarget(v, tau, delta) : null, target: tau }, vsBaseline: null, changes: [],
-    remainder: null, writes: [], runMore: null, lines: lineOf(space, B.cand),
+    remainder: null, writes: [], runMore: null, ...descriptionOf(space, B.cand),
   };
 }
 

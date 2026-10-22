@@ -8,6 +8,7 @@ import { setup, click, type, key } from '../ui/testkit.js';
 import { viewResult, viewRun } from '../../lib/ui/optimiserView.js';
 import { runFromResult } from '../../lib/model/runs.js';
 import { SPACE_DEFAULTS } from '../../lib/search/space.js';
+import { transcendenceBoard } from '../../lib/game/transcendence.js';
 import { dpsResult, ttkResult, richResult, pvpResult, legacyRun } from '../../lib/__fixtures__/optimiser/index.js';
 
 let mounted;
@@ -388,4 +389,29 @@ it('an "Only with" change also shows the helps-with badge', () => {
   const abl = ui.qa('[data-testid="result-row"]')[0].querySelectorAll('.abl')[1];
   expect(abl.querySelector('.verdict').textContent).toContain('Helps with the other changes');
   expect(abl.textContent).toContain(`Only with: ${a.label}`);
+});
+
+it('Show full build draws the row\'s Transcendence tree read only, with its changes from the current tree', () => {
+  const ids = transcendenceBoard('WARRIOR').nodes.slice(0, 4).map((n) => n.id);
+  const result = dpsResult();
+  result.baseline = { ...result.baseline, board: { boardKey: 'WARRIOR', name: 'Default', allocatedNodeIds: ids.slice(0, 3) } };
+  result.rows[0] = { ...result.rows[0], board: { boardKey: 'WARRIOR', name: 'Default', allocatedNodeIds: [ids[0], ids[1], ids[3]] } };
+  const ui = mountResults(result);
+  toggle(ui, 0);
+  click([...ui.qa('button')].find((b) => b.textContent.trim() === 'Show full build'));
+  const tree = ui.q('[data-testid="recommended-tree"]');
+  expect(tree.textContent).toMatch(/3 nodes · 1 added, 1 removed vs current/);
+  expect(tree.querySelector('[role="application"]').getAttribute('aria-label')).toMatch(/read only/);
+  expect(tree.querySelectorAll('.tnode.unlocked')).toHaveLength(3);
+  expect(tree.querySelectorAll('.tnode.highlighted')).toHaveLength(1);
+  expect(tree.querySelectorAll('.tnode.unlockable')).toHaveLength(0);
+  click([...tree.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Open full tree'));
+  expect(ui.q('dialog.modal.wide[open] [role="application"]')).not.toBeNull();
+});
+
+it('Show full build omits the tree when the row kept none', () => {
+  const ui = mountResults(dpsResult());
+  toggle(ui, 0);
+  click([...ui.qa('button')].find((b) => b.textContent.trim() === 'Show full build'));
+  expect(ui.q('[data-testid="recommended-tree"]')).toBeNull();
 });
