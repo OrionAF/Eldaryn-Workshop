@@ -150,6 +150,21 @@
   --stone-oblivion: #8a7dff; --stone-oblivion-light: #c4bcff; --stone-oblivion-tint: rgba(138, 125, 255, 0.12);
   --tier-gold: #e8c84f;      --tier-silver: #c0cbe0;    --tier-bronze: #c98d5e;   /* carried from app.css for the Relic tile port */
 
+  /* Transcendence board, matched to the in-game board (design-system §4.29). Tier band hues come
+     from the catalogue (transcendence.json tiers[].color), not from here. */
+  --tc-board: #0c1323;
+  --tc-node: #0b1423;
+  --tc-node-ring: rgba(255, 255, 255, 0.14);
+  --tc-allocated: #e74f59;
+  --tc-allocated-glow: 0 0 10px rgba(231, 79, 89, 0.55);
+  --tc-allocated-tint: rgba(231, 79, 89, 0.16);
+  --tc-reachable-ring: rgba(255, 255, 255, 0.45);
+  --tc-core: #f4b53a;
+  --tc-on-core: #1c1404;
+  --tc-socket: #2dd4bf;
+  --tc-socket-tint: rgba(45, 212, 191, 0.10);
+  --tc-sigil: #4fa4ff;
+
   /* ── Type ─────────────────────────────────────────────────────────────── */
   --font-display: 'Grenze', 'Grenze Fallback', 'Iowan Old Style', Georgia, serif;          /* titles >= 16px only */
   --font-ui: 'Alegreya Sans', 'Alegreya Sans Fallback', 'Segoe UI', system-ui, sans-serif;        /* all prose and labels */

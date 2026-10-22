@@ -2,22 +2,26 @@
   /**
    * TranscendenceNode.svelte - one node in the Transcendence grid, positioned
    * absolutely by its caller (TranscendenceGrid) via CSS custom properties.
-   * Shape encodes rarity (circle/square/hexagon/large hexagon), a small
-   * extracted emblem encodes stat category; sockets retain their scroll symbol.
+   * Drawn like the in-game board (design-system §4.29): dark round common nodes and rounded-square
+   * uncommon nodes carrying the extracted emblem, a gold core, teal "Soon" glyph sockets and a large
+   * round Ancient Sigil node.
    *
    * Purely presentational + a click handler - adjacency/unlock validity is
    * decided by the caller (the store rejects an invalid allocation), this component just reflects `unlocked`/`unlockable`
-   * state and forwards taps/hovers.
+   * state and forwards taps/hovers. `cost` is the Ichor the next allocation would take, shown on unlockable nodes.
    */
   import { KIND_LABEL } from './statLabels.js';
   import { transcendenceImage } from '../../lib/assets/transcendence.js';
 
-  let { node, unlocked = false, unlockable = false, highlighted = false, readOnly = false, onSelect = null, onHover = null } = $props();
+  let { node, unlocked = false, unlockable = false, highlighted = false, readOnly = false, cost = null, onSelect = null, onHover = null } = $props();
 
   const SIDE_ICON = { attack: 'sword', defense: 'shield' };
-  const icon = $derived(node.kind === 'socket' ? 'scroll' : (SIDE_ICON[node.side] ?? null));
+  const icon = $derived(node.kind === 'socket' ? 'hex' : (SIDE_ICON[node.side] ?? null));
   const emblem = $derived(transcendenceImage(node));
   const inert = $derived(node.kind === 'socket' || node.kind === 'start');
+  const showCost = $derived(unlockable && cost != null);
+  const checked = $derived(unlocked && (node.kind === 'notable' || node.kind === 'sigil'));
+  const stateText = $derived(readOnly ? (unlocked ? ', allocated' : ', not allocated') : showCost ? `, costs ${cost} Ichor` : unlocked ? ', allocated' : '');
 </script>
 
 <button
@@ -30,7 +34,7 @@
   class:read-only={readOnly}
   disabled={inert && !readOnly}
   style="--col: {node.col + 13}; --row: {node.row + 25};"
-  aria-label="{KIND_LABEL[node.kind]} {node.name} at {node.col},{node.row}{readOnly ? (unlocked ? ', allocated' : ', not allocated') : ''}"
+  aria-label="{KIND_LABEL[node.kind]} {node.name} at {node.col},{node.row}{stateText}"
   onclick={() => onSelect?.(node)}
   onpointerenter={(e) => onHover?.(node, e.clientX, e.clientY)}
   onpointerleave={() => onHover?.(null)}
@@ -60,18 +64,17 @@
         stroke-linejoin="round"
       />
     </svg>
-  {:else if icon === 'scroll'}
+  {:else if icon === 'hex'}
     <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
-      <path
-        d="M6 4.5h9a2.5 2.5 0 0 1 2.5 2.5v10A2.5 2.5 0 0 0 20 19.5M6 4.5A2.5 2.5 0 0 0 3.5 7v10A2.5 2.5 0 0 0 6 19.5h11.5"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.4"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      />
-      <path d="M7.5 8.5h6M7.5 11.5h6M7.5 14.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+      <path d="M12 3.5 19.4 7.75v8.5L12 20.5l-7.4-4.25v-8.5L12 3.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
     </svg>
+  {/if}
+  {#if node.kind === 'socket'}<span class="soon" aria-hidden="true">Soon</span>{/if}
+  {#if showCost}<span class="cost num" aria-hidden="true">{cost}</span>{/if}
+  {#if checked}
+    <span class="check" aria-hidden="true">
+      <svg viewBox="0 0 12 12"><path d="M2.5 6.2 5 8.5l4.5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+    </span>
   {/if}
 </button>
 
@@ -80,8 +83,8 @@
     position: absolute;
     /* left/top mark the grid point's center, not a corner - translate(-50%,
        -50%) keeps every shape centered on it regardless of that shape's own
-       box size, so rarities with a bigger box (uncommon/sigil) don't drift
-       toward the bottom-right of their cell. */
+       box size, so bigger kinds (notable/sigil) don't drift toward the
+       bottom-right of their cell. */
     left: calc(var(--col) * var(--cell-size, 32px));
     top: calc(var(--row) * var(--cell-size, 32px));
     transform: translate(-50%, -50%);
@@ -91,77 +94,68 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--surface-3);
-    border: 1.5px solid var(--line-control);
+    background: var(--tc-node);
+    border: 1.5px solid var(--tc-node-ring);
+    border-radius: 50%;
     color: var(--text-muted);
     cursor: not-allowed;
     transition: none;
   }
-  .tnode:hover {
-    border-color: var(--line-control);
-  }
 
-  /* Rarity shapes */
-  .tnode.minor {
-    border-radius: 50%;
-  }
+  /* Kinds */
   .tnode.notable {
     border-radius: var(--r-2);
-    width: calc(var(--node-size, 24px) * 1.2);
-    height: calc(var(--node-size, 24px) * 1.2);
+    width: calc(var(--node-size, 24px) * 1.25);
+    height: calc(var(--node-size, 24px) * 1.25);
   }
-  /* A flat-top regular hexagon needs a ~1 : 0.866 width:height box for this
-     vertex set - a square box (1:1) stretches it tall on the sides, which
-     is what "uneven/wonky" sides looks like. */
   .tnode.socket {
-    width: var(--node-size, 24px);
-    height: calc(var(--node-size, 24px) * 0.866);
-    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+    border-radius: var(--r-2);
+    width: calc(var(--node-size, 24px) * 1.15);
+    height: calc(var(--node-size, 24px) * 1.15);
+    border-color: var(--tc-socket);
+    background: var(--tc-socket-tint);
+    color: var(--tc-socket);
   }
   .tnode.start {
-    border-radius: 50%;
-    border-color: var(--brass-400);
-    color: var(--brass-200);
-    background: var(--brass-tint);
+    width: calc(var(--node-size, 24px) * 1.5);
+    height: calc(var(--node-size, 24px) * 1.5);
+    border: 0;
+    background: var(--tc-core);
+    color: var(--tc-on-core);
+    box-shadow: 0 0 12px var(--tc-core);
   }
   .tnode.sigil {
-    width: calc(var(--node-size, 24px) * 1.4);
-    height: calc(var(--node-size, 24px) * 1.4 * 0.866);
-    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+    width: calc(var(--node-size, 24px) * 1.7);
+    height: calc(var(--node-size, 24px) * 1.7);
+    border: 2px solid var(--tc-sigil);
+    color: var(--tc-sigil);
   }
+  .tnode.inert { cursor: default; }
 
-  .tnode.inert {
-    cursor: default;
-    opacity: 0.35;
-    border-style: dashed;
-  }
-
-  /* "Can select" and "already selected" differ in hue and fill, not only in fill: the up colour for
-     available, brass for allocated (design-system §4.29). */
+  /* Reachable: a dashed ring and the Ichor cost; allocated: a solid ring with a glow (the game's
+     two states differ in line style and the cost badge, not in colour alone). */
   .tnode.unlockable {
     cursor: pointer;
-    border-color: var(--verdict-up);
-    color: var(--verdict-up);
+    border-style: dashed;
+    border-color: var(--tc-reachable-ring);
+    color: var(--text-ink);
   }
-  .tnode.unlockable:hover {
-    background: var(--verdict-up-tint);
-  }
+  .tnode.unlockable:hover { border-color: var(--tc-allocated); }
 
   .tnode.unlocked {
     cursor: pointer;
-    background: var(--brass-400);
-    border-color: var(--brass-200);
-    color: var(--on-brass);
+    border: 2px solid var(--tc-allocated);
+    /* Opaque, so the links drawn underneath never show through the node. */
+    background: linear-gradient(var(--tc-allocated-tint), var(--tc-allocated-tint)) var(--tc-node);
+    box-shadow: var(--tc-allocated-glow);
+    color: var(--text-ink);
   }
-  .tnode.unlocked:hover {
-    background: var(--brass-200);
-  }
+  .tnode.unlocked:hover { background: var(--tc-node); }
+  .tnode.start.unlocked { background: var(--tc-core); border: 0; box-shadow: 0 0 12px var(--tc-core); }
   .tnode.read-only { cursor: help; }
 
   /* Node-filter match ring - an outline (not the border) so it layers on
-     top of the unlockable/unlocked border colors without replacing them.
-     Only common/uncommon nodes carry stats, so the clip-path shapes (glyph/
-     sigil), which would clip an outline, never receive this class. */
+     top of the unlockable/unlocked border without replacing it. */
   .tnode.highlighted {
     outline: 2px solid var(--brass-200);
     outline-offset: 2px;
@@ -172,9 +166,59 @@
     height: 55%;
   }
   .emblem {
-    width: 90%;
-    height: 90%;
+    width: 88%;
+    height: 88%;
     object-fit: contain;
     pointer-events: none;
   }
+
+  /* Badges sit on the node's edge in node-size units, so they scale with the board. */
+  .cost, .soon {
+    position: absolute;
+    left: 50%;
+    bottom: calc(var(--node-size, 24px) * -0.28);
+    transform: translateX(-50%);
+    padding: 0 calc(var(--node-size, 24px) * 0.12);
+    border-radius: var(--r-pill);
+    font-size: calc(var(--node-size, 24px) * 0.32);
+    line-height: 1.3;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .cost {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--node-size, 24px) * 0.08);
+    background: var(--tc-board);
+    color: var(--text-soft);
+  }
+  .cost::before {
+    content: '';
+    width: calc(var(--node-size, 24px) * 0.16);
+    height: calc(var(--node-size, 24px) * 0.16);
+    border-radius: 50%;
+    background: var(--tc-allocated);
+  }
+  .soon {
+    background: var(--tc-board);
+    border: 1px solid var(--tc-socket);
+    color: var(--tc-socket);
+    text-transform: uppercase;
+    letter-spacing: var(--track-label);
+    font-size: calc(var(--node-size, 24px) * 0.26);
+  }
+  .check {
+    position: absolute;
+    top: calc(var(--node-size, 24px) * -0.2);
+    right: calc(var(--node-size, 24px) * -0.2);
+    width: calc(var(--node-size, 24px) * 0.42);
+    height: calc(var(--node-size, 24px) * 0.42);
+    display: flex;
+    border-radius: 50%;
+    background: var(--tc-board);
+    border: 1px solid var(--text-ink);
+    color: var(--text-ink);
+    pointer-events: none;
+  }
+  .check svg { width: 100%; height: 100%; }
 </style>

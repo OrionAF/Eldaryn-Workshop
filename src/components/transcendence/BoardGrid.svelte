@@ -13,7 +13,8 @@
    * switches from single-finger pan to pinch-zoom (toward the midpoint
    * between the two touches) until either finger lifts.
    */
-  import { canAllocateNode } from '../../lib/transcendence.js';
+  import { canAllocateNode, allocCost, boardGraph } from '../../lib/transcendence.js';
+  import { TRANSCENDENCE_TIERS } from '../../lib/game/transcendence.js';
   import BoardNode from './BoardNode.svelte';
   import { fitView } from './boardView.js';
   import Button from '../ui/Button.svelte';
@@ -40,6 +41,24 @@
   const MAX_ZOOM = 2.5;
 
   const allocatedSet = $derived(new Set(allocatedIds));
+  // Board space shifts by +13 cols / +25 rows into canvas cells (node CSS does the same).
+  const cx = (col) => (col + 13) * CELL_SIZE;
+  const cy = (row) => (row + 25) * CELL_SIZE;
+  // Links drawn between adjacent allocated nodes, the core counting as owned (Game/transcendence.md §2).
+  const edges = $derived.by(() => {
+    const g = boardGraph(boardKey);
+    if (!g) return [];
+    const owned = (id) => id === g.coreId || allocatedSet.has(id);
+    const out = [];
+    for (const [id, near] of g.neighbors) {
+      if (!owned(id)) continue;
+      for (const other of near) if (id < other && owned(other)) out.push([g.byId.get(id), g.byId.get(other)]);
+    }
+    return out;
+  });
+  // Tier row bands as the game draws them: a tinted band per tier, labelled at its top edge.
+  const bands = $derived(TRANSCENDENCE_TIERS.map((t) => ({ ...t, top: cy(t.rowTo) - CELL_SIZE * 0.6, bottom: cy(t.rowFrom) + CELL_SIZE * 0.5 })));
+  const costOf = (node, unlockable) => (unlockable ? allocCost(boardKey, allocatedIds, node.id) : null);
   // Board space is col -13..13, row -25..0; node CSS shifts it to 0..26 / 0..25 (core at the bottom).
   const GRID_COLS = 27;
   const GRID_ROWS = 26;
@@ -198,11 +217,21 @@
     class="canvas"
     style="--cell-size: {CELL_SIZE}px; --node-size: {NODE_SIZE}px; transform: translate({panX}px, {panY}px) scale({zoom}); width: {(GRID_COLS + 1) * CELL_SIZE}px; height: {(GRID_ROWS + 1) * CELL_SIZE}px;"
   >
+    {#each bands as b (b.tier)}
+      <div class="band" style="--tier: {b.color}; top: {b.top}px; height: {b.bottom - b.top}px;" aria-hidden="true"></div>
+    {/each}
+    <svg class="edges" width={(GRID_COLS + 1) * CELL_SIZE} height={(GRID_ROWS + 1) * CELL_SIZE} aria-hidden="true">
+      {#each edges as [a, z] (a.id + z.id)}
+        <line x1={cx(a.col)} y1={cy(a.row)} x2={cx(z.col)} y2={cy(z.row)} />
+      {/each}
+    </svg>
     {#each nodes as node (node.id)}
+      {@const unlockable = !readOnly && canAllocateNode(boardKey, allocatedIds, node.id)}
       <BoardNode
         {node}
         unlocked={allocatedSet.has(node.id)}
-        unlockable={!readOnly && canAllocateNode(boardKey, allocatedIds, node.id)}
+        {unlockable}
+        cost={costOf(node, unlockable)}
         {readOnly}
         highlighted={!!highlightIds?.has(node.id) || (!!highlightStats?.size && node.stats.some((s) => highlightStats.has(s.stat)))}
         onSelect={handleSelect}
@@ -210,6 +239,12 @@
       />
     {/each}
   </div>
+  {#if !compact}
+    <!-- Labels stay at the viewport's left edge at any pan or zoom, as in the game; only their height follows the board. -->
+    {#each bands as b (b.tier)}
+      <span class="band-label" style="--tier: {b.color}; top: {panY + b.top * zoom}px;" aria-hidden="true">Tier {b.tier} <small>{b.name}</small></span>
+    {/each}
+  {/if}
 </div>
 {#if !compact}<div class="tools" role="group" aria-label="Board view">
   <Button variant="ghost" size="small" aria-label="Zoom in" onclick={() => zoomBy(1.25)}>+</Button>
@@ -228,7 +263,7 @@
     height: 65vh;
     min-height: 20rem;
     overflow: hidden;
-    background: var(--surface-0);
+    background: var(--tc-board);
     border: 1px solid var(--line-rule);
     border-radius: var(--r-2);
     touch-action: none;
@@ -243,5 +278,43 @@
     top: 0;
     left: 0;
     transform-origin: 0 0;
+  }
+  /* Bands run far past the board's sides so they fill the viewport at any pan, like the game's. */
+  .band {
+    position: absolute;
+    left: -200vw;
+    right: -200vw;
+    border-top: 1px solid color-mix(in srgb, var(--tier) 45%, transparent);
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--tier) 22%, transparent), transparent 75%);
+    pointer-events: none;
+  }
+  .band-label {
+    position: absolute;
+    left: var(--sp-2);
+    padding-top: var(--sp-1);
+    color: var(--tier);
+    font-size: var(--fs-11);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .band-label small {
+    font-size: 0.7em;
+    opacity: 0.6;
+  }
+  .edges {
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .edges line {
+    stroke: var(--tc-allocated);
+    stroke-width: calc(var(--cell-size) * 0.1);
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 3px var(--tc-allocated));
   }
 </style>
