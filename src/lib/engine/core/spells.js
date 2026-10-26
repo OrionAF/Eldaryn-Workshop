@@ -254,6 +254,8 @@ const SPELL_RESIST_HARD = capConfig('SPELL_RESIST').hard;
  * @property {number} [healingMult=1]       [17] ?? scales spell vamp and self-heal
  * @property {number} [healBaseMaxHp=0]     [18] > 0 replaces maxHp as the HEAL / regen base
  * @property {boolean} [minionAlive=false]  [19]
+ * @property {number} [damageMult=1]        [20] `damageMult` of the 2.8.2 options: PVP damage ramp on every
+ *   spell hit (rampSpellDmg; updates-2.8.2.md §2)
  */
 
 /**
@@ -340,6 +342,7 @@ export function processSpellsTick(runtimes, input, rng) {
   const critMult = input.critDamage ?? 1.5;
   const spellVamp = input.spellVamp ?? 0;
   const healingMult = input.healingMult ?? 1;
+  const damageMult = input.damageMult ?? 1;
   const healBase = healBaseMaxHp > 0 ? healBaseMaxHp : maxHp;
 
   // activeSpellStatBuff L1090767-1090834: SPELL_DAMAGE / SPELL_CRIT / SPELL_VAMP from active buffs
@@ -358,12 +361,14 @@ export function processSpellsTick(runtimes, input, rng) {
   const mom = () => (hasMomentum ? momentumBonuses(runtimes) ?? ZERO_MOMENTUM : ZERO_MOMENTUM);
   const resistMult = 1 - Math.min(targetSpellResist, SPELL_RESIST_HARD) / 100;
 
-  // modSpellDmg L1090892-1090927; resist cap follows Game/updates-2.7.5.md §1.
+  // modSpellDmg L1090892-1090927; resist cap follows Game/updates-2.8.2.md §3.
   const modSpellDmg = (base) => {
     if (base <= 0) return 0;
     const pct = spellDamage + activeSpellStatBuff('SPELL_DAMAGE') + mom().spellDamagePercent;
     return Math.max(1, Math.floor(base * (1 + pct / 100) * resistMult));
   };
+  // rampSpellDmg 2.8.2 L1101448-1101475 (pvp/balance.js rampDamage)
+  const rampSpellDmg = (dmg) => (damageMult === 1 || !(dmg > 0) ? dmg : Math.max(1, Math.round(dmg * damageMult)));
   // currentSpellCrit L1090933-1090959
   const currentSpellCrit = () => applyCombatCeiling(
     (spellCritChance ?? 0) + activeSpellStatBuff('SPELL_CRIT') + mom().spellCritPoints, SPELL_CRIT_CEILING);
@@ -406,7 +411,7 @@ export function processSpellsTick(runtimes, input, rng) {
   const critExtra = (crit) => (crit ? { isCrit: true } : {});
   // spell damage + vamp, shared by the DoT tick, DEBUFF initial hit and DAMAGE hit
   const dealSpellDamage = (base, crit, type, spellRef) => {
-    const dmg = modSpellDmg(crit ? base * critMult : base);
+    const dmg = rampSpellDmg(modSpellDmg(crit ? base * critMult : base));
     targetHpDelta -= dmg;
     push(type, dmg, spellRef, critExtra(crit));
     const v = vampHeal(dmg);

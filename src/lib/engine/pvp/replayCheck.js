@@ -1,7 +1,7 @@
 // Server-log replay check (rebuild-plan §3, E9): compares an exported `/arena/fight` response with the
 // rules of pvp/resolver.js. The server's RNG is not ours, so only what does not depend on it is
 // compared exactly: the deterministic skeleton (tick grid, swing times, regen pulses, the opening
-// summon window, spell cast lower bounds, the x8 max HP) and the sizes a hit can have. Rules: Game/
+// summon window, spell cast lower bounds, the PVP max HP) and the sizes a hit can have. Rules: Game/
 // combat-pvp.md §4 (tick loop), §6 (swing), §7 (regen), §8 (spells), §10 (winner), §11 (event model).
 //
 // Two inputs: the response (`{result}` or the bare `result`) and, optionally, the two fighters the
@@ -15,6 +15,8 @@ import { ARENA_CONSTANTS } from '../../game/combatPvp.js';
 import { pvpRatingToFraction, REGEN_PULSE_MS } from './attack.js';
 import { createDuelState } from './reactions.js';
 import { fighterDuelArgs, completeDuelStats } from './resolver.js';
+import { applyPvpHpBuffPair } from './hpBuff.js';
+import { LEGACY_PVP_BALANCE, DEFAULT_PVP_BALANCE } from './balance.js';
 import { parseEventType } from './events.js';
 import { initSpellRuntimes } from '../core/spells.js';
 import { sigilBySpecies } from '../../game/sigils.js';
@@ -156,8 +158,13 @@ export function replayCheck(response, fighters = {}) {
     // the sides every rule may hold to a sheet.
     const placeholder = { stats: completeDuelStats({ totalHp: 1, totalAttack: 1, totalAttackSpeed: 1 }).stats, spells: [], equipped: [], stackCtx: {} };
     const argsOf = (f) => (f ? (f.stackCtx ? f : fighterDuelArgs(f)) : placeholder);
-    const a = argsOf(fighters.attacker);
-    const d = argsOf(fighters.defender);
+    const a0 = argsOf(fighters.attacker);
+    const d0 = argsOf(fighters.defender);
+    // the rules run on the pre-2.8.2 flat x8 pool; max-hp also accepts the 2.8.2 level-curve pool
+    const [aLegacy, dLegacy] = applyPvpHpBuffPair(a0.stats, d0.stats, undefined, undefined, LEGACY_PVP_BALANCE);
+    const [aLive, dLive] = applyPvpHpBuffPair(a0.stats, d0.stats, a0.level, d0.level, DEFAULT_PVP_BALANCE);
+    const a = { ...a0, stats: aLegacy };
+    const d = { ...d0, stats: dLegacy };
     const s = createDuelState({
       attackerStats: a.stats, defenderStats: d.stats, attackerSummon: a.summon, defenderSummon: d.summon,
       attackerShield: a.shield, defenderShield: d.shield, attackerEquipped: a.equipped, defenderEquipped: d.equipped,
@@ -178,6 +185,7 @@ export function replayCheck(response, fighters = {}) {
       hasMinions: s.hasMinions,
       window: openingSummonWindowMs([s.attackerMinion, s.defenderMinion]),
       plain: !spells.attacker.length && !spells.defender.length && !s.stacksActive,
+      liveMaxHp: { attacker: aLive.totalHp, defender: dLive.totalHp },
     };
   }
 
@@ -242,20 +250,22 @@ export function replayCheck(response, fighters = {}) {
     }
   });
 
-  // ---- max-hp: the x8 pool ----
+  // ---- max-hp: the PVP pool (flat x8 before 2.8.2, the attacker's level curve since; updates-2.8.2.md §1) ----
   run('max-hp', (c) => {
     for (const s of SIDES) {
       if (sheet?.known[s]) continue;
       const v = res[`${s}MaxHp`];
-      if (v > 0 && v % ARENA_CONSTANTS.PVP_HP_MULTIPLIER === 0) c.ok();
-      else c.bad(`${s}MaxHp is not a positive multiple of ${ARENA_CONSTANTS.PVP_HP_MULTIPLIER}`, { actual: v });
+      if (v > 0 && Number.isInteger(v)) c.ok();
+      else c.bad(`${s}MaxHp is not a positive integer`, { actual: v });
     }
-    if (!sheet?.both) c.note('a side without fighter: only divisibility by the x8 multiplier is checked');
+    if (!sheet?.both) c.note('a side without fighter: only a positive whole pool is checked (since 2.8.2 the multiplier depends on level)');
     for (const s of SIDES) {
       if (!sheet?.known[s]) continue;
       const want = sheet.e[s].maxHp;
-      if (res[`${s}MaxHp`] === want) c.ok();
-      else c.bad(`${s}MaxHp differs from floor(totalHp x ${ARENA_CONSTANTS.PVP_HP_MULTIPLIER})`, { expected: want, actual: res[`${s}MaxHp`] });
+      const got = res[`${s}MaxHp`];
+      if (got === want) c.ok();
+      else if (got === sheet.liveMaxHp[s]) { c.ok(); c.note(`${s}MaxHp matches the 2.8.2 level-curve pool`); }
+      else c.bad(`${s}MaxHp differs from floor(totalHp x ${ARENA_CONSTANTS.PVP_HP_MULTIPLIER}) and from the 2.8.2 level-curve pool`, { expected: want, actual: got });
       const sm = res[`${s}ShieldMax`] ?? 0;
       const wantShield = sheet.e[s].shieldMax ?? 0;
       if (sm === wantShield) c.ok();

@@ -1,8 +1,10 @@
 // features/duel.js (F3): the PVP duel feature on top of build/ and engine/pvp. Pure; no store, no rng.
 // Turns saved opponents and my presets into engine Fighters, clones a preset into an opponent, reads
 // a win-rate summary from either side, and summarises a traced duel's log. Rules: Game/combat-pvp.md
-// (ties go to the defender, the x8 PVP HP buff is applied inside the engine, never here).
+// (ties go to the defender, the PVP HP buff is applied inside the engine, never here).
 import { buildFighter } from '../build/fighter.js';
+import { applyPvpHpBuffPair } from '../engine/pvp/hpBuff.js';
+import { DEFAULT_PVP_BALANCE } from '../engine/pvp/balance.js';
 import { classOfSpec } from '../game/classes.js';
 import { sigilBySpecies } from '../game/sigils.js';
 import { parseEventType, TIME_UP } from '../engine/pvp/events.js';
@@ -230,8 +232,9 @@ export function combineSeats(...seats) {
 }
 
 /**
- * The two stat blocks exactly as the resolver reads them (completed, HP x8), side by side, with the
- * rows each side left blank marked. Only numeric sheet keys appear, in sheet order.
+ * The two stat blocks exactly as the resolver reads them (completed, HP buffed at MY level as the
+ * attacker, as runDuel does), side by side, with the rows each side left blank marked. Only numeric
+ * sheet keys appear, in sheet order.
  * @returns {Array<{key: string, label: string, mine: number|null, theirs: number|null, mineDefaulted: boolean, theirsDefaulted: boolean}>}
  */
 export function simulatedColumns(mine, theirs) {
@@ -241,9 +244,10 @@ export function simulatedColumns(mine, theirs) {
   });
   const a = sim(mine);
   const b = sim(theirs);
+  [a.stats, b.stats] = applyPvpHpBuffPair(a.stats, b.stats, mine.level, theirs.level, DEFAULT_PVP_BALANCE);
   return SHEET_KEYS.filter((k) => !sheetKeyMeta(k).isRaw && (typeof a.stats[k] === 'number' || typeof b.stats[k] === 'number')).map((k) => ({
     key: k,
-    label: k === 'totalHp' ? 'Health (x8 PVP buff applied)' : statLabel(k),
+    label: k === 'totalHp' ? 'Health (PVP buff applied)' : statLabel(k),
     mine: a.stats[k] ?? null,
     theirs: b.stats[k] ?? null,
     mineDefaulted: a.defaulted.has(k),

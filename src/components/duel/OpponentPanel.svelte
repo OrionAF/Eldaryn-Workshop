@@ -90,7 +90,7 @@
       <span class="lbl">Stat sheet</span>
       <p class="note">
         Type the numbers from the opponent's arena profile. In plain-number rows "." separates thousands ("48.124" is 48124); in percentage
-        rows it is a decimal point. The app adds the x8 PVP Health buff itself, so enter plain Health.
+        rows it is a decimal point. The app adds the PVP Health buff (x8 at level 50 up to x24 at level 95) itself, so enter plain Health.
       </p>
       <SheetTable {keys} playerClass={opponent.class} values={opponent.sheet.values} computed={null} onChange={onSheetChange} />
     </div>

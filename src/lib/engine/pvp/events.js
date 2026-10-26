@@ -43,7 +43,7 @@
  * @property {DuelEvent[]} ticks       the log; [] in event-free mode
  * @property {number} totalDuration    timestamp of the last processed tick (ms)
  * @property {boolean} attackerWon
- * @property {number} attackerMaxHp    the x8 pool
+ * @property {number} attackerMaxHp    the PVP-buffed pool
  * @property {number} defenderMaxHp
  * @property {number} attackerHpRemaining  max(0, hp)
  * @property {number} defenderHpRemaining

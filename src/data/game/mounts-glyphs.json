@@ -1,5 +1,5 @@
 {
- "source": "Eldaryn 2.7.0 decompiled.js: mounts L1071633-1072874; glyph catalogue/economy L1225044-1226109; sigil glyph modifiers L1083900-1084786; secondary pool L677317-678505; mount bonuses L1224583-1225043; travel L1918930-1919200",
+ "source": "Eldaryn 2.7.0 decompiled.js: mounts L1071633-1072874; glyph catalogue/economy L1225044-1226109; sigil glyph modifiers L1083900-1084786; secondary pool L677317-678505; mount bonuses L1224583-1225043; travel L1918930-1919200; 2.8.2 glyph quality module 4390 L1250148-1250202 (bands, GLYPH_MAX_QUALITY, MYTHIC_GLYPH_QUALITY_TIERS; Game/updates-2.8.2.md §4)",
  "mountSpecies": [
   {
    "species": "NIGHT_WOLF",
@@ -412,26 +412,44 @@
    1
   ],
   "Mythic": [
-   1,
-   1
+   1.01,
+   1.2
   ],
   "Ancient": [
-   1,
-   1
+   1.01,
+   1.2
   ],
   "Divine": [
-   1,
-   1
+   1.01,
+   1.2
   ],
   "Eternal": [
-   1,
-   1
+   1.01,
+   1.2
   ],
   "Oblivion": [
-   1,
-   1
+   1.01,
+   1.2
   ]
  },
+ "glyphMaxQuality": 1.2,
+ "mythicGlyphQualityTiers": [
+  {
+   "from": 1.01,
+   "to": 1.1,
+   "weight": 70
+  },
+  {
+   "from": 1.1,
+   "to": 1.15,
+   "weight": 22
+  },
+  {
+   "from": 1.15,
+   "to": 1.2,
+   "weight": 8
+  }
+ ],
  "glyphSecondaryPool": [
   {
    "stat": "attackSpeed",

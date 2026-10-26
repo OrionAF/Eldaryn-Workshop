@@ -159,9 +159,9 @@ const counted = (seed) => {
 };
 
 describe('fighterDuelArgs', () => {
-  it('builds spells, stack sources, shield and summon from a Fighter, with the x8 HP buff', () => {
+  it('builds spells, stack sources, shield and summon from a Fighter, with the PVP HP buff (x24: no level takes the curve top)', () => {
     const m = fighterDuelArgs(mystic);
-    expect(m.stats.totalHp).toBe(160000);
+    expect(m.stats.totalHp).toBe(480000);
     expect(m.stats.pvpBaseHp).toBe(20000);
     expect(m.shield.hpPercent).toBeGreaterThan(0);
     expect(m.spells.length).toBeGreaterThan(0);
@@ -250,7 +250,7 @@ describe('the input boundary (plan I9)', () => {
   it('fighterDuelArgs completes an opponent-shaped sheet (blank Miss, Crit Damage, Regen) and derives the effect', () => {
     const f = { class: 'NECROMANCER', spec: 'NECROMANCER_DEATHLORD', sigils: [], stats: { totalHp: 1000, totalAttack: 50, totalAttackSpeed: 1, totalBlockChance: 30 } };
     const a = fighterDuelArgs(f);
-    expect(a.stats).toMatchObject({ totalHp: 8000, totalMissChance: 0, totalCritDamage: 1.5, totalHpRegen: 0, disruptionEffect: 'FEAR' });
+    expect(a.stats).toMatchObject({ totalHp: 24000, totalMissChance: 0, totalCritDamage: 1.5, totalHpRegen: 0, disruptionEffect: 'FEAR' });
     const r = runDuel({ attacker: f, defender: f, rng: mulberry32(3) });
     expect(Number.isFinite(r.defenderHpLeft) && Number.isFinite(r.attackerHpLeft)).toBe(true);
   });

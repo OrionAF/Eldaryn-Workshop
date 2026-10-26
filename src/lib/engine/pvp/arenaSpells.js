@@ -105,6 +105,7 @@ export function routeSpellHealToMinion(minion, result, ownerMaxHp) {
  * @property {Object|null} [casterMinion=null]  the caster's minion: receives minion heals and buffs
  * @property {boolean} [log=true]  false returns [] and skips building the log (state is identical)
  * @property {{buffModifiers?: Object}|null} [spellsOut=null]  receives the tick's `buffModifiers`
+ * @property {number} [damageMult=1]  the fight's damage ramp this tick (pvp/balance.js)
  *   (computeActiveBuffModifiers of the runtimes after the tick), so the caller need not recompute it
  */
 
@@ -115,7 +116,7 @@ export { castLockoutMs } from '../core/stances.js';
 const SPELL_INPUT = {
   maxHp: 0, dtMs: 0, timestamp: 0, attack: 0, healReductionPercent: 0, hp: 0, enemyHp: 0, enemyMaxHp: 0,
   offensiveConditions: true, selfConditionsMet: false, spellDamage: 0, targetSpellResist: 0, spellCritChance: 0,
-  critDamage: 0, spellVamp: 0, silencedMs: 0, healingMult: 1, healBaseMaxHp: 0, minionAlive: false,
+  critDamage: 0, spellVamp: 0, silencedMs: 0, healingMult: 1, healBaseMaxHp: 0, minionAlive: false, damageMult: 1,
 };
 
 // port of processArenaSpells L1453857-1454667
@@ -142,7 +143,7 @@ export function processArenaSpells(runtimes, input, rng) {
   const {
     caster, target, dtMs, timestamp, side, targetDebuffs, casterDebuffs,
     targetSpellResistBonus = 0, casterHpPercentBonus = 0, targetMinion = null, casterMinion = null, log = true,
-    spellsOut = null,
+    spellsOut = null, damageMult = 1,
   } = input;
   const attacker = side === 'attacker' ? caster : target;
   const defender = side === 'attacker' ? target : caster;
@@ -168,6 +169,7 @@ export function processArenaSpells(runtimes, input, rng) {
   si.healingMult = 1 - defFraction;
   si.healBaseMaxHp = caster.rawMaxHp;
   si.minionAlive = isMinionAlive(casterMinion);
+  si.damageMult = damageMult; // 2.8.2 passes the fight's ramp as processSpellsTick's options (L1605410-1605459)
   const result = processSpellsTick(runtimes, si, rng);
 
   if (spellsOut) spellsOut.buffModifiers = result.buffModifiers;

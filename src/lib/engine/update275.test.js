@@ -1,6 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { capConfig, applySoftCap, rawFromSoftCapped } from './core/caps.js';
-import { calculateTotalStats } from './pipeline/totals.js';
 import { initSpellRuntimes, processSpellsTick } from './core/spells.js';
 import { applyDebuff, processDebuffsTick, computeDebuffModifiers, weakenedAttack } from './core/debuffs.js';
 import { createMinion, summonMinion, damageMinion, advanceMinionRespawn } from './core/minions.js';
@@ -27,27 +25,7 @@ const duel = (spells, options = {}) => simulateArenaPvP(
   { rng: never, ...options },
 );
 
-describe('2.7.5 Spell Resist (Game/updates-2.7.5.md §1)', () => {
-  it('matches the patch example, inverse, soft boundary and asymptotic hard cap', () => {
-    const cfg = capConfig('SPELL_RESIST');
-    expect(cfg).toEqual({ soft: 40, hard: 90 });
-    expect(applySoftCap(40, cfg)).toBe(40);
-    expect(applySoftCap(100, cfg)).toBe(70.46875);
-    expect(rawFromSoftCapped(70.46875, cfg)).toBeCloseTo(100, 10);
-    expect(rawFromSoftCapped(90, cfg)).toBe(Infinity);
-    expect(applySoftCap(1e10, cfg)).toBeCloseTo(90, 6);
-    const result = calculateTotalStats(
-      { attack: 1, hp: 100, attackSpeed: 1, critChance: 0, critDamage: 1.5 },
-      { WEAPON: { primaryStats: { attack: 0, hp: 0 }, secondaryStats: [{ type: 'SPELL_RESIST', value: 100 }] } },
-    );
-    expect(result.totalSpellResist).toBe(70.5);
-  });
-  it('spell mitigation clamps at 90', () => {
-    const rt = initSpellRuntimes([config('SOUL_SPIKE')]); rt[0].cooldownRemaining = 0;
-    const r = processSpellsTick(rt, { maxHp: 1000, dtMs: 0, timestamp: 0, attack: 1000, targetSpellResist: 100 }, never);
-    expect(r.targetHpDelta).toBe(-44); // floor(450 * (1 - .9)), JS evaluation order
-  });
-});
+// The 2.7.5 Spell Resist caps (40/90) were superseded in 2.8.2: update282.test.js.
 
 describe('2.7.5 Tyrant\'s Burden', () => {
   it('stacks on the immediate DoT tick and cadence, caps, expires and restores attack without drift', () => {

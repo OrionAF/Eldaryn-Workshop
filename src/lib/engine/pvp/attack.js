@@ -8,6 +8,7 @@ import { rollAttackDamage, rollPenetrationCritMult, rollDisruption, PARALYZE_DUR
 import { absorbWithShield, regenShieldRefillAmount } from '../core/shield.js';
 import { damageMinion, minionDeathMeta } from '../core/minions.js';
 import { lane } from '../rng.js';
+import { rampDamage } from './balance.js';
 
 /** Regen pulse period (module 5399 slot9, L1457661-1457662). */
 export const REGEN_PULSE_MS = 100;
@@ -47,11 +48,12 @@ export function applyRegen(e, timer, buffedMaxHp) {
 
 // port of processAttack.mitigate L1452937-1453003 (same sequence on the penetration path L1453430-1453528)
 // Not applyDamageReduction: the client applies DR whenever dr > 0, even for 0 damage (gives 1).
-function mitigate(x, atk, def) {
+// 2.8.2 ends both copies with the fight's damage ramp (L1604232, L1604719; updates-2.8.2.md §2).
+function mitigate(x, atk, def, damageMult) {
   if (def.damageReduction > 0) x = Math.max(1, Math.round(x * (1 - def.damageReduction / 100)));
   if (atk.pvpAttack > 0) x = Math.round(x * (1 + pvpRatingToFraction(atk.pvpAttack)));
   if (def.pvpDefense > 0) x = Math.max(1, Math.round(x * (1 - pvpRatingToFraction(def.pvpDefense))));
-  return x;
+  return rampDamage(x, damageMult);
 }
 
 // port of processAttack.applyLifesteal L1453004-1453045
@@ -95,9 +97,10 @@ function strike(def, dmg) {
  * @param {Object|null} defMinion the target's minion (core/minions.js), or null
  * @param {() => number} rng
  * @param {boolean} [log=true]
+ * @param {number} [damageMult=1] the fight's damage ramp this tick (resolver; pvp/balance.js)
  * @returns {Array<Object>} events in order ([] when log is false)
  */
-export function processAttack(atk, def, t, atkIsAttacker, maxHp, defMinion, rng, log = true) {
+export function processAttack(atk, def, t, atkIsAttacker, maxHp, defMinion, rng, log = true, damageMult = 1) {
   const events = [];
   const cap = maxHp == null ? atk.maxHp : maxHp;
   const S = atkIsAttacker ? 'attacker' : 'defender'; // swinger side
@@ -129,7 +132,7 @@ export function processAttack(atk, def, t, atkIsAttacker, maxHp, defMinion, rng,
     let thorns = 0;
     for (const s of strikes) {
       if (!defMinion.alive) break;
-      const r = damageMinion(defMinion, s.damage, { swing: !s.doubleHit, followUp: s.doubleHit, penetration: atk.penetration }, lane(X, 'minion-block'));
+      const r = damageMinion(defMinion, rampDamage(s.damage, damageMult), { swing: !s.doubleHit, followUp: s.doubleHit, penetration: atk.penetration }, lane(X, 'minion-block'));
       thorns += r.thorns ?? 0;
       applyLifesteal(atk, r.dealt, cap);
       const extra = {};
@@ -156,7 +159,7 @@ export function processAttack(atk, def, t, atkIsAttacker, maxHp, defMinion, rng,
     if (atk.penetration > 0 && miss === 0) {
       const base = Math.round((atk.attack * atk.penetration) / 100);
       const raw = Math.round(base * rollPenetrationCritMult(atk, X));
-      dealt = mitigate(raw, atk, def);
+      dealt = mitigate(raw, atk, def, damageMult);
       strike(def, dealt);
       applyLifesteal(atk, dealt, cap);
     }
@@ -174,12 +177,12 @@ export function processAttack(atk, def, t, atkIsAttacker, maxHp, defMinion, rng,
 
   // HIT path L1452929-1453400
   const roll = rollAttackDamage(atk, X);
-  const dmg = mitigate(roll.damage, atk, def);
+  const dmg = mitigate(roll.damage, atk, def, damageMult);
   strike(def, dmg);
   applyLifesteal(atk, dmg, cap);
   emit(`${S}_${roll.isCrit ? 'crit' : 'hit'}`, dmg);
   if (roll.isDoubleHit && def.hp > 0) { // L1453096-1453141: never re-rolls avoid, never crits
-    const d2 = mitigate(roll.doubleHitDamage, atk, def);
+    const d2 = mitigate(roll.doubleHitDamage, atk, def, damageMult);
     strike(def, d2);
     applyLifesteal(atk, d2, cap);
     emit(`${S}_hit`, d2, { doubleHit: true });

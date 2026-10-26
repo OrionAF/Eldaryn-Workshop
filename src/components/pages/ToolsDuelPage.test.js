@@ -72,7 +72,7 @@ it('a blank-row opponent shows the rows the duel will default and lists the miss
   // Stats used in the fight marks the defaulted cells and shows HP after the x8 buff
   const cells = view.qa('[data-testid="fighters-table"] td[data-defaulted="true"]');
   expect(cells.length).toBeGreaterThan(0);
-  expect(view.q('[data-testid="fighters-table"]').textContent).toContain('x8 PVP');
+  expect(view.q('[data-testid="fighters-table"]').textContent).toContain('PVP buff applied');
 });
 
 it('an opponent without Attack Speed blocks the run with a fix link', () => {

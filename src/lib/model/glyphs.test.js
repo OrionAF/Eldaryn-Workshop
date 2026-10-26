@@ -117,9 +117,9 @@ describe('secondary value (doc §9)', () => {
     expect(glyphSecondaryValue({ stat: 'bogus', quality: 1 })).toBe(0);
   });
 
-  it('quality is the inverse, clamped', () => {
+  it('quality is the inverse, clamped to [0, 1.2] (Game/updates-2.8.2.md §4)', () => {
     expect(glyphSecondaryQuality('critChance', 2.8)).toBeCloseTo(0.5, 5);
-    expect(glyphSecondaryQuality('critChance', 99)).toBe(1);
+    expect(glyphSecondaryQuality('critChance', 99)).toBe(1.2);
     expect(glyphSecondaryQuality('critChance', -3)).toBe(0);
     const q = glyphSecondaryQuality('lifesteal', 4.5);
     expect(glyphSecondaryValue({ stat: 'lifesteal', quality: q })).toBe(4.5);

@@ -38,15 +38,15 @@ describe('opponent text and columns', () => {
     expect(requiredStatsText()).toBe('Needs: HP, Attack, Attack Speed');
   });
 
-  it('simulatedColumns lists what the engine reads: x8 HP, defaulted keys marked, labels not keys', () => {
+  it('simulatedColumns lists what the engine reads: x24 HP at the placeholder level 100, defaulted keys marked, labels not keys', () => {
     const o = newOpponent('WARRIOR_DPS', 'Blank');
     o.sheet.values = { totalHp: 1000, totalAttack: 50, totalAttackSpeed: 1 };
     const theirs = opponentFighter(o);
     const mine = opponentFighter({ ...o, sheet: { values: { totalHp: 2000, totalAttack: 80, totalAttackSpeed: 1, totalCritChance: 0.25 } } });
     const rows = simulatedColumns(mine, theirs);
     const hp = rows.find((r) => r.key === 'totalHp');
-    expect(hp.mine).toBe(16000);
-    expect(hp.theirs).toBe(8000);
+    expect(hp.mine).toBe(48000);
+    expect(hp.theirs).toBe(24000);
     expect(hp.label).toMatch(/Health/);
     expect(rows.find((r) => r.key === 'totalCritChance')).toMatchObject({ mineDefaulted: false, theirsDefaulted: true });
     expect(rows.find((r) => r.key === 'totalAttack')).toMatchObject({ mineDefaulted: false, theirsDefaulted: false });
