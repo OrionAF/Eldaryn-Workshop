@@ -28,7 +28,7 @@ export function fortressBossMob(group) {
  * ([DERIVED], clan-fortress.md §1.4) unless its note says it is assumed; `true` keeps the arena rule.
  */
 export const FORTRESS_FIGHT_RULES = Object.freeze({
-  /** no x8 arena HP (applyPvpHpBuff): the player starts at the sheet HP */
+  /** no arena PVP HP buff (applyPvpHpBuff; the client's FORTRESS balance is flat x1): the player starts at the sheet HP */
   pvpHpBuff: false,
   /** neither side's PVP Attack / PVP Defense applies: hits are the sheet attack, boss hits are unreduced */
   pvpRatings: false,

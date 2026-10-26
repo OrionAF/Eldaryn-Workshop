@@ -10,7 +10,10 @@ import { tickDazedMs } from '../core/stances.js';
 import { getEquippedStanceConfig, stanceRuntimeFields } from '../sources/stance.js';
 import { ARENA_CONSTANTS } from '../../game/combatPvp.js';
 import { processAttack, applyRegen, pvpRatingToFraction } from './attack.js';
-import { applyPvpHpBuff } from './hpBuff.js';
+import { applyPvpHpBuff, applyPvpHpBuffPair, getPvpHpMultiplier } from './hpBuff.js';
+import {
+  LEGACY_PVP_BALANCE, DEFAULT_PVP_BALANCE, pvpDamageRampMult, pvpLateFightDamageMult, rampDebuffTick,
+} from './balance.js';
 import { processArenaSpells } from './arenaSpells.js';
 import { createDuelState, createReactions } from './reactions.js';
 import { duelEvent, hpAfter } from './events.js';
@@ -119,7 +122,7 @@ function syncStatus(to, from) {
 // result L1457456-1457621)
 /**
  * One arena duel. The 14 positional arguments are the client's; `opts` is this port's addition.
- * @param {Object} a0 attacker stats (ComputedStats with the x8 buff applied: applyPvpHpBuff)
+ * @param {Object} a0 attacker stats (ComputedStats with the PVP HP buff applied: applyPvpHpBuff)
  * @param {Object} a1 defender stats
  * @param {Array<Object>|null} a2 attacker castable spells (CombatSpellConfig[]; buildCombatSpells)
  * @param {Array<Object>|null} a3 defender castable spells
@@ -133,16 +136,19 @@ function syncStatus(to, from) {
  * @param {Object|null} a11 defender stack context
  * @param {Object|null} a12 attacker summon config (getEquippedSummonConfig)
  * @param {Object|null} a13 defender summon config
- * @param {{rng: () => number, log?: boolean, defenderDamageVariance?: number}} opts  `log=false` is the
- *   event-free mode: same draws and state, `ticks` is []. `defenderDamageVariance` (default 0, the arena)
- *   is not a client rule: v > 0 scales the defender's attack on each swing by a uniform draw in [1 - v, 1 + v],
- *   rounded, from its own 'defender-variance' lane. Only the Fortress boss port sets it (clan-fortress.md §1.4).
+ * @param {{rng: () => number, log?: boolean, defenderDamageVariance?: number, balance?: Object}} opts
+ *   `log=false` is the event-free mode: same draws and state, `ticks` is []. `defenderDamageVariance`
+ *   (default 0, the arena) is not a client rule: v > 0 scales the defender's attack on each swing by a
+ *   uniform draw in [1 - v, 1 + v], rounded, from its own 'defender-variance' lane. Only the Fortress boss
+ *   port sets it (clan-fortress.md §1.4). `balance` is the client's 15th argument (pvp/balance.js; default
+ *   LEGACY): its damage ramps scale every hit (updates-2.8.2.md §2). The HP multiplier is the caller's.
  * @returns {ArenaPvpResult}
  */
 export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, opts) {
   const rng = opts?.rng;
   if (typeof rng !== 'function') throw new TypeError('simulateArenaPvP: opts.rng is required');
   const log = opts.log !== false;
+  const balance = opts.balance ?? LEGACY_PVP_BALANCE;
 
   const s = createDuelState({
     attackerStats: a0, defenderStats: a1, attackerSummon: a12, defenderSummon: a13,
@@ -152,6 +158,8 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     defenderSpellRuntimes: a3?.length ? initSpellRuntimes(a3) : null,
     rng,
   });
+  // this tick's damage ramp (L1608570-1608581), read by every hit: swings, minion strikes, spells, DoTs
+  s.damageMult = 1;
   const R = createReactions(s, { isSpellBuffActive, activeBuffThornsPercent, pvpRatingToFraction });
   const A = s.attacker;
   const D = s.defender;
@@ -206,6 +214,8 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     elapsed = windowMs;
   }
   const horizon = ARENA_CONSTANTS.FIGHT_DURATION_MS + elapsed; // L1456046-1456047
+  const combatStart = elapsed; // the ramps count from the end of the opening (L1608408-1608525)
+  const ramps = balance.damageRamp != null || balance.lateFightDamage != null;
   // Buff modifiers of each side's runtimes. Only that side's processArenaSpells changes its runtimes,
   // so the value after a side's cast is also its value at the start of the next tick (L1456321-1456360
   // recomputes it there; same result).
@@ -217,12 +227,12 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
   // each side's processArenaSpells input, refilled per tick (it reads the object and keeps nothing)
   const aSpellIn = {
     caster: A, target: D, dtMs: dt, timestamp: 0, side: 'attacker', targetDebuffs: dDebuffs, casterDebuffs: aDebuffs,
-    targetSpellResistBonus: 0, casterHpPercentBonus: 0, targetMinion: dMin, casterMinion: aMin,
+    damageMult: 1, targetSpellResistBonus: 0, casterHpPercentBonus: 0, targetMinion: dMin, casterMinion: aMin,
     log: keepRows, spellsOut,
   };
   const dSpellIn = {
     caster: D, target: A, dtMs: dt, timestamp: 0, side: 'defender', targetDebuffs: aDebuffs, casterDebuffs: dDebuffs,
-    targetSpellResistBonus: 0, casterHpPercentBonus: 0, targetMinion: aMin, casterMinion: dMin,
+    damageMult: 1, targetSpellResistBonus: 0, casterHpPercentBonus: 0, targetMinion: aMin, casterMinion: dMin,
     log: keepRows, spellsOut,
   };
   // the casters' rng lanes, looked up once (a lane is created once per name and never changes)
@@ -233,10 +243,10 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
   const dVariance = opts.defenderDamageVariance > 0 ? opts.defenderDamageVariance : 0;
   const varianceLane = dVariance > 0 ? lane(rng, 'defender-variance') : null;
 
-  // L1456488-1456788: one side's debuffs tick; the damage goes through the victim's PVP Defense
-  // once, then its shield. Rows are named after the CASTER's side.
+  // L1456488-1456788: one side's debuffs tick; the damage is ramped (rampDebuffTick, 2.8.2 L1609135),
+  // then goes through the victim's PVP Defense once, then its shield. Rows are named after the CASTER's side.
   const tickDebuffs = (list, victim, casterSide, t) => {
-    const r = processDebuffsTick(list, dt, t, lane(rng, casterSide));
+    const r = rampDebuffTick(processDebuffsTick(list, dt, t, lane(rng, casterSide)), s.damageMult);
     if (r.targetHpDelta < 0) {
       let dmg = Math.abs(r.targetHpDelta);
       if (victim.pvpDefense > 0) dmg = Math.max(1, Math.round(dmg * (1 - pvpRatingToFraction(victim.pvpDefense))));
@@ -281,7 +291,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     const undoStack = R.applyStackToTarget(defE, defStack, atkStack);
     defE.shieldHp = def.shieldHp;
     const undoCrit = R.applyCritDownToSwinger(atkE, atkDebuffs);
-    const evs = processAttack(atkE, defE, t, isAttacker, maxHp, defMinion, rng, swingRows);
+    const evs = processAttack(atkE, defE, t, isAttacker, maxHp, defMinion, rng, swingRows, s.damageMult);
     undoCrit();
     undoStack();
     atk.hp = atkE.hp;
@@ -300,6 +310,10 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
   while (A.hp > 0 && D.hp > 0 && elapsed < horizon) {
     const t = elapsed + dt;
     s.timestamp = t;
+    if (ramps) {
+      const e = t - combatStart;
+      s.damageMult = pvpDamageRampMult(balance.damageRamp, e) * pvpLateFightDamageMult(balance.lateFightDamage, e);
+    }
     const start = events.length;
 
     if (s.hasMinions) { // L1456105-1456165
@@ -328,6 +342,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     let dBuff = null;
     if (aRt) {
       aSpellIn.timestamp = t;
+      aSpellIn.damageMult = s.damageMult;
       aSpellIn.targetSpellResistBonus = dBuffBefore?.spellResist ?? 0;
       aSpellIn.casterHpPercentBonus = aStackHp;
       const rows = processArenaSpells(aRt, aSpellIn, aLane);
@@ -338,6 +353,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     }
     if (dRt) {
       dSpellIn.timestamp = t;
+      dSpellIn.damageMult = s.damageMult;
       dSpellIn.targetSpellResistBonus = aBuffBefore?.spellResist ?? 0;
       dSpellIn.casterHpPercentBonus = dStackHp;
       const rows = processArenaSpells(dRt, dSpellIn, dLane);
@@ -515,8 +531,9 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
 }
 
 /**
- * The 14 simulateArenaPvP arguments of one side, from a Fighter (types.js). Stats get the x8 PVP HP
- * buff (applyPvpHpBuff never buffs twice). Generic sigils are the equipped slots and stack sources;
+ * The 14 simulateArenaPvP arguments of one side, from a Fighter (types.js). Stats get the live arena's
+ * HP buff at the fighter's own level (DEFAULT_PVP_BALANCE; runDuel re-buffs both sides at the attacker's
+ * level). `level` is carried for that. Generic sigils are the equipped slots and stack sources;
  * `utility` is the Summon / Shield slot (the Form slot for a Druid). `ancient` is owned but not cast:
  * the arena loop has no Transform trigger (see the slice notes).
  * @param {import('../types.js').Fighter & {form?: 'BEAR'|'WOLF'|null}} f
@@ -546,7 +563,8 @@ export function fighterDuelArgs(f) {
   const { stats } = completeDuelStats(f.stats, playerClass, form);
   Object.assign(stats, stanceRuntimeFields(getEquippedStanceConfig(state, playerClass)));
   return {
-    stats: applyPvpHpBuff(stats),
+    stats: applyPvpHpBuff(stats, getPvpHpMultiplier(f.level, DEFAULT_PVP_BALANCE)),
+    level: f.level,
     spells: buildCombatSpells(state, playerClass, spec, form, glyphs.mods),
     equipped: generic,
     glyphCombat: glyphs.combat,
@@ -558,16 +576,20 @@ export function fighterDuelArgs(f) {
 
 /**
  * One duel between two Fighters (rebuild-plan §2.3). `log` defaults to false (the event-free mode).
- * @param {{attacker: Object, defender: Object, rng: () => number, log?: boolean}} p
- *   attacker / defender: Fighters, or the output of fighterDuelArgs
+ * Both sides take the HP multiplier at the attacker's level, the defender's when the attacker has none
+ * (applyPvpHpBuffPair; updates-2.8.2.md §1).
+ * @param {{attacker: Object, defender: Object, rng: () => number, log?: boolean, balance?: Object}} p
+ *   attacker / defender: Fighters, or the output of fighterDuelArgs. `balance` defaults to the live
+ *   DEFAULT_PVP_BALANCE.
  * @returns {DuelSummary & {result: ArenaPvpResult}}
  */
-export function runDuel({ attacker, defender, rng, log = false }) {
+export function runDuel({ attacker, defender, rng, log = false, balance = DEFAULT_PVP_BALANCE }) {
   const a = attacker.stackCtx ? attacker : fighterDuelArgs(attacker);
   const d = defender.stackCtx ? defender : fighterDuelArgs(defender);
+  const [aStats, dStats] = applyPvpHpBuffPair(a.stats, d.stats, a.level, d.level, balance);
   const r = simulateArenaPvP(
-    a.stats, d.stats, a.spells, d.spells, a.equipped, d.equipped, a.glyphCombat, d.glyphCombat,
-    a.shield, d.shield, a.stackCtx, d.stackCtx, a.summon, d.summon, { rng, log },
+    aStats, dStats, a.spells, d.spells, a.equipped, d.equipped, a.glyphCombat, d.glyphCombat,
+    a.shield, d.shield, a.stackCtx, d.stackCtx, a.summon, d.summon, { rng, log, balance },
   );
   const timedOut = r.attackerHpRemaining > 0 && r.defenderHpRemaining > 0;
   const summary = {

@@ -11,6 +11,7 @@ import { ARENA_CONSTANTS } from '../../game/combatPvp.js';
 import { createPlayerEntity } from '../core/entity.js';
 import { absorbWithShield } from '../core/shield.js';
 import { lane } from '../rng.js';
+import { rampDamage } from './balance.js';
 import { critDownChance } from '../core/debuffs.js';
 import { applyBulwarkDr, applyElusiveBuff, applySunderToTarget, createStackCombat } from '../core/stacks.js';
 import {
@@ -67,7 +68,7 @@ export const DEFENDER_DAMAGE_EVENTS = new Set([
 // port of shieldBaseFor L1455714-1455733
 /**
  * Base for the shield-percent: raw max HP, times PVP_SHIELD_BASE_MULTIPLIER when the entity's
- * max HP is buffed above its raw max HP (the PVP x8 buff).
+ * max HP is buffed above its raw max HP (the PVP HP buff).
  */
 export function shieldBaseFor(entity) {
   return entity.maxHp > entity.rawMaxHp
@@ -350,7 +351,7 @@ export function createReactions(s, deps) {
   /**
    * One minion swing at `target`. Dead minion or target hp <= 0: nothing. Otherwise (a swing happened):
    * the target's DR is read with its own Bulwark and the foe's Sunder temporarily applied, the hit is
-   * mitigated by it, then by the target's PVP defense fraction (min 1), absorbed by the target's
+   * mitigated by it, then by the target's PVP defense fraction (min 1), ramped by `s.damageMult`, absorbed by the target's
    * shield, and the minion lifesteals. `drTarget` is the entity whose defences are read and which
    * receives the resulting hp/shield when it is a different object from `target`.
    * Logs `<side>_minion_hit` / `_crit`. Draws one rng value iff the minion has crit chance.
@@ -372,6 +373,7 @@ export function createReactions(s, deps) {
     if (target.pvpDefense > 0) {
       damage = Math.max(1, Math.round(damage * (1 - deps.pvpRatingToFraction(target.pvpDefense))));
     }
+    damage = rampDamage(damage, s.damageMult ?? 1); // 2.8.2 L1607780-1607782
     const r = absorbWithShield(target.shieldHp, damage);
     target.shieldHp = r.shieldHp;
     target.hp -= r.hpDamage;

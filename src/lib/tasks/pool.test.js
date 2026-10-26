@@ -16,7 +16,8 @@ const stats = (o = {}) => ({
   totalMissChance: 0, totalBlindChance: 0, totalParalyzeChance: 0, totalPenetration: 0,
   totalPvpAttack: 0, totalPvpDefense: 0, totalOblivionPower: 0, ...o,
 });
-const fighter = (o) => ({ stats: stats(o), class: 'WARRIOR', spec: null, sigils: [] });
+// level 50: the x8 PVP HP these duels were sized for (updates-2.8.2.md §1)
+const fighter = (o) => ({ stats: stats(o), class: 'WARRIOR', spec: null, sigils: [], level: 50 });
 
 const warrior = () => {
   const c = fixtureCharacter('WARRIOR');

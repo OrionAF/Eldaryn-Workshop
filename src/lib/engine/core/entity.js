@@ -43,7 +43,7 @@ const orZero = (v) => (v == null ? 0 : v);
 
 // port of createPlayerEntity L1087500-1087588
 /**
- * Entity from a ComputedStats-shaped sheet (`total*` keys). Optional `pvpBaseHp` (pre-x8 HP) feeds
+ * Entity from a ComputedStats-shaped sheet (`total*` keys). Optional `pvpBaseHp` (pre-buff HP) feeds
  * `rawMaxHp`; `disruptionEffect` defaults to 'SILENCE'; the four spell fields and
  * `disruptionChance` default to 0. Everything else is copied as given (no defaults, as in the client).
  * @param {Object} stats

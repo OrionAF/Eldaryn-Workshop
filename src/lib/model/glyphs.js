@@ -21,6 +21,7 @@ import {
   MYTHIC_GLYPH_TYPES,
   GLYPH_SECONDARY_POOL,
   GLYPH_QUALITY_BANDS,
+  GLYPH_MAX_QUALITY,
 } from '../game/mountsGlyphs.js';
 import { available } from '../game/classes.js';
 import { newId } from './character.js';
@@ -86,20 +87,29 @@ export function characterSpecs(character) {
   return [...new Set((character?.talentSets ?? []).map((t) => t?.spec).filter(Boolean))];
 }
 
-/** Value of a rolled secondary: parseFloat((min + (max-min)*quality).toFixed(decimals)). Doc §9. */
+// clampGlyphQuality 2.8.2 L1249320-1249334
+const clampQuality = (q) => Math.max(0, Math.min(GLYPH_MAX_QUALITY, q));
+
+/**
+ * Value of a rolled secondary (getGlyphSecondaryValue 2.8.2 L1249592-1249648): `min + (max-min)*quality`
+ * with quality clamped to [0, GLYPH_MAX_QUALITY]; above quality 1 at least one display step past max;
+ * then parseFloat(toFixed(decimals)). Game/updates-2.8.2.md §4.
+ */
 export function glyphSecondaryValue(secondary) {
   const def = poolByStat.get(secondary?.stat);
   if (!def) return 0;
-  const q = Math.min(1, Math.max(0, Number(secondary.quality) || 0));
-  return parseFloat((def.minValue + (def.maxValue - def.minValue) * q).toFixed(def.decimals));
+  const q = clampQuality(Number(secondary.quality) || 0);
+  let v = def.minValue + (def.maxValue - def.minValue) * q;
+  if (q > 1) v = Math.max(v, def.maxValue + 10 ** -def.decimals);
+  return parseFloat(v.toFixed(def.decimals));
 }
 
-/** Inverse of glyphSecondaryValue: the quality (0..1) that gives `value`, clamped. */
+/** Inverse of glyphSecondaryValue: the quality (0..GLYPH_MAX_QUALITY) that gives `value`, clamped. */
 export function glyphSecondaryQuality(stat, value) {
   const def = poolByStat.get(stat);
   const v = Number(value);
   if (!def || !Number.isFinite(v)) return 0;
-  return Math.min(1, Math.max(0, (v - def.minValue) / (def.maxValue - def.minValue)));
+  return clampQuality((v - def.minValue) / (def.maxValue - def.minValue));
 }
 
 export const glyphSecondaryDef = (stat) => poolByStat.get(stat) ?? null;
@@ -133,10 +143,13 @@ export function glyphSecondaryInClassPool(stat, cls) {
   return !!def && available(def.statEnum, cls ?? 'WARRIOR');
 }
 
+// The floor admits quality 1: Mythic+ glyphs rolled before 2.8.2 keep 1 until their free re-roll
+// (Game/updates-2.8.2.md §4), so the 2.8.2 band's 1.01 floor would invent value for them.
 function normaliseSecondary(raw, rarity) {
   if (!raw || typeof raw !== 'object' || !poolByStat.has(raw.stat)) return null;
   const q = Number(raw.quality);
-  const [lo, hi] = glyphQualityBand(rarity);
+  const [band, hi] = glyphQualityBand(rarity);
+  const lo = Math.min(band, 1);
   return { stat: raw.stat, quality: Number.isFinite(q) ? Math.min(hi, Math.max(lo, q)) : lo };
 }
 

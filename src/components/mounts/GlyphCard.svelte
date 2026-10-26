@@ -7,7 +7,7 @@
    * - Major glyphs carry no stat. They retune one sigil, so the card says which sigil, and warns when no preset
    *   equips it (the glyph is inert unless the sigil is equipped and the glyph is on the ridden mount, §10).
    */
-  import { glyphTypeInfo, glyphSecondaryDef, glyphSecondaryQuality, glyphSecondaryValue, GLYPH_SECONDARY_STATS } from '../../lib/model/glyphs.js';
+  import { glyphTypeInfo, glyphSecondaryDef, glyphSecondaryQuality, glyphSecondaryValue, glyphQualityBand, GLYPH_SECONDARY_STATS } from '../../lib/model/glyphs.js';
   import { glyphImage } from '../../lib/assets/glyphs.js';
   import { orderStats } from '../../lib/ui/statOrder.js';
   import ConfirmButton from '../ConfirmButton.svelte';
@@ -23,6 +23,11 @@
   const stat = $derived(glyph.secondary?.stat ?? '');
   const value = $derived(glyph.secondary ? glyphSecondaryValue(glyph.secondary) : '');
   const def = $derived(glyphSecondaryDef(stat));
+  // Mythic and above roll past the pool's max (up to 120%, Game/updates-2.8.2.md §4)
+  const rangeMax = $derived.by(() => {
+    const top = glyphQualityBand(glyph.rarity)[1];
+    return def && top > 1 ? glyphSecondaryValue({ stat, quality: top }) : def?.maxValue;
+  });
 
   const statOptions = $derived([{ value: '', label: 'None entered' }, ...orderStats(GLYPH_SECONDARY_STATS, playerClass).map((s) => ({ value: s, label: statLabel(s) }))]);
 
@@ -49,7 +54,7 @@
     {#if def}
       <div class="field">
         <NumberField label="Secondary value" unit={secondaryUnit(stat)} value={secondaryDisplayValue(stat, value)} onchange={setValue} />
-        <span class="range">Range {secondaryDisplayValue(stat, def.minValue)}-{secondaryDisplayValue(stat, def.maxValue)}{secondaryUnit(stat)}</span>
+        <span class="range">Range {secondaryDisplayValue(stat, def.minValue)}-{secondaryDisplayValue(stat, rangeMax)}{secondaryUnit(stat)}</span>
       </div>
     {/if}
   {:else if info?.tier === 'major'}

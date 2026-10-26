@@ -3,6 +3,8 @@
 import pvpData from '../../data/game/combat-pvp.json';
 
 export const ARENA_CONSTANTS = pvpData.arenaConstants.values;
+/** PvP balance configs LEGACY / DEFAULT / FORTRESS (2.8.2 module 5735; Game/updates-2.8.2.md §1-§2). */
+export const PVP_BALANCE = pvpData.pvpBalance.values;
 export const ARENA_RANKS = pvpData.ranks.values;
 export const ARENA_FIGHT_REWARD_BY_POSITION_OFFSET = pvpData.fightRewardByPositionOffset.values;
 export const ARENA_SESSION_REWARDS_BY_RANK = pvpData.sessionRewardsByRank.values;

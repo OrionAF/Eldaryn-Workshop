@@ -1,7 +1,7 @@
 <script>
   /**
    * FightersTable.svelte - "Fighters as simulated" (ia.md §3.4): both stat blocks exactly as the
-   * resolver reads them (blank rows completed, HP after the x8 PVP buff), so the inputs sit next to
+   * resolver reads them (blank rows completed, HP after the PVP buff at the attacker's level), so the inputs sit next to
    * the output. A row a side left blank is marked `default` and named in the cell's label.
    */
   import { displayStat } from '../../lib/features/duel.js';

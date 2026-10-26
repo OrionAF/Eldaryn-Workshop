@@ -334,7 +334,7 @@
               <div><dt>Ran out of time</dt><dd>{seats.total.timeoutShare != null ? `${(seats.total.timeoutShare * 100).toFixed(1)}%` : 'n/a'}</dd></div>
               <div><dt>Seed</dt><dd>{meta.seed}</dd></div>
             </dl>
-            <p class="note">A tie, or running out of time with equal Health, goes to the defender, as in the game. The x8 PVP Health buff is already included.</p>
+            <p class="note">A tie, or running out of time with equal Health, goes to the defender, as in the game. The PVP Health buff (x8 to x24 by the attacker's level) and double damage after 40 seconds are already included.</p>
             <details class="basis">
               <summary>How this works</summary>
               <p>Each fight is simulated with the game's own combat rules. The likely range is a 95% interval on the win rate. A result is clearly better or worse only when the whole range is on one side of 50%. Otherwise it is too close to call, and the estimate of how many fights would settle it assumes you want to spot a difference of at least 3 points.</p>

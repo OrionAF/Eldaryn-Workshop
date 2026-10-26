@@ -196,10 +196,11 @@ describe('lanes pair builds more tightly than one shared stream', () => {
   }
 
   it('PVP, Sentinel attacking Mystic: at most 70 % of the discordant duels (per side lanes)', () => {
-    const f = fighterOf('SENTINEL');
+    // level 50 (x8 HP, updates-2.8.2.md §1) keeps this matchup close; at level 100 it is one-sided
+    const f = { ...fighterOf('SENTINEL'), level: 50 };
     const A = fighterDuelArgs(f);
     const G = fighterDuelArgs(faster(f));
-    const B = fighterDuelArgs(fighterOf('MYSTIC'));
+    const B = fighterDuelArgs({ ...fighterOf('MYSTIC'), level: 50 });
     const discordant = (mk) => {
       let n = 0;
       for (let i = 0; i < 100; i++) {

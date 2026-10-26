@@ -7,6 +7,8 @@ import { gameProfileToCharacter } from '../../model/gameProfile.js';
 import { buildFighter } from '../../build/fighter.js';
 import { fightRng, laneRng } from '../rng.js';
 import { simulateArenaPvP } from '../pvp/resolver.js';
+import { getPvpHpMultiplier } from '../pvp/hpBuff.js';
+import { DEFAULT_PVP_BALANCE } from '../pvp/balance.js';
 import {
   simulateFortressBoss, fortressPlayerDuelArgs, fortressBossDuelArgs, FORTRESS_FIGHT_RULES,
 } from './fortressBoss.js';
@@ -36,11 +38,13 @@ describe('Fortress boss fight (duel engine)', () => {
     }
   });
 
-  it('no x8 HP: the player fights at the sheet HP; the arena rule would give eight times it', () => {
+  it('no PVP HP buff: the player fights at the sheet HP; the arena rule would give x22.4 at level 85', () => {
     const r = simulateFortressBoss({ fighter: sentinel, group: 'TOP', rng: fightRng(1, 0) });
     expect(r.playerHpLeft).toBeLessThanOrEqual(2757745);
     expect(fortressPlayerDuelArgs(sentinel).stats.totalHp).toBe(2757745);
-    expect(fortressPlayerDuelArgs(sentinel, { ...FORTRESS_FIGHT_RULES, pvpHpBuff: true }).stats.totalHp).toBe(2757745 * 8);
+    expect(getPvpHpMultiplier(sentinel.level, DEFAULT_PVP_BALANCE)).toBeCloseTo(22.4, 12);
+    expect(fortressPlayerDuelArgs(sentinel, { ...FORTRESS_FIGHT_RULES, pvpHpBuff: true }).stats.totalHp)
+      .toBe(Math.floor(2757745 * getPvpHpMultiplier(85, DEFAULT_PVP_BALANCE)));
   });
 
   it('no PVP ratings: hits are the sheet attack and boss hits are not cut by PVP Defense', () => {

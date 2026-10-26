@@ -2,7 +2,7 @@
  "source": {
   "file": "decompiled.js",
   "version": "2.7.0",
-  "overrides": { "SPELL_RESIST": "2.7.5 decompiled.js L1086520-L1086521; updates-2.7.5.md §1" },
+  "overrides": { "SPELL_RESIST": "2.8.2 decompiled.js L1089410-L1089411; updates-2.8.2.md §3 (2.7.5 was 40/90)" },
   "citations": {
    "calculateTotalStats": "L1215735-1217872",
    "SOFT_CAPS": "L1080443-1080485",
@@ -352,8 +352,8 @@
    "sheetLabel": "Spell Resist",
    "bonusListLabel": "Spell Resist",
    "unit": "percent points",
-   "softCap": 40,
-   "hardCap": 90,
+   "softCap": 25,
+   "hardCap": 70,
    "combatCeiling": null,
    "classesAvailable": [
     "WARRIOR",

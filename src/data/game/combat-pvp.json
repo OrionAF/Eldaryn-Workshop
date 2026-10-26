@@ -20,6 +20,72 @@
   },
   "note": "REQUIRED_PLAYER_LEVEL = UNLOCK_LEVELS.CLASH (decompiled.js L668649, CLASH: 18). SESSION_ANCHOR_MS assigned at L667971-667979."
  },
+ "pvpBalance": {
+  "lines": "2.8.2 decompiled.js module 5735 L1610521-1611264 (configs L1611217-1611257)",
+  "values": {
+   "LEGACY": {
+    "hpMultiplier": {
+     "kind": "flat",
+     "value": 8
+    },
+    "shieldBaseMultiplier": 2,
+    "damageRamp": null,
+    "spellCritDamageFactor": 1,
+    "ccDiminishing": null,
+    "symmetricControl": false,
+    "lateFightHealDecay": null,
+    "lateFightDamage": null
+   },
+   "DEFAULT": {
+    "hpMultiplier": {
+     "kind": "levelCurve",
+     "points": [
+      {
+       "level": 50,
+       "multiplier": 8
+      },
+      {
+       "level": 60,
+       "multiplier": 16
+      },
+      {
+       "level": 70,
+       "multiplier": 20
+      },
+      {
+       "level": 95,
+       "multiplier": 24
+      }
+     ]
+    },
+    "shieldBaseMultiplier": 2,
+    "damageRamp": null,
+    "spellCritDamageFactor": 1,
+    "ccDiminishing": null,
+    "symmetricControl": false,
+    "lateFightHealDecay": null,
+    "lateFightDamage": {
+     "startMs": 40000,
+     "multiplier": 2,
+     "rampMs": 0
+    }
+   },
+   "FORTRESS": {
+    "hpMultiplier": {
+     "kind": "flat",
+     "value": 1
+    },
+    "shieldBaseMultiplier": 2,
+    "damageRamp": null,
+    "spellCritDamageFactor": 1,
+    "ccDiminishing": null,
+    "symmetricControl": false,
+    "lateFightHealDecay": null,
+    "lateFightDamage": null
+   }
+  },
+  "note": "LEGACY reads ARENA_CONSTANTS.PVP_HP_MULTIPLIER and PVP_SHIELD_BASE_MULTIPLIER; DEFAULT spreads LEGACY and replaces hpMultiplier and lateFightDamage; FORTRESS is the empty base with a flat x1 HP multiplier. simulateArenaPvP takes the config as its 15th argument (default LEGACY); the Arena Buff badge (module 5733) reads DEFAULT. Game/updates-2.8.2.md §1-§2."
+ },
  "ranks": {
   "lines": [
    667986,
