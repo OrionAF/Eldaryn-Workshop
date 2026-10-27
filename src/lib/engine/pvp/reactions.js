@@ -16,6 +16,7 @@ import { critDownChance } from '../core/debuffs.js';
 import { applyBulwarkDr, applyElusiveBuff, applySunderToTarget, createStackCombat } from '../core/stacks.js';
 import {
   createMinion, killMinion, minionDeathMeta, minionSwing, mitigateMinionHit, healMinionLifesteal, soulLinkHeal,
+  damageMinion, minionDeathWardLeft, rollMinionReap, REAP_STUN_SOURCE,
 } from '../core/minions.js';
 
 /**
@@ -300,12 +301,34 @@ export function createReactions(s, deps) {
     }
   }
 
-  // port of tagMinionSnapshots L1455313-1455346
-  /** Stamps each present minion's HP onto every event from index `from` on. */
+  // port of tagMinionSnapshots L1455313-1455346 (2.8.2 L1607271-1607359 adds the Death Ward left)
+  /**
+   * Stamps each present minion's HP onto every event from index `from` on, and the Death Ward still in
+   * each owner's shield (`<side>MinionWard`) while a dead minion has one.
+   */
   function tagMinionSnapshots(from) {
+    const aMin = s.attackerMinion;
+    const dMin = s.defenderMinion;
+    const aWard = (aMin?.deathWard ?? 0) > 0 ? minionDeathWardLeft(aMin, s.attacker.shieldHp) : null;
+    const dWard = (dMin?.deathWard ?? 0) > 0 ? minionDeathWardLeft(dMin, s.defender.shieldHp) : null;
     for (let i = from; i < s.events.length; i++) {
-      if (s.attackerMinion) s.events[i].attackerMinionHpAfter = s.attackerMinion.hp;
-      if (s.defenderMinion) s.events[i].defenderMinionHpAfter = s.defenderMinion.hp;
+      const ev = s.events[i];
+      if (aMin) ev.attackerMinionHpAfter = aMin.hp;
+      if (dMin) ev.defenderMinionHpAfter = dMin.hp;
+      if (aWard !== null) ev.attackerMinionWard = aWard;
+      if (dWard !== null) ev.defenderMinionWard = dWard;
+    }
+  }
+
+  // port of creditDeathWards 2.8.2 L1607360-1607407
+  /** Adds the Death Ward of each `<side>_minion_dead` event from index `from` on to that owner's shield pool. */
+  function creditDeathWards(from) {
+    for (let i = from; i < s.events.length; i++) {
+      const ev = s.events[i];
+      const ward = ev.minionDeathWard ?? 0;
+      if (!(ward > 0)) continue;
+      if (ev.type === 'attacker_minion_dead') s.attacker.shieldHp += ward;
+      else if (ev.type === 'defender_minion_dead') s.defender.shieldHp += ward;
     }
   }
 
@@ -327,8 +350,9 @@ export function createReactions(s, deps) {
   // port of finishMinionTick L1455347-1455475
   /**
    * End-of-tick minion work over the events from index `from` on: each minion soul-link-heals from the
-   * damage its owner's side dealt (logged as `<side>_minion_heal` with the HP gained), then the
-   * minions of any dead owner are killed. Without minions only the kill step runs (a no-op).
+   * damage its owner's side dealt (logged as `<side>_minion_heal` with the HP gained; minion-vs-minion
+   * rows do not count), the Death Wards of minions that died are credited (2.8.2), then the minions of any
+   * dead owner are killed. Without minions only the kill step runs (a no-op).
    */
   function finishMinionTick(from) {
     if (s.attackerMinion || s.defenderMinion) {
@@ -336,6 +360,7 @@ export function createReactions(s, deps) {
       let dealtByDefender = 0;
       for (let i = from; i < s.events.length; i++) {
         const ev = s.events[i];
+        if (ev.minionVsMinion) continue;
         if (ATTACKER_DAMAGE_EVENTS.has(ev.type)) dealtByAttacker += ev.damage;
         else if (DEFENDER_DAMAGE_EVENTS.has(ev.type)) dealtByDefender += ev.damage;
       }
@@ -343,13 +368,19 @@ export function createReactions(s, deps) {
       if (healA > 0) s.events.push({ timestamp: s.timestamp, type: 'attacker_minion_heal', damage: healA, ...hpAfter() });
       const healD = soulLinkHeal(s.defenderMinion, dealtByDefender);
       if (healD > 0) s.events.push({ timestamp: s.timestamp, type: 'defender_minion_heal', damage: healD, ...hpAfter() });
+      creditDeathWards(from);
     }
     killMinionsOfDead(s.attacker.hp <= 0, s.defender.hp <= 0);
   }
 
-  // port of minionStrike L1455564-1455680
+  // port of minionStrike L1455564-1455680 (the minion-vs-minion branch: 2.8.2 L1607894-1608046, present
+  // since at least 2.7.4)
   /**
-   * One minion swing at `target`. Dead minion or target hp <= 0: nothing. Otherwise (a swing happened):
+   * One minion swing. Dead minion or target hp <= 0: nothing. When the foe's minion is alive the swing
+   * hits it instead (minion-vs-minion): damageMinion takes the ramped swing (a swing for the Greater
+   * Demon's block, from the minion's own 'minion-block' lane), the striker lifesteals the damage dealt, and
+   * the log gets `<side>_minion_hit`/`_crit` (damage 0), `<foe>_minion_damaged` and, when it dies,
+   * `<foe>_minion_dead`, each flagged `minionVsMinion`. Otherwise (a swing at the owner):
    * the target's DR is read with its own Bulwark and the foe's Sunder temporarily applied, the hit is
    * mitigated by it, then by the target's PVP defense fraction (min 1), ramped by `s.damageMult`, absorbed by the target's
    * shield, and the minion lifesteals. `drTarget` is the entity whose defences are read and which
@@ -361,11 +392,29 @@ export function createReactions(s, deps) {
    * @param {Object} drTarget entity whose defences apply (normally the same entity)
    * @param {Object} ownStack the target's stack bundle (Bulwark)
    * @param {Object} foeStack the minion owner's stack bundle (Sunder)
+   * @param {Object|null} [foeMinion] the target's minion
    */
-  function minionStrike(minion, side, target, drTarget, ownStack, foeStack) {
+  function minionStrike(minion, side, target, drTarget, ownStack, foeStack, foeMinion = null) {
     if (!minion.alive || target.hp <= 0) return;
-    const swing = minionSwing(minion, s.tickMs, lane(lane(s.rng, side), 'minion'));
+    const minionLane = lane(lane(s.rng, side), 'minion');
+    const swing = minionSwing(minion, s.tickMs, minionLane);
     if (!swing) return;
+    if (foeMinion && foeMinion.alive) {
+      const foe = side === 'attacker' ? 'defender' : 'attacker';
+      const r = damageMinion(foeMinion, rampDamage(swing.damage, s.damageMult ?? 1), { swing: true }, lane(minionLane, 'minion-block'));
+      healMinionLifesteal(minion, r.dealt);
+      s.events.push({
+        timestamp: s.timestamp, type: `${side}_minion_${swing.isCrit ? 'crit' : 'hit'}`, damage: 0, ...hpAfter(), minionVsMinion: true,
+      });
+      s.events.push({
+        timestamp: s.timestamp, type: `${foe}_minion_damaged`, damage: r.dealt, ...hpAfter(),
+        ...(swing.isCrit ? { isCrit: true } : {}), minionVsMinion: true, ...(r.blocked ? { minionBlocked: true } : {}),
+      });
+      if (r.died) {
+        s.events.push({ timestamp: s.timestamp, type: `${foe}_minion_dead`, damage: 0, ...hpAfter(), ...minionDeathMeta(foeMinion) });
+      }
+      return;
+    }
     const undo = applyStackToTarget(drTarget, ownStack, foeStack);
     const dr = drTarget.damageReduction;
     undo();
@@ -386,6 +435,16 @@ export function createReactions(s, deps) {
       ? (swing.isCrit ? 'attacker_minion_crit' : 'attacker_minion_hit')
       : (swing.isCrit ? 'defender_minion_crit' : 'defender_minion_hit');
     s.events.push({ timestamp: s.timestamp, type, damage, ...hpAfter() });
+    // Reap (Reaper's Call Dominion 4-5; 2.8.2 L1607846-1607893): stuns a target the hit left alive
+    const reap = target.hp > 0 ? rollMinionReap(minion, lane(minionLane, 'reap')) : 0;
+    if (reap > 0) {
+      target.paralyzedMs = Math.max(target.paralyzedMs ?? 0, reap);
+      if (drTarget !== target) drTarget.paralyzedMs = target.paralyzedMs;
+      s.events.push({
+        timestamp: s.timestamp, type: `${side === 'attacker' ? 'defender' : 'attacker'}_paralyzed`, damage: 0, ...hpAfter(),
+        paralyzeMs: reap, stunSource: REAP_STUN_SOURCE,
+      });
+    }
   }
 
   return {

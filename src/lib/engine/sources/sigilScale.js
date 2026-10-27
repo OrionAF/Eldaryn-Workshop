@@ -150,6 +150,15 @@ export function getSigilSpellScaled(spell, level, spellType = spellTypeOf(spell)
           lifesteal: capMin(fix(m.lifesteal * scale, 1), m.maxLifesteal),
         };
       }
+      if (spell.minionBastion) { // 2.8.2 L1076200-1076254
+        const m = spell.minionBastion;
+        out.minionBastion = {
+          ...m,
+          damageReduction: capMin(fix(m.damageReduction * scale, 1), m.maxDamageReduction),
+          blockChance: capMin(fix(m.blockChance * scale, 1), m.maxBlockChance),
+          regenPercentPerTick: capMin(fix(m.regenPercentPerTick * scale, 1), m.maxRegenPercentPerTick),
+        };
+      }
       return out;
     }
     case 'HEAL': // L1067904-1067919: 1 decimal, no cap

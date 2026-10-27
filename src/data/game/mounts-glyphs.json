@@ -1507,7 +1507,318 @@
     ]
    },
    "line": 1084733
+  },
+  {
+   "id": "sg-n-bone-respawn",
+   "name": "Restless Bones",
+   "playerClass": "NECROMANCER",
+   "requiredSpec": null,
+   "sigilSpecies": "BONE_SERVANT",
+   "sigilName": "Bone Servant",
+   "effectKind": "RESPAWN_HASTE",
+   "perRarity": {
+    "respawnseconds": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   "line": 1094368
+  },
+  {
+   "id": "sg-n-reaper-respawn",
+   "name": "Unending Harvest",
+   "playerClass": "NECROMANCER",
+   "requiredSpec": null,
+   "sigilSpecies": "REAPERS_CALL",
+   "sigilName": "Reaper's Call",
+   "effectKind": "RESPAWN_HASTE",
+   "perRarity": {
+    "respawnseconds": [
+     0.5,
+     1,
+     1.5,
+     2,
+     2.5
+    ]
+   },
+   "line": 1094383
+  },
+  {
+   "id": "sg-n-dreadguard-ward",
+   "name": "Dreadguard's Oath",
+   "playerClass": "NECROMANCER",
+   "requiredSpec": null,
+   "sigilSpecies": "DREADGUARDS_PACT",
+   "sigilName": "Dreadguard's Pact",
+   "effectKind": "DEATH_WARD",
+   "perRarity": {
+    "wardpercent": [
+     6,
+     9,
+     12,
+     15,
+     20
+    ]
+   },
+   "line": 1094397
+  },
+  {
+   "id": "sg-n-overlord-ward",
+   "name": "Infernal Covenant",
+   "playerClass": "NECROMANCER",
+   "requiredSpec": null,
+   "sigilSpecies": "OVERLORDS_PACT",
+   "sigilName": "Overlord's Pact",
+   "effectKind": "DEATH_WARD",
+   "perRarity": {
+    "wardpercent": [
+     5,
+     7.5,
+     10,
+     12.5,
+     15
+    ]
+   },
+   "line": 1094411
+  },
+  {
+   "id": "sg-n-vigor-cd",
+   "name": "Undying Vigor",
+   "playerClass": "NECROMANCER",
+   "requiredSpec": null,
+   "sigilSpecies": "GRAVEBORN_VIGOR",
+   "sigilName": "Graveborn Vigor",
+   "effectKind": "COOLDOWN",
+   "perRarity": {
+    "cooldownseconds": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   "line": 1094425
+  },
+  {
+   "id": "sg-n-frenzy-haste",
+   "name": "Bloodcraze",
+   "playerClass": "NECROMANCER",
+   "requiredSpec": null,
+   "sigilSpecies": "RAVENOUS_FRENZY",
+   "sigilName": "Ravenous Frenzy",
+   "effectKind": "MINION_FRENZY_HASTE",
+   "perRarity": {
+    "attackspeedpercent": [
+     3,
+     6,
+     9,
+     12,
+     15
+    ]
+   },
+   "line": 1094439
+  },
+  {
+   "id": "sg-n-bastion-thorns",
+   "name": "Hellfire Carapace",
+   "playerClass": "NECROMANCER",
+   "requiredSpec": null,
+   "sigilSpecies": "INFERNAL_BASTION",
+   "sigilName": "Infernal Bastion",
+   "effectKind": "MINION_THORNS_BUFF",
+   "perRarity": {
+    "thornspercent": [
+     2,
+     4,
+     6,
+     8,
+     10
+    ]
+   },
+   "line": 1094453
+  },
+  {
+   "id": "sg-n-conduit-cd",
+   "name": "Conduit Cadence",
+   "playerClass": "NECROMANCER",
+   "requiredSpec": null,
+   "sigilSpecies": "SOUL_CONDUIT",
+   "sigilName": "Soul Conduit",
+   "effectKind": "COOLDOWN",
+   "perRarity": {
+    "cooldownseconds": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   "line": 1094467
+  },
+  {
+   "id": "sg-n-renewal-cd",
+   "name": "Gravewell Emblem",
+   "playerClass": "NECROMANCER",
+   "requiredSpec": null,
+   "sigilSpecies": "GRAVE_RENEWAL",
+   "sigilName": "Grave Renewal",
+   "effectKind": "COOLDOWN",
+   "perRarity": {
+    "cooldownseconds": [
+     0.5,
+     1,
+     1.5,
+     2,
+     2.5
+    ]
+   },
+   "line": 1094481
+  },
+  {
+   "id": "sg-n-spike-cd",
+   "name": "Soulpiercer Tempo",
+   "playerClass": "NECROMANCER",
+   "requiredSpec": null,
+   "sigilSpecies": "SOUL_SPIKE",
+   "sigilName": "Soul Spike",
+   "effectKind": "COOLDOWN",
+   "perRarity": {
+    "cooldownseconds": [
+     0.4,
+     0.8,
+     1.2,
+     1.6,
+     2
+    ]
+   },
+   "line": 1094495
+  },
+  {
+   "id": "sg-n-hex-paralyze",
+   "name": "Numbing Hex",
+   "playerClass": "NECROMANCER",
+   "requiredSpec": null,
+   "sigilSpecies": "WITHERING_HEX",
+   "sigilName": "Withering Hex",
+   "effectKind": "PARALYZE",
+   "perRarity": {
+    "paralyzeseconds": [
+     0.2,
+     0.4,
+     0.6,
+     0.8,
+     1
+    ]
+   },
+   "line": 1094509
+  },
+  {
+   "id": "sg-n-rot-dmg",
+   "name": "Deeprot Blight",
+   "playerClass": "NECROMANCER",
+   "requiredSpec": null,
+   "sigilSpecies": "GRAVE_ROT",
+   "sigilName": "Grave Rot",
+   "effectKind": "DAMAGE",
+   "perRarity": {
+    "damagepercent": [
+     20,
+     40,
+     60,
+     80,
+     100
+    ]
+   },
+   "line": 1094523
+  },
+  {
+   "id": "sg-n-fate-cd",
+   "name": "Threadcutter Cadence",
+   "playerClass": "NECROMANCER",
+   "requiredSpec": null,
+   "sigilSpecies": "FATE_UNRAVELED",
+   "sigilName": "Fate Unraveled",
+   "effectKind": "COOLDOWN",
+   "perRarity": {
+    "cooldownseconds": [
+     0.5,
+     1,
+     1.5,
+     2,
+     2.5
+    ]
+   },
+   "line": 1094537
+  },
+  {
+   "id": "sg-n-damnation-stacks",
+   "name": "Endless Damnation",
+   "playerClass": "NECROMANCER",
+   "requiredSpec": null,
+   "sigilSpecies": "CREEPING_DAMNATION",
+   "sigilName": "Creeping Damnation",
+   "effectKind": "BLEED_BOOST",
+   "perRarity": {
+    "maxstacksbonus": [
+     1,
+     1,
+     2,
+     2,
+     3
+    ],
+    "stackdamagepercent": [
+     10,
+     20,
+     30,
+     40,
+     50
+    ]
+   },
+   "line": 1094551
+  },
+  {
+   "id": "sg-n-nova-dmg",
+   "name": "Dread Resonance",
+   "playerClass": "NECROMANCER",
+   "requiredSpec": null,
+   "sigilSpecies": "DREADNOVA",
+   "sigilName": "Dreadnova",
+   "effectKind": "DAMAGE",
+   "perRarity": {
+    "damagepercent": [
+     20,
+     40,
+     60,
+     80,
+     100
+    ]
+   },
+   "line": 1094567
+  },
+  {
+   "id": "sg-n-tyrant-cd",
+   "name": "Tyrant's Cadence",
+   "playerClass": "NECROMANCER",
+   "requiredSpec": null,
+   "sigilSpecies": "TYRANTS_BURDEN",
+   "sigilName": "Tyrant's Burden",
+   "effectKind": "COOLDOWN",
+   "perRarity": {
+    "cooldownseconds": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   "line": 1094581
   }
  ],
- "_note": "majorGlyphModifiers[].perRarity arrays are indexed by rarity Common..Legendary (index 0..4). Keys are the client's camelCase effect field names lower-cased. Units: *Seconds in s, *Percent in %. Class lists: WARRIOR 12, SENTINEL 13, MYSTIC 17 (10 MYSTIC_MAGE + 7 MYSTIC_DRUID), NECROMANCER 0."
+ "_note": "majorGlyphModifiers[].perRarity arrays are indexed by rarity Common..Legendary (index 0..4). Keys are the client's camelCase effect field names lower-cased. Units: *Seconds in s, *Percent in %. Class lists: WARRIOR 12, SENTINEL 13, MYSTIC 17 (10 MYSTIC_MAGE + 7 MYSTIC_DRUID), NECROMANCER 16 (2.8.2 decompiled.js L1094368-L1094594, module 4001; updates-2.8.2.md §5)."
 }

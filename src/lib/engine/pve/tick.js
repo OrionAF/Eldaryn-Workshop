@@ -33,6 +33,9 @@ import {
   damageMinion,
   endMinionEmpower,
   endMinionFrenzy,
+  endMinionBastion,
+  rollMinionReap,
+  REAP_STUN_SOURCE,
   minionDeathMeta,
 } from '../core/minions.js';
 
@@ -64,7 +67,10 @@ export const REGEN_PULSES_PER_SEC = 10;
  * @property {boolean} [blocksShieldOverflow=false]  Oblivion: regen overflow does not refill the shield
  * @property {Object|null} [minion=null]  Necromancer minion (core/minions.js)
  * @property {number} [attackerOutputMult=1]  not the client's: the app's optional Oblivion output cut,
- *   applied to the player's and the minion's landed damage (pve-content.md §11)
+ *   applied to the player's and the minion's landed damage (pve-content.md §11), times the World Boss
+ *   wrath cut while it holds
+ * @property {number} [attackerReflectMult]  the cut on reflected damage (minion thorns); defaults to
+ *   attackerOutputMult. The World Boss wrath cut leaves reflects alone (combat-pve.md §16)
  */
 
 /**
@@ -164,6 +170,7 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
     blocksShieldOverflow = false,
     minion = null,
     attackerOutputMult = 1,
+    attackerReflectMult = attackerOutputMult,
   } = opts ?? {};
   const maxHp = attackerMaxHp == null ? player.maxHp : attackerMaxHp;
 
@@ -314,7 +321,8 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
 
   // --- minion swing (L1086910-1086950): after the player, before the enemy
   if (minion && minion.alive && defHp > 0) {
-    const sw = minionSwing(minion, dtMs, lane(rng, 'minion'));
+    const minionLane = lane(rng, 'minion');
+    const sw = minionSwing(minion, dtMs, minionLane);
     if (sw) {
       const dmg = cutBy(mitigateMinionHit(sw.damage, enemy.damageReduction), attackerOutputMult);
       const s = absorbWithShield(defShield, dmg);
@@ -328,6 +336,15 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
         attackerHp: atkHp,
         defenderHp: defHp,
       });
+      // Reap (Reaper's Call Dominion 4-5; 2.8.2 L1096840-1096870): the stun lands on a living target
+      const reap = defHp > 0 ? rollMinionReap(minion, lane(minionLane, 'reap')) : 0;
+      if (reap > 0) {
+        paralyzedMs = Math.max(paralyzedMs, reap);
+        events.push({
+          timestamp, type: 'defender_paralyzed', damage: 0, attackerHp: atkHp, defenderHp: defHp,
+          paralyzeMs: reap, stunSource: REAP_STUN_SOURCE,
+        });
+      }
       if (defHp <= 0) {
         events.push({ timestamp, type: 'defender_dead', damage: 0, attackerHp: atkHp, defenderHp: 0 });
         return tickResult(atkHp, 0, attackerTimer, defenderTimerAcc, regenTimer, events, blinded,
@@ -366,7 +383,7 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
         });
       }
       if (r.thorns > 0 && defHp > 0) {
-        const reflected = Math.min(defHp, cutBy(r.thorns, attackerOutputMult));
+        const reflected = Math.min(defHp, cutBy(r.thorns, attackerReflectMult));
         defHp -= reflected;
         dealt += reflected;
         events.push({ timestamp, type: 'minion_thorns', damage: reflected, attackerHp: atkHp, defenderHp: defHp });
@@ -473,6 +490,12 @@ export function routeSpellHealToMinion(minion, ev, ownerMaxHp) {
       minionMaxHp: minion.maxHp,
     });
   }
+  if (emp?.bastionEnd && minion.alive && endMinionBastion(minion)) {
+    out.push({
+      type: 'minion_buff_end', timestamp: emp.bastionEnd.timestamp, healed: 0, spell: emp.bastionEnd.spell,
+      minionMaxHp: minion.maxHp,
+    });
+  }
   if (ev.ownerMinionHeal && minion.alive) {
     const kept = [];
     for (const e of ev.events) {
@@ -504,6 +527,12 @@ export function routeSpellHealToMinion(minion, ev, ownerMaxHp) {
     minion.frenzy = { attackPercent: f.attackPercent, attackSpeedPercent: f.attackSpeedPercent, lifesteal: f.lifesteal };
     minion.frenzySpell = f.spell;
     out.push({ type: 'minion_buff', timestamp: f.timestamp, healed: 0, spell: f.spell, minionMaxHp: minion.maxHp });
+  }
+  if (emp?.bastionStart && minion.alive) { // 2.8.2 L1106620-1106679
+    const b = emp.bastionStart;
+    minion.bastion = { damageReduction: b.damageReduction, blockChance: b.blockChance, ...(b.thornsPercent > 0 ? { thornsPercent: b.thornsPercent } : {}) };
+    minion.bastionSpell = b.spell;
+    out.push({ type: 'minion_buff', timestamp: b.timestamp, healed: 0, spell: b.spell, minionMaxHp: minion.maxHp });
   }
   return out;
 }

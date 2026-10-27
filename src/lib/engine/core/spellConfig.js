@@ -5,7 +5,7 @@
 // The catalogue keeps a base spell's `spellType` on the sigil entry (druid variant spells store
 // their own, sigils.md §12), so every spell these builders return carries a copied `spellType`
 // (spells.js and glyphMods.applySigilGlyphMods read it from the spell, as the client does).
-import { sigilBySpecies, isSigilSpeciesActiveForSpec } from '../../game/sigils.js';
+import { sigilBySpecies, isSigilSpeciesActiveForSpec, MIN_MINION_RESPAWN_COOLDOWN_MS } from '../../game/sigils.js';
 import { getSigilSpellScaled, getFormConditionalSpells, getSigilDefinitionForSpec } from '../sources/sigilScale.js';
 import { getActiveEquippedSpecies } from '../sources/sigilPassive.js';
 import { applySigilGlyphMods } from './glyphMods.js';
@@ -126,11 +126,18 @@ export function classifyShieldVariant(cfg) {
  * @property {number} hpPercent      level-scaled
  * @property {number} respawnCooldownMs
  * @property {number} summonCastMs
+ * @property {number} [deathWardPercent]  only when a Death Ward glyph applies (2.8.2)
  */
 
-// port of getEquippedSummonConfig L1096227-1096303: the owned SUMMON sigil in the utility slot
-/** @returns {SummonConfig|null} */
-export function getEquippedSummonConfig(state) {
+// port of getEquippedSummonConfig L1096227-1096303, with the 2.8.2 glyph mods (2.8.2 L1108119-L1108256):
+// a respawn-haste glyph cuts the respawn cooldown down to MIN_MINION_RESPAWN_COOLDOWN_MS (or the sigil's
+// own cooldown when that is lower), and a Death Ward glyph adds deathWardPercent.
+/**
+ * @param {Object} state
+ * @param {Map<string, import('./glyphMods.js').SigilGlyphMods>|null} [mods] resolveSigilGlyphMods output
+ * @returns {SummonConfig|null}
+ */
+export function getEquippedSummonConfig(state, mods = null) {
   const species = state.utilitySlotSpecies;
   if (!species) return null;
   const owned = findOwned(state, species);
@@ -138,6 +145,9 @@ export function getEquippedSummonConfig(state) {
   const def = sigilBySpecies(owned.species);
   if (!def || def.spellType !== 'SUMMON') return null;
   const s = getSigilSpellScaled(def.spell, owned.level, 'SUMMON');
+  const m = mods?.get(def.species);
+  const cut = m?.respawnReductionMs ?? 0;
+  const ward = m?.deathWardPercent ?? 0;
   return {
     species: def.species,
     name: def.name,
@@ -145,8 +155,11 @@ export function getEquippedSummonConfig(state) {
     minion: s.minion,
     attackPercent: s.attackPercent,
     hpPercent: s.hpPercent,
-    respawnCooldownMs: s.respawnCooldownMs,
+    respawnCooldownMs: cut > 0 && s.respawnCooldownMs > 0
+      ? Math.max(Math.min(MIN_MINION_RESPAWN_COOLDOWN_MS, s.respawnCooldownMs), s.respawnCooldownMs - cut)
+      : s.respawnCooldownMs,
     summonCastMs: s.summonCastMs,
+    ...(ward > 0 ? { deathWardPercent: ward } : {}),
   };
 }
 

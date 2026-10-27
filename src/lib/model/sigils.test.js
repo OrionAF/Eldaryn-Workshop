@@ -206,7 +206,7 @@ describe('class and spec eligibility (sigils.md §2)', () => {
   });
 
   it('Necromancer utility is Summon; Warrior and Sentinel have none', () => {
-    expect(names(utilitySigils('NECROMANCER', null)).sort()).toEqual(['BONE_SERVANT', 'OVERLORDS_PACT', 'REAPERS_CALL']);
+    expect(names(utilitySigils('NECROMANCER', null)).sort()).toEqual(['BONE_SERVANT', 'DREADGUARDS_PACT', 'OVERLORDS_PACT', 'REAPERS_CALL']);
     expect(names(utilitySigils('WARRIOR', null))).toEqual(['BATTLE_STANCE', 'GUARDIAN_STANCE', 'WARBREAKER_STANCE', 'JUGGERNAUT_STANCE']);
     expect(utilitySigils('SENTINEL', null)).toEqual([]);
   });

@@ -6,10 +6,11 @@
 import { MAJOR_GLYPHS, majorGlyphsForClassSpec } from '../../game/mountsGlyphs.js';
 import { MIN_SIGIL_COOLDOWN_MS } from '../../game/sigils.js';
 
-/** The 13 glyph effect kinds the client handles (mounts-glyphs.md §10). */
+/** The 17 glyph effect kinds the client handles (mounts-glyphs.md §10; the last four, Necromancer, updates-2.8.2.md §5). */
 export const GLYPH_EFFECT_KINDS = Object.freeze([
   'COOLDOWN', 'DAMAGE', 'THORNS', 'PARALYZE', 'PARALYZE_EXTEND', 'BLEED_BOOST', 'BULWARK_THORNS',
   'SUNDER_DECAY', 'ATTACK_SPEED_BUFF', 'POISON_STACK', 'ELUSIVE_BUFF', 'SHIELD_POWER', 'CC_EXTEND',
+  'RESPAWN_HASTE', 'DEATH_WARD', 'MINION_FRENZY_HASTE', 'MINION_THORNS_BUFF',
 ]);
 
 /** Rarity order of the 5-value perRarity arrays (L1084049-1084062). */
@@ -36,6 +37,10 @@ const GLYPH_BY_ID = new Map(MAJOR_GLYPHS.map((g) => [g.id, g]));
  * @property {number} elusiveAttackPerStackPercent
  * @property {number|null} elusiveBurnPerHitOverride
  * @property {number} shieldPowerPercent
+ * @property {number} respawnReductionMs
+ * @property {number} deathWardPercent
+ * @property {number} minionFrenzyAttackSpeedPercent
+ * @property {number} minionThornsPercent
  */
 
 /** A fresh all-zero accumulator. @returns {SigilGlyphMods} */
@@ -56,6 +61,10 @@ export const emptySigilGlyphMods = () => ({
   elusiveBurnPerHitOverride: null,
   shieldPowerPercent: 0,
   ccExtendMs: 0,
+  respawnReductionMs: 0,
+  deathWardPercent: 0,
+  minionFrenzyAttackSpeedPercent: 0,
+  minionThornsPercent: 0,
 });
 
 // port of majorGlyphRarityIndex L1081245-1081261 (indexOf, unknown -> 0). Accepts a name in any
@@ -79,8 +88,9 @@ const num = (v) => (v == null ? 0 : v);
  *  1. Sealed glyphs and non-MAJOR tiers are dropped.
  *  2. One instance per glyph type, the highest rarity (a tie keeps the first).
  *  3. Only glyphs of this class (and requiredSpec, when set) count.
- *  4. Per kind: cooldown, damage, thorns, paralyze, CC extend, bleed and the Bulwark / Elusive
- *     bonuses add; decay and the Elusive burn override take the minimum; poison stacks the maximum.
+ *  4. Per kind: cooldown, damage, thorns, paralyze, CC extend, bleed, the Bulwark / Elusive bonuses and
+ *     the four minion kinds add; decay and the Elusive burn override take the minimum; poison stacks the maximum.
+ *     The minion kinds reach the summon config (respawn, death ward) or the minion buffs below.
  * @param {Array<{glyphType: string, rarity: string|number, tier?: string, sealed?: boolean}>} glyphs
  *   `glyphType` is the major glyph id (`sg-*`). `tier` defaults to MAJOR.
  * @param {string} playerClass  'WARRIOR' | 'SENTINEL' | 'MYSTIC' | 'NECROMANCER'
@@ -146,13 +156,17 @@ export function resolveSigilGlyphMods(glyphs, playerClass, spec) {
       }
       case 'SHIELD_POWER': m.shieldPowerPercent += num(at(pr, 'shieldPowerPercent', r)); break;
       case 'CC_EXTEND': m.ccExtendMs += num(at(pr, 'ccSeconds', r)) * 1000; break;
+      case 'RESPAWN_HASTE': m.respawnReductionMs += num(at(pr, 'respawnSeconds', r)) * 1000; break;
+      case 'DEATH_WARD': m.deathWardPercent += num(at(pr, 'wardPercent', r)); break;
+      case 'MINION_FRENZY_HASTE': m.minionFrenzyAttackSpeedPercent += num(at(pr, 'attackSpeedPercent', r)); break;
+      case 'MINION_THORNS_BUFF': m.minionThornsPercent += num(at(pr, 'thornsPercent', r)); break;
       default: break;
     }
   }
   return out;
 }
 
-// port of applySigilGlyphMods L1080871-1081182
+// port of applySigilGlyphMods L1080871-1081182 (2.8.2 adds the minion buffs, L1089990-1090060)
 /**
  * Apply accumulated mods to the active sigil spells. Each item is `{species, spell}`; the spell
  * type is `spell.spellType` (E5b's builder adds it from the catalogue entry). Items whose species has
@@ -160,7 +174,8 @@ export function resolveSigilGlyphMods(glyphs, playerClass, spec) {
  *  - cooldownMs: max(1000, cooldownMs - reduction), when the spell has a numeric cooldownMs
  *  - DAMAGE spells: attackPercent, maxAttackPercent, baseDamage (> 0), damagePerTick (> 0) x(1+p/100), rounded
  *  - DEBUFF / DAMAGE: paralyzeMs += paralyze; CC extend adds to an existing paralyzeMs > 0 and fearMs > 0
- *  - BUFF: appends {stat: 'ATTACK_SPEED', value: p/100}
+ *  - BUFF: Ravenous Frenzy's minionFrenzy.attackSpeedPercent and Infernal Bastion's minionBastion.thornsPercent
+ *    add the minion glyphs; appends {stat: 'ATTACK_SPEED', value: p/100}
  *  - DEBUFF with a debuff: bleed bonus raises maxStacks ((maxStacks ?? 1) + bonus) and scales the tick
  *    percents; poison ceiling sets maxStacks and makes it permanent (durationMs 0)
  * @param {Array<{species: string, spell: Object}>} spells
@@ -191,6 +206,18 @@ export function applySigilGlyphMods(spells, modsMap) {
     if (mods.ccExtendMs > 0 && (type === 'DEBUFF' || type === 'DAMAGE')) {
       if (typeof spell.paralyzeMs === 'number' && spell.paralyzeMs > 0) spell.paralyzeMs += mods.ccExtendMs;
       if ('fearMs' in spell && typeof spell.fearMs === 'number' && spell.fearMs > 0) spell.fearMs += mods.ccExtendMs;
+    }
+    if (mods.minionFrenzyAttackSpeedPercent > 0 && type === 'BUFF' && spell.minionFrenzy) {
+      spell.minionFrenzy = {
+        ...spell.minionFrenzy,
+        attackSpeedPercent: spell.minionFrenzy.attackSpeedPercent + mods.minionFrenzyAttackSpeedPercent,
+      };
+    }
+    if (mods.minionThornsPercent > 0 && type === 'BUFF' && spell.minionBastion) {
+      spell.minionBastion = {
+        ...spell.minionBastion,
+        thornsPercent: (spell.minionBastion.thornsPercent ?? 0) + mods.minionThornsPercent,
+      };
     }
     if (mods.attackSpeedBuffPercent > 0 && type === 'BUFF') {
       spell.effects = [...(spell.effects ?? []), { stat: 'ATTACK_SPEED', value: mods.attackSpeedBuffPercent / 100 }];

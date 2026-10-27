@@ -12,6 +12,8 @@ export const SIGIL_SLOT_UNLOCKS_MYSTIC = sigilsJson.constants.SIGIL_SLOT_UNLOCKS
 export const SIGIL_UNLOCK_LEVEL_BY_CLASS = sigilsJson.constants.SIGILS_UNLOCK_LEVEL_BY_CLASS;
 export const SIGIL_CONDITIONS_UNLOCK_LEVEL = sigilsJson.constants.SIGIL_CONDITIONS_UNLOCK_LEVEL;
 export const MIN_SIGIL_COOLDOWN_MS = sigilsJson.constants.MIN_SIGIL_COOLDOWN_MS;
+/** Floor of a respawn-hasted minion respawn (2.8.2 module 4001 L1093707; updates-2.8.2.md §5). */
+export const MIN_MINION_RESPAWN_COOLDOWN_MS = sigilsJson.constants.MIN_MINION_RESPAWN_COOLDOWN_MS;
 export const TRANSFORM_DURATION_MS = sigilsJson.constants.TRANSFORM_DURATION_MS;
 export const FORGE_ODDS = sigilsJson.forgeOdds;
 export const FORGE_ODDS_BY_ALTAR_LEVEL = sigilsJson.forgeOddsByAltarLevel;

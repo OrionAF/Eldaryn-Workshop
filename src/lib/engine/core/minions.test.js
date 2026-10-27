@@ -4,6 +4,7 @@ import {
   advanceMinionRespawn, elapseMinionRespawn, resummonIfDead, damageMinion, killMinion, summonMinion,
   soulLinkHeal, healMinionLifesteal, endMinionEmpower, carryMinionIntoNewFight, minionMsUntilSwing,
   mitigateMinionHit, openingSummonWindowMs, openingSwingTimerStart, minionCurrentLifesteal, currentSoulLink,
+  minionDeathMeta, minionDeathWardLeft, expireMinionDeathWard, rollMinionReap, endMinionBastion,
 } from './minions.js';
 import { applyCombatCeiling, capConfig, softCapGainFromSheet } from './caps.js';
 import { scripted } from '../rng.js';
@@ -138,6 +139,77 @@ describe('respawn', () => {
     const m = mk(); summonMinion(m);
     expect(damageMinion(m, 100)).toEqual({ dealt: 100, died: false });
     expect(damageMinion(mk(), 100)).toEqual({ dealt: 0, died: false });
+  });
+});
+
+describe('Death Ward (2.8.2 L1105171-1105749, L1106990-1107157)', () => {
+  const warded = () => { const m = createMinion({ ...d, deathWardPercent: 15 }, p, {}); summonMinion(m); return m; };
+  it('death sets max(1, floor(maxHp * pct / 100)), returned and in the death meta', () => {
+    const m = warded(); // maxHp 600 -> 90
+    expect(damageMinion(m, 9999)).toEqual({ dealt: 600, died: true, deathWard: 90 });
+    expect(minionDeathMeta(m)).toEqual({ minionRespawnMs: 10000, minionDeathWard: 90 });
+    const tiny = createMinion({ ...d, hpPercent: 0, deathWardPercent: 5 }, p, {}); summonMinion(tiny);
+    expect(damageMinion(tiny, 5).deathWard).toBe(1);
+  });
+  it('no ward without the glyph; killMinion (owner died) grants none', () => {
+    const m = mk(); summonMinion(m);
+    expect(damageMinion(m, 9999)).toEqual({ dealt: 600, died: true });
+    expect(minionDeathMeta(m)).toEqual({ minionRespawnMs: 10000 });
+    const w = warded(); killMinion(w);
+    expect(minionDeathMeta(w)).toEqual({});
+  });
+  it('the ward left is min(ward, pool); expiry removes it from the pool once', () => {
+    const m = warded(); damageMinion(m, 9999);
+    expect(minionDeathWardLeft(m, 250)).toBe(90);
+    expect(minionDeathWardLeft(m, 40)).toBe(40);
+    expect(expireMinionDeathWard(m, 250)).toBe(160);
+    expect(m.deathWard).toBe(0);
+    expect(expireMinionDeathWard(m, 160)).toBe(160);
+    const n = warded(); damageMinion(n, 9999);
+    expect(expireMinionDeathWard(n, 30)).toBe(0); // the ward was partly spent
+  });
+});
+
+describe('Dominion tiers, Reap and Infernal Bastion (2.8.2 L1105444-1106900, L1107288-1107410)', () => {
+  const reaper = { species: 'REAPERS_CALL', name: 'R', icon: 'i', minion: 'REAPER', hpPercent: 30, attackPercent: 60, respawnCooldownMs: 10000, summonCastMs: 1500 };
+  const p2 = { maxHp: 1000, attack: 500, attackSpeed: 1, critDamage: 1.5 };
+  it("Reaper's Call Dominion 5: +30 Minion Attack, x1.25 attack speed, +10 crit, Reap; Dominion 1 adds nothing", () => {
+    const m5 = createMinion(reaper, p2, { totalDominion: 5, totalMinionAttack: 20, totalMinionCritChance: 5 });
+    expect(m5.attack).toBe(450); // floor(500 * 60 / 100 * (1 + (20 + 30) / 100))
+    expect(m5.attackSpeed).toBeCloseTo(1.25, 10);
+    expect(m5.critChance).toBe(15);
+    expect(m5).toMatchObject({ reap: { chancePercent: 6, paralyzeMs: 1000, cooldownMs: 5000 }, reapCooldownMs: 0 });
+    expect(m5.dominion).toBeUndefined();
+    const m1 = createMinion(reaper, p2, { totalDominion: 1 });
+    expect([m1.attack, m1.attackSpeed, m1.critChance, m1.reap]).toEqual([300, 1, 0, undefined]);
+  });
+  it('Bone Servant and Dreadguard get the tank tiers', () => {
+    expect(createMinion({ ...d, species: 'BONE_SERVANT' }, p, { totalDominion: 5 }).dominion).toEqual({ blockChance: 18, damageReduction: 18, thornsPercent: 10 });
+    const dg = { ...d, species: 'DREADGUARDS_PACT', minion: 'DEMON' };
+    expect(createMinion(dg, p, { totalDominion: 4 }).dominion).toEqual({ blockChance: 16, damageReduction: 16, thornsPercent: 15 });
+  });
+  it('rollMinionReap: one draw off cooldown, then the cooldown; minionSwing counts it down', () => {
+    const m = createMinion(reaper, p2, { totalDominion: 4 });
+    summonMinion(m);
+    expect(rollMinionReap(m, scripted([0.07]))).toBe(0); // 7 >= 6
+    expect(rollMinionReap(m, scripted([0.05]))).toBe(1000);
+    expect(m.reapCooldownMs).toBe(5000);
+    expect(rollMinionReap(m, scripted([]))).toBe(0); // on cooldown: no draw
+    minionSwing(m, 4000, scripted([0.9])); // one crit draw (crit 10 at this tier)
+    expect(m.reapCooldownMs).toBe(1000);
+    expect(rollMinionReap(mk(), scripted([]))).toBe(0); // no Reap tier
+  });
+  it("the bastion adds its Block and DR to the tier's, and its thorns; it ends on death", () => {
+    const m = createMinion({ ...d, species: 'BONE_SERVANT' }, p, { totalDominion: 2 }); // tier block 6, DR 6
+    summonMinion(m);
+    m.bastion = { blockChance: 15, damageReduction: 20, thornsPercent: 4 };
+    m.bastionSpell = { name: 'IB' };
+    // block 21: a 0.22 roll is no block; DR 26: round(100 * 0.74) = 74; thorns round(74 * 4 / 100) = 3
+    expect(damageMinion(m, 100, { swing: true }, scripted([0.22]))).toEqual({ dealt: 74, died: false, thorns: 3 });
+    expect(damageMinion(m, 100, { swing: true }, scripted([0.2]))).toEqual({ dealt: 0, died: false, blocked: true });
+    damageMinion(m, 9999, { swing: true }, scripted([0.9]));
+    expect([m.bastion, m.bastionSpell]).toEqual([undefined, undefined]);
+    expect(endMinionBastion(m)).toBe(false);
   });
 });
 

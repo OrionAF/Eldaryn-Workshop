@@ -50,6 +50,8 @@ const EFFECT_PARTS = {
   burnperhitoverride: (v) => `${v} stack lost per hit`,
   shieldpowerpercent: (v) => `+${v}% shield power`,
   ccseconds: (v) => `+${v}s crowd control`,
+  respawnseconds: (v) => `-${v}s minion respawn`,
+  wardpercent: (v) => `death ward ${v}% of the minion's max HP`,
 };
 
 /** 'Warborn Fury: -3s cooldown' style effect line for a major glyph at its rarity. */

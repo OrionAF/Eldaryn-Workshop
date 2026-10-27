@@ -445,6 +445,15 @@ describe('minion (finishMinionTick L1087924-1088000, respawn L1088096-1088119)',
     expect(calls).toContain('minion_summoned');
   });
 
+  it('2.8.2 Death Ward: a slain minion shields its owner; hits spend it (minionWard), each death grants a new one', () => {
+    const m = makeMinion({ deathWardPercent: 20, deathWard: 0 }); // max HP 1000 -> ward 200
+    const r = simulateFight(hero(), mob({ attack: 1500, attackSpeed: 1 }), { minion: m, maxMs: 6000, opening: { attackerTimer: 0, defenderTimer: 900, regenTimer: 0 } }, never);
+    const deaths = r.ticks.filter((e) => e.type === 'minion_dead');
+    expect(deaths.map((e) => [e.minionDeathWard, e.minionWard])).toEqual([[200, 200], [200, 200]]);
+    const firstHit = r.ticks.find((e) => e.type === 'defender_hit');
+    expect(firstHit.minionWard).toBe(0); // the 1500 hit spent the 200 ward first
+  });
+
   function summonMinionFresh(m) {
     summonMinion(m);
     return m;
@@ -538,11 +547,18 @@ describe('world boss hooks (combat-pve.md §16)', () => {
     expect(t30.attackSpeed).toBeCloseTo(1.8, 10);
     expect(h.enemyAt(10_000_000).attackSpeed).toBe(6);
   });
-  it('28 % of a blocked or dodged hit is dealt back; other events deal nothing', () => {
+  it('60 % of a blocked, dodged, blinded, stunned or feared hit is dealt back (2.8.2); other events deal nothing', () => {
     const h = worldBossHooks(enraged, 10000);
-    expect(h.reboundFor({ type: 'attacker_block' }, { attack: 1800 })).toBe(504);
-    expect(h.reboundFor({ type: 'attacker_miss' }, { attack: 1800 })).toBe(504);
+    for (const type of ['attacker_block', 'attacker_miss', 'defender_blind', 'defender_paralyze', 'defender_fear']) {
+      expect(h.reboundFor({ type }, { attack: 1800 })).toBe(1080);
+    }
     expect(h.reboundFor({ type: 'defender_hit' }, { attack: 1800 })).toBe(0);
+    // without controlledSwingsRebound only blocks and dodges rebound
+    const plain = worldBossHooks({ ...enraged, controlledSwingsRebound: false }, 10000);
+    expect(plain.reboundFor({ type: 'defender_paralyze' }, { attack: 1800 })).toBe(0);
+  });
+  it('Rising Wrath: direct damage x 10 % from 30 s after the opening window (2.8.2)', () => {
+    expect(worldBossHooks(enraged, 10000).wrath).toEqual({ afterMs: 30000, mult: 0.1 });
   });
   it('the dormant and fortified bosses have no hit-back', () => {
     expect(worldBossHooks(worldBossMob('NONE').affinity, 10000)).toBeNull();
@@ -744,7 +760,7 @@ describe('World Boss through simulatePve', () => {
     expect(r.log.find((e) => e.type === 'defender_hit').damage).toBe(1800);
   });
 
-  it('Enraged: 28 % of a blocked hit is dealt back to the boss', () => {
+  it('Enraged: 60 % of a blocked hit is dealt back to the boss', () => {
     const r = simulatePve({
       fighter: f({ totalHp: 1e9, totalBlockChance: 85, totalAttack: 1 }), enemy: worldBossMob('ENRAGED'),
       maxMs: 10000, rng: mulberry32(5), log: true,
@@ -752,8 +768,25 @@ describe('World Boss through simulatePve', () => {
     const reflected = r.log.filter((e) => e.type === 'thorns_reflect');
     expect(reflected.length).toBeGreaterThan(0);
     for (const ev of reflected) expect(ev.damage % 1).toBe(0);
-    // each rebound is 28 % of the 1800 hit = 504 (one per blocked hit)
-    expect(reflected.every((e) => e.damage % 504 === 0)).toBe(true);
+    // each rebound is 60 % of the 1800 hit = 1080 (one per blocked hit)
+    expect(reflected.every((e) => e.damage % 1080 === 0)).toBe(true);
+  });
+
+  it('wrath cuts swings to wrathDirectDamagePct % from wrathStartMs on; the rebound stays whole', () => {
+    const none = worldBossMob('NONE');
+    const wrathful = { ...none, affinity: { ...none.affinity, wrathStartMs: 30000, wrathDirectDamagePct: 10 } };
+    const r = simulatePve({ fighter: f(), enemy: wrathful, rng: rng(), log: true });
+    const hits = r.log.filter((e) => e.type === 'attacker_hit');
+    expect(hits.filter((e) => e.timestamp < 30000).every((e) => e.damage === 1000)).toBe(true);
+    expect(hits.filter((e) => e.timestamp >= 30000).every((e) => e.damage === 100)).toBe(true);
+    expect(r.damageDealt).toBe(hits.reduce((a, e) => a + e.damage, 0));
+    const enraged = simulatePve({
+      fighter: f({ totalHp: 1e9, totalBlockChance: 85, totalAttack: 1 }), enemy: worldBossMob('ENRAGED'),
+      maxMs: 40000, rng: mulberry32(5), log: true,
+    });
+    const late = enraged.log.filter((e) => e.type === 'thorns_reflect' && e.timestamp >= 30000);
+    expect(late.length).toBeGreaterThan(0);
+    expect(late.every((e) => e.damage >= 1080)).toBe(true);
   });
 });
 

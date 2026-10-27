@@ -27,7 +27,7 @@ import {
 import { applyBuffsToEntity, hasActiveBuffs, getBuffedMaxHp } from '../core/buffs.js';
 import { absorbWithShield } from '../core/shield.js';
 import {
-  advanceMinionRespawn, minionSummonMeta, openingSummonWindowMs, openingSwingTimerStart, summonMinion,
+  advanceMinionRespawn, expireMinionDeathWard, minionSummonMeta, openingSummonWindowMs, openingSwingTimerStart, summonMinion,
 } from '../core/minions.js';
 import {
   buildCombatSpells, getEquippedShieldConfig, getEquippedSummonConfig, classifyShieldVariant,
@@ -316,12 +316,14 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     }
     const start = events.length;
 
-    if (s.hasMinions) { // L1456105-1456165
-      if (aMin && advanceMinionRespawn(aMin, dt) && log) {
-        events.push({ ...duelEvent(t, 'attacker_minion_summoned', 0, A, D), ...minionSummonMeta(aMin) });
+    if (s.hasMinions) { // L1456105-1456165; a risen minion's Death Ward leaves the shield (2.8.2 L1608624-1608700)
+      if (aMin && advanceMinionRespawn(aMin, dt)) {
+        A.shieldHp = expireMinionDeathWard(aMin, A.shieldHp);
+        if (log) events.push({ ...duelEvent(t, 'attacker_minion_summoned', 0, A, D), ...minionSummonMeta(aMin) });
       }
-      if (dMin && advanceMinionRespawn(dMin, dt) && log) {
-        events.push({ ...duelEvent(t, 'defender_minion_summoned', 0, A, D), ...minionSummonMeta(dMin) });
+      if (dMin && advanceMinionRespawn(dMin, dt)) {
+        D.shieldHp = expireMinionDeathWard(dMin, D.shieldHp);
+        if (log) events.push({ ...duelEvent(t, 'defender_minion_summoned', 0, A, D), ...minionSummonMeta(dMin) });
       }
     }
     swingA += dt;
@@ -441,7 +443,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     }
     aE.attack = attackA;
     undoElusiveA();
-    if (aMin) R.minionStrike(aMin, 'attacker', D, dE, dStack, aStack);
+    if (aMin) R.minionStrike(aMin, 'attacker', D, dE, dStack, aStack, dMin);
 
     // ... then the defender, even if the attacker's swing killed it (L1457110-1457230)
     const undoElusiveD = R.applyElusiveToSwinger(dE, dStack);
@@ -462,7 +464,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     }
     dE.attack = attackD;
     undoElusiveD();
-    if (dMin) R.minionStrike(dMin, 'defender', A, aE, aStack, dStack);
+    if (dMin) R.minionStrike(dMin, 'defender', A, aE, aStack, dStack, aMin);
 
     // end of tick (L1457231-1457309)
     if (s.hasMinions) R.finishMinionTick(start);
@@ -570,7 +572,7 @@ export function fighterDuelArgs(f) {
     glyphCombat: glyphs.combat,
     shield: getEquippedShieldConfig(state, spec, glyphs.mods),
     stackCtx: { playerClass, activeSpec: spec, form },
-    summon: getEquippedSummonConfig(state),
+    summon: getEquippedSummonConfig(state, glyphs.mods),
   };
 }
 

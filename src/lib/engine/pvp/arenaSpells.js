@@ -13,7 +13,7 @@ import { applyDebuff, computeDebuffModifiers, weakenedAttack } from '../core/deb
 import { getBuffedMaxHp } from '../core/buffs.js';
 import { absorbWithShield, shieldRefillAmount } from '../core/shield.js';
 import {
-  damageMinion, endMinionEmpower, endMinionFrenzy, healMinion, isMinionAlive, minionDeathMeta,
+  damageMinion, endMinionEmpower, endMinionFrenzy, endMinionBastion, healMinion, isMinionAlive, minionDeathMeta,
 } from '../core/minions.js';
 
 // port of mapSpellEventType L1453845-1453856: the log type is `<caster side>_<spell event type>`
@@ -57,6 +57,9 @@ export function routeSpellHealToMinion(minion, result, ownerMaxHp) {
   if (emp?.frenzyEnd && minion.alive && endMinionFrenzy(minion)) {
     out.push({ type: 'minion_buff_end', timestamp: emp.frenzyEnd.timestamp, healed: 0, spell: emp.frenzyEnd.spell, minionMaxHp: minion.maxHp });
   }
+  if (emp?.bastionEnd && minion.alive && endMinionBastion(minion)) {
+    out.push({ type: 'minion_buff_end', timestamp: emp.bastionEnd.timestamp, healed: 0, spell: emp.bastionEnd.spell, minionMaxHp: minion.maxHp });
+  }
   if (result.ownerMinionHeal && minion.alive) {
     const kept = [];
     for (const ev of result.events) {
@@ -82,6 +85,12 @@ export function routeSpellHealToMinion(minion, result, ownerMaxHp) {
     minion.frenzy = { attackPercent: f.attackPercent, attackSpeedPercent: f.attackSpeedPercent, lifesteal: f.lifesteal };
     minion.frenzySpell = f.spell;
     out.push({ type: 'minion_buff', timestamp: f.timestamp, healed: 0, spell: f.spell, minionMaxHp: minion.maxHp });
+  }
+  if (emp?.bastionStart && minion.alive) { // 2.8.2 L1106620-1106679
+    const b = emp.bastionStart;
+    minion.bastion = { damageReduction: b.damageReduction, blockChance: b.blockChance, ...(b.thornsPercent > 0 ? { thornsPercent: b.thornsPercent } : {}) };
+    minion.bastionSpell = b.spell;
+    out.push({ type: 'minion_buff', timestamp: b.timestamp, healed: 0, spell: b.spell, minionMaxHp: minion.maxHp });
   }
   return out;
 }

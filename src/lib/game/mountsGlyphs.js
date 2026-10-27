@@ -13,7 +13,7 @@ export const GLYPH_MAX_QUALITY = mountsJson.glyphMaxQuality;
 /** Weighted {from, to, weight} sub-bands of a Mythic+ roll. */
 export const MYTHIC_GLYPH_QUALITY_TIERS = mountsJson.mythicGlyphQualityTiers;
 export const GLYPH_SECONDARY_POOL = mountsJson.glyphSecondaryPool;
-/** 42 major glyph modifiers. perRarity arrays index Common..Legendary (0..4). */
+/** 58 major glyph modifiers (16 Necromancer since 2.8.2). perRarity arrays index Common..Legendary (0..4). */
 export const MAJOR_GLYPHS = mountsJson.majorGlyphModifiers;
 
 const mountMap = new Map(MOUNT_SPECIES.map((m) => [m.species, m]));
