@@ -31,8 +31,8 @@ describe('catalogue lookups', () => {
     expect(glyphRarityOptions('g-wrath')).toEqual(FREE_GLYPH_RARITIES);
   });
 
-  it('all 42 majors resolve and index their effect by rarity', () => {
-    expect(MAJOR_GLYPHS).toHaveLength(42);
+  it('all 58 majors resolve and index their effect by rarity', () => {
+    expect(MAJOR_GLYPHS).toHaveLength(58);
     for (const g of MAJOR_GLYPHS) expect(majorEffectAtRarity(g.id, 'Legendary')).not.toBeNull();
     expect(majorEffectAtRarity('sg-warborn-cd', 'Epic')).toEqual({ kind: 'COOLDOWN', values: { cooldownseconds: 4 } });
     expect(majorEffectAtRarity('sg-warborn-cd', 'Mythic')).toBeNull();
@@ -55,7 +55,7 @@ describe('class and spec filtering', () => {
     const viaAccessor = majorGlyphsForClassSpec('MYSTIC', 'MYSTIC_DRUID').map((g) => g.id).sort();
     const viaModel = MAJOR_GLYPHS.filter((g) => majorGlyphAllowed(g.id, 'MYSTIC', ['MYSTIC_DRUID'])).map((g) => g.id).sort();
     expect(viaModel).toEqual(viaAccessor);
-    expect(majorGlyphsForClassSpec('NECROMANCER', null)).toEqual([]);
+    expect(majorGlyphsForClassSpec('NECROMANCER', null)).toHaveLength(16);
   });
 
   it('normalise drops another class\'s majors but keeps minors and the other spec\'s majors', () => {

@@ -301,6 +301,18 @@ describe('finishMinionTick / killMinionsOfDead (L1455347-1455562)', () => {
     expect(t.events).toHaveLength(1);
   });
 
+  it("credits a dead minion's Death Ward to its owner's shield and tags the ward left (2.8.2)", () => {
+    const s = duel({ defenderSummon: { ...summon, deathWardPercent: 20 } }); // minion max HP 500 -> ward 100
+    summonMinion(s.defenderMinion);
+    s.events.push({ timestamp: 70, type: 'defender_minion_dead', damage: 0, minionDeathWard: 100 });
+    const r = createReactions(s, deps());
+    r.finishMinionTick(0);
+    expect(s.defender.shieldHp).toBe(100);
+    s.defenderMinion.deathWard = 100; s.defender.shieldHp = 60;
+    r.tagMinionSnapshots(0);
+    expect(s.events[0].defenderMinionWard).toBe(60);
+  });
+
   it('kills the minion of a dead owner (no respawn) and logs <side>_minion_dead once', () => {
     const s = duel({ attackerSummon: summon, defenderSummon: summon });
     summonMinion(s.attackerMinion); summonMinion(s.defenderMinion);
@@ -376,6 +388,28 @@ describe('minionStrike (L1455564-1455680)', () => {
     expect(copy.damageReduction).toBe(20); // restored
     expect(copy.hp).toBe(s.defender.hp);
     expect(copy.shieldHp).toBe(s.defender.shieldHp);
+  });
+
+  it('a living foe minion takes the swing instead (minion-vs-minion); its death carries the Death Ward', () => {
+    const s = setup({ defenderSummon: { ...summon, deathWardPercent: 20 }, attackerStats: sheet({ totalMinionLifesteal: 50 }) });
+    summonMinion(s.defenderMinion);
+    s.defenderMinion.hp = 30;
+    s.attackerMinion.hp = 100;
+    createReactions(s, deps()).minionStrike(s.attackerMinion, 'attacker', s.defender, s.defender, s.defenderStack, s.attackerStack, s.defenderMinion);
+    expect(s.defender.hp).toBe(1000);
+    expect(s.attackerMinion.hp).toBe(115); // lifesteal floor(30 * 50 / 100)
+    expect(s.events.map((e) => [e.type, e.damage, e.minionVsMinion])).toEqual([
+      ['attacker_minion_hit', 0, true], ['defender_minion_damaged', 30, true], ['defender_minion_dead', 0, undefined],
+    ]);
+    expect(s.events[2]).toMatchObject({ minionDeathWard: 100, minionRespawnMs: 5000 });
+  });
+
+  it('soul link ignores minion-vs-minion rows', () => {
+    const s = setup({ attackerStats: sheet({ totalSoulLink: 100 }), defenderSummon: summon });
+    s.attackerMinion.hp = 10;
+    s.events.push({ type: 'attacker_minion_hit', damage: 50, minionVsMinion: true }, { type: 'attacker_hit', damage: 4 });
+    createReactions(s, deps()).finishMinionTick(0);
+    expect(s.events[2]).toMatchObject({ type: 'attacker_minion_heal', damage: 4 });
   });
 
   it('minion lifesteal heals the minion by floor(dealt * ls / 100)', () => {

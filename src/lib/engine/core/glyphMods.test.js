@@ -6,17 +6,17 @@ import {
   glyphCombatMods, uncoveredMajorGlyphIds,
 } from './glyphMods.js';
 import { createStackCombat, getEquippedStackDef, withStackGlyphOverride } from './stacks.js';
-import { buildCombatSpells, getEquippedShieldConfig } from './spellConfig.js';
+import { buildCombatSpells, getEquippedShieldConfig, getEquippedSummonConfig } from './spellConfig.js';
 import { specsForClass } from '../../game/classes.js';
 
 const g = (glyphType, rarity = 'Legendary', extra = {}) => ({ glyphType, rarity, ...extra });
 
-describe('coverage of the 42 major glyphs', () => {
+describe('coverage of the 58 major glyphs', () => {
   it('lists any glyph id this module does not handle (expected: none)', () => {
-    expect(MAJOR_GLYPHS).toHaveLength(42);
+    expect(MAJOR_GLYPHS).toHaveLength(58);
     expect(uncoveredMajorGlyphIds()).toEqual([]);
   });
-  it('every effect kind in the catalogue is one of the 13 handled kinds, and all 13 occur', () => {
+  it('every effect kind in the catalogue is one of the 17 handled kinds, and all 17 occur', () => {
     const kinds = new Set(MAJOR_GLYPHS.map((m) => m.effectKind));
     expect([...kinds].filter((k) => !GLYPH_EFFECT_KINDS.includes(k))).toEqual([]);
     expect(GLYPH_EFFECT_KINDS.filter((k) => !kinds.has(k))).toEqual([]);
@@ -24,13 +24,13 @@ describe('coverage of the 42 major glyphs', () => {
 });
 
 describe('every major glyph changes combat for its class / spec (and some Druid form)', () => {
-  // (glyph id, spec, form) cases where the client itself leaves the glyph inert. None in 2.7.0.
+  // (glyph id, spec, form) cases where the client itself leaves the glyph inert. None since 2.8.2.
   const EXPECTED_INERT = [];
   const FORMS = (spec) => (spec === 'MYSTIC_DRUID' ? [null, 'BEAR', 'WOLF'] : [null]);
   const STACK_KIND_LIST = ['BULWARK', 'ELUSIVE', 'SUNDER', 'SIEGEBREAKER'];
 
-  // Everything a fight reads from the sigil + glyph: castable spells after glyph mods, the shield
-  // config, the stack defs after overrides, and Iron Bastion thorns while Iron Bastion is cast.
+  // Everything a fight reads from the sigil + glyph: castable spells after glyph mods, the shield and
+  // summon configs, the stack defs after overrides, and Iron Bastion thorns while Iron Bastion is cast.
   const combatConfig = (species, cls, spec, form, glyphs) => {
     const mods = resolveSigilGlyphMods(glyphs, cls, spec);
     const state = {
@@ -43,6 +43,7 @@ describe('every major glyph changes combat for its class / spec (and some Druid 
     return JSON.stringify({
       spells,
       shield: getEquippedShieldConfig(state, spec, mods),
+      summon: getEquippedSummonConfig(state, mods),
       stacks: STACK_KIND_LIST.map((k) => withStackGlyphOverride(getEquippedStackDef([species], k, ctx), k, overrides)),
       thorns: spells.some((s) => s.species === 'IRON_BASTION') ? ironBastionThornsPercent(mods) : 0,
     });

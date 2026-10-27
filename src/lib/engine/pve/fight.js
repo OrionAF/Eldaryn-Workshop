@@ -23,7 +23,7 @@ import {
   createHealBudget, refillHealBudget, spendHealBudget, shieldRefillAmount,
 } from '../core/shield.js';
 import {
-  advanceMinionRespawn, elapseMinionRespawn, resummonIfDead, openingSummonWindowMs, openingSwingTimerStart,
+  advanceMinionRespawn, elapseMinionRespawn, resummonIfDead, expireMinionDeathWard, minionDeathWardLeft, openingSummonWindowMs, openingSwingTimerStart,
   minionSummonMeta, soulLinkHeal, killMinion, isMinionAlive, createMinion,
 } from '../core/minions.js';
 import { STANCE_FIELDS } from '../core/stances.js';
@@ -221,6 +221,9 @@ function sameBuffSet(a, b) {
  *   L1074900-1074909), so a lethal tick ends the fight first
  * @property {number} [outputMult=1]  not the client's: the app's optional Oblivion output cut, applied to
  *   every damage the player side lands (swings, minion, spells, DoT ticks, thorns, rebound)
+ * @property {{afterMs:number, mult:number}|null} [wrath]  World Boss wrath (2.8.2): from `afterMs` after
+ *   the opening summon window, the player's swings, spells, DoT ticks and minion land `mult` of their
+ *   damage; thorns and rebound do not (combat-pve.md §16)
  */
 
 /**
@@ -236,8 +239,9 @@ function sameBuffSet(a, b) {
  */
 
 // port of finishMinionTick L1087924-1088000 (a closure in the client; a module function here, so that the
-// fight loop's variables stay out of a closure context)
-function finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart) {
+// fight loop's variables stay out of a closure context). 2.8.2 (L1098095-1098160) also stamps the Death
+// Ward still in the shield pool (`shield`) as `minionWard`.
+function finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart, shield) {
   const heal = soulLinkHeal(minion, tickDealt);
   if (heal > 0 && log) {
     ticks.push({ timestamp: ts, type: 'minion_heal', damage: heal, attackerHp: hp, defenderHp: enemyHp });
@@ -247,6 +251,10 @@ function finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFr
   }
   if (log && (minionAliveAtStart || minion.alive)) {
     for (let i = tickFrom; i < ticks.length; i++) ticks[i].minionHp = minion.hp;
+  }
+  if (log && (minion.deathWard ?? 0) > 0) {
+    const ward = minionDeathWardLeft(minion, shield);
+    for (let i = tickFrom; i < ticks.length; i++) ticks[i].minionWard = ward;
   }
 }
 
@@ -277,10 +285,13 @@ export function simulateFight(player, enemy, ctx, rng) {
   const {
     dtMs = DEFAULT_DT_MS, startMs = 0, maxMs = FIGHT_CAP_MS, opening = 'zero', spells = null, chrono = null,
     stacks: stackCombat = null, thornsPercent = 0, oblivion = null, minion = null, log = true,
-    liveSpellResist = false, enemyAt = null, reboundFor = null, liveLoop = false, outputMult = 1,
+    liveSpellResist = false, enemyAt = null, reboundFor = null, liveLoop = false, outputMult = 1, wrath = null,
   } = ctx ?? {};
-  // the output cut on a landed amount (a positive number)
+  // the output cut on a landed amount (a positive number); `directMult` adds the World Boss wrath cut
+  // to the direct damage (swings, minion, spells, DoT ticks) once it holds
   const cut = outputMult === 1 ? (d) => d : (d) => Math.round(d * outputMult);
+  let directMult = outputMult;
+  const cutDirect = (d) => (directMult === 1 ? d : Math.round(d * directMult));
   const debuffs = ctx?.debuffs ?? initDebuffState();
   const ticks = [];
   const emit = log ? (ev) => ticks.push(ev) : null;
@@ -326,8 +337,10 @@ export function simulateFight(player, enemy, ctx, rng) {
 
   if (!(hp > 0) || !(enemyHp > 0)) return fightResult(ticks, ts, false, hp, shield, enemyHp, enemyHp0, damageTaken);
 
-  // --- opening: a pending minion respawn is summoned before the first tick (L1087780-1087856)
+  // --- opening: a pending minion respawn is summoned before the first tick (L1087780-1087856); its
+  // Death Ward leaves the shield (2.8.2 L1097986-1097996)
   if (minion && hp > 0 && resummonIfDead(minion)) {
+    shield = expireMinionDeathWard(minion, shield);
     const windowMs = openingSummonWindowMs([minion]);
     if (emit) {
       emit({
@@ -343,6 +356,9 @@ export function simulateFight(player, enemy, ctx, rng) {
     };
     minion.timer = openingSwingTimerStart(Math.round(1000 / minion.attackSpeed), windowMs, minion.timer);
   }
+  // the wrath clock starts after the opening summon window (worldBossWrathStartLogMs, 2.8.2 L2021380-2021405)
+  const wrathFromTs = wrath && wrath.mult !== 1 ? ts + wrath.afterMs : Infinity;
+  let wrathOn = false;
 
   // per-tick views the spell pass sets and the rest of the tick reads
   let enemyView = enemy;
@@ -358,7 +374,7 @@ export function simulateFight(player, enemy, ctx, rng) {
   const tickOpts = {
     attackerMaxHp: 0, defenderBlinded: false, defenderParalyzedMs: 0, defenderSilencedMs: 0, defenderStaggerStacks: 0,
     defenderFearedMs: 0, attackerShieldHp: 0, defenderShieldHp: 0, healBudget, blocksShieldOverflow, minion,
-    attackerOutputMult: outputMult,
+    attackerOutputMult: outputMult, attackerReflectMult: outputMult,
   };
   // the spell pass input, one object per fight refilled each tick (processSpellsTick keeps nothing)
   const spellInput = {
@@ -397,16 +413,24 @@ export function simulateFight(player, enemy, ctx, rng) {
 
   while (hp > 0 && enemyHp > 0 && ts - startMs < maxMs) {
     ts += dtMs;
+    if (!wrathOn && ts >= wrathFromTs) {
+      wrathOn = true;
+      directMult = outputMult * wrath.mult;
+      tickOpts.attackerOutputMult = directMult;
+    }
 
-    // 1. minion respawn (L1088096-1088119)
+    // 1. minion respawn (L1088096-1088119); the Death Ward leaves the shield (2.8.2 L1098272-1098285)
     if (minion) {
       tickFrom = ticks.length;
       tickDealt = 0;
-      if (advanceMinionRespawn(minion, dtMs) && emit) {
-        emit({
-          timestamp: ts, type: 'minion_summoned', damage: 0, attackerHp: hp, defenderHp: enemyHp,
-          ...minionSummonMeta(minion),
-        });
+      if (advanceMinionRespawn(minion, dtMs)) {
+        shield = expireMinionDeathWard(minion, shield);
+        if (emit) {
+          emit({
+            timestamp: ts, type: 'minion_summoned', damage: 0, attackerHp: hp, defenderHp: enemyHp,
+            ...minionSummonMeta(minion),
+          });
+        }
       }
       minionAliveAtStart = minion.alive;
     }
@@ -428,7 +452,7 @@ export function simulateFight(player, enemy, ctx, rng) {
           if (emit) emit({ timestamp: ts, type: 'attacker_instability', damage: dmg, attackerHp: hp, defenderHp: enemyHp });
           if (hp <= 0) {
             if (emit) emit({ timestamp: ts, type: 'attacker_dead', damage: 0, attackerHp: 0, defenderHp: enemyHp });
-            if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart);
+            if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart, shield);
             return fightResult(ticks, ts, false, 0, 0, enemyHp, enemyHp0, damageTaken);
           }
         }
@@ -516,7 +540,7 @@ export function simulateFight(player, enemy, ctx, rng) {
 
       if (res.targetHpDelta < 0) {
         const before = enemyHp;
-        enemyHp = Math.max(0, enemyHp - cut(-res.targetHpDelta));
+        enemyHp = Math.max(0, enemyHp - cutDirect(-res.targetHpDelta));
         tickDealt += before - enemyHp;
       }
       if (res.targetParalyzeMs && enemyHp > 0) {
@@ -574,7 +598,7 @@ export function simulateFight(player, enemy, ctx, rng) {
       }
       if (enemyHp <= 0) {
         if (emit) emit({ timestamp: ts, type: 'defender_dead', damage: 0, attackerHp: hp, defenderHp: 0 });
-        if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart);
+        if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart, shield);
         return fightResult(ticks, ts, true, hp, shield, enemyHp, enemyHp0, damageTaken);
       }
     }
@@ -584,7 +608,7 @@ export function simulateFight(player, enemy, ctx, rng) {
       const d = processDebuffsTick(debuffs, dtMs, ts, rng);
       if (d.targetHpDelta < 0) {
         const before = enemyHp;
-        enemyHp = Math.max(0, enemyHp - cut(-d.targetHpDelta));
+        enemyHp = Math.max(0, enemyHp - cutDirect(-d.targetHpDelta));
         tickDealt += before - enemyHp;
       }
       if (emit) {
@@ -600,7 +624,7 @@ export function simulateFight(player, enemy, ctx, rng) {
       }
       if (enemyHp <= 0) {
         if (emit) emit({ timestamp: ts, type: 'defender_dead', damage: 0, attackerHp: hp, defenderHp: 0 });
-        if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart);
+        if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart, shield);
         return fightResult(ticks, ts, true, hp, shield, enemyHp, enemyHp0, damageTaken);
       }
     }
@@ -667,6 +691,10 @@ export function simulateFight(player, enemy, ctx, rng) {
     shield = t.attackerShieldHp;
     enemyShield = t.defenderShieldHp;
     const events = t.events;
+    // 2.8.2 (L1099196-1099235): a minion that died this tick shields its owner with its Death Ward
+    if (minion && minion.deathWardPercent > 0) {
+      for (const ev of events) if (ev.type === 'minion_dead' && ev.minionDeathWard) shield += ev.minionDeathWard;
+    }
     for (const ev of events) {
       if (ev.type === 'defender_hit' || ev.type === 'attacker_dead' || ev.type === 'attacker_block' ||
         ev.type === 'attacker_miss') damageTaken += ev.damage;
@@ -771,7 +799,7 @@ export function simulateFight(player, enemy, ctx, rng) {
         }
       }
     }
-    if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart);
+    if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart, shield);
 
     // 11. end check (L1089416-1089457)
     if (enemyHp <= 0) return fightResult(ticks, ts, true, hp, shield, enemyHp, enemyHp0, damageTaken);
@@ -784,6 +812,10 @@ export function simulateFight(player, enemy, ctx, rng) {
 // World boss
 // ---------------------------------------------------------------------------------------------
 
+// the boss swings whose loss rebounds: avoided ones, and (controlledSwingsRebound) ones lost to control
+const AVOIDED_SWINGS = new Set(['attacker_block', 'attacker_miss']);
+const CONTROLLED_LOST_SWINGS = new Set([...AVOIDED_SWINGS, 'defender_blind', 'defender_paralyze', 'defender_fear']);
+
 /**
  * Hit-back of the World Boss, from the affinity record that `worldBossMob` carries. The fight itself is
  * [SERVER] (combat-pve.md §16: ramp formulas and rebound are [UNRESOLVED]), so these rules are modelling
@@ -792,16 +824,24 @@ export function simulateFight(player, enemy, ctx, rng) {
  *  - from `frenzyStartMs` its damage grows by `damageRampPerSec` (a fraction per second, so 0.03 = +3 %
  *    of the base hit per second) and its attack speed by `attackSpeedRampPerSec`, up to `maxAttackSpeed`;
  *  - `avoidedReboundPct` % of every hit the player blocks or dodges is dealt back (the would-be hit,
- *    before the player's DR);
+ *    before the player's DR); with `controlledSwingsRebound` (2.8.2 Rising Wrath) also every swing lost
+ *    to blind, paralyze/stun or fear. The rebound lands in full: the wrath cut does not touch it;
+ *  - with `wrathStartMs` > 0 (2.8.2), from that long after the opening summon window the player's
+ *    direct damage (swings, spells, DoT ticks, minion) lands `wrathDirectDamagePct` % (the `wrath` ctx);
  *  - `penetrationPiercesSpellResist` needs no extra rule: Penetration already pierces a Block roll in
  *    processCombatTick, and the spell resist is the mob's `spellResist`;
  *  - the player's shield mitigation is the record's `shieldMitigation` (0), set by `simulatePve`.
  * @param {Object} affinity  world-boss.json affinity record
  * @param {number} playerMaxHp
- * @returns {{enemyAt: (elapsedMs:number) => Object|null, reboundFor: ((ev:Object, enemy:Object) => number)|null}|null}
+ * @returns {{enemyAt: (elapsedMs:number) => Object|null, reboundFor: ((ev:Object, enemy:Object) => number)|null,
+ *   wrath: {afterMs:number, mult:number}|null}|null}
  */
 export function worldBossHooks(affinity, playerMaxHp) {
-  if (!affinity || !(affinity.hitDamagePctOfMaxHp > 0)) return null;
+  if (!affinity) return null;
+  const wrath = affinity.wrathStartMs > 0 && (affinity.wrathDirectDamagePct ?? 100) < 100
+    ? { afterMs: affinity.wrathStartMs, mult: affinity.wrathDirectDamagePct / 100 }
+    : null;
+  if (!(affinity.hitDamagePctOfMaxHp > 0)) return wrath ? { enemyAt: null, reboundFor: null, wrath } : null;
   const base = (playerMaxHp * affinity.hitDamagePctOfMaxHp) / 100;
   const enemyAt = (elapsedMs) => {
     const frenzy = Math.max(0, elapsedMs - (affinity.frenzyStartMs ?? 0)) / 1000;
@@ -813,10 +853,11 @@ export function worldBossHooks(affinity, playerMaxHp) {
     return { attack: Math.round(base * dmgMult), attackSpeed: speed };
   };
   const pct = affinity.avoidedReboundPct ?? 0;
+  const lost = affinity.controlledSwingsRebound ? CONTROLLED_LOST_SWINGS : AVOIDED_SWINGS;
   const reboundFor = pct > 0
-    ? (ev, enemy) => (ev.type === 'attacker_block' || ev.type === 'attacker_miss' ? Math.round((enemy.attack * pct) / 100) : 0)
+    ? (ev, enemy) => (lost.has(ev.type) ? Math.round((enemy.attack * pct) / 100) : 0)
     : null;
-  return { enemyAt, reboundFor };
+  return { enemyAt, reboundFor, wrath };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -859,9 +900,10 @@ const PVE_MOB_KEYS = Object.freeze([
   'blockChance', 'missChance', 'blindChance', 'penetration', 'spellResist',
 ]);
 // the sheet keys createMinion reads (classes.md §7)
+// createMinion reads the Dominion tier from the same totals (2.8.2 L1105537-1105540)
 const MINION_STAT_KEYS = Object.freeze([
   'totalMinionAttack', 'totalMinionHealth', 'totalMinionAttackSpeed', 'totalMinionCritChance',
-  'totalMinionLifesteal', 'totalSoulLink',
+  'totalMinionLifesteal', 'totalSoulLink', 'totalDominion',
 ]);
 
 /**
@@ -888,7 +930,7 @@ export function preparePveFighter(fighter) {
   assertFiniteEntity('player', entity, PVE_PLAYER_KEYS);
   const player = { disruptionEffect: entity.disruptionEffect };
   for (const k of PVE_PLAYER_KEYS) player[k] = entity[k];
-  const summon = getEquippedSummonConfig(state);
+  const summon = getEquippedSummonConfig(state, mods);
   const minionStats = {};
   if (summon) for (const k of MINION_STAT_KEYS) minionStats[k] = stats[k] ?? 0;
   assertFiniteEntity('player', minionStats, Object.keys(minionStats));
@@ -1058,6 +1100,7 @@ export function simulatePve(o) {
       dtMs, startMs, maxMs, opening, spells: f.spells, chrono: f.chrono, stacks: f.stacks,
       thornsPercent: f.thornsPercent, oblivion: obl, minion: f.minion, log, liveSpellResist,
       liveLoop: mode.liveLoop, outputMult, enemyAt: wb?.enemyAt ?? null, reboundFor: wb?.reboundFor ?? null,
+      wrath: wb?.wrath ?? null,
     }, rng);
     elapsed = r.endTime;
     damageDealt += r.damageDealt;

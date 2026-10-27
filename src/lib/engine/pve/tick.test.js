@@ -603,6 +603,16 @@ describe('routeSpellHealToMinion (L1095017-1095364)', () => {
     expect(ev.ownerMinionHeal).toBe(5);
     expect(ev.events).toHaveLength(1);
   });
+  it("bastion start sets the minion's bastion; bastion end removes it (2.8.2)", () => {
+    const m = minionFor();
+    const start = { timestamp: 9, damageReduction: 20, blockChance: 15, thornsPercent: 4, spell: sp };
+    expect(routeSpellHealToMinion(m, { ownerMinionEmpower: { heals: [], bastionStart: start } }, 1000))
+      .toEqual([{ type: 'minion_buff', timestamp: 9, healed: 0, spell: sp, minionMaxHp: m.maxHp }]);
+    expect([m.bastion, m.bastionSpell]).toEqual([{ damageReduction: 20, blockChance: 15, thornsPercent: 4 }, sp]);
+    expect(routeSpellHealToMinion(m, { ownerMinionEmpower: { heals: [], bastionEnd: { timestamp: 12, spell: sp } } }, 1000))
+      .toEqual([{ type: 'minion_buff_end', timestamp: 12, healed: 0, spell: sp, minionMaxHp: m.maxHp }]);
+    expect(m.bastion).toBeUndefined();
+  });
   it('empower tick heals', () => {
     const m = minionFor({ hp: 10, maxHp: 100 });
     const ev = { ownerMinionEmpower: { heals: [{ timestamp: 3, value: 100, spell: sp }, { timestamp: 4, value: 100, spell: sp }] } };

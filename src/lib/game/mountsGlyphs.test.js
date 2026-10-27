@@ -4,9 +4,9 @@ import {
 } from './mountsGlyphs.js';
 
 describe('game/mountsGlyphs catalogue', () => {
-  it('13 mount species and 42 major glyphs', () => {
+  it('13 mount species and 58 major glyphs', () => {
     expect(MOUNT_SPECIES).toHaveLength(13);
-    expect(MAJOR_GLYPHS).toHaveLength(42);
+    expect(MAJOR_GLYPHS).toHaveLength(58);
     expect(mountBySpecies('NIGHT_WOLF')).toMatchObject({ rarity: 'Common', speedPct: 40 });
     expect(mountBySpecies('NOPE')).toBeNull();
   });
@@ -15,7 +15,7 @@ describe('game/mountsGlyphs catalogue', () => {
     expect(majorGlyphsForClassSpec('SENTINEL', 'SENTINEL_DISRUPTION')).toHaveLength(13);
     expect(majorGlyphsForClassSpec('MYSTIC', 'MYSTIC_MAGE')).toHaveLength(10);
     expect(majorGlyphsForClassSpec('MYSTIC', 'MYSTIC_DRUID')).toHaveLength(7);
-    expect(majorGlyphsForClassSpec('NECROMANCER', 'NECROMANCER_DEATHLORD')).toHaveLength(0);
+    expect(majorGlyphsForClassSpec('NECROMANCER', 'NECROMANCER_DEATHLORD')).toHaveLength(16);
   });
   it('a glyph maps to its sigil', () => {
     expect(majorGlyphForSigil('WARBORN_FURY')).toMatchObject({ id: 'sg-warborn-cd', playerClass: 'WARRIOR' });

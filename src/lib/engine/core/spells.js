@@ -118,9 +118,14 @@ export function minionFrenzyConfig(spell) {
   return spell.spellType === 'BUFF' ? spell.minionFrenzy ?? null : null;
 }
 
-// port of requiresLivingMinion L1089774-1089791
+// port of minionBastionConfig 2.8.2 L1100223-1100244 (Infernal Bastion)
+export function minionBastionConfig(spell) {
+  return spell.spellType === 'BUFF' ? spell.minionBastion ?? null : null;
+}
+
+// port of requiresLivingMinion L1089774-1089791 (2.8.2 L1100245-1100270 adds the bastion)
 export function requiresLivingMinion(spell) {
-  return minionEmpowerConfig(spell) !== null || minionFrenzyConfig(spell) !== null;
+  return minionEmpowerConfig(spell) !== null || minionFrenzyConfig(spell) !== null || minionBastionConfig(spell) !== null;
 }
 
 // port of momentumStackCount L1089793-1089841: undefined when no momentum spell is equipped
@@ -265,7 +270,8 @@ const SPELL_RESIST_HARD = capConfig('SPELL_RESIST').hard;
  * @property {number} ownerVampHeal
  * @property {number} [ownerShieldRefill]
  * @property {number} [ownerMinionHeal]
- * @property {{heals: Array<Object>, start?: Object, end?: Object, frenzyStart?: Object, frenzyEnd?: Object}} [ownerMinionEmpower]
+ * @property {{heals: Array<Object>, start?: Object, end?: Object, frenzyStart?: Object, frenzyEnd?: Object,
+ *   bastionStart?: Object, bastionEnd?: Object}} [ownerMinionEmpower]
  * @property {number} targetHpDelta  negative damage to the target
  * @property {Array<Object>} events
  * @property {Object} buffModifiers  computeActiveBuffModifiers after this tick
@@ -292,11 +298,11 @@ function quietSpellsTick(runtimes, dtMs, minionAlive) {
     const spell = rt.config.spell;
     if (rt.isEffectActive) {
       // the active-effect block of processSpellsTick, reduced to "does anything happen"
-      const empower = spell.minionEmpower != null;
-      if ((empower || spell.minionFrenzy != null) && !minionAlive) return null;
+      const regen = spell.minionEmpower != null || spell.minionBastion != null;
+      if ((regen || spell.minionFrenzy != null) && !minionAlive) return null;
       if (!(rt.effectRemaining - dtMs > 0)) return null;
       const due = rt.nextTickIn - dtMs <= 0;
-      if (due && ((spell.spellType === 'DAMAGE' && spell.isDoT) || spell.spellType === 'HEAL' || empower)) return null;
+      if (due && ((spell.spellType === 'DAMAGE' && spell.isDoT) || spell.spellType === 'HEAL' || regen)) return null;
     } else if (castsSomething(spell.spellType)
       && (!(rt.cooldownRemaining > 0) || !(Math.max(0, rt.cooldownRemaining - dtMs) > 0))) {
       return null;
@@ -486,6 +492,18 @@ export function processSpellsTick(runtimes, input, rng) {
         if (!minionAlive) rt.effectRemaining = 0;
         if (rt.effectRemaining <= 0) empowerTick().frenzyEnd = { timestamp, spell: spellRef };
       }
+      // Infernal Bastion (2.8.2 L1102000-1102115): regenerates the minion like an empower, ends with `bastionEnd`
+      const bas = minionBastionConfig(spell);
+      if (bas) {
+        if (!minionAlive) {
+          rt.effectRemaining = 0;
+        } else if (rt.nextTickIn <= 0) {
+          const regen = wounded(Math.max(1, Math.floor((healBase * bas.regenPercentPerTick) / 100)));
+          empowerTick().heals.push({ timestamp, value: regen, spell: spellRef });
+          rt.nextTickIn += bas.tickIntervalMs;
+        }
+        if (rt.effectRemaining <= 0) empowerTick().bastionEnd = { timestamp, spell: spellRef };
+      }
       if (!(rt.effectRemaining <= 0)) continue;
       rt.isEffectActive = false;
       push('spell_end', 0, spellRef);
@@ -553,6 +571,14 @@ export function processSpellsTick(runtimes, input, rng) {
           empowerTick().frenzyStart = {
             timestamp, attackPercent: f.attackPercent, attackSpeedPercent: f.attackSpeedPercent,
             lifesteal: f.lifesteal, spell: spellRef,
+          };
+        }
+        if (spell.minionBastion) { // 2.8.2 L1102606-1102690
+          const b = spell.minionBastion;
+          rt.nextTickIn = b.tickIntervalMs;
+          empowerTick().bastionStart = {
+            timestamp, damageReduction: b.damageReduction, blockChance: b.blockChance,
+            ...(b.thornsPercent > 0 ? { thornsPercent: b.thornsPercent } : {}), spell: spellRef,
           };
         }
         break;

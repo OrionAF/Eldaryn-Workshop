@@ -72,6 +72,11 @@ describe('summon / form / DoT duration builders', () => {
       attackPercent: 20, hpPercent: 60, respawnCooldownMs: 10000, summonCastMs: 1500,
     });
     expect(getEquippedSummonConfig({ ownedSigils: [], utilitySlotSpecies: 'BONE_SERVANT' })).toBeNull();
+    // 2.8.2 glyphs (L1108119-1108256): respawn haste floors at min(4000, cd); Death Ward percent passes through
+    const mods = (o) => new Map([['BONE_SERVANT', { ...emptySigilGlyphMods(), ...o }]]);
+    expect(getEquippedSummonConfig(necro, mods({ respawnReductionMs: 5000 })).respawnCooldownMs).toBe(5000);
+    expect(getEquippedSummonConfig(necro, mods({ respawnReductionMs: 9000 })).respawnCooldownMs).toBe(4000);
+    expect(getEquippedSummonConfig(necro, mods({ deathWardPercent: 12 })).deathWardPercent).toBe(12);
     expect(getEquippedSummonConfig({ ownedSigils: owned(['VOID_AEGIS', 1]), utilitySlotSpecies: 'VOID_AEGIS' })).toBeNull();
   });
   it('getEquippedFormConfig: Druid only, owned FORM sigil spell (L1096348-1096410)', () => {

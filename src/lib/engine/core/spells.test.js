@@ -94,6 +94,19 @@ describe('momentum (L1089596-1089841)', () => {
     expect(requiresLivingMinion({ spellType: 'BUFF', minionEmpower: {} })).toBe(true);
     expect(requiresLivingMinion({ spellType: 'BUFF', minionFrenzy: {} })).toBe(true);
     expect(requiresLivingMinion({ spellType: 'HEAL', minionEmpower: {} })).toBe(false);
+    expect(requiresLivingMinion({ spellType: 'BUFF', minionBastion: {} })).toBe(true);
+  });
+  it('Infernal Bastion: needs a living minion; cast starts the bastion, ticks regen, ends with bastionEnd (2.8.2)', () => {
+    const bastion = { spellType: 'BUFF', effects: [], durationMs: 2000, cooldownMs: 15000,
+      minionBastion: { damageReduction: 20, blockChance: 15, regenPercentPerTick: 2, tickIntervalMs: 1000, thornsPercent: 4 } };
+    expect(processSpellsTick(ready([cfg('IB', bastion)]), { ...base, minionAlive: false }, none()).events).toEqual([]);
+    const rts = ready([cfg('IB', bastion)]);
+    const r = processSpellsTick(rts, { ...base, minionAlive: true }, none());
+    expect(r.ownerMinionEmpower.bastionStart).toEqual({ timestamp: 5000, damageReduction: 20, blockChance: 15, thornsPercent: 4, spell: ref('IB') });
+    const t = processSpellsTick(rts, { ...base, dtMs: 1000, timestamp: 6000, minionAlive: true }, none());
+    expect(t.ownerMinionEmpower.heals).toEqual([{ timestamp: 6000, value: 20, spell: ref('IB') }]); // floor(1000 * 2 / 100)
+    const e = processSpellsTick(rts, { ...base, dtMs: 1000, timestamp: 7000, minionAlive: true }, none());
+    expect(e.ownerMinionEmpower.bastionEnd).toEqual({ timestamp: 7000, spell: ref('IB') });
   });
 });
 

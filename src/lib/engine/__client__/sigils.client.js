@@ -101,6 +101,16 @@ export function getSigilSpellScaled(a0, a1) {
         lifesteal: Math.min(fix(m.lifesteal * r2, r4), m.maxLifesteal),
       } });
     }
+    // transcribed from 2.8.2 L1076200-1076254 (Infernal Bastion, in the client since 2.7.4)
+    if (r1.minionBastion) {
+      const m = r1.minionBastion;
+      Object.assign(r0, { minionBastion: {
+        ...m,
+        damageReduction: Math.min(fix(m.damageReduction * r2, r4), m.maxDamageReduction),
+        blockChance: Math.min(fix(m.blockChance * r2, r4), m.maxBlockChance),
+        regenPercentPerTick: Math.min(fix(m.regenPercentPerTick * r2, r4), m.maxRegenPercentPerTick),
+      } });
+    }
     return r0;
   }
   if (t === 'HEAL') {
