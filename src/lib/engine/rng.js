@@ -42,15 +42,9 @@ export function mulberry32(seed) {
 export function laneRng(seed) {
   const s = seed >>> 0;
   const rng = mulberry32(s);
-  const kids = new Map();
-  rng.lane = (name) => {
-    let k = kids.get(name);
-    if (k === undefined) {
-      k = laneRng(hashSeed(s, 'lane', name));
-      kids.set(name, k);
-    }
-    return k;
-  };
+  // a null-prototype object, not a Map: lane names are a few constants, read on every swing
+  const kids = Object.create(null);
+  rng.lane = (name) => kids[name] ?? (kids[name] = laneRng(hashSeed(s, 'lane', name)));
   return rng;
 }
 

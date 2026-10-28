@@ -917,6 +917,18 @@ const MINION_STAT_KEYS = Object.freeze([
  * @returns {{fighter: Object, formKind: string|null, inputs: Object, fresh: () => Object}}
  */
 export function preparePveFighter(fighter) {
+  // a frozen fighter (search/space.js shares them) cannot change, so its preparation is reused
+  if (!Object.isFrozen(fighter) || fighter === null || typeof fighter !== 'object') return prepare(fighter);
+  let p = preparedFrozen.get(fighter);
+  if (p === undefined) {
+    p = prepare(fighter);
+    preparedFrozen.set(fighter, p);
+  }
+  return p;
+}
+const preparedFrozen = new WeakMap();
+
+function prepare(fighter) {
   const stats = fighter?.stats;
   if (stats == null || typeof stats !== 'object') throw new EngineInputError('fighter.stats is missing', { kind: 'fighter', key: 'stats' });
   const cls = fighter.class;
@@ -952,19 +964,21 @@ export function preparePveFighter(fighter) {
     conduits,
     thornsPercent: combat.ironBastionThornsPercent,
   };
+  // the player's state at the start of every fight, copied per fight
+  const start = { ...player, hp: player.maxHp, shieldHp: 0, shieldMax: 0 };
+  if (inputs.shield.hpPercent > 0) {
+    start.shieldMax = Math.floor((start.maxHp * inputs.shield.hpPercent) / 100);
+    start.shieldHp = start.shieldMax;
+  }
+  start.shieldVampAlwaysRefills = inputs.shield.vampAlwaysRefills;
+  start.shieldRegenAlwaysRefills = inputs.shield.regenAlwaysRefills;
   return {
     fighter,
     formKind,
     inputs,
     fresh() {
-      const { shield, conduits: c } = inputs;
-      const p = { ...inputs.player, hp: inputs.player.maxHp, shieldHp: 0, shieldMax: 0 };
-      if (shield.hpPercent > 0) {
-        p.shieldMax = Math.floor((p.maxHp * shield.hpPercent) / 100);
-        p.shieldHp = p.shieldMax;
-      }
-      p.shieldVampAlwaysRefills = shield.vampAlwaysRefills;
-      p.shieldRegenAlwaysRefills = shield.regenAlwaysRefills;
+      const c = inputs.conduits;
+      const p = { ...start };
       const sc = createStackCombat(inputs.stack.equipped, true, inputs.stack.glyph, inputs.stack.ctx);
       return {
         player: p,
@@ -1002,8 +1016,9 @@ export const trainingDummy = (hp = 1e15) => ({ id: 'dummy', hp, attack: 0, attac
  * @typedef {Object} PveOptions
  * @property {import('../types.js').Fighter|{fighter: Object, fresh: Function}} fighter  a Fighter, or
  *   a `preparePveFighter` result (reuse it across the fights of a metric)
- * @property {import('../types.js').MobSpec|import('../types.js').MobSpec[]} enemy  one mob, or mobs fought
- *   in order with HP, spells, stacks and the minion carried over (a campaign level or dungeon step)
+ * @property {import('../types.js').MobSpec|import('../types.js').MobSpec[]|{mobs: Object[], entities: Object[]}} enemy
+ *   one mob, or mobs fought in order with HP, spells, stacks and the minion carried over (a campaign level
+ *   or dungeon step), or a `preparePveEnemy` result (reuse it across the fights of a metric)
  * @property {string} [mode]  a PVE_MODES key; default `pveModeOf`
  * @property {number} [maxMs]  one shared window over the whole sequence (dps / survival windows, World
  *   Boss, custom). Without it every mob gets its own cap: its `fightDurationMs`, else the mode's
@@ -1018,6 +1033,26 @@ export const trainingDummy = (hp = 1e15) => ({ id: 'dummy', hp, attack: 0, attac
  * @property {boolean} [log=false]
  */
 
+/**
+ * The enemy of a PVE fight resolved once: `mobs` (the MobSpecs in order) and `entities`, their validated
+ * entities, copied per fight by simulatePve. Pass it as `enemy` to reuse it across the fights of a metric.
+ * @param {import('../types.js').MobSpec|import('../types.js').MobSpec[]} enemy
+ * @returns {{mobs: Object[], entities: Object[]}}
+ */
+export function preparePveEnemy(enemy) {
+  const mobs = Array.isArray(enemy) ? enemy : [enemy];
+  if (mobs.length === 0) throw new EngineInputError('the enemy list is empty', { kind: 'enemy' });
+  const entities = mobs.map((mob, i) => {
+    const kind = mobs.length > 1 ? `mob ${i + 1}` : 'mob';
+    if (mob == null || typeof mob !== 'object') throw new EngineInputError(`${kind} is missing`, { kind });
+    const e = mobEntityOf(mob);
+    assertPositive(kind, e, ['maxHp']);
+    assertFiniteEntity(kind, e, PVE_MOB_KEYS);
+    return e;
+  });
+  return { mobs, entities };
+}
+
 // the client's shared fight, run per mode (simulateDungeonStep L1671071-1671135 for the dungeon family,
 // the live progress loop L1077281-1077640 for the campaign), wrapped for the metrics (rebuild-plan §2.3)
 /**
@@ -1027,16 +1062,8 @@ export const trainingDummy = (hp = 1e15) => ({ id: 'dummy', hp, attack: 0, attac
  * @returns {import('../types.js').PveResult}
  */
 export function simulatePve(o) {
-  const mobs = Array.isArray(o.enemy) ? o.enemy : [o.enemy];
-  if (mobs.length === 0) throw new EngineInputError('the enemy list is empty', { kind: 'enemy' });
-  const enemies = mobs.map((mob, i) => {
-    const kind = mobs.length > 1 ? `mob ${i + 1}` : 'mob';
-    if (mob == null || typeof mob !== 'object') throw new EngineInputError(`${kind} is missing`, { kind });
-    const e = mobEntityOf(mob);
-    assertPositive(kind, e, ['maxHp']);
-    assertFiniteEntity(kind, e, PVE_MOB_KEYS);
-    return e;
-  });
+  const { mobs, entities } = o.enemy?.entities ? o.enemy : preparePveEnemy(o.enemy);
+  const enemies = entities.map((e) => ({ ...e }));
   const modeId = pveModeOf(o, mobs[0]);
   const mode = PVE_MODES[modeId];
   const { rng, log = false } = o;

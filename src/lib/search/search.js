@@ -123,6 +123,10 @@ export function prepare(request) {
   const space = createBuildSpace(character, preset, {
     realm, mode, residual, toggles: togglesOf(request.space), powerFloor, relicBudget: request.relicBudget, boardIchorBudget: request.boardIchorBudget, dominance: dominanceContextOf(target, mode),
   });
+  // Push's warm start (simulation.md §Push): the previous step's optimum, an extra local start; at most
+  // two, legalised, the random starts they replace dropped from the end
+  const warmStarts = (Array.isArray(request.warmStarts) ? request.warmStarts : [])
+    .filter((c) => c && typeof c === 'object').slice(0, 2).map((c) => space.legalise(c));
   const characterKey = metricKey('character', character);
   const requestEcho = {
     presetId: preset.id, realm, mode, target: target.spec, objective: objective.spec, space: space.toggles,
@@ -133,8 +137,8 @@ export function prepare(request) {
     ...(target.partner ? { partnerKey: target.partner.key } : {}),
     seed, seeds, effort: { level: effort.level, delta: effort.delta, deltaKind: effort.deltaKind, alpha: effort.alpha, n0: effort.n0, maxN: effort.maxN }, characterKey,
   };
-  const requestKey = metricKey('optimise-request', { ...requestEcho, characterKey: undefined, randomStarts: effort.randomStarts, ...(effort.futility ? {} : { futility: false }), ...(effort.tieLook ? {} : { tieLook: false }), ...(effort.batchDrop ? {} : { batchDrop: false }) });
-  return { character, partner, preset, target, realm, mode, objective, effort, seed, seeds, warnings, space, characterKey, requestEcho, requestKey };
+  const requestKey = metricKey('optimise-request', { ...requestEcho, characterKey: undefined, randomStarts: effort.randomStarts, ...(warmStarts.length ? { warmStarts: warmStarts.map(space.key) } : {}), ...(effort.futility ? {} : { futility: false }), ...(effort.tieLook ? {} : { tieLook: false }), ...(effort.batchDrop ? {} : { batchDrop: false }) });
+  return { character, partner, preset, target, realm, mode, objective, effort, seed, seeds, warnings, space, characterKey, requestEcho, requestKey, warmStarts };
 }
 
 const symdiff = (a, b) => a.filter((x) => !b.includes(x)).length + b.filter((x) => !a.includes(x)).length;
@@ -813,7 +817,8 @@ async function searchPhase(prep, run) {
     if (enabled.has('spec')) for (const v of blockById.get('spec').domain(B.cand)) starts.push(await innerBest(v, SPEC_INNER));
     if (enabled.has('equipmentSet')) for (const v of blockById.get('equipmentSet').domain(B.cand)) starts.push(armOf(v));
     if (talentsLocal) starts.push(armOf(greedyStart()));
-    for (let k = 0; k < effort.randomStarts; k++) starts.push(armOf(randomStart(k)));
+    for (const c of prep.warmStarts ?? []) starts.push(armOf(c));
+    for (let k = 0; k < effort.randomStarts - (prep.warmStarts?.length ?? 0); k++) starts.push(armOf(randomStart(k)));
     const distinct = [];
     for (const s of starts) {
       const a = simulable(s) ? canonArm(s) : null;
