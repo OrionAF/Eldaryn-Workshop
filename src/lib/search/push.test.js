@@ -28,7 +28,7 @@ function synthEnv(builds, near, { size, start = 0, onSample, optimiseHook } = {}
     },
     neighbours: (b) => (near[b.key] ?? []).map((key) => ({ key })),
     async optimise(r, o) {
-      calls.optimise.push({ r, resumeFrom: o.resumeFrom ?? null });
+      calls.optimise.push({ r, resumeFrom: o.resumeFrom ?? null, warm: o.warmStarts?.length ?? 0 });
       const hooked = await optimiseHook?.(r, o);
       if (hooked) return hooked;
       const ok = Object.entries(builds).filter(([, b]) => b.p[r] >= TAU).sort((a, b) => a[1].changes - b[1].changes);
@@ -58,6 +58,8 @@ describe('Push on a synthetic ladder', () => {
     expect(r.baseline.searched).toBe(3); // the current build clears steps 1-4
     // optimised at step 5 (fewest changes: X1, not X3) and at step 6 (X2); never at step 8
     expect(calls.optimise.map((c) => c.r)).toEqual([4, 5]);
+    // step 6 starts from step 5's optimum too (a warm start); step 5 had only the current build
+    expect(calls.optimise.map((c) => c.warm)).toEqual([0, 1]);
     expect(r.milestones.map((m) => [m.key, m.searched])).toEqual([['B', 3], ['X1', 4], ['X2', 6]]);
     expect(r.best).toMatchObject({ key: 'X2', searched: 6, foundAt: 5 });
     expect(r.best.row.key).toBe('X2');
@@ -236,7 +238,7 @@ describe('Push on a synthetic ladder', () => {
     expect(cp.inner).toEqual({ rung: 'r4', checkpoint: { schema: 'optimiser-checkpoint/1', marker: 'inner' } });
     const { env: env2, calls } = synthEnv(LADDER, NEAR, { size: 8 });
     const resumed = await pushCore(env2, opts({ replay: cp.log, inner: cp.inner }));
-    expect(calls.optimise[0]).toEqual({ r: 4, resumeFrom: { schema: 'optimiser-checkpoint/1', marker: 'inner' } });
+    expect(calls.optimise[0]).toMatchObject({ r: 4, resumeFrom: { schema: 'optimiser-checkpoint/1', marker: 'inner' } });
     expect(resumed.best.key).toBe('X2');
   });
 });

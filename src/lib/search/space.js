@@ -39,6 +39,13 @@ export const BLOCKS = Object.freeze([
 
 /** Blocks whose values the stat-dominance filter prunes (simulation.md §Build space, Dominance). */
 export const DOMINANCE_BLOCKS = Object.freeze(['sigils', 'utility', 'conditions', 'relics', 'pet', 'talents', 'stones']);
+const FIGHTER_MEMO_MAX = 8192;
+const deepFreeze = (o) => {
+  if (o === null || typeof o !== 'object' || Object.isFrozen(o)) return o;
+  Object.freeze(o);
+  for (const v of Object.values(o)) deepFreeze(v);
+  return o;
+};
 
 /** The part of a candidate a block changes (what a pruned entry names). */
 const BLOCK_VALUE = {
@@ -329,7 +336,17 @@ export function createBuildSpace(character, presetOrId, {
   const classRelics = new Set(relicsForClass(cls).map((r) => r.id));
 
   const canon = (c) => canonical(character, preset, c);
-  const key = (c) => stableStringify(canon(c));
+  // candidates are never changed once made (legalise changes only its own canonical copy), so a key is
+  // remembered per candidate object
+  const keyMemo = new WeakMap();
+  const key = (c) => {
+    let k = keyMemo.get(c);
+    if (k === undefined) {
+      k = stableStringify(canon(c));
+      keyMemo.set(c, k);
+    }
+    return k;
+  };
   const floor = normalisePowerFloor(powerFloor);
   const powerMemo = new Map();
   /** Combat Power of the candidate's build (build/power.js), memoised by canonical key. */
@@ -652,10 +669,20 @@ export function createBuildSpace(character, presetOrId, {
       oblivion: { ...m.oblivion, sheet: null },
     };
   };
+  // one candidate's fighter is asked for its engine key, its dominance view and its fights; it is frozen
+  // because callers share it (optimiser-speed-research.md A1)
+  const fighterMemo = new Map();
   const fighterOf = (c) => {
-    const f = buildFighter(overlay(c), presetId, { realm });
-    f.stats = applyResidual(f.stats, residual);
-    f.source = 'computed';
+    const k = key(c);
+    let f = fighterMemo.get(k);
+    if (f === undefined) {
+      f = buildFighter(overlay(c), presetId, { realm });
+      f.stats = applyResidual(f.stats, residual);
+      f.source = 'computed';
+      deepFreeze(f);
+      if (fighterMemo.size >= FIGHTER_MEMO_MAX) fighterMemo.delete(fighterMemo.keys().next().value);
+      fighterMemo.set(k, f);
+    }
     return f;
   };
   const describeArgs = (c) => {

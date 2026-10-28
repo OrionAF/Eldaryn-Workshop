@@ -24,7 +24,7 @@ import {
   stableStringify, meanInterval, wilsonInterval, pairedT, pairedProportion, binomialUpper,
 } from '../engine/metrics.js';
 import { decide } from '../engine/stats/index.js';
-import { preparePveFighter, simulatePve, trainingDummy, PVE_MODES } from '../engine/pve/fight.js';
+import { preparePveFighter, preparePveEnemy, simulatePve, trainingDummy, PVE_MODES } from '../engine/pve/fight.js';
 import { chapterMobs, dungeonMobs, raidMobs, oblivionFloorMob, worldBossMob } from '../engine/pve/enemies.js';
 import { raidById } from '../game/fortress.js';
 import { CLASSIC_DUNGEONS } from '../game/pveContent.js';
@@ -352,8 +352,10 @@ function celestialSampler(target) {
  * A synchronous PVE sampler: fight i (from <= i < to) uses rng fightRng(seed, i), the same lanes for
  * every build (simulation.md §Statistics, sampling unit; §Common random numbers).
  */
-function pveSampler(target, { enemy, maxMs }, outcome) {
+function pveSampler(target, { enemy: mobs, maxMs }, outcome) {
+  let enemy = null;
   return (fighter, { seed, from = 0, to, signal, trace }) => {
+    enemy ??= preparePveEnemy(mobs);
     const prepared = preparePveFighter(fighter);
     const opts = optsFor(target, fighter);
     const out = [];

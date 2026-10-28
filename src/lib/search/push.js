@@ -112,7 +112,7 @@ const rateOf = (set, alpha) => wilsonInterval(winsOf(set), set.n, { alpha });
 /**
  * Push over an environment (simulation.md §Push):
  *   env = {rungs: [{key, short}], start, baseline, keyOf(build), getSet(build, r, stage, n) -> set,
- *          neighbours(build) -> builds, optimise(r, {resumeFrom, onCheckpoint, onProgress}) ->
+ *          neighbours(build) -> builds, optimise(r, {resumeFrom, warmStarts, onCheckpoint, onProgress}) ->
  *          {status: 'already'|'reached'|'not-reached'|'cancelled', build?, row?, baseline?, best?, fights}}
  *   opts = {tau, effort: {n0, maxN, delta, alpha}, seed, replay?, inner?, signal?, onProgress?, onCheckpoint?}
  * Every decision is a logged step (`kind`, a hash of its inputs, its output), so a checkpoint's log
@@ -323,13 +323,14 @@ export async function pushCore(env, opts) {
     })()));
   }
 
-  async function optimiseAt(r) {
+  async function optimiseAt(r, warmStarts) {
     setPhase('optimise', r);
     const out = await step('optimise', [rungs[r].key], async () => {
       const resumeFrom = inner && inner.rung === rungs[r].key ? inner.checkpoint : null;
       inner = null;
       const o = await env.optimise(r, {
         resumeFrom,
+        warmStarts,
         onCheckpoint: (cp) => {
           innerLive = { rung: rungs[r].key, checkpoint: cp };
           opts.onCheckpoint?.(checkpoint());
@@ -367,7 +368,8 @@ export async function pushCore(env, opts) {
         notes.set(r, { ...(notes.get(r) ?? {}), stop: 'screen' });
         break;
       }
-      const o = await optimiseAt(r);
+      // the last step's optimum starts this step's local search too (it never decides anything by itself)
+      const o = await optimiseAt(r, best.key === bKey ? [] : [best.build.cand]);
       if (o.status === 'already') {
         probes.push({ role: 'optimise', who: 'current', key: bKey, rung: r, meets: true, value: o.check ?? null });
         bDeep = await climb(B, 'current', r);
@@ -556,7 +558,7 @@ function liveEnv(prep, request, ladder, hooks) {
       }
       return out;
     },
-    async optimise(r, { resumeFrom, onCheckpoint, onProgress }) {
+    async optimise(r, { resumeFrom, warmStarts = [], onCheckpoint, onProgress }) {
       release();
       const opened = [];
       const pool = hooks.pool ? (k, s) => {
@@ -568,7 +570,7 @@ function liveEnv(prep, request, ladder, hooks) {
         const res = await optimize({
           character: prep.character, partner: prep.partner, presetId: prep.preset.id, realm: request.realm, target: ladder.rungs[r].spec,
           objective: { kind: 'win-rate', target: tau }, space: request.space, effort: request.effort, seed: prep.seed, powerFloor: request.powerFloor, relicBudget: request.relicBudget, boardIchorBudget: request.boardIchorBudget,
-          resumeFrom, jobId: hooks.jobId,
+          resumeFrom, jobId: hooks.jobId, warmStarts,
         }, { signal: hooks.signal, onProgress, onCheckpoint, pool, strict: hooks.strict, ...(log ? { debugLog: log, debugRung: ladder.rungs[r].short } : {}) });
         const fights = res.phases?.reduce((a, p) => a + (p.fights ?? 0), 0) ?? 0;
         if (res.status === 'cancelled') return { status: 'cancelled', fights };

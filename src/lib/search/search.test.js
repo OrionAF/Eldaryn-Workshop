@@ -295,6 +295,25 @@ describe('cancel and resume', { timeout: 120000 }, () => {
     expect(timeless(resumed)).toEqual(timeless(whole));
   });
 
+  it('a warm start is one more local start, replacing a random one, and part of the request key', async () => {
+    const character = fixtureCharacter('WARRIOR');
+    const local = { character, presetId: 'p1', target: SHORT, space: only('talents', 'pet'), effort: { level: 'quick', n0: 4, maxN: 8, randomStarts: 0 }, seed: 6 };
+    const cold = await optimize(local);
+    // a start that changes something the fight reads: the cold run's best row (an inert change would merge into the current build)
+    const other = cold.rows[0].candidate;
+    const warm = await optimize({ ...local, warmStarts: [other] });
+    const base = cold.search.starts; // the current build and the talents' greedy start
+    expect(warm.search.starts).toBe(base + 1);
+    const replaced = await optimize({ ...local, effort: { ...local.effort, randomStarts: 1 }, warmStarts: [other] });
+    expect(replaced.search.starts).toBeLessThanOrEqual(base + 1);
+    // a checkpoint of the cold run does not resume the warm one
+    let cp = null;
+    await optimize(local, { onCheckpoint: (c) => { cp = c; } });
+    const resumed = await optimize({ ...local, warmStarts: [other], resumeFrom: cp });
+    expect(resumed.warnings.map((w) => w.code)).toContain('checkpoint-ignored');
+    expect(resumed.search.starts).toBe(base + 1);
+  });
+
   it('a checkpoint from another request is ignored with a note', async () => {
     const ctl = new AbortController();
     let cp = null;
