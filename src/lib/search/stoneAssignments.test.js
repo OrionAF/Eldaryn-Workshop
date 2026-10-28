@@ -101,7 +101,8 @@ describe('owned stone assignment', () => {
 
   it('reports one set-owned write with shared-preset effects and supports add/revert and excluded Apply groups', () => {
     const c = fixture(), space = createBuildSpace(c, 'p1', { toggles: onlyStones }), B = space.start;
-    const X = space.blocks.find((b) => b.id === 'stones').domain(B).find((v) => v.stoneAssignment?.slots[first] == null);
+    // a removal neighbour; the block's domain prunes it as dominated, so take it from the neighbourhood
+    const X = space.legalise(stoneAssignmentNeighbours(c, B).find((v) => v.stoneAssignment?.slots[first] == null));
     const changes = changesOf(space, B, X);
     expect(changes).toHaveLength(1);
     expect(changes[0]).toMatchObject({ id: 'stones:set1', dimension: 'stones', scope: 'character', owner: { setKey: 'set1' } });
@@ -127,9 +128,29 @@ describe('owned stone assignment', () => {
     expect(reverted.stoneAssignment).toBeUndefined();
   });
 
+  it('prunes a stone that is no better on every stat than another candidate or the incumbent', () => {
+    const raw = structuredClone(fixture());
+    const template = raw.enchantStones[0];
+    raw.enchantStones = [
+      { ...template, id: 'full' },
+      { ...template, id: 'half', stats: template.stats.map((s) => ({ ...s, value: s.value / 2 })) },
+    ];
+    for (const set of Object.values(raw.equipment)) set.enchantSlots = Object.fromEntries(BASE_SLOTS.map((slot) => [slot, null]));
+    const c = normaliseCharacter(raw), space = createBuildSpace(c, 'p1', { toggles: onlyStones });
+    const used = (v) => Object.values(v.stoneAssignment.slots).filter(Boolean);
+    expect(stoneAssignmentNeighbours(c, space.start).some((v) => used(v).includes('half'))).toBe(true);
+    const domain = space.blocks.find((b) => b.id === 'stones').domain(space.start);
+    expect(domain.length).toBeGreaterThan(0);
+    expect(domain.every((v) => used(v).includes('full') && !used(v).includes('half'))).toBe(true);
+  });
+
   it('is a local neighbourhood, respects the toggle and merges stat-identical permutations', () => {
     const c = fixture(), space = createBuildSpace(c, 'p1', { toggles: onlyStones });
-    expect(enumerateJoint(space, space.start, new Set(['stones']))).toBeNull();
+    const stones = space.blocks.find((b) => b.id === 'stones');
+    // removals only lose stats and the swap is stat-identical, so dominance leaves nothing to race
+    expect(stoneAssignmentNeighbours(c, space.start).some((v) => v.stoneAssignment.slots[first] == null)).toBe(true);
+    expect(stones.domain(space.start)).toEqual([]);
+    expect(enumerateJoint(space, space.start, new Set(['stones']))).toEqual([space.start]);
     const swap = stoneAssignmentNeighbours(c, space.start).find((v) => v.stoneAssignment.slots[first] === 'stone-b');
     expect(canonicalise(space, space.start, swap).candidate).toEqual(space.start);
     const disabled = createBuildSpace(c, 'p1', { toggles: { ...onlyStones, stones: false } });
