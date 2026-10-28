@@ -1,7 +1,7 @@
 // J2: the deterministic worker pool. Shards finish out of order (fake workers with random reply
 // delays); the merged chunk must equal the inline one for every pool size.
 import { describe, it, expect } from 'vitest';
-import { createPool, inlinePool, poolScope, shardSize, MIN_SHARD, MAX_SHARD } from './pool.js';
+import { createPool, inlinePool, poolScope, shardSize, fighterSender, fighterReceiver, MIN_SHARD, MAX_SHARD } from './pool.js';
 import { fakeSpawn, fakePoolFactory } from './fakePoolWorker.js';
 import { createPoolHandler } from '../poolWorker.js';
 import { fixtureCharacter } from '../build/fixtures.js';
@@ -113,6 +113,38 @@ describe('pool', () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(out.map((m) => m.type)).toEqual(['fail', 'ready', 'shard']);
     expect(out[2].chunk.main[0]).toHaveLength(3);
+  });
+
+  it('batches many small ranges per message and sends each fighter to a worker once, same numbers', async () => {
+    const { fighter: f } = warrior();
+    const inner = fakeSpawn({ seed: 5, maxDelayMs: 3 });
+    const sent = [];
+    const spawn = () => {
+      const ep = inner();
+      const post = ep.postMessage;
+      ep.postMessage = (m) => { sent.push(m); post(m); };
+      return ep;
+    };
+    const pool = createPool({ kind: 'objective', setup: DUMMY, size: 2, spawn });
+    const seeds = Array.from({ length: 24 }, (_, i) => i + 1);
+    const got = await Promise.all(seeds.map((seed) => pool.run({ fighter: f, seed }, 0, 8)));
+    const inline = inlinePool('objective', DUMMY);
+    for (const [i, seed] of seeds.entries()) expect(got[i]).toEqual(await inline.run({ fighter: f, seed }, 0, 8));
+    const items = sent.filter((m) => m.type === 'batch').flatMap((m) => m.items);
+    expect(items.length).toBe(48); // 24 ranges of two 4-fight shards
+    expect(sent.filter((m) => m.type === 'batch').length).toBeLessThan(items.length);
+    expect(items.filter((it) => it.args.fighter).length).toBe(2); // once per worker
+    expect(items.every((it) => it.args.fighterId === items[0].args.fighterId)).toBe(true);
+    pool.close();
+  });
+
+  it('the fighter cache: sender and receiver evict alike, so an id is always resolvable', () => {
+    const send = fighterSender((x) => x.id, 2);
+    const receive = fighterReceiver(2);
+    const a = { id: 1 }, b = { id: 2 }, c = { id: 3 };
+    for (const f of [a, b, a, c, b, a, c, c, b]) expect(receive(send({ fighter: f, seed: 1 })).fighter).toEqual(f);
+    expect(Object.isFrozen(receive(send({ fighter: { id: 9 } })).fighter)).toBe(true);
+    expect(() => receive({ fighterId: 42 })).toThrow(/not cached/);
   });
 
   it('poolScope closes every pool it opened', () => {
