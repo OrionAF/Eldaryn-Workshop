@@ -29,6 +29,15 @@ export function stoneText(stone) {
   return `${name} · ${details.join(', ')}`;
 }
 
+/** The short form a stone change reads in: "Q51 Verdant Wardstone · Disruption +0.2%, HP Regen +1.6%". */
+export function stoneLine(stone) {
+  if (!stone) return 'Empty';
+  const name = STONE_TYPES.find((type) => type.enum === stone.type)?.name ?? 'Stone';
+  const tier = stone.quality != null ? `Q${stone.quality} ` : stone.oblivionLevel != null ? `Grade ${stone.oblivionLevel} ` : '';
+  const stats = (stone.stats ?? []).map((s) => statLine(s.type, s.value)).join(', ');
+  return `${tier}${name}${stats ? ` · ${stats}` : ''}`;
+}
+
 const POOL_LABEL = new Map(SECONDARY_STAT_POOL.map((s) => [s.type, s.label]));
 const RATINGS = new Set(['PVP_ATTACK', 'PVP_DEFENSE']);
 

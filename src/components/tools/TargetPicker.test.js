@@ -56,6 +56,19 @@ it('choosing a hard dungeon writes the _hard id', () => {
   expect(state.target).toEqual({ kind: 'dungeon', id: 'dungeon_3_hard', step: 1 });
 });
 
+it('steps, chapter levels and floors are picked from a list, and write numbers', () => {
+  const { ui, state } = mountPicker({ target: { kind: 'dungeon', id: 'dungeon_1', step: 1 }, objective: { kind: 'win-rate' } });
+  expect(optionsOf(ui, 'Step')).toEqual(['1', '2', '3', '4', '5', '6', '7', '8']);
+  pick(ui, 'Step', '7');
+  expect(state.target.step).toBe(7);
+  mounted.done();
+  const chapter = mountPicker({ target: { kind: 'chapter', chapter: 8, level: 9 }, objective: { kind: 'win-rate' } });
+  expect(optionsOf(chapter.ui, 'Level')).toHaveLength(10);
+  expect(optionsOf(chapter.ui, 'Chapter')).toHaveLength(22);
+  pick(chapter.ui, 'Level', '3');
+  expect(chapter.state.target).toMatchObject({ chapter: 8, level: 3 });
+});
+
 it('a server-run fight is labelled as a model with its assumptions tagged, never as exact', () => {
   const { ui } = mountPicker({ target: { kind: 'raid', id: 'raid_1', step: 1 }, objective: { kind: 'win-rate' } });
   const box = ui.q('[data-testid="fidelity"]');

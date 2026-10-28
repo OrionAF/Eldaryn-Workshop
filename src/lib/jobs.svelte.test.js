@@ -70,7 +70,9 @@ describe('job store', () => {
     expect(job(id).checkpoint.next).toBeGreaterThan(0);
     expect(job(id).checkpoint.next).toBeLessThan(STEPS);
 
+    expect(job(id).result).toBeDefined();
     resumeJob(id);
+    expect(job(id).result).toBeNull();
     await settled(id, 'finished');
     expect(job(id).result).toEqual(expected);
     expect(job(id).checkpoint).toBeNull();

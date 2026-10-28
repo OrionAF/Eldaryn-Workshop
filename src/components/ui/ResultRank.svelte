@@ -116,7 +116,7 @@
           {@const eff = e.lead}
           {@const dep = e.dep}
           <div class="abl">
-            <span class="chg">{#if c.moved}{c.label}: {c.moved}{:else}{c.label}: {c.from} <span class="arrow">→</span> <b>{c.to}</b>{/if}</span>
+            <span class="chg">{#if c.toLines}{c.label}:{#each c.toLines as line, li (li)}<span class="stone-line">{line}</span>{/each}{:else if c.moved}{c.label}: {c.moved}{:else}{c.label}: {c.from} <span class="arrow">→</span> <b>{c.to}</b>{/if}</span>
             <CIForest
               {domain}
               est={eff?.delta ?? null}
@@ -171,6 +171,8 @@
 </div>
 
 <style>
+  /* a stone change lists its stones one per line, with no "from" */
+  .stone-line { display: block; }
   .rank { border-bottom: 1px solid var(--line-hairline); }
   .line, .abl {
     display: grid;

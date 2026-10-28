@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { statLabel, statValueText, statParts, statLine, glyphStatLine, petText, mountText, glyphText } from './statText.js';
+import { statLabel, statValueText, statParts, statLine, glyphStatLine, petText, mountText, glyphText, stoneLine } from './statText.js';
 import { fixtureCharacter } from './fixtures.js';
 import { glyphSecondaryQuality } from '../model/glyphs.js';
 
@@ -24,6 +24,15 @@ describe('stat lines (backlog §6: labels, never raw keys)', () => {
   it('a glyph secondary reads in its pool unit: healthPercent 4.5 and critDamage 0.09', () => {
     expect(glyphStatLine({ stat: 'healthPercent', quality: glyphSecondaryQuality('healthPercent', 4.5) })).toBe('Health +4.5%');
     expect(glyphStatLine({ stat: 'critDamage', quality: glyphSecondaryQuality('critDamage', 0.09) })).toBe('Crit Damage +9%');
+  });
+});
+
+describe('stone lines', () => {
+  it('reads quality, name and rolls, without the amplify level', () => {
+    const stone = { type: 'PVE_ATTACK', quality: 51, amplifyLevel: 3, stats: [{ type: 'CRIT_DAMAGE', value: 0.09 }, { type: 'HEALTH_PERCENT', value: 4.5 }] };
+    expect(stoneLine(stone)).toBe(`Q51 Crimson Warstone · ${statLine('CRIT_DAMAGE', 0.09)}, ${statLine('HEALTH_PERCENT', 4.5)}`);
+    expect(stoneLine({ ...stone, quality: null, oblivionLevel: 2, stats: [] })).toBe('Grade 2 Crimson Warstone');
+    expect(stoneLine(null)).toBe('Empty');
   });
 });
 

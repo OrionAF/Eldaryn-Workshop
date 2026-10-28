@@ -1,6 +1,6 @@
 // ui/runPhases.js - one plain sentence per Optimiser run phase, for the RunProgress labels and the
 // Optimiser page's "What the steps mean" list. Wording follows simulation.md §Seeds and phases,
-// §Racing and §Minimise and confirm. Other tools' phase ids have no entry and get no hint.
+// §Racing, §Minimise and confirm and §Push. Other tools' phase ids have no entry and get no hint.
 export const RUN_PHASES = [
   { id: 'screen', label: 'Screen', text: 'Checks your current build and takes its first measurements. Every other build is compared with it.' },
   { id: 'search', label: 'Search', text: 'Tries other builds, one part of your build at a time, and pits each against the best so far. Builds that clearly lose stop early.' },
@@ -9,7 +9,18 @@ export const RUN_PHASES = [
   { id: 'attribute', label: 'Attribute', text: 'Works out what each kept change adds on its own, and which ones only help together.' },
 ];
 
-const BY_ID = Object.fromEntries(RUN_PHASES.map((p) => [p.id, p.text]));
+/** A Push run's phases (push.js PUSH_PHASES): its Screen and Confirm mean something else there. */
+export const PUSH_RUN_PHASES = [
+  { id: 'climb', label: 'Climb', text: 'Tests your build step after step to find the deepest step it clears at your win-rate goal.' },
+  { id: 'screen', label: 'Screen', text: 'Checks whether the next step is in reach before searching it. If no build can clear it, the run stops there.' },
+  { id: 'optimise', label: 'Optimise', text: 'Searches for the build with the fewest changes that clears the next step, then climbs with it.' },
+  { id: 'confirm', label: 'Confirm', text: 'Retests the deepest step reached on fresh fights, step by step from the start, so it is not just luck.' },
+];
 
-/** The explanation for a phase id, or '' for an id this module does not know. */
-export const phaseHint = (id) => BY_ID[id] ?? '';
+const isPush = (ids) => ids.includes('climb');
+
+/** Every phase of the kind of run that shows these phase ids, in run order (a Push run has its own). */
+export const phasesFor = (ids = []) => (isPush(ids) ? PUSH_RUN_PHASES : RUN_PHASES);
+
+/** The explanation for a phase id among a run's ids, or '' for an id this module does not know. */
+export const phaseHint = (id, ids = []) => (isPush(ids) ? PUSH_RUN_PHASES : RUN_PHASES).find((p) => p.id === id)?.text ?? '';

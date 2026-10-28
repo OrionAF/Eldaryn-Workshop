@@ -51,7 +51,7 @@
   import RunProgress from '../ui/RunProgress.svelte';
   import StepList from '../ui/StepList.svelte';
   import { searchStepRows } from '../../lib/ui/searchSteps.js';
-  import { RUN_PHASES } from '../../lib/ui/runPhases.js';
+  import { phasesFor } from '../../lib/ui/runPhases.js';
   import TargetPicker from '../tools/TargetPicker.svelte';
   import { rosterPartnerFor } from '../../lib/search/celestialObjective.js';
   import SpaceGroups from '../optimiser/SpaceGroups.svelte';
@@ -489,7 +489,7 @@
             <details class="phases" data-testid="phase-help">
               <summary>What the steps mean</summary>
               <dl>
-                {#each RUN_PHASES as ph (ph.id)}
+                {#each phasesFor(segments.map((s) => s.id)) as ph (ph.id)}
                   <dt>{ph.label}</dt>
                   <dd>{ph.text}</dd>
                 {/each}

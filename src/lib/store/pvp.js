@@ -37,8 +37,9 @@ export function createPvpStore(ctx) {
 
   /**
    * Save an opponent imported from Rankings (model/opponents.js opponentFromRankingsProfile). The same
-   * playerId updates that opponent in place (its id is kept); otherwise it is added.
-   * @returns {{id: string, updated: boolean}|null} null at the cap
+   * playerId updates that opponent in place (its id is kept); otherwise it is added, and at the cap it
+   * takes the place of the oldest saved opponent (the first in the list).
+   * @returns {{id: string, updated: boolean, replaced: {id: string, name: string}|null}}
    */
   function saveRankingsOpponent(draft) {
     return ctx.edit((c) => {
@@ -46,12 +47,12 @@ export function createPvpStore(ctx) {
       const old = pid ? c.opponents.find((o) => o.imported?.playerId === pid) : null;
       if (old) {
         replace(c, old.id, { ...draft, id: old.id });
-        return { id: old.id, updated: true };
+        return { id: old.id, updated: true, replaced: null };
       }
-      if (c.opponents.length >= MAX_OPPONENTS) return null;
+      const oldest = c.opponents.length >= MAX_OPPONENTS ? c.opponents.shift() : null;
       const o = normaliseOpponent({ ...draft, id: newId('opp') });
       c.opponents.push(o);
-      return { id: o.id, updated: false };
+      return { id: o.id, updated: false, replaced: oldest ? { id: oldest.id, name: oldest.name } : null };
     });
   }
 

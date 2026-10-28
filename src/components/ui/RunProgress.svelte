@@ -53,7 +53,7 @@
     {#each segments as s (s.id)}
       {@const f = fraction(s)}
       {@const cap = caption(s)}
-      {@const hint = phaseHint(s.id)}
+      {@const hint = phaseHint(s.id, segments.map((x) => x.id))}
       <div class="seg-step is-{stateOf(s)}" title="{s.label}: {cap.text}">
         <div class="lbl"><b title={hint || undefined}>{s.label}</b><span class:num={cap.numeric}>{cap.text}</span></div>
         <div

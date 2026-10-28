@@ -8,7 +8,7 @@
 //   writesOf(space, B, X)        the changes grouped as Apply review shows them (A.11)
 import { metricKey } from '../engine/metrics.js';
 import { BASE_SLOTS, slotDisplayName } from '../game/gear.js';
-import { stoneText } from '../build/statText.js';
+import { stoneLine, stoneText } from '../build/statText.js';
 import { stonePool, stoneSlots } from './stoneAssignments.js';
 import { preparePveFighter } from '../engine/pve/fight.js';
 import { fighterDuelArgs } from '../engine/pvp/resolver.js';
@@ -170,7 +170,8 @@ export function changesOf(space, B0, X0, { bundles = true } = {}) {
     push(`stones:${setKey}`, 'stones', `${setKey === 'oblivion' ? 'Oblivion' : `Set ${setKey.slice(3)}`} stones`,
       label(from), label(to), 'character', { setKey },
       otherPresets(space, (p) => setKey === 'oblivion' || `set${p.equipmentSet === 2 ? 2 : 1}` === setKey,
-        `also uses ${setKey} stone sockets`));
+        `also uses ${setKey} stone sockets`),
+      { toLines: changed.map((slot) => `${slotDisplayName(slot)}: ${stoneLine(stones.get(to[slot]))}`) });
   }
   if (space.realm !== 'oblivion' && X.equipmentSet !== B.equipmentSet) {
     push('equipmentSet', 'equipmentSet', 'Gear set', `Set ${B.equipmentSet}`, `Set ${X.equipmentSet}`, 'preset', presetOwner);

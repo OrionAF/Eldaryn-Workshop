@@ -39,7 +39,7 @@
             <ScopeChip scope={g.scope} target={g.title} sideEffects={g.sideEffects.map((s) => s.name)} />
             <ul class="changes">
               {#each changesOfGroup(row, g) as c (c.id)}
-                <li>{#if c.moved}{c.label}: {c.moved}{:else}{c.label}: {c.from} <span class="arrow">→</span> <b>{c.to}</b>{/if}
+                <li>{#if c.toLines}{c.label}:{#each c.toLines as line, li (li)}<span class="stone-line">{line}</span>{/each}{:else if c.moved}{c.label}: {c.moved}{:else}{c.label}: {c.from} <span class="arrow">→</span> <b>{c.to}</b>{/if}
                   {#if c.medalCost}<p class="note num">{medalCostText(c.medalCost)}</p>{/if}
                   {#if c.costNote}<p class="note num">{c.costNote}</p>{/if}
                 </li>
@@ -76,6 +76,8 @@
 </Modal>
 
 <style>
+  /* a stone change lists its stones one per line, with no "from" */
+  .stone-line { display: block; }
   .review { display: grid; gap: var(--sp-3); }
   .lead, .note { margin: 0; color: var(--text-soft); font-size: var(--fs-13); }
   .note { color: var(--text-muted); font-size: var(--fs-12); }
