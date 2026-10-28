@@ -60,21 +60,36 @@ export function without(ctx, F, c) {
   return ctx.space.admissible && !ctx.space.admissible(Y) ? null : arm;
 }
 
+/** F with every change in cs taken out; null as for `without` (no change left to drop, or below the Power floor). */
+export function withoutAll(ctx, F, cs) {
+  const { space, B } = ctx;
+  let X = F.cand;
+  for (const c of cs) X = revert(space, B.cand, X, c);
+  const Y = canonicalise(space, B.cand, space.legalise(X)).candidate;
+  const arm = ctx.armOf(Y);
+  if (arm.key === F.key) return null;
+  return space.admissible && !space.admissible(Y) ? null : arm;
+}
+
 /**
  * Minimal significant change set (A.8): drop, one at a time, the change whose removal costs least
  * until every remaining change is needed (removing it is significantly worse, Holm over the changes);
  * the result stands only when it is significantly better than the baseline.
+ * `batch` (the Optimiser's default, simulation.md §Minimise and confirm): with two or more droppable changes D,
+ * first compare F against F - D at the level the round judged D at; `equivalent` or `worse` drops all of D at once, anything else
+ * falls back to one at a time for the rest of this finalist.
  * @param {Object} ctx  see the header
  * @param {Object} F0   finalist arm (canonical)
- * @param {{alpha: number, alphaFinal: number}} o
- * @returns {Promise<{arm: Object, decided: Record<string, Object>, dropped: Array<{change: Object, contrast: Object}>, vsBaseline: Object|null}>}
+ * @param {{alpha: number, alphaFinal: number, batch?: boolean}} o
+ * @returns {Promise<{arm: Object, decided: Record<string, Object>, dropped: Array<{change: Object, contrast: Object, batch?: boolean}>, vsBaseline: Object|null}>}
  *   `decided`: change id -> its last S2 contrast (F against F without it); `vsBaseline`: the final S2 check
  */
-export async function minimise(ctx, F0, { alpha, alphaFinal }) {
+export async function minimise(ctx, F0, { alpha, alphaFinal, batch = false }) {
   const { space, B } = ctx;
   let F = F0;
   const dropped = [];
   let decided = {};
+  let tryBatch = batch;
   for (;;) {
     if (F.key === B.key) return { arm: B, decided: {}, dropped, vsBaseline: null };
     const C = changesOf(space, B.cand, F.cand);
@@ -85,6 +100,17 @@ export async function minimise(ctx, F0, { alpha, alphaFinal }) {
     const droppable = tests.map((t, i) => ({ ...t, r: res[i], i })).filter((t) => t.r.verdict !== 'better');
     if (!droppable.length) break;
     droppable.sort((a, b) => (gainOf(a.r) ?? 0) - (gainOf(b.r) ?? 0) || disruption(b.c) - disruption(a.c) || a.i - b.i);
+    if (tryBatch && droppable.length >= 2) {
+      const Y = withoutAll(ctx, F, droppable.map((t) => t.c));
+      // the level each single drop it replaces was judged at (Holm's last round)
+      const r = Y && await ctx.compare(F, Y, droppable[0].r.alphaAdj ?? alpha);
+      if (r && (r.verdict === 'equivalent' || r.verdict === 'worse')) {
+        for (const t of droppable) dropped.push({ change: t.c, contrast: r, batch: true });
+        F = Y;
+        continue;
+      }
+      tryBatch = false;
+    }
     const d = droppable[0];
     dropped.push({ change: d.c, contrast: d.r });
     F = d.Y;

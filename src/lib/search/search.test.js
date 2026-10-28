@@ -70,6 +70,20 @@ describe('optimize: contract', { timeout: 120000 }, () => {
     expect(resolveEffort('quick', { deltaKind: 'absolute' })).toMatchObject({ delta: 0.02, maxN: 8192 });
   });
 
+  it('batchDrop is on by default, off only with false, and part of the request key (simulation.md §Minimise and confirm)', async () => {
+    expect(resolveEffort('quick', { deltaKind: 'relative' }).batchDrop).toBe(true);
+    expect(resolveEffort({ level: 'quick', batchDrop: 'no' }, { deltaKind: 'relative' }).batchDrop).toBe(true);
+    expect(resolveEffort({ level: 'quick', batchDrop: false }, { deltaKind: 'relative' }).batchDrop).toBe(false);
+    const req = { character: relicless(), presetId: 'p1', target: SHORT, space: only('relics', 'pet'), effort: TINY, seed: 5 };
+    const keys = [];
+    const plain = await optimize(req, { onCheckpoint: (c) => keys.push(c.requestKey) });
+    expect(timeless(await optimize({ ...req, effort: { ...TINY, batchDrop: true } }))).toEqual(timeless(plain));
+    const single = await optimize({ ...req, effort: { ...TINY, batchDrop: false } }, { onCheckpoint: (c) => keys.push(c.requestKey) });
+    expect(single.status).toBe('done');
+    expect(new Set(keys).size).toBe(2);
+    for (const row of plain.rows) expect(row.changes.every((c) => c.needed)).toBe(true);
+  });
+
   it('a baseline that breaks a game rule is a setup blocker, never silently legalised', async () => {
     const raw = JSON.parse(JSON.stringify(fixtureCharacter('WARRIOR')));
     raw.presets[0].relicIds = Object.keys(raw.relics); // five relics, two slots
