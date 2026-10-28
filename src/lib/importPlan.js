@@ -142,7 +142,9 @@ export function planImport(text, roster, { now, character: into } = {}) {
     const pid = opponent.imported?.playerId;
     const list = into.opponents ?? [];
     const match = pid ? list.find((o) => o.imported?.playerId === pid) ?? null : null;
-    return { kind, opponent, match, full: !match && list.length >= MAX_OPPONENTS, sigils: opponent.sigils.length + (opponent.utility ? 1 : 0) + (opponent.ancient ? 1 : 0) };
+    // at the cap, saving takes the place of the oldest opponent (store/pvp.js saveRankingsOpponent)
+    const replaces = !match && list.length >= MAX_OPPONENTS ? { name: list[0].name } : null;
+    return { kind, opponent, match, replaces, sigils: opponent.sigils.length + (opponent.utility ? 1 : 0) + (opponent.ancient ? 1 : 0) };
   }
 
   if (kind === 'profile') {

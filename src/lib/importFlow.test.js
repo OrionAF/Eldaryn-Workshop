@@ -52,6 +52,19 @@ describe('game profile', () => {
     expect(importFlow.open).toBe(false);
   });
 
+  it("hands the profile's pending drops to Drop Check's Loot bag", () => {
+    const seq = importFlow.handoffSeq;
+    loadImportText(text(profile)); // no pending drops: nothing is handed over
+    confirmImport();
+    expect(importFlow.handoffSeq).toBe(seq);
+    const withDrops = { ...profile, name: 'Other', pendingItems: lootBag.pendingItems };
+    loadImportText(text(withDrops));
+    expect(importFlow.plan.pendingItems).toBe(lootBag.pendingItems.length);
+    confirmImport();
+    expect(importFlow.handoffSeq).toBe(seq + 1);
+    expect(JSON.parse(takeHandoff('lootBag')).pendingItems).toHaveLength(lootBag.pendingItems.length);
+  });
+
   it('defaults to Update when the name matches; Update brings the game presets, keeps opponents and runs, and Undo restores', () => {
     loadImportText(text(profile));
     const name = importFlow.plan.character.name;

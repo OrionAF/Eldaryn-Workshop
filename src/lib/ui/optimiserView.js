@@ -262,7 +262,7 @@ const GLYPH_DIMENSION = /Glyphs$/;
 const TIER_WORD = { minor: 'Minor', major: 'Major', mythic: 'Mythic' };
 
 /** A change as one line: a talent change lists only the points that moved (`moved`, backlog §6). */
-export const changeText = (c) => `${c.label}: ${c.moved || `${c.from} → ${c.to}`}`;
+export const changeText = (c) => `${c.label}: ${c.toLines?.join('; ') || c.moved || `${c.from} → ${c.to}`}`;
 
 /** A dimension key as text; never the raw key. */
 export const dimensionLabel = (dimension) => DIMENSION_LABEL[dimension] ?? (/^[A-Z]/.test(dimension) ? dimension : 'Other'); // a legacy run stored the label itself

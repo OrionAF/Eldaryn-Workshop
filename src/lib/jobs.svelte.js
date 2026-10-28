@@ -187,6 +187,8 @@ export function resumeJob(id) {
   if (!job || job.status !== 'cancelled') return;
   job.resumeFrom = job.checkpoint ? plain(job.checkpoint) : null;
   job.interrupted = false;
+  // the cancelled result ("Cancelled. Resume to...") must not stay on screen while the run continues
+  job.result = null;
   job.status = 'queued';
   pump();
 }

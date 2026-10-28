@@ -128,6 +128,7 @@ function normaliseChange(c) {
     keptBecause: KEPT_BECAUSE.includes(c.keptBecause) ? c.keptBecause : null,
     ...(c.free === true ? { free: true } : {}),
     ...(typeof c.moved === 'string' && c.moved ? { moved: c.moved } : {}),
+    ...(Array.isArray(c.toLines) && c.toLines.length && c.toLines.every((l) => typeof l === 'string') ? { toLines: [...c.toLines] } : {}),
     ...(typeof c.costNote === 'string' && c.costNote ? { costNote: c.costNote } : {}),
     ...(isObj(c.medalCost) && ['bronze', 'silver', 'gold'].includes(c.medalCost.tier) && Number.isSafeInteger(c.medalCost.amount) && c.medalCost.amount >= 0
       ? { medalCost: { tier: c.medalCost.tier, amount: c.medalCost.amount, estimated: true } } : {}),

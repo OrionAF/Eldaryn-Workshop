@@ -16,10 +16,10 @@
   import { celestialMaxHoldCount } from '../../lib/engine/pve/celestial.js';
   import { CELESTIAL_DIFFICULTIES, CELESTIAL_CONSTANTS } from '../../lib/game/celestial.js';
   import { targetContext } from '../../lib/ui/optimiserSetup.js';
-  import { chapterLabel } from '../../lib/game/combatPve.js';
+  import { PVE_CHAPTERS, PVE_HARD_CHAPTERS, PVE_PROGRESS_CONSTANTS, chapterLabel } from '../../lib/game/combatPve.js';
   import { RAIDS, clanCapForServer } from '../../lib/game/fortress.js';
   import { FORTRESS_BOSS_GROUPS, MAX_SHIELD_PERCENT } from '../../lib/engine/pve/fortressBoss.js';
-  import { CLASSIC_DUNGEONS } from '../../lib/game/pveContent.js';
+  import { CLASSIC_DUNGEONS, OBLIVION_FLOORS } from '../../lib/game/pveContent.js';
   import { WORLD_BOSS_AFFINITIES } from '../../lib/game/worldBoss.js';
   import { classLabel } from '../../lib/game/classes.js';
   import { TARGET_KIND_LABEL } from '../../lib/ui/optimiserView.js';
@@ -40,6 +40,13 @@
     characters = [],
     onNavigate = () => {},
   } = $props();
+
+  // steps, levels, chapters and floors are short fixed lists, so they are picked, not typed
+  const numbered = (n) => Array.from({ length: n }, (_, i) => ({ value: i + 1, label: String(i + 1) }));
+  const chapterOptions = [...PVE_CHAPTERS, ...PVE_HARD_CHAPTERS].map((c) => ({ value: c.chapter, label: chapterLabel(c.chapter) }));
+  const levelOptions = numbered(PVE_PROGRESS_CONSTANTS.levelsPerChapter);
+  const stepOptions = numbered(8);
+  const floorOptions = OBLIVION_FLOORS.map((f) => ({ value: f.floor, label: String(f.floor) }));
 
   const DEFAULTS = {
     dummy: { kind: 'dummy', seconds: 60 },
@@ -234,18 +241,18 @@
     <NumberField label="Seconds" unit="s" min={5} max={600} value={target.seconds} onchange={(v) => patch({ seconds: Math.round(v) })} />
   {:else if target.kind === 'chapter'}
     <div class="two">
-      <NumberField label="Chapter" min={1} max={22} value={target.chapter} onchange={(v) => patch({ chapter: Math.round(v) })} />
-      <NumberField label="Level" min={1} max={10} value={target.level} onchange={(v) => patch({ level: Math.round(v) })} />
+      <Select label="Chapter" options={chapterOptions} value={target.chapter} onchange={(v) => patch({ chapter: Number(v) })} />
+      <Select label="Level" options={levelOptions} value={target.level} onchange={(v) => patch({ level: Number(v) })} />
     </div>
     <span class="hint" data-testid="chapter-name">{chapterLabel(target.chapter)}</span>
   {:else if target.kind === 'dungeon'}
     <Select label="Dungeon" options={dungeonOptions} value={target.id} onchange={(v) => patch({ id: v })} />
-    <NumberField label="Step" min={1} max={8} value={target.step} onchange={(v) => patch({ step: Math.round(v) })} />
+    <Select label="Step" options={stepOptions} value={target.step} onchange={(v) => patch({ step: Number(v) })} />
   {:else if target.kind === 'raid'}
     <Select label="Village raid" options={raidOptions} value={target.id} onchange={(v) => patch({ id: v })} />
-    <NumberField label="Step" min={1} max={8} value={target.step} onchange={(v) => patch({ step: Math.round(v) })} />
+    <Select label="Step" options={stepOptions} value={target.step} onchange={(v) => patch({ step: Number(v) })} />
   {:else if target.kind === 'oblivion'}
-    <NumberField label="Floor" min={1} max={999} value={target.floor} onchange={(v) => patch({ floor: Math.round(v) })} />
+    <Select label="Floor" options={floorOptions} value={target.floor} onchange={(v) => patch({ floor: Number(v) })} />
     <Checkbox
       label="Apply the instability output cut (assumed, off by default)"
       checked={target.applyOutputCut === true}

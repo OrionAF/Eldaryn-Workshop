@@ -109,6 +109,7 @@ describe('owned stone assignment', () => {
     expect(changes[0].sideEffects.map((s) => s.presetId)).toContain('p2');
     expect(changes[0].from).not.toContain('stone-a');
     expect(changes[0].from).toContain('Amplify');
+    expect(changes[0].toLines).toEqual([expect.stringMatching(/: Empty$/)]);
     expect(revert(space, B, X, changes[0])).toEqual(B);
     expect(addChange(space, B, X, changes[0])).toEqual(X);
     const writes = writesOf(space, B, X, changes);

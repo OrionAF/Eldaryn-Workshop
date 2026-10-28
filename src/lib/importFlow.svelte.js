@@ -13,7 +13,7 @@ import { ImportError } from './storage.js';
 import { notify } from './notify.svelte.js';
 import { go } from './router.svelte.js';
 import { AFTER_IMPORT_PAGE_ID } from './routes.js';
-import { MAX_OPPONENTS } from './model/opponents.js';
+import { getDuelSetup, setDuelSetup } from './duelSetup.svelte.js';
 
 let state = $state({
   open: false,
@@ -190,16 +190,24 @@ export function confirmImport() {
         const res = rosterStore.importFromJson(state.text);
         notify(`Created ${res.name} from a game profile`, { kind: 'success' });
       }
+      // the profile's pending drops wait for Drop Check's Loot bag (dropBatch.js reads a whole profile)
+      if (plan.pendingItems > 0) {
+        handoff = { kind: 'lootBag', text: state.text };
+        state.handoffSeq += 1;
+      }
       closeImport();
       go(AFTER_IMPORT_PAGE_ID);
       return true;
     }
     if (plan.kind === 'opponent') {
       const res = rosterStore.saveRankingsOpponent(plan.opponent);
-      if (!res) throw new ImportError(`You can save at most ${MAX_OPPONENTS} opponents. Remove one on the Opponents page first.`);
-      notify(`${res.updated ? 'Updated' : 'Saved'} opponent ${plan.opponent.name} from Rankings`, { kind: 'success' });
+      if (!res) throw new ImportError('Select a character first: an opponent is saved with a character.');
+      const replaced = res.replaced ? `, replacing ${res.replaced.name}` : '';
+      notify(`${res.updated ? 'Updated' : 'Saved'} opponent ${plan.opponent.name} from Rankings${replaced}`, { kind: 'success' });
+      const cid = rosterStore.current?.id;
+      if (cid) setDuelSetup(cid, { ...getDuelSetup(cid), opponentPick: res.id });
       closeImport();
-      go('tools/opponents');
+      go('tools/duel');
       return true;
     }
     if (plan.kind === 'roster') {

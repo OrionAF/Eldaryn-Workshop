@@ -6,6 +6,8 @@ import sentinel from './__fixtures__/real/profile-sentinel-l85-oct15b.json';
 import { detectKind, planImport } from './importPlan.js';
 import { importFlow, loadImportText, confirmImport, resetImportFlow } from './importFlow.svelte.js';
 import { rosterStore } from './rosterStore.svelte.js';
+import { getDuelSetup } from './duelSetup.svelte.js';
+import { MAX_OPPONENTS } from './model/opponents.js';
 import { newRoster, normaliseCharacter } from './model/index.js';
 import { gameProfileToCharacter } from './model/gameProfile.js';
 import { normaliseOpponent } from './model/opponents.js';
@@ -69,6 +71,23 @@ describe('importing a Rankings profile', () => {
     loadImportText(JSON.stringify(withId('p-2')));
     confirmImport();
     expect(opps()).toHaveLength(2);
+  });
+
+  it('opens Duel with the imported opponent picked', () => {
+    loadImportText(JSON.stringify(withId('p-1')));
+    confirmImport();
+    expect(location.hash).toContain('tools/duel');
+    expect(getDuelSetup(rosterStore.current.id).opponentPick).toBe(opps()[0].id);
+  });
+
+  it('at the cap, takes the place of the oldest opponent instead of refusing', () => {
+    for (let i = 0; i < MAX_OPPONENTS; i++) rosterStore.addOpponent('WARRIOR_DPS', `Old ${i}`);
+    loadImportText(JSON.stringify(withId('p-new')));
+    expect(importFlow.plan.replaces).toEqual({ name: 'Old 0' });
+    expect(confirmImport()).toBe(true);
+    expect(opps()).toHaveLength(MAX_OPPONENTS);
+    expect(opps().map((o) => o.name)).not.toContain('Old 0');
+    expect(opps().at(-1).name).toBe('Test Player');
   });
 
   it('keeps no identifier beyond the playerId and the name', () => {

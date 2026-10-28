@@ -97,7 +97,7 @@
           </section>
         {/if}
         {#if plan.pendingItems > 0}
-          <Banner variant="info">This profile also holds {plural(plan.pendingItems, 'pending drop')}. Check them in Drop Check after importing.</Banner>
+          <Banner variant="info">This profile also holds {plural(plan.pendingItems, 'pending drop')}. They wait in Drop Check's Loot bag.</Banner>
         {/if}
         <p class="muted">Never read: player id, clan, quests, shop, currencies.</p>
       </div>
@@ -108,8 +108,8 @@
           {plan.match ? `Refreshes the saved opponent ${plan.match.name} (the same player).` : 'Saved as a new PVP opponent.'}
           Its stats are taken as the game shows them. Its {plural(plan.sigils, 'worn sigil')}, altar tier and major glyphs decide its moves.
         </p>
-        {#if plan.full}
-          <Banner variant="warn" lead="Opponent library full">Remove a saved opponent on the Opponents page first.</Banner>
+        {#if plan.replaces}
+          <Banner variant="warn" lead="Opponent library full">Saving replaces your oldest opponent, {plan.replaces.name}.</Banner>
         {/if}
         <p class="muted">Only the display name and the player id (to refresh it later) are kept. Gear, pet, mount and relics are not used for an opponent.</p>
       </div>
