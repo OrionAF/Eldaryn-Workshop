@@ -38,12 +38,13 @@ export const BLOCKS = Object.freeze([
 ]);
 
 /** Blocks whose values the stat-dominance filter prunes (simulation.md §Build space, Dominance). */
-export const DOMINANCE_BLOCKS = Object.freeze(['sigils', 'utility', 'conditions', 'relics', 'pet', 'talents']);
+export const DOMINANCE_BLOCKS = Object.freeze(['sigils', 'utility', 'conditions', 'relics', 'pet', 'talents', 'stones']);
 
 /** The part of a candidate a block changes (what a pruned entry names). */
 const BLOCK_VALUE = {
   sigils: (c) => c.sigilSpecies, utility: (c) => c.utilitySigilSpecies, conditions: (c) => c.sigilConditions,
   relics: (c) => c.relicIds, pet: (c) => c.petId, talents: (c) => c.talentAllocation,
+  stones: (c) => c.stoneAssignment ?? null,
 };
 
 /** No dominance assumption: every stat compared, no damage-only projection (search/dominance.js dominanceContextOf). */
