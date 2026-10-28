@@ -65,7 +65,8 @@ export function resolveEffort(raw, objective) {
   const randomStarts = Number.isInteger(o.randomStarts) && o.randomStarts >= 0 ? o.randomStarts : RANDOM_STARTS;
   // futility: false restores the pre-A5 race and accept rule; tieLook: false the look schedule without the
   // win rate's tie look (both benchmarks only; not Effort controls)
-  return { level, delta, deltaKind, alpha: ALPHA, n0, maxN, randomStarts, futility: o.futility !== false, tieLook: o.tieLook !== false };
+  // batchDrop: false restores the one-at-a-time Minimise (benchmarks only; simulation.md §Minimise and confirm)
+  return { level, delta, deltaKind, alpha: ALPHA, n0, maxN, randomStarts, futility: o.futility !== false, tieLook: o.tieLook !== false, batchDrop: o.batchDrop !== false };
 }
 
 /** Phase seeds (I4: the data that decides is never the data reported). */
@@ -132,7 +133,7 @@ export function prepare(request) {
     ...(target.partner ? { partnerKey: target.partner.key } : {}),
     seed, seeds, effort: { level: effort.level, delta: effort.delta, deltaKind: effort.deltaKind, alpha: effort.alpha, n0: effort.n0, maxN: effort.maxN }, characterKey,
   };
-  const requestKey = metricKey('optimise-request', { ...requestEcho, characterKey: undefined, randomStarts: effort.randomStarts, ...(effort.futility ? {} : { futility: false }), ...(effort.tieLook ? {} : { tieLook: false }) });
+  const requestKey = metricKey('optimise-request', { ...requestEcho, characterKey: undefined, randomStarts: effort.randomStarts, ...(effort.futility ? {} : { futility: false }), ...(effort.tieLook ? {} : { tieLook: false }), ...(effort.batchDrop ? {} : { batchDrop: false }) });
   return { character, partner, preset, target, realm, mode, objective, effort, seed, seeds, warnings, space, characterKey, requestEcho, requestKey };
 }
 
@@ -1031,7 +1032,7 @@ export async function optimize(request, hooks = {}) {
     const ctx2 = { space, B, armOf, objective, fill: true, compare: (X, Y, a) => run.compare(X, Y, S2, a), prefetch: (arms) => run.prefetch(arms, S2, effort.n0) };
     const minimised = new Map();
     for (const F of finals) {
-      const m = await minimise(ctx2, F, { alpha: effort.alpha, alphaFinal: effort.alpha / finals.length });
+      const m = await minimise(ctx2, F, { alpha: effort.alpha, alphaFinal: effort.alpha / finals.length, batch: effort.batchDrop });
       for (const d of m.dropped) {
         if (d.contrast.identical) st.merged.sampleIdentical++;
         if (d.contrast.verdict === 'unresolved') {

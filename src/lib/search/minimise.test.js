@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { holmSequential, holmFixed, remainderOf, gainOf } from './minimise.js';
+import { holmSequential, holmFixed, remainderOf, gainOf, minimise } from './minimise.js';
+import { createBuildSpace } from './space.js';
+import { changesOf } from './effect.js';
+import { fixtureCharacter } from '../build/fixtures.js';
 import { compareSets } from './sampler.js';
 import { pairedT, meanInterval } from '../engine/stats/index.js';
 import { hashSeed, mulberry32 } from '../engine/rng.js';
@@ -120,5 +123,56 @@ describe('confirm calibration (null finalists)', () => {
       if (res.some((c) => c.verdict === 'better')) flagged++;
     }
     expect(flagged / RUNS).toBeLessThanOrEqual(0.05);
+  });
+});
+
+describe('minimise: batch drop (the Optimiser default, simulation.md §Minimise and confirm)', () => {
+  // A real space with four changes (talents, pet, relics, sigils); a fake S2 compare: X is `better` than Y
+  // when value(X) > value(Y), else `equivalent`. calls lists the changes X has and Y lacks.
+  const space = createBuildSpace(fixtureCharacter('WARRIOR'), 'p1');
+  const armOf = (cand) => ({ key: JSON.stringify(space.canonical(cand)), cand });
+  const B = armOf({ ...space.start, relicIds: [], petId: null, talentAllocation: {}, sigilSpecies: [] });
+  const F0 = armOf(space.start);
+  const idsOf = (X) => new Set(changesOf(space, B.cand, X.cand).map((c) => c.id));
+  const run = async (value, batch) => {
+    const calls = [];
+    const compare = async (X, Y, alpha) => {
+      const [x, y] = [idsOf(X), idsOf(Y)];
+      calls.push([...x].filter((id) => !y.has(id)).sort().join('+'));
+      const delta = value(x) - value(y);
+      return { verdict: delta > 0 ? 'better' : 'equivalent', significant: delta > 0, delta, higherIsBetter: true, alpha };
+    };
+    const m = await minimise({ space, B, armOf, compare }, F0, { alpha: 0.05, alphaFinal: 0.05, batch });
+    return { ...m, kept: [...idsOf(m.arm)].sort(), calls };
+  };
+
+  it('the fixture finalist has four changes', () => {
+    expect([...idsOf(F0)].sort()).toEqual(['pet', 'relics', 'sigils', 'talents:0']);
+  });
+
+  it('one needed change: the same row in fewer compares (one batch instead of three more rounds)', async () => {
+    const value = (ids) => (ids.has('pet') ? 10 : 0);
+    const one = await run(value, false);
+    const bat = await run(value, true);
+    expect(one.kept).toEqual(['pet']);
+    expect(bat.kept).toEqual(one.kept);
+    expect(Object.keys(bat.decided)).toEqual(Object.keys(one.decided));
+    // Holm re-runs the open tests after pet is rejected: 4 + 3 per round of four, then 3 + 2, 2 + 1, 1, and the final check
+    expect(one.calls).toHaveLength(17);
+    expect(bat.calls).toEqual(['talents:0', 'pet', 'relics', 'sigils', 'talents:0', 'relics', 'sigils', 'relics+sigils+talents:0', 'pet', 'pet']);
+    expect(bat.dropped.every((d) => d.batch)).toBe(true);
+    expect(one.dropped.some((d) => d.batch)).toBe(false);
+  });
+
+  it('substitutes (either alone is droppable, not both): the batch is better, so it falls back to one at a time', async () => {
+    const value = (ids) => (ids.has('pet') ? 10 : 0) + (ids.has('relics') || ids.has('sigils') ? 5 : 0);
+    const one = await run(value, false);
+    const bat = await run(value, true);
+    expect(bat.kept).toEqual(one.kept);
+    expect(bat.kept).toContain('pet');
+    expect(bat.kept.filter((id) => id === 'relics' || id === 'sigils')).toHaveLength(1);
+    // the batch compare follows the first round; after it the run is the one-at-a-time run
+    expect(bat.calls).toEqual([...one.calls.slice(0, 7), 'relics+sigils+talents:0', ...one.calls.slice(7)]);
+    expect(bat.dropped.some((d) => d.batch)).toBe(false);
   });
 });
