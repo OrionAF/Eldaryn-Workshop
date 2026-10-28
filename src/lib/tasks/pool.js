@@ -13,6 +13,11 @@ import { KERNELS } from './kernels.js';
 /** Fights per shard: the range split evenly over the workers, within these bounds. */
 export const MIN_SHARD = 4;
 export const MAX_SHARD = 64;
+/**
+ * Fights one message carries: an idle worker takes queued shards (of any jobs) up to this many, never
+ * more than its fair share of the queue. A message costs about as much as a few short chapter fights.
+ */
+export const BATCH_FIGHTS = 64;
 /** Fights an inline pool runs between abort checks and yields. */
 const INLINE_SLICE = 8;
 const YIELD_MS = 25;
@@ -35,6 +40,64 @@ export function appendChunk(dst, c) {
 
 export function shardSize(len, size) {
   return Math.min(MAX_SHARD, Math.max(MIN_SHARD, Math.ceil(len / Math.max(1, size))));
+}
+
+/** Fighters a worker keeps between shards (least recently used out); the pool mirrors the cache. */
+export const FIGHTER_CACHE = 2048;
+
+const deepFreeze = (o) => {
+  if (o === null || typeof o !== 'object' || Object.isFrozen(o)) return o;
+  Object.freeze(o);
+  for (const v of Object.values(o)) deepFreeze(v);
+  return o;
+};
+
+// a least-recently-used set of fighter ids: `use` returns whether the id was already held. The pool's
+// copy (sending) and the worker's (receiving) see the same ids in the same order, so they always agree.
+function lru(max) {
+  const held = new Map();
+  return {
+    use(id, value) {
+      const had = held.has(id);
+      const v = had ? held.get(id) : value;
+      held.delete(id);
+      held.set(id, v);
+      if (held.size > max) held.delete(held.keys().next().value);
+      return had;
+    },
+    get: (id) => held.get(id),
+  };
+}
+
+/**
+ * The pool's side of the fighter cache for one worker: a shard's `args.fighter` crosses only on that
+ * worker's first shard for it (structured-cloning and preparing it per shard cost more than a chapter
+ * fight; optimiser-speed-research.md A4); later shards carry its id. Ids are per pool, by identity.
+ */
+export function fighterSender(idOf, max = FIGHTER_CACHE) {
+  const held = lru(max);
+  return (args) => {
+    const f = args?.fighter;
+    if (f === null || typeof f !== 'object') return args;
+    const id = idOf(f);
+    const { fighter, ...rest } = args;
+    return held.use(id, true) ? { ...rest, fighterId: id } : { ...rest, fighterId: id, fighter };
+  };
+}
+
+/**
+ * The worker's side: the args with `fighter` restored, deep-frozen so the engine reuses its
+ * preparation (engine/pve/fight.js preparePveFighter).
+ */
+export function fighterReceiver(max = FIGHTER_CACHE) {
+  const held = lru(max);
+  return (args) => {
+    if (args?.fighterId == null) return args;
+    const { fighterId, fighter, ...rest } = args;
+    if (fighter !== undefined) held.use(fighterId, deepFreeze(fighter));
+    else if (!held.use(fighterId)) throw new Error(`pool worker: fighter ${fighterId} is not cached`);
+    return { ...rest, fighter: held.get(fighterId) };
+  };
 }
 
 function errorOf(msg) {
@@ -86,6 +149,16 @@ export function createPool({ kind, setup, size, spawn }) {
   let nextId = 1;
 
   const alive = () => workers.filter((w) => !w.dead);
+  const fighterIds = new WeakMap();
+  let nextFighter = 1;
+  const idOf = (f) => {
+    let id = fighterIds.get(f);
+    if (id === undefined) {
+      id = nextFighter++;
+      fighterIds.set(f, id);
+    }
+    return id;
+  };
 
   function finish(job, aborted) {
     if (job.done) return;
@@ -134,13 +207,21 @@ export function createPool({ kind, setup, size, spawn }) {
       drainLocal();
       return;
     }
-    for (const w of workers) {
-      if (w.dead || !w.ready || w.busy) continue;
-      const s = queue.shift();
-      if (!s) break;
-      w.busy = s;
+    const idle = workers.filter((w) => !w.dead && w.ready && !w.busy);
+    for (let k = 0; k < idle.length && queue.length; k++) {
+      const w = idle[k];
+      // this worker's share of what is queued, so the idle workers split it evenly
+      const share = Math.ceil(queue.length / (idle.length - k));
+      const batch = [];
+      let fights = 0;
+      while (queue.length && batch.length < share && (batch.length === 0 || fights < BATCH_FIGHTS)) {
+        const s = queue.shift();
+        batch.push(s);
+        fights += s.to - s.from;
+      }
+      w.busy = batch;
       try {
-        w.ep.postMessage({ type: 'shard', id: s.id, args: s.job.args, from: s.from, to: s.to });
+        w.ep.postMessage({ type: 'batch', items: batch.map((s) => ({ id: s.id, args: w.send(s.job.args), from: s.from, to: s.to })) });
       } catch {
         die(w);
         return;
@@ -148,12 +229,18 @@ export function createPool({ kind, setup, size, spawn }) {
     }
   }
 
+  // the shards of `w`'s batch that got no answer go back to the front of the queue
+  function requeue(w) {
+    const open = (w.busy ?? []).filter((s) => !s.job.done && s.chunk === null);
+    w.busy = null;
+    queue.unshift(...open);
+  }
+
   function die(w) {
     if (w.dead) return;
     w.dead = true;
     try { w.ep.terminate(); } catch { /* already gone */ }
-    if (w.busy && !w.busy.job.done) queue.unshift(w.busy);
-    w.busy = null;
+    requeue(w);
     pump();
   }
 
@@ -161,18 +248,23 @@ export function createPool({ kind, setup, size, spawn }) {
     if (w.dead) return;
     if (msg?.type === 'ready') {
       w.ready = true;
-    } else if (msg?.type === 'shard') {
-      const s = w.busy;
-      w.busy = null;
-      if (s && s.id === msg.id) complete(s, msg.chunk);
+    } else if (msg?.type === 'batch') {
+      const byId = new Map((w.busy ?? []).map((s) => [s.id, s]));
+      for (const r of msg.results ?? []) {
+        const s = byId.get(r.id);
+        if (s) complete(s, r.chunk);
+      }
+      if (msg.failed) {
+        const s = byId.get(msg.failed.id);
+        if (s) fail(s.job, errorOf(msg.failed));
+      }
+      requeue(w);
     } else if (msg?.type === 'fail') {
       if (!w.ready) {
         die(w); // could not prepare: the others (or the inline fallback) take over
         return;
       }
-      const s = w.busy;
-      w.busy = null;
-      if (s) fail(s.job, errorOf(msg));
+      requeue(w);
     }
     pump();
   }
@@ -184,7 +276,7 @@ export function createPool({ kind, setup, size, spawn }) {
     } catch {
       continue;
     }
-    const w = { ep, ready: false, busy: null, dead: false };
+    const w = { ep, ready: false, busy: null, dead: false, send: fighterSender(idOf) };
     workers.push(w);
     ep.onmessage = (e) => onMessage(w, e.data);
     ep.onerror = (e) => {
