@@ -10,6 +10,7 @@
     "test": "vitest run",
     "sync:data": "node scripts/sync-game-data.mjs",
     "gen:spec-guide": "vite-node scripts/specGuide.mjs",
+    "gen:spec-baseline": "vite-node scripts/specBaseline.mjs",
     "test:watch": "vitest"
   },
   "devDependencies": {
