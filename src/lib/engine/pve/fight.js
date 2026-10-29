@@ -33,7 +33,8 @@ import {
   buildCombatSpells, getEquippedShieldConfig, getEquippedSummonConfig, getEquippedFormConfig,
 } from '../core/spellConfig.js';
 import { glyphCombatMods } from '../core/glyphMods.js';
-import { processCombatTick, routeSpellHealToMinion } from './tick.js';
+import { processCombatTick, routeSpellHealToMinion, bystanderSwing } from './tick.js';
+import { lane } from '../rng.js';
 import { EngineInputError, assertFiniteEntity, assertPositive } from '../validate.js';
 import { PVE_PROGRESS_CONSTANTS } from '../../game/combatPve.js';
 import { RAID_CONSTANTS } from '../../game/fortress.js';
@@ -60,7 +61,7 @@ const note = (key, text) => Object.freeze({ key, text });
 export const PVE_ASSUMPTIONS = Object.freeze({
   serverFight: note('server-fight', "Server-run fight: simulated with the client's shared engine; whether the server runs it is unresolved."),
   campaignCap: note('campaign-cap', 'The campaign loop has no time limit; a fight past 20 minutes is reported as timed out.'),
-  raidShield: note('raid-shield', `Raid shield mitigation ${DUNGEON_SHIELD_MITIGATION} assumed (the dungeon value): the raid constants carry none.`),
+  raidGroup: note('raid-group', 'Every living raid mob swings at once, each from a random point in its swing, and the shield takes hits in full: read from one server log. Thorns and reflects reach only the mob being fought.'),
   oblivionConstants: note('oblivion-constants', `Oblivion floors assume the dungeon tick (${DUNGEON_TICK_MS} ms), shield mitigation (${DUNGEON_SHIELD_MITIGATION}) and ${INTER_MOB_GAP_MS} ms start gap: the floor config carries none.`),
   oblivionOutputCut: note('oblivion-output-cut', 'The instability output cut is off unless switched on: the client fight never applies it, and where the server does is unresolved.'),
   worldBossModel: note('world-boss-model', 'World Boss hit-back, ramp and rebound are modelled from the affinity record; the fight itself is server-run.'),
@@ -69,13 +70,14 @@ export const PVE_ASSUMPTIONS = Object.freeze({
 
 const A = PVE_ASSUMPTIONS;
 const pveMode = (o) => Object.freeze({
-  perFightCapMs: FIGHT_CAP_MS, interMobGapMs: 0, liveLoop: false, ...o, assumptions: Object.freeze(o.assumptions),
+  perFightCapMs: FIGHT_CAP_MS, interMobGapMs: 0, liveLoop: false, allMobsSwing: false, ...o, assumptions: Object.freeze(o.assumptions),
 });
 
 /**
  * Per-mode engine settings (combat-pve.md §2, §13, §14). `dtMs` the tick; `shieldMitigation` what the
  * mode's caller stamps on the player (World Boss: the affinity record's value, read at run time);
- * `interMobGapMs` the wait before each mob, the minion respawn aged by the same amount; `perFightCapMs`
+ * `interMobGapMs` the wait before each mob, the minion respawn aged by the same amount; `allMobsSwing`
+ * every living mob swings from a random point in its swing, the later ones as bystanders; `perFightCapMs`
  * each mob's own cap when the caller gives no `maxMs` window; `liveLoop` the campaign loop's own rules
  * (opening 'half', mob-only spell resist, next-tick transform); `assumptions` the labels to show.
  */
@@ -89,8 +91,8 @@ export const PVE_MODES = Object.freeze({
     assumptions: [A.serverFight],
   }),
   raid: pveMode({
-    dtMs: RAID_CONSTANTS.TICK_INTERVAL_MS, shieldMitigation: DUNGEON_SHIELD_MITIGATION, interMobGapMs: INTER_MOB_GAP_MS,
-    assumptions: [A.serverFight, A.raidShield],
+    dtMs: RAID_CONSTANTS.TICK_INTERVAL_MS, shieldMitigation: 0, interMobGapMs: INTER_MOB_GAP_MS, allMobsSwing: true,
+    assumptions: [A.serverFight, A.raidGroup],
   }),
   oblivion: pveMode({
     dtMs: DUNGEON_TICK_MS, shieldMitigation: DUNGEON_SHIELD_MITIGATION, interMobGapMs: INTER_MOB_GAP_MS,
@@ -224,6 +226,8 @@ function sameBuffSet(a, b) {
  * @property {{afterMs:number, mult:number}|null} [wrath]  World Boss wrath (2.8.2): from `afterMs` after
  *   the opening summon window, the player's swings, spells, DoT ticks and minion land `mult` of their
  *   damage; thorns and rebound do not (combat-pve.md §16)
+ * @property {Array<{index:number, entity:Object, hp:number, timer:number}>|null} [bystanders]  raid: the
+ *   other living mobs, each swinging at the player on its own `timer` (mutated)
  */
 
 /**
@@ -286,6 +290,7 @@ export function simulateFight(player, enemy, ctx, rng) {
     dtMs = DEFAULT_DT_MS, startMs = 0, maxMs = FIGHT_CAP_MS, opening = 'zero', spells = null, chrono = null,
     stacks: stackCombat = null, thornsPercent = 0, oblivion = null, minion = null, log = true,
     liveSpellResist = false, enemyAt = null, reboundFor = null, liveLoop = false, outputMult = 1, wrath = null,
+    bystanders = null,
   } = ctx ?? {};
   // the output cut on a landed amount (a positive number); `directMult` adds the World Boss wrath cut
   // to the direct damage (swings, minion, spells, DoT ticks) once it holds
@@ -799,6 +804,29 @@ export function simulateFight(player, enemy, ctx, rng) {
         }
       }
     }
+    // raid: the other living mobs swing on their own clocks (combat-pve.md §21). Their hits feed no
+    // reflect or stack (those reach the target only), and they swing on the tick the target dies.
+    if (bystanders) {
+      for (const b of bystanders) {
+        if (hp <= 0 || b.hp <= 0 || !(b.entity.attackSpeed > 0)) continue;
+        b.timer += dtMs;
+        const interval = Math.round(1000 / b.entity.attackSpeed);
+        if (b.timer < interval) continue;
+        b.timer -= interval;
+        const s = bystanderSwing(view, b, hp, shield, minion, ts, lane(rng, `mob${b.index}`));
+        hp = s.atkHp;
+        shield = s.atkShield;
+        damageTaken += s.taken;
+        for (const ev of s.events) {
+          if (ev.type === 'minion_dead' && ev.minionDeathWard && minion.deathWardPercent > 0) shield += ev.minionDeathWard;
+          if (emit) {
+            ev.mobIndex = b.index;
+            if (player.shieldMax > 0) ev.attackerShieldHp = shield;
+            ticks.push(ev);
+          }
+        }
+      }
+    }
     if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart, shield);
 
     // 11. end check (L1089416-1089457)
@@ -1102,10 +1130,20 @@ export function simulatePve(o) {
   const logOut = log ? [] : undefined;
   let lost = false;
   let timedOut = false;
+  // raid: each mob's swing clock starts at a random point of its swing, and the clocks pause in the gaps
+  // (combat-pve.md §21)
+  const phase = mode.allMobsSwing ? lane(rng, 'raid-phase') : null;
+  const group = phase
+    ? enemies.map((entity, index) => {
+      const at = phase();
+      return { index, entity, hp: entity.hp, timer: entity.attackSpeed > 0 ? Math.floor(at * Math.round(1000 / entity.attackSpeed)) : 0 };
+    })
+    : null;
 
   for (let i = 0; i < mobs.length; i++) {
     const mob = mobs[i];
     const enemy = enemies[i];
+    if (group) enemy.hp = group[i].hp;
     if (lost || timedOut) {
       enemyHpLeft += enemy.hp;
       continue;
@@ -1124,7 +1162,9 @@ export function simulatePve(o) {
     }
     const wb = mob.affinity ? worldBossHooks(mob.affinity, player.maxHp) : null;
     const r = simulateFight(player, enemy, {
-      dtMs, startMs, maxMs, opening, spells: f.spells, chrono: f.chrono, stacks: f.stacks,
+      dtMs, startMs, maxMs, spells: f.spells,
+      opening: group ? { attackerTimer: 0, defenderTimer: group[i].timer, regenTimer: 0 } : opening,
+      bystanders: group ? group.slice(i + 1) : null, chrono: f.chrono, stacks: f.stacks,
       thornsPercent: f.thornsPercent, oblivion: obl, minion: f.minion, log, liveSpellResist,
       liveLoop: mode.liveLoop, outputMult, enemyAt: wb?.enemyAt ?? null, reboundFor: wb?.reboundFor ?? null,
       wrath: wb?.wrath ?? null,

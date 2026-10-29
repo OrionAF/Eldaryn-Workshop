@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { processCombatTick, routeSpellHealToMinion, REGEN_INTERVAL_MS } from './tick.js';
+import { processCombatTick, routeSpellHealToMinion, bystanderSwing, REGEN_INTERVAL_MS } from './tick.js';
 import { createMobEntity } from '../core/entity.js';
 import { createMinion, summonMinion } from '../core/minions.js';
 import { createHealBudget } from '../core/shield.js';
@@ -667,5 +667,25 @@ describe('routeSpellHealToMinion (L1095017-1095364)', () => {
     expect(out.map((o) => `${o.type}@${o.timestamp}`)).toEqual([
       'minion_heal@5', 'minion_buff_end@7', 'minion_buff_end@8', 'minion_heal@6', 'minion_buff@9', 'minion_buff@10',
     ]);
+  });
+});
+
+// combat-pve.md §21: a raid mob behind the target swings at the player
+describe('bystanderSwing', () => {
+  it('hits through the player DR; the shield (raid mitigation 0) takes the hit in full', () => {
+    const b = { entity: mob({ attack: 600 }), hp: 1000 };
+    const r = bystanderSwing(player({ shieldMitigation: 0 }), b, 1000, 1000, null, 50, scripted([FAIL, FAIL]));
+    expect(r).toMatchObject({ atkHp: 1000, atkShield: 400, taken: 600 });
+    expect(r.events).toEqual([{ timestamp: 50, type: 'defender_hit', damage: 600, attackerHp: 1000, defenderHp: 1000 }]);
+    const over = bystanderSwing(player({ shieldMitigation: 0 }), b, 1000, 400, null, 60, scripted([FAIL, FAIL]));
+    expect(over).toMatchObject({ atkHp: 800, atkShield: 0, taken: 600 });
+  });
+
+  it('a block negates it and a killing hit is attacker_dead', () => {
+    const b = { entity: mob({ attack: 600 }), hp: 1000 };
+    expect(bystanderSwing(player({ blockChance: 50 }), b, 1000, 0, null, 0, scripted([PASS])).events[0])
+      .toMatchObject({ type: 'attacker_block', damage: 0, attackerHp: 1000 });
+    expect(bystanderSwing(player(), b, 500, 0, null, 0, scripted([FAIL, FAIL])).events[0])
+      .toMatchObject({ type: 'attacker_dead', damage: 600, attackerHp: 0 });
   });
 });

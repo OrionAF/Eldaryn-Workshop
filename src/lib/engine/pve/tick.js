@@ -451,6 +451,62 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
     paralyzedMs, silencedMs, staggerStacks, feared, atkShield, defShield, dealt, dazedMs);
 }
 
+/**
+ * One swing of a raid mob that is not the player's target (combat-pve.md §21: on the server every living
+ * raid mob swings at once). The enemy swing above without the target's control states: blind, paralyze,
+ * fear and a Shield Bash stun belong to the target alone. Mutates `mob` (`hp`, from its lifesteal).
+ * @param {Object} player  the player view of this tick
+ * @param {{entity: Object, hp: number}} mob
+ * @param {number} atkHp
+ * @param {number} atkShield
+ * @param {Object|null} minion
+ * @param {number} timestamp
+ * @param {() => number} E  the mob's own rng lane
+ * @returns {{atkHp: number, atkShield: number, taken: number, events: Object[]}}
+ */
+export function bystanderSwing(player, mob, atkHp, atkShield, minion, timestamp, E) {
+  const enemy = mob.entity;
+  const events = [];
+  if (minion && minion.alive) {
+    const isCrit = lane(E, 'crit')() * 100 < enemy.critChance;
+    const raw = isCrit ? Math.round(enemy.attack * enemy.critDamage) : enemy.attack;
+    const r = damageMinion(minion, raw, { swing: true, penetration: enemy.penetration }, lane(E, 'minion-block'));
+    mob.hp = enemyLifesteal(enemy, mob.hp, r.dealt);
+    events.push({
+      timestamp, type: 'minion_damaged', damage: r.dealt, attackerHp: atkHp, defenderHp: mob.hp,
+      ...(r.blocked ? { minionBlocked: true } : {}), ...(isCrit ? { isCrit: true } : {}),
+    });
+    if (r.died) events.push({ timestamp, type: 'minion_dead', damage: 0, attackerHp: atkHp, defenderHp: mob.hp, ...minionDeathMeta(minion) });
+    return { atkHp, atkShield, taken: 0, events };
+  }
+  const negate = player.blockChance + player.missChance;
+  const negated = negate > 0 ? lane(E, 'avoid')() * 100 < negate : false;
+  const mitigation = player.shieldMitigation == null ? 0 : player.shieldMitigation;
+  let d = 0;
+  if (!negated) {
+    const isCrit = lane(E, 'crit')() * 100 < enemy.critChance;
+    d = mitigateInline(isCrit ? Math.round(enemy.attack * enemy.critDamage) : enemy.attack, player.damageReduction);
+  } else if (enemy.penetration > 0 && player.missChance === 0) {
+    const base = Math.round((enemy.attack * enemy.penetration) / 100);
+    d = mitigateInline(Math.round(base * rollPenetrationCritMult(enemy, E)), player.damageReduction);
+  }
+  let shown = 0;
+  let hp = atkHp;
+  let shield = atkShield;
+  if (d > 0) {
+    const s = absorbWithShield(shield, d, mitigation);
+    shield = s.shieldHp;
+    hp = Math.max(0, hp - s.hpDamage);
+    shown = Math.round(s.effectiveDamage);
+    mob.hp = enemyLifesteal(enemy, mob.hp, shown);
+  }
+  const type = !negated ? (hp <= 0 ? 'attacker_dead' : 'defender_hit')
+    : player.missChance > 0 ? 'attacker_miss' : 'attacker_block';
+  events.push({ timestamp, type, damage: shown, attackerHp: hp, defenderHp: mob.hp });
+  if (negated && hp <= 0) events.push({ timestamp, type: 'attacker_dead', damage: 0, attackerHp: 0, defenderHp: mob.hp });
+  return { atkHp: hp, atkShield: shield, taken: shown, events };
+}
+
 // port of routeSpellHealToMinion L1095017-1095364
 /**
  * Routes the minion-directed part of a spell pass result onto the minion and returns the minion events
