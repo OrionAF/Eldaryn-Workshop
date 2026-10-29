@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "sync:data": "node scripts/sync-game-data.mjs",
+    "gen:spec-guide": "vite-node scripts/specGuide.mjs",
     "test:watch": "vitest"
   },
   "devDependencies": {

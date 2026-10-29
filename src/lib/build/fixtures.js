@@ -25,8 +25,9 @@ const OTHER_SPEC = {
   NECROMANCER: 'NECROMANCER_DOOMWEAVER',
 };
 
-// Sigil loadouts per spec: generic picks, utility (Summon/Shield/Form) and Ancient.
-const SIGILS = {
+// Sigil loadouts per spec: generic picks, utility (Summon/Shield/Form) and Ancient. The Spec stat guide's
+// reference builds use them too (features/specGuide.js).
+export const SPEC_SIGIL_LOADOUTS = {
   WARRIOR_DPS: { generic: ['BERSERK_STANCE', 'WARBORN_FURY', 'CATACLYSM'], utility: null, ancient: 'FLAMEBORN' },
   WARRIOR_TANK: { generic: ['DEFENSE_STANCE', 'IRON_BASTION', 'REJUVENATION'], utility: null, ancient: 'EARTHWARDEN' },
   SENTINEL_MARKSMANSHIP: { generic: ['HAWK_FOCUS', 'CRIMSON_ARROW', 'SANGUINE_RUSH'], utility: null, ancient: 'STORMCALLER' },
@@ -120,8 +121,8 @@ function fullAllocation(specKey) {
  */
 export function fixtureCharacter(cls, { spec = FIXTURE_SPECS[cls] } = {}) {
   const other = OTHER_SPEC[cls] === spec ? FIXTURE_SPECS[cls] : OTHER_SPEC[cls];
-  const loadout = SIGILS[spec];
-  const alt = SIGILS[other];
+  const loadout = SPEC_SIGIL_LOADOUTS[spec];
+  const alt = SPEC_SIGIL_LOADOUTS[other];
   const owned = {};
   for (const sp of [...loadout.generic, loadout.utility, loadout.ancient, ...alt.generic, alt.utility, alt.ancient]) {
     if (sp) owned[sp] = { level: sp === loadout.ancient || sp === alt.ancient || isFormSigil(sp) ? 1 : 12 };
