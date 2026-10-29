@@ -945,11 +945,51 @@ describe('PVE modes (combat-pve.md §2, §13, §14)', () => {
     const pick = (m) => [m.dtMs, m.shieldMitigation, m.interMobGapMs, m.perFightCapMs, m.liveLoop];
     expect(pick(PVE_MODES.campaign)).toEqual([100, 0.5, 0, FIGHT_CAP_MS, true]);
     expect(pick(PVE_MODES.dungeon)).toEqual([10, 0.5, 500, FIGHT_CAP_MS, false]);
-    expect(pick(PVE_MODES.raid)).toEqual([10, 0.5, 500, FIGHT_CAP_MS, false]);
+    expect(pick(PVE_MODES.raid)).toEqual([10, 0, 500, FIGHT_CAP_MS, false]);
     expect(pick(PVE_MODES.oblivion)).toEqual([10, 0.5, 500, FIGHT_CAP_MS, false]);
     expect(pick(PVE_MODES.worldBoss)).toEqual([100, 0, 0, FIGHT_CAP_MS, false]);
-    expect(PVE_MODES.raid.assumptions.map((a) => a.key)).toContain('raid-shield');
+    expect(PVE_MODES.raid.assumptions.map((a) => a.key)).toContain('raid-group');
+    expect(PVE_MODES.raid.allMobsSwing).toBe(true);
+    expect(PVE_MODES.dungeon.allMobsSwing).toBe(false);
     expect(PVE_MODES.oblivion.assumptions.map((a) => a.key)).toEqual(['server-fight', 'oblivion-constants', 'oblivion-output-cut']);
+  });
+
+  // combat-pve.md §21: on the server every living raid mob swings at once
+  describe('a raid: every living mob swings at once', () => {
+    const tough = () => fighter({ stats: stats({ totalHp: 1e9, totalAttack: 100 }) });
+    const raidMob = (attack, attackSpeed) => ({ hp: 1e6, attack, attackSpeed, mode: 'raid' });
+    const pack = () => [raidMob(100, 1), raidMob(200, 1), raidMob(300, 0.5)];
+
+    it('the mobs behind the target hit the player, each on its own clock, and take no damage', () => {
+      const r = simulatePve({ fighter: tough(), enemy: pack(), maxMs: 6000, rng: rng(), log: true });
+      const hits = (i) => r.log.filter((e) => e.type === 'defender_hit' && e.mobIndex === i);
+      expect(hits(1).map((e) => e.damage)).toEqual(Array(hits(1).length).fill(200));
+      expect(hits(1).length).toBeGreaterThanOrEqual(5);
+      expect(hits(2).length).toBeGreaterThanOrEqual(2);
+      for (const i of [1, 2]) expect(hits(i).every((e) => e.defenderHp === 1e6)).toBe(true);
+      const gaps = hits(1).slice(1).map((e, k) => e.timestamp - hits(1)[k].timestamp);
+      expect(new Set(gaps)).toEqual(new Set([1000]));
+      const target = r.log.filter((e) => e.type === 'defender_hit' && e.mobIndex === undefined);
+      expect(r.damageTaken).toBe(100 * target.length + 200 * hits(1).length + 300 * hits(2).length);
+    });
+
+    it('a swing clock starts at a random point of its swing, after the opening gap', () => {
+      const firsts = new Set();
+      for (let s = 1; s <= 12; s++) {
+        const r = simulatePve({ fighter: tough(), enemy: pack(), maxMs: 3000, rng: mulberry32(s), log: true });
+        const first = r.log.find((e) => e.type === 'defender_hit' && e.mobIndex === 1).timestamp;
+        expect(first).toBeGreaterThan(INTER_MOB_GAP_MS);
+        expect(first).toBeLessThanOrEqual(INTER_MOB_GAP_MS + 1000);
+        firsts.add(first);
+      }
+      expect(firsts.size).toBeGreaterThan(6);
+    });
+
+    it('a dungeon still meets its mobs one at a time', () => {
+      const mobs = pack().map((m) => ({ ...m, mode: 'dungeon' }));
+      const r = simulatePve({ fighter: tough(), enemy: mobs, maxMs: 6000, rng: rng(), log: true });
+      expect(r.log.some((e) => e.mobIndex !== undefined)).toBe(false);
+    });
   });
 
   it('an unstamped spec says its own mode: an affinity is a World Boss, an instability an Oblivion floor', () => {
@@ -1149,7 +1189,6 @@ describe('the dungeon constants are stated once', () => {
     expect(text).toContain(`${DUNGEON_TICK_MS} ms`);
     expect(text).toContain(`(${DUNGEON_SHIELD_MITIGATION})`);
     expect(text).toContain(`${INTER_MOB_GAP_MS} ms`);
-    expect(PVE_ASSUMPTIONS.raidShield.text).toContain(String(DUNGEON_SHIELD_MITIGATION));
     expect(PVE_ASSUMPTIONS.customShield.text).toContain(String(PVE_SHIELD_MITIGATION));
   });
 });
