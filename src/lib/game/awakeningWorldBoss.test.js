@@ -31,6 +31,7 @@ describe('world boss catalogue', () => {
   it('has three affinities and one boss', () => {
     expect(Object.keys(WORLD_BOSS_AFFINITIES)).toEqual(['NONE', 'FORTIFIED', 'ENRAGED']);
     expect(WORLD_BOSS_AFFINITIES.ENRAGED.maxFightDurationMs).toBe(300000);
+    expect(Object.values(WORLD_BOSS_AFFINITIES).map((a) => a.name)).toEqual(['Dormant', 'Adamant Scales', 'Rising Wrath']);
     expect(WORLD_BOSSES[0].hp).toBe(2e10);
   });
   it('reward tiers are contiguous', () => {

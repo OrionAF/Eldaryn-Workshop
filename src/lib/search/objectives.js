@@ -175,7 +175,7 @@ export function resolveTarget(raw = { kind: 'dummy' }, { character, partner } = 
     t.enemy = mob;
     t.maxMs = mob.fightDurationMs;
     t.seconds = mob.fightDurationMs / 1000;
-    t.label = `World Boss (${affinity.toLowerCase()})`;
+    t.label = `World Boss (${WORLD_BOSS_AFFINITIES[affinity].name})`;
   } else if (kind === 'fortressBoss') {
     const group = raw.group;
     if (!FORTRESS_BOSS_GROUPS.includes(group)) throw new Error(`unknown Fortress boss group '${group}'`);

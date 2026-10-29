@@ -63,7 +63,6 @@
   });
   const pvpDefault = () => ({ kind: 'pvp', opponentIds: opponents.slice(0, 1).map((o) => o.id), seats: 'attacker' });
   const SEAT_LABEL = { attacker: 'Attacker', defender: 'Defender', both: 'Both' };
-  const AFFINITY_LABEL = { NONE: 'None', FORTIFIED: 'Fortified', ENRAGED: 'Enraged' };
 
   const kinds = $derived([...TARGET_KINDS.filter((k) => k !== 'oblivion' || oblivionUnlocked || target.kind === 'oblivion'), 'celestial', 'pvp']);
   const kindOptions = $derived(
@@ -83,7 +82,7 @@
       label: `${r.name}${playerLevel != null && playerLevel < r.requiredPlayerLevel ? ` (needs level ${r.requiredPlayerLevel})` : ''}`,
     })),
   );
-  const affinityOptions = Object.keys(WORLD_BOSS_AFFINITIES).map((k) => ({ value: k, label: AFFINITY_LABEL[k] ?? k }));
+  const affinityOptions = Object.values(WORLD_BOSS_AFFINITIES).map((a) => ({ value: a.id, label: a.name }));
   const GROUP_LABEL = { TOP: 'Top fortress (Fortress Guardian)', BOTTOM: 'Bottom fortress (Fortress Warden)', CORE: 'Core (Core Overlord)' };
   const groupOptions = FORTRESS_BOSS_GROUPS.map((g) => ({ value: g, label: GROUP_LABEL[g] ?? g }));
   const seatOptions = PVP_SEATS.map((s) => ({ value: s, label: SEAT_LABEL[s] }));
