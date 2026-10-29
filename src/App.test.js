@@ -45,11 +45,11 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-it('rail: 19 pages in three labelled groups, Oblivion Floors always listed but locked', () => {
+it('rail: 18 pages in three labelled groups, Oblivion Floors always listed but locked', () => {
   open();
   const groups = qa('nav[aria-label="Main"] section.group');
   expect(groups.map((g) => g.querySelector('h2').textContent.trim())).toEqual(['Character', 'Builds', 'Tools']);
-  expect(groups.map((g) => g.querySelectorAll('a.item').length)).toEqual([10, 3, 6]);
+  expect(groups.map((g) => g.querySelectorAll('a.item').length)).toEqual([10, 3, 5]);
   const oblivion = q('a.item[data-page="tools/oblivion"]');
   expect(oblivion.textContent).toContain('locked');
   expect(oblivion.textContent).toContain('Oblivion Floors');

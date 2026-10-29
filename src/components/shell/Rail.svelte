@@ -2,7 +2,7 @@
   /**
    * Rail.svelte - the one navigation tree (ia.md §2, design-system §4.1/§4.27).
    *
-   * `<nav aria-label="Main">` lists the 19 pages in three groups. CSS lays it out as the full rail
+   * `<nav aria-label="Main">` lists the 18 pages in three groups. CSS lays it out as the full rail
    * (>= 1280), the 64px icon rail (labels hidden, `data-tip` flyout) and, on a phone, as the area
    * strip under the top bar (only the current area's group, scrolling sideways). `<nav
    * aria-label="Areas">` is the phone bottom tab bar (Character / Builds / Tools); CSS shows
