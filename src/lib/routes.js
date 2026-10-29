@@ -46,6 +46,7 @@ export const PAGES = [
   { id: 'tools/optimiser', label: 'Optimiser', title: 'Optimiser', glyph: '⟳', scope: 'tool', sentence: TO, needsClass: true, usesPreset: false, legacy: 'optimiser' },
   { id: 'tools/duel', label: 'Duel', title: 'Duel', glyph: '⚡', scope: 'tool', sentence: TO, needsClass: true, usesPreset: false, legacy: 'duel' },
   { id: 'tools/opponents', label: 'Opponents', title: 'Opponents', glyph: '☗', scope: 'tool', sentence: TO, needsClass: true, usesPreset: false },
+  { id: 'tools/spec-guide', label: 'Spec Guide', title: 'Spec stat guide', glyph: '⚖', scope: 'tool', sentence: 'The same for every player; your preset appears only beside it.', needsClass: false, usesPreset: false },
   { id: 'tools/oblivion', label: 'Oblivion Floors', title: 'Oblivion Floors', glyph: '◐', scope: 'oblivion', sentence: TO, needsClass: true, usesPreset: false, legacy: 'oblivion' },
 ].map((p) => {
   const [area, slug] = p.id.split('/');

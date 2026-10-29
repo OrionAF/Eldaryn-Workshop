@@ -90,14 +90,15 @@ export function probeStats(stats, { key, step }, ctx = {}) {
  * The worker request for one preset: its Fighter and a probe Fighter per step (plain data).
  * @param {Object} character  a normalised v2 Character
  * @param {string} [presetId]
- * @param {{precision?: 'quick'|'standard'|'thorough', seed?: number, realm?: 'base'|'oblivion'}} [o]
+ * @param {{precision?: 'quick'|'standard'|'thorough', seed?: number, realm?: 'base'|'oblivion', steps?: Array<Object>}} [o]
+ *   `steps` replaces the class's STAT_WEIGHT_STEPS (the Spec stat guide probes one gear roll per stat)
  */
-export function statWeightsRequest(character, presetId, { precision = 'standard', seed = 1, realm = 'base' } = {}) {
+export function statWeightsRequest(character, presetId, { precision = 'standard', seed = 1, realm = 'base', steps = null } = {}) {
   const res = computePresetStats(character, presetId, { realm });
   const base = buildFighter(character, presetId, { realm });
   const ctx = { ...res.ctx, exact: res.exact };
   const prec = STAT_WEIGHT_PRECISION[precision] ?? STAT_WEIGHT_PRECISION.standard;
-  const probes = stepsFor(character.class).map((s) => ({
+  const probes = (steps ?? stepsFor(character.class)).map((s) => ({
     key: s.key, label: sheetKeyMeta(s.key)?.label ?? s.key, unit: s.unit, chart: s.chart,
     fighter: { ...base, stats: probeStats(base.stats, s, ctx) },
   }));
