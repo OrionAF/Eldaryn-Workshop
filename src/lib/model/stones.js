@@ -73,8 +73,8 @@ export function statRollFraction(typeEnum, value) {
   return Math.min(1, Math.max(0, (n - def.min) / (def.max - def.min)));
 }
 
-// Letter cut-offs on a stone's mean roll fraction. An app convention, not a game grade: it rates
-// the roll only, never whether the stat suits a build.
+// Letter cut-offs on a stone's roll once attuned to Q100. An app convention, not a game grade: it
+// rates the roll only, never whether the stat suits a build.
 const ROLL_GRADES = [
   [0.9, 'S'],
   [0.75, 'A'],
@@ -82,12 +82,30 @@ const ROLL_GRADES = [
   [0.25, 'C'],
 ];
 
-/** A stone's roll quality: mean of its rows' roll fractions and a letter. null when no row grades (e.g. sealed). */
+const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+
+/**
+ * A stone's roll quality, or null when no row grades (e.g. sealed).
+ *   fraction  - mean roll fraction of its rows now
+ *   potential - the same once attuned to Q100: every row rises by (100 - quality) / 99 of its
+ *               range, capped at max (stones.md §6). A floor: the last attune may overshoot.
+ *               An unknown quality is taken as the roll's own (never attuned).
+ *   grade     - letter on `potential`
+ */
 export function stoneRollGrade(stone) {
-  const fractions = (stone?.stats ?? []).map((s) => statRollFraction(s.type, s.value)).filter((f) => f != null);
-  if (fractions.length === 0) return null;
-  const fraction = fractions.reduce((a, b) => a + b, 0) / fractions.length;
-  return { fraction, grade: ROLL_GRADES.find(([min]) => fraction >= min)?.[1] ?? 'D' };
+  const rows = (stone?.stats ?? []).filter((s) => statRollFraction(s.type, s.value) != null);
+  if (rows.length === 0) return null;
+  const fraction = mean(rows.map((s) => statRollFraction(s.type, s.value)));
+  const quality = stone.quality ?? Math.round(fraction * 99) + 1;
+  const rise = Math.max(0, 100 - quality) / 99;
+  const potential = mean(
+    rows.map((s) => {
+      const def = STONE_STAT_DEFS.get(s.type);
+      const raised = def.min + (def.max - def.min) * (statRollFraction(s.type, s.value) + rise);
+      return statRollFraction(s.type, clampStoneValue(s.type, raised));
+    }),
+  );
+  return { fraction, potential, grade: ROLL_GRADES.find(([min]) => potential >= min)?.[1] ?? 'D' };
 }
 
 /** Stat rows of a stone checked against its type's pools: guaranteed first, then the PvP draw, then free stats; each value clamped. */

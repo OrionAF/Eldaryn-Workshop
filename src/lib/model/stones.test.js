@@ -13,13 +13,27 @@ describe('roll grading (stones.md §2 ranges)', () => {
     expect(statRollFraction('NOPE', 1)).toBeNull();
   });
 
-  it('stoneRollGrade: mean of the rows, with a letter', () => {
-    const maxed = { stats: [{ type: 'PVP_ATTACK', value: 25 }, { type: 'PVP_DEFENSE', value: 20 }, { type: 'CRIT_CHANCE', value: 2.5 }, { type: 'BLOCK_CHANCE', value: 99 }] };
-    expect(stoneRollGrade(maxed)).toEqual({ fraction: 1, grade: 'S' });
-    const g = stoneRollGrade({ stats: [{ type: 'PVP_ATTACK', value: 25 }, { type: 'PVP_DEFENSE', value: 5 }] });
-    expect(g).toEqual({ fraction: 0.5, grade: 'B' });
-    expect(stoneRollGrade({ stats: [{ type: 'PVP_ATTACK', value: 5 }] }).grade).toBe('D');
+  it('stoneRollGrade: mean roll now, and at Q100 after attunement; the letter is on the latter', () => {
+    const maxed = { quality: 100, stats: [{ type: 'PVP_ATTACK', value: 25 }, { type: 'PVP_DEFENSE', value: 20 }, { type: 'CRIT_CHANCE', value: 2.5 }, { type: 'BLOCK_CHANCE', value: 99 }] };
+    expect(stoneRollGrade(maxed)).toEqual({ fraction: 1, potential: 1, grade: 'S' });
+    // Q100 already: no attunement left, so potential = now.
+    expect(stoneRollGrade({ quality: 100, stats: [{ type: 'PVP_ATTACK', value: 5 }] })).toMatchObject({ fraction: 0, potential: 0, grade: 'D' });
+    // Uneven roll: PvP Attack is maxed, so its share of every gain is lost.
+    const uneven = stoneRollGrade({ quality: 51, stats: [{ type: 'PVP_ATTACK', value: 25 }, { type: 'PVP_DEFENSE', value: 5 }] });
+    expect(uneven.fraction).toBe(0.5);
+    expect(uneven.potential).toBeCloseTo((1 + 7 / 15) / 2); // PvP Def 5 + 49/99*15 = 12.4 -> 12
+    expect(uneven.grade).toBe('B');
     expect(stoneRollGrade({ stats: [] })).toBeNull();
+  });
+
+  it('stoneRollGrade replays a real stone (stones.md §6, Eldaryn Q29 16/6/3%)', () => {
+    const b = { quality: 29, stats: [{ type: 'PVP_ATTACK', value: 16 }, { type: 'PVP_DEFENSE', value: 6 }, { type: 'ATTACK_SPEED', value: 0.03 }] };
+    const g = stoneRollGrade(b);
+    expect(Math.round(g.fraction * 99) + 1).toBe(29);
+    // 25 / 17 / 0.09 at Q100 with no overshoot; the real stone overshot to 25 / 18 / 0.10.
+    expect(g.potential).toBeCloseTo((1 + 12 / 15 + 8 / 9) / 3);
+    // Unknown quality: taken as never attuned.
+    expect(stoneRollGrade({ ...b, quality: null }).potential).toBeCloseTo(g.potential);
   });
 });
 

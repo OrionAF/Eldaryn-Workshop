@@ -60,15 +60,16 @@ it('Oblivion stones show their grade; clicking selects, clicking again deselects
   unmount(app);
 });
 
-it('grades the roll: letter, mean % of range, one bar per stat; Roll grade sort puts the best first', () => {
-  const best = stone({ id: 'best', type: 'MYTHIC', stats: [{ type: 'PVP_ATTACK', value: 25 }, { type: 'PVP_DEFENSE', value: 20 }] });
-  const mid = stone({ id: 'mid', stats: [{ type: 'BLOCK_CHANCE', value: 1.25 }] });
-  const app = mount(StoneGrid, { target, props: { stones: [mid, best, stone({ id: 'blank', stats: [] })], sets: sets(), sortBy: 'roll', onSelect: () => {} } });
+it('grades the roll: letter on the Q100 roll, % now -> at Q100, one bar per stat; Roll grade sort uses Q100', () => {
+  const best = stone({ id: 'best', type: 'MYTHIC', quality: 100, stats: [{ type: 'PVP_ATTACK', value: 25 }, { type: 'PVP_DEFENSE', value: 20 }] });
+  const capped = stone({ id: 'capped', type: 'PVP', quality: 100, stats: [{ type: 'PVP_DEFENSE', value: 20 }, { type: 'BLOCK_CHANCE', value: 0.5 }] });
+  const even = stone({ id: 'even', quality: 51, stats: [{ type: 'BLOCK_CHANCE', value: 1.25 }] });
+  const app = mount(StoneGrid, { target, props: { stones: [capped, best, even, stone({ id: 'blank', stats: [] })], sets: sets(), sortBy: 'roll', onSelect: () => {} } });
   flushSync();
-  const rolls = [...target.querySelectorAll('.stone-roll')].map((e) => e.textContent.replace(/\s+/g, ' ').trim());
-  expect(rolls).toEqual(['S Roll 100%', 'B Roll 50%']);
+  const rolls = [...target.querySelectorAll('.stone-roll')].map((e) => e.textContent.replace(/[\s ]+/g, ' ').trim());
+  expect(rolls).toEqual(['S Roll 100%', 'S Roll 50% → 100%', 'B Roll 50%']);
   expect(target.querySelectorAll('.stat-fill')[0].style.width).toBe('100%');
-  expect(target.querySelectorAll('.stat-bar')).toHaveLength(3);
+  expect(target.querySelectorAll('.stat-bar')).toHaveLength(5);
   unmount(app);
 });
 
