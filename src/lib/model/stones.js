@@ -65,6 +65,31 @@ export function clampStoneValue(typeEnum, value) {
   return parseFloat(Math.min(def.max, Math.max(def.min, n)).toFixed(def.decimals));
 }
 
+/** Where a stored roll sits in its stat's [min, max] (stones.md §2), 0..1; null for an unknown stat. */
+export function statRollFraction(typeEnum, value) {
+  const def = STONE_STAT_DEFS.get(typeEnum);
+  const n = Number(value);
+  if (!def || !Number.isFinite(n) || def.max <= def.min) return null;
+  return Math.min(1, Math.max(0, (n - def.min) / (def.max - def.min)));
+}
+
+// Letter cut-offs on a stone's mean roll fraction. An app convention, not a game grade: it rates
+// the roll only, never whether the stat suits a build.
+const ROLL_GRADES = [
+  [0.9, 'S'],
+  [0.75, 'A'],
+  [0.5, 'B'],
+  [0.25, 'C'],
+];
+
+/** A stone's roll quality: mean of its rows' roll fractions and a letter. null when no row grades (e.g. sealed). */
+export function stoneRollGrade(stone) {
+  const fractions = (stone?.stats ?? []).map((s) => statRollFraction(s.type, s.value)).filter((f) => f != null);
+  if (fractions.length === 0) return null;
+  const fraction = fractions.reduce((a, b) => a + b, 0) / fractions.length;
+  return { fraction, grade: ROLL_GRADES.find(([min]) => fraction >= min)?.[1] ?? 'D' };
+}
+
 /** Stat rows of a stone checked against its type's pools: guaranteed first, then the PvP draw, then free stats; each value clamped. */
 function normaliseStoneStats(rawStats, typeEnum, statCount) {
   const recipe = stoneRecipe(typeEnum);

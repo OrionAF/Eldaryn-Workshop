@@ -2,7 +2,8 @@
   /**
    * StoneGrid.svelte - one pool of enchant stones as a grid of tiles (adapted from the v1 grid).
    * Display order: socketed first, then rarest type first, then quality descending; the stored
-   * array is never reordered. Props:
+   * array is never reordered. Each tile grades its roll (model/stones.js stoneRollGrade): a letter
+   * and mean % of range, plus one bar per stat. Props:
    *   stones          the pool (character.enchantStones or .oblivionEnchantStones)
    *   sets            the sets that draw from this pool: [{ key, label, enchantSlots }]
    *   selectedStoneId, onSelect(id | null), equippedStoneId (stone in the selected slot: gold ring)
@@ -10,14 +11,17 @@
   import { STONE_TYPES, oblivionGrade } from '../../lib/game/stones.js';
   import { slotLabel, statLabel, formatStatValue, STONE_COLOR } from './gearFormat.js';
   import { BASE_SLOTS } from '../../lib/game/gear.js';
+  import { statRollFraction, stoneRollGrade } from '../../lib/model/stones.js';
 
   let { stones, sets, cls = null, selectedStoneId = null, onSelect, equippedStoneId = null, typeFilter = '', sortBy = 'default' } = $props();
 
   const typeRank = new Map(STONE_TYPES.map((t, i) => [t.enum, i]));
   const socketedIds = $derived(new Set(sets.flatMap((s) => BASE_SLOTS.map((slot) => s.enchantSlots[slot]).filter(Boolean))));
+  const grades = $derived(new Map(stones.map((s) => [s.id, stoneRollGrade(s)])));
   const sorted = $derived(
     [...stones.filter((x) => !typeFilter || x.type === typeFilter)].sort((a, b) => {
       if (sortBy === 'quality') return (b.quality ?? 0) - (a.quality ?? 0);
+      if (sortBy === 'roll') return (grades.get(b.id)?.fraction ?? -1) - (grades.get(a.id)?.fraction ?? -1);
       const bySocketed = (socketedIds.has(b.id) ? 1 : 0) - (socketedIds.has(a.id) ? 1 : 0);
       if (bySocketed !== 0) return bySocketed;
       const byType = (typeRank.get(b.type) ?? -1) - (typeRank.get(a.type) ?? -1);
@@ -41,6 +45,7 @@
       })
       .join(' | ');
   }
+  const pct = (f) => `${Math.round(f * 100)}%`;
 </script>
 
 <div class="stone-grid">
@@ -49,6 +54,7 @@
   {:else}
     {#each sorted as stone (stone.id)}
       {@const sc = STONE_COLOR[stone.type]}
+      {@const roll = grades.get(stone.id)}
       <button
         type="button"
         class="stone-tile"
@@ -62,6 +68,12 @@
           <span class="stone-type">{typeName(stone.type)}</span>
           <span class="stone-quality mono">{stone.quality != null ? `Q${stone.quality}` : 'Q?'}</span>
         </span>
+        {#if roll}
+          <span class="stone-roll" title="Mean position of each stat in its possible range">
+            <span class="roll-grade grade-{roll.grade}">{roll.grade}</span>
+            <span class="roll-pct mono">Roll {pct(roll.fraction)}</span>
+          </span>
+        {/if}
         {#if stone.amplifyLevel > 0 || stone.oblivionLevel || !stone.activated}
           <span class="stone-tags mono">
             {#if !stone.activated}<span>Inactive</span>{/if}
@@ -70,9 +82,13 @@
           </span>
         {/if}
         {#each lines(stone) as line (line.type)}
+          {@const f = statRollFraction(line.type, line.value)}
           <span class="stone-stat">
             <span class="stat-label">{statLabel(line.type)}</span>
             <span class="stat-value">{formatStatValue(line.type, line.value)}</span>
+            {#if f != null}
+              <span class="stat-bar" title="{pct(f)} of range"><span class="stat-fill" style="width: {pct(f)}"></span></span>
+            {/if}
           </span>
         {/each}
         <span class="stone-socketed">{socketStatus(stone.id)}</span>
@@ -139,12 +155,51 @@
     font-size: var(--fs-11);
     color: var(--brass-200);
   }
-  .stone-stat {
+  .stone-roll {
     display: flex;
-    justify-content: space-between;
+    align-items: baseline;
     gap: var(--sp-2);
+    font-size: var(--fs-11);
+    color: var(--text-muted);
+  }
+  .roll-grade {
+    font-weight: 700;
+    font-size: var(--fs-12);
+  }
+  .grade-S {
+    color: var(--brass-200);
+  }
+  .grade-A {
+    color: var(--brass-400);
+  }
+  .grade-B {
+    color: var(--text-ink);
+  }
+  .grade-C {
+    color: var(--text-soft);
+  }
+  .grade-D {
+    color: var(--text-muted);
+  }
+  .stone-stat {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: var(--sp-2);
     width: 100%;
     font-size: var(--fs-11);
+  }
+  .stat-bar {
+    grid-column: 1 / -1;
+    height: 2px;
+    margin-bottom: 2px;
+    background: var(--line-hairline);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .stat-fill {
+    display: block;
+    height: 100%;
+    background: var(--tile-color, var(--brass-400));
   }
   .stat-label {
     color: var(--text-muted);

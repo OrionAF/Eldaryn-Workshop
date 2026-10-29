@@ -192,6 +192,7 @@
                 options={[
                   { value: 'default', label: 'Socketed, then rarity' },
                   { value: 'quality', label: 'Quality' },
+                  { value: 'roll', label: 'Roll grade' },
                 ]}
                 bind:value={sortBy}
               />

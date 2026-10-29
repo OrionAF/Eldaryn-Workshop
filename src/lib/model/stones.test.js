@@ -1,6 +1,27 @@
 import { describe, it, expect } from 'vitest';
-import { defaultStones, normaliseStones, normaliseStone, migrateStonesFromV1, stoneRecipe } from './stones.js';
+import { defaultStones, normaliseStones, normaliseStone, migrateStonesFromV1, stoneRecipe, statRollFraction, stoneRollGrade } from './stones.js';
 import { newCharacter, normaliseCharacter } from './index.js';
+
+describe('roll grading (stones.md §2 ranges)', () => {
+  it('statRollFraction: position in [min, max], clamped; unknown stat -> null', () => {
+    expect(statRollFraction('PVP_ATTACK', 5)).toBe(0);
+    expect(statRollFraction('PVP_ATTACK', 25)).toBe(1);
+    expect(statRollFraction('PVP_ATTACK', 15)).toBe(0.5);
+    expect(statRollFraction('PVP_DEFENSE', 20)).toBe(1);
+    expect(statRollFraction('CRIT_CHANCE', 1.5)).toBeCloseTo(0.5);
+    expect(statRollFraction('PVP_ATTACK', 99)).toBe(1);
+    expect(statRollFraction('NOPE', 1)).toBeNull();
+  });
+
+  it('stoneRollGrade: mean of the rows, with a letter', () => {
+    const maxed = { stats: [{ type: 'PVP_ATTACK', value: 25 }, { type: 'PVP_DEFENSE', value: 20 }, { type: 'CRIT_CHANCE', value: 2.5 }, { type: 'BLOCK_CHANCE', value: 99 }] };
+    expect(stoneRollGrade(maxed)).toEqual({ fraction: 1, grade: 'S' });
+    const g = stoneRollGrade({ stats: [{ type: 'PVP_ATTACK', value: 25 }, { type: 'PVP_DEFENSE', value: 5 }] });
+    expect(g).toEqual({ fraction: 0.5, grade: 'B' });
+    expect(stoneRollGrade({ stats: [{ type: 'PVP_ATTACK', value: 5 }] }).grade).toBe('D');
+    expect(stoneRollGrade({ stats: [] })).toBeNull();
+  });
+});
 
 describe('stoneRecipe (stones.md §1)', () => {
   it('PVE stones: 2 free stats from their own pool, nothing guaranteed', () => {
