@@ -23,42 +23,41 @@ const open = () => {
   app = mount(ToolsSpecGuidePage, { target });
   flushSync();
 };
-const stats = () => [...target.querySelectorAll('[data-testid="spec-baseline"] tbody tr[data-stat]')].map((r) => r.dataset.stat);
-const headers = () => [...target.querySelectorAll('[data-testid="spec-baseline"] thead th')].map((th) => th.textContent.trim());
+const card = () => target.querySelector('[data-testid="stat-priority"]');
+const mainStats = () => [...card().querySelector('.list.main').querySelectorAll('[data-stat]')].map((s) => s.dataset.stat);
 
-it('opens on the active preset\'s spec with a column per level, the character\'s band highlighted', () => {
+it('opens on the active preset\'s spec with its priority card', () => {
   rosterStore.setTalentSetSpec(0, 'WARRIOR_DPS');
-  rosterStore.setCharacterLevel(85);
   open();
   expect(target.querySelector('select').value).toBe('WARRIOR_DPS');
-  expect(headers()).toHaveLength(1 + baseline.levels.length);
-  expect(stats().slice(0, 2)).toEqual(['totalAttack', 'totalHp']);
-  const own = target.querySelectorAll('thead th.own');
-  expect(own).toHaveLength(1);
-  expect(own[0].textContent).toContain('80');
-  expect(target.querySelector('[data-testid="spec-guide-text"]').textContent).toContain('Warrior · Arms: stat baseline (Damage build)');
+  expect(card().querySelector('.title').textContent).toBe('Warrior · Arms');
+  expect(card().querySelector('.list.main').dataset.list).toBe('damage');
+  expect(mainStats()[0]).toBe('totalAttackSpeed');
+  expect(target.querySelector('[data-testid="keep"]').textContent).toContain('Attack Speed');
+  expect(target.querySelector('[data-testid="spec-guide-text"]').textContent).toMatch(/^Warrior · Arms: stat priority\nDamage: Attack Speed > /);
 });
 
-it('a tank spec opens on Balanced; with no talent spec it opens on the class\'s first spec', () => {
+it('a tank card leads with survival; with no talent spec it opens on the class\'s first spec', () => {
   rosterStore.setTalentSetSpec(0, 'WARRIOR_TANK');
   open();
-  expect(target.querySelector('[aria-pressed="true"]').textContent.trim()).toBe('Balanced');
+  expect(card().querySelector('.list.main').dataset.list).toBe('survival');
   unmount(app);
   rosterStore.addCharacter('No spec', 'NECROMANCER');
   open();
   expect(target.querySelector('select').value).toBe('NECROMANCER_DEATHLORD');
 });
 
-it('switching spec and build changes the table', () => {
+it('switching spec changes the card; the typical totals stay folded below', () => {
+  rosterStore.setCharacterLevel(85);
   open();
   const select = target.querySelector('select');
   select.value = 'MYSTIC_MAGE';
   select.dispatchEvent(new Event('change', { bubbles: true }));
   flushSync();
-  expect(stats()).toContain('totalSpellDamage');
-  const damage = target.querySelector('[data-stat="totalSpellDamage"]').textContent;
-  [...target.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Balanced').click();
-  flushSync();
-  expect(target.querySelector('[data-testid="spec-guide-text"]').textContent).toContain('(Balanced build)');
-  expect(target.querySelector('[data-stat="totalSpellDamage"]').textContent).not.toBe(damage);
+  expect(mainStats()).toContain('totalSpellDamage');
+  expect(target.querySelector('[data-testid="ignore"]').textContent).toContain('no effect for Mystic');
+  const totals = target.querySelector('details.totals');
+  expect(totals.open).toBe(false);
+  expect(totals.querySelectorAll('thead th')).toHaveLength(1 + baseline.levels.length);
+  expect(totals.querySelector('thead th.own').textContent).toContain('80');
 });
