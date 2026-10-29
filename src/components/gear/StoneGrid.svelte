@@ -3,7 +3,7 @@
    * StoneGrid.svelte - one pool of enchant stones as a grid of tiles (adapted from the v1 grid).
    * Display order: socketed first, then rarest type first, then quality descending; the stored
    * array is never reordered. Each tile grades its roll (model/stones.js stoneRollGrade): a letter
-   * and mean % of range, plus one bar per stat. Props:
+   * on the roll at Q100, the mean % of range now and at Q100, plus one bar per stat. Props:
    *   stones          the pool (character.enchantStones or .oblivionEnchantStones)
    *   sets            the sets that draw from this pool: [{ key, label, enchantSlots }]
    *   selectedStoneId, onSelect(id | null), equippedStoneId (stone in the selected slot: gold ring)
@@ -21,7 +21,7 @@
   const sorted = $derived(
     [...stones.filter((x) => !typeFilter || x.type === typeFilter)].sort((a, b) => {
       if (sortBy === 'quality') return (b.quality ?? 0) - (a.quality ?? 0);
-      if (sortBy === 'roll') return (grades.get(b.id)?.fraction ?? -1) - (grades.get(a.id)?.fraction ?? -1);
+      if (sortBy === 'roll') return (grades.get(b.id)?.potential ?? -1) - (grades.get(a.id)?.potential ?? -1);
       const bySocketed = (socketedIds.has(b.id) ? 1 : 0) - (socketedIds.has(a.id) ? 1 : 0);
       if (bySocketed !== 0) return bySocketed;
       const byType = (typeRank.get(b.type) ?? -1) - (typeRank.get(a.type) ?? -1);
@@ -69,9 +69,15 @@
           <span class="stone-quality mono">{stone.quality != null ? `Q${stone.quality}` : 'Q?'}</span>
         </span>
         {#if roll}
-          <span class="stone-roll" title="Mean position of each stat in its possible range">
+          {@const rises = pct(roll.potential) !== pct(roll.fraction)}
+          <span
+            class="stone-roll"
+            title={rises
+              ? `Stats sit ${pct(roll.fraction)} of the way up their ranges now and reach at least ${pct(roll.potential)} once attuned to Q100. Graded on the latter.`
+              : 'Mean position of each stat in its possible range'}
+          >
             <span class="roll-grade grade-{roll.grade}">{roll.grade}</span>
-            <span class="roll-pct mono">Roll {pct(roll.fraction)}</span>
+            <span class="roll-pct mono">Roll {pct(roll.fraction)}{#if rises}&nbsp;<span class="roll-potential">→ {pct(roll.potential)}</span>{/if}</span>
           </span>
         {/if}
         {#if stone.amplifyLevel > 0 || stone.oblivionLevel || !stone.activated}
@@ -161,6 +167,9 @@
     gap: var(--sp-2);
     font-size: var(--fs-11);
     color: var(--text-muted);
+  }
+  .roll-potential {
+    color: var(--text-soft);
   }
   .roll-grade {
     font-weight: 700;
