@@ -1,15 +1,14 @@
-// features/specGuide.js: the Spec stat guide. For each spec and level band, what one typical gear roll of
-// each stat is worth to a reference build of that spec, ranked. Contract: docs/Reference/simulation.md
-// §Spec stat guide.
+// features/specGuide.js: per-roll stat values. For each spec and level band, what one typical gear roll of
+// each stat is worth to a reference build of that spec, ranked. The Spec baseline (specBaseline.js) keeps
+// gear by these values. Contract: docs/Reference/simulation.md §Spec stat guide.
 //
 //   referenceCharacter()  a clean build of one spec at one level band (gear, talents, sigils only)
 //   rollSteps()           one expected gear secondary roll per stat, as stat-weight steps
 //   specGuideRequest()    the stat-weights request of a reference build, probed one roll per stat
 //   runSpecGuide()        one guide entry: damage on the training dummy, time alive against the reference enemy
 //   guideRanking()        a chart's bars as a ranking: top stat 100, the rest relative to it
-//   presetRanking()       the damage ranking from a preset's own Stat weights run, rescaled to one roll
 //
-// The tables the page shows are generated ahead of time (scripts/specGuide.mjs -> src/data/specGuide.json),
+// The tables are generated ahead of time (scripts/specGuide.mjs -> src/data/specGuide.json),
 // because every spec and band takes minutes of fights.
 import { normaliseCharacter } from '../model/index.js';
 import { sanitiseAllocation } from '../model/talents.js';
@@ -60,7 +59,7 @@ export const GUIDE_BANDS = Object.freeze([
 export const guideBand = (level) => GUIDE_BANDS.find((b) => b.level === level) ?? null;
 
 // CRIT_CHANCE -> totalCritChance (the accumulator names of pipeline/totals.js, as sheet keys)
-const totalKeyOfType = (type) => `total${type.toLowerCase().split('_').map((w) => w[0].toUpperCase() + w.slice(1)).join('')}`;
+export const totalKeyOfType = (type) => `total${type.toLowerCase().split('_').map((w) => w[0].toUpperCase() + w.slice(1)).join('')}`;
 const POOL_BY_KEY = new Map(SECONDARY_STAT_POOL.map((def) => [totalKeyOfType(def.type), def]));
 
 /**
@@ -260,41 +259,4 @@ export async function runSpecGuide(g, level, { precision = 'thorough', seed = 1,
     damage: guideRanking(dmg.damage.bars, steps).map(mark),
     survival: guideRanking(chartBars('damage', b, probes), steps).map(mark),
   };
-}
-
-/**
- * A preset's own Stat weights damage chart as the guide's ranking: each bar rescaled from its step to one
- * expected roll at `level` (linear: the steps are small), then scored like guideRanking. Its survival chart
- * is the 0/1 measure, not time alive, so it is not compared.
- * @param {Object} result  runStatWeights output of the preset
- */
-export function presetRanking(result, cls, level) {
-  const chart = result?.damage;
-  if (!chart) return null;
-  const steps = rollSteps(cls, level);
-  const stepOf = new Map(STAT_WEIGHT_STEPS.map((s) => [s.key, s.step]));
-  const rollOf = new Map(steps.map((s) => [s.key, s.step]));
-  const scaled = chart.bars.filter((b) => rollOf.has(b.key)).map((b) => {
-    const f = rollOf.get(b.key) / stepOf.get(b.key);
-    return { ...b, delta: b.delta * f, pct: b.pct * f, pctLo: b.pctLo * f, pctHi: b.pctHi * f };
-  });
-  return guideRanking(scaled, steps);
-}
-
-/**
- * The guide as plain text to paste into a chat: the spec and band, then each list best first.
- * @param {Object} entry  one specGuide.json entry
- */
-export function guideText(entry, { top = 8 } = {}) {
-  const g = guideSpec(entry.id);
-  const lines = [`${guideSpecLabel(g)}, level ${entry.level}: stat priority per gear roll (best = 100)`];
-  const fmt = (kind, v) => `+${v.toFixed(2)}% ${kind === 'damage' ? 'DPS' : 'time alive'}`;
-  for (const kind of ['damage', 'survival']) {
-    const rows = (entry[kind] ?? []).filter((r) => r.score != null).slice(0, top);
-    if (!rows.length) continue;
-    lines.push('', kind === 'damage' ? 'Damage' : 'Survival');
-    rows.forEach((r, i) => lines.push(`${i + 1}. ${r.label} ${r.score} (${r.unit} roll: ${fmt(kind, r.value)})`));
-  }
-  lines.push('', 'Simulated on a reference build (gear, talents and sigils only) in Eldaryn Gear Optimiser. A baseline, not the best build for any one character.');
-  return lines.join('\n');
 }

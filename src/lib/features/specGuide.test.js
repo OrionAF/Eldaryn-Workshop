@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  GUIDE_SPECS, GUIDE_BANDS, expectedRoll, rollSteps, referenceCharacter, talentPointsAt, guideRanking, presetRanking,
-  guideText, guideSpec, guideSpecLabel, runSpecGuide, calibrateTimeAlive, PRESSURE_ENEMY, TIME_ALIVE,
+  GUIDE_SPECS, GUIDE_BANDS, expectedRoll, rollSteps, referenceCharacter, talentPointsAt, guideRanking,
+  guideSpec, guideSpecLabel, runSpecGuide, calibrateTimeAlive, PRESSURE_ENEMY, TIME_ALIVE,
 } from './specGuide.js';
 import { SECONDARY_STAT_POOL, secondaryStatCount } from '../game/gear.js';
 import { buildFighter } from '../build/fighter.js';
@@ -80,25 +80,6 @@ describe('rankings', () => {
     const rows = guideRanking([bar('a', 2, true), bar('b', -1, true)], steps);
     expect(rows.find((r) => r.key === 'b').score).toBeNull();
   });
-
-  it('rescales a preset\'s Stat weights bars from their step to one roll', () => {
-    const roll = rollSteps('WARRIOR', 80).find((s) => s.key === 'totalCritChance').step;
-    const as = rollSteps('WARRIOR', 80).find((s) => s.key === 'totalAttackSpeed').step;
-    const result = {
-      damage: {
-        bars: [
-          { key: 'totalCritChance', label: 'Crit', pct: 1, pctLo: 0.9, pctHi: 1.1, delta: 100, measurable: true },
-          { key: 'totalAttackSpeed', label: 'AS', pct: 8, pctLo: 7.9, pctHi: 8.1, delta: 800, measurable: true },
-        ],
-      },
-    };
-    const rows = presetRanking(result, 'WARRIOR', 80);
-    const crit = rows.find((r) => r.key === 'totalCritChance');
-    const speed = rows.find((r) => r.key === 'totalAttackSpeed');
-    expect(crit.value).toBeCloseTo(1 * roll, 9); // step 1 point
-    expect(speed.value).toBeCloseTo(8 * (as / 0.1), 9); // step 0.1
-    expect(presetRanking({ damage: null }, 'WARRIOR', 80)).toBeNull();
-  });
 });
 
 describe('time alive', () => {
@@ -116,7 +97,6 @@ describe('time alive', () => {
     expect(e).toMatchObject({ id: 'WARRIOR_DPS', level: 40, cls: 'WARRIOR', spec: 'WARRIOR_DPS' });
     expect(e.damage.some((r) => r.score === 100)).toBe(true);
     expect(e.survival.length).toBeGreaterThan(0);
-    expect(guideText(e)).toContain('Warrior · Arms, level 40');
   }, 60000);
 });
 
