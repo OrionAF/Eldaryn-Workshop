@@ -77,7 +77,7 @@ describe('router', () => {
 describe('UI key', () => {
   it('survives junk and unavailable storage', () => {
     localStorage.setItem(UI_KEY, '{not json');
-    expect(loadUi()).toEqual({ v: 1, lastHash: null, areaLast: {}, optimiserSetups: {}, prefs: defaultPrefs() });
+    expect(loadUi()).toEqual({ v: 1, lastHash: null, areaLast: {}, optimiserSetups: {}, statPriority: { spec: null, range: null }, prefs: defaultPrefs() });
     const real = Storage.prototype.getItem;
     Storage.prototype.getItem = () => {
       throw new Error('blocked');

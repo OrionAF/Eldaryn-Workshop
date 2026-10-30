@@ -22,7 +22,7 @@ export const DROP_SETS = ['all', 'set1'];
  */
 export const defaultPrefs = () => ({ density: 'comfortable', reduceMotion: false, defaultEffort: 'standard', cpuProfile: DEFAULT_CPU_PROFILE, calibration: null, dropSets: 'all', debugLog: 'off', showImport: false });
 
-const defaults = () => ({ v: 1, lastHash: null, areaLast: {}, optimiserSetups: {}, prefs: defaultPrefs() });
+const defaults = () => ({ v: 1, lastHash: null, areaLast: {}, optimiserSetups: {}, statPriority: { spec: null, range: null }, prefs: defaultPrefs() });
 
 /** Any value -> valid preferences; a field that is missing or not one of the allowed values keeps its default. */
 export function normalisePrefs(raw) {
@@ -40,7 +40,7 @@ export function normalisePrefs(raw) {
   return out;
 }
 
-/** @returns {{v:1, lastHash:string|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string, calibration:object|null, dropSets:'all'|'set1', debugLog:'off'|'builds'|'fights', showImport:boolean}}} */
+/** @returns {{v:1, lastHash:string|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, statPriority:{spec:string|null, range:string|null}, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string, calibration:object|null, dropSets:'all'|'set1', debugLog:'off'|'builds'|'fights', showImport:boolean}}} */
 export function loadUi() {
   const ui = defaults();
   try {
@@ -53,6 +53,12 @@ export function loadUi() {
       // the Optimiser page's setup, per character id (ui/optimiserSetup.js validates it on read)
       if (raw.optimiserSetups && typeof raw.optimiserSetups === 'object') {
         for (const [k, v] of Object.entries(raw.optimiserSetups)) if (v && typeof v === 'object') ui.optimiserSetups[k] = v;
+      }
+      // Stat Priorities' spec and level range (the page checks both against its data)
+      const sp = raw.statPriority;
+      if (sp && typeof sp === 'object') {
+        if (typeof sp.spec === 'string') ui.statPriority.spec = sp.spec;
+        if (typeof sp.range === 'string') ui.statPriority.range = sp.range;
       }
       ui.prefs = normalisePrefs(raw.prefs);
     }

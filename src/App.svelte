@@ -46,7 +46,8 @@
   $effect(() => {
     if (empty) {
       // Settings stays reachable with no character: Settings > Import is the way in for a game file.
-      if (route.kind !== 'welcome' && route.kind !== 'settings') go('welcome', { replace: true });
+      // So do pages that read no character (Stat Priorities).
+      if (route.kind !== 'welcome' && route.kind !== 'settings' && !page?.noCharacter) go('welcome', { replace: true });
     } else {
       if (wasEmpty === true) go(AFTER_IMPORT_PAGE_ID, { replace: true });
       else if (route.kind === 'welcome') go(DEFAULT_PAGE_ID, { replace: true });
@@ -61,6 +62,19 @@
   <div class="bare">
     <a class="back" href="#/welcome">Back to Welcome</a>
     <main id="main" tabindex="-1"><SettingsPage {setStatus} /></main>
+  </div>
+{:else if empty && page?.noCharacter}
+  <div class="bare">
+    <a class="back" href="#/welcome">Back to Welcome</a>
+    <main id="main" tabindex="-1">
+      <header class="bare-head">
+        <h1>{page.title}</h1>
+        <p>{page.sentence}</p>
+      </header>
+      {#key route.id}
+        <Page {setStatus} {onNavigate} tab={route.tab} />
+      {/key}
+    </main>
   </div>
 {:else if empty}
   <WelcomeScreen />
@@ -119,6 +133,9 @@
   .skip-link:focus { transform: none; }
   .bare { max-width: var(--content-max); margin: 0 auto; padding: var(--page-pad); display: grid; gap: var(--sp-4); }
   .back { justify-self: start; color: var(--text-soft); }
+  .bare-head { display: grid; gap: var(--sp-1); margin-bottom: var(--sp-4); }
+  .bare-head h1 { margin: 0; font-family: var(--font-display); font-size: var(--fs-26); color: var(--brass-200); }
+  .bare-head p { margin: 0; font-size: var(--fs-13); color: var(--text-muted); }
   .app {
     display: flex;
     flex-direction: column;

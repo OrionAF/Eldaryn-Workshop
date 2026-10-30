@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "sync:data": "node scripts/sync-game-data.mjs",
+    "gen:stat-priority": "node scripts/statPriority.mjs",
     "test:watch": "vitest"
   },
   "devDependencies": {

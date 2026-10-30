@@ -3,7 +3,8 @@
    * WelcomeScreen.svelte - G0, the first-run page (ia.md §3.1): shown whenever the roster has no
    * character (first visit, after Reset all data, or a backup with none). "Start manually" (name and
    * class required, level optional) is here; restoring a backup (and, while it is switched on, game-data
-   * import) is a link to Settings (`#/settings` works with an empty roster).
+   * import) is a link to Settings (`#/settings` works with an empty roster). Stat Priorities needs no
+   * character, so it opens from here too.
    */
   import Panel from './ui/Panel.svelte';
   import Select from './ui/Select.svelte';
@@ -13,6 +14,7 @@
   import { CLASSES, classLabel, MAX_PLAYER_LEVEL } from '../lib/game/classes.js';
   import { requestImportFocus } from '../lib/importFlow.svelte.js';
   import { prefs } from '../lib/prefs.svelte.js';
+  import { go } from '../lib/router.svelte.js';
 
   let name = $state('');
   let selectedClass = $state('');
@@ -70,6 +72,13 @@
       </Panel>
     </div>
 
+    <Panel title="Stat priorities">
+      <div class="browse">
+        <p>What leaderboard players keep on their gear, for every class, spec and level. No character needed.</p>
+        <Button variant="secondary" onclick={() => go('tools/stat-priorities')}>View stat priority list</Button>
+      </div>
+    </Panel>
+
     <p class="privacy-note">
       100% local: everything runs in your browser and saves to this device only. No data or telemetry is ever sent to a server.
     </p>
@@ -108,5 +117,7 @@
   .field input { min-height: var(--control-h); }
   .import-link { margin: 0; font-size: var(--fs-13); color: var(--text-soft); }
   .muted { margin: 0 0 var(--sp-3); font-size: var(--fs-12); color: var(--text-muted); }
+  .browse { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+  .browse p { margin: 0; flex: 1 1 16rem; font-size: var(--fs-13); color: var(--text-soft); }
   .privacy-note { margin: 0; font-size: var(--fs-12); color: var(--text-muted); text-align: center; }
 </style>

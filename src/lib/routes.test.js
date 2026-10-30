@@ -2,18 +2,18 @@ import { describe, it, expect } from 'vitest';
 import { AREAS, PAGES, areaFirstPage, formatHash, pageById, pagesOfArea, parseHash, resolveTarget } from './routes.js';
 
 describe('route table', () => {
-  it('has the 18 pages of ia.md §1 in three groups, in rail order', () => {
+  it('has the 19 pages of ia.md §1 in three groups, in rail order', () => {
     expect(AREAS.map((a) => a.id)).toEqual(['character', 'builds', 'tools']);
     expect(pagesOfArea('character').map((p) => p.label)).toEqual([
       'Overview', 'Skills & Clan', 'Gear', 'Talents', 'Sigils', 'Pets', 'Mounts & Glyphs', 'Relics', 'Awakening', 'Transcendence',
     ]);
     expect(pagesOfArea('builds').map((p) => p.label)).toEqual(['Presets', 'Loadout', 'Stat Sheet']);
-    expect(pagesOfArea('tools').map((p) => p.label)).toEqual(['Drop Check', 'Optimiser', 'Duel', 'Opponents', 'Oblivion Floors']);
-    expect(PAGES).toHaveLength(18);
+    expect(pagesOfArea('tools').map((p) => p.label)).toEqual(['Drop Check', 'Optimiser', 'Duel', 'Opponents', 'Oblivion Floors', 'Stat Priorities']);
+    expect(PAGES).toHaveLength(19);
   });
 
   it('gives every page a unique id and a hash that parses back to it', () => {
-    expect(new Set(PAGES.map((p) => p.id)).size).toBe(18);
+    expect(new Set(PAGES.map((p) => p.id)).size).toBe(19);
     for (const p of PAGES) expect(parseHash(formatHash(p.id))).toMatchObject({ kind: 'page', id: p.id, tab: null });
   });
 });
