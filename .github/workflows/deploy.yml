@@ -1,9 +1,10 @@
 name: Deploy to GitHub Pages
 
-# Manual only (2026-10-14): the build bundles the extracted game catalogues (src/data/game),
-# which must not be published. The app runs locally for now. Don't re-enable the push trigger
-# (or run this) without the user's say-so.
+# Every push to main deploys (user's call, 2026-10-30, after deploying by hand for a while); the
+# manual button stays for redeploys. The bundle includes the game catalogues (src/data/game).
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -25,8 +26,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      # No `npm test` here: deploys are manual, from a main that was tested locally; the suite
-      # takes ~9 min on a 2-core runner. The build still catches a broken bundle.
+      # No `npm test` here: main is tested locally before a push, and the suite takes ~9 min on a
+      # 2-core runner. The build still catches a broken bundle.
       - run: npm run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
