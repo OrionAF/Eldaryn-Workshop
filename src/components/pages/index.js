@@ -18,6 +18,7 @@ import ToolsOptimiserPage from './ToolsOptimiserPage.svelte';
 import ToolsDuelPage from './ToolsDuelPage.svelte';
 import ToolsOpponentsPage from './ToolsOpponentsPage.svelte';
 import ToolsOblivionPage from './ToolsOblivionPage.svelte';
+import ToolsStatPrioritiesPage from './ToolsStatPrioritiesPage.svelte';
 
 export const PAGE_COMPONENTS = {
   'character/overview': CharacterOverviewPage,
@@ -38,4 +39,5 @@ export const PAGE_COMPONENTS = {
   'tools/duel': ToolsDuelPage,
   'tools/opponents': ToolsOpponentsPage,
   'tools/oblivion': ToolsOblivionPage,
+  'tools/stat-priorities': ToolsStatPrioritiesPage,
 };

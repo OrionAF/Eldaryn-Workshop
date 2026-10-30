@@ -25,6 +25,7 @@
     'tools/duel': 'M5 19L17 7M14 5h5v5M19 19L7 7M10 5H5v5',
     'tools/opponents': 'M8 9a3 3 0 1 1 0-6 3 3 0 0 1 0 6zM16 11a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5zM2 20c0-3.5 2.7-5.5 6-5.5s6 2 6 5.5M15 15c3 0 6 1.5 6 5',
     'tools/oblivion': 'M12 3a9 9 0 1 0 9 9M12 7a5 5 0 1 0 5 5M12 11a1 1 0 1 0 1 1',
+    'tools/stat-priorities': 'M4 20h16M6 20V5M11 20V9M16 20V13',
     character: 'M12 4a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zM5 20c0-3.9 3.1-6 7-6s7 2.1 7 6',
     builds: 'M4 6h16M4 12h16M4 18h16',
     tools: 'M14 4l6 6-9 9-4-1-1-4zM5 20l3-3',

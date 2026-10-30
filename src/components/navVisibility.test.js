@@ -1,11 +1,11 @@
 import { it, expect } from 'vitest';
 import { NAV_ITEM_COUNT, isLocked, navGroups, needsClass } from './navVisibility.js';
 
-it('lists 18 pages in three groups, with Oblivion always present', () => {
+it('lists 19 pages in three groups, with Oblivion always present', () => {
   const groups = navGroups({});
   expect(groups.map((g) => g.area.label)).toEqual(['Character', 'Builds', 'Tools']);
-  expect(groups.map((g) => g.items.length)).toEqual([10, 3, 5]);
-  expect(NAV_ITEM_COUNT).toBe(18);
+  expect(groups.map((g) => g.items.length)).toEqual([10, 3, 6]);
+  expect(NAV_ITEM_COUNT).toBe(19);
   expect(groups[2].items.map((i) => i.page.id)).toContain('tools/oblivion');
 });
 

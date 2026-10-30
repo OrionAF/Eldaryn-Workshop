@@ -16,10 +16,11 @@ export const AREAS = [
  * @property {string} label      rail label
  * @property {string} title      page heading
  * @property {string} glyph      decorative one-character icon
- * @property {'character'|'preset'|'tool'|'oblivion'} scope
+ * @property {'character'|'preset'|'tool'|'oblivion'|'global'} scope
  * @property {string} sentence   one-line scope sentence under the heading ({n} = preset count)
  * @property {boolean} needsClass  true when the page cannot work for a classless character
  * @property {boolean} usesPreset  true when the page depends on the active preset (context chip)
+ * @property {boolean} [noCharacter] true when the page reads no character, so it opens with an empty roster
  * @property {string} [legacy]   id of the pre-redesign screen this page replaces (onNavigate callers)
  */
 
@@ -47,6 +48,7 @@ export const PAGES = [
   { id: 'tools/duel', label: 'Duel', title: 'Duel', glyph: '⚡', scope: 'tool', sentence: TO, needsClass: true, usesPreset: false, legacy: 'duel' },
   { id: 'tools/opponents', label: 'Opponents', title: 'Opponents', glyph: '☗', scope: 'tool', sentence: TO, needsClass: true, usesPreset: false },
   { id: 'tools/oblivion', label: 'Oblivion Floors', title: 'Oblivion Floors', glyph: '◐', scope: 'oblivion', sentence: TO, needsClass: true, usesPreset: false, legacy: 'oblivion' },
+  { id: 'tools/stat-priorities', label: 'Stat Priorities', title: 'Stat Priorities', glyph: '≡', scope: 'global', sentence: 'From leaderboard players. Does not read or change your characters.', needsClass: false, usesPreset: false, noCharacter: true },
 ].map((p) => {
   const [area, slug] = p.id.split('/');
   return { ...p, area, slug };
