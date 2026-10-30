@@ -120,22 +120,31 @@
 <style>
   .level-range { display: grid; gap: var(--sp-3); }
   .chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+  /* label and count centred as in SegmentedControl; baseline alignment pinned them to the top */
   .chip {
     display: inline-flex;
-    align-items: baseline;
-    gap: 6px;
-    min-height: var(--control-h);
+    align-items: center;
+    gap: var(--sp-2);
+    height: var(--control-h);
     padding: 0 var(--sp-3);
     background: var(--surface-3);
     border: 1px solid var(--line-control);
     border-radius: var(--r-pill);
     color: var(--text-soft);
-    font-size: var(--fs-13);
+    font-family: var(--font-ui);
+    font-weight: var(--fw-medium);
+    font-size: var(--fs-14);
+    line-height: 1;
+    white-space: nowrap;
     cursor: pointer;
   }
+  .chip .n { font-size: var(--fs-12); line-height: 1; }
   .chip:hover { border-color: var(--line-control-hover); color: var(--text-ink); }
   .chip[aria-pressed='true'] { background: var(--ember-500); border-color: var(--ember-500); color: var(--on-ember); font-weight: var(--fw-bold); }
   .chip[aria-pressed='true'] .n { color: var(--on-ember); }
+  @media (pointer: coarse), (max-width: 700px) {
+    .chip { height: var(--hit); }
+  }
   .custom { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-1) var(--sp-5); align-items: end; }
   .field { display: grid; gap: var(--sp-1); }
   .field-row { display: flex; align-items: center; gap: var(--sp-2); }
