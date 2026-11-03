@@ -11,10 +11,10 @@ function fresh(cls = 'WARRIOR') {
 describe('build/usage', () => {
   it('tierChangeLosses names the pets and the presets that lose theirs', () => {
     fresh();
-    const id = rosterStore.addPet('EMBER_FOX');
+    const id = rosterStore.addCore('MYTHIC');
     rosterStore.setPresetPet(rosterStore.current.presets[0].id, id);
     const l = tierChangeLosses(rosterStore.current);
-    expect(l.pets).toEqual([{ id, name: 'Ember Fox' }]);
+    expect(l.pets).toEqual([{ id, name: 'Mythic Core' }]);
     expect(l.presets).toEqual([rosterStore.current.presets[0].name]);
   });
 

@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { fixtureCharacter } from './fixtures.js';
 import { describeBuild, describeBoard } from './describe.js';
-import { petDisplayName } from '../game/pets.js';
 import { buildFighter } from './fighter.js';
 import { SIGIL_CATALOGUE, sigilClasses, isSigilSpeciesActiveForSpec } from '../game/sigils.js';
 
@@ -14,7 +13,7 @@ describe('describeBuild', () => {
     const lines = describeBuild(c, 'p1');
     expect(line(lines, 'Gear set')).toBe('Set 1');
     expect(line(lines, 'Talents')).toMatch(/^Arms - Sharpened Blade 5\/5/);
-    expect(line(lines, 'Pet').startsWith(`${petDisplayName('INFERNAL_DRAKE', true)} (Legendary`)).toBe(true); // altar tier 2: evolved name
+    expect(line(lines, 'Pet')).toMatch(/^Legendary Core \(/);
     expect(line(lines, 'Relics')).toContain('Iron Heart');
     expect(line(lines, 'Sigils')).toContain('Berserk Aura');
     expect(line(lines, 'Ancient sigil')).toBe('Flameborn');

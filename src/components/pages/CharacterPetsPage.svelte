@@ -1,19 +1,17 @@
 <script>
   /**
-   * CharacterPetsPage.svelte (C6) - the character's pet collection and the one Pet Altar that levels and tiers
-   * every pet. A preset picks which pet it uses (Presets screen).
+   * CharacterPetsPage.svelte (C6) - the character's Pet Cores (Pets V2, client 2.9.1) and the one Core Altar
+   * that levels and tiers every core. A preset picks which core it uses (Presets screen).
    *
-   * Changing the altar TIER wipes the collection (the game's behaviour) and clears every preset's
-   * pet, so it sits behind a dialog that names the pets and presets it will clear (build/usage.js
-   * tierChangeLosses). From tier 2 the pets show their evolved names.
+   * Changing the altar TIER wipes the collection (the game's evolve, Game/pet-cores.md §4) and clears every
+   * preset's pet, so it sits behind a dialog that names the cores and presets it will clear (build/usage.js
+   * tierChangeLosses).
    *
    * Each card shows the altar-scaled ATK/HP and secondaries next to the base values (read-only,
-   * computed by engine/sources/pet.js).
+   * computed by engine/sources/petCore.js).
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
-  import { RARITY_ORDER } from '../../lib/format.js';
-  import { PET_SPECIES } from '../../lib/game/pets.js';
-  import { PET_MAX_TIER, PET_MAX_LEVEL, MAX_OWNED_PETS, secondaryTypesFor } from '../../lib/model/pets.js';
+  import { PET_MAX_TIER, PET_MAX_LEVEL, MAX_OWNED_CORES, CORE_RARITY_NAMES, secondaryTypesFor } from '../../lib/model/pets.js';
   import Slider from '../Slider.svelte';
   import Panel from '../ui/Panel.svelte';
   import NumberField from '../ui/NumberField.svelte';
@@ -31,12 +29,11 @@
 
   const character = $derived(rosterStore.current);
   const altar = $derived(character.pets.altar);
-  const owned = $derived(character.pets.owned);
-  const evolved = $derived(altar.tier >= 2);
+  const owned = $derived(character.pets.cores);
   const types = $derived(orderStats(secondaryTypesFor(character.class), character.class));
-  const species = PET_SPECIES.toSorted((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || a.name.localeCompare(b.name));
+  const rarityOptions = CORE_RARITY_NAMES.map((r) => ({ value: r, label: r }));
 
-  let newSpecies = $state(species[0].id);
+  let newRarity = $state(CORE_RARITY_NAMES[0]);
   let pendingTier = $state(null); // null = follows the altar
   let wipeOpen = $state(false);
   const losses = $derived(tierChangeLosses(character));
@@ -47,18 +44,18 @@
 
   const usedBy = (petId) => character.presets.filter((p) => p.petId === petId).map((p) => p.name);
 
-  function addPet() {
-    const id = rosterStore.addPet(newSpecies);
+  function addCore() {
+    const id = rosterStore.addCore(newRarity);
     if (id) editingIds = new Set([...editingIds, id]);
-    else setStatus(`Collection is full (${MAX_OWNED_PETS} pets).`);
+    else setStatus(`Collection is full (${MAX_OWNED_CORES} cores).`);
   }
   function toggleEdit(id) {
     const next = new Set(editingIds);
     if (!next.delete(id)) next.add(id);
     editingIds = next;
   }
-  function removePet(id) {
-    rosterStore.removePet(id);
+  function removeCore(id) {
+    rosterStore.removeCore(id);
     const next = new Set(editingIds);
     next.delete(id);
     editingIds = next;
@@ -69,18 +66,18 @@
     pendingTier = null;
     wipeOpen = false;
     editingIds = new Set();
-    setStatus(`Pet Altar set to tier ${t}; collection cleared.`);
+    setStatus(`Core Altar set to tier ${t}; collection cleared.`);
   }
 </script>
 
 <div class="page">
-<Panel title="Pet Altar" scope="character">
-  {#snippet meta()}<span class="sub">the altar levels and tiers every pet together · a preset picks which pet it uses</span>{/snippet}
+<Panel title="Core Altar" scope="character">
+  {#snippet meta()}<span class="sub">the altar levels and tiers every core together · a preset picks which core it uses</span>{/snippet}
   <div class="altar-row">
     <div class="altar-group">
       <div class="level-row">
         <NumberField
-          label="Pet altar level (1-{PET_MAX_LEVEL})"
+          label="Core altar level (1-{PET_MAX_LEVEL})"
           bind:value={levelDraft}
           min={1}
           max={PET_MAX_LEVEL}
@@ -89,14 +86,14 @@
         <Stepper label="Altar level" value={altar.level} min={1} max={PET_MAX_LEVEL} onchange={(n) => rosterStore.setPetAltarLevel(n)} />
       </div>
       <div class="level-slider">
-        <Slider min={1} max={PET_MAX_LEVEL} step={1} value={altar.level} ariaLabel="Pet altar level" oninput={(v) => rosterStore.setPetAltarLevel(v)} />
+        <Slider min={1} max={PET_MAX_LEVEL} step={1} value={altar.level} ariaLabel="Core altar level" oninput={(v) => rosterStore.setPetAltarLevel(v)} />
         <span class="hint">Level <span class="num" data-testid="altar-level">{altar.level}</span> of {PET_MAX_LEVEL}. The slider is a quick way to get close; type the exact level in the field.</span>
       </div>
     </div>
 
     <div class="altar-group">
       <div class="tier-row">
-        <Select label="Pet altar tier" options={tierOptions} value={tierChoice} onchange={(v) => (pendingTier = Number(v))} />
+        <Select label="Core altar tier" options={tierOptions} value={tierChoice} onchange={(v) => (pendingTier = Number(v))} />
         {#if tierChoice !== altar.tier}
           <Button variant="danger" onclick={() => (wipeOpen = true)}>Change tier</Button>
           <Button variant="ghost" onclick={() => (pendingTier = null)}>Keep tier {altar.tier}</Button>
@@ -107,10 +104,10 @@
 </Panel>
 
 {#if wipeOpen}
-  <Modal bind:open={wipeOpen} title="Change the pet altar to tier {tierChoice}?">
+  <Modal bind:open={wipeOpen} title="Change the Core Altar to tier {tierChoice}?">
     <p>The game wipes the collection when the altar tier changes.</p>
-    <p class="losses-head">Pets removed ({losses.pets.length})</p>
-    <ul class="losses" aria-label="Pets removed">
+    <p class="losses-head">Cores removed ({losses.pets.length})</p>
+    <ul class="losses" aria-label="Cores removed">
       {#each losses.pets as p (p.id)}<li>{p.name}</li>{:else}<li class="none">none, the collection is empty</li>{/each}
     </ul>
     <p class="losses-head">Presets whose pet is cleared ({losses.presets.length})</p>
@@ -125,33 +122,32 @@
 {/if}
 
 <Panel title="Collection" scope="character">
-  {#snippet meta()}<span class="sub num" data-testid="pet-count">{owned.length}/{MAX_OWNED_PETS}</span>{/snippet}
+  {#snippet meta()}<span class="sub num" data-testid="pet-count">{owned.length}/{MAX_OWNED_CORES}</span>{/snippet}
   <div class="add-row">
-    <Select label="Species to add" options={species.map((s) => ({ value: s.id, label: `${evolved ? s.evolvedName : s.name} · ${s.rarity}` }))} bind:value={newSpecies} />
-    <Button variant="primary" disabled={owned.length >= MAX_OWNED_PETS} onclick={addPet}>+ Add pet</Button>
+    <Select label="Core rarity to add" options={rarityOptions} bind:value={newRarity} />
+    <Button variant="primary" disabled={owned.length >= MAX_OWNED_CORES} onclick={addCore}>+ Add core</Button>
   </div>
 
   {#if !owned.length}
-    <EmptyState title="No pets yet" text="Add one to start." />
+    <EmptyState title="No Pet Cores yet" text="Since the 2.9.1 rework a pet's stats come from its core, so pets saved before it were removed. Add your cores to start." />
   {/if}
 
   <div class="pet-grid">
   {#each owned as pet (pet.id)}
     <PetCard
       {pet}
-      {species}
       {types}
-      {evolved}
       altarLevel={altar.level}
       altarTier={altar.tier}
       usedBy={usedBy(pet.id)}
       editing={editingIds.has(pet.id)}
-      onSpecies={(s) => rosterStore.setPetSpecies(pet.id, s)}
-      onType={(i, t) => rosterStore.setPetSecondaryType(pet.id, i, t)}
-      onValue={(i, v) => rosterStore.setPetSecondaryValue(pet.id, i, v)}
-      onDropSecondary={(i) => rosterStore.removePetSecondary(pet.id, i)}
+      onRarity={(r) => rosterStore.setCoreRarity(pet.id, r)}
+      onBase={(stat, v) => rosterStore.setCoreBase(pet.id, stat, v)}
+      onType={(i, t) => rosterStore.setCoreSecondaryType(pet.id, i, t)}
+      onValue={(i, v) => rosterStore.setCoreSecondaryValue(pet.id, i, v)}
+      onDropSecondary={(i) => rosterStore.removeCoreSecondary(pet.id, i)}
       onToggleEdit={() => toggleEdit(pet.id)}
-      onRemove={() => removePet(pet.id)}
+      onRemove={() => removeCore(pet.id)}
     />
   {/each}
   </div>

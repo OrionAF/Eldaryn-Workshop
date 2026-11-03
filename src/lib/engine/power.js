@@ -1,16 +1,18 @@
 // engine/power.js - Combat Power: the client's calculatePowerBreakdown / calculateTotalPower and the
 // gear quality it reads (calculateStatQuality / calculateItemQuality). Formula, constants and what the
-// two real profiles prove: Game/stats.md §8; quality: Game/gear.md §5. Pure; imports L1 only.
+// two real profiles prove: Game/stats.md §8; quality: Game/gear.md §5. Pure; imports L1 and the Pet Core
+// source (its power term, Game/pet-cores.md §7).
 //
 //   PowerInput = {
 //     level, equipment: [{rarity, itemLevel, quality, realm}|null], sigils: [{rarity, level}],
 //     sigilAltarTier, enchants: [{quality, amplifyLevel}], transcendenceNodeCount,
-//     pet: {rarity, altarLevel, tier}|null, mount: {rarity, stars}|null,
+//     pet: {rarity, altarLevel, tier}|null (the equipped Pet Core and the Core Altar), mount: {rarity, stars}|null,
 //     relics: [{tier, level, maxLevel}], talentPointsSpent, awakeningPoints,
 //   }
 // Rarity and relic tier keys are the client's upper-case enums (`EPIC`, `GOLD`).
 import { POWER_CONFIG } from '../game/stats.js';
 import { SECONDARY_STAT_POOL, ascensionEffectiveLevel, itemStatLevel as statLevelOf, secondaryStatCeiling } from '../game/gear.js';
+import { coreTotalPower } from './sources/petCore.js';
 
 export { ascensionEffectiveLevel };
 
@@ -72,11 +74,8 @@ export function calculatePowerBreakdown(input, config = POWER_CONFIG) {
     enchants += c.ENCHANT_SOCKET_POWER * q * (1 + c.ENCHANT_AMPLIFY_WEIGHT * max0(e.amplifyLevel));
   }
   const transcendence = c.TRANSCENDENCE_PER_NODE * max0(input.transcendenceNodeCount);
-  let pet = 0;
-  if (input.pet) {
-    const p = input.pet;
-    pet = nz(c.PET_RARITY_POWER[p.rarity]) * (Math.min(p.altarLevel, c.PET_MAX_ALTAR_LEVEL) / c.PET_MAX_ALTAR_LEVEL) * c.ALTAR_TIER_BASE ** max0(p.tier - 1);
-  }
+  // since 2.9.1 the pet term is the core's petV2TotalPower (fed through an Ancient-equivalent V1 pet)
+  const pet = input.pet ? coreTotalPower(input.pet.rarity, input.pet.altarLevel, input.pet.tier) : 0;
   let mount = 0;
   if (input.mount) mount = nz(c.MOUNT_RARITY_POWER[input.mount.rarity]) * (1 + c.MOUNT_STAR_WEIGHT * max0(input.mount.stars - 1));
   let relics = 0;

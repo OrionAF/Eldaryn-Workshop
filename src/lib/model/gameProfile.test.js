@@ -5,6 +5,8 @@ import { resolveTranscendencePreset, checkPreset } from './legality.js';
 import { prepare } from '../search/search.js';
 import { legalityOf } from '../search/legality.js';
 import { buildFighter } from '../build/fighter.js';
+import { petSpeciesById } from '../game/pets.js';
+import { coreAltarProgress } from '../game/petCores.js';
 
 it('2.7.4 profile imports preserve all four Warrior stance utility picks and old auras', () => {
   for (const species of ['BATTLE_STANCE', 'GUARDIAN_STANCE', 'WARBREAKER_STANCE', 'JUGGERNAUT_STANCE']) {
@@ -96,7 +98,7 @@ function fixture() {
         { id: 'pet-2', species: 'THORNBACK_LIZARD', rarity: 'UNCOMMON', secondaryStats: [{ type: 'ATTACK_SPEED', value: 0.12 }, { type: 'HEALTH_PERCENT', value: 5.5 }] },
       ],
       equippedPetId: null,
-      altar: { totalXp: 500, tier: 1 },
+      altar: { totalXp: 500, tier: 2 },
     },
     mountState: {
       ownedMounts: [
@@ -244,7 +246,7 @@ describe('gameProfileToCharacter', () => {
     expect(c.activePresetId).toBe('preset-2');
     const [tank, dps] = c.presets;
     expect(tank).toMatchObject({
-      id: 'default', name: 'TANK', equipmentSet: 1, talentSet: 1, petId: 'pet-2', mountId: 'mount-a',
+      id: 'default', name: 'TANK', equipmentSet: 1, talentSet: 1, petId: null, mountId: 'mount-a', // pet-2 is not equipped: lost in 2.9.1
       relicIds: ['relic_swift_emblem', 'relic_guardian_signet'],
       sigilSpecies: ['IRON_BASTION', 'CATACLYSM'], ancientSigilSpecies: 'EARTHWARDEN',
       transcendencePresetId: 'tp2',
@@ -258,15 +260,33 @@ describe('gameProfileToCharacter', () => {
     expect(dps).toMatchObject({ id: 'preset-2', equipmentSet: 2, talentSet: 0, petId: null, mountId: 'mount-b', sigilSpecies: ['ARROWSTORM'] });
   });
 
-  it('pets: multiplier secondaries become percent points, altar level comes from totalXp and tier', () => {
-    expect(c.pets.owned).toEqual([
-      { id: 'pet-1', species: 'FLAME_TOAD', rarity: 'Common', secondaries: [{ type: 'CRIT_DAMAGE', value: 20 }] },
-      { id: 'pet-2', species: 'THORNBACK_LIZARD', rarity: 'Uncommon', secondaries: [{ type: 'ATTACK_SPEED', value: 12 }, { type: 'HEALTH_PERCENT', value: 5.5 }] },
+  it('pets (before 2.9.1): only the equipped pet survives, as a stat-identical core on a tier-1 altar', () => {
+    expect(c.pets.cores).toEqual([]); // nothing equipped
+    const f = fixture();
+    f.petState.equippedPetId = 'pet-2';
+    const c2 = normaliseCharacter(gameProfileToCharacter(f));
+    const def = petSpeciesById('THORNBACK_LIZARD');
+    // V1 tier 2 multiplies the species base by 2^2 - 2 + 1 = 3 (Game/pets.md §4); multiplier secondaries become points
+    expect(c2.pets.cores).toEqual([
+      { id: 'pet-2', rarity: 'Uncommon', baseAttack: def.baseAttack * 3, baseHp: def.baseHp * 3, secondaries: [{ type: 'ATTACK_SPEED', value: 12 }, { type: 'HEALTH_PERCENT', value: 5.5 }] },
     ]);
-    // tier 1: 175 + need(2) <= 500 < 175 + need(2) + need(3)
-    expect(c.pets.altar.tier).toBe(1);
-    expect(c.pets.altar.level).toBe(altarLevelFromXp(500, 1));
-    expect(c.pets.altar.level).toBeGreaterThan(2);
+    expect(c2.pets.altar).toEqual({ level: altarLevelFromXp(500, 2), tier: 1 });
+    expect(c2.presets[0].petId).toBe('pet-2'); // a V1 preset petId still finds the converted core
+  });
+
+  it('pets (2.9.1+): petV2 cores, the Core Altar level from its totalXp, presets by petV2CoreId', () => {
+    const f = fixture();
+    f.petV2 = {
+      cores: [{ id: 'core-1', rarity: 'MYTHIC', baseAttack: 3900, baseHp: 9700, secondaryStats: [{ type: 'CRIT_DAMAGE', value: 0.25 }] }],
+      altar: { totalXp: 87545, tier: 1 },
+      activeCoreId: 'core-1',
+    };
+    f.presets[0].petV2CoreId = 'core-1';
+    const v2 = normaliseCharacter(gameProfileToCharacter(f));
+    expect(v2.pets.cores).toEqual([{ id: 'core-1', rarity: 'Mythic', baseAttack: 3900, baseHp: 9700, secondaries: [{ type: 'CRIT_DAMAGE', value: 25 }] }]);
+    expect(v2.pets.altar).toEqual({ level: coreAltarProgress(87545, 1).level, tier: 1 });
+    expect(v2.pets.altar.level).toBe(50);
+    expect(v2.presets[0].petId).toBe('core-1');
   });
 
   it('mounts: species case, level, rolls, sockets; a glyph used on two mounts keeps its id', () => {
@@ -415,7 +435,7 @@ describe('robustness', () => {
     f.player.glyphs.push({ id: 'gx', glyphType: 'g-nonexistent', rarity: 'RARE' });
     f.relicState.ownedRelics.push({ relicId: 'relic_nope', level: 3 });
     const c = normaliseCharacter(gameProfileToCharacter(f));
-    expect(c.pets.owned).toHaveLength(2);
+    expect(c.pets.cores).toEqual([]); // V1 pets other than the equipped one are gone
     expect(c.glyphs.some((g) => g.id === 'gx')).toBe(false);
     expect(c.relics.relic_nope).toBeUndefined();
   });

@@ -66,7 +66,7 @@ export function describeBuild(character, presetOrId, { realm = 'base', talentAll
   lines.push(line('Gear set', setKey === 'oblivion' ? 'Oblivion set' : `Set ${preset.equipmentSet === 2 ? 2 : 1}`));
   lines.push(line('Talents', talentsLine(character, preset, talentAllocation)));
 
-  const pet = preset.petId ? (character.pets?.owned ?? []).find((p) => p.id === preset.petId) : null;
+  const pet = preset.petId ? (character.pets?.cores ?? []).find((p) => p.id === preset.petId) : null;
   lines.push(line('Pet', pet ? petText(character, pet) : NONE));
 
   // Sigils the Fighter runs: owned, usable on the spec, and an Ancient only while the board allocates its node.

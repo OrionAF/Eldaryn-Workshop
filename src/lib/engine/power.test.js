@@ -31,7 +31,9 @@ describe('calculatePowerBreakdown terms (stats.md §8)', () => {
   });
 
   it('pet, mount, relics and the flat terms', () => {
-    expect(only({ pet: { rarity: 'ANCIENT', altarLevel: 60, tier: 2 } }).exact.pet).toBe(7200 * 3);
+    // the Pet Core term (petV2TotalPower, pet-cores.md §7): tier 1 is linear in the level, higher tiers use tierK
+    expect(only({ pet: { rarity: 'ANCIENT', altarLevel: 25, tier: 1 } }).exact.pet).toBe(7200 / 2);
+    expect(only({ pet: { rarity: 'ANCIENT', altarLevel: 60, tier: 2 } }).exact.pet).toBeCloseTo(7200 * 7.8, 9);
     expect(only({ mount: { rarity: 'EPIC', stars: 3 } }).exact.mount).toBeCloseTo(3000 * 1.2, 9);
     expect(only({ relics: [{ tier: 'GOLD', level: 5, maxLevel: 10 }, { tier: 'BRONZE', level: 3, maxLevel: 0 }] }).exact.relics).toBe(900);
     const flat = only({ transcendenceNodeCount: 7, talentPointsSpent: 10, awakeningPoints: 2, level: 50 });

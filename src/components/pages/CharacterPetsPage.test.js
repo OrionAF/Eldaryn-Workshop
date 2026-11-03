@@ -2,7 +2,6 @@ import { it, expect, beforeEach, afterEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import PetsScreen from './CharacterPetsPage.svelte';
 import pageSource from './CharacterPetsPage.svelte?raw';
-import { petDisplayName } from '../../lib/game/pets.js';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
 
 let target, app;
@@ -32,23 +31,32 @@ const change = (el, value) => {
   flushSync();
 };
 
-it('starts empty, adds a pet in edit mode, and shows the species', () => {
-  expect(target.textContent).toContain('No pets yet');
-  change(byLabel('Species to add'), 'EMBER_FOX');
-  click(btn('+ Add pet'));
-  expect(rosterStore.current.pets.owned[0].species).toBe('EMBER_FOX');
+it('starts empty (saying why old pets are gone), adds a core in edit mode, and names it by rarity', () => {
+  expect(target.textContent).toContain('No Pet Cores yet');
+  expect(target.textContent).toContain('2.9.1');
+  change(byLabel('Core rarity to add'), 'Mythic');
+  click(btn('+ Add core'));
+  expect(rosterStore.current.pets.cores[0]).toMatchObject({ rarity: 'Mythic', baseAttack: 3850, baseHp: 9750 });
   expect(target.querySelectorAll('.pet-card')).toHaveLength(1);
   expect(target.querySelector('.pet-card select')).not.toBeNull();
   click(btn('Save'));
-  expect(target.querySelector('.card-title').textContent).toBe('Ember Fox');
+  expect(target.querySelector('.card-title').textContent).toBe('Mythic Core');
 });
 
-it('adds a secondary through the edit controls', () => {
-  click(btn('+ Add pet'));
+it('edits rarity, base stats and secondaries through the edit controls', () => {
+  click(btn('+ Add core'));
   change(byLabel('Add secondary stat'), 'ATTACK_PERCENT');
-  expect(rosterStore.current.pets.owned[0].secondaries[0].type).toBe('ATTACK_PERCENT');
+  expect(rosterStore.current.pets.cores[0].secondaries[0].type).toBe('ATTACK_PERCENT');
+  const base = byLabel('Base Attack');
+  base.value = '200';
+  base.dispatchEvent(new Event('input', { bubbles: true }));
+  base.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  flushSync();
+  expect(rosterStore.current.pets.cores[0].baseAttack).toBe(200);
+  change(byLabel('Rarity'), 'Rare');
+  expect(rosterStore.current.pets.cores[0]).toMatchObject({ rarity: 'Rare', baseAttack: 730 });
   click(btn('Save'));
-  expect(target.querySelector('.sec-line').textContent).toContain('+0.1%');
+  expect(target.querySelector('.sec-line').textContent).toContain('+1.8%');
 });
 
 it('altar level steppers write the store', () => {
@@ -57,30 +65,26 @@ it('altar level steppers write the store', () => {
   expect(target.querySelector('[data-testid="altar-level"]').textContent).toBe('2');
 });
 
-it('changing the tier asks first, names the pets and presets it will clear, then wipes and evolves names', () => {
-  click(btn('+ Add pet'));
-  const id = rosterStore.current.pets.owned[0].id;
+it('changing the tier asks first, names the cores and presets it will clear, then wipes', () => {
+  click(btn('+ Add core'));
+  const id = rosterStore.current.pets.cores[0].id;
   const presetName = rosterStore.current.presets[0].name;
-  const petName = petDisplayName(rosterStore.current.pets.owned[0].species, false);
   rosterStore.setPresetPet(rosterStore.current.presets[0].id, id);
   flushSync();
-  change(byLabel('Pet altar tier'), '2');
+  change(byLabel('Core altar tier'), '2');
   click(btn('Change tier'));
   expect(rosterStore.current.pets.altar.tier).toBe(1);
   const dialog = document.querySelector('dialog');
-  expect(dialog.textContent).toContain(petName);
+  expect(dialog.textContent).toContain('Common Core');
   expect(dialog.textContent).toContain(presetName);
   click([...dialog.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Wipe collection'));
   expect(rosterStore.current.pets.altar.tier).toBe(2);
-  expect(rosterStore.current.pets.owned).toHaveLength(0);
+  expect(rosterStore.current.pets.cores).toHaveLength(0);
   expect(rosterStore.current.presets[0].petId).toBeNull();
-  click(btn('+ Add pet'));
-  click(btn('Save'));
-  expect(target.querySelector('.card-title').textContent).toBe('Dust Stalker');
 });
 
 it('the altar level has a number field that writes the same value as the slider and steppers', () => {
-  const input = [...target.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith('Pet altar level'));
+  const input = [...target.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith('Core altar level'));
   const el = document.getElementById(input.htmlFor);
   el.value = '12';
   el.dispatchEvent(new Event('input', { bubbles: true }));

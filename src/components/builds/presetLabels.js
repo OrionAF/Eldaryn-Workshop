@@ -1,6 +1,6 @@
 // presetLabels.js (C1b): plain-text names for the things a preset references by id, shared by the
 // preset card and editor. Every lookup tolerates a dangling id (reconcile normally prevents one).
-import { petDisplayName } from '../../lib/game/pets.js';
+import { coreName } from '../../lib/model/pets.js';
 import { mountBySpecies } from '../../lib/game/mountsGlyphs.js';
 import { sigilBySpecies } from '../../lib/game/sigils.js';
 import { relicById } from '../../lib/game/relics.js';
@@ -9,9 +9,7 @@ import { talentSpec } from '../../lib/game/talents.js';
 export const SET_LABELS = { 1: 'Gear Set 1', 2: 'Gear Set 2' };
 
 export function petLabel(character, petId) {
-  const pet = character.pets.owned.find((p) => p.id === petId);
-  if (!pet) return null;
-  return petDisplayName(pet.species, character.pets.altar.tier >= 2) ?? pet.species;
+  return coreName(character.pets.cores.find((p) => p.id === petId));
 }
 
 export function mountLabel(character, mountId) {

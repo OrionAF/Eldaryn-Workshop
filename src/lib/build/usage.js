@@ -3,16 +3,15 @@
 import { buildFighter } from './fighter.js';
 import { effectiveTranscendencePreset } from '../model/legality.js';
 import { activeMajorGlyphs } from '../model/mounts.js';
-import { petDisplayName } from '../game/pets.js';
+import { coreName } from '../model/pets.js';
 
 /**
- * What a pet-altar tier change destroys: every owned pet, and the pet of every preset that has one.
+ * What a Core Altar tier change destroys: every owned core, and the pet of every preset that has one.
  * @returns {{pets: {id: string, name: string}[], presets: string[]}}
  */
 export function tierChangeLosses(character) {
-  const evolved = (character.pets?.altar?.tier ?? 1) >= 2;
   return {
-    pets: (character.pets?.owned ?? []).map((p) => ({ id: p.id, name: petDisplayName(p.species, evolved) })),
+    pets: (character.pets?.cores ?? []).map((p) => ({ id: p.id, name: coreName(p) })),
     presets: (character.presets ?? []).filter((p) => p.petId).map((p) => p.name),
   };
 }

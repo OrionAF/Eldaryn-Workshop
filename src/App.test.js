@@ -220,7 +220,7 @@ it('notifications: a message shows in the live region and the Activity drawer, e
 
 it('a screen calling setStatus raises a toast (setStatus -> notify)', () => {
   open('#/character/pets');
-  const tier = document.getElementById([...qa('main label')].find((l) => l.textContent.trim() === 'Pet altar tier').htmlFor);
+  const tier = document.getElementById([...qa('main label')].find((l) => l.textContent.trim() === 'Core altar tier').htmlFor);
   tier.value = String(Number(tier.value) === 1 ? 2 : 1);
   tier.dispatchEvent(new Event('change', { bubbles: true }));
   flushSync();

@@ -1,0 +1,37 @@
+{
+ "source": "2.9.1 decompiled.js (docs/2.9.0): module 3935 L1064693-1065652 (constants, tier tables), 3987 L1078711-1079033 (core altar), 3985 L1077818-1078337 (rolls), 4271 L1218663-1218964 (calculateCoreBonuses), 4272 L1218965-1219187 (power). Formulas and tags: Reference/Game/pet-cores.md.",
+ "rarities": ["COMMON", "UNCOMMON", "RARE", "EPIC", "LEGENDARY", "MYTHIC", "ANCIENT", "DIVINE", "ETERNAL", "OBLIVION"],
+ "baseStats": {
+  "COMMON": {"attack": 180, "hp": 530},
+  "UNCOMMON": {"attack": 390, "hp": 1180},
+  "RARE": {"attack": 730, "hp": 2170},
+  "EPIC": {"attack": 1300, "hp": 3830},
+  "LEGENDARY": {"attack": 2300, "hp": 6800},
+  "MYTHIC": {"attack": 3850, "hp": 9750},
+  "ANCIENT": {"attack": 5200, "hp": 15000},
+  "DIVINE": {"attack": 7300, "hp": 21000},
+  "ETERNAL": {"attack": 10200, "hp": 29400},
+  "OBLIVION": {"attack": 14300, "hp": 41200}
+ },
+ "baseStatSpread": 0.1,
+ "secondaryCount": {"COMMON": 1, "UNCOMMON": 2, "RARE": 2, "EPIC": 2, "LEGENDARY": 3, "MYTHIC": 3, "ANCIENT": 3, "DIVINE": 4, "ETERNAL": 4, "OBLIVION": 5},
+ "secondaryItemLevel": 50,
+ "statGrowthPerLevel": 0.07,
+ "secondaryGrowthPerLevel": 0.02,
+ "maxAltarLevel": 50,
+ "tierStatMult": {"table": [1, 3.3, 17, 24.5, 26.5], "growth": 1.1},
+ "altarTierXpMult": {"table": [0.67, 1.4, 6.86, 13.82], "growth": 1.1, "xpTableVersion": 2},
+ "sacrificeXp": {"COMMON": 30, "UNCOMMON": 75, "RARE": 180, "EPIC": 420, "LEGENDARY": 1100, "MYTHIC": 1700, "ANCIENT": 2600, "DIVINE": 3500, "ETERNAL": 4500, "OBLIVION": 6000},
+ "rarityUnlockTier": {"COMMON": 1, "UNCOMMON": 1, "RARE": 1, "EPIC": 1, "LEGENDARY": 1, "MYTHIC": 1, "ANCIENT": 2, "DIVINE": 3, "ETERNAL": 4, "OBLIVION": 5},
+ "summonBaseCost": 100,
+ "summonCostLastDoublingTier": 4,
+ "evolveCoinFeePct": 10,
+ "maxOwned": 100,
+ "maxSealed": 20,
+ "power": {
+  "rarityPower": {"COMMON": 120, "UNCOMMON": 280, "RARE": 600, "EPIC": 1200, "LEGENDARY": 2400, "MYTHIC": 4400, "ANCIENT": 7200, "DIVINE": 10500, "ETERNAL": 15000, "OBLIVION": 21000},
+  "tierK": [1, 7.8, 185, 890],
+  "levelSlope": [16, 16, 16, 32],
+  "levelBase": 3
+ }
+}

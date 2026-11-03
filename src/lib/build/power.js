@@ -2,11 +2,10 @@
 // the client's Combat Power (engine/power.js; Game/stats.md §8). Pure. The mapping follows the client's
 // useTotalPower hook: the preset's equipment set, the ACTIVATED stones socketed in that set (each stone
 // once), the equipped sigils (Ancient and utility included, whatever the board: the hook reads the equipped
-// list), the sigil altar tier, the pet, the mount (level as stars), the relics, the node count of the
+// list), the sigil altar tier, the Pet Core, the mount (level as stars), the relics, the node count of the
 // preset's Transcendence board, the talent points of its talent set, the Awakening level and the player level.
 import { calculatePowerBreakdown, calculateItemQuality } from '../engine/power.js';
 import { sigilBySpecies } from '../game/sigils.js';
-import { petSpeciesById } from '../game/pets.js';
 import { mountBySpecies } from '../game/mountsGlyphs.js';
 import { relicById } from '../game/relics.js';
 import { pointsSpent } from '../model/talents.js';
@@ -45,7 +44,7 @@ export function powerInputs(character, presetId, { realm = 'base' } = {}) {
   const socketed = new Set(Object.values(character.equipment?.[setKey]?.enchantSlots ?? {}).filter(Boolean));
   const enchants = (pool ?? []).filter((s) => s.activated && socketed.has(s.id)).map((s) => ({ quality: s.quality ?? 0, amplifyLevel: s.amplifyLevel ?? 0 }));
 
-  const pet = preset?.petId ? (character.pets?.owned ?? []).find((p) => p.id === preset.petId) : null;
+  const pet = preset?.petId ? (character.pets?.cores ?? []).find((p) => p.id === preset.petId) : null;
   const altar = character.pets?.altar ?? { level: 1, tier: 1 };
   const mount = preset?.mountId ? (character.mounts ?? []).find((m) => m.id === preset.mountId) : null;
   const relics = (preset?.relicIds ?? []).map((id) => {
@@ -62,7 +61,7 @@ export function powerInputs(character, presetId, { realm = 'base' } = {}) {
       sigilAltarTier: character.sigils?.altarTier ?? 1,
       enchants,
       transcendenceNodeCount: effectiveTranscendencePreset(character, preset)?.allocatedNodeIds?.length ?? 0,
-      pet: pet ? { rarity: upper(petSpeciesById(pet.species)?.rarity), altarLevel: altar.level, tier: altar.tier } : null,
+      pet: pet ? { rarity: upper(pet.rarity), altarLevel: altar.level, tier: altar.tier } : null,
       mount: mount ? { rarity: upper(mountBySpecies(mount.species)?.rarity), stars: mount.level ?? 1 } : null,
       relics,
       talentPointsSpent: pointsSpent(talentSet?.allocation ?? {}),

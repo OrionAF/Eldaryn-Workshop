@@ -42,7 +42,7 @@ function structural(character, presetId, cand, add) {
     if (!Array.isArray(cand[f]) || !cand[f].every(isStr)) add('structural', f, 'Must be a list of ids');
     else if (new Set(cand[f]).size !== cand[f].length) add('structural', f, 'Lists an id twice');
   }
-  if (cand.petId && !(character.pets?.owned ?? []).some((p) => p.id === cand.petId)) add('owned', 'petId', `Pet ${cand.petId} is not owned`);
+  if (cand.petId && !(character.pets?.cores ?? []).some((p) => p.id === cand.petId)) add('owned', 'petId', `Pet Core ${cand.petId} is not owned`);
   if (cand.mountId && !(character.mounts ?? []).some((m) => m.id === cand.mountId)) add('owned', 'mountId', `Mount ${cand.mountId} is not owned`);
   if (cand.transcendencePresetId && !(character.transcendence?.presets ?? []).some((p) => p.id === cand.transcendencePresetId)) {
     add('structural', 'transcendencePresetId', `No transcendence preset ${cand.transcendencePresetId}`);

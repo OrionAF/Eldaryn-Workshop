@@ -156,7 +156,7 @@ describe('presets', () => {
 
   it('reconcile nulls references that do not resolve and keeps ones that do', () => {
     const c = newCharacter('X', 'WARRIOR');
-    c.pets.owned = [{ id: 'pet-1' }];
+    c.pets.cores = [{ id: 'pet-1' }];
     c.mounts = [{ id: 'm-1' }];
     c.transcendence.presets.push({ id: 'tp2', name: 'Two', allocatedNodeIds: [] });
     const [p] = c.presets;
@@ -205,7 +205,7 @@ describe('v1 migration contract (plan §3)', () => {
 
   it('a migrated reference survives reconcile when the domain data holds it', () => {
     const { presets } = migratePresetsFromV1(V1_CHARACTER, { pets: { pet1: 'pet-NEW' }, mounts: { night_wolf: 'mount-NEW' } });
-    const c = { ...newCharacter('X', 'WARRIOR'), presets, pets: { altar: { level: 1, tier: 1 }, owned: [{ id: 'pet-NEW' }] }, mounts: [{ id: 'mount-NEW' }] };
+    const c = { ...newCharacter('X', 'WARRIOR'), presets, pets: { altar: { level: 1, tier: 1 }, cores: [{ id: 'pet-NEW' }] }, mounts: [{ id: 'mount-NEW' }] };
     reconcilePresets(c);
     expect(c.presets[0]).toMatchObject({ petId: 'pet-NEW', mountId: 'mount-NEW' });
   });

@@ -5,12 +5,11 @@
    * are edited in Mounts & Glyphs, and a major glyph whose sigil this preset does not run is marked inert.
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
-  import { petImage } from '../../lib/assets/pets.js';
   import { mountImage } from '../../lib/assets/mounts.js';
   import { mountsUnlocked, UNLOCK_LEVELS, ancientActive, effectiveTranscendencePreset } from '../../lib/model/legality.js';
   import { mountGlyphLoadout, activeMajorGlyphs } from '../../lib/model/mounts.js';
   import { glyphTypeInfo } from '../../lib/model/glyphs.js';
-  import { petDisplayName } from '../../lib/game/pets.js';
+  import { statLine } from '../../lib/build/statText.js';
   import { presetSpec } from '../../lib/build/presetInputs.js';
   import Panel from '../ui/Panel.svelte';
   import PickCard from '../ui/PickCard.svelte';
@@ -20,7 +19,7 @@
 
   let { character, preset } = $props();
 
-  const evolved = $derived(character.pets.altar.tier >= 2);
+  const coreMeta = (core) => core.secondaries.map((s) => statLine(s.type, s.value, { points: true })).join(', ');
   const mount = $derived(character.mounts.find((m) => m.id === preset.mountId) ?? null);
   const spec = $derived(presetSpec(character, preset));
   const sockets = $derived.by(() => {
@@ -45,24 +44,23 @@
 </script>
 
 <Panel title="Pet" scope="preset">
-  {#if !character.pets.owned.length}
-    <EmptyState title="No pets owned yet" text="Add pets in Pets, then pick one here.">
+  {#if !character.pets.cores.length}
+    <EmptyState title="No Pet Cores owned yet" text="Add cores in Pets, then pick one here.">
       {#snippet action()}<a href="#/character/pets">Open Pets</a>{/snippet}
     </EmptyState>
   {:else}
     <div class="picks" role="radiogroup" aria-label="Pet">
       <PickCard name="None" checked={!preset.petId} onselect={() => rosterStore.setPresetPet(preset.id, null)} />
-      {#each character.pets.owned as pet (pet.id)}
+      {#each character.pets.cores as pet (pet.id)}
         <PickCard
           name={petLabel(character, pet.id)}
-          meta={pet.rarity}
-          art={petImage(petDisplayName(pet.species, evolved) ?? pet.species)}
+          meta={coreMeta(pet)}
           checked={preset.petId === pet.id}
           onselect={() => rosterStore.setPresetPet(preset.id, pet.id)}
         />
       {/each}
     </div>
-    <a class="link" href="#/character/pets">Add or level pets in Pets</a>
+    <a class="link" href="#/character/pets">Add cores or level the Core Altar in Pets</a>
   {/if}
 </Panel>
 

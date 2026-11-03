@@ -91,7 +91,7 @@ export function activeTalentSetIndex(rawCharacter) {
  * to the domain's own reconcile; this only checks that the referenced objects exist.
  */
 export function reconcilePresets(character) {
-  const petIds = new Set((character.pets?.owned ?? []).map((p) => p.id));
+  const petIds = new Set((character.pets?.cores ?? []).map((p) => p.id));
   const mountIds = new Set((character.mounts ?? []).map((m) => m.id));
   const trIds = new Set((character.transcendence?.presets ?? []).map((p) => p.id));
   for (const p of character.presets) {
