@@ -81,7 +81,7 @@ function allocLabel(alloc) {
   return parts.length ? parts.join(', ') : NONE;
 }
 // An owned pet or mount is named with what tells copies apart (build/statText.js, backlog §6).
-const petLabel = (character, id) => petText(character, (character.pets?.owned ?? []).find((p) => p.id === id) ?? null);
+const petLabel = (character, id) => petText(character, (character.pets?.cores ?? []).find((p) => p.id === id) ?? null);
 const mountChoiceLabel = (character, id) => mountText(character, (character.mounts ?? []).find((x) => x.id === id) ?? null);
 /** The mount's bare name, for socket labels ("Night Wolf minor socket 2"). */
 const mountLabel = (character, id) => {

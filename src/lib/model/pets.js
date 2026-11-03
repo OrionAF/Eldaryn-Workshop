@@ -1,103 +1,79 @@
-// model/pets.js - the Pets domain (B3). Persisted character field: pets. Shape: rebuild-plan §3 pets.
+// model/pets.js - the Pets domain (B3), Pets V2 since client 2.9.1: stats come from Pet Cores, the pet's
+// look carries none (Game/pet-cores.md). Persisted character field: pets.
 //
-//   pets: { altar: { level: 1..50, tier: 1..8 },                 ONE altar for the whole collection
-//           owned: [{ id, species, rarity, secondaries: [{type, value}] }] }
+//   pets: { altar: { level: 1..50, tier: 1..20 },                ONE Core Altar for every core
+//           cores: [{ id, rarity, baseAttack, baseHp, secondaries: [{type, value}] }] }   max 100
 //
-// `species` is a game/pets.js id (FLAME_TOAD ...); `rarity` is catalogue data (copied in so a consumer
-// need not look it up, always re-derived on load). `type` is a stats.json enumName (ATTACK_PERCENT ...)
-// and `value` is the BASE ROLL in display units (percentage points; attack speed too, as the game shows
-// it). Altar scaling (x(1 + 0.02 (level-1)), Game/pets.md §5) is applied by the engine, never stored.
+// `rarity` is the title-case tier name (Common..Oblivion, format.js RARITY_ORDER); `baseAttack`/`baseHp`
+// are the core's own rolled bases (the game shows them). `type` is a stats.json enumName and `value` is
+// the BASE ROLL in display units (percentage points; Attack Speed, Crit Damage, Minion Attack Speed
+// too, as the game shows them). Altar scaling is applied by the engine, never stored.
+//
+// V1 pets (`owned` with species, before 2.9.1) are dropped on load: the user chose not to convert them
+// (docs/WIP/being-worked-on/pet-cores-port.md §6 Q1). Presets that used one lose their pet through
+// reconcilePresets.
 //
 // Domain contract (§3 "Normalisation layout"), all functions trade in PARTIAL CHARACTERS:
 //   defaultPets() / normalisePets(rawCharacter, {class, spec}) (idempotent) /
-//   migratePetsFromV1(v1Character) -> { value, idMap: v1 pet id -> owned pet id } / reconcilePets(character)
-import { PET_SPECIES, petSpeciesById } from '../game/pets.js';
+//   migratePetsFromV1(v1Character) -> { value, idMap } / reconcilePets(character)
+import {
+  CORE_RARITIES, CORE_BASE_STATS, CORE_MAX_OWNED, coreSecondaryCount, coreSecondaryRange, coreSecondaryTypesFor,
+} from '../game/petCores.js';
 import { available } from '../game/classes.js';
 import { newId } from './character.js';
 
-export const PET_MAX_LEVEL = 50; // Game/pets.md §1 MAX_ALTAR_LEVEL
-export const PET_MAX_TIER = 8; // Game/pets.md §1 PET_ASCEND_CONSTANTS.MAX_TIER
-export const MAX_OWNED_PETS = 100; // Game/pets.md §1
+export const PET_MAX_LEVEL = 50; // Game/pet-cores.md §4 MAX_ALTAR_LEVEL
+export const PET_MAX_TIER = 20; // the client has no cap (pet-cores.md §3); a sanity bound only
+export const MAX_OWNED_CORES = 100; // pet-cores.md §6 CORE_MAX_OWNED
+if (CORE_MAX_OWNED !== MAX_OWNED_CORES) throw new Error('pet-cores.json maxOwned changed');
+
+/** Stats the client keeps as multipliers (0.2 = 20%); the model keeps them in percent points. */
+const MULTIPLIER_STATS = new Set(['ATTACK_SPEED', 'CRIT_DAMAGE', 'MINION_ATTACK_SPEED']);
+
+const TITLE = new Map(CORE_RARITIES.map((r) => [r, r[0] + r.slice(1).toLowerCase()]));
+/** Title-case core rarities, Common..Oblivion. */
+export const CORE_RARITY_NAMES = [...TITLE.values()];
+/** 'MYTHIC' or 'Mythic' -> 'Mythic'; null for anything else. */
+export const coreRarityName = (r) => TITLE.get(String(r ?? '').toUpperCase()) ?? null;
+/** 'Mythic' -> 'MYTHIC' (the catalogue and engine key). */
+export const coreRarityEnum = (r) => (coreRarityName(r) ? String(r).toUpperCase() : null);
+
+/** A core's display name, "Mythic Core" (the game names cores by rarity). */
+export const coreName = (core) => (core ? `${core.rarity} Core` : null);
+
+/** Secondary slots of a core rarity (1..5). */
+export const coreSlots = (rarity) => coreSecondaryCount(coreRarityEnum(rarity));
+
+/** The rarity's unrolled base (the middle of its +-10% band). */
+export const coreBaseMid = (rarity) => CORE_BASE_STATS[coreRarityEnum(rarity)] ?? null;
 
 /**
- * Secondary types a pet can carry (the 26 the client's bonus calculator accepts, Game/pets.md §5)
- * with the slider envelope the v1 tool observed. The envelope is OBSERVED data (combat-model
- * provenance), a UI aid only; `manual` types have no trustworthy max and are typed, not slid.
+ * Slider envelope of a secondary in model units (percent points): the core roll at item level 50
+ * (Game/pet-cores.md §5), x100 for the three multiplier stats. Null for a type a core cannot roll.
+ * @returns {{min:number, max:number, step:number}|null}
  */
-export const PET_SECONDARY_RANGES = {
-  ATTACK_PERCENT: { min: 0.1, max: 21.0, step: 0.1 },
-  HEALTH_PERCENT: { min: 0.1, max: 22.6, step: 0.1 },
-  CRIT_CHANCE: { min: 0.1, max: 7.3, step: 0.1 },
-  CRIT_DAMAGE: { min: 1, max: 48, step: 1 },
-  DOUBLE_HIT: { min: 1.0, max: 12.1, step: 0.1 },
-  ATTACK_SPEED: { min: 0.1, max: 32.0, step: 0.1 },
-  LIFESTEAL: { min: 0.2, max: 12.1, step: 0.1 },
-  PENETRATION: { min: 0, step: 0.1, manual: true },
-  HP_REGEN: { min: 0.1, max: 5.2, step: 0.1 },
-  SPELL_DAMAGE: { min: 2.6, max: 30.7, step: 0.1 },
-  BLOCK_CHANCE: { min: 1.0, max: 5.6, step: 0.1 },
-  DAMAGE_REDUCTION: { min: 0.5, max: 6.1, step: 0.1 },
-  SPELL_RESIST: { min: 1.0, max: 11.1, step: 0.1 },
-  MISS_CHANCE: { min: 0.4, max: 7.7, step: 0.1 },
-  BLIND_CHANCE: { min: 0.1, max: 7.3, step: 0.1 },
-  PARALYZE_CHANCE: { min: 0.2, max: 1.2, step: 0.1 },
-  // Accepted by the game but never observed on a pet: typed by hand (no envelope).
-  SPELL_CRIT_CHANCE: { min: 0, step: 0.1, manual: true },
-  SPELL_VAMP: { min: 0, step: 0.1, manual: true },
-  DISRUPTION_CHANCE: { min: 0, step: 0.1, manual: true },
-  FEAR_CHANCE: { min: 0, step: 0.1, manual: true },
-  MINION_ATTACK: { min: 0, step: 0.1, manual: true },
-  MINION_HEALTH: { min: 0, step: 0.1, manual: true },
-  MINION_CRIT_CHANCE: { min: 0, step: 0.1, manual: true },
-  MINION_LIFESTEAL: { min: 0, step: 0.1, manual: true },
-  SOUL_LINK: { min: 0, step: 0.1, manual: true },
-  MINION_ATTACK_SPEED: { min: 0, step: 0.1, manual: true },
-};
-export const PET_SECONDARY_TYPES = Object.keys(PET_SECONDARY_RANGES);
-
-/** v1 the v1 pet catalogue statKey -> stats.json enumName, for migration. */
-const V1_STAT_KEY_TO_TYPE = {
-  attack_pct: 'ATTACK_PERCENT', health_pct: 'HEALTH_PERCENT', crit: 'CRIT_CHANCE', crit_mult: 'CRIT_DAMAGE',
-  double_hit: 'DOUBLE_HIT', speed: 'ATTACK_SPEED', lifesteal: 'LIFESTEAL', penetration: 'PENETRATION',
-  hp_regen: 'HP_REGEN', spell_damage: 'SPELL_DAMAGE', block_chance: 'BLOCK_CHANCE',
-  dmg_reduction: 'DAMAGE_REDUCTION', spell_resist: 'SPELL_RESIST', miss_chance: 'MISS_CHANCE',
-  blind_chance: 'BLIND_CHANCE', paralyze_chance: 'PARALYZE_CHANCE',
-};
-
-/** v1 companion id ('pyretoad', 'flametoad') -> species id: base and evolved names both resolve. */
-const flat = (s) => String(s).toLowerCase().replace(/[^a-z]/g, '');
-const V1_COMPANION_TO_SPECIES = new Map(
-  PET_SPECIES.flatMap((s) => [[flat(s.name), s.id], [flat(s.evolvedName), s.id]]),
-);
-
-const clampInt = (v, min, max) => Math.max(min, Math.min(Math.round(Number(v)) || min, max));
-const round3 = (n) => Math.round(n * 1000) / 1000;
-
-export function defaultAltar() {
-  return { level: 1, tier: 1 };
+export function coreSecondaryRangePoints(type) {
+  const r = coreSecondaryRange(type);
+  if (!r) return null;
+  const k = MULTIPLIER_STATS.has(type) ? 100 : 1;
+  const round = (n) => Math.round(n * k * 1e6) / 1e6;
+  return { min: round(r.min), max: round(r.max), step: round(10 ** -r.decimals) };
 }
 
-export function normaliseAltar(raw) {
-  return { level: clampInt(raw?.level, 1, PET_MAX_LEVEL), tier: clampInt(raw?.tier, 1, PET_MAX_TIER) };
-}
-
-/** Max secondary slots of a species (catalogue `secondaryStatCount`). */
-export function secondarySlots(speciesId) {
-  return petSpeciesById(speciesId)?.secondaryStatCount ?? 0;
-}
-
-/** Secondary types a class may roll: pet-eligible AND class-available (game/classes.available). */
+/** Secondary types a class may roll on a core (the class-filtered gear pool). */
 export function secondaryTypesFor(cls) {
-  return PET_SECONDARY_TYPES.filter((t) => available(t, cls ?? 'WARRIOR'));
+  return coreSecondaryTypesFor(cls ?? 'WARRIOR');
 }
 
-/** Clamp a rolled value to its envelope and step; manual types are only floored at 0. */
+const round3 = (n) => Math.round(n * 1000) / 1000;
+const clampInt = (v, min, max) => Math.max(min, Math.min(Math.round(Number(v)) || min, max));
+
+/** Clamp a value to its envelope and step (UI input). */
 export function clampSecondaryValue(type, value) {
-  const r = PET_SECONDARY_RANGES[type];
+  const r = coreSecondaryRangePoints(type);
   if (!r) return 0;
   const n = Number(value);
   if (!Number.isFinite(n)) return r.min;
-  if (r.manual) return Math.max(r.min, round3(n));
   const c = Math.max(r.min, Math.min(n, r.max));
   return round3(r.min + Math.round((c - r.min) / r.step) * r.step);
 }
@@ -108,19 +84,33 @@ export function normaliseSecondaryValue(value) {
   return Number.isFinite(n) && n >= 0 ? round3(n) : 0;
 }
 
-/** A fresh owned pet of `speciesId` (null for an unknown species). */
-export function newPet(speciesId, id = newId('pet')) {
-  const s = petSpeciesById(speciesId);
-  return s ? { id, species: s.id, rarity: s.rarity, secondaries: [] } : null;
+/** A stored base stat: a whole number >= 0, else the rarity's middle. */
+const normaliseBase = (v, mid) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Math.round(Number(v)) : mid);
+
+export function defaultAltar() {
+  return { level: 1, tier: 1 };
 }
 
-function normaliseSecondaries(raw, species, cls) {
+export function normaliseAltar(raw) {
+  return { level: clampInt(raw?.level, 1, PET_MAX_LEVEL), tier: clampInt(raw?.tier, 1, PET_MAX_TIER) };
+}
+
+/** A fresh core of `rarity` at its unrolled base (null for an unknown rarity). */
+export function newCore(rarity, id = newId('core')) {
+  const name = coreRarityName(rarity);
+  if (!name) return null;
+  const mid = coreBaseMid(name);
+  return { id, rarity: name, baseAttack: mid.attack, baseHp: mid.hp, secondaries: [] };
+}
+
+function normaliseSecondaries(raw, rarity, cls) {
   const out = [];
   const seen = new Set();
+  const slots = coreSlots(rarity);
   for (const s of Array.isArray(raw) ? raw : []) {
-    if (out.length >= species.secondaryStatCount) break;
+    if (out.length >= slots) break;
     const type = s?.type;
-    if (!PET_SECONDARY_RANGES[type] || seen.has(type)) continue;
+    if (!coreSecondaryRange(type) || seen.has(type)) continue;
     if (cls && !available(type, cls)) continue;
     seen.add(type);
     out.push({ type, value: normaliseSecondaryValue(s.value) });
@@ -129,54 +119,44 @@ function normaliseSecondaries(raw, species, cls) {
 }
 
 export function defaultPets() {
-  return { pets: { altar: defaultAltar(), owned: [] } };
+  return { pets: { altar: defaultAltar(), cores: [] } };
 }
 
 export function normalisePets(rawCharacter, ctx) {
   const raw = rawCharacter?.pets;
+  // V1 pets (no `cores` array) are dropped, and their altar with them: V1 tiers mean something else.
+  if (!Array.isArray(raw?.cores)) return defaultPets();
   const cls = ctx?.class ?? null;
   const seen = new Set();
-  const owned = [];
-  for (const p of Array.isArray(raw?.owned) ? raw.owned : []) {
-    if (owned.length >= MAX_OWNED_PETS) break;
-    const species = petSpeciesById(p?.species);
-    if (!species || typeof p.id !== 'string' || !p.id || seen.has(p.id)) continue;
-    seen.add(p.id);
-    owned.push({ id: p.id, species: species.id, rarity: species.rarity, secondaries: normaliseSecondaries(p.secondaries, species, cls) });
+  const cores = [];
+  for (const c of raw.cores) {
+    if (cores.length >= MAX_OWNED_CORES) break;
+    const rarity = coreRarityName(c?.rarity);
+    if (!rarity || typeof c.id !== 'string' || !c.id || seen.has(c.id)) continue;
+    seen.add(c.id);
+    const mid = coreBaseMid(rarity);
+    cores.push({
+      id: c.id,
+      rarity,
+      baseAttack: normaliseBase(c.baseAttack, mid.attack),
+      baseHp: normaliseBase(c.baseHp, mid.hp),
+      secondaries: normaliseSecondaries(c.secondaries, rarity, cls),
+    });
   }
-  return { pets: { altar: normaliseAltar(raw?.altar), owned } };
+  return { pets: { altar: normaliseAltar(raw.altar), cores } };
 }
 
-/**
- * v1 -> v2. Catalogue pets (companionId set) keep their id and become owned pets of the matching
- * species; custom/legacy hand-entered pets have no species and are dropped (their presets get no
- * pet). The v1 altar carried tier up to 10; v2 caps at 8, so it clamps. Secondary statKeys map to
- * enum types; class gating is applied afterwards by normalisePets.
- */
-export function migratePetsFromV1(v1Character) {
-  const owned = [];
-  const idMap = {};
-  const seen = new Set();
-  for (const p of Array.isArray(v1Character?.pets) ? v1Character.pets : []) {
-    const speciesId = V1_COMPANION_TO_SPECIES.get(flat(p?.companionId ?? ''));
-    if (!speciesId || typeof p.id !== 'string' || !p.id || seen.has(p.id)) continue;
-    seen.add(p.id);
-    const secondaries = (Array.isArray(p.secondaries) ? p.secondaries : [])
-      .map((s) => ({ type: V1_STAT_KEY_TO_TYPE[s?.statKey], value: s?.value }))
-      .filter((s) => s.type);
-    owned.push({ id: p.id, species: speciesId, secondaries });
-    idMap[p.id] = p.id;
-  }
-  const value = { pets: { altar: normaliseAltar(v1Character?.petAltar), owned } };
-  return { value, idMap };
+/** v1 saves predate Pet Cores: every pet is dropped and presets get no pet (empty idMap). */
+export function migratePetsFromV1() {
+  return { value: defaultPets(), idMap: {} };
 }
 
 /** Drop secondaries the character's class cannot roll (e.g. after a class change). */
 export function reconcilePets(character) {
   const cls = character?.class;
   if (!cls || !character.pets) return;
-  for (const p of character.pets.owned) {
-    const kept = (p.secondaries ?? []).filter((s) => available(s.type, cls));
-    if (kept.length !== (p.secondaries ?? []).length) p.secondaries = kept;
+  for (const c of character.pets.cores) {
+    const kept = (c.secondaries ?? []).filter((s) => available(s.type, cls));
+    if (kept.length !== (c.secondaries ?? []).length) c.secondaries = kept;
   }
 }

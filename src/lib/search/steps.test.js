@@ -9,8 +9,8 @@ const QUICK = { level: 'quick', n0: 4, maxN: 8, randomStarts: 0 };
 // a second pet that wins on one attacking stat (the target is the dummy), so the pet block has a value to try (a dominated pet would be pruned)
 const character = (() => {
   const c = fixtureCharacter('WARRIOR');
-  const lucky = { id: 'pet-b', species: 'INFERNAL_DRAKE', rarity: 'Legendary', secondaries: [{ type: 'CRIT_CHANCE', value: 9 }] };
-  return { ...c, pets: { ...c.pets, owned: [...c.pets.owned, lucky] } };
+  const lucky = { ...c.pets.cores[0], id: 'pet-b', secondaries: [{ type: 'CRIT_CHANCE', value: 9 }] };
+  return { ...c, pets: { ...c.pets, cores: [...c.pets.cores, lucky] } };
 })();
 const run = (space, effort = QUICK, seed = 6) => {
   const seen = [];

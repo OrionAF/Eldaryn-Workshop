@@ -10,7 +10,7 @@ import { fixtureCharacter } from '../build/fixtures.js';
 import { normaliseCharacter } from '../model/index.js';
 import { RELICS } from '../game/relics.js';
 import { TALENT_SPECS } from '../game/talents.js';
-import { PET_SPECIES } from '../game/pets.js';
+import { CORE_BASE_STATS } from '../game/petCores.js';
 import { sigilBySpecies } from '../game/sigils.js';
 
 const HARMLESS = dominanceContextOf(resolveTarget({ kind: 'dummy' }), 'pve');
@@ -35,8 +35,8 @@ describe('catalogue facts the rules rest on', () => {
       }
     }
   });
-  it('every pet species adds positive flat Attack and HP (Game/pets.md §4)', () => {
-    for (const p of PET_SPECIES) expect(p.baseAttack > 0 && p.baseHp > 0, p.species).toBe(true);
+  it('every Pet Core rarity adds positive flat Attack and HP (Game/pet-cores.md §2)', () => {
+    for (const [r, b] of Object.entries(CORE_BASE_STATS)) expect(b.attack > 0 && b.hp > 0, r).toBe(true);
   });
 });
 
@@ -74,9 +74,9 @@ describe('pets', () => {
   const pets = (extra) => ({
     pets: {
       altar: { level: 30, tier: 2 },
-      owned: [
-        { id: 'pet-a', species: 'INFERNAL_DRAKE', rarity: 'Legendary', secondaries: [{ type: 'ATTACK_PERCENT', value: 12.5 }, { type: 'CRIT_DAMAGE', value: 20 }] },
-        { id: 'pet-b', species: 'INFERNAL_DRAKE', rarity: 'Legendary', secondaries: [{ type: 'ATTACK_PERCENT', value: 10 }] },
+      cores: [
+        { id: 'pet-a', rarity: 'Legendary', baseAttack: 2300, baseHp: 6800, secondaries: [{ type: 'ATTACK_PERCENT', value: 12.5 }, { type: 'CRIT_DAMAGE', value: 20 }] },
+        { id: 'pet-b', rarity: 'Legendary', baseAttack: 2300, baseHp: 6800, secondaries: [{ type: 'ATTACK_PERCENT', value: 10 }] },
         ...extra,
       ],
     },
@@ -89,7 +89,7 @@ describe('pets', () => {
   });
 
   it('a dominated current pet stays the baseline; a pet that wins on one stat stays offered', () => {
-    const lucky = { id: 'pet-c', species: 'INFERNAL_DRAKE', rarity: 'Legendary', secondaries: [{ type: 'LIFESTEAL', value: 9 }] };
+    const lucky = { id: 'pet-c', rarity: 'Legendary', baseAttack: 2300, baseHp: 6800, secondaries: [{ type: 'LIFESTEAL', value: 9 }] };
     const space = createBuildSpace(warrior(pets([lucky]), { petId: 'pet-b' }), 'p1');
     expect(space.start.petId).toBe('pet-b');
     expect(block(space, 'pet').domain(space.start).map((c) => c.petId).sort()).toEqual(['pet-a', 'pet-c']);

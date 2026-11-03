@@ -12,7 +12,8 @@
 //     stat enum where v2 keeps the pool key (`PENETRATION` -> `penetration`);
 //   - pet secondaries are multipliers for Attack Speed / Crit Damage / Minion Attack Speed (0.2 = 20%)
 //     where the v2 pet keeps percent points for every stat (model/pets.js);
-//   - the pet altar is {totalXp, tier}; v2 stores the derived level (Game/pets.md §6);
+//   - the pet altar is {totalXp, tier}; v2 stores the derived level (Game/pet-cores.md §4); pets come
+//     from `petV2` (2.9.1+) or, in an older capture, `petState`, whose equipped pet becomes one core;
 //   - skills are `<id>Level` keys; the Oblivion hero lives under `oblivionPrestige.oblivion`;
 //   - `computedStats` is the server's final stats for the ACTIVE realm and preset: it becomes that
 //     preset's sheet (or the Oblivion sheet when the Oblivion realm is active).
@@ -20,6 +21,7 @@
 import { CLASSES } from '../game/classes.js';
 import { BASE_SLOTS, OBLIVION_ONLY_SLOTS } from '../game/gear.js';
 import { PET_ALTAR_XP_NEEDED_BY_TIER, petSpeciesById } from '../game/pets.js';
+import { coreAltarProgress } from '../game/petCores.js';
 import { GLYPH_SECONDARY_POOL, mountBySpecies } from '../game/mountsGlyphs.js';
 import { SKILL_IDS } from '../game/skills.js';
 import { fortressById } from '../game/fortress.js';
@@ -92,7 +94,7 @@ function mapStone(raw) {
 
 const PET_PERCENT_POINT_STATS = new Set(['ATTACK_SPEED', 'CRIT_DAMAGE', 'MINION_ATTACK_SPEED']);
 
-/** Game/pets.md §6 getAltarProgress: level from the cumulative altar XP at this tier (1..50). */
+/** Game/pets.md §6 getAltarProgress (V1 altar): level from the cumulative altar XP at this tier (1..50). */
 export function altarLevelFromXp(totalXp, tier) {
   const t = Math.min(8, Math.max(1, Math.floor(Number(tier)) || 1));
   const need = PET_ALTAR_XP_NEEDED_BY_TIER[String(t)] ?? [];
@@ -105,25 +107,56 @@ export function altarLevelFromXp(totalXp, tier) {
   return level;
 }
 
-function mapPets(petState) {
-  const owned = [];
-  for (const p of arr(petState?.ownedPets)) {
-    if (!isObj(p) || !petSpeciesById(p.species)) continue;
-    owned.push({
-      id: str(p.id),
-      species: p.species,
-      secondaries: arr(p.secondaryStats)
-        .filter(isObj)
-        .map((s) => ({
-          type: s.type,
-          // v2 keeps percent points for every pet stat; the three multiplier stats are x100 here
-          value: typeof s.value === 'number' && PET_PERCENT_POINT_STATS.has(s.type) ? Math.round(s.value * 1e6) / 1e4 : s.value,
-        })),
-    });
-  }
-  const tier = num(petState?.altar?.tier) ?? 1;
-  return { altar: { level: altarLevelFromXp(petState?.altar?.totalXp, tier), tier }, owned };
+// v2 keeps percent points for every pet stat; the three multiplier stats are x100 here
+const mapSecondaries = (list) => arr(list)
+  .filter(isObj)
+  .map((s) => ({
+    type: s.type,
+    value: typeof s.value === 'number' && PET_PERCENT_POINT_STATS.has(s.type) ? Math.round(s.value * 1e6) / 1e4 : s.value,
+  }));
+
+/**
+ * Pets V2 (`petV2`, the server's petsV2State; Game/pet-cores.md §1): cores and the Core Altar as they
+ * are. The shape is read from the 2.9.1 client's own mapping, not yet from a captured profile.
+ */
+function mapPetCores(petV2) {
+  const cores = arr(petV2.cores).filter(isObj).map((c) => ({
+    id: str(c.id),
+    rarity: c.rarity,
+    baseAttack: num(c.baseAttack),
+    baseHp: num(c.baseHp),
+    secondaries: mapSecondaries(c.secondaryStats),
+  }));
+  const tier = num(petV2.altar?.tier) ?? 1;
+  return { pets: { altar: { level: coreAltarProgress(num(petV2.altar?.totalXp) ?? 0, tier).level, tier }, cores }, activeCoreId: str(petV2.activeCoreId) };
 }
+
+/**
+ * A capture from before 2.9.1 (`petState`, V1). The game turned the EQUIPPED pet into a core "with
+ * exactly the same stats" and dropped the rest (pet-cores.md §8), so this does the same: one core
+ * keeping the pet's id, the V1 tier multiplier (t^2 - t + 1, pets.md §4) folded into its bases, on a
+ * tier-1 altar at the old level. Flat stats and secondaries match the old pet; the altar tier does not.
+ */
+function mapV1PetToCore(petState) {
+  const id = str(petState.equippedPetId);
+  const pet = arr(petState.ownedPets).find((p) => isObj(p) && p.id === id);
+  const def = pet && petSpeciesById(pet.species);
+  const v1Tier = Math.min(8, Math.max(1, Math.floor(num(petState.altar?.tier) ?? 1)));
+  const level = altarLevelFromXp(petState.altar?.totalXp, v1Tier);
+  if (!def) return { pets: { altar: { level: 1, tier: 1 }, cores: [] }, activeCoreId: null };
+  const mult = v1Tier * v1Tier - v1Tier + 1;
+  const core = { id, rarity: def.rarity, baseAttack: def.baseAttack * mult, baseHp: def.baseHp * mult, secondaries: mapSecondaries(pet.secondaryStats) };
+  return { pets: { altar: { level, tier: 1 }, cores: [core] }, activeCoreId: id };
+}
+
+function mapPets(profile) {
+  if (isObj(profile.petV2)) return mapPetCores(profile.petV2);
+  if (isObj(profile.petState)) return mapV1PetToCore(profile.petState);
+  return { pets: { altar: { level: 1, tier: 1 }, cores: [] }, activeCoreId: null };
+}
+
+/** The equipped core of a profile (Pets V2, or the converted V1 pet); undefined when it has no pet state. */
+const liveCoreId = (profile) => (isObj(profile.petV2) || isObj(profile.petState) ? mapPets(profile).activeCoreId : undefined);
 
 // --- mounts and glyphs ---
 
@@ -243,7 +276,7 @@ function livePreset(profile, id, name) {
     name,
     equipmentSet: profile.activeEquipmentSet,
     talentSet: profile.activeTalentSet,
-    petId: profile.petState?.equippedPetId,
+    petId: liveCoreId(profile),
     mountId: profile.mountState?.activeMountId,
     relicIds: profile.relicState?.equippedRelicIds,
     sigilSpecies: sigils.species,
@@ -286,7 +319,9 @@ function mapPreset(p, sheet) {
     name: str(p.name),
     equipmentSet: p.equipmentSet === 2 ? 2 : 1,
     talentSet: talentSetIndex(p.talentSet),
-    petId: str(p.petId),
+    // 2.9.1 presets name their core in petV2CoreId (L1195838); older ones a V1 pet, which
+    // survives only as the equipped pet's core
+    petId: str(p.petV2CoreId) ?? str(p.petId),
     mountId: str(p.mountId),
     relicIds: arr(p.relicIds).filter((x) => typeof x === 'string'),
     ...mapPresetSigils(p),
@@ -399,7 +434,7 @@ export function gameProfileToCharacter(profile, { now = new Date().toISOString()
     enchantStones: arr(profile.enchantStones).map(mapStone).filter(Boolean),
     oblivionEnchantStones: arr(hero?.enchantStones).map(mapStone).filter(Boolean),
     talentSets: [mapTalentSet(profile.talentState), mapTalentSet(profile.talentState2)],
-    pets: mapPets(profile.petState),
+    pets: mapPets(profile).pets,
     mounts,
     glyphs,
     sigils: mapSigils(profile.sigilState),

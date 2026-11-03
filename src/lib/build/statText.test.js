@@ -38,18 +38,18 @@ describe('stone lines', () => {
 
 describe('owned items, named so copies are told apart', () => {
   const c = fixtureCharacter('WARRIOR');
-  const pet = c.pets.owned[0];
+  const pet = c.pets.cores[0];
 
-  it('a pet: name, rarity and every secondary in percent points', () => {
+  it('a pet core: rarity name and every secondary in percent points', () => {
     const text = petText(c, pet);
-    expect(text).toContain('Legendary');
+    expect(text).toMatch(/^Legendary Core \(/);
     for (const s of pet.secondaries) expect(text).toContain(statLine(s.type, s.value, { points: true }));
     expect(text).not.toMatch(/[A-Z]{2,}_|identical/);
   });
   it('two identical pets: "either of your 2 identical copies"', () => {
-    const twin = { ...c, pets: { ...c.pets, owned: [pet, { ...pet, id: 'pet-b' }] } };
+    const twin = { ...c, pets: { ...c.pets, cores: [pet, { ...pet, id: 'pet-b' }] } };
     expect(petText(twin, pet)).toContain('either of your 2 identical copies');
-    const other = { ...c, pets: { ...c.pets, owned: [pet, { ...pet, id: 'pet-b', secondaries: [] }] } };
+    const other = { ...c, pets: { ...c.pets, cores: [pet, { ...pet, id: 'pet-b', baseAttack: pet.baseAttack + 1 }] } };
     expect(petText(other, pet)).not.toContain('identical');
   });
   it('a mount: level and what it adds there, as the game shows it', () => {

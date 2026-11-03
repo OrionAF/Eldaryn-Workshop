@@ -8,7 +8,7 @@
 import { calculateTalentBonuses } from '../engine/sources/talents.js';
 import { calculateTranscendenceBonuses } from '../engine/sources/transcendence.js';
 import { calculateAwakeningBonuses } from '../engine/sources/awakening.js';
-import { calculatePetBonuses } from '../engine/sources/pet.js';
+import { calculateCoreBonuses } from '../engine/sources/petCore.js';
 import { calculateStoneBonuses } from '../engine/sources/stones.js';
 import { calculateRelicBonuses, emptyRelicBonuses } from '../engine/sources/relic.js';
 import { calculateMountBonuses } from '../engine/sources/mount.js';
@@ -68,23 +68,21 @@ export function formConfigFor(character, preset, spec) {
 }
 
 /**
- * Pet secondaries are persisted as the base roll in percent points for every stat, as the game
- * shows them (B3). The engine's Attack Speed, Crit Damage and Minion Attack Speed are multipliers,
- * so those three are divided by 100 here (stats.md §1.3).
+ * The preset's Pet Core bonuses. Core secondaries are persisted as the base roll in percent points for
+ * every stat, as the game shows them (B3). The engine's Attack Speed, Crit Damage and Minion Attack
+ * Speed are multipliers, so those three are divided by 100 here (stats.md §1.3).
  */
-function petInput(character, preset) {
-  const pet = preset?.petId ? (character.pets?.owned ?? []).find((p) => p.id === preset.petId) : null;
-  if (!pet) return null;
+function petBonuses(character, preset) {
+  const core = preset?.petId ? (character.pets?.cores ?? []).find((p) => p.id === preset.petId) : null;
   const altar = character.pets?.altar ?? { level: 1, tier: 1 };
-  return {
-    species: pet.species,
-    altarLevel: altar.level,
-    tier: altar.tier,
-    secondaryStats: (pet.secondaries ?? []).map((s) => ({
+  return calculateCoreBonuses(core && {
+    baseAttack: core.baseAttack,
+    baseHp: core.baseHp,
+    secondaryStats: (core.secondaries ?? []).map((s) => ({
       type: s.type,
       value: isMultiplierStat(s.type) ? s.value / 100 : s.value,
     })),
-  };
+  }, altar.level, altar.tier);
 }
 
 /** The ridden mount plus the minor glyphs socketed on it (sealed glyphs add nothing). */
@@ -149,7 +147,7 @@ export function buildPresetInputs(character, presetId, { realm = 'base' } = {}) 
   const talents = calculateTalentBonuses(spec, talentSet?.allocation);
   const tr = transcendencePreset(character, preset);
   const transcendence = calculateTranscendenceBonuses(tr?.allocatedNodeIds ?? [], transcendenceBoardFor(character, spec));
-  const pet = calculatePetBonuses(petInput(character, preset));
+  const pet = petBonuses(character, preset);
   // Q3 strict: an Ancient counts only while the resolved board allocates its Transcendence sigil node.
   const ancientDropped = !!preset?.ancientSigilSpecies && !ancientActive(preset.ancientSigilSpecies, tr);
   const warnings = !ancientDropped

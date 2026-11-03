@@ -165,8 +165,9 @@ export function fixtureCharacter(cls, { spec = FIXTURE_SPECS[cls] } = {}) {
     ],
     oblivionEnchantStones: [{ id: 'ob-1', type: 'OBLIVION', quality: 80, amplifyLevel: 0, oblivionLevel: 3, stats: [] }],
     pets: {
-      altar: { level: 30, tier: 2 },
-      owned: [{ id: 'pet-a', species: 'INFERNAL_DRAKE', rarity: 'Legendary', secondaries: petTypes.map(([type, value]) => ({ type, value })) }],
+      // a core migrated from a V1 Infernal Drake on a tier-2 altar (species base x3), so the goldens kept their pet stats
+      altar: { level: 30, tier: 1 },
+      cores: [{ id: 'pet-a', rarity: 'Legendary', baseAttack: 9000, baseHp: 13200, secondaries: petTypes.map(([type, value]) => ({ type, value })) }],
     },
     mounts: [{
       id: 'mount-a', species: mountSpecies, level: 3, baseHp: 7, baseAtk: 7,

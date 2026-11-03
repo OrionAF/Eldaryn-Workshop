@@ -331,7 +331,7 @@ export function createBuildSpace(character, presetOrId, {
   const glyphById = new Map((character.glyphs ?? []).map((g) => [g.id, g]));
   const mountIds = new Set((character.mounts ?? []).map((m) => m.id));
   const mountStats = new Map((character.mounts ?? []).map((m) => [m.id, mountEffectiveStats(m)]));
-  const petIds = new Set((character.pets?.owned ?? []).map((p) => p.id));
+  const petIds = new Set((character.pets?.cores ?? []).map((p) => p.id));
   const boardIds = (character.transcendence?.presets ?? []).map((p) => p.id);
   const classRelics = new Set(relicsForClass(cls).map((r) => r.id));
 
@@ -531,7 +531,7 @@ export function createBuildSpace(character, presetOrId, {
       return subsetsUpTo(pool, full).filter((s) => s.length === full).map((relicIds) => legalise({ ...c, relicIds }));
     },
     pet(c) {
-      // never "no pet" while one is owned: a pet adds positive flat Attack and HP and has no ability (Game/pets.md §4)
+      // never "no pet" while a core is owned: it adds positive flat Attack and HP and has no ability (Game/pet-cores.md §2)
       return (petIds.size ? [...petIds] : [null]).map((petId) => legalise({ ...c, petId }));
     },
     // Compound: each non-dominated mount with its saved sockets; the inner socket ascent is the driver's.

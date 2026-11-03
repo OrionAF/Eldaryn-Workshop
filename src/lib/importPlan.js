@@ -47,7 +47,7 @@ export function characterCounts(c) {
       count: (c.talentSets ?? []).reduce((n, s) => n + Object.values(s?.allocation ?? {}).reduce((a, v) => a + (Number(v) || 0), 0), 0),
       unit: 'points',
     },
-    { id: 'pets', label: 'Pets', count: size(c.pets?.owned), unit: 'pets' },
+    { id: 'pets', label: 'Pet Cores', count: size(c.pets?.cores), unit: 'cores' },
     { id: 'mounts', label: 'Mounts', count: size(c.mounts), unit: 'mounts' },
     { id: 'glyphs', label: 'Glyphs', count: size(c.glyphs), unit: 'glyphs' },
     { id: 'sigils', label: 'Sigils', count: size(c.sigils?.owned), unit: 'sigils' },
@@ -96,7 +96,7 @@ const COLLECTIONS = [
   ['enchantStones', 'enchantStones', 'stones'],
   ['mountState.ownedMounts', 'mounts', 'mounts'],
   ['player.glyphs', 'glyphs', 'glyphs'],
-  ['petState.ownedPets', 'pets.owned', 'pets'],
+  ['petV2.cores', 'pets.cores', 'pet cores'],
   ['sigilState.ownedSigils', 'sigils.owned', 'sigils'],
   ['relicState.ownedRelics', 'relics', 'relics'],
   ['transcendencePresets', 'transcendence.presets', 'transcendence presets'],
@@ -110,6 +110,11 @@ function normalisationNotes(profile, norm) {
   for (const [from, to, what] of COLLECTIONS) {
     const n = size(at(profile, from)) - size(at(norm, to));
     if (n > 0) notes.push({ kind: 'dropped', what, count: n, reason: 'the game does not have them, or they are not allowed for this class and level' });
+  }
+  // a capture from before 2.9.1 keeps only its equipped pet, as one core (model/gameProfile.js mapPets)
+  if (!profile.petV2) {
+    const n = size(at(profile, 'petState.ownedPets')) - size(norm.pets?.cores);
+    if (n > 0) notes.push({ kind: 'dropped', what: 'pets', count: n, reason: 'pets from before the 2.9.1 Pet Cores rework; only the equipped one is kept, as a core' });
   }
   let noQuality = 0;
   for (const set of Object.values(norm.equipment ?? {})) {

@@ -10,7 +10,7 @@
 // (0.09 = +9%); pet secondaries are stored in percent points (data-model.md §8, `petState`), so pets pass
 // `points: true`.
 import { SECONDARY_STAT_POOL } from '../game/gear.js';
-import { petDisplayName } from '../game/pets.js';
+import { coreName } from '../model/pets.js';
 import { mountBySpecies } from '../game/mountsGlyphs.js';
 import { isMultiplierStat } from '../model/equipment.js';
 import { glyphSecondaryDef, glyphSecondaryValue, glyphTypeInfo } from '../model/glyphs.js';
@@ -84,17 +84,15 @@ function twinsText(list, item, sig) {
   return n > 1 ? ` · either of your ${n} identical copies` : '';
 }
 
-const petSig = (p) => JSON.stringify([p.species, p.rarity, [...(p.secondaries ?? [])].map((s) => [s.type, s.value]).sort()]);
+const petSig = (p) => JSON.stringify([p.rarity, p.baseAttack, p.baseHp, [...(p.secondaries ?? [])].map((s) => [s.type, s.value]).sort()]);
 const mountSig = (m) => JSON.stringify([m.species, m.rarity ?? null, m.level, m.baseHp ?? null, m.baseAtk ?? null]);
 const glyphSig = (g) => JSON.stringify([g.glyphType, g.rarity, !!g.sealed, g.secondary?.stat ?? null, g.secondary ? glyphSecondaryValue(g.secondary) : null]);
 
-/** "Infernal Drake (Legendary · Crit Chance +3%, Health +4.5%)": name, rarity and secondaries. */
+/** "Mythic Core (Crit Chance +3%, Health +4.5%)": the core's rarity and secondaries (base rolls). */
 export function petText(character, pet) {
   if (!pet) return 'None';
-  const name = petDisplayName(pet.species, (character.pets?.altar?.tier ?? 1) >= 2) ?? pet.species;
   const stats = (pet.secondaries ?? []).map((s) => statLine(s.type, s.value, { points: true }));
-  const bits = [pet.rarity, stats.join(', ')].filter(Boolean).join(' · ');
-  return `${name}${bits ? ` (${bits})` : ''}${twinsText(character.pets?.owned, pet, petSig)}`;
+  return `${coreName(pet)}${stats.length ? ` (${stats.join(', ')})` : ''}${twinsText(character.pets?.cores, pet, petSig)}`;
 }
 
 /** "Night Wolf (level 3 · +8% HP, +8% Attack)": level and what it adds there, as the game shows it. */

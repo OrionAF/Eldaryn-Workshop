@@ -84,7 +84,7 @@ describe('changesOf', () => {
 
   it('a pet or glyph change names the owned copy: rarity and stats, never raw keys (backlog §6)', () => {
     const c = fixture('WARRIOR', (r) => {
-      r.pets.owned.push({ ...r.pets.owned[0], id: 'pet-b', secondaries: r.pets.owned[0].secondaries.slice(0, 1) });
+      r.pets.cores.push({ ...r.pets.cores[0], id: 'pet-b', secondaries: r.pets.cores[0].secondaries.slice(0, 1) });
       r.glyphs.push({ id: 'gl-9', glyphType: r.glyphs[0].glyphType, rarity: 'Common', secondary: { stat: 'critDamage', quality: 0.5 } });
     });
     const space = createBuildSpace(c, 'p1');
