@@ -5,6 +5,7 @@
  * regular convention:
  *   mount_<mountId>.png                  night_wolf   -> mount_night_wolf.png
  *   pet_<snake_case display name>.png    Dust Mite    -> pet_dust_mite.png
+ *   pet_core_<rarity>.png                Mythic core  -> pet_core_mythic.png
  *   sigils_<class>_<sigilId>.png         cataclysm    -> sigils_warrior_cataclysm.png
  *   glyph_<tier>_<rarity>.png / glyph_mythic.png
  *

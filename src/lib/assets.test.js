@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { assetUrl, mountImage, petImage, sigilImage, glyphImage } from './assets.js';
+import { assetUrl, mountImage, petImage, coreImage, sigilImage, glyphImage } from './assets.js';
+import { CORE_RARITIES } from './game/petCores.js';
 import { MOUNT_SPECIES } from './game/mountsGlyphs.js';
 import { PET_SPECIES, petDisplayName } from './game/pets.js';
 import { ownableSigils } from './model/sigils.js';
@@ -15,6 +16,12 @@ describe('asset coverage', () => {
   it('every mount in the catalogue has art', () => {
     const missing = MOUNT_SPECIES.filter((d) => !mountImage(d.species)).map((d) => d.species);
     expect(missing).toEqual([]);
+  });
+
+  it('every Pet Core rarity has art, whatever the case', () => {
+    expect(CORE_RARITIES.filter((r) => !coreImage(r))).toEqual([]);
+    expect(coreImage('Mythic')).toBe(coreImage('MYTHIC'));
+    expect(coreImage(null)).toBeNull();
   });
 
   it('every pet species (base and evolved name) has art', () => {

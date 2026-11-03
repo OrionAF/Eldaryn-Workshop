@@ -8,3 +8,8 @@ import { assetUrl, slug } from './base.js';
 export function petImage(name) {
   return assetUrl(name ? `pet_${slug(name)}` : null);
 }
+
+/** Pet Core art by rarity ('Mythic' or 'MYTHIC'): cells of the 2.9.1 client's cores_atlas, Common..Oblivion. */
+export function coreImage(rarity) {
+  return assetUrl(rarity ? `pet_core_${String(rarity).toLowerCase()}` : null);
+}
