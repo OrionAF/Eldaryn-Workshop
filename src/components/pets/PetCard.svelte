@@ -1,6 +1,6 @@
 <script>
   /**
-   * PetCard.svelte - one owned Pet Core. Display mode shows the rarity name, the core's base ATK/HP and
+   * PetCard.svelte - one owned Pet Core. Display mode shows the rarity name and art, the core's base ATK/HP and
    * one line per secondary; edit mode swaps in a rarity select, base ATK/HP fields (with the rarity's
    * roll band as a hint) and a type + value editor per secondary slot. Every change persists as it is
    * made (Save is only a view toggle). Secondary types are class-gated by the parent via `types`.
@@ -8,6 +8,7 @@
    * When the parent passes the Core Altar level and tier, a read-only line shows the altar-scaled
    * ATK/HP and each secondary's scaled value, straight from the engine core source (engine/sources/petCore.js).
    */
+  import { coreImage } from '../../lib/assets/pets.js';
   import { statByEnum } from '../../lib/game/stats.js';
   import { coreBaseBand } from '../../lib/game/petCores.js';
   import { CORE_RARITY_NAMES, coreName, coreSlots, coreRarityEnum, coreSecondaryRangePoints } from '../../lib/model/pets.js';
@@ -37,6 +38,13 @@
 <div class="pet-card rarity-card {rarityClass(pet.rarity)}" class:editing>
   {#if editing}
     <Select label="Rarity" options={rarityOptions} value={pet.rarity} onchange={(v) => onRarity(v)} />
+  {:else}
+    <h3 class="card-title">{coreName(pet)}</h3>
+  {/if}
+
+  <img class="core-art" src={coreImage(pet.rarity)} alt="" loading="lazy" />
+
+  {#if editing}
     <div class="base-edit">
       <NumberField label="Base Attack" value={pet.baseAttack} min={0} onchange={(v) => onBase('attack', v)} />
       <NumberField label="Base HP" value={pet.baseHp} min={0} onchange={(v) => onBase('hp', v)} />
@@ -45,7 +53,6 @@
       <p class="hint">{pet.rarity} rolls <span class="num">{formatFlat(band.attack.min)}-{formatFlat(band.attack.max)}</span> ATK, <span class="num">{formatFlat(band.hp.min)}-{formatFlat(band.hp.max)}</span> HP</p>
     {/if}
   {:else}
-    <h3 class="card-title">{coreName(pet)}</h3>
     <p class="base-stats">
       Base Attack <span class="num">{formatFlat(pet.baseAttack)}</span>
       <span class="sep">|</span>
@@ -111,6 +118,7 @@
     text-align: center;
     color: var(--r-up, var(--text-ink));
   }
+  .core-art { display: block; width: 84px; height: 84px; margin: 0 auto; object-fit: contain; }
   .base-stats { margin: 0; text-align: center; font-size: var(--fs-12); color: var(--text-soft); }
   .base-edit { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
   .hint { margin: 0; font-size: var(--fs-11); color: var(--text-muted); }

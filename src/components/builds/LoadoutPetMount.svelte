@@ -6,6 +6,7 @@
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { mountImage } from '../../lib/assets/mounts.js';
+  import { coreImage } from '../../lib/assets/pets.js';
   import { mountsUnlocked, UNLOCK_LEVELS, ancientActive, effectiveTranscendencePreset } from '../../lib/model/legality.js';
   import { mountGlyphLoadout, activeMajorGlyphs } from '../../lib/model/mounts.js';
   import { glyphTypeInfo } from '../../lib/model/glyphs.js';
@@ -55,6 +56,7 @@
         <PickCard
           name={petLabel(character, pet.id)}
           meta={coreMeta(pet)}
+          art={coreImage(pet.rarity)}
           checked={preset.petId === pet.id}
           onselect={() => rosterStore.setPresetPet(preset.id, pet.id)}
         />
