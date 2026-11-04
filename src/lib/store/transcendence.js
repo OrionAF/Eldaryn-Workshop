@@ -66,6 +66,19 @@ export function createTranscendenceStore(ctx) {
     });
   }
 
+  /** Copy a preset's allocation into a new preset (becomes active). @returns {string|null} id, or null at the cap or for an unknown preset. */
+  function duplicateTranscendencePreset(presetId) {
+    return ctx.edit((c) => {
+      const t = c.transcendence;
+      const src = presetOf(c, presetId);
+      if (!src || t.presets.length >= MAX_TRANSCENDENCE_PRESETS) return null;
+      const p = { id: newId('t'), name: cleanPresetName(`${src.name} copy`, `Preset ${t.presets.length + 1}`), allocatedNodeIds: [...src.allocatedNodeIds] };
+      t.presets.push(p);
+      t.activePresetId = p.id;
+      return p.id;
+    });
+  }
+
   function renameTranscendencePreset(presetId, name) {
     return ctx.edit((c) => {
       const p = presetOf(c, presetId);
@@ -100,6 +113,7 @@ export function createTranscendenceStore(ctx) {
     removeTranscendenceNode,
     resetTranscendencePreset,
     addTranscendencePreset,
+    duplicateTranscendencePreset,
     renameTranscendencePreset,
     setActiveTranscendencePreset,
     deleteTranscendencePreset,

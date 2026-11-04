@@ -79,6 +79,24 @@ it('adds and switches presets', () => {
   expect(rosterStore.current.transcendence.activePresetId).not.toBe('default');
 });
 
+it('Duplicate copies the board into a new active tab and is disabled at the cap', () => {
+  render();
+  node('at 0,-1').click();
+  flushSync();
+  const dup = () => [...target.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Duplicate');
+  dup().click();
+  flushSync();
+  const t = rosterStore.current.transcendence;
+  expect(target.querySelectorAll('[role="tab"]')).toHaveLength(2);
+  expect(t.presets[1].allocatedNodeIds).toEqual(['n_0,-1']);
+  expect(t.activePresetId).toBe(t.presets[1].id);
+  dup().click();
+  dup().click();
+  flushSync();
+  expect(t.presets).toHaveLength(4);
+  expect(dup().disabled).toBe(true);
+});
+
 it('Used by names linked presets and the presets that follow the active board', () => {
   const [p0, p1] = rosterStore.current.presets;
   const b = rosterStore.addTranscendencePreset('Second');
