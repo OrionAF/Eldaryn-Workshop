@@ -35,8 +35,11 @@ export async function holmSequential(items, alpha, run) {
   return out;
 }
 
-/** The gain of a contrast in the objective's direction (null when it has no delta). */
-export const gainOf = (c) => (c?.delta == null || !Number.isFinite(c.delta) ? null : (c.higherIsBetter === false ? -c.delta : c.delta));
+/**
+ * The gain of a contrast in the objective's direction (null when it has no delta). A censored quantile's
+ * delta is ±∞ when only one build reaches q (simulation.md §Fastest clear); that is a gain or a loss too.
+ */
+export const gainOf = (c) => (c?.delta == null || Number.isNaN(c.delta) ? null : (c.higherIsBetter === false ? -c.delta : c.delta));
 
 const disruption = (c) => c.sideEffects.length + c.bundle.length + (c.scope === 'preset' ? 0 : 1);
 

@@ -5,7 +5,7 @@ export const RUN_PHASES = [
   { id: 'screen', label: 'Screen', text: 'Checks your current build and takes its first measurements. Every other build is compared with it.' },
   { id: 'search', label: 'Search', text: 'Tries other builds, one part of your build at a time, and pits each against the best so far. Builds that clearly lose stop early.' },
   { id: 'minimise', label: 'Minimise', text: 'For each best build, undoes the changes that do not clearly help, so you change as little as possible.' },
-  { id: 'confirm', label: 'Confirm', text: 'Tests each remaining build against your current one on fresh fights, so a gain is not just luck.' },
+  { id: 'confirm', label: 'Confirm', text: 'Tests each remaining build against your current one on fresh fights, so a gain is not a fluke.' },
   { id: 'attribute', label: 'Attribute', text: 'Works out what each kept change adds on its own, and which ones only help together.' },
 ];
 
@@ -14,7 +14,7 @@ export const PUSH_RUN_PHASES = [
   { id: 'climb', label: 'Climb', text: 'Tests your build step after step to find the deepest step it clears at your win-rate goal.' },
   { id: 'screen', label: 'Screen', text: 'Checks whether the next step is in reach before searching it. If no build can clear it, the run stops there.' },
   { id: 'optimise', label: 'Optimise', text: 'Searches for the build with the fewest changes that clears the next step, then climbs with it.' },
-  { id: 'confirm', label: 'Confirm', text: 'Retests the deepest step reached on fresh fights, step by step from the start, so it is not just luck.' },
+  { id: 'confirm', label: 'Confirm', text: 'Retests the deepest step reached on fresh fights, step by step from the start, so it is not a fluke.' },
 ];
 
 const isPush = (ids) => ids.includes('climb');

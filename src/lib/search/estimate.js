@@ -4,7 +4,9 @@
 import { BLOCKS } from './space.js';
 import { normaliseRelicBudget } from './relicProgression.js';
 import { normaliseIchorBudget } from './boardAllocation.js';
-import { prepare, enumerateJoint, EXHAUSTIVE_MAX, EFFORT_LEVELS, RANDOM_STARTS } from './search.js';
+import { prepare, enumerateJoint, EXHAUSTIVE_MAX, EFFORT_LEVELS, RANDOM_STARTS, SEARCH_SHARE } from './search.js';
+
+const fmtSeconds = (ms) => (ms >= 60_000 ? `${+(ms / 60_000).toFixed(1)} min` : `${Math.round(ms / 1000)} s`);
 import { looksFor } from './sampler.js';
 import { CELESTIAL_TARGET_KIND } from './celestialObjective.js';
 import { PVP_OBJECTIVE_KIND } from './pvpObjective.js';
@@ -180,7 +182,8 @@ const TIERS = [
 export function matchHistory(want, history) {
   const pool = [];
   for (const r of Array.isArray(history) ? history : []) {
-    if (!isObj(r) || r.schema !== 2 || r.headline?.aborted) continue;
+    // a run under a time limit may have stopped its search early, so its builds and fights understate the cost
+    if (!isObj(r) || r.schema !== 2 || r.headline?.aborted || r.budget?.budgetMs) continue;
     const c = runCost(r);
     if (!c || c.strategy !== want.strategy) continue;
     const v = runView(r, want);
@@ -241,6 +244,26 @@ export function regimeOf(want, history) {
     if (r.target?.key === want.targetKey && r.headline?.goal?.status === 'no-wins') return 'none';
   }
   return null;
+}
+
+/**
+ * The newest saved run of exactly this question that stopped at its first check (goal `already`, the other
+ * saturated regime: every build clears): the same target key, objective (kind and target), preset, character
+ * snapshot (`characterKey`) and Effort. Its check ran on this very build, so this run will very likely stop
+ * there too (simulation.md §Estimates). null when there is none.
+ */
+export function alreadyRunOf(want, history) {
+  let best = null;
+  for (const r of Array.isArray(history) ? history : []) {
+    if (!isObj(r) || r.schema !== 2 || r.headline?.aborted || isPushRun(r)) continue;
+    if (r.headline?.goal?.status !== 'already' || !(r.headline.n > 0)) continue;
+    if (r.target?.key !== want.targetKey || r.objective?.kind !== want.objectiveKind) continue;
+    if ((r.objective?.target ?? null) !== (want.objectiveTarget ?? null)) continue;
+    if (r.presetId !== want.presetId || !want.characterKey || r.characterKey !== want.characterKey) continue;
+    if (r.budget?.level !== want.level) continue;
+    if (!best || r.at > best.at) best = r;
+  }
+  return best;
 }
 
 /**
@@ -431,6 +454,12 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
   }
   const laterShare = band.laterShare;
 
+  // every build clears: a past run of this exact question on this build stopped at its first check
+  const already = alreadyRunOf({
+    targetKey: target.key, objectiveKind: objective.kind, objectiveTarget: objective.target ?? null,
+    presetId: request?.presetId, characterKey: prep.characterKey, level: effort.level,
+  }, history);
+
   // ---- builds ----------------------------------------------------------------------------------------
   let builds;
   if (strategy === 'exhaustive') {
@@ -451,7 +480,7 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
   if (sat) assumptions.push(`A past run at this target found no build that wins, so every build is sampled to at least the point where two win rates of 0 tie (about ${Math.round(sat.perBuild).toLocaleString('en-US')} fights per build).`);
   const round = (x) => Math.max(1, Math.round(x));
   const perBuild = Math.round((band.fights.likely * (1 - laterShare)) / Math.max(1, band.builds.likely) / lanes);
-  const fights = {
+  let fights = {
     lo: round(Math.max(floor, band.fights.lo)),
     likely: round(Math.max(floor, band.fights.likely)),
     hi: round(Math.max(floor, band.fights.hi)),
@@ -460,7 +489,15 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
     basis: `About ${perBuild.toLocaleString('en-US')} fights per build tried in the search${lanes > 1 ? ` and matchup (times ${lanes} matchups)` : ''}, plus minimise and confirm (${laterShare < 0.01 ? 'under 1%' : `about ${Math.round(laterShare * 100)}%`} of the total).`,
   };
   if (source.scaled) assumptions.push(`Scaled from ${source.kind === 'history' ? 'runs at another Effort' : 'Quick'}: each Effort level costs about 2 to 4 times the fights per build (n0 doubles, δ halves).`);
-  assumptions.push('No run is capped, so an unlucky run with many close builds can go past the range.');
+  if (effort.budgetMs) assumptions.push(`The time limit stops the search after about ${fmtSeconds(effort.budgetMs * SEARCH_SHARE)}, so the run may try fewer builds than this. Minimise and confirm always finish, so the run can take longer than the limit. The numbers above are for an uncut search.`);
+  else assumptions.push('No run is capped, so an unlucky run with many close builds can go past the range.');
+  if (already) {
+    // the check alone, unless this run's seed lands it short of the target: then the full search above is the top
+    const n = round(already.headline.n * lanes);
+    builds = { ...builds, lo: 1, likely: 1, exact: false, basis: `A past run of this setup on this same build stopped after checking the current build (it already clears), so this run very likely stops there too. If the check falls short this time, the search runs and up to ${builds.hi.toLocaleString('en-US')} builds may be tried.` };
+    fights = { ...fights, lo: n, likely: n, hi: Math.max(n, fights.hi), basis: `About ${n.toLocaleString('en-US')} fights to check the current build, as that run did; the top of the range is the whole search.` };
+    source = { ...source, already: true, text: `${source.text} A past run of this setup found the current build already clears it.` };
+  }
 
   // ---- time --------------------------------------------------------------------------------------
   const observed = match && (match.tier === 'same' || match.tier === 'like') ? observedRate(match, target) : null;

@@ -87,6 +87,23 @@ describe('comparisons over the store', () => {
     expect(c.pct).toBeGreaterThan(0.9);
   });
 
+  it('compareSets: a stop ends an open comparison unresolved at that look; a decided look still decides', async () => {
+    const o = dps();
+    const sm = createSampler(o);
+    const strong = fighter({ totalAttack: 2000 });
+    const weak = fighter();
+    const stop = () => true;
+    // a contrast whose interval never leaves ±10 around 0: open at every look before the last
+    const wide = { higherIsBetter: true, deltaKind: 'relative', contrast: () => ({ delta: 0, lo: -10, hi: 10, sd: 1, method: 'paired-t', ref: 1000 }) };
+    const flat = (n) => setOf([Array.from({ length: n }, () => 1000)]);
+    const open = await compareSets(wide, flat, flat, { delta: 0.005, n0: 8, maxN: 64, seed: 1, stop });
+    expect(open).toMatchObject({ verdict: 'unresolved', significant: false, looks: 1, n: 8, stopped: true });
+    expect((await compareSets(wide, flat, flat, { delta: 0.005, n0: 8, maxN: 64, seed: 1 })).n).toBe(64);
+    const decided = await compareSets(o, (n) => sm.get('strong', S1, strong, n), (n) => sm.get('weak', S1, weak, n), { delta: 0.01, n0: 8, maxN: 32, seed: 1, stop });
+    expect(decided).toMatchObject({ verdict: 'better', looks: 1 });
+    expect(decided.stopped).toBeUndefined();
+  });
+
   it('compareSets: one engine key against itself is equivalent within any positive zone', async () => {
     const o = dps();
     const sm = createSampler(o);

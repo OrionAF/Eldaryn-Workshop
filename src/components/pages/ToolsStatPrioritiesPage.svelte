@@ -182,7 +182,7 @@
         </div>
         <p>
           <b>Priority</b> lists every stat kept more often than it drops, best first; a stat within
-          {Math.round((data.method.NEAR_TIE - 1) * 100)}% of the first stat in its group reads “≈”, otherwise “›” starts a new group.
+          {Math.round((data.method.NEAR_TIE - 1) * 100)}% of the first stat in its group reads "≈", otherwise "›" starts a new group.
           <b>Avoid</b> is the Attunement block list: the least-kept stats below drop odds, one per ban slot. <b>Below drop odds</b> is the
           rest. Thin samples are pulled toward ×1 by {data.method.SHRINK} pieces' worth of drop odds.
         </p>

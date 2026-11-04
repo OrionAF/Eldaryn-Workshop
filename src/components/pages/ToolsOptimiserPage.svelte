@@ -25,12 +25,12 @@
   } from '../../lib/jobs.svelte.js';
   import { debugLogFileName } from '../../lib/search/debugLog.js';
   import DebugLog from '../optimiser/DebugLog.svelte';
-  import { resolveTarget, objectiveKindsFor, makeObjective } from '../../lib/search/objectives.js';
+  import { resolveTarget, objectiveKindsFor, makeObjective, FASTEST_CLEAR_TRIES } from '../../lib/search/objectives.js';
   import ArenaRewardInputs from '../optimiser/ArenaRewardInputs.svelte';
   import { relicSlotCap } from '../../lib/model/legality.js';
   import { presetDuelFighter, opponentFighter, missingStats } from '../../lib/features/duel.js';
   import {
-    normaliseSetup, setupFromRun, requestOf, searchCharacter, signatureOf, runApplyBlock, retiredGoalBlock, otherCharacters, targetContext,
+    normaliseSetup, setupFromRun, requestOf, TIME_LIMITS, searchCharacter, signatureOf, runApplyBlock, retiredGoalBlock, otherCharacters, targetContext,
   } from '../../lib/ui/optimiserSetup.js';
   import {
     viewResult, progressSegments, progressLine, effortPlan, enabledCount, toggleTotal, optimiserJobChips,
@@ -57,7 +57,7 @@
   import SpaceGroups from '../optimiser/SpaceGroups.svelte';
   import PowerGuard from '../optimiser/PowerGuard.svelte';
   import { presetPower } from '../../lib/build/power.js';
-  import { powerFloorText } from '../../lib/search/search.js';
+  import { powerFloorText, SEARCH_SHARE } from '../../lib/search/search.js';
   import OptimiserResults from '../optimiser/OptimiserResults.svelte';
   import ApplyReview from '../optimiser/ApplyReview.svelte';
   import RunHistoryTab from '../optimiser/RunHistoryTab.svelte';
@@ -127,6 +127,7 @@
       return { value: level, label: level[0].toUpperCase() + level.slice(1), sub: p.sub };
     }),
   );
+  const timeLimitOptions = [{ value: 0, label: 'No limit' }, ...TIME_LIMITS.map((s) => ({ value: s, label: s < 60 ? `${s} s` : `${s / 60} min` }))];
   const presetOptions = $derived(character.presets.map((p) => ({ value: p.id, label: p.name })));
   // the setup the run would start with (run() below), for the live estimate
   const estimateSetup = $derived.by(() => {
@@ -383,6 +384,16 @@
           {#if setup.objective.kind === 'win-chance'}
             <span class="hint" data-testid="win-chance-explain">Finds the build with the best chance to clear this. If builds are equal, it picks the one with the fewest changes. Speed does not matter.</span>
           {/if}
+          {#if setup.objective.kind === 'fastest-clear'}
+            <NumberField
+              label="Tries"
+              min={FASTEST_CLEAR_TRIES.min}
+              max={FASTEST_CLEAR_TRIES.max}
+              value={setup.objective.tries ?? FASTEST_CLEAR_TRIES.default}
+              onchange={(v) => (setup.objective = { kind: 'fastest-clear', tries: Math.round(v) })}
+            />
+            <span class="hint" data-testid="fastest-clear-explain">Rankings keep your best time, so this finds the build with the fastest clear you would get about once in this many tries. A failed try counts as no time.</span>
+          {/if}
           {#if setup.objective.kind === 'win-rate' || setup.objective.kind === 'push'}
             <WinRateTarget bind:objective={setup.objective} start={targetLabel} rung={setup.target.kind === 'celestial' ? 'level' : 'step'} />
           {/if}
@@ -397,6 +408,8 @@
         <section class="step">
           <h3><span class="n">V</span> Effort</h3>
           <SegmentedControl label="Effort" stack options={effortOptions} value={setup.effort} onchange={(v) => (setup.effort = v)} />
+          <Select label="Time limit" options={timeLimitOptions} value={setup.timeLimit ?? 0} onchange={(v) => (setup.timeLimit = Number(v) || null)}
+            hint={setup.timeLimit ? `The search stops after about ${Math.round(setup.timeLimit * SEARCH_SHARE)} s, then the best builds are checked as usual, so the run can take longer.` : ''} />
           <NumberField label="Seed" min={1} value={setup.seed} onchange={(v) => (setup.seed = Math.max(1, Math.round(v)))} />
           <p class="hint" data-testid="effort-plan">
             Spots differences of <span class="num">{plan.zone}</span> or more. Each build starts with <span class="num">{fmtCount(plan.n0)}</span> fights and gets up to <span class="num">{fmtCount(plan.maxN)}</span> if the result is still unclear. After that it is called too close to call.
@@ -409,14 +422,14 @@
           </details>
           <!-- measured cost: docs/Reference/simulation.md §Cost -->
           <p class="hint" data-testid="effort-cost">
-            Runs have no time limit. Quick takes {MEASURED_COST.small.time} when it may change {MEASURED_COST.small.space}, and {MEASURED_COST.full.time} when it may change {MEASURED_COST.full.space}. Standard and Thorough take longer; PVP takes several times longer.
+            {setup.timeLimit ? 'With a time limit the search may stop before it finishes, and a longer limit may find a better build.' : 'Runs have no time limit.'} Without one, Quick takes {MEASURED_COST.small.time} when it may change {MEASURED_COST.small.space}, and {MEASURED_COST.full.time} when it may change {MEASURED_COST.full.space}. Standard and Thorough take longer; PVP takes several times longer.
           </p>
           <p class="hint" data-testid="plan-summary">
             Tries changing <span class="num">{enabledCount(setup.space)}</span> of <span class="num">{toggleTotal}</span> parts of your build{targetLabel ? ` against ${targetLabel}` : ''}. The same seed gives the same result.
           </p>
         </section>
 
-        <SetupEstimate setup={estimateSetup} {character} history={allRuns} />
+        <SetupEstimate setup={estimateSetup} {character} history={allRuns} characters={others} />
 
         {#each blockers as b (b.text)}
           <Banner variant="warn">

@@ -137,6 +137,10 @@ describe('effortPlan', () => {
     expect(t).toMatchObject({ zone: '0.5 points', n0: 32, maxN: 131072, relative: false });
     expect(Object.keys(q)).not.toContain('maxMs');
   });
+
+  it('Fastest clear is relative like dps (its zone is a share of the time)', () => {
+    expect(effortPlan('quick', { kind: 'fastest-clear', tries: 10 })).toMatchObject({ zone: '1%', relative: true });
+  });
 });
 
 describe('allowed-to-change groups', () => {

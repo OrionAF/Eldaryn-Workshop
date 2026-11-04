@@ -18,12 +18,13 @@
 // An OBJECTIVE is what "better" means: {kind: 'dps'|'survival', seconds?} (survival: custom mobs only) or
 // {kind: 'win-chance'} (the highest chance to clear the step before dying or the time cap),
 // {kind: 'win-rate', target?: 0.01..1} (the fewest changes that clear it at least that often; default 0.95) or
-// {kind: 'push', target?: 0.1..1} (the deepest rung of the target's ladder cleared at that rate; search/push.js runs it).
+// {kind: 'push', target?: 0.1..1} (the deepest rung of the target's ladder cleared at that rate; search/push.js runs it) or
+// {kind: 'fastest-clear', tries?: 2..100} (Celestial only: the clear time beaten about once in `tries` fights).
 import { fightRng } from '../engine/rng.js';
 import {
   stableStringify, meanInterval, wilsonInterval, pairedT, pairedProportion, binomialUpper,
 } from '../engine/metrics.js';
-import { decide } from '../engine/stats/index.js';
+import { decide, quantileInterval, censoredQuantile, pairedQuantileDiff } from '../engine/stats/index.js';
 import { preparePveFighter, preparePveEnemy, simulatePve, trainingDummy, PVE_MODES } from '../engine/pve/fight.js';
 import { chapterMobs, dungeonMobs, raidMobs, oblivionFloorMob, worldBossMob } from '../engine/pve/enemies.js';
 import { raidById } from '../game/fortress.js';
@@ -38,10 +39,12 @@ import { formatFlat } from '../format.js';
 import { setOf, fightTrace } from './sampler.js';
 import { resolvePvpTarget, makePvpObjective, PVP_TARGET_KIND, PVP_OBJECTIVE_KIND } from './pvpObjective.js';
 import { ARENA_REWARD_KIND, makeArenaRewardObjective } from './arenaRewardObjective.js';
-import { resolveCelestialTarget, celestialRunner, celestialFightScore, CELESTIAL_TARGET_KIND } from './celestialObjective.js';
+import {
+  resolveCelestialTarget, celestialRunner, celestialFightScore, celestialClearTime, CELESTIAL_TARGET_KIND,
+} from './celestialObjective.js';
 
 // The PVE kinds. The PVP pair is kept apart: it is only valid together and needs the character's opponents.
-export const OBJECTIVE_KINDS = ['dps', 'survival', 'win-chance', 'win-rate', 'push'];
+export const OBJECTIVE_KINDS = ['dps', 'survival', 'win-chance', 'win-rate', 'push', 'fastest-clear'];
 
 /** The two win-rate goals (simulation.md §Win rate): 'win-chance' maximises the clear rate, 'win-rate' reaches a target. */
 export const isWinRateKind = (kind) => kind === 'win-chance' || kind === 'win-rate';
@@ -58,7 +61,7 @@ const COMPAT = {
   fortressBoss: ['dps'],
   custom: ['dps', 'win-chance', 'win-rate', 'survival'],
   [PVP_TARGET_KIND]: [PVP_OBJECTIVE_KIND, ARENA_REWARD_KIND],
-  [CELESTIAL_TARGET_KIND]: ['win-chance', 'win-rate', 'push'],
+  [CELESTIAL_TARGET_KIND]: ['win-chance', 'win-rate', 'push', 'fastest-clear'],
 };
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -331,7 +334,7 @@ function fortressSampler(target, seconds) {
  * The Celestial sampler (simulation.md §Celestial Trial): fight i is the party fight with rng
  * fightRng(seed, i), the partner fixed; the outcome is celestialFightScore (the party clear in time).
  */
-function celestialSampler(target) {
+function celestialSampler(target, outcome = celestialFightScore) {
   const runner = celestialRunner(target);
   return (fighter, { seed, from = 0, to, signal, trace }) => {
     const { fight } = runner(fighter);
@@ -341,7 +344,7 @@ function celestialSampler(target) {
       if (signal?.aborted) return chunkOf(out, tr, true);
       const t0 = tr ? performance.now() : 0;
       const r = fight(fightRng(seed, i));
-      out.push(celestialFightScore(r));
+      out.push(outcome(r));
       tr?.add(0, t0, r.timeMs);
     }
     return chunkOf(out, tr, false);
@@ -531,6 +534,21 @@ export function rateTieN({ alpha, delta, tau = 1 }) {
   return out;
 }
 
+/** The default and the allowed range of a Fastest clear `tries` (simulation.md §Fastest clear): q = 1 / tries. */
+export const FASTEST_CLEAR_TRIES = Object.freeze({ default: 10, min: 2, max: 100 });
+
+/** A Fastest clear objective's tries: the default when absent; throws unless a whole number in range. */
+export function fastestClearTries(v) {
+  if (v == null) return FASTEST_CLEAR_TRIES.default;
+  if (!Number.isInteger(v) || v < FASTEST_CLEAR_TRIES.min || v > FASTEST_CLEAR_TRIES.max) {
+    throw new Error(`fastest-clear tries must be a whole number from ${FASTEST_CLEAR_TRIES.min} to ${FASTEST_CLEAR_TRIES.max}, got ${v}`);
+  }
+  return v;
+}
+
+/** `score` of a censored-quantile set when the quantile is never reached: below every finite time, by clear rate. */
+const UNREACHED_MS = 1e12;
+
 /**
  * Lexicographic score: the capped win rate first (one fight moves it by 1/n ≥ 1/131 072, so ×1e6
  * outweighs any margin in [0, 2]), then the mean margin.
@@ -604,6 +622,43 @@ export function makeObjective(raw = { kind: 'dps' }, target = resolveTarget({ ki
       ...w, kind, key: stableStringify({ kind, target: w.target }), spec: { kind, target: w.target },
       label: `Push: deepest step at ${Math.round(w.target * 1000) / 10}%`,
     };
+  }
+
+  if (kind === 'fastest-clear') {
+    // θ = the q-quantile of the clear time over ALL fights, a loss counting as +∞ (simulation.md §Fastest clear)
+    const tries = fastestClearTries(raw.tries);
+    const q = 1 / tries;
+    const won = (xs) => xs.map((t) => (Number.isFinite(t) ? 1 : 0));
+    return withLegacy({
+      ...common, key: stableStringify({ kind, tries }), spec: { kind, tries },
+      label: `Fastest clear (best of about ${tries} tries)`, unit: 'ms', higherIsBetter: false,
+      statistic: 'censored-quantile', q, deltaKind: 'relative', window: target.seconds || null,
+      sample: celestialSampler(target, celestialClearTime),
+      estimate(s, { alpha = 0.05 } = {}) {
+        const xs = s.main[0];
+        const qi = quantileInterval(xs, q, { alpha });
+        const wins = xs.filter(Number.isFinite);
+        return {
+          value: { est: qi.est, lo: qi.lo, hi: qi.hi, n: s.n, level: level(alpha), alphaAdj: alpha, method: 'order-stat' },
+          aux: { winRate: proportionEstimate(won(xs), alpha), meanMs: wins.length ? sumOf(wins) / wins.length : null },
+        };
+      },
+      contrast(x, y, { alpha = 0.05, seed = 1, B = 2000 } = {}) {
+        const tx = censoredQuantile(x.main[0], q);
+        const ty = censoredQuantile(y.main[0], q);
+        // neither build reaches the quantile: the quantiles cannot differ, so the contrast is on the clear rate
+        if (!Number.isFinite(tx) && !Number.isFinite(ty)) {
+          const wx = won(x.main[0]);
+          const wy = won(y.main[0]);
+          return { ...pairedProportion(wx, wy, { alpha }), basis: 'winRate', higherIsBetter: true, ref: sumOf(wy) / wy.length };
+        }
+        return { ...pairedQuantileDiff(x.main[0], y.main[0], q, { alpha, seed, B }), basis: 'quantile', ref: ty };
+      },
+      score(s) {
+        const t = censoredQuantile(s.main[0], q);
+        return Number.isFinite(t) ? -t : -UNREACHED_MS * (2 - sumOf(won(s.main[0])) / Math.max(1, s.n));
+      },
+    });
   }
 
   if (isWinRateKind(kind)) {

@@ -49,4 +49,14 @@ describe('SetupEstimate', () => {
     expect(ui.q('[data-testid="estimate-source"]').textContent).toMatch(/^From your past run of this setup\. It was saved before runs kept their cost: fights per build and speed come from its debug summary/);
     ui.done();
   });
+
+  it('a Celestial partner from my other characters resolves, so the estimate is shown', () => {
+    const mate = { ...fixtureCharacter('WARRIOR'), id: 'mate', name: 'Mate' };
+    const partner = { source: 'character', characterId: mate.id, presetId: mate.presets[0].id };
+    const setup = { ...SETUP, target: { kind: 'celestial', difficulty: 'NORMAL', partner }, objective: { kind: 'fastest-clear' } };
+    const ui = mount(SetupEstimate, { setup, character, characters: [mate] });
+    expect(ui.q('[data-testid="estimate-none"]')).toBeNull();
+    expect(ui.q('[data-testid="estimate-fights"]')).not.toBeNull();
+    ui.done();
+  });
 });

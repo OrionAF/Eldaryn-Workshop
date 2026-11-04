@@ -33,6 +33,40 @@ const relicless = () => edit((raw) => { raw.presets[0].relicIds = []; });
 /** A result without its wall-clock fields (everything else is a function of the request). */
 const timeless = (r) => ({ ...r, stats: { ...r.stats, ms: 0 }, phases: r.phases.map((p) => ({ ...p, ms: 0 })) });
 
+describe('optimize: time budget (simulation.md §Time budget)', { timeout: 120000 }, () => {
+  const req = { character: fixtureCharacter('WARRIOR'), presetId: 'p1', target: SHORT, space: only('talents', 'relics', 'pet'), effort: TINY, seed: 4 };
+
+  it('resolveEffort keeps a positive budget and drops anything else', () => {
+    expect(resolveEffort({ level: 'quick', budgetMs: 30000 }, { deltaKind: 'relative' }).budgetMs).toBe(30000);
+    for (const v of [undefined, null, 0, -5, NaN, Infinity, '30000']) expect(resolveEffort({ level: 'quick', budgetMs: v }, { deltaKind: 'relative' }).budgetMs).toBeNull();
+  });
+
+  it('a spent budget stops the search after its first race; the rows are still confirmed and the stop is said', async () => {
+    const free = await optimize(req);
+    const cut = await optimize({ ...req, effort: { ...TINY, budgetMs: 1 } });
+    expect(free.search.strategy).toBe('local');
+    expect(free.search.stopped).toBe('converged');
+    expect(free.warnings.some((w) => w.code === 'time-limit')).toBe(false);
+    expect(cut.search.stopped).toBe('time');
+    expect(cut.request.effort.budgetMs).toBe(1);
+    expect(cut.warnings.find((w) => w.code === 'time-limit')).toMatchObject({ severity: 'info' });
+    expect(cut.search.evaluated).toBeLessThan(free.search.evaluated);
+    // one block visit ran; the blocks after it were never reached and say why
+    expect(cut.search.steps.filter((r) => r.state === 'done')).toHaveLength(1);
+    expect(cut.search.steps.some((r) => r.reason === 'time-limit')).toBe(true);
+    expect(cut.phases.map((p) => [p.id, p.state])).toEqual(free.phases.map((p) => [p.id, p.state]));
+    for (const row of cut.rows) expect(['better', 'unresolved', 'equivalent']).toContain(row.vsBaseline.verdict);
+  });
+
+  it('a budget the search never reaches changes nothing but the echo', async () => {
+    const free = await optimize(req);
+    const long = await optimize({ ...req, effort: { ...TINY, budgetMs: 3_600_000 } });
+    const { budgetMs, ...effort } = long.request.effort;
+    expect(budgetMs).toBe(3_600_000);
+    expect(timeless({ ...long, request: { ...long.request, effort } })).toEqual(timeless(free));
+  });
+});
+
 describe('optimize: contract', { timeout: 120000 }, () => {
   it('a small space is raced exhaustively; every row is legal, better than the baseline and plain JSON', async () => {
     const character = relicless();

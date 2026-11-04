@@ -8,6 +8,7 @@
 /scripts/collect_leaderboard.py
 /scripts/collector-gui*
 /scripts/collector_gui*
+/scripts/collector_daily.py
 /scripts/collector_job.py
 /scripts/collector_library.py
 /scripts/setup-collector-gui.cmd

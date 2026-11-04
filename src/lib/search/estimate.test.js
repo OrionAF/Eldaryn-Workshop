@@ -199,6 +199,14 @@ describe('estimateRun: learning from past runs', () => {
     expect(m.runs[0].at).toBe(many.at(-1).at);
   });
 
+  it('a run under a time limit is not learnt from (its search may have stopped early)', () => {
+    const want = { family: 'dps', strategy: 'local', level: 'quick', targetKey: null, targetKind: 'dummy', objectiveKind: 'dps', blocks: 'pet,talents' };
+    const run = pastRun(r0);
+    want.targetKey = run.target.key;
+    expect(matchHistory(want, [run])).not.toBeNull();
+    expect(matchHistory(want, [{ ...run, budget: { ...run.budget, budgetMs: 30000 } }])).toBeNull();
+  });
+
   it('a real run fed back as history: the likely value is the run\'s own cost', async () => {
     for (const space of [only('relics'), only('talents')]) {
       const r = req({ space, effort: { level: 'quick', n0: 8, maxN: 32 } });
@@ -409,4 +417,25 @@ describe('estimateRun: the tie look on a target where no build wins', () => {
     expect(estimateRun(r, { history: [{ ...noWins, headline: { evaluated: 100, goal: { mode: 'max', status: 'best' } } }] }).fights).toEqual(prior.fights);
     expect(estimateRun(r, { history: [{ ...noWins, target: { ...noWins.target, key: 'elsewhere' } }] }).fights).toEqual(prior.fights);
   });
+});
+
+describe('estimateRun: a target every build clears (the run stops at its first check)', () => {
+  it('a past run of this setup on this build that stopped at its check predicts the check alone', async () => {
+    const r = req({ space: only('relics', 'pet'), target: { kind: 'chapter', chapter: 1, level: 1 }, objective: { kind: 'win-rate', target: 0.5 }, effort: 'quick' });
+    const res = await optimize(r);
+    expect(res.goal.status).toBe('already');
+    const run = runFromResult(res);
+    const prior = estimateRun(r);
+    const e = estimateRun(r, { history: [run] });
+    expect(e.source.already).toBe(true);
+    expect([e.builds.lo, e.builds.likely]).toEqual([1, 1]);
+    expect(e.fights.likely).toBe(res.goal.baseline.check.n);
+    expect(e.fights.lo).toBe(e.fights.likely);
+    expect(e.fights.hi).toBeGreaterThanOrEqual(prior.fights.hi);
+    // another build, preset, goal target or Effort: no prediction
+    expect(estimateRun(r, { history: [{ ...run, characterKey: 'other' }] }).source.already).toBeUndefined();
+    expect(estimateRun(r, { history: [{ ...run, presetId: 'p2' }] }).source.already).toBeUndefined();
+    expect(estimateRun({ ...r, objective: { kind: 'win-rate', target: 0.6 } }, { history: [run] }).source.already).toBeUndefined();
+    expect(estimateRun({ ...r, effort: 'standard' }, { history: [run] }).source.already).toBeUndefined();
+  }, 60_000);
 });

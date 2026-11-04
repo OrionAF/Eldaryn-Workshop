@@ -37,6 +37,7 @@ export const OBJECTIVE_LABEL = Object.freeze({
   'win-chance': 'Highest chance to win',
   'win-rate': 'Reach a win rate',
   push: 'Push (deepest step)',
+  'fastest-clear': 'Fastest clear (rankings)',
   'pvp-winrate': 'PVP win rate',
   'arena-reward': 'Arena Influence from wins',
 });
@@ -380,7 +381,8 @@ export function progressLine(progress) {
 
 /** The numbers an effort level means for an objective, as printed on the Effort control. */
 export function effortPlan(level, objective, target) {
-  const relative = objective?.kind === 'dps';
+  // the objectives whose deltaKind is 'relative' (objectives.js makeObjective)
+  const relative = objective?.kind === 'dps' || objective?.kind === 'fastest-clear';
   let deltaScale;
   if (objective?.kind === 'arena-reward') {
     try { deltaScale = arenaRewardConfig(objective, target).scale; } catch { /* incomplete form */ }

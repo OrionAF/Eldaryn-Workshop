@@ -62,7 +62,11 @@ describe('gainOf', () => {
   it('signs a delta in the objective direction', () => {
     expect(gainOf({ delta: 5, higherIsBetter: true })).toBe(5);
     expect(gainOf({ delta: 5, higherIsBetter: false })).toBe(-5);
-    expect(gainOf({ delta: Infinity })).toBeNull();
+    // a censored quantile only one build reaches: an infinite gain (or loss), so 'own-effect' can name it
+    expect(gainOf({ delta: -Infinity, higherIsBetter: false })).toBe(Infinity);
+    expect(gainOf({ delta: Infinity, higherIsBetter: false })).toBe(-Infinity);
+    expect(gainOf({ delta: NaN })).toBeNull();
+    expect(gainOf({ delta: null })).toBeNull();
   });
 });
 
