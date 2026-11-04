@@ -525,3 +525,64 @@ it('Copy into drop: Oblivion realm copies from the Oblivion set', () => {
   expect(rosterStore.current.drop.realm).toBe('oblivion');
   expect(rosterStore.current.drop.item.primaryStats).toEqual(item.primaryStats);
 });
+
+const tick = (text) => [...target.querySelectorAll('input[type="checkbox"]')].find((c) => c.closest('label')?.textContent.includes(text));
+
+it('the Measure settings are remembered per character: remount keeps them, another character gets defaults', () => {
+  open();
+  tick('Survival vs').click();
+  tick('PVP win rate').click();
+  tick('training dummy').click();
+  flushSync();
+  expect(tick('Survival vs').checked).toBe(true);
+  unmount(app);
+  open();
+  expect(tick('Survival vs').checked).toBe(true);
+  expect(tick('PVP win rate').checked).toBe(true);
+  expect(tick('training dummy').checked).toBe(false);
+  unmount(app);
+  rosterStore.addCharacter('Other', 'MAGE');
+  open();
+  expect(tick('Survival vs').checked).toBe(false);
+  expect(tick('PVP win rate').checked).toBe(false);
+  expect(tick('training dummy').checked).toBe(true);
+});
+
+it('a broken saved setup falls back to the defaults', () => {
+  localStorage.setItem('eldaryn_ui_v1', JSON.stringify({ dropSetups: { [rosterStore.current.id]: { survivalOn: 'yes', enemySpec: { kind: 'x' }, precision: 'huge', pvpIds: 4 } } }));
+  open();
+  expect(tick('Survival vs').checked).toBe(false);
+  expect(tick('training dummy').checked).toBe(true);
+});
+
+it('switching character while mounted reloads that character\'s setup, and switching back restores the first', () => {
+  const a = rosterStore.current.id;
+  open();
+  tick('Survival vs').click();
+  flushSync();
+  rosterStore.addCharacter('Other', 'MAGE');
+  const b = rosterStore.current.id;
+  flushSync();
+  expect(tick('Survival vs').checked).toBe(false);
+  tick('PVP win rate').click();
+  flushSync();
+  rosterStore.selectCharacter(a);
+  flushSync();
+  expect(tick('Survival vs').checked).toBe(true);
+  expect(tick('PVP win rate').checked).toBe(false);
+  rosterStore.selectCharacter(b);
+  flushSync();
+  expect(tick('Survival vs').checked).toBe(false);
+  expect(tick('PVP win rate').checked).toBe(true);
+  const saved = JSON.parse(localStorage.getItem('eldaryn_ui_v1')).dropSetups;
+  expect(saved[a].survivalOn).toBe(true);
+  expect(saved[a].pvpOn).toBe(false);
+  expect(saved[b].survivalOn).toBe(false);
+  expect(saved[b].pvpOn).toBe(true);
+});
+
+it('merely opening the page stores nothing, so a later default-effort change still applies', () => {
+  open();
+  flushSync();
+  expect(JSON.parse(localStorage.getItem('eldaryn_ui_v1') ?? '{}').dropSetups ?? {}).toEqual({});
+});
