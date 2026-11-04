@@ -33,7 +33,7 @@
   import RunEstimate from '../ui/RunEstimate.svelte';
   import { dropHasStats } from '../../lib/model/drop.js';
   import { parseDropBatch, prepareBatch, rankEntries, entryResults } from '../../lib/features/dropBatch.js';
-  import { setCards, setLabelOf, chipFor, pctInterval, tally, tallyChips, runMoreRequest } from '../../lib/features/dropView.js';
+  import { setCards, setLabelOf, chipFor, pctInterval, tally, tallyChips, runMoreRequest, isDowngrade, bagSummaryText } from '../../lib/features/dropView.js';
   import { EQUIP_SETS } from '../../lib/model/equipment.js';
   import { forestDomain } from '../../lib/ui/forestScale.js';
   import { fmtCount } from '../../lib/ui/statsFormat.js';
@@ -293,8 +293,19 @@
     }
     return { kind: 'est', est: best.row.closed.pct, lo: null, hi: null, n: null };
   }
-  const figures = $derived(ranked.map((r) => figureOf(r.best)));
+  // "Hide downgrades" is view state only; the summary counts above always cover the whole bag.
+  let hideDowngrades = $state(false);
+  const shown = $derived(hideDowngrades ? ranked.filter((r) => !isDowngrade(r.best)) : ranked);
+  const figures = $derived(shown.map((r) => figureOf(r.best)));
   const dpsDomain = $derived(forestDomain(figures.map((f) => (f ? { est: f.est, lo: f.lo, hi: f.hi } : null))));
+
+  function copyBag() {
+    const text = bagSummaryText(shown.map((r, i) => ({ name: r.entry.name, slot: slotLabel(character.class, r.entry.slot), figure: figures[i], verdict: chipOf(r.best).label })));
+    navigator.clipboard?.writeText(text).then(
+      () => setStatus?.(`Copied ${shown.length} drop${shown.length === 1 ? '' : 's'} as text.`),
+      () => setStatus?.('Copying was blocked by the browser.'),
+    ) ?? setStatus?.('Copying was blocked by the browser.');
+  }
 
   function bagTone(chip, f) {
     if (f?.kind !== 'sim') return 'est';
@@ -576,6 +587,8 @@
         {:else}
           <Panel title="Drops, best first" level="primary" scope="tool" stale={bagStale}>
             {#snippet meta()}
+              <Checkbox bind:checked={hideDowngrades} label="Hide downgrades" />
+              <Button variant="ghost" size="small" disabled={!shown.length} onclick={copyBag}>Copy summary</Button>
               {#if bagBusy}
                 <Button variant="ghost" size="small" onclick={() => cancelJob(bagJob.id)}>Cancel</Button>
               {:else}
@@ -612,7 +625,7 @@
                 <span role="columnheader" class="cap-label right">Change · likely range</span>
                 <span role="columnheader" class="cap-label">Verdict</span>
               </div>
-              {#each ranked as r, i (r.entry.key)}
+              {#each shown as r, i (r.entry.key)}
                 {@const e = r.entry}
                 {@const f = figures[i]}
                 {@const chip = chipOf(r.best)}
@@ -688,6 +701,9 @@
                 </div>
               {/each}
             </div>
+            {#if hideDowngrades && ranked.length && !shown.length}
+              <p class="hint" data-testid="bag-all-hidden">Every drop is a downgrade, so none are shown.</p>
+            {/if}
           </Panel>
         {/if}
       </div>

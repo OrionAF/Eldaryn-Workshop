@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { setCards, chipFor, pctInterval, tally, tallyChips, runMoreRequest } from './dropView.js';
+import { setCards, chipFor, pctInterval, tally, tallyChips, runMoreRequest, isDowngrade, bagSummaryText } from './dropView.js';
 import { statKeyLabel } from './swap.js';
 
 const row = (setKey, presetId, { pct = 3, rawDelta = { totalAttack: 100 } } = {}) => ({
@@ -98,4 +98,30 @@ describe('runMoreRequest', () => {
     expect(runMoreRequest(runMoreRequest(a))).toBeNull();
     expect(runMoreRequest(null)).toBeNull();
   });
+});
+
+describe('isDowngrade', () => {
+  it('is true only for a simulated downgrade', () => {
+    expect(isDowngrade({ verdict: 'downgrade', basis: 'sim' })).toBe(true);
+    expect(isDowngrade({ verdict: 'downgrade', basis: 'closed' })).toBe(false);
+    expect(isDowngrade({ verdict: 'inconclusive', basis: 'sim' })).toBe(false);
+    expect(isDowngrade({ verdict: 'mixed', basis: 'sim' })).toBe(false);
+    expect(isDowngrade(null)).toBe(false);
+  });
+});
+
+describe('bagSummaryText', () => {
+  it('writes one line per row for a simulated figure, an estimate and no figure', () => {
+    const text = bagSummaryText([
+      { name: 'Axe', slot: 'Weapon', figure: { kind: 'sim', est: 2.34, lo: 1, hi: 3.66 }, verdict: 'Upgrade' },
+      { name: 'Ring', slot: 'Ring', figure: { kind: 'est', est: -1.25 }, verdict: 'Not simulated' },
+      { name: 'Cap', slot: 'Helmet', figure: null, verdict: 'Queued' },
+    ]);
+    expect(text.split('\n')).toEqual([
+      'Axe | Weapon | +2.3% [+1.0%, +3.7%] | Upgrade',
+      'Ring | Ring | -1.3% (estimate) | Not simulated',
+      'Cap | Helmet | no figure | Queued',
+    ]);
+  });
+  it('is empty for no rows', () => expect(bagSummaryText([])).toBe(''));
 });

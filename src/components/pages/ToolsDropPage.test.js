@@ -586,3 +586,87 @@ it('merely opening the page stores nothing, so a later default-effort change sti
   flushSync();
   expect(JSON.parse(localStorage.getItem('eldaryn_ui_v1') ?? '{}').dropSetups ?? {}).toEqual({});
 });
+
+// Hide downgrades and Copy summary act on the rows only; the counts strip always covers the whole bag.
+function mixedBagRunner() {
+  __resetJobs({
+    run: (request) => {
+      // rows come entry by entry (4 entries), so every other entry is a downgrade on all its rows
+      const per = request.items.length / 4;
+      const results = request.items.map((it, k) => {
+        const m = metric('better');
+        if (Math.floor(k / per) % 2) return { presetId: it.presetId, sim: m };
+        const d = { ...m.delta, delta: -100, lo: -140, hi: -60, verdict: 'worse', significant: true, holmReject: true };
+        return { presetId: it.presetId, sim: { ...m, after: { ...m.after, mean: 900 }, delta: d } };
+      });
+      return { promise: Promise.resolve({ results, aborted: false }), cancel() {} };
+    },
+  });
+}
+const countOf = (k) => Number(target.querySelector('.summary .v.' + k + ' .num').textContent);
+
+it('Loot bag: Hide downgrades drops only downgraded rows and leaves the counts alone', async () => {
+  mixedBagRunner();
+  open({ tab: 'bag' });
+  paste(lootBag);
+  await settle();
+  const all = target.querySelectorAll('.trow.rank').length;
+  const down = countOf('down');
+  const up = countOf('up');
+  expect(down).toBeGreaterThan(0);
+  expect(up).toBeGreaterThan(0);
+  target.querySelector('.check input').click();
+  flushSync();
+  const rows = [...target.querySelectorAll('.trow.rank')];
+  expect(rows).toHaveLength(all - down);
+  expect(rows.every((r) => !r.querySelector('.vchip')?.textContent.includes('Downgrade'))).toBe(true);
+  expect(countOf('down')).toBe(down);
+  expect(countOf('up')).toBe(up);
+  target.querySelector('.check input').click();
+  flushSync();
+  expect(target.querySelectorAll('.trow.rank')).toHaveLength(all);
+});
+
+it('Loot bag: before the job finishes nothing is hidden, and an all-downgrade bag says so', async () => {
+  verdict = 'worse';
+  __resetJobs({
+    run: (request) => ({
+      promise: Promise.resolve({
+        results: request.items.map((it) => ({ presetId: it.presetId, sim: { ...metric('better'), delta: { ...metric('better').delta, delta: -100, lo: -140, hi: -60, verdict: 'worse', significant: true, holmReject: true } } })),
+        aborted: false,
+      }),
+      cancel() {},
+    }),
+  });
+  open({ tab: 'bag' });
+  paste(lootBag);
+  target.querySelector('.check input').click();
+  flushSync();
+  expect(target.querySelectorAll('.trow.rank').length).toBe(4);
+  await settle();
+  expect(target.querySelectorAll('.trow.rank')).toHaveLength(0);
+  expect(target.querySelector('[data-testid="bag-all-hidden"]')).not.toBeNull();
+  expect(btn('Copy summary').disabled).toBe(true);
+});
+
+it('Loot bag: Copy summary writes the visible rows, and a blocked clipboard is reported', async () => {
+  mixedBagRunner();
+  const setStatus = vi.fn();
+  const writeText = vi.fn().mockResolvedValue();
+  Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+  open({ tab: 'bag', setStatus });
+  paste(lootBag);
+  await settle();
+  target.querySelector('.check input').click();
+  flushSync();
+  const shownCount = target.querySelectorAll('.trow.rank').length;
+  btn('Copy summary').click();
+  await vi.waitFor(() => expect(setStatus).toHaveBeenCalledWith(`Copied ${shownCount} drop${shownCount === 1 ? '' : 's'} as text.`));
+  const lines = writeText.mock.calls[0][0].split('\n');
+  expect(lines).toHaveLength(shownCount);
+  expect(lines.every((l) => l.split(' | ').length === 4 && !l.includes('Downgrade'))).toBe(true);
+  writeText.mockRejectedValue(new Error('blocked'));
+  btn('Copy summary').click();
+  await vi.waitFor(() => expect(setStatus).toHaveBeenCalledWith('Copying was blocked by the browser.'));
+  delete navigator.clipboard;
+});
