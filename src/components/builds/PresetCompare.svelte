@@ -47,7 +47,16 @@
     const out = [];
     for (const key of orderStats(HEADLINE, character.class)) {
       if (!shown.has(key)) continue;
-      out.push({ id: key, label: LABEL[key], cells: presets.map((p) => statText(key, stats[p.id].effective[key])), mono: true });
+      const raw = presets.map((p) => stats[p.id].effective[key]);
+      const nums = raw.filter((v) => typeof v === 'number' && Number.isFinite(v));
+      const top = Math.max(...nums);
+      // Every headline stat is higher-is-better; a tie (or a lone value) marks nobody.
+      const marks = nums.length > 1 && Math.min(...nums) < top;
+      out.push({
+        id: key, label: LABEL[key], mono: true,
+        cells: raw.map((v) => statText(key, v)),
+        best: raw.map((v) => marks && v === top),
+      });
     }
     out.push(
       { id: 'gear', label: 'Gear set', cells: presets.map((p) => `${SET_LABELS[p.equipmentSet]} · ${filledSlots(character, `set${p.equipmentSet}`)} items`) },
@@ -149,7 +158,9 @@
           <tr data-row={r.id}>
             <th scope="row" class="lbl sticky">{r.label}</th>
             {#each r.cells as c, i (presets[i].id)}
-              <td class:num={r.mono} class:diff={new Set(r.cells).size > 1}>{c}</td>
+              <td class:num={r.mono} class:diff={new Set(r.cells).size > 1} class:best={r.best?.[i]}>
+                {c}{#if r.best?.[i]}<span class="visually-hidden"> (highest)</span>{/if}
+              </td>
             {/each}
           </tr>
         {/each}
@@ -158,7 +169,7 @@
   </div>
   {#snippet footer()}
     <span class="hint">
-      {presets.length} of {MAX_PRESETS} presets. You need at least {MIN_PRESETS} and can have up to {MAX_PRESETS}.
+      Bold marks the highest value in each stat row. {presets.length} of {MAX_PRESETS} presets. You need at least {MIN_PRESETS} and can have up to {MAX_PRESETS}.
       Change what a preset uses in <a href="#/builds/loadout">Loadout</a>. Its in-game stats are in <a href="#/builds/sheet">Stat Sheet</a>.
     </span>
   {/snippet}
@@ -211,6 +222,7 @@
   }
   tbody th.lbl { font-size: var(--fs-14); color: var(--text-soft); white-space: nowrap; }
   td.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; text-align: right; }
+  td.best { font-weight: var(--fw-bold); color: var(--verdict-up); }
   .hint { color: var(--text-muted); font-size: var(--fs-12); }
   @media (max-width: 700px) {
     .scroll-hint { display: block; }
