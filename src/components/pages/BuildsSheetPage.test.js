@@ -1,4 +1,4 @@
-import { it, expect, beforeEach, afterEach } from 'vitest';
+import { it, describe, expect, beforeEach, afterEach } from 'vitest';
 import { flushSync } from 'svelte';
 import BuildsSheetPage from './BuildsSheetPage.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
@@ -186,4 +186,41 @@ it('an Oblivion sheet owned by another preset warns and is not applied to this o
   click(t.qa('[role="tab"]').find((x) => x.textContent.includes('Oblivion')));
   expect(t.q('[data-testid="sheet-status"]').textContent).toContain('another preset');
   expect(t.q('[data-testid="oblivion-owner"]').textContent).toContain(a.name);
+});
+
+describe('copy from preset', () => {
+  const others = () => rosterStore.current.presets.filter((p) => p.id !== rosterStore.current.activePresetId);
+  const openMenu = () => {
+    t.q('[data-testid="sheet-copy"]').click();
+    flushSync();
+  };
+  it('is hidden while no other preset has a sheet', () => {
+    expect(t.q('[data-testid="sheet-copy"]')).toBeNull();
+  });
+  it('lists only other presets with a sheet and copies into an empty sheet', () => {
+    const other = others()[0];
+    rosterStore.setPresetSheet(other.id, { totalAttack: 4321 });
+    flushSync();
+    openMenu();
+    const items = t.qa('[role="menuitem"]');
+    expect(items.map((i) => i.textContent.trim())).toEqual([other.name]);
+    items[0].click();
+    flushSync();
+    expect(preset().sheet.values.totalAttack).toBe(4321);
+    expect(preset().sheet.inputsKey).toBeNull();
+  });
+  it('asks before replacing an existing sheet', () => {
+    const other = others()[0];
+    rosterStore.setPresetSheet(other.id, { totalAttack: 4321 });
+    rosterStore.setPresetSheet(preset().id, { totalAttack: 1 });
+    flushSync();
+    openMenu();
+    t.q('[role="menuitem"]').click();
+    flushSync();
+    expect(preset().sheet.values.totalAttack).toBe(1);
+    expect(t.q('[data-testid="sheet-copy-prompt"]')).not.toBeNull();
+    t.q('[data-testid="sheet-copy-confirm"]').click();
+    flushSync();
+    expect(preset().sheet.values.totalAttack).toBe(4321);
+  });
 });

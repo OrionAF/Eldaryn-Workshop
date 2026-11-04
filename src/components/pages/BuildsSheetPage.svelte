@@ -12,6 +12,7 @@
   import { sourceContributions } from '../../lib/build/contribution.js';
   import { sheetKeysForClass, sheetKeyMeta, normaliseSheetValues } from '../../lib/engine/pipeline/sheet.js';
   import Panel from '../ui/Panel.svelte';
+  import Menu from '../ui/Menu.svelte';
   import Tabs from '../ui/Tabs.svelte';
   import Banner from '../ui/Banner.svelte';
   import Button from '../ui/Button.svelte';
@@ -50,6 +51,29 @@
     const next = Object.keys(clean).length ? clean : null;
     if (realm === 'oblivion') rosterStore.setOblivionSheet(next, preset.id);
     else rosterStore.setPresetSheet(preset.id, next);
+  }
+  // Copy from another preset (base realm): a menu of presets that have a sheet; replacing asks first.
+  const sources = $derived(
+    character.presets.filter((p) => p.id !== preset.id && p.sheet && Object.keys(p.sheet.values ?? {}).length),
+  );
+  let copyOpen = $state(false);
+  let copyWrap = $state(null);
+  let pendingCopy = $state(null);
+  function closeCopy() {
+    copyOpen = false;
+    copyWrap?.querySelector('button[aria-haspopup]')?.focus();
+  }
+  function doCopy(from) {
+    pendingCopy = null;
+    if (!rosterStore.copyPresetSheet(from.id, preset.id)) return;
+    notify(`Copied the in-game stats from ${from.name}. Confirm they match this build.`, { kind: 'success' });
+  }
+  function pickCopy(item) {
+    closeCopy();
+    const from = sources.find((p) => p.id === item.id);
+    if (!from) return;
+    if (stats.sheet) pendingCopy = from;
+    else doCopy(from);
   }
   function confirmSheet() {
     if (realm === 'oblivion') rosterStore.confirmOblivionSheet(preset.id);
@@ -97,6 +121,18 @@
       {#if needsConfirm}
         <Button variant="secondary" size="small" data-testid="sheet-confirm" onclick={confirmSheet}>Confirm these match this build</Button>
       {/if}
+      {#if realm === 'base' && sources.length}
+        <span class="copy-menu" bind:this={copyWrap}>
+          <Button variant="ghost" size="small" data-testid="sheet-copy" aria-haspopup="menu" aria-expanded={copyOpen} onclick={() => (copyOpen = !copyOpen)}>
+            Copy from preset ▾
+          </Button>
+          {#if copyOpen}
+            <span class="drop">
+              <Menu label="Copy in-game stats from" items={sources.map((p) => ({ id: p.id, label: p.name }))} onselect={pickCopy} onclose={closeCopy} />
+            </span>
+          {/if}
+        </span>
+      {/if}
       <Button variant="ghost" size="small" disabled={absorbOpen || !absorbable} reason={absorbable ? '' : "The app already matches your in-game stats on the five base stats."} onclick={() => (absorbOpen = true)}>
         Add the difference to base stats
       </Button>
@@ -112,6 +148,15 @@
           they will apply to <b>{preset.name}</b>.
         {/if}
       </p>
+    {/if}
+    {#if pendingCopy}
+      <Banner variant="warn" lead="Replace your in-game stats?">
+        <span data-testid="sheet-copy-prompt">Replace the in-game stats of {preset.name} with those of {pendingCopy.name}?</span>
+        {#snippet action()}
+          <Button variant="danger" size="small" data-testid="sheet-copy-confirm" onclick={() => doCopy(pendingCopy)}>Replace</Button>
+          <Button variant="ghost" size="small" onclick={() => (pendingCopy = null)}>Cancel</Button>
+        {/snippet}
+      </Banner>
     {/if}
     {#if needsConfirm}
       <Banner variant="warn" lead={stats.sheetStatus === 'stale' ? 'Out of date.' : 'Not confirmed.'}>
@@ -135,10 +180,14 @@
   <StatWeightsPanel {character} {preset} {realm} />
 </div>
 
+<svelte:window onclick={(e) => copyOpen && copyWrap && !copyWrap.contains(e.target) && (copyOpen = false)} />
+
 <AbsorbDialog bind:open={absorbOpen} {character} {stats} onconfirm={absorb} />
 
 <style>
   .stack { display: grid; gap: var(--sp-3); }
   .note { margin: 0; color: var(--text-muted); font-size: var(--fs-12); }
+  .copy-menu { position: relative; display: inline-block; }
+  .drop { position: absolute; top: calc(100% + var(--sp-1)); right: 0; z-index: var(--z-popover); }
   .source { font-size: var(--fs-12); color: var(--text-soft); }
 </style>

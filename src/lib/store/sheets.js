@@ -25,6 +25,20 @@ export function createSheetsStore(ctx) {
     });
   }
 
+  /**
+   * Copy the in-game stats of one preset onto another. The copy is unverified until the user confirms
+   * it matches the target build. Refuses the same preset, a missing preset or a source with no sheet.
+   */
+  function copyPresetSheet(fromId, toId) {
+    if (fromId === toId) return false;
+    const values = ctx.findPreset(fromId)?.sheet?.values;
+    if (!values || !Object.keys(values).length || !ctx.findPreset(toId)) return false;
+    ctx.editPreset(toId, (p) => {
+      p.sheet = nextSheet(p.sheet, { ...values }, { inherited: true, key: () => null });
+    });
+    return true;
+  }
+
   function clearPresetSheet(presetId) {
     setPresetSheet(presetId, null);
   }
@@ -58,5 +72,5 @@ export function createSheetsStore(ctx) {
     if (sheet) setOblivionSheet(sheet.values, presetId, { confirm: true });
   }
 
-  return { setPresetSheet, clearPresetSheet, confirmPresetSheet, setOblivionSheet, confirmOblivionSheet };
+  return { setPresetSheet, copyPresetSheet, clearPresetSheet, confirmPresetSheet, setOblivionSheet, confirmOblivionSheet };
 }
