@@ -2,7 +2,7 @@
   /**
    * PresetCompare.svelte - B1 (ia.md §5.7): one column per preset, one row per property. Stat rows show
    * the effective value (the entered sheet when it applies, else the model) and the "Stats come from" row
-   * says which; a sheet the build has moved on from reads Stale. Clicking a column's name makes that
+   * says which; a sheet the build has moved on from reads Stale. Clicking a loadout cell makes its preset active and opens Loadout. Clicking a column's name makes that
    * preset active (G2). Duplicate / Delete are per column, and say why they are disabled.
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
@@ -19,6 +19,7 @@
   import { effectiveTranscendencePreset } from '../../lib/model/legality.js';
   import { statText } from './statText.js';
   import { orderStats } from '../../lib/ui/statOrder.js';
+  import { go } from '../../lib/router.svelte.js';
 
   let { character, setStatus = () => {} } = $props();
 
@@ -59,20 +60,21 @@
       });
     }
     out.push(
-      { id: 'gear', label: 'Gear set', cells: presets.map((p) => `${SET_LABELS[p.equipmentSet]} · ${filledSlots(character, `set${p.equipmentSet}`)} items`) },
-      { id: 'talents', label: 'Talent set', cells: presets.map((p) => talentSetLabel(character, p.talentSet)) },
-      { id: 'pet', label: 'Pet', cells: presets.map((p) => petLabel(character, p.petId) ?? 'None') },
-      { id: 'mount', label: 'Mount', cells: presets.map((p) => mountLabel(character, p.mountId) ?? 'None') },
-      { id: 'relics', label: 'Relics', cells: presets.map((p) => `${p.relicIds.length} of ${relicCap}`) },
+      { id: 'gear', edit: true, label: 'Gear set', cells: presets.map((p) => `${SET_LABELS[p.equipmentSet]} · ${filledSlots(character, `set${p.equipmentSet}`)} items`) },
+      { id: 'talents', edit: true, label: 'Talent set', cells: presets.map((p) => talentSetLabel(character, p.talentSet)) },
+      { id: 'pet', edit: true, label: 'Pet', cells: presets.map((p) => petLabel(character, p.petId) ?? 'None') },
+      { id: 'mount', edit: true, label: 'Mount', cells: presets.map((p) => mountLabel(character, p.mountId) ?? 'None') },
+      { id: 'relics', edit: true, label: 'Relics', cells: presets.map((p) => `${p.relicIds.length} of ${relicCap}`) },
       {
         id: 'sigils',
+        edit: true,
         label: 'Sigils',
         cells: presets.map((p) => {
           const n = p.sigilSpecies.length + (p.utilitySigilSpecies ? 1 : 0) + (p.ancientSigilSpecies ? 1 : 0);
           return `${n} equipped (${p.sigilSpecies.length} of ${sigilSlotCap(character.level, character.class)} regular slots)`;
         }),
       },
-      { id: 'board', label: 'Transcendence board', cells: presets.map(boardOf) },
+      { id: 'board', edit: true, label: 'Transcendence board', cells: presets.map(boardOf) },
       { id: 'checks', label: 'Issues', cells: presets.map((p) => String(checkPreset(character, p).length)), checks: true },
     );
     return diffOnly ? out.filter((r) => new Set(r.cells).size > 1) : out;
@@ -83,6 +85,11 @@
 
   function addPreset() {
     if (!rosterStore.addPreset()) setStatus(`At most ${MAX_PRESETS} presets.`);
+  }
+  /** Make the preset active and open Loadout, where its choices are changed. */
+  function edit(p) {
+    rosterStore.setActivePreset(p.id);
+    go('#/builds/loadout');
   }
   function rename(p, e) {
     const name = e.target.value;
@@ -159,7 +166,9 @@
             <th scope="row" class="lbl sticky">{r.label}</th>
             {#each r.cells as c, i (presets[i].id)}
               <td class:num={r.mono} class:diff={new Set(r.cells).size > 1} class:best={r.best?.[i]}>
-                {c}{#if r.best?.[i]}<span class="visually-hidden"> (highest)</span>{/if}
+                {#if r.edit}
+                  <button type="button" class="cell-link" aria-label={`Edit ${r.label} of ${presets[i].name}`} onclick={() => edit(presets[i])}>{c}</button>
+                {:else}{c}{/if}{#if r.best?.[i]}<span class="visually-hidden"> (highest)</span>{/if}
               </td>
             {/each}
           </tr>
@@ -223,6 +232,11 @@
   tbody th.lbl { font-size: var(--fs-14); color: var(--text-soft); white-space: nowrap; }
   td.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; text-align: right; }
   td.best { font-weight: var(--fw-bold); color: var(--verdict-up); }
+  .cell-link {
+    background: none; border: 0; padding: 0; cursor: pointer; text-align: left;
+    font: inherit; color: inherit;
+  }
+  .cell-link:hover { text-decoration: underline; color: var(--brass-200); }
   .hint { color: var(--text-muted); font-size: var(--fs-12); }
   @media (max-width: 700px) {
     .scroll-hint { display: block; }

@@ -25,3 +25,18 @@ it('marks the higher cell with a bold class and hidden text; ties and other rows
   expect(t.q('tr[data-row="totalHp"]').querySelector('td.best')).toBeNull();
   expect(t.q('tr[data-row="gear"]')?.querySelector('td.best') ?? null).toBeNull();
 });
+
+it('a loadout cell is a button that activates its preset and opens Loadout; stat cells have none', async () => {
+  const { rosterStore } = await import('../../lib/rosterStore.svelte.js');
+  const spy = vi.spyOn(rosterStore, 'setActivePreset').mockImplementation(() => {});
+  location.hash = '#/builds/presets';
+  t = setup(PresetCompare, { character: character() });
+  expect(t.q('tr[data-row="totalAttack"]').querySelector('button')).toBeNull();
+  expect(t.q('tr[data-row="checks"]').querySelector('button')).toBeNull();
+  const btn = t.q('tr[data-row="pet"]').querySelectorAll('button')[1];
+  expect(btn.getAttribute('aria-label')).toBe('Edit Pet of b');
+  btn.click();
+  expect(spy).toHaveBeenCalledWith('b');
+  expect(location.hash).toBe('#/builds/loadout');
+  spy.mockRestore();
+});
