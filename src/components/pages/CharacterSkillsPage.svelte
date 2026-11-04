@@ -16,6 +16,7 @@
   import Checkbox from '../ui/Checkbox.svelte';
   import Radio from '../ui/Radio.svelte';
   import Button from '../ui/Button.svelte';
+  import ConfirmButton from '../ConfirmButton.svelte';
 
   // eslint-disable-next-line no-unused-vars
   let { setStatus = () => {}, onNavigate = () => {}, tab = null } = $props();
@@ -75,6 +76,24 @@
   <div class="skills-page">
     <Panel title="Skills">
       <p class="note">Level 0 means not bought. Skills unlock from level {SKILLS_UNLOCK_LEVEL}; the Oblivion point needs Oblivion unlocked.</p>
+      <div class="bulk">
+        <ConfirmButton
+          variant="ghost"
+          size="small"
+          label="Max all unlocked"
+          confirmLabel="Confirm max"
+          prompt="Set every unlocked skill to its cap?"
+          onConfirm={() => rosterStore.setAllSkills('max')}
+        />
+        <ConfirmButton
+          variant="danger"
+          size="small"
+          label="Reset all skills"
+          confirmLabel="Confirm reset"
+          prompt="Sets every skill to level 0."
+          onConfirm={() => rosterStore.setAllSkills('clear')}
+        />
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -176,6 +195,7 @@
 <style>
   .skills-page { display: grid; gap: var(--sp-4); }
   .note { margin: 0 0 var(--sp-3); color: var(--text-soft); font-size: var(--fs-13); }
+  .bulk { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-3); }
   .muted { color: var(--text-muted); font-weight: var(--fw-regular, 400); }
   /* On a phone the table scrolls inside its panel instead of being clipped; cells stay on one line so the Cap
      column and a level like "8 / 10" are never cut or wrapped. */

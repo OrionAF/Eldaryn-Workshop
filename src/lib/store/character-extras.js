@@ -1,5 +1,5 @@
 // store/character-extras.js (B6b): skills, attunement bans and fortress mutators. Each ends with persist().
-import { skillById } from '../game/skills.js';
+import { SKILLS, skillById, skillLevelCap } from '../game/skills.js';
 import { clampSkillLevel, reconcileSkills, attunementMaxBans, bannableStats } from '../model/skills.js';
 import { FORTRESS_GROUPS, normaliseFortress } from '../model/fortress.js';
 
@@ -13,6 +13,19 @@ export function createCharacterExtrasStore(ctx) {
       if (lvl > 0) c.skills[skillId] = lvl;
       else delete c.skills[skillId];
       reconcileSkills(c); // lowering Attunement frees fewer ban slots
+    });
+  }
+
+  /** Max every skill the character's level has unlocked (to its cap), or clear every skill. Locked skills are left as they are. */
+  function setAllSkills(mode) {
+    if (mode !== 'max' && mode !== 'clear') return;
+    ctx.edit((c) => {
+      const oblivion = c.oblivion?.unlocked === true;
+      for (const skill of SKILLS) {
+        if (mode === 'clear') delete c.skills[skill.id];
+        else if (c.level >= skill.unlockLevel) c.skills[skill.id] = skillLevelCap(skill, oblivion);
+      }
+      reconcileSkills(c);
     });
   }
 
@@ -45,5 +58,5 @@ export function createCharacterExtrasStore(ctx) {
     });
   }
 
-  return { setSkillLevel, reconcileSkillLevels, toggleAttunementBan, toggleFortress };
+  return { setSkillLevel, setAllSkills, reconcileSkillLevels, toggleAttunementBan, toggleFortress };
 }

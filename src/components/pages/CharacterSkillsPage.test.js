@@ -64,3 +64,53 @@ it('the skills table scrolls instead of clipping and keeps level cells on one li
   expect(rule('table')).toMatch(/min-width: \d+rem/);
   expect(rule('th, td')).toContain('white-space: nowrap');
 });
+
+const btn = (text) => view.qa('button').find((b) => b.textContent.trim() === text);
+const confirmed = (label, confirm) => {
+  click(btn(label));
+  flushSync();
+  click(btn(confirm));
+  flushSync();
+};
+
+it('Max all unlocked asks first, then sets every unlocked skill to its cap and zeroes the gems total', () => {
+  rosterStore.setCharacterLevel(100);
+  flushSync();
+  click(btn('Max all unlocked'));
+  flushSync();
+  expect(rosterStore.current.skills.hunting).toBeUndefined(); // nothing happens before the confirm
+  click(btn('Confirm max'));
+  flushSync();
+  expect(rosterStore.current.skills.hunting).toBe(10);
+  expect(view.q('[data-testid="gems-total"]').textContent.replace(/\D/g, '')).toBe('0');
+});
+
+it('Max all leaves locked skills alone and keeps the Oblivion point out while Oblivion is locked', () => {
+  rosterStore.setCharacterLevel(100);
+  rosterStore.setAllSkills('max');
+  const maxed = { ...rosterStore.current.skills };
+  flushSync();
+  for (const [id, lvl] of Object.entries(maxed)) expect(view.q(`[data-testid="level-${id}"]`).textContent).toContain(`${lvl} / ${lvl}`);
+  expect(maxed.hunting).toBe(10); // Oblivion locked: no extra point
+  rosterStore.setAllSkills('clear');
+  rosterStore.setCharacterLevel(1);
+  rosterStore.setSkillLevel('ascension', 2); // locked at level 1, holds a prior value
+  flushSync();
+  confirmed('Max all unlocked', 'Confirm max');
+  expect(rosterStore.current.skills.ascension).toBe(2);
+  expect(rosterStore.current.skills.keySave).toBeUndefined();
+  expect(Object.keys(rosterStore.current.skills).length).toBeLessThan(Object.keys(maxed).length);
+});
+
+it('Reset all skills clears every level', () => {
+  rosterStore.setCharacterLevel(100);
+  rosterStore.setAllSkills('max');
+  flushSync();
+  confirmed('Reset all skills', 'Confirm reset');
+  expect(rosterStore.current.skills).toEqual({});
+});
+
+it('setAllSkills ignores an unknown mode', () => {
+  rosterStore.setAllSkills('bogus');
+  expect(rosterStore.current.skills).toEqual({});
+});
