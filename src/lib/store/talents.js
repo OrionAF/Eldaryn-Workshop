@@ -2,7 +2,7 @@
 import { talentSpec, talentById } from '../game/talents.js';
 import { normaliseCharacter } from '../model/index.js';
 import { sanitiseAllocation, emptyTalentSet } from '../model/talents.js';
-import { talentPointsForLevel } from '../model/legality.js';
+import { talentPointsForLevel, dualTalentsUnlocked } from '../model/legality.js';
 
 const validIndex = (i) => i === 0 || i === 1;
 
@@ -14,6 +14,15 @@ function isValid(allocation, specKey, cap) {
 }
 
 export function createTalentsStore(ctx) {
+  // the active preset's spec feeds other domains' gating (ctx.spec), so re-normalise when its set changes
+  function renormaliseIfActive(c, index) {
+    const active = c.presets.find((p) => p.id === c.activePresetId) ?? c.presets[0];
+    if (active?.talentSet !== index) return;
+    const roster = ctx.roster();
+    const i = roster.characters.findIndex((x) => x.id === c.id);
+    if (i !== -1) roster.characters[i] = normaliseCharacter(JSON.parse(JSON.stringify(c)));
+  }
+
   /** Choose (or clear) a set's spec. Switching spec clears its allocation; a wrong-class spec is refused. */
   function setTalentSetSpec(index, specKey) {
     if (!validIndex(index)) return false;
@@ -23,13 +32,7 @@ export function createTalentsStore(ctx) {
     if (c0.talentSets[index].spec === (specKey ?? null)) return true;
     ctx.edit((c) => {
       c.talentSets[index] = { ...emptyTalentSet(), spec: specKey ?? null };
-      // the active preset's spec feeds other domains' gating (ctx.spec), so re-normalise then
-      const active = c.presets.find((p) => p.id === c.activePresetId) ?? c.presets[0];
-      if (active?.talentSet === index) {
-        const roster = ctx.roster();
-        const i = roster.characters.findIndex((x) => x.id === c.id);
-        if (i !== -1) roster.characters[i] = normaliseCharacter(JSON.parse(JSON.stringify(c)));
-      }
+      renormaliseIfActive(c, index);
     });
     return true;
   }
@@ -61,5 +64,19 @@ export function createTalentsStore(ctx) {
     });
   }
 
-  return { setTalentSetSpec, setTalentSetRank, resetTalentSet };
+  /** Copy one set's spec and allocation onto the other. Refused when the source has no spec or Set B is locked. */
+  function copyTalentSet(from, to) {
+    if (!validIndex(from) || !validIndex(to) || from === to) return false;
+    const c0 = ctx.current();
+    const src = c0?.talentSets[from];
+    if (!src?.spec || !dualTalentsUnlocked(c0.level)) return false;
+    const allocation = sanitiseAllocation({ ...src.allocation }, src.spec, talentPointsForLevel(c0.level));
+    ctx.edit((c) => {
+      c.talentSets[to] = { spec: src.spec, allocation };
+      renormaliseIfActive(c, to);
+    });
+    return true;
+  }
+
+  return { setTalentSetSpec, setTalentSetRank, resetTalentSet, copyTalentSet };
 }
