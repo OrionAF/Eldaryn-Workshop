@@ -5,6 +5,7 @@
    * a verdict with the N that would resolve it, "Run more", the fighters as the resolver reads them
    * and one sample duel. The Verify tab checks an exported fight log. Reads the character; writes
    * nothing. The result lives in the job store, so it survives navigation (plan U3).
+   * "All opponents" queues one duel job per saved opponent (same N and seed) and lists them in a table.
    */
   import { untrack } from 'svelte';
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
@@ -26,6 +27,7 @@
     simulatedColumns,
     defaultedLabels,
     requiredStatsText,
+    rosterRows,
   } from '../../lib/features/duel.js';
   import { fmtCount } from '../../lib/ui/statsFormat.js';
   import { orderStats, orderedStatLabel } from '../../lib/ui/statOrder.js';
@@ -42,6 +44,7 @@
   import FightersTable from '../duel/FightersTable.svelte';
   import SampleDuel from '../duel/SampleDuel.svelte';
   import VerifyFightLog from '../duel/VerifyFightLog.svelte';
+  import RosterTable from '../duel/RosterTable.svelte';
   import { duelFights } from '../../lib/calibration.js';
   import RunEstimate from '../ui/RunEstimate.svelte';
 
@@ -53,6 +56,8 @@
   const RUN_MORE_FACTOR = 4;
   const MAX_N = 25600;
   const SEED = 1;
+  /** The Opponent select's "All opponents" value: one job per saved opponent. */
+  const ALL = '__all__';
 
   const character = $derived(rosterStore.current);
   const readOnly = (id) => [{ value: id, label: id }];
@@ -70,23 +75,39 @@
     setDuelSetup(character.id, { presetPick, opponentPick, seat, effort });
   });
   let jobId = $state(jobsStore.list.filter((j) => j.tool === 'duel').at(-1)?.id ?? null);
+  // The latest All opponents run: {id, myName, skipped: [{id, name, reason}]}, found again from its jobs.
+  const lastRoster = untrack(() => jobsStore.list.filter((j) => j.tool === 'duel' && j.request?.meta?.roster).at(-1)?.request.meta);
+  let roster = $state(lastRoster ? { id: lastRoster.roster, myName: lastRoster.myName, skipped: lastRoster.rosterSkipped ?? [] } : null);
+  let rosterSeq = 0;
   let reroll = $state(null); // {jobId, trace, traceResult}
   let rerolling = $state(false);
 
   const preset = $derived(character.presets.find((p) => p.id === presetPick) ?? character.presets.find((p) => p.id === character.activePresetId) ?? character.presets[0]);
+  const allMode = $derived(opponentPick === ALL && character.opponents.length > 1);
   const opponent = $derived(character.opponents.find((o) => o.id === opponentPick) ?? character.opponents[0] ?? null);
   const mine = $derived(presetDuelFighter(character, preset.id));
   const theirs = $derived(opponent ? opponentFighter(opponent) : null);
 
   const blockers = $derived([
     ...missingStats(mine).map((m) => ({ text: `${preset.name} has no ${m}.`, fix: 'Open Stat Sheet', to: '#/builds/sheet' })),
-    ...(theirs
+    ...(theirs && !allMode
       ? missingStats(theirs).map((m) => ({ text: `${opponent.name} has no ${m}.`, fix: 'Open Opponents', to: '#/tools/opponents' }))
       : []),
   ]);
-  const blankRows = $derived(theirs?.defaulted?.length ? defaultedLabels(theirs.defaulted) : []);
+  const blankRows = $derived(!allMode && theirs?.defaulted?.length ? defaultedLabels(theirs.defaulted) : []);
+  // All opponents: an opponent whose sheet lacks a required stat is skipped and listed with the reason.
+  const rosterPlan = $derived(
+    allMode
+      ? character.opponents.map((o) => {
+          const fighter = opponentFighter(o);
+          const missing = missingStats(fighter);
+          return { o, fighter, reason: missing.length ? `${o.name} has no ${missing.join(', ')}.` : null };
+        })
+      : [],
+  );
+  const runnable = $derived(rosterPlan.filter((x) => !x.reason));
   const perSeat = $derived(EFFORT[effort]);
-  const total = $derived(perSeat * (seat === 'both' ? 2 : 1));
+  const total = $derived(perSeat * (seat === 'both' ? 2 : 1) * (allMode ? runnable.length : 1));
 
   // ---- the job ---------------------------------------------------------------------------------
 
@@ -101,7 +122,7 @@
 
   function launch(request, meta) {
     const sig = () => signatureFor(meta.presetId, meta.opponentId, meta.seat, meta.n);
-    jobId = startJob({
+    return startJob({
       tool: 'duel',
       title: `${meta.myName} vs ${meta.theirName}`,
       context: `${meta.seat === 'both' ? 'both seats' : `${meta.seat} seat`} · ${fmtCount(meta.n)} fights${meta.seat === 'both' ? ' each' : ''}`,
@@ -113,15 +134,54 @@
     });
   }
 
-  function run() {
-    if (blockers.length || !opponent) return;
+  /** One duel job: my preset against one opponent, in the chosen seat(s), with the effort's N. */
+  function launchAgainst(o, fighter, extraMeta = {}) {
     const n = perSeat;
-    const pair = arrange(mine, theirs, seat === 'defender' ? 'defender' : 'attacker');
+    const pair = arrange(mine, fighter, seat === 'defender' ? 'defender' : 'attacker');
     const labels = seat === 'both' ? ['I attack', 'I defend'] : [seat === 'attacker' ? 'I attack' : 'I defend'];
-    launch(
+    return launch(
       { mode: 'duel', ...pair, n, seed: SEED, trace: true, both: seat === 'both', phaseLabels: labels },
-      { seat, n, seed: SEED, presetId: preset.id, opponentId: opponent.id, myName: preset.name, theirName: opponent.name },
+      { seat, n, seed: SEED, presetId: preset.id, opponentId: o.id, myName: preset.name, theirName: o.name, ...extraMeta },
     );
+  }
+
+  function run() {
+    if (allMode) return runAll();
+    if (blockers.length || !opponent) return;
+    jobId = launchAgainst(opponent, theirs);
+  }
+
+  function runAll() {
+    if (blockers.length || !runnable.length) return;
+    const id = `roster-${Date.now()}-${++rosterSeq}`;
+    const skipped = rosterPlan.filter((x) => x.reason).map((x) => ({ id: x.o.id, name: x.o.name, reason: x.reason }));
+    for (const x of runnable) launchAgainst(x.o, x.fighter, { roster: id, rosterSkipped: skipped });
+    roster = { id, myName: preset.name, skipped };
+  }
+
+  const rosterJobs = $derived(roster ? jobsStore.list.filter((j) => j.tool === 'duel' && j.request?.meta?.roster === roster.id) : []);
+  const rosterBusy = $derived(rosterJobs.some((j) => j.status === 'queued' || j.status === 'running'));
+  const rosterDone = $derived(rosterJobs.filter((j) => j.status === 'finished').length);
+  const rosterTableRows = $derived.by(() => {
+    if (!roster) return [];
+    const entries = rosterJobs.map((j) => {
+      const m = j.request.meta;
+      const s = j.result ? seatsFromResult(j.result, m.seat) : null;
+      const unfinished = !!s && m.seat === 'both' && !(s.attack && s.defend);
+      return { id: m.opponentId, jobId: j.id, name: m.theirName, status: j.status, summary: unfinished ? null : s?.total ?? null, stale: isStale(j) };
+    });
+    return rosterRows([...entries, ...roster.skipped.map((x) => ({ ...x, status: 'skipped' }))]);
+  });
+
+  function cancelRoster() {
+    for (const j of rosterJobs) if (j.status === 'queued' || j.status === 'running') cancelJob(j.id);
+  }
+
+  /** A row of the All opponents table opens that opponent's duel on its own. */
+  function pickFromRoster(id) {
+    const row = rosterTableRows.find((r) => r.id === id);
+    opponentPick = id;
+    if (row?.jobId) jobId = row.jobId;
   }
 
   const job = $derived(jobsStore.list.find((j) => j.id === jobId) ?? null);
@@ -158,8 +218,10 @@
 
   function runMore() {
     if (!canMore || stale) return;
-    const next = { ...meta, n: nextN };
-    launch({ ...job.request, n: nextN, meta: next }, next);
+    // A longer run of one opponent stands alone: it does not join the All opponents table.
+    const { roster: _r, rosterSkipped: _s, ...rest } = meta; // eslint-disable-line no-unused-vars
+    const next = { ...rest, n: nextN };
+    jobId = launch({ ...job.request, n: nextN, meta: next }, next);
   }
 
   // ---- the sample duel --------------------------------------------------------------------------
@@ -213,7 +275,7 @@
     });
   });
 
-  const columns = $derived(opponent && !blockers.length ? orderStats(simulatedColumns(mine, theirs), character.class, (row) => row.key)
+  const columns = $derived(opponent && !allMode && !blockers.length ? orderStats(simulatedColumns(mine, theirs), character.class, (row) => row.key)
     .map((row) => ({ ...row, label: orderedStatLabel(row.key, row.label, character.class) })) : []);
   const verifyFighters = $derived(
     opponent && !blockers.length
@@ -221,7 +283,13 @@
       : null,
   );
   const presetOptions = $derived(character.presets.map((p) => ({ value: p.id, label: p.name })));
-  const opponentOptions = $derived(character.opponents.map((o) => ({ value: o.id, label: o.name })));
+  const opponentOptions = $derived([
+    ...(character.opponents.length > 1 ? [{ value: ALL, label: 'All opponents' }] : []),
+    ...character.opponents.map((o) => ({ value: o.id, label: o.name })),
+  ]);
+  const runReason = $derived(
+    !opponent ? 'Add an opponent first.' : blockers.length ? blockers[0].text : allMode && !runnable.length ? 'No opponent has the stats a duel needs.' : '',
+  );
   const seatOptions = [
     { value: 'attacker', label: 'Attacker' },
     { value: 'defender', label: 'Defender' },
@@ -251,9 +319,9 @@
           <Select
             label="Opponent"
             options={opponentOptions}
-            value={opponent.id}
+            value={allMode ? ALL : opponent.id}
             onchange={(v) => (opponentPick = v)}
-            hint="Edit opponents on the Opponents page."
+            hint={allMode ? 'Runs one duel per opponent, with the same fights and seed.' : 'Edit opponents on the Opponents page.'}
           />
         {:else}
           <EmptyState title="No saved opponents yet" text="A duel needs an opponent's stat sheet.">
@@ -270,7 +338,7 @@
         <div class="field">
           <span class="lbl">Effort</span>
           <SegmentedControl label="Effort" options={effortOptions} bind:value={effort} />
-          <RunEstimate fights={duelFights(perSeat, seat === 'both' ? 2 : 1)} />
+          <RunEstimate fights={duelFights(perSeat, (seat === 'both' ? 2 : 1) * (allMode ? runnable.length : 1))} />
           <span class="hint">Fights per seat. More effort spots smaller differences and takes longer. Seed <span class="num">{SEED}</span>: the same seed gives the same result.</span>
         </div>
         {#each blockers as b (b.text)}
@@ -285,14 +353,16 @@
           </Banner>
         {/if}
         {#snippet footer()}
-          {#if busy}
+          {#if allMode && rosterBusy}
+            <Button variant="danger" size="block" onclick={cancelRoster}>Cancel all</Button>
+          {:else if !allMode && busy}
             <Button variant="danger" size="block" onclick={() => cancelJob(job.id)}>Cancel</Button>
           {:else}
             <Button
               variant="primary"
               size="block"
-              disabled={!opponent || blockers.length > 0}
-              reason={!opponent ? 'Add an opponent first.' : blockers.length ? blockers[0].text : ''}
+              disabled={!!runReason}
+              reason={runReason}
               onclick={run}>Run {fmtCount(total)} duels</Button
             >
           {/if}
@@ -301,7 +371,19 @@
     </div>
 
     <div class="stack" data-testid="duel-output">
-      {#if job}
+      {#if allMode}
+        <Panel title={roster ? `${roster.myName} vs all opponents` : 'All opponents'} level="primary" scope="tool">
+          {#if roster}
+            <p class="note" data-testid="roster-progress">
+              <span class="num">{rosterDone}</span> of <span class="num">{rosterJobs.length}</span> duels finished{roster.skipped.length ? `, ${roster.skipped.length} skipped` : ''}. Pick a name to open that duel.
+            </p>
+            <RosterTable rows={rosterTableRows} onpick={pickFromRoster} />
+            <p class="note">Each row is its own job in the Jobs tray. The likely range is a 95% interval on the win rate.</p>
+          {:else}
+            <EmptyState title="No run yet" text="Run your preset against every saved opponent. Each win rate appears here with its likely range." />
+          {/if}
+        </Panel>
+      {:else if job}
         <Panel title={meta ? `${meta.myName} vs ${meta.theirName}` : 'Result'} level="primary" scope="tool" stale={stale}>
           {#if segments.length}
             <div data-testid="duel-progress"><RunProgress {segments} /></div>

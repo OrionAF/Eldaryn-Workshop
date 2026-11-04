@@ -242,3 +242,103 @@ it('S2: shows the run-time estimate under Effort, or a link to calibrate', () =>
   localStorage.clear();
   resetEstimatePrefs();
 });
+
+// ---- All opponents (F35) --------------------------------------------------------------------------
+
+const opponentSelect = () => view.qa('select').find((s) => [...s.options].some((o) => o.value === '__all__'));
+const pickOpponent = (value) => {
+  const sel = opponentSelect();
+  sel.value = value;
+  sel.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+  return sel;
+};
+const threeOpponents = () => {
+  const weak = rosterStore.addOpponent('WARRIOR_TANK', 'Weakling');
+  rosterStore.setOpponentSheet(weak, { totalHp: 800, totalAttack: 30, totalAttackSpeed: 1 });
+  const strong = rosterStore.addOpponent('WARRIOR_TANK', 'Brute');
+  rosterStore.setOpponentSheet(strong, { totalHp: 900, totalAttack: 40, totalAttackSpeed: 1 });
+  const blank = rosterStore.addOpponent('WARRIOR_TANK', 'Blanky');
+  rosterStore.setOpponentSheet(blank, { totalHp: 900, totalAttack: 40 });
+  return { weak, strong, blank };
+};
+
+it('All opponents is offered only with two or more opponents', () => {
+  ready();
+  view = setup(ToolsDuelPage);
+  expect(opponentSelect()).toBeUndefined();
+  view.done();
+  ready();
+  view = setup(ToolsDuelPage);
+  expect(opponentSelect().options[0].textContent).toBe('All opponents');
+});
+
+it('All opponents: one job per opponent with the same N and seed, a sorted table, skipped rows, and a row opens that duel', async () => {
+  const { weak, strong, blank } = threeOpponents();
+  // my win rate depends on the opponent: 0.9 against Weakling, 0.2 against Brute
+  __resetJobs({ run: fakeRun((req) => summary(req.defender.stats.totalAttack === 30 ? 0.9 : 0.2, req.n, { trace, traceResult: { attackerWon: true, totalDuration: 1000 } })) });
+  view = setup(ToolsDuelPage);
+  click(view.q('button[data-value="attacker"]'));
+  pickOpponent('__all__');
+  expect(view.q('[data-testid="duel-output"]').textContent).toContain('No run yet');
+  expect(view.q('[data-testid="duel-setup"]').textContent).not.toContain('Blanky has no');
+  expect(buttonByText(/^Run /).textContent).toContain('1,600 duels'); // 800 x 2 runnable opponents
+  click(buttonByText(/^Run /));
+  await vi.waitFor(() => expect(view.q('[data-testid="roster-progress"]').textContent).toContain('2 of 2 duels finished, 1 skipped'));
+  expect(calls).toHaveLength(2);
+  expect(calls.every((c) => c.n === 800 && c.seed === 1)).toBe(true);
+  expect(jobsStore.list.filter((j) => j.tool === 'duel')).toHaveLength(2);
+  const rows = view.qa('[data-testid^="roster-row-"]');
+  expect(rows.map((r) => r.dataset.testid)).toEqual([`roster-row-${weak}`, `roster-row-${strong}`, `roster-row-${blank}`]);
+  expect(rows[0].textContent).toContain('90.0%');
+  expect(rows[0].textContent).toContain('85.0% to 95.0%');
+  expect(rows[0].textContent).toContain('800');
+  expect(rows[0].textContent).toContain('Likely to win');
+  expect(rows[1].textContent).toContain('Likely to lose');
+  expect(view.q('[data-testid="roster-skipped"]').textContent).toContain('Blanky has no Attack Speed');
+  expect(rows[2].querySelector('button')).toBeNull();
+
+  click(rows[1].querySelector('button'));
+  expect(opponentSelect().value).toBe(strong);
+  expect(view.q('[data-testid="win-rate"]').textContent).toBe('20.0%');
+  expect(view.q('[data-testid="duel-output"]').textContent).toContain('vs Brute');
+  // back to All opponents finds the same table
+  pickOpponent('__all__');
+  expect(view.qa('[data-testid^="roster-row-"]')).toHaveLength(3);
+});
+
+it('All opponents: cannot run when no opponent has the needed stats, and Cancel all stops every job', async () => {
+  const a = rosterStore.addOpponent('WARRIOR_TANK', 'A');
+  rosterStore.setOpponentSheet(a, { totalHp: 800, totalAttack: 30 });
+  const b = rosterStore.addOpponent('WARRIOR_TANK', 'B');
+  rosterStore.setOpponentSheet(b, { totalHp: 800 });
+  view = setup(ToolsDuelPage);
+  pickOpponent('__all__');
+  const run = buttonByText(/^Run /);
+  expect(run.getAttribute('aria-disabled')).toBe('true');
+  view.done();
+
+  rosterStore.setOpponentSheet(a, { totalHp: 800, totalAttack: 30, totalAttackSpeed: 1 });
+  rosterStore.setOpponentSheet(b, { totalHp: 800, totalAttack: 30, totalAttackSpeed: 1 });
+  const c = rosterStore.addOpponent('WARRIOR_TANK', 'C');
+  rosterStore.setOpponentSheet(c, { totalHp: 800, totalAttack: 30, totalAttackSpeed: 1 });
+  const cancels = [];
+  __resetJobs({
+    run: (request) => {
+      calls.push(request);
+      let resolve;
+      const promise = new Promise((r) => (resolve = r));
+      return { promise, cancel: () => { cancels.push(request); resolve({ aborted: true }); } };
+    },
+  });
+  view = setup(ToolsDuelPage);
+  pickOpponent('__all__');
+  click(buttonByText(/^Run /));
+  expect(calls).toHaveLength(2); // at most two run at once; the third waits queued
+  expect(view.q('[data-testid="duel-output"]').textContent).toContain('Queued');
+  click(buttonByText(/^Cancel all$/));
+  await vi.waitFor(() => expect(jobsStore.list.every((j) => j.status === 'cancelled')).toBe(true));
+  expect(cancels).toHaveLength(2);
+  expect(calls).toHaveLength(2);
+  expect(buttonByText(/^Run /)).toBeTruthy();
+});
