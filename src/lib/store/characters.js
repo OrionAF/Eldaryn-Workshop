@@ -65,10 +65,12 @@ export function createCharactersStore(ctx) {
   /**
    * Undo the last deleteCharacter: put the character back at its old place (a fresh id if its id is
    * taken by now) and re-select it if it was current. One step only; a second call does nothing.
+   * @param {string} [id] the deleted character's id; refuses when a later delete replaced the slot
    * @returns {string|null} the restored character's id
    */
-  function restoreDeletedCharacter() {
+  function restoreDeletedCharacter(id) {
     if (!lastDeleted) return null;
+    if (id !== undefined && lastDeleted.character.id !== id) return null;
     const { character, index, wasCurrent } = lastDeleted;
     lastDeleted = null;
     const roster = ctx.roster();

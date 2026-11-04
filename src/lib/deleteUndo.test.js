@@ -57,3 +57,34 @@ it('deleting an opponent shows an Undo toast; Undo restores it and reports its i
   expect(rosterStore.current.opponents.map((o) => o.id)).toEqual([id]);
   expect(onRestored).toHaveBeenCalledWith(id);
 });
+
+it('two preset deletes: Undo on the first toast warns and leaves the second deleted and undoable', () => {
+  rosterStore.addPreset('Arena');
+  rosterStore.addPreset('Raid');
+  const [a, b] = [presets()[2], presets()[3]];
+  deletePresetWithUndo(a);
+  const first = lastToast().id;
+  deletePresetWithUndo(b);
+  const second = lastToast().id;
+  runAction(first);
+  expect(presets().map((x) => x.id)).not.toContain(a.id);
+  expect(presets().map((x) => x.id)).not.toContain(b.id);
+  expect(lastToast()).toMatchObject({ kind: 'warn', message: 'Can no longer undo deleting Arena.' });
+  runAction(second);
+  expect(presets().map((x) => x.id)).toContain(b.id);
+  expect(lastToast()).toMatchObject({ kind: 'success', message: 'Restored Raid' });
+});
+
+it('two opponent deletes: Undo on the first toast warns and does not restore the second', () => {
+  rosterStore.addOpponent('WARRIOR_TANK', 'Wall');
+  rosterStore.addOpponent('MYSTIC_MAGE', 'Mage');
+  const onRestored = vi.fn();
+  const [a, b] = rosterStore.current.opponents;
+  deleteOpponentWithUndo(a, onRestored);
+  const first = lastToast().id;
+  deleteOpponentWithUndo(b, onRestored);
+  runAction(first);
+  expect(rosterStore.current.opponents).toHaveLength(0);
+  expect(onRestored).not.toHaveBeenCalled();
+  expect(lastToast()).toMatchObject({ kind: 'warn', message: 'Can no longer undo deleting Wall.' });
+});

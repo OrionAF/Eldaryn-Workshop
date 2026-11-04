@@ -136,3 +136,24 @@ describe('duplicateCharacter', () => {
     expect(saves).toBe(0);
   });
 });
+
+describe('restoreDeletedCharacter(id)', () => {
+  it('refuses an older delete once a later one replaced the slot, and still restores the later one', () => {
+    const [, b, c] = ids();
+    store.deleteCharacter(b);
+    store.deleteCharacter(c);
+    saves = 0;
+    expect(store.restoreDeletedCharacter(b)).toBeNull();
+    expect(ids()).not.toContain(b);
+    expect(ids()).not.toContain(c);
+    expect(saves).toBe(0);
+    expect(store.restoreDeletedCharacter(c)).toBe(c);
+    expect(ids()).toContain(c);
+  });
+
+  it('restores a single delete by its id', () => {
+    const b = ids()[1];
+    store.deleteCharacter(b);
+    expect(store.restoreDeletedCharacter(b)).toBe(b);
+  });
+});

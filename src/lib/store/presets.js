@@ -67,9 +67,13 @@ export function createPresetsStore(ctx) {
     });
   }
 
-  /** Whether restoreDeletedPreset has something to bring back, and whether its character has room. */
-  function deletedPresetStatus() {
+  /**
+   * Whether restoreDeletedPreset has something to bring back, and whether its character has room.
+   * @param {string} [presetId] the deleted preset's id: 'none' when the slot holds a later delete
+   */
+  function deletedPresetStatus(presetId) {
     if (!lastDeleted) return 'none';
+    if (presetId !== undefined && lastDeleted.preset.id !== presetId) return 'none';
     const c = ctx.findCharacter(lastDeleted.characterId);
     if (!c) return 'none';
     return c.presets.length >= MAX_PRESETS ? 'full' : 'ready';
@@ -80,10 +84,11 @@ export function createPresetsStore(ctx) {
    * its id is taken by now), active again if it was, and owner of the Oblivion sheet again if it was and
    * nothing took the sheet since. References that no longer resolve are dropped by reconcile. One step
    * only. At the 8-preset cap it refuses and keeps the slot, so deleting another preset frees room.
+   * @param {string} [presetId] the deleted preset's id; refuses when a later delete replaced the slot
    * @returns {string|null} the restored preset's id
    */
-  function restoreDeletedPreset() {
-    if (deletedPresetStatus() !== 'ready') return null;
+  function restoreDeletedPreset(presetId) {
+    if (deletedPresetStatus(presetId) !== 'ready') return null;
     const { characterId, preset, index, wasActive, ownedOblivionSheet } = lastDeleted;
     lastDeleted = null;
     const c = ctx.findCharacter(characterId);

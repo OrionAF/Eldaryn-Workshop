@@ -78,9 +78,13 @@ export function createPvpStore(ctx) {
     });
   }
 
-  /** Whether restoreRemovedOpponent has something to bring back, and whether its character has room. */
-  function removedOpponentStatus() {
+  /**
+   * Whether restoreRemovedOpponent has something to bring back, and whether its character has room.
+   * @param {string} [id] the removed opponent's id: 'none' when the slot holds a later delete
+   */
+  function removedOpponentStatus(id) {
     if (!lastRemoved) return 'none';
+    if (id !== undefined && lastRemoved.opponent.id !== id) return 'none';
     const c = ctx.findCharacter(lastRemoved.characterId);
     if (!c) return 'none';
     return c.opponents.length >= MAX_OPPONENTS ? 'full' : 'ready';
@@ -89,10 +93,11 @@ export function createPvpStore(ctx) {
   /**
    * Undo the last removeOpponent, into the character it came from, at its old place (a fresh id if its
    * id is taken by now). One step only; at the cap it refuses and keeps the slot.
+   * @param {string} [id] the removed opponent's id; refuses when a later delete replaced the slot
    * @returns {string|null} the restored opponent's id
    */
-  function restoreRemovedOpponent() {
-    if (removedOpponentStatus() !== 'ready') return null;
+  function restoreRemovedOpponent(id) {
+    if (removedOpponentStatus(id) !== 'ready') return null;
     const { characterId, opponent, index } = lastRemoved;
     lastRemoved = null;
     const c = ctx.findCharacter(characterId);
