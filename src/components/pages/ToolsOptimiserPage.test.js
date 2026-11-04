@@ -612,7 +612,7 @@ it('Run again is off with a reason when the result\'s preset was deleted, and st
   expect(requests).toHaveLength(1);
   const presetId = richResult().request.presetId;
   expect(rosterStore.current.presets.some((p) => p.id === presetId)).toBe(true);
-  rosterStore.addPreset?.('Spare');
+  rosterStore.addPreset('Spare');
   rosterStore.deletePreset(presetId);
   flushSync();
   const again = btn(/^Run again$/);
