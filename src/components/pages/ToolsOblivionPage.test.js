@@ -5,6 +5,7 @@ import { rosterStore } from '../../lib/rosterStore.svelte.js';
 import { __resetJobs, jobsStore } from '../../lib/jobs.svelte.js';
 import { notifications } from '../../lib/notify.svelte.js';
 import { setPrefs as setEstimatePrefs, applyPrefs as resetEstimatePrefs } from '../../lib/prefs.svelte.js';
+import { resetOblivionSetup, setOblivionSetup, getOblivionSetup } from '../../lib/oblivionSetup.svelte.js';
 import { APP_VERSION as ESTIMATE_VERSION } from '../../lib/calibration.js';
 
 const ROWS = [
@@ -17,6 +18,7 @@ let app;
 
 beforeEach(() => {
   localStorage.clear();
+  resetOblivionSetup();
   requests = [];
   __resetJobs({
     run: (req) => {
@@ -147,4 +149,82 @@ it('S2: the scan setup shows an upper-bound run-time estimate, or a link to cali
   expect(target.querySelector('[data-testid="run-estimate"]').textContent).toMatch(/Up to .* on this device \(estimate\)/);
   localStorage.clear();
   resetEstimatePrefs();
+});
+
+it('F28: the scan setup is kept when the page is left and reopened', () => {
+  rosterStore.setOblivionUnlocked(true);
+  mountPage();
+  target.querySelector('button[aria-label="Increase From floor"]').click();
+  target.querySelector('button[aria-label="Increase To floor"]').click();
+  flushSync();
+  unmount(app);
+  mountPage();
+  expect(press(/Simulate floors/).textContent).toContain('2-31');
+});
+
+it('F28: a finished scan marks the highest floor won and Scan from here narrows the range', async () => {
+  rosterStore.setOblivionUnlocked(true);
+  const rows = Array.from({ length: 30 }, (_, i) => ({ ...ROWS[0], floor: i + 1, verdict: i < 12 ? 'pass' : 'fail' }));
+  __resetJobs({ run: () => ({ cancel() {}, promise: Promise.resolve({ power: 0, threshold: 0.9, rows, maxFloor: 12, scanCapped: false, assumptions: [], aborted: false }) }) });
+  mountPage();
+  expect(press(/Scan from here/)).toBeUndefined();
+  press(/Simulate floors/).click();
+  await vi.waitFor(() => expect(jobsStore.list[0].status).toBe('finished'));
+  flushSync();
+  expect(target.querySelectorAll('tr.frontier')).toHaveLength(1);
+  expect(target.querySelector('tr.frontier').dataset.floor).toBe('12');
+  expect(target.querySelector('tr.frontier').textContent).toContain('highest floor won');
+  press(/Scan from here/).click();
+  flushSync();
+  expect(press(/Simulate floors/).textContent).toContain('10-20');
+  // the setup changed, so the old result is out of date and the button goes away
+  expect(press(/Scan from here/)).toBeUndefined();
+  expect(target.querySelector('tr.frontier')).toBeNull();
+});
+
+it('F28: a kept setup that is out of range or garbage is clamped on load', () => {
+  rosterStore.setOblivionUnlocked(true);
+  setOblivionSetup(rosterStore.current.id, { from: 99, to: 0, threshold: 10, effort: 'bogus', applyOutputCut: 'yes' });
+  mountPage();
+  // to clamps to 1, from to at most to
+  expect(press(/Simulate floors/).textContent).toContain('1-1');
+  expect(target.textContent).toContain('Highest floor won 50%+');
+  expect(target.querySelector('[aria-label="Effort"] button[aria-pressed="true"]').textContent).toContain('Standard');
+});
+
+it('F28: switching character while mounted loads the new setup and keeps the old one', () => {
+  rosterStore.setOblivionUnlocked(true);
+  const firstId = rosterStore.current.id;
+  mountPage();
+  target.querySelector('button[aria-label="Increase To floor"]').click();
+  flushSync();
+  expect(press(/Simulate floors/).textContent).toContain('1-31');
+  rosterStore.addCharacter('Two', 'MAGE');
+  rosterStore.setOblivionUnlocked(true);
+  flushSync();
+  expect(rosterStore.current.id).not.toBe(firstId);
+  expect(press(/Simulate floors/).textContent).toContain('1-30');
+  expect(getOblivionSetup(firstId).to).toBe(31);
+});
+
+it('F28: edits made after a character switch are saved to the new character', () => {
+  // Both characters are set up before mounting, so the switch is a bare selectCharacter
+  // with no later mutation of the current character to re-run the persisting effect.
+  rosterStore.setOblivionUnlocked(true);
+  const firstId = rosterStore.current.id;
+  rosterStore.addCharacter('Two', 'MAGE');
+  rosterStore.setOblivionUnlocked(true);
+  const secondId = rosterStore.current.id;
+  rosterStore.selectCharacter(firstId);
+  mountPage();
+  rosterStore.selectCharacter(secondId);
+  flushSync();
+  expect(rosterStore.current.id).toBe(secondId);
+  target.querySelector('button[aria-label="Increase From floor"]').click();
+  flushSync();
+  expect(getOblivionSetup(secondId).from).toBe(2);
+  target.querySelector('button[aria-label="Increase To floor"]').click();
+  flushSync();
+  expect(getOblivionSetup(secondId).to).toBe(31);
+  expect(getOblivionSetup(firstId).from).toBe(1);
 });

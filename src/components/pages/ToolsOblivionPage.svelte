@@ -12,6 +12,8 @@
   import {
     strainRows, WIN_THRESHOLD, FLOOR_EFFORT, floorScanRequest, floorScanInputs,
   } from '../../lib/features/oblivionDungeon.js';
+  import { getOblivionSetup, setOblivionSetup } from '../../lib/oblivionSetup.svelte.js';
+  import { untrack } from 'svelte';
   import { formatFlat } from '../../lib/format.js';
   import { oblivionFights } from '../../lib/calibration.js';
   import RunEstimate from '../ui/RunEstimate.svelte';
@@ -29,11 +31,39 @@
   const character = $derived(rosterStore.current);
   const unlocked = $derived(character?.oblivion?.unlocked === true);
 
-  let from = $state(1);
-  let to = $state(30);
-  let effort = $state('standard');
-  let threshold = $state(Math.round(WIN_THRESHOLD * 100));
-  let applyOutputCut = $state(false); // Q2: instability cut OFF by default
+  // The setup is kept per character for the session, so coming back finds it as it was.
+  const keptNum = (v, lo, hi, d) => (Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : d);
+  function readKept(id) {
+    const k = id ? getOblivionSetup(id) : null;
+    const to = keptNum(k?.to, 1, LAST_FLOOR, 30);
+    return {
+      from: keptNum(k?.from, 1, to, 1),
+      to,
+      effort: k?.effort in FLOOR_EFFORT ? k.effort : 'standard',
+      threshold: keptNum(k?.threshold, 50, 99, Math.round(WIN_THRESHOLD * 100)),
+      applyOutputCut: k?.applyOutputCut === true, // Q2: instability cut OFF by default
+    };
+  }
+  const init = untrack(() => readKept(character?.id));
+  let from = $state(init.from);
+  let to = $state(init.to);
+  let effort = $state(init.effort);
+  let threshold = $state(init.threshold);
+  let applyOutputCut = $state(init.applyOutputCut);
+  let loadedId = untrack(() => character?.id);
+  $effect(() => {
+    // Read every field before any early return: Svelte re-tracks dependencies on each run.
+    const snap = { from, to, threshold, effort, applyOutputCut };
+    if (!character) return;
+    if (character.id !== loadedId) {
+      // Another character was picked while the page is open: load its kept setup, never overwrite it.
+      loadedId = character.id;
+      const k = untrack(() => readKept(character.id));
+      to = k.to; from = k.from; effort = k.effort; threshold = k.threshold; applyOutputCut = k.applyOutputCut;
+      return;
+    }
+    setOblivionSetup(character.id, snap);
+  });
 
   const opts = $derived({ from, to, effort, threshold: threshold / 100, applyOutputCut });
   const stats = $derived.by(() => {
@@ -55,6 +85,13 @@
   const stale = $derived(!!job && job.status !== 'running' && job.status !== 'queued' && isStale(job));
   const result = $derived(job?.result ?? null);
   const byFloor = $derived(Object.fromEntries((result?.rows ?? []).map((r) => [r.floor, r])));
+
+  const frontier = $derived(!stale && result?.maxFloor ? result.maxFloor : null);
+  function scanFrontier() {
+    const f = frontier; // setting `from` makes the scan stale, which clears `frontier`
+    from = Math.max(1, f - 2);
+    to = Math.min(LAST_FLOOR, f + 8);
+  }
 
   function scan() {
     if (!character || running) return;
@@ -125,6 +162,10 @@
             {#if job?.progress?.floor}<span class="num muted">floor {job.progress.floor}: {job.progress.done}/{job.progress.n}</span>{/if}
           {/if}
         </div>
+        {#if frontier}
+          <p class="caption">Highest floor won: {frontier}.
+            <Button variant="ghost" size="small" onclick={scanFrontier}>Scan from here</Button></p>
+        {/if}
         {#if job?.status === 'failed'}<Banner variant="error" lead="The floor run failed">{job.error}</Banner>{/if}
       </Panel>
 
@@ -157,8 +198,8 @@
           <tbody>
             {#each baseRows as row (row.floor)}
               {@const r = byFloor[row.floor]}
-              <tr data-floor={row.floor} class:ok={r && r.verdict === 'pass'}>
-                <td class="num">{row.floor}</td>
+              <tr data-floor={row.floor} class:ok={r && r.verdict === 'pass'} class:frontier={row.floor === frontier}>
+                <td class="num">{row.floor}{#if row.floor === frontier} <span class="tag">◀ highest floor won</span>{/if}</td>
                 <td class="num r">{formatFlat(row.instability)}</td>
                 <td class="num r">{formatFlat(row.strain)}</td>
                 <td class="num r" data-cell="win">
@@ -201,5 +242,7 @@
   .floors .r { text-align: right; }
   .floors.stale { opacity: 0.45; filter: grayscale(1); }
   .bar { position: absolute; left: 0; bottom: 0; height: calc(var(--sp-1) * 0.5); background: var(--brass-500); }
+  tr.frontier td { background: var(--brass-tint); border-top-color: var(--brass-500); }
+  .tag { font-size: var(--fs-11); color: var(--brass-400); margin-left: var(--sp-2); white-space: nowrap; }
   tr.ok td:first-child { color: var(--brass-400); }
 </style>
