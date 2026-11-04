@@ -36,7 +36,7 @@ export function defaultPresets() {
 const str = (v) => (typeof v === 'string' && v ? v : null);
 const strList = (v, cap) => (Array.isArray(v) ? [...new Set(v.filter((x) => typeof x === 'string' && x))].slice(0, cap) : []);
 
-function normalisePreset(raw, index) {
+export function normalisePreset(raw, index = 0) {
   const r = raw && typeof raw === 'object' ? raw : {};
   const base = newPreset(typeof r.name === 'string' && r.name.trim() ? r.name.trim() : `Preset ${index + 1}`);
   if (str(r.id)) base.id = r.id;

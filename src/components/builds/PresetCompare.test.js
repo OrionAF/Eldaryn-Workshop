@@ -56,3 +56,21 @@ it('Move buttons are disabled at the ends and call movePreset otherwise', async 
   expect(spy).toHaveBeenCalledWith('b', -1);
   spy.mockRestore();
 });
+
+it('Confirm delete deletes the preset and offers Undo on the toast', async () => {
+  const { rosterStore } = await import('../../lib/rosterStore.svelte.js');
+  const { notifications, resetNotifications } = await import('../../lib/notify.svelte.js');
+  resetNotifications();
+  const del = vi.spyOn(rosterStore, 'deletePreset').mockImplementation(() => true);
+  const c = character();
+  c.presets.push(preset('c'));
+  t = setup(PresetCompare, { character: c });
+  const named = (text) => t.qa('button').filter((b) => b.textContent.trim() === text);
+  named('Delete')[2].click();
+  await Promise.resolve();
+  named('Confirm delete')[0].click();
+  expect(del).toHaveBeenCalledWith('c');
+  expect(notifications.toasts.at(-1)).toMatchObject({ message: 'Deleted c', action: { label: 'Undo' } });
+  del.mockRestore();
+  resetNotifications();
+});

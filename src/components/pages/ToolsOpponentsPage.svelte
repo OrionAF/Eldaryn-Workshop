@@ -150,7 +150,7 @@
   <div class="editor">
     {#if selected}
       {#key selected.id}
-        <OpponentPanel opponent={selected} onRemoved={() => pick(null)} />
+        <OpponentPanel opponent={selected} onRemoved={() => pick(null)} onRestored={pick} />
       {/key}
     {:else}
       <Panel title="Opponent" scope="tool">

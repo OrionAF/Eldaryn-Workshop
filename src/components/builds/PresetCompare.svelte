@@ -20,6 +20,7 @@
   import { statText } from './statText.js';
   import { orderStats } from '../../lib/ui/statOrder.js';
   import { go } from '../../lib/router.svelte.js';
+  import { deletePresetWithUndo } from '../../lib/deleteUndo.js';
 
   let { character, setStatus = () => {} } = $props();
 
@@ -158,7 +159,7 @@
                   confirmLabel="Confirm delete"
                   prompt={`Delete ${p.name}?`}
                   disabled={atMin}
-                  onConfirm={() => rosterStore.deletePreset(p.id)}
+                  onConfirm={() => deletePresetWithUndo(p)}
                 />
               </div>
             </th>
