@@ -275,3 +275,15 @@ export function displayStat(key, v) {
   if (typeof v !== 'number' || !Number.isFinite(v)) return '-';
   return sheetKeyMeta(key)?.kind === 'integer' ? formatFlat(v) : formatPct(toDisplay(key, v));
 }
+
+/**
+ * The All opponents table: one row per opponent, each with its verdict. Rows with a result come
+ * first, highest win rate first; then rows still waiting or running; skipped ones last.
+ * entries: [{id, name, status, summary?: {p, lo, hi, n}, reason?}]
+ */
+export function rosterRows(entries) {
+  const rank = (e) => (e.summary ? 0 : e.status === 'skipped' ? 2 : 1);
+  return (entries ?? [])
+    .map((e) => ({ ...e, summary: e.summary ?? null, verdict: e.summary ? winRateVerdict(e.summary) : null }))
+    .sort((a, b) => rank(a) - rank(b) || (a.summary && b.summary ? b.summary.p - a.summary.p : 0) || String(a.name).localeCompare(String(b.name)));
+}

@@ -15,6 +15,7 @@ import {
   fromMySide,
   classifyDuelEvent,
   traceSummary,
+  rosterRows,
 } from './duel.js';
 
 const ev = (type, damage = 0, extra = {}) => ({ timestamp: 1000, type, damage, attackerHpAfter: 1, defenderHpAfter: 1, ...extra });
@@ -259,5 +260,29 @@ describe('opponents with sparse sheets (plan E3)', () => {
     const c = fixtureCharacter('NECROMANCER');
     const f = opponentFighter(cloneAsOpponent(c, c.presets[0].id, 'NECROMANCER_DEATHLORD'));
     expect(fighterDuelArgs(f).stats.disruptionEffect).toBe('FEAR');
+  });
+});
+
+describe('rosterRows', () => {
+  const s = (p, n = 800) => ({ p, lo: p - 0.05, hi: p + 0.05, n });
+  it('sorts results by win rate, then pending rows, then skipped ones, each with its verdict', () => {
+    const rows = rosterRows([
+      { id: 'a', name: 'Alpha', status: 'skipped', reason: 'Alpha has no Attack Speed.' },
+      { id: 'b', name: 'Beta', status: 'finished', summary: s(0.4) },
+      { id: 'c', name: 'Gamma', status: 'running' },
+      { id: 'd', name: 'Delta', status: 'finished', summary: s(0.8) },
+      { id: 'e', name: 'Eps', status: 'cancelled', summary: s(0.52) },
+    ]);
+    expect(rows.map((r) => r.id)).toEqual(['d', 'e', 'b', 'c', 'a']);
+    expect(rows[0].verdict.verdict).toBe('better');
+    expect(rows[1].verdict.verdict).toBe('unresolved');
+    expect(rows[2].verdict.verdict).toBe('worse');
+    expect(rows[3]).toMatchObject({ summary: null, verdict: null });
+    expect(rows[4].reason).toContain('Attack Speed');
+  });
+  it('pending rows keep a stable name order, and nothing in gives nothing out', () => {
+    expect(rosterRows([{ id: 'z', name: 'Zed', status: 'queued' }, { id: 'y', name: 'Amy', status: 'queued' }]).map((r) => r.id)).toEqual(['y', 'z']);
+    expect(rosterRows([])).toEqual([]);
+    expect(rosterRows(null)).toEqual([]);
   });
 });
