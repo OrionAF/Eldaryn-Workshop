@@ -14,6 +14,7 @@
   import DangerZone from '../settings/DangerZone.svelte';
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { importFlow, undoLastUpdate, loadImportFile, consumeImportFocus } from '../../lib/importFlow.svelte.js';
+  import { backup, isBackupStale, backupAge } from '../../lib/backupState.svelte.js';
   import { prefs, setPrefs } from '../../lib/prefs.svelte.js';
   import { CPU_PROFILES, workersFor } from '../../lib/tasks/cpuProfile.js';
   import { staleReason } from '../../lib/calibration.js';
@@ -58,6 +59,7 @@
     version: 'Out of date: tested on an older version of the app.',
   };
   const when = (t) => new Date(t).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+  const backupStale = $derived(isBackupStale(rosterStore.roster.characters.length, backup.lastAt));
   const KIND_LABEL = { dummy: 'Training dummy', dungeon: 'Dungeon step', duel: 'Duel' };
   const DEBUG_LABEL = { off: 'Off', builds: 'Builds', fights: 'Builds and fights' };
   const DEBUG_OPTIONS = DEBUG_LOG_LEVELS.map((v) => ({ value: v, label: DEBUG_LABEL[v] }));
@@ -67,6 +69,9 @@
   <Panel title="Data">
     <p class="note">
       Your characters are saved in this browser only. Export downloads a backup file you can restore here or on another device.
+    </p>
+    <p class="note" class:warn={backupStale} data-testid="last-backup">
+      {#if backup.lastAt === null}Last backup: never{:else}Last backup: {backupAge(backup.lastAt)} ({when(backup.lastAt)}){/if}{#if backupStale}. Export all characters to keep a copy.{/if}
     </p>
     <div class="row">
       <Button variant="secondary" onclick={() => rosterStore.exportDownload()}>Export all characters</Button>

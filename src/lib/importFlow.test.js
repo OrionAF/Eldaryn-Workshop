@@ -11,6 +11,7 @@ import {
   takeHandoff,
   resetImportFlow,
 } from './importFlow.svelte.js';
+import { backup, resetBackup } from './backupState.svelte.js';
 import { rosterStore } from './rosterStore.svelte.js';
 import { KEY, KEY_V1 } from './storage.js';
 import { normaliseCharacter } from './model/index.js';
@@ -120,6 +121,15 @@ describe('roster backup', () => {
     expect(exportSpy).toHaveBeenCalledTimes(1);
     expect(rosterStore.roster.characters).toHaveLength(1);
     exportSpy.mockRestore();
+  });
+
+  it('records a backup when the pre-import download runs', () => {
+    vi.stubGlobal('URL', { ...URL, createObjectURL: () => 'blob:x', revokeObjectURL: () => {} });
+    resetBackup();
+    loadImportText(text({ schemaVersion: 2, characters: [rosterStore.roster.characters[0]], currentId: rosterStore.roster.characters[0].id }));
+    confirmImport();
+    vi.unstubAllGlobals();
+    expect(backup.lastAt).not.toBeNull();
   });
 
   it('never deletes the v1 key', () => {

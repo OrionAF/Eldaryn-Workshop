@@ -3,6 +3,7 @@ import { newCharacter, normaliseCharacter } from '../model/index.js';
 import { normaliseClass, normaliseLevel, normaliseBaseResidual } from '../model/character.js';
 import { previewLevelChange as previewLevel } from '../model/legality.js';
 import { importJson, downloadRoster, downloadCharacter } from '../storage.js';
+import { markBackup } from '../backupState.svelte.js';
 import { mergeProfileIntoCharacter } from '../model/merge.js';
 
 export function createCharactersStore(ctx) {
@@ -141,12 +142,16 @@ export function createCharactersStore(ctx) {
 
   function exportDownload() {
     downloadRoster(ctx.roster());
+    markBackup();
   }
 
   /** Download one character as a one-character roster file (it imports back as a backup). */
   function exportCharacterDownload(id = ctx.current()?.id) {
     const c = ctx.findCharacter(id);
-    if (c) downloadCharacter(ctx.roster(), c);
+    if (c) {
+      downloadCharacter(ctx.roster(), c);
+      markBackup();
+    }
   }
 
   return {

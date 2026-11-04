@@ -8,6 +8,8 @@ import JobsTray from '../shell/JobsTray.svelte';
 import { __resetJobs, jobsStore, startJob } from '../../lib/jobs.svelte.js';
 import { applyPrefs, prefs, setPrefs } from '../../lib/prefs.svelte.js';
 import { loadUi } from '../../lib/uiState.js';
+import { rosterStore } from '../../lib/rosterStore.svelte.js';
+import { markBackup, resetBackup, backup } from '../../lib/backupState.svelte.js';
 import { requestImportFocus, loadImportFile, resetImportFlow } from '../../lib/importFlow.svelte.js';
 import { APP_VERSION } from '../../lib/calibration.js';
 
@@ -261,5 +263,40 @@ describe('Show game data import (Advanced, at the bottom)', () => {
     flushSync();
     expect(ui.q('[data-testid="import-section"]').querySelector('[id$="-err"]')).toBeNull();
     expect(ui.q('[data-testid="restore-backup"]').querySelector('[id$="-err"]')).not.toBeNull();
+  });
+});
+
+describe('Last backup line', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const text = () => ui.q('[data-testid="last-backup"]').textContent.replace(/\s+/g, ' ').trim();
+  let id;
+  beforeEach(() => {
+    resetBackup();
+    id = rosterStore.addCharacter('Backup Test', 'WARRIOR');
+  });
+  afterEach(() => {
+    rosterStore.deleteCharacter(id);
+  });
+
+  it('says never and nudges when there are characters and no backup', () => {
+    ui = setup(SettingsPage);
+    expect(text()).toBe('Last backup: never. Export all characters to keep a copy.');
+  });
+
+  it('shows a fresh timestamp without a warning after Export all', () => {
+    vi.stubGlobal('URL', { ...URL, createObjectURL: () => 'blob:x', revokeObjectURL: () => {} });
+    ui = setup(SettingsPage);
+    click([...ui.target.querySelectorAll('button')].find((b) => b.textContent.includes('Export all characters')));
+    flushSync();
+    expect(text()).not.toMatch(/never|keep a copy/);
+    expect(text()).toContain('today');
+    expect(backup.lastAt).not.toBeNull();
+    expect(ui.q('[data-testid="last-backup"]').classList.contains('warn')).toBe(false);
+  });
+
+  it('warns when the last backup is over 14 days old', () => {
+    markBackup(Date.now() - 20 * DAY);
+    ui = setup(SettingsPage);
+    expect(text()).toMatch(/20 days ago.*Export all characters to keep a copy/);
   });
 });

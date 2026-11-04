@@ -22,7 +22,7 @@ export const DROP_SETS = ['all', 'set1'];
  */
 export const defaultPrefs = () => ({ density: 'comfortable', reduceMotion: false, defaultEffort: 'standard', cpuProfile: DEFAULT_CPU_PROFILE, calibration: null, dropSets: 'all', debugLog: 'off', showImport: false });
 
-const defaults = () => ({ v: 1, lastHash: null, areaLast: {}, optimiserSetups: {}, statPriority: { spec: null, range: null }, prefs: defaultPrefs() });
+const defaults = () => ({ v: 1, lastHash: null, lastBackupAt: null, areaLast: {}, optimiserSetups: {}, statPriority: { spec: null, range: null }, prefs: defaultPrefs() });
 
 /** Any value -> valid preferences; a field that is missing or not one of the allowed values keeps its default. */
 export function normalisePrefs(raw) {
@@ -40,13 +40,15 @@ export function normalisePrefs(raw) {
   return out;
 }
 
-/** @returns {{v:1, lastHash:string|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, statPriority:{spec:string|null, range:string|null}, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string, calibration:object|null, dropSets:'all'|'set1', debugLog:'off'|'builds'|'fights', showImport:boolean}}} */
+/** @returns {{v:1, lastHash:string|null, lastBackupAt:number|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, statPriority:{spec:string|null, range:string|null}, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string, calibration:object|null, dropSets:'all'|'set1', debugLog:'off'|'builds'|'fights', showImport:boolean}}} */
 export function loadUi() {
   const ui = defaults();
   try {
     const raw = JSON.parse(localStorage.getItem(UI_KEY));
     if (raw && typeof raw === 'object') {
       if (typeof raw.lastHash === 'string') ui.lastHash = raw.lastHash;
+      // when the user last exported (backupState.svelte.js); anything but a positive finite time is "never"
+      if (Number.isFinite(raw.lastBackupAt) && raw.lastBackupAt > 0) ui.lastBackupAt = raw.lastBackupAt;
       if (raw.areaLast && typeof raw.areaLast === 'object') {
         for (const [k, v] of Object.entries(raw.areaLast)) if (typeof v === 'string') ui.areaLast[k] = v;
       }
