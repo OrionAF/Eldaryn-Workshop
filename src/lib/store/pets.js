@@ -23,6 +23,17 @@ export function createPetsStore(ctx) {
     });
   }
 
+  /** Copy a core (same rarity, bases and secondaries) under a new id. Null for an unknown id or a full collection. */
+  function duplicateCore(coreId) {
+    return ctx.edit((c) => {
+      const src = find(c, coreId);
+      if (!src || c.pets.cores.length >= MAX_OWNED_CORES) return null;
+      const copy = { ...newCore(src.rarity), baseAttack: src.baseAttack, baseHp: src.baseHp, secondaries: src.secondaries.map((s) => ({ ...s })) };
+      c.pets.cores.push(copy);
+      return copy.id;
+    });
+  }
+
   /** Remove a core; presets using it fall back to no pet. */
   function removeCore(coreId) {
     return ctx.edit((c) => {
@@ -117,5 +128,5 @@ export function createPetsStore(ctx) {
     });
   }
 
-  return { addCore, removeCore, setCoreRarity, setCoreBase, setCoreSecondaryType, setCoreSecondaryValue, removeCoreSecondary, setPetAltarLevel, setPetAltarTier };
+  return { addCore, duplicateCore, removeCore, setCoreRarity, setCoreBase, setCoreSecondaryType, setCoreSecondaryValue, removeCoreSecondary, setPetAltarLevel, setPetAltarTier };
 }

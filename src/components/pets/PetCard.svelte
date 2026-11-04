@@ -25,7 +25,7 @@
   import Button from '../ui/Button.svelte';
   import PresetMenu from '../character/PresetMenu.svelte';
 
-  let { pet, types = [], altarLevel = null, altarTier = 1, usedBy = [], presets = [], editing = false, onRarity, onBase, onType, onValue, onDropSecondary, onToggleEdit, onUse, onRemove } = $props();
+  let { pet, types = [], altarLevel = null, altarTier = 1, usedBy = [], presets = [], editing = false, onRarity, onBase, onType, onValue, onDropSecondary, onToggleEdit, onUse, onDuplicate, onRemove } = $props();
 
   const slots = $derived(coreSlots(pet.rarity));
   const band = $derived(coreBaseBand(coreRarityEnum(pet.rarity)));
@@ -104,6 +104,7 @@
   <div class="card-foot">
     <PresetMenu label="Used in" items={useItems} onselect={(id) => onUse(id)} />
     <Button variant="ghost" size="small" onclick={onToggleEdit}>{editing ? 'Save' : 'Edit'}</Button>
+    {#if onDuplicate}<Button variant="ghost" size="small" onclick={onDuplicate}>Duplicate</Button>{/if}
     <ConfirmButton variant="danger" size="small" label="Remove" confirmLabel="Confirm remove" onConfirm={onRemove} />
   </div>
 </div>

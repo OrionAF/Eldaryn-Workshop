@@ -24,6 +24,25 @@ describe('pets store', () => {
     expect(store.addCore('NOPE')).toBeNull();
   });
 
+  it('duplicateCore copies a core under a new id with independent secondaries, and refuses unknown ids and a full collection', () => {
+    const id = store.addCore('Legendary');
+    store.setCoreBase(id, 'attack', 2400);
+    store.setCoreSecondaryType(id, 0, 'ATTACK_PERCENT');
+    const copyId = store.duplicateCore(id);
+    const [src, copy] = store.current.pets.cores;
+    expect(copyId).toBe(copy.id);
+    expect(copy.id).not.toBe(src.id);
+    expect({ ...copy, id: 0 }).toEqual({ ...src, id: 0 });
+    expect(copy.secondaries[0]).not.toBe(src.secondaries[0]);
+    store.setCoreSecondaryValue(copyId, 0, 12);
+    expect(store.current.pets.cores[1].secondaries[0].value).not.toBe(store.current.pets.cores[0].secondaries[0].value);
+    expect(saved().pets.cores).toHaveLength(2);
+    expect(store.duplicateCore('nope')).toBeNull();
+    while (store.current.pets.cores.length < 100) store.addCore('Common');
+    expect(store.duplicateCore(id)).toBeNull();
+    expect(store.current.pets.cores).toHaveLength(100);
+  });
+
   it('base stats: whole numbers >= 0', () => {
     const id = store.addCore('Common');
     expect(store.setCoreBase(id, 'attack', 191.6)).toBe(true);

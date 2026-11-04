@@ -157,3 +157,13 @@ it('Show: Unused hides a core a preset uses, and Sort orders by rarity', () => {
   expect([...target.querySelectorAll('.card-title')].map((e) => e.textContent)).toEqual(['Mythic Core', 'Common Core']);
   expect(mythic.id).not.toBe(common.id);
 });
+
+it('Duplicate adds a copy of the core in edit mode', () => {
+  click(btn('+ Add core'));
+  click(btn('Save'));
+  click(btn('Duplicate'));
+  const [a, b] = rosterStore.current.pets.cores;
+  expect(rosterStore.current.pets.cores).toHaveLength(2);
+  expect(b).toMatchObject({ rarity: a.rarity, baseAttack: a.baseAttack, baseHp: a.baseHp });
+  expect(target.querySelectorAll('.pet-card.editing')).toHaveLength(1);
+});
