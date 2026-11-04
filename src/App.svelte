@@ -5,6 +5,8 @@
    * (lib/router.svelte.js); each route mounts one file from components/pages/, which for now
    * adapts the pre-redesign screen. An empty roster shows the Welcome page instead.
    */
+  import { onMount } from 'svelte';
+  import { installLeaveGuard } from './lib/leaveGuard.js';
   import WelcomeScreen from './components/WelcomeScreen.svelte';
   import TopBar from './components/shell/TopBar.svelte';
   import JobsPill from './components/shell/JobsPill.svelte';
@@ -21,6 +23,9 @@
   import { statusMessage, dismissStale } from './lib/notify.svelte.js';
   import InspectorOutlet from './components/InspectorOutlet.svelte';
   import { AFTER_IMPORT_PAGE_ID, DEFAULT_PAGE_ID, pageById } from './lib/routes.js';
+
+  // Closing or reloading the tab ends running jobs and loses unsaved edits: ask the browser to confirm.
+  onMount(() => installLeaveGuard());
 
   const empty = $derived(rosterStore.roster.characters.length === 0);
   const character = $derived(rosterStore.current);
