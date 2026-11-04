@@ -158,6 +158,16 @@ function mapPets(profile) {
 /** The equipped core of a profile (Pets V2, or the converted V1 pet); undefined when it has no pet state. */
 const liveCoreId = (profile) => (isObj(profile.petV2) || isObj(profile.petState) ? mapPets(profile).activeCoreId : undefined);
 
+/**
+ * The core a game preset equips. In a 2.9.1+ profile a preset without `petV2CoreId` follows the active
+ * core (initialPetV2Pick L1195886, isPetV2PresetDirty L1195781), and its V1 `petId` is stale; null
+ * means no core. Older profiles name a V1 pet, which survives only as the equipped pet's core.
+ */
+function presetCoreId(profile, p) {
+  if (!isObj(profile.petV2)) return str(p.petId);
+  return p.petV2CoreId !== undefined ? str(p.petV2CoreId) : str(profile.petV2.activeCoreId);
+}
+
 // --- mounts and glyphs ---
 
 const capWord = (s) => (typeof s === 'string' && s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : s);
@@ -319,9 +329,8 @@ function mapPreset(p, sheet) {
     name: str(p.name),
     equipmentSet: p.equipmentSet === 2 ? 2 : 1,
     talentSet: talentSetIndex(p.talentSet),
-    // 2.9.1 presets name their core in petV2CoreId (L1195838); older ones a V1 pet, which
-    // survives only as the equipped pet's core
-    petId: str(p.petV2CoreId) ?? str(p.petId),
+    petId: str(p.petId), // already resolved by presetCoreId
+
     mountId: str(p.mountId),
     relicIds: arr(p.relicIds).filter((x) => typeof x === 'string'),
     ...mapPresetSigils(p),
@@ -338,7 +347,7 @@ function mapPreset(p, sheet) {
  * single "Live loadout" preset (nothing is lost); at the cap of 8 the sheet has no owner.
  */
 function mapPresets(profile, sheet, report) {
-  let list = arr(profile.presets).filter(isObj).slice(0, MAX_PRESETS);
+  let list = arr(profile.presets).filter(isObj).slice(0, MAX_PRESETS).map((p) => ({ ...p, petId: presetCoreId(profile, p) }));
   const implicit = list.length === 0;
   if (implicit) list = [livePreset(profile, 'default', 'Default')];
   const selected = list.find((p) => p.id === profile.activePresetId);

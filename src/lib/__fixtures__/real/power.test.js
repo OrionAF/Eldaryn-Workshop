@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import sentinel from './profile-sentinel-l85.json';
 import warrior from './profile-warrior-l73.json';
+import mystic291 from './profile-mystic-l79-291.json';
 import { normaliseCharacter } from '../../model/index.js';
 import { gameProfileToCharacter } from '../../model/gameProfile.js';
 import { presetPower } from '../../build/power.js';
@@ -39,5 +40,29 @@ describe.each([
     expect(p.exact.pet).toBe(coreTotalPower(core.rarity.toUpperCase(), character.pets.altar.level, character.pets.altar.tier));
     expect(p.terms).toEqual({ ...terms, pet: Math.round(p.exact.pet) });
     expect(p.gaps).toEqual([]);
+  });
+});
+
+// The first 2.9.1 capture (petV2): the server's pet term is the core's, so the whole figure and every
+// computedStats key must match with no V1 correction.
+describe('real profile Mystic L79 (2.9.1, Pet Cores)', () => {
+  const { character, live } = imported(mystic291);
+
+  it('reproduces every server computedStats key for the live preset', () => {
+    const { computed } = computePresetStats(character, live, { realm: 'base' });
+    for (const key of Object.keys(mystic291.computedStats)) {
+      expect(Math.abs(computed[key] - mystic291.computedStats[key]), key).toBeLessThanOrEqual(1e-9);
+    }
+  });
+
+  it(`Combat Power equals the server's totalPower (${mystic291.totalPower})`, () => {
+    const p = presetPower(character, live);
+    expect(Math.round(POWER_TERMS.reduce((s, k) => s + p.exact[k], 0))).toBe(mystic291.totalPower);
+    expect(p.terms.pet).toBe(8222);
+    expect(p.gaps).toEqual([]);
+  });
+
+  it('a preset with no petV2CoreId follows the active core', () => {
+    expect(character.presets.map((x) => x.petId)).toEqual([mystic291.petV2.activeCoreId, mystic291.petV2.activeCoreId]);
   });
 });

@@ -289,6 +289,22 @@ describe('gameProfileToCharacter', () => {
     expect(v2.presets[0].petId).toBe('core-1');
   });
 
+  it('pets (2.9.1+): a preset without petV2CoreId follows the active core; its V1 petId is stale', () => {
+    const f = fixture();
+    f.petV2 = {
+      cores: [{ id: 'core-1', rarity: 'EPIC', baseAttack: 1366, baseHp: 3832, secondaryStats: [] }, { id: 'core-2', rarity: 'RARE', baseAttack: 700, baseHp: 2000, secondaryStats: [] }],
+      altar: { totalXp: 0, tier: 1 },
+      activeCoreId: 'core-1',
+    };
+    f.presets[0].petId = 'pet-2';
+    f.presets[0].petV2CoreId = null; // explicitly no core
+    f.presets[1].petId = 'pet-2'; // the selected preset: a V1 pet, not a core, and no petV2CoreId
+    const report = [];
+    const v2 = normaliseCharacter(gameProfileToCharacter(f, { report }));
+    expect(v2.presets.map((p) => p.petId)).toEqual([null, 'core-1']);
+    expect(report.flatMap((r) => r.fields ?? [])).not.toContain('petId');
+  });
+
   it('mounts: species case, level, rolls, sockets; a glyph used on two mounts keeps its id', () => {
     expect(c.mounts.map((m) => [m.id, m.species, m.rarity, m.level, m.baseHp, m.baseAtk])).toEqual([
       ['mount-a', 'NIGHT_WOLF', 'Common', 3, 7, 8],
