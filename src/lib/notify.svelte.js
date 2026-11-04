@@ -86,6 +86,12 @@ export function markAllRead() {
   readUpTo = nextId - 1;
 }
 
+/** Empty the Activity log and count everything as read. Toasts stay up. */
+export function clearLog() {
+  log = [];
+  readUpTo = nextId - 1;
+}
+
 /** Test hook: forget every toast and log entry. */
 export function resetNotifications() {
   for (const t of timers.values()) clearTimeout(t);
