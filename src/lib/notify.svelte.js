@@ -30,17 +30,28 @@ function startTimer(id) {
 
 /**
  * @param {string} message
- * @param {{kind?: 'info'|'success'|'warn'|'error', key?: string}} [opts]  `key` names what the toast is about;
- *   `dismissKey(key)` removes it when that thing ends (a job's "started" note once the job settles)
+ * @param {{kind?: 'info'|'success'|'warn'|'error', key?: string, action?: {label: string, run: () => void}}} [opts]
+ *   `key` names what the toast is about; `dismissKey(key)` removes it when that thing ends (a job's
+ *   "started" note once the job settles). `action` adds one button to the toast (an Undo); the log
+ *   entry keeps the message only, since the action belongs to that moment.
  * @returns {number} the notification id
  */
-export function notify(message, { kind = 'info', key = null } = {}) {
+export function notify(message, { kind = 'info', key = null, action = null } = {}) {
   const id = nextId++;
   const entry = { id, message: String(message), kind, key, at: new Date() };
   log = [...log, entry].slice(-LOG_CAP);
-  toasts = [...toasts, entry].slice(-MAX_VISIBLE);
+  const toast = action && typeof action.run === 'function' ? { ...entry, action: { label: String(action.label), run: action.run } } : entry;
+  toasts = [...toasts, toast].slice(-MAX_VISIBLE);
   if (!STICKY.has(kind)) startTimer(id);
   return id;
+}
+
+/** Run a toast's action once, then remove the toast. */
+export function runAction(id) {
+  const t = toasts.find((x) => x.id === id);
+  if (!t?.action) return;
+  dismiss(id);
+  t.action.run();
 }
 
 export function statusMessage(message) {
