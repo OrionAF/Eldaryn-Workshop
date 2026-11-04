@@ -60,6 +60,12 @@
   let copyOpen = $state(false);
   let copyWrap = $state(null);
   let pendingCopy = $state(null);
+  // A pending Replace belongs to the preset and realm it was asked on; drop it when either changes.
+  $effect(() => {
+    void preset.id;
+    void realm;
+    pendingCopy = null;
+  });
   function closeCopy() {
     copyOpen = false;
     copyWrap?.querySelector('button[aria-haspopup]')?.focus();

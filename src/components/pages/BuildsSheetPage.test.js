@@ -223,6 +223,19 @@ describe('copy from preset', () => {
     flushSync();
     expect(preset().sheet.values.totalAttack).toBe(4321);
   });
+  it('drops the pending Replace prompt when the active preset changes', () => {
+    const other = others()[0];
+    rosterStore.setPresetSheet(other.id, { totalAttack: 4321 });
+    rosterStore.setPresetSheet(preset().id, { totalAttack: 1 });
+    flushSync();
+    openMenu();
+    t.q('[role="menuitem"]').click();
+    flushSync();
+    expect(t.q('[data-testid="sheet-copy-prompt"]')).not.toBeNull();
+    rosterStore.setActivePreset(other.id);
+    flushSync();
+    expect(t.q('[data-testid="sheet-copy-prompt"]')).toBeNull();
+  });
 });
 
 it('Paste stats merges the read lines into the preset sheet and keeps rows it does not mention', () => {

@@ -138,29 +138,31 @@
 
     <h2 class="collection-head">Collection</h2>
     <Tabs items={filterTabs} bind:value={filter} label="Collection filter" idPrefix="sigil-filter" />
-    {#if shown.length === 0}
-      <EmptyState title="No sigils match" text="Nothing in the collection fits this filter." />
-    {/if}
-    {#each shown as section (section.rarity)}
-      <section class="rarity-section">
-        <h3 class="rarity-head">{section.rarity}</h3>
-        <div class="sigil-grid">
-          {#each section.defs as def (def.species)}
-            <SigilCard
-              {def}
-              level={owned[def.species]?.level ?? 0}
-              {tier}
-              {spec}
-              usedBy={usedBy(def.species)}
-              note={noteFor(def)}
-              onLevel={setLevel}
-              equip={equipItems(character, def.species)}
-              onEquip={(presetId) => equipIn(def.species, presetId)}
-            />
-          {/each}
-        </div>
-      </section>
-    {/each}
+    <div role="tabpanel" id="sigil-filter-panel-{filter}" aria-labelledby="sigil-filter-tab-{filter}">
+      {#if shown.length === 0}
+        <EmptyState title="No sigils match" text="Nothing in the collection fits this filter." />
+      {/if}
+      {#each shown as section (section.rarity)}
+        <section class="rarity-section">
+          <h3 class="rarity-head">{section.rarity}</h3>
+          <div class="sigil-grid">
+            {#each section.defs as def (def.species)}
+              <SigilCard
+                {def}
+                level={owned[def.species]?.level ?? 0}
+                {tier}
+                {spec}
+                usedBy={usedBy(def.species)}
+                note={noteFor(def)}
+                onLevel={setLevel}
+                equip={equipItems(character, def.species)}
+                onEquip={(presetId) => equipIn(def.species, presetId)}
+              />
+            {/each}
+          </div>
+        </section>
+      {/each}
+    </div>
   </div>
 
   <Modal bind:open={evolveOpen} title="Evolve the Altar to tier {tier + 1}?">
