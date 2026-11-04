@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { notify, statusMessage, dismissKey, dismissStale, dismiss, pauseDismiss, resumeDismiss, markAllRead, notifications, resetNotifications, INFO_MS, MAX_VISIBLE } from './notify.svelte.js';
+import { notify, statusMessage, dismissKey, dismissStale, dismiss, pauseDismiss, resumeDismiss, markAllRead, clearLog, notifications, resetNotifications, INFO_MS, MAX_VISIBLE } from './notify.svelte.js';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -92,5 +92,25 @@ describe('toasts that belong to something', () => {
     notify('Fresh success', { kind: 'success' });
     dismissStale(1500);
     expect(notifications.toasts.map((t) => t.message)).toEqual(['Old warning', 'Fresh success']);
+  });
+});
+
+describe('clearLog', () => {
+  it('empties the log and unread but leaves toasts; later messages still log', () => {
+    notify('one', { kind: 'error' });
+    notify('two', { kind: 'error' });
+    expect(notifications.unread).toBe(2);
+    clearLog();
+    expect(notifications.log).toEqual([]);
+    expect(notifications.unread).toBe(0);
+    expect(notifications.toasts).toHaveLength(2);
+    notify('three');
+    expect(notifications.log.map((e) => e.message)).toEqual(['three']);
+    expect(notifications.unread).toBe(1);
+  });
+
+  it('is harmless on an empty log', () => {
+    clearLog();
+    expect(notifications.log).toEqual([]);
   });
 });
