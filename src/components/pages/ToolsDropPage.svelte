@@ -23,6 +23,8 @@
   import { importFlow, takeHandoff } from '../../lib/importFlow.svelte.js';
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { go } from '../../lib/router.svelte.js';
+  import { loadUi, saveUi } from '../../lib/uiState.js';
+  import { normaliseDropSetup } from '../../lib/ui/dropSetup.js';
   import { formatHash } from '../../lib/routes.js';
   import { jobsStore, startJob, cancelJob, jobSignature, isStale } from '../../lib/jobs.svelte.js';
   import { prepareSwap, buildEnemy, dropOpponents, setInScope, DROP_PRECISION } from '../../lib/features/swap.js';
@@ -118,14 +120,37 @@
     return [{ id: 'metrics', label: 'Comparisons', state, done: p?.done, total: p?.total, text: job.status === 'failed' ? 'failed' : undefined }];
   }
 
-  // View state (not persisted): which presets, and which metrics to run.
-  let scope = $state('all');
-  let simOn = $state(true);
-  let survivalOn = $state(false);
-  let enemySpec = $state({ kind: 'campaign', chapter: 1, level: 1 });
-  let pvpOn = $state(false);
-  let pvpIds = $state(null); // null = every saved opponent (the toggle never leaves PVP measuring nothing)
-  let precision = $state(untrack(() => prefs.defaultEffort));
+  // Measure settings: which presets, which metrics, the enemy and opponents, effort. Kept per character in the
+  // UI key (uiState.js, ui/dropSetup.js), so they are per device and survive leaving the page.
+  const loadSetup = (c) => normaliseDropSetup(loadUi().dropSetups[c.id], prefs.defaultEffort);
+  let loadedId = untrack(() => character.id);
+  const first = untrack(() => loadSetup(character));
+  // JSON of the setup last loaded or saved: the save effect writes only on a real change, so opening the page
+  // stores nothing and the default-effort pref keeps applying until the user changes a setting.
+  let lastJson = JSON.stringify(first);
+  let scope = $state(first.scope);
+  let simOn = $state(first.simOn);
+  let survivalOn = $state(first.survivalOn);
+  let enemySpec = $state(first.enemySpec);
+  let pvpOn = $state(first.pvpOn);
+  let pvpIds = $state(first.pvpIds); // null = every saved opponent (the toggle never leaves PVP measuring nothing)
+  let precision = $state(first.precision);
+  $effect.pre(() => {
+    if (character.id !== loadedId) {
+      loadedId = character.id;
+      const next = loadSetup(character);
+      lastJson = JSON.stringify(next);
+      scope = next.scope; simOn = next.simOn; survivalOn = next.survivalOn; enemySpec = next.enemySpec;
+      pvpOn = next.pvpOn; pvpIds = next.pvpIds; precision = next.precision;
+    }
+  });
+  $effect(() => {
+    const snap = $state.snapshot({ scope, simOn, survivalOn, enemySpec, pvpOn, pvpIds, precision });
+    const json = JSON.stringify(snap);
+    if (json === lastJson) return;
+    lastJson = json;
+    saveUi({ dropSetups: { [loadedId]: snap } });
+  });
   let maxNOverride = $state(null);
 
   const dropSets = $derived(prefs.dropSets);
