@@ -28,6 +28,7 @@
   import { resolveTarget, objectiveKindsFor, makeObjective, FASTEST_CLEAR_TRIES } from '../../lib/search/objectives.js';
   import ArenaRewardInputs from '../optimiser/ArenaRewardInputs.svelte';
   import { relicSlotCap } from '../../lib/model/legality.js';
+  import { runFromResult } from '../../lib/model/runs.js';
   import { presetDuelFighter, opponentFighter, missingStats } from '../../lib/features/duel.js';
   import {
     normaliseSetup, setupFromRun, requestOf, TIME_LIMITS, searchCharacter, signatureOf, runApplyBlock, retiredGoalBlock, otherCharacters, targetContext,
@@ -86,6 +87,15 @@
   $effect(() => {
     saveUi({ optimiserSetups: { [loadedId]: $state.snapshot(setup) } });
   });
+
+  // Reset setup: the defaults a fresh character would get; the button is off while the setup already matches them
+  const defaultSetup = $derived(normaliseSetup(undefined, character, prefs.defaultEffort, others));
+  const setupIsDefault = $derived(JSON.stringify($state.snapshot(setup)) === JSON.stringify(defaultSetup));
+  function resetSetup() {
+    if (setupIsDefault) return;
+    setup = normaliseSetup(undefined, character, prefs.defaultEffort, others);
+    notify('Setup reset to defaults', { kind: 'info' });
+  }
 
   const preset = $derived(
     character.presets.find((p) => p.id === setup.presetId) ?? character.presets.find((p) => p.id === character.activePresetId) ?? character.presets[0],
@@ -226,6 +236,13 @@
     return partner ? { partner } : {};
   }
 
+  /** Start the shown result's own setup again, through the same job path as Optimise. */
+  function runAgain() {
+    if (live || !result || retiredGoalBlock(result)) return;
+    setup = setupFromRun(runFromResult(result), character, prefs.defaultEffort, others);
+    run();
+  }
+
   function runMore(row) {
     if (live || !shown || stale || !row.runMore || retiredGoalBlock(result)) return;
     const meta = { characterId: character.id, presetId: result.request.presetId, presetName: resultPreset?.name ?? '', mode: 'optimizeMore', fromJob: jobKey(shown) };
@@ -350,6 +367,9 @@
   <div role="tabpanel" id="opt-panel-setup" class="panes">
     <div data-testid="optimiser-setup">
       <Panel title="Setup" level="primary" scope="tool">
+        {#snippet meta()}
+          <Button variant="ghost" size="small" disabled={setupIsDefault} reason={setupIsDefault ? 'Already the defaults.' : ''} onclick={resetSetup}>Reset setup</Button>
+        {/snippet}
         <section class="step">
           <h3><span class="n">I</span> Build to improve</h3>
           <Select label="Preset" options={presetOptions} value={preset.id} onchange={(v) => (setup.presetId = v)} />
@@ -494,6 +514,7 @@
           {#snippet meta()}
             {#if result}
               <span class="meta">{result.objective.label} · seed <span class="num">{result.request.seed}</span> · {fmtDuration(result.stats?.ms)}</span>
+              <Button variant="ghost" size="small" disabled={!!live || !!retiredGoalBlock(result)} reason={retiredGoalBlock(result)} onclick={runAgain}>Run again</Button>
             {/if}
           {/snippet}
 
