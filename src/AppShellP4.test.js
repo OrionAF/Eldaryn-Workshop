@@ -54,13 +54,12 @@ it('a rejected file shows its reason in the Settings Import section, with no dia
   expect(document.querySelector('dialog[open]')).toBeNull();
 });
 
-it('Welcome links to Settings to restore a backup instead of hosting an import panel', () => {
+it('Welcome hosts a Restore a backup drop zone and no Settings link while game-data import is off', () => {
   const target = mountApp({ empty: true });
-  const link = target.querySelector('[data-testid="welcome-import-link"] a');
-  expect(link.getAttribute('href')).toBe('#/settings');
-  expect(link.textContent).toBe('Restore it in Settings');
+  expect(target.querySelector('[data-testid="welcome-import-link"]')).toBeNull();
+  expect(target.querySelector('[data-testid="welcome-restore"] input[type="file"]')).not.toBeNull();
+  expect(target.textContent).toContain('Restore a backup');
   expect(target.textContent).not.toMatch(/game profile|JSON/);
-  expect(target.querySelector('input[type="file"]')).toBeNull();
   expect(target.textContent).not.toContain('Import your game profile');
 });
 

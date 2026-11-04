@@ -88,16 +88,10 @@ it('Welcome: the start button says what is missing while disabled, and the level
   done();
 });
 
-it('Settings > Restore a backup with an empty roster: junk shows the reason and creates nothing; a profile is reported, then created and Welcome is left', async () => {
+it('Welcome > Restore a backup with an empty roster: junk shows the reason and creates nothing; a profile is reported, then created and Welcome is left', async () => {
   const { target, done } = await mountWelcome();
-  expect(target.querySelector('[data-testid="welcome-import-link"] a').getAttribute('href')).toBe('#/settings');
-  history.replaceState(null, '', '#/settings'); // what following the Welcome link does
-  syncRouter();
-  flushSync();
-  await tick();
-  flushSync();
-  expect(location.hash).toBe('#/settings');
-  const input = target.querySelector('[data-testid="restore-backup"] input[type="file"]');
+  expect(target.querySelector('[data-testid="welcome-import-link"]')).toBeNull();
+  const input = target.querySelector('[data-testid="welcome-restore"] input[type="file"]');
   const send = (text) => {
     Object.defineProperty(input, 'files', { value: [new File([text], 'x.json')], configurable: true });
     input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -105,8 +99,9 @@ it('Settings > Restore a backup with an empty roster: junk shows the reason and 
   send('{"hello": 1}');
   await vi.waitFor(() => {
     flushSync();
-    expect(target.querySelector('[data-testid="restore-backup"] [role="alert"]').textContent).toContain('not a backup from this app');
+    expect(target.querySelector('[data-testid="welcome-restore"] [role="alert"]').textContent).toContain('not a backup from this app');
   });
+  expect(location.hash).toBe('#/welcome');
   expect(rosterStore.roster.characters).toHaveLength(0);
   send(JSON.stringify({ player: { name: 'Hero', class: 'WARRIOR', level: 10 }, equipment: {} }));
   await vi.waitFor(() => {
@@ -123,4 +118,14 @@ it('Settings > Restore a backup with an empty roster: junk shows the reason and 
   expect(target.querySelector('h1').textContent).toBe('Overview');
   expect(target.querySelector('.welcome-card')).toBeNull();
   done();
+});
+
+it('Welcome keeps the Restore zone when game-data import is on, and then also links to Settings for it', async () => {
+  const { setPrefs } = await import('./lib/prefs.svelte.js');
+  setPrefs({ showImport: true });
+  const { target, done } = await mountWelcome();
+  expect(target.querySelector('[data-testid="welcome-restore"] input[type="file"]')).not.toBeNull();
+  expect(target.querySelector('[data-testid="welcome-import-link"] a').getAttribute('href')).toBe('#/settings');
+  done();
+  setPrefs({ showImport: false });
 });

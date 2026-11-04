@@ -10,9 +10,10 @@
   import Select from './ui/Select.svelte';
   import NumberField from './ui/NumberField.svelte';
   import Button from './ui/Button.svelte';
+  import DropZone from './ui/DropZone.svelte';
   import { rosterStore } from '../lib/rosterStore.svelte.js';
   import { CLASSES, classLabel, MAX_PLAYER_LEVEL } from '../lib/game/classes.js';
-  import { requestImportFocus } from '../lib/importFlow.svelte.js';
+  import { requestImportFocus, importFlow, loadImportFile } from '../lib/importFlow.svelte.js';
   import { prefs } from '../lib/prefs.svelte.js';
   import { go } from '../lib/router.svelte.js';
 
@@ -44,13 +45,11 @@
       <p class="subtitle">{prefs.showImport ? 'Bring in your character, or start from scratch.' : 'Create your character to get started.'} Everything stays on this device.</p>
     </header>
 
-    <p class="import-link" data-testid="welcome-import-link">
-      {#if prefs.showImport}
-        Have a game profile or a backup? <a href="#/settings" onclick={requestImportFocus}>Import it in Settings → Advanced</a>.
-      {:else}
-        Have a backup from this app? <a href="#/settings" onclick={requestImportFocus}>Restore it in Settings</a>.
-      {/if}
-    </p>
+    {#if prefs.showImport}
+      <p class="import-link" data-testid="welcome-import-link">
+        Have a game profile? <a href="#/settings" onclick={requestImportFocus}>Import it in Settings → Advanced</a>.
+      </p>
+    {/if}
 
     <div class="secondary">
       <Panel title="Start manually">
@@ -69,6 +68,16 @@
             {canCreate ? 'Get started' : need}
           </Button>
         </form>
+      </Panel>
+      <Panel title="Restore a backup">
+        <div data-testid="welcome-restore">
+          <DropZone
+            onfile={(f) => loadImportFile(f, 'restore')}
+            label="Choose a backup file, or drop it here"
+            hint="A file saved with Export"
+            error={importFlow.from === 'restore' ? importFlow.error : ''}
+          />
+        </div>
       </Panel>
     </div>
 
