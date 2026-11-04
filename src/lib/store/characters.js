@@ -196,7 +196,8 @@ export function createCharactersStore(ctx) {
     const c = ctx.findCharacter(id);
     if (c) {
       downloadCharacter(ctx.roster(), c);
-      markBackup();
+      // One character of several is not a backup of the roster, so it must not hide the stale-backup nudge.
+      if (ctx.roster().characters.length === 1) markBackup();
     }
   }
 

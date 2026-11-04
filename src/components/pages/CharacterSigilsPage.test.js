@@ -206,6 +206,16 @@ describe('collection filter', () => {
   const baseOwned = () => Object.keys(rosterStore.current.sigils.owned).filter((sp) => rosterStore.current.sigils.owned[sp].level > 0);
   const names = () => [...target.querySelectorAll('.sigil-card .rarity-title')].map((n) => n.textContent);
 
+  it('every filter tab points at a real tabpanel', () => {
+    for (const label of ['All', 'Owned', 'Not owned']) {
+      pick(label);
+      const controls = tab(label).getAttribute('aria-controls');
+      const panel = target.querySelector(`[role="tabpanel"]#${controls}`);
+      expect(panel).not.toBeNull();
+      expect(panel.getAttribute('aria-labelledby')).toBe(tab(label).id);
+    }
+  });
+
   it('Owned shows only owned sigils and drops empty sections', () => {
     const before = baseOwned().length;
     own('CATACLYSM', 1);

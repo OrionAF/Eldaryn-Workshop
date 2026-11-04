@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { createContext } from './context.js';
 import { createCharactersStore } from './characters.js';
 import { newCharacter } from '../model/index.js';
+import { backup, resetBackup } from '../backupState.svelte.js';
+import { vi } from 'vitest';
 
 // A fresh store per test, so the session-only undo slot starts empty.
 let roster;
@@ -155,5 +157,24 @@ describe('restoreDeletedCharacter(id)', () => {
     const b = ids()[1];
     store.deleteCharacter(b);
     expect(store.restoreDeletedCharacter(b)).toBe(b);
+  });
+});
+
+describe('exportCharacterDownload and the backup nudge', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    resetBackup();
+    globalThis.URL.createObjectURL ??= () => 'blob:x';
+    globalThis.URL.revokeObjectURL ??= () => {};
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  });
+  it('one character of several does not count as a backup', () => {
+    store.exportCharacterDownload();
+    expect(backup.lastAt).toBeNull();
+  });
+  it('the only character is the whole roster, so it counts', () => {
+    roster.characters = roster.characters.slice(0, 1);
+    store.exportCharacterDownload(roster.characters[0].id);
+    expect(backup.lastAt).not.toBeNull();
   });
 });

@@ -62,10 +62,11 @@ describe('downloads mark a backup', () => {
     rosterStore.exportDownload();
     expect(backup.lastAt).not.toBeNull();
   });
-  it('exportCharacterDownload', () => {
+  it('exportCharacterDownload of one of several characters is not a backup', () => {
     const id = rosterStore.addCharacter('B2', 'WARRIOR');
+    expect(rosterStore.roster.characters.length).toBeGreaterThan(1);
     resetBackup();
     rosterStore.exportCharacterDownload(id);
-    expect(backup.lastAt).not.toBeNull();
+    expect(backup.lastAt).toBeNull();
   });
 });

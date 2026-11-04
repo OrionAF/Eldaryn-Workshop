@@ -236,7 +236,7 @@
       {/each}
     </tbody>
   </table>
-  {#if rows.length === 0 && onlyOff}<p class="note empty">All rows match.</p>{/if}
+  {#if rows.length === 0 && onlyOff}<p class="note empty">{summary.total > 0 ? 'All rows match.' : 'No in-game stats entered yet.'}</p>{/if}
 </div>
 
 <style>

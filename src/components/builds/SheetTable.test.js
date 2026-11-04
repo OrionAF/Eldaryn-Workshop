@@ -105,3 +105,13 @@ it('Expand all opens every source row, Collapse all closes them; opponents get n
   expect(p.qa('button').some((b) => /all$/.test(b.textContent.trim()))).toBe(false);
   p.done();
 });
+
+it('the filter on a sheet with nothing entered says so instead of "All rows match."', async () => {
+  const o = setup(SheetTable, { keys: ['totalAttack'], values: {}, computed: { totalAttack: 5 }, onChange: () => {} });
+  cb(o).click();
+  await flush();
+  expect(o.qa('tr[data-key]').length).toBe(0);
+  expect(o.target.textContent).toContain('No in-game stats entered yet.');
+  expect(o.target.textContent).not.toContain('All rows match.');
+  o.done();
+});
