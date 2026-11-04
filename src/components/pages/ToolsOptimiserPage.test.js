@@ -572,3 +572,35 @@ it('Run history: Run again with these settings is off for a retired goal and on 
   expect(states.map((x) => x[0]).sort()).toEqual([false, true]);
   expect(states.find((x) => x[0])[1]).toBe('This goal was retired.');
 });
+
+it('Reset setup is off on the defaults, restores them after an edit and leaves the result alone', async () => {
+  mountPage();
+  const reset = () => btn(/^Reset setup$/);
+  expect(reset().getAttribute('aria-disabled') ?? String(reset().disabled)).toBe('true');
+  click(btn(/^Optimise Main/));
+  await settle();
+  click(btn(/^Quick/));
+  expect(loadUi().optimiserSetups[rosterStore.current.id].effort).toBe('quick');
+  click(reset());
+  expect(view.q('[aria-label="Effort"] [aria-pressed="true"]').textContent).toMatch(/Standard/);
+  expect(loadUi().optimiserSetups[rosterStore.current.id].effort).toBe('standard');
+  expect(notifications.log.at(-1).message).toMatch(/Setup reset to defaults/);
+  expect(view.q('[data-testid="optimiser-results"]')).not.toBeNull();
+  expect(jobsStore.list).toHaveLength(1);
+});
+
+it('Run again on the open result starts a new job with that result\'s setup', async () => {
+  mountPage();
+  click(btn(/^Quick/));
+  click(btn(/^Optimise Main/));
+  await settle();
+  expect(requests).toHaveLength(1);
+  click(btn(/^Standard/));
+  click(btn(/^Run again$/));
+  await vi.waitFor(() => expect(requests).toHaveLength(2));
+  // the canned result carries its own request: the new job starts from that setup, not from the edited controls
+  const shownRequest = richResult().request;
+  expect(requests[1].seed).toBe(shownRequest.seed);
+  expect(requests[1].presetId).toBe(shownRequest.presetId);
+  expect(jobsStore.list).toHaveLength(2);
+});
