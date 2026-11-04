@@ -162,6 +162,21 @@ describe('presets', () => {
     expect(store.current.presets[1]).toMatchObject({ id: copy, name: 'Preset 1 copy', relicIds: WR.slice(0, 2) });
   });
 
+  it('movePreset swaps with a neighbour, keeps ids and the active preset, and no-ops at the ends', () => {
+    const [a, b] = store.current.presets.map((p) => p.id);
+    const c = store.addPreset('C');
+    store.setActivePreset(a);
+    expect(store.movePreset(a, 1)).toBe(true);
+    expect(store.current.presets.map((p) => p.id)).toEqual([b, a, c]);
+    expect(store.current.activePresetId).toBe(a);
+    expect(store.movePreset(b, -1)).toBe(false);
+    expect(store.movePreset(c, 1)).toBe(false);
+    expect(store.movePreset('missing', 1)).toBe(false);
+    expect(store.movePreset(c, -1)).toBe(true);
+    expect(store.current.presets.map((p) => p.id)).toEqual([b, c, a]);
+    expect(saved().characters.find((x) => x.id === store.current.id).presets.map((p) => p.id)).toEqual([b, c, a]);
+  });
+
   it('setters write valid values: sets are enums, relics/sigils are capped and de-duplicated', () => {
     const a = store.current.presets[0].id;
     store.setPresetEquipmentSet(a, 2);

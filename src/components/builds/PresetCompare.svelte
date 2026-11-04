@@ -3,7 +3,7 @@
    * PresetCompare.svelte - B1 (ia.md §5.7): one column per preset, one row per property. Stat rows show
    * the effective value (the entered sheet when it applies, else the model) and the "Stats come from" row
    * says which; a sheet the build has moved on from reads Stale. Clicking a loadout cell makes its preset active and opens Loadout. Clicking a column's name makes that
-   * preset active (G2). Duplicate / Delete are per column, and say why they are disabled.
+   * preset active (G2). Move left / right, Duplicate and Delete are per column, and say why they are disabled.
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { computePresetStats } from '../../lib/build/stats.js';
@@ -112,7 +112,7 @@
       <thead>
         <tr>
           <th scope="col" class="sticky"><span class="visually-hidden">Property</span></th>
-          {#each presets as p (p.id)}
+          {#each presets as p, i (p.id)}
             {@const active = p.id === character.activePresetId}
             <th scope="col" class:active data-preset-id={p.id}>
               <button type="button" class="colname" aria-pressed={active} onclick={() => rosterStore.setActivePreset(p.id)}>
@@ -128,6 +128,22 @@
                 onkeydown={(e) => e.key === 'Enter' && e.target.blur()}
               />
               <div class="actions">
+                <Button
+                  variant="ghost"
+                  size="small"
+                  aria-label={`Move ${p.name} left`}
+                  disabled={i === 0}
+                  reason={i === 0 ? 'Already first' : ''}
+                  onclick={() => rosterStore.movePreset(p.id, -1)}>←</Button
+                >
+                <Button
+                  variant="ghost"
+                  size="small"
+                  aria-label={`Move ${p.name} right`}
+                  disabled={i === presets.length - 1}
+                  reason={i === presets.length - 1 ? 'Already last' : ''}
+                  onclick={() => rosterStore.movePreset(p.id, 1)}>→</Button
+                >
                 <Button
                   variant="ghost"
                   size="small"
