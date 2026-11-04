@@ -71,3 +71,23 @@ it('the Used in button summarises the presets using this core', () => {
   expect(target.querySelector('button[aria-haspopup]').textContent).toContain('Used in: PvP');
   expect(target.querySelector('button[aria-haspopup]').textContent).not.toContain('PvE');
 });
+
+it('shows the score, stat fit and roll, and marks each secondary by priority', () => {
+  const score = { roll: 0.5, fit: 0.8, score: 0.62, grade: 'B', secondaries: [{ type: 'ATTACK_PERCENT', roll: 0.9, weight: 1 }] };
+  render({ score, specName: 'Arms' });
+  const row = target.querySelector('[data-testid="core-score"]');
+  expect(row.textContent).toContain('B');
+  expect(row.textContent).toContain('Score 62%');
+  expect(row.textContent).toContain('Stats 80%');
+  expect(row.textContent).toContain('Roll 50%');
+  expect(row.title).toContain('Arms');
+  expect(target.querySelector('.sec-name').classList.contains('fit-high')).toBe(true);
+  expect(target.querySelector('.stat-fill').style.width).toBe('90%');
+});
+
+it('shows the roll alone when the core is unscored', () => {
+  render({ score: { roll: 0.25, fit: null, score: null, grade: null, secondaries: [{ type: 'ATTACK_PERCENT', roll: 0.25, weight: null }] } });
+  const row = target.querySelector('[data-testid="core-score"]');
+  expect(row.textContent.trim()).toBe('Roll 25%');
+  expect(target.querySelector('.roll-grade')).toBeNull();
+});
