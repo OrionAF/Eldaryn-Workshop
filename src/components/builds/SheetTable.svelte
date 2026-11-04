@@ -12,12 +12,14 @@
   import { sheetKeyMeta, parseSheetInput, toleranceFor } from '../../lib/engine/pipeline/sheet.js';
   import { contributionRows } from '../../lib/build/contribution.js';
   import { statNumber, statText, gapText, isFlatStat } from './statText.js';
+  import Checkbox from '../ui/Checkbox.svelte';
+  import Button from '../ui/Button.svelte';
   import { orderStats, orderedStatLabel } from '../../lib/ui/statOrder.js';
 
   /** @type {{keys: string[], values: Object<string, number>, computed: Object, contributions?: (() => Object)|null, onChange: (key: string, value: number|null) => void}} */
   let { keys, values, computed, contributions = null, onChange, playerClass = null } = $props();
 
-  const rows = $derived(orderStats(keys, playerClass).map((k) => sheetKeyMeta(k)).filter(Boolean)
+  const allRows = $derived(orderStats(keys, playerClass).map((k) => sheetKeyMeta(k)).filter(Boolean)
     .map((m) => ({ ...m, label: orderedStatLabel(m.key, m.label, playerClass) })));
   // No computed build (an opponent's sheet has none): the Model, Gap, Tolerance and Status columns would be
   // empty on every row, so they are not drawn.
@@ -27,6 +29,7 @@
   let invalid = $state({});
   let focusedKey = $state(null);
   let open = $state({});
+  let onlyOff = $state(false);
 
   $effect(() => {
     for (const m of rows) {
@@ -76,10 +79,20 @@
     return { kind: Math.abs(gap) <= toleranceFor(m.key) + 1e-9 ? 'ok' : 'off', gap };
   }
 
+  // The "only rows that are off" filter never hides the row being edited, so typing does not make it vanish.
+  const rows = $derived(
+    hasModel && onlyOff
+      ? allRows.filter((m) => {
+          const k = status(m).kind;
+          return k === 'off' || k === 'unknown' || focusedKey !== null && (m.key === focusedKey || m.rawKey === focusedKey);
+        })
+      : allRows,
+  );
+
   const summary = $derived.by(() => {
     let total = 0;
     let explained = 0;
-    for (const m of rows) {
+    for (const m of allRows) {
       const s = status(m);
       if (s.kind === 'blank') continue;
       total += 1;
@@ -93,6 +106,12 @@
     open[key] = !open[key];
     if (open[key] && !contrib && contributions) contrib = contributions();
   }
+  const allOpen = $derived(rows.length > 0 && rows.every((m) => open[m.key]));
+  function toggleAll() {
+    const next = !allOpen;
+    for (const m of rows) open[m.key] = next;
+    if (next && !contrib && contributions) contrib = contributions();
+  }
   $effect(() => {
     // The build changed under an open row: drop the cached split and rebuild it for the open rows.
     void computed;
@@ -102,8 +121,14 @@
 </script>
 
 <div class="head">
+  {#if hasModel}
+    <Checkbox bind:checked={onlyOff} label="Only rows that are off" />
+  {/if}
+  {#if contributions}
+    <Button variant="ghost" size="small" onclick={toggleAll}>{allOpen ? 'Collapse all' : 'Expand all'}</Button>
+  {/if}
   <span class="summary num" class:all-good={summary.total > 0 && summary.explained === summary.total} data-testid="diff-summary">
-    {#if hasModel}{summary.explained}/{summary.total} match{:else}{summary.total}/{rows.length} entered{/if}
+    {#if hasModel}{summary.explained}/{summary.total} match{:else}{summary.total}/{allRows.length} entered{/if}
   </span>
 </div>
 <!-- svelte-ignore a11y_no_noninteractive_tabindex (a scrollable region must be focusable) -->
@@ -211,10 +236,13 @@
       {/each}
     </tbody>
   </table>
+  {#if rows.length === 0 && onlyOff}<p class="note empty">All rows match.</p>{/if}
 </div>
 
 <style>
-  .head { display: flex; justify-content: flex-end; padding: 0 var(--sp-1) var(--sp-2); }
+  .head { display: flex; justify-content: flex-end; align-items: center; gap: var(--sp-4); flex-wrap: wrap; padding: 0 var(--sp-1) var(--sp-2); }
+  .head .summary { margin-right: auto; }
+  .note.empty { margin-left: var(--sp-3); }
   .summary { font-size: var(--fs-13); color: var(--verdict-down); }
   .summary.all-good { color: var(--verdict-up); }
   .scroll { overflow-x: auto; max-width: 100%; }
