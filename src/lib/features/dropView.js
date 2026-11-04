@@ -6,6 +6,8 @@
 //   setCards(rows, results)          one card per equipment set: Holm verdict, coverage, notJudged, metrics
 //   pctInterval(sim)                 a sim DPS contrast as percent of the starting DPS (the table's axis)
 //   tally(judged, skipped)           counts for the summary bar
+//   isDowngrade(best)                a judged (simulated) downgrade, the rows "Hide downgrades" drops
+//   bagSummaryText(rows)             the loot bag as plain text lines for the clipboard
 //   runMoreRequest(request)          a stricter request for the same inputs, or null at the ceiling
 import { groupBySet, verdictFor, aggregateVerdict, statKeyLabel, DROP_PRECISION } from './swap.js';
 import { EQUIP_SETS } from '../model/equipment.js';
@@ -121,6 +123,25 @@ export function tallyChips(t) {
   if (t.pending) out.push({ tone: 'warn', text: `${t.pending} not simulated` });
   if (t.skipped) out.push({ tone: 'warn', text: `! ${t.skipped} skipped` });
   return out;
+}
+
+/** True only for a finished simulated downgrade; pending, mixed and too-close rows are never hidden. */
+export const isDowngrade = (best) => !!best && best.basis === 'sim' && best.verdict === 'downgrade';
+
+const signed = (n) => (n > 0 ? '+' : '') + n.toFixed(1) + '%';
+
+/**
+ * One line per row, `Name | slot | change | verdict`. `figure` is the table's figure ({kind:'sim', est, lo, hi}
+ * or {kind:'est', est}, null when nothing was computed); the closed-form figure is labelled an estimate.
+ * @param {Array<{name: string, slot: string, figure: object|null, verdict: string}>} rows
+ */
+export function bagSummaryText(rows) {
+  return rows
+    .map(({ name, slot, figure, verdict }) => {
+      const change = !figure ? 'no figure' : figure.kind === 'sim' ? `${signed(figure.est)} [${signed(figure.lo)}, ${signed(figure.hi)}]` : `${signed(figure.est)} (estimate)`;
+      return [name, slot, change, verdict].join(' | ');
+    })
+    .join('\n');
 }
 
 const NEXT = { quick: 'standard', standard: 'thorough' };
