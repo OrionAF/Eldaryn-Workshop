@@ -64,3 +64,30 @@ it('cloneOpponentFromPreset copies the preset stats under the chosen spec and re
   expect(opps().find((o) => o.id === id)).toMatchObject({ name: 'Mirror', spec: 'WARRIOR_TANK' });
   expect(opps().find((o) => o.id === id).sheet.values).toMatchObject({ totalHp: 12345, totalAttack: 678 });
 });
+
+it('restoreRemovedOpponent puts a deleted opponent back at its place with its typed sheet', () => {
+  const a = rosterStore.addOpponent('WARRIOR_TANK', 'Wall');
+  const b = rosterStore.addOpponent('MYSTIC_MAGE', 'Mage');
+  rosterStore.addOpponent('WARRIOR_DPS', 'Blade');
+  rosterStore.setOpponentSheet(b, { totalHp: 4321, totalAttack: 99 });
+  expect(rosterStore.removeOpponent(b)).toBe(true);
+  expect(rosterStore.removedOpponentStatus()).toBe('ready');
+  expect(rosterStore.restoreRemovedOpponent()).toBe(b);
+  expect(opps().map((o) => o.name)).toEqual(['Wall', 'Mage', 'Blade']);
+  expect(opps()[1].sheet.values).toEqual({ totalHp: 4321, totalAttack: 99 });
+  const saved = loadRoster().characters.find((c) => c.id === rosterStore.current.id);
+  expect(saved.opponents.map((o) => o.id)).toContain(b);
+  expect(rosterStore.restoreRemovedOpponent()).toBeNull(); // one step only
+  expect(opps()[0].id).toBe(a);
+});
+
+it('restoreRemovedOpponent refuses at the cap and keeps the slot until there is room', () => {
+  const gone = rosterStore.addOpponent('WARRIOR_TANK', 'Gone');
+  rosterStore.removeOpponent(gone);
+  for (let i = 0; i < MAX_OPPONENTS; i++) rosterStore.addOpponent();
+  expect(rosterStore.removedOpponentStatus()).toBe('full');
+  expect(rosterStore.restoreRemovedOpponent()).toBeNull();
+  expect(opps()).toHaveLength(MAX_OPPONENTS);
+  rosterStore.duplicateOpponent(opps()[0].id); // refused at the cap, the slot is untouched
+  expect(rosterStore.removedOpponentStatus()).toBe('full');
+});

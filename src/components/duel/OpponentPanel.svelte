@@ -19,8 +19,9 @@
   import Banner from '../ui/Banner.svelte';
   import Button from '../ui/Button.svelte';
   import OpponentLoadout from './OpponentLoadout.svelte';
+  import { deleteOpponentWithUndo } from '../../lib/deleteUndo.js';
 
-  let { opponent, onRemoved = () => {} } = $props();
+  let { opponent, onRemoved = () => {}, onRestored = () => {} } = $props();
 
   const keys = $derived(sheetKeysForClass(opponent.class, 'base').filter((k) => k !== 'totalDominion'));
   const fighter = $derived(opponentFighter(opponent));
@@ -36,8 +37,7 @@
   }
 
   function remove() {
-    rosterStore.removeOpponent(opponent.id);
-    onRemoved();
+    if (deleteOpponentWithUndo(opponent, onRestored)) onRemoved();
   }
 </script>
 

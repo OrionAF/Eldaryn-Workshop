@@ -9,6 +9,8 @@ import { newId } from '../model/character.js';
 const plain = (o) => JSON.parse(JSON.stringify(o));
 
 export function createPvpStore(ctx) {
+  // The last removed opponent, for the one-step Undo on its toast. Session only, never persisted.
+  let lastRemoved = null;
   const find = (c, id) => c.opponents.find((o) => o.id === id) ?? null;
   const replace = (c, id, next) => {
     const i = c.opponents.findIndex((o) => o.id === id);
@@ -70,9 +72,35 @@ export function createPvpStore(ctx) {
     return ctx.edit((c) => {
       const i = c.opponents.findIndex((o) => o.id === id);
       if (i < 0) return false;
+      lastRemoved = { characterId: c.id, opponent: plain(c.opponents[i]), index: i };
       c.opponents.splice(i, 1);
       return true;
     });
+  }
+
+  /** Whether restoreRemovedOpponent has something to bring back, and whether its character has room. */
+  function removedOpponentStatus() {
+    if (!lastRemoved) return 'none';
+    const c = ctx.findCharacter(lastRemoved.characterId);
+    if (!c) return 'none';
+    return c.opponents.length >= MAX_OPPONENTS ? 'full' : 'ready';
+  }
+
+  /**
+   * Undo the last removeOpponent, into the character it came from, at its old place (a fresh id if its
+   * id is taken by now). One step only; at the cap it refuses and keeps the slot.
+   * @returns {string|null} the restored opponent's id
+   */
+  function restoreRemovedOpponent() {
+    if (removedOpponentStatus() !== 'ready') return null;
+    const { characterId, opponent, index } = lastRemoved;
+    lastRemoved = null;
+    const c = ctx.findCharacter(characterId);
+    const o = normaliseOpponent(opponent);
+    if (c.opponents.some((x) => x.id === o.id)) o.id = newId('opp');
+    c.opponents.splice(Math.min(index, c.opponents.length), 0, o);
+    ctx.persist();
+    return o.id;
   }
 
   /**
@@ -102,5 +130,5 @@ export function createPvpStore(ctx) {
     });
   }
 
-  return { saveRankingsOpponent, addOpponent, cloneOpponentFromPreset, duplicateOpponent, removeOpponent, updateOpponent, setOpponentSheet };
+  return { saveRankingsOpponent, addOpponent, cloneOpponentFromPreset, duplicateOpponent, removeOpponent, removedOpponentStatus, restoreRemovedOpponent, updateOpponent, setOpponentSheet };
 }

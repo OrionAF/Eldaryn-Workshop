@@ -2,12 +2,15 @@
 // pet, mount, relics, sigils, transcendence). Setters write the id and let reconcile repair anything
 // that does not resolve, so a bad id never persists. Every mutator ends with persist().
 // Domain slices add their own domain mutators in their store files, not here.
-import { newPreset, MIN_PRESETS, MAX_PRESETS, PRESET_RELIC_CAP, PRESET_SIGIL_CAP } from '../model/presets.js';
+import { newPreset, normalisePreset, MIN_PRESETS, MAX_PRESETS, PRESET_RELIC_CAP, PRESET_SIGIL_CAP } from '../model/presets.js';
 import { newId } from '../model/character.js';
 
 const uniq = (ids, cap) => [...new Set((ids ?? []).filter((x) => typeof x === 'string' && x))].slice(0, cap);
 
 export function createPresetsStore(ctx) {
+  // The last deleted preset, for the one-step Undo on its toast. Session only, never persisted.
+  let lastDeleted = null;
+
   /** @returns {string|null} the new preset's id, or null at the 8-preset cap. It becomes the active preset. */
   function addPreset(name) {
     return ctx.edit((c) => {
@@ -50,11 +53,49 @@ export function createPresetsStore(ctx) {
       if (c.presets.length <= MIN_PRESETS) return false;
       const idx = c.presets.findIndex((p) => p.id === presetId);
       if (idx === -1) return false;
+      lastDeleted = {
+        characterId: c.id,
+        preset: JSON.parse(JSON.stringify(c.presets[idx])),
+        index: idx,
+        wasActive: c.activePresetId === presetId,
+        ownedOblivionSheet: c.oblivion?.sheet?.presetId === presetId,
+      };
       c.presets.splice(idx, 1);
       if (c.activePresetId === presetId) c.activePresetId = c.presets[0].id;
       ctx.reconcile(c); // a preset that owned the Oblivion sheet must not stay named by it
       return true;
     });
+  }
+
+  /** Whether restoreDeletedPreset has something to bring back, and whether its character has room. */
+  function deletedPresetStatus() {
+    if (!lastDeleted) return 'none';
+    const c = ctx.findCharacter(lastDeleted.characterId);
+    if (!c) return 'none';
+    return c.presets.length >= MAX_PRESETS ? 'full' : 'ready';
+  }
+
+  /**
+   * Undo the last deletePreset, into the character it came from: back at its old place (a fresh id if
+   * its id is taken by now), active again if it was, and owner of the Oblivion sheet again if it was and
+   * nothing took the sheet since. References that no longer resolve are dropped by reconcile. One step
+   * only. At the 8-preset cap it refuses and keeps the slot, so deleting another preset frees room.
+   * @returns {string|null} the restored preset's id
+   */
+  function restoreDeletedPreset() {
+    if (deletedPresetStatus() !== 'ready') return null;
+    const { characterId, preset, index, wasActive, ownedOblivionSheet } = lastDeleted;
+    lastDeleted = null;
+    const c = ctx.findCharacter(characterId);
+    const p = normalisePreset(preset, index);
+    if (c.presets.some((x) => x.id === p.id)) p.id = newId('p');
+    c.presets.splice(Math.min(index, c.presets.length), 0, p);
+    if (wasActive) c.activePresetId = p.id;
+    const sheet = c.oblivion?.sheet;
+    if (ownedOblivionSheet && sheet && !sheet.presetId) sheet.presetId = p.id;
+    ctx.reconcile(c);
+    ctx.persist();
+    return p.id;
   }
 
   function setActivePreset(presetId) {
@@ -120,6 +161,8 @@ export function createPresetsStore(ctx) {
     duplicatePreset,
     movePreset,
     deletePreset,
+    deletedPresetStatus,
+    restoreDeletedPreset,
     setActivePreset,
     renamePreset,
     setPresetEquipmentSet,

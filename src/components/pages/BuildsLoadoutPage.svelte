@@ -5,6 +5,7 @@
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { MIN_PRESETS, MAX_PRESETS } from '../../lib/model/presets.js';
+  import { deletePresetWithUndo } from '../../lib/deleteUndo.js';
   import Button from '../ui/Button.svelte';
   import ConfirmButton from '../ConfirmButton.svelte';
   import LoadoutChecks from '../builds/LoadoutChecks.svelte';
@@ -47,7 +48,7 @@
       confirmLabel="Confirm delete"
       prompt="Delete this preset?"
       disabled={atMin}
-      onConfirm={() => rosterStore.deletePreset(preset.id)}
+      onConfirm={() => deletePresetWithUndo(preset)}
     />
     {#if atMin}<span class="hint">A character keeps at least {MIN_PRESETS} presets.</span>{/if}
   </div>
