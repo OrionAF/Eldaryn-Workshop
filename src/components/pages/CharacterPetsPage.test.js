@@ -136,3 +136,24 @@ it('Used in reassigns a preset that uses another core to this one', () => {
   flushSync();
   expect(rosterStore.current.presets[0].petId).toBe(c1);
 });
+
+it('Show: Unused hides a core a preset uses, and Sort orders by rarity', () => {
+  change(byLabel('Core rarity to add'), 'Common');
+  click(btn('+ Add core'));
+  change(byLabel('Core rarity to add'), 'Mythic');
+  click(btn('+ Add core'));
+  for (const b of [...target.querySelectorAll('button')].filter((x) => x.textContent.trim() === 'Save')) click(b);
+  const [common, mythic] = rosterStore.current.pets.cores;
+  rosterStore.setPresetPet(rosterStore.current.presets[0].id, common.id);
+  flushSync();
+  expect(target.querySelectorAll('.pet-card')).toHaveLength(2);
+  change(byLabel('Show'), 'unused');
+  expect(target.querySelectorAll('.pet-card')).toHaveLength(1);
+  expect(target.querySelector('.card-title').textContent).toBe('Mythic Core');
+  change(byLabel('Show'), 'used');
+  expect(target.querySelector('.card-title').textContent).toBe('Common Core');
+  change(byLabel('Show'), 'all');
+  change(byLabel('Sort'), 'rarity');
+  expect([...target.querySelectorAll('.card-title')].map((e) => e.textContent)).toEqual(['Mythic Core', 'Common Core']);
+  expect(mythic.id).not.toBe(common.id);
+});
