@@ -2,6 +2,8 @@ import { it, expect } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import CharacterSwitcher from './CharacterSwitcher.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
+import NotificationStack from './NotificationStack.svelte';
+import { notifications, resetNotifications } from '../../lib/notify.svelte.js';
 
 it('the "No class" warning in the hidden edit dialog clears once the character has a class', () => {
   localStorage.clear();
@@ -23,4 +25,43 @@ it('the "No class" warning in the hidden edit dialog clears once the character h
   expect(document.body.textContent).not.toContain('Most pages need a class');
   unmount(app);
   target.remove();
+});
+
+it('deleting a character raises a toast whose Undo brings it back and re-selects it', () => {
+  localStorage.clear();
+  resetNotifications();
+  rosterStore.addCharacter('Keeper', 'WARRIOR');
+  const id = rosterStore.addCharacter('Brin', 'MYSTIC');
+  const index = rosterStore.roster.characters.findIndex((c) => c.id === id);
+  const target = document.createElement('div');
+  document.body.appendChild(target);
+  const app = mount(CharacterSwitcher, { target });
+  const stack = mount(NotificationStack, { target });
+  flushSync();
+  const byText = (t) => [...document.querySelectorAll('button, li, [role^="menuitem"]')].find((b) => b.textContent.trim() === t);
+  target.querySelector('button.current').click();
+  flushSync();
+  byText('Edit character').click();
+  flushSync();
+  byText('Delete character').click();
+  flushSync();
+  byText('Confirm delete').click();
+  flushSync();
+  expect(rosterStore.roster.characters.some((c) => c.id === id)).toBe(false);
+  const toast = [...target.querySelectorAll('.toast')].find((t) => t.textContent.includes('Deleted Brin'));
+  expect(toast).toBeTruthy();
+  const undo = [...toast.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Undo');
+  expect(undo).toBeTruthy();
+  undo.click();
+  flushSync();
+  expect(rosterStore.roster.characters.findIndex((c) => c.id === id)).toBe(index);
+  expect(rosterStore.current.id).toBe(id);
+  expect(target.textContent).toContain('Restored Brin');
+  expect(target.textContent).not.toContain('Deleted Brin');
+  // The Activity log keeps both messages as plain text.
+  expect(notifications.log.map((e) => e.message)).toEqual(['Deleted Brin', 'Restored Brin']);
+  unmount(stack);
+  unmount(app);
+  target.remove();
+  resetNotifications();
 });

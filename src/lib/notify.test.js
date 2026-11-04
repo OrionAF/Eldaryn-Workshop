@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { notify, statusMessage, dismissKey, dismissStale, dismiss, pauseDismiss, resumeDismiss, markAllRead, clearLog, notifications, resetNotifications, INFO_MS, MAX_VISIBLE } from './notify.svelte.js';
+import { notify, statusMessage, dismissKey, dismissStale, dismiss, pauseDismiss, resumeDismiss, markAllRead, clearLog, runAction, notifications, resetNotifications, INFO_MS, MAX_VISIBLE } from './notify.svelte.js';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -112,5 +112,38 @@ describe('clearLog', () => {
   it('is harmless on an empty log', () => {
     clearLog();
     expect(notifications.log).toEqual([]);
+  });
+});
+
+describe('toast actions', () => {
+  it('an action toast shows the button; the log keeps the message only', () => {
+    const run = vi.fn();
+    notify('Deleted Aria', { action: { label: 'Undo', run } });
+    expect(notifications.toasts[0].action.label).toBe('Undo');
+    expect(notifications.log[0].message).toBe('Deleted Aria');
+    expect(notifications.log[0]).not.toHaveProperty('action');
+  });
+
+  it('runAction runs once and removes the toast; the log stays', () => {
+    const run = vi.fn();
+    const id = notify('Deleted Aria', { action: { label: 'Undo', run } });
+    runAction(id);
+    runAction(id);
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(notifications.toasts).toHaveLength(0);
+    expect(notifications.log).toHaveLength(1);
+  });
+
+  it('an action toast still dismisses itself after INFO_MS', () => {
+    notify('Deleted Aria', { action: { label: 'Undo', run: () => {} } });
+    vi.advanceTimersByTime(INFO_MS);
+    expect(notifications.toasts).toHaveLength(0);
+  });
+
+  it('ignores an action without a run function, and runAction on a plain toast does nothing', () => {
+    const id = notify('Saved', { action: { label: 'Undo' } });
+    expect(notifications.toasts[0]).not.toHaveProperty('action');
+    runAction(id);
+    expect(notifications.toasts).toHaveLength(1);
   });
 });

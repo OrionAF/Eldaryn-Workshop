@@ -1,12 +1,15 @@
 // store/characters.js (M1): roster-level and character-core mutators. Every mutator ends with persist().
 import { newCharacter, normaliseCharacter } from '../model/index.js';
-import { normaliseClass, normaliseLevel, normaliseBaseResidual } from '../model/character.js';
+import { newId, normaliseClass, normaliseLevel, normaliseBaseResidual } from '../model/character.js';
 import { previewLevelChange as previewLevel } from '../model/legality.js';
 import { importJson, downloadRoster, downloadCharacter } from '../storage.js';
 import { markBackup } from '../backupState.svelte.js';
 import { mergeProfileIntoCharacter } from '../model/merge.js';
 
 export function createCharactersStore(ctx) {
+  // The last deleted character, for the one-step undo on its toast. Session only, never persisted.
+  let lastDeleted = null;
+
   /** @returns {string} the new character's id (it becomes the current character). */
   function addCharacter(name, cls = null) {
     const roster = ctx.roster();
@@ -30,10 +33,29 @@ export function createCharactersStore(ctx) {
     if (roster.characters.length <= 1) return false; // never delete the last character
     const idx = roster.characters.findIndex((ch) => ch.id === id);
     if (idx === -1) return false;
+    lastDeleted = { character: JSON.parse(JSON.stringify(roster.characters[idx])), index: idx, wasCurrent: roster.currentId === id };
     roster.characters.splice(idx, 1);
     if (roster.currentId === id) roster.currentId = roster.characters[0].id;
     ctx.persist();
     return true;
+  }
+
+  /**
+   * Undo the last deleteCharacter: put the character back at its old place (a fresh id if its id is
+   * taken by now) and re-select it if it was current. One step only; a second call does nothing.
+   * @returns {string|null} the restored character's id
+   */
+  function restoreDeletedCharacter() {
+    if (!lastDeleted) return null;
+    const { character, index, wasCurrent } = lastDeleted;
+    lastDeleted = null;
+    const roster = ctx.roster();
+    const c = normaliseCharacter(character);
+    if (roster.characters.some((ch) => ch.id === c.id)) c.id = newId('c');
+    roster.characters.splice(Math.min(index, roster.characters.length), 0, c);
+    if (wasCurrent) roster.currentId = c.id;
+    ctx.persist();
+    return c.id;
   }
 
   function selectCharacter(id) {
@@ -158,6 +180,7 @@ export function createCharactersStore(ctx) {
     addCharacter,
     renameCharacter,
     deleteCharacter,
+    restoreDeletedCharacter,
     selectCharacter,
     setCharacterClass,
     previewLevelChange,

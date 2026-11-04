@@ -84,11 +84,15 @@
     rosterStore.setCharacterClass(character.id, value === NONE ? null : value);
   }
 
+  function undoDelete() {
+    if (rosterStore.restoreDeletedCharacter()) notify(`Restored ${rosterStore.current.name}`, { kind: 'success' });
+  }
+
   function remove() {
     const name = character.name;
     if (rosterStore.deleteCharacter(character.id)) {
       editOpen = false;
-      notify(`Deleted ${name}`);
+      notify(`Deleted ${name}`, { action: { label: 'Undo', run: undoDelete } });
     }
   }
 </script>

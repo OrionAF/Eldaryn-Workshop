@@ -5,8 +5,9 @@
    * themselves after 6 s (held while hovered or focused); warnings and errors stay until closed.
    * Every message is also in the Activity log.
    */
-  import { notifications, dismiss, pauseDismiss, resumeDismiss } from '../../lib/notify.svelte.js';
+  import { notifications, dismiss, pauseDismiss, resumeDismiss, runAction } from '../../lib/notify.svelte.js';
   import Banner from '../ui/Banner.svelte';
+  import Button from '../ui/Button.svelte';
 
   const VARIANT = { info: 'info', success: 'info', warn: 'warn', error: 'error' };
   const LEAD = { success: 'Done.' };
@@ -23,7 +24,12 @@
       onfocusin={() => pauseDismiss(t.id)}
       onfocusout={() => resumeDismiss(t.id)}
     >
-      <Banner variant={VARIANT[t.kind] ?? 'info'} lead={LEAD[t.kind] ?? ''} onclose={() => dismiss(t.id)}>{t.message}</Banner>
+      <Banner variant={VARIANT[t.kind] ?? 'info'} lead={LEAD[t.kind] ?? ''} onclose={() => dismiss(t.id)}>
+        {t.message}
+        {#snippet action()}
+          {#if t.action}<Button variant="ghost" size="small" onclick={() => runAction(t.id)}>{t.action.label}</Button>{/if}
+        {/snippet}
+      </Banner>
     </div>
   {/each}
 </div>
