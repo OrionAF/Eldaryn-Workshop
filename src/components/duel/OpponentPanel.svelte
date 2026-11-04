@@ -19,6 +19,7 @@
   import Banner from '../ui/Banner.svelte';
   import Button from '../ui/Button.svelte';
   import OpponentLoadout from './OpponentLoadout.svelte';
+  import PasteSheetDialog from '../builds/PasteSheetDialog.svelte';
   import { deleteOpponentWithUndo } from '../../lib/deleteUndo.js';
 
   let { opponent, onRemoved = () => {}, onRestored = () => {} } = $props();
@@ -35,6 +36,8 @@
     else next[key] = value;
     rosterStore.setOpponentSheet(opponent.id, next);
   }
+
+  let pasteOpen = $state(false);
 
   function remove() {
     if (deleteOpponentWithUndo(opponent, onRestored)) onRemoved();
@@ -87,7 +90,10 @@
     </div>
 
     <div class="group">
-      <span class="lbl">Stat sheet</span>
+      <div class="lbl-row">
+        <span class="lbl">Stat sheet</span>
+        <Button variant="ghost" size="small" data-testid="opponent-paste" onclick={() => (pasteOpen = true)}>Paste stats</Button>
+      </div>
       <p class="note">
         Type the numbers from the opponent's arena profile. In plain-number rows "." separates thousands ("48.124" is 48124); in percentage
         rows it is a decimal point. The app adds the PVP Health buff (x8 at level 50 up to x24 at level 95) itself, so enter plain Health.
@@ -99,8 +105,17 @@
   </Panel>
 </div>
 
+<PasteSheetDialog
+  bind:open={pasteOpen}
+  {keys}
+  values={opponent.sheet.values}
+  playerClass={opponent.class}
+  onapply={(v) => rosterStore.setOpponentSheet(opponent.id, v)}
+/>
+
 <style>
   .group { display: grid; gap: 6px; min-width: 0; }
+  .lbl-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
   .lbl { font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .note { color: var(--text-muted); font-size: var(--fs-12); margin: 0; }

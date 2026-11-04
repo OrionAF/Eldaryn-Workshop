@@ -20,6 +20,7 @@
   import ConfirmButton from '../ConfirmButton.svelte';
   import SheetTable from '../builds/SheetTable.svelte';
   import AbsorbDialog from '../builds/AbsorbDialog.svelte';
+  import PasteSheetDialog from '../builds/PasteSheetDialog.svelte';
   import StatWeightsPanel from '../statWeights/StatWeightsPanel.svelte';
 
   // eslint-disable-next-line no-unused-vars
@@ -86,6 +87,12 @@
     writeSheet(next);
   }
 
+  let pasteOpen = $state(false);
+  function applyPaste(values) {
+    writeSheet(values);
+    notify('Pasted in-game stats. Check them against the game.', { kind: 'success' });
+  }
+
   // Absorb: preview in a dialog, write on confirm, one-step undo while this page is open.
   let absorbOpen = $state(false);
   let undo = $state(null);
@@ -133,6 +140,7 @@
           {/if}
         </span>
       {/if}
+      <Button variant="ghost" size="small" data-testid="sheet-paste" onclick={() => (pasteOpen = true)}>Paste stats</Button>
       <Button variant="ghost" size="small" disabled={absorbOpen || !absorbable} reason={absorbable ? '' : "The app already matches your in-game stats on the five base stats."} onclick={() => (absorbOpen = true)}>
         Add the difference to base stats
       </Button>
@@ -183,6 +191,7 @@
 <svelte:window onclick={(e) => copyOpen && copyWrap && !copyWrap.contains(e.target) && (copyOpen = false)} />
 
 <AbsorbDialog bind:open={absorbOpen} {character} {stats} onconfirm={absorb} />
+<PasteSheetDialog bind:open={pasteOpen} {keys} values={sheetValues} playerClass={character.class} onapply={applyPaste} />
 
 <style>
   .stack { display: grid; gap: var(--sp-3); }

@@ -224,3 +224,14 @@ describe('copy from preset', () => {
     expect(preset().sheet.values.totalAttack).toBe(4321);
   });
 });
+
+it('Paste stats merges the read lines into the preset sheet and keeps rows it does not mention', () => {
+  enter('totalHp', '900');
+  click(t.q('[data-testid="sheet-paste"]'));
+  const area = document.querySelector('dialog textarea');
+  area.value = 'Attack 48.124\nCrit Chance 6.2%\nFoo 1';
+  area.dispatchEvent(new Event('input', { bubbles: true }));
+  flushSync();
+  click(document.querySelector('[data-testid="paste-apply"]'));
+  expect(preset().sheet.values).toEqual({ totalHp: 900, totalAttack: 48124, totalCritChance: 6.2 });
+});
