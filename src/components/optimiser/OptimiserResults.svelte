@@ -16,9 +16,10 @@
   import Drawer from '../ui/Drawer.svelte';
   import RecommendedTree from '../transcendence/RecommendedTree.svelte';
   import { triesPerClear } from '../../lib/ui/winRateFormat.js';
-  import { goalWinRate, fortressDamage } from '../../lib/ui/optimiserView.js';
+  import { goalWinRate, fortressDamage, resultText } from '../../lib/ui/optimiserView.js';
   import { isWinRateKind } from '../../lib/search/objectives.js';
   import { medalCostText } from '../../lib/search/relicProgression.js';
+  import { notify } from '../../lib/notify.svelte.js';
   import { fmtSigned, fmtEstimate, fmtContrast, fmtContrastCi } from '../../lib/ui/statsFormat.js';
 
   let {
@@ -54,6 +55,14 @@
   };
   const credit = (row) => fortressDamage(view.fortress, row?.value?.est);
   const fmtInt = (n) => n.toLocaleString('en-US');
+  function copyResults() {
+    const done = (ok) => notify(ok ? 'Copied the results as text.' : 'Copying was blocked by the browser.', { kind: ok ? 'success' : 'warn' });
+    try {
+      navigator.clipboard.writeText(resultText(view, presetName)).then(() => done(true), () => done(false));
+    } catch {
+      done(false);
+    }
+  }
   const SEAT = { attacker: 'I attack', defender: 'I defend' };
 </script>
 
@@ -104,6 +113,11 @@
       Current build: raw damage in 60 s {fmtInt(credit(view.baseline).raw)}, credited to the clan {fmtInt(credit(view.baseline).effective)} (x {view.fortress.total.toFixed(2)}).
       The multipliers are the same for every build, so they never change the ranking.
     </p>
+  {/if}
+  {#if view.rows.length}
+    <div class="tools">
+      <Button variant="ghost" size="small" onclick={copyResults}>Copy results</Button>
+    </div>
   {/if}
   <div class="sticky">
     <div class="head" role="presentation">
@@ -235,6 +249,7 @@
   }
   .lbl { font-size: var(--fs-11); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-muted); padding-bottom: var(--sp-1); }
   .lbl.right { text-align: right; }
+  .tools { display: flex; justify-content: flex-end; padding: var(--sp-1) var(--sp-3); border-bottom: 1px solid var(--line-rule); }
   .goal { padding: var(--sp-3); border-bottom: 1px solid var(--line-rule); }
   .note { margin: 0; padding: var(--sp-1) var(--sp-4) var(--sp-1) var(--sp-8); font-size: var(--fs-12); color: var(--text-soft); }
   .actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-8); }

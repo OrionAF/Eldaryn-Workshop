@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   orientContrast, orientRow, viewResult, viewRun, legacyRows, progressSegments, progressLine, effortPlan,
   changeSummary, changeIdLabel, bundleText, onlyWith, dimensionLabel,
-  setGroup, enabledCount, toggleTotal, SPACE_GROUPS, applyPlan, sideEffectsOf, fmtDuration, optimiserJobChips,
+  setGroup, enabledCount, toggleTotal, SPACE_GROUPS, applyPlan, sideEffectsOf, fmtDuration, optimiserJobChips, resultText,
 } from './optimiserView.js';
 import { runFromResult } from '../model/runs.js';
 import { BLOCKS } from '../search/space.js';
-import { dpsResult, ttkResult, richResult, legacyRun } from '../__fixtures__/optimiser/index.js';
+import { dpsResult, ttkResult, richResult, legacyRun, pushResult } from '../__fixtures__/optimiser/index.js';
 
 describe('orientContrast', () => {
   it('flips a time contrast so positive means faster, swapping the bounds', () => {
@@ -260,5 +260,26 @@ describe('onlyWith', () => {
     expect(onlyWith(changes[1], changes)).toBe('Mount');
     expect(onlyWith(changes[0], changes)).toBeNull();
     expect(onlyWith(changes[2], changes)).toBeNull();
+  });
+});
+
+describe('resultText', () => {
+  it('lists the objective, the current value and one block per build with its changes', () => {
+    const view = viewResult(richResult());
+    const text = resultText(view, 'Main');
+    expect(text).toMatch(/^Optimiser result for Main/);
+    expect(text).toMatch(/Current build: /);
+    expect(text).toMatch(/Rank 1=: /);
+    expect(text).toMatch(/Rank 3: .*Too close to call/);
+    expect(text.match(/^Rank /gm)).toHaveLength(view.rows.length);
+    expect(text).toMatch(/^- .+: /m);
+  });
+  it('says no changes when nothing is listed', () => {
+    const r = dpsResult();
+    for (const row of r.rows) row.changes = [];
+    expect(resultText(viewResult(r), 'Main')).toMatch(/No changes suggested\.$/);
+  });
+  it('writes a Push result', () => {
+    expect(resultText(viewResult(pushResult()), 'Main')).toMatch(/Rank 1/);
   });
 });

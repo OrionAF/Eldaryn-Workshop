@@ -3,7 +3,7 @@
 // domain, maps phases to progress segments, prints the effort plan and turns a row's write groups into
 // an Apply plan. No store, no DOM.
 import { forestDomain } from './forestScale.js';
-import { fmtCount } from './statsFormat.js';
+import { fmtCount, fmtEstimate, fmtContrast, fmtContrastCi, verdictText } from './statsFormat.js';
 import { formatFlat } from '../format.js';
 import { resolveEffort } from '../search/search.js';
 import { SCOPES } from '../search/patch.js';
@@ -530,4 +530,33 @@ export function powerText(row, basePower) {
   if (typeof basePower !== 'number' || !Number.isFinite(basePower)) return '';
   const d = Math.round(p - basePower);
   return `Power ${d > 0 ? '+' : d < 0 ? '−' : '±'}${powerNum(d)}`;
+}
+
+/**
+ * A result as plain text for pasting into notes or chat: the objective, the current value, then one block per
+ * build (its value, change versus current with the likely range, verdict and every change). Uses the view's own
+ * numbers, so it matches the table.
+ */
+export function resultText(view, presetName = 'this build') {
+  const unit = view.unit;
+  const lines = [`Optimiser result for ${presetName}`];
+  const objective = OBJECTIVE_LABEL[view.kind];
+  if (objective) lines.push(`Objective: ${objective}`);
+  if (view.baseline && !view.baseline.valueNote) lines.push(`Current build: ${fmtEstimate(unit, view.baseline.value)}`);
+  if (!view.rows.length) {
+    lines.push('', 'No changes suggested.');
+    return lines.join('\n');
+  }
+  for (const row of view.rows) {
+    const rank = row.tieGroup != null ? `${row.rank}=` : String(row.rank);
+    const vs = row.vsBaseline;
+    const head = [
+      row.valueNote ? '' : fmtEstimate(unit, row.value),
+      [fmtContrast(unit, vs), fmtContrastCi(unit, vs) && `(${fmtContrastCi(unit, vs)})`].filter(Boolean).join(' '),
+      row.provisional ? 'not confirmed yet' : verdictText(vs),
+    ].filter(Boolean).join(' · ');
+    lines.push('', `Rank ${rank}: ${head}`);
+    for (const c of row.changes) lines.push(`- ${changeText(c)}`);
+  }
+  return lines.join('\n');
 }
