@@ -195,3 +195,49 @@ describe('equip panel moved to Builds', () => {
     expect(target.querySelector('a[href="#/builds/loadout"]')).not.toBeNull();
   });
 });
+
+describe('collection filter', () => {
+  const tab = (label) => [...target.querySelectorAll('[role="tab"]')].find((t) => t.textContent.includes(label));
+  const pick = (label) => {
+    tab(label).click();
+    flushSync();
+  };
+  // Granted stances count as owned at level 100, so compare against that baseline.
+  const baseOwned = () => Object.keys(rosterStore.current.sigils.owned).filter((sp) => rosterStore.current.sigils.owned[sp].level > 0);
+  const names = () => [...target.querySelectorAll('.sigil-card .rarity-title')].map((n) => n.textContent);
+
+  it('Owned shows only owned sigils and drops empty sections', () => {
+    const before = baseOwned().length;
+    own('CATACLYSM', 1);
+    pick('Owned');
+    expect(names()).toContain('Cataclysm');
+    expect(names().length).toBe(before + 1);
+    expect(target.querySelectorAll('.rarity-section').length).toBeLessThan(6);
+  });
+
+  it('Not owned hides owned sigils', () => {
+    own('CATACLYSM', 1);
+    pick('Not owned');
+    expect(names()).not.toContain('Cataclysm');
+    expect(names().length).toBe(ownableSigils('WARRIOR').length - baseOwned().length);
+  });
+
+  it('Unequipped excludes a sigil equipped in a preset', () => {
+    own('CATACLYSM', 1);
+    own('DEFENSE_STANCE', 1);
+    rosterStore.setPresetSigils(preset().id, { species: ['CATACLYSM'] });
+    flushSync();
+    pick('Unequipped');
+    expect(names()).toContain('Defense Aura');
+    expect(names()).not.toContain('Cataclysm');
+  });
+
+  it('shows an empty state when nothing matches', () => {
+    // Everything owned (the free stances) is equipped, so Unequipped has nothing to show.
+    baseOwned().forEach((sp, i) => rosterStore.setPresetSigils(rosterStore.current.presets[i].id, { species: [sp] }));
+    flushSync();
+    pick('Unequipped');
+    expect(names()).toEqual([]);
+    expect(target.textContent).toContain('No sigils match');
+  });
+});
