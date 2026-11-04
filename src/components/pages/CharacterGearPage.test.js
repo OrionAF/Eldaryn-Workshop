@@ -132,3 +132,48 @@ it('the stone grid filters by type', () => {
   expect(target.querySelectorAll('.stone-tile')).toHaveLength(1);
   unmount(app);
 });
+
+const stepBtn = (name) => target.querySelector(`button[aria-label="${name}"]`);
+const key = (el, k) => {
+  el.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+  flushSync();
+};
+
+it('Next / Previous slot step through the 9 base slots and wrap', () => {
+  const app = mount(CharacterGearPage, { target });
+  flushSync();
+  // Weapon is the 6th slot in silhouette order.
+  expect(target.textContent).toContain('Slot 6 of 9');
+  for (let i = 0; i < 3; i++) press(stepBtn('Next slot'));
+  expect(target.textContent).toContain('Slot 9 of 9');
+  press(stepBtn('Next slot'));
+  expect(target.textContent).toContain('Slot 1 of 9');
+  press(stepBtn('Previous slot'));
+  expect(target.textContent).toContain('Slot 9 of 9');
+  unmount(app);
+});
+
+it('Oblivion realm cycles 12 slots', () => {
+  const app = mount(CharacterGearPage, { target, props: { realm: 'oblivion' } });
+  flushSync();
+  const n = Number(/Slot (\d+) of 12/.exec(target.textContent)[1]);
+  for (let i = n; i < 12; i++) press(stepBtn('Next slot'));
+  expect(target.textContent).toContain('Slot 12 of 12');
+  press(stepBtn('Next slot'));
+  expect(target.textContent).toContain('Slot 1 of 12');
+  press(stepBtn('Previous slot'));
+  expect(target.textContent).toContain('Slot 12 of 12');
+  unmount(app);
+});
+
+it('[ and ] step slots, but are ignored while typing in a field', () => {
+  const app = mount(CharacterGearPage, { target });
+  flushSync();
+  key(target.querySelector('.layout'), ']');
+  expect(target.textContent).toContain('Slot 7 of 9');
+  key(target.querySelector('.layout'), '[');
+  expect(target.textContent).toContain('Slot 6 of 9');
+  key(q('Attack'), ']');
+  expect(target.textContent).toContain('Slot 6 of 9');
+  unmount(app);
+});

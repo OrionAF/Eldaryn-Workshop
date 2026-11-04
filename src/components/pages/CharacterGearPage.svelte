@@ -44,6 +44,20 @@
     EQUIP_SETS.filter((s) => s.realm === realm).map((s) => ({ key: s.key, label: s.label, enchantSlots: character.equipment[s.key].enchantSlots })),
   );
   const slot = $derived(slotsForRealm(realm).includes(selectedSlot) ? selectedSlot : 'WEAPON');
+  const slotList = $derived(slotsForRealm(realm));
+  const slotIndex = $derived(slotList.indexOf(slot));
+  /** Moves the selection by `delta` slots, wrapping at both ends. */
+  function stepSlot(delta) {
+    selectedSlot = slotList[(slotIndex + delta + slotList.length) % slotList.length];
+  }
+  /** `[` / `]` step through slots, except while typing in a field. */
+  function onLayoutKey(e) {
+    if (e.key !== '[' && e.key !== ']') return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target instanceof Element && e.target.closest('input, select, textarea, [contenteditable="true"]')) return;
+    e.preventDefault();
+    stepSlot(e.key === ']' ? 1 : -1);
+  }
   const usersOf = (key) =>
     key === 'oblivion' ? [] : character.presets.filter((p) => p.equipmentSet === (key === 'set2' ? 2 : 1)).map((p) => p.name);
   const usedBy = $derived(usersOf(setKey));
@@ -112,7 +126,8 @@
   <Tabs items={viewTabs} bind:value={view} label="Gear sections" idPrefix="gear-view" />
 
   {#if view === 'equipment'}
-    <div class="layout" role="tabpanel" id="gear-view-panel-equipment">
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <div class="layout" role="tabpanel" id="gear-view-panel-equipment" onkeydown={onLayoutKey}>
       <div class="silhouette-col">
         <SlotSilhouette
           items={equip.items}
@@ -128,6 +143,13 @@
       </div>
 
       <Panel title={slotLabel(character.class, slot)} scope={realm === 'oblivion' ? 'oblivion' : null}>
+        {#snippet meta()}
+          <span class="step">
+            <Button variant="ghost" size="small" aria-label="Previous slot" title="Previous slot ([)" onclick={() => stepSlot(-1)}>&lsaquo;</Button>
+            <span class="step-count mono">Slot {slotIndex + 1} of {slotList.length}</span>
+            <Button variant="ghost" size="small" aria-label="Next slot" title="Next slot (])" onclick={() => stepSlot(1)}>&rsaquo;</Button>
+          </span>
+        {/snippet}
         <div class="editor">
           <ItemEditor
             value={equip.items[slot]}
@@ -219,6 +241,8 @@
   .scope-line { font-size: var(--fs-12); color: var(--text-muted); margin: var(--sp-2) 0 var(--sp-3); }
   .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--sp-6); margin-top: var(--sp-3); }
   .silhouette-col { min-width: 0; }
+  .step { display: inline-flex; align-items: center; gap: var(--sp-2); }
+  .step-count { font-size: var(--fs-12); color: var(--text-muted); }
   .socket-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }
   .socket-line { font-size: var(--fs-13); color: var(--text-soft); display: inline-flex; flex-wrap: wrap; gap: var(--sp-2); align-items: baseline; }
   .stat { color: var(--text-muted); font-size: var(--fs-12); }
