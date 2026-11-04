@@ -12,10 +12,10 @@ import { cloneAsOpponent } from '../features/duel.js';
 import { fightRng } from '../engine/rng.js';
 import { simulateCelestial, celestialMaxHoldCount, defaultTankIndex, CELESTIAL_ASSUMPTIONS } from '../engine/pve/celestial.js';
 import { CELESTIAL_TACTICS } from '../game/celestial.js';
-import { resolveTarget, makeObjective, objectiveKindsFor, goalRetired } from './objectives.js';
+import { resolveTarget, makeObjective, objectiveKindsFor, goalRetired, FASTEST_CLEAR_TRIES } from './objectives.js';
 import { targetOut } from './result.js';
 import {
-  resolveRosterPartner, rosterPartnerFor, celestialRunner, celestialFightScore, defaultCelestialTactics, ME, PARTNER,
+  resolveRosterPartner, rosterPartnerFor, celestialRunner, celestialFightScore, celestialClearTime, defaultCelestialTactics, ME, PARTNER,
 } from './celestialObjective.js';
 import { prepare, optimize } from './search.js';
 import { BLOCKS } from './space.js';
@@ -83,8 +83,10 @@ describe('Celestial target spec', () => {
     expect(resolveHard({ tactics: { focus: 'BOSS' } }).spec.tactics).toEqual({ focus: 'BOSS', holdCount: defaultCelestialTactics('HARD').holdCount });
   });
 
-  it('is scored by the win-rate family and Push; dps is refused', () => {
-    expect(objectiveKindsFor('celestial')).toEqual(['win-chance', 'win-rate', 'push']);
+  it('is scored by the win-rate family, Push and Fastest clear; dps is refused', () => {
+    expect(objectiveKindsFor('celestial')).toEqual(['win-chance', 'win-rate', 'push', 'fastest-clear']);
+    expect(goalRetired('celestial', 'fastest-clear')).toBe(false);
+    expect(goalRetired('dungeon', 'fastest-clear')).toBe(true);
     expect(goalRetired('celestial', 'push')).toBe(false);
     expect(goalRetired('celestial', 'dps')).toBe(true);
     expect(() => makeObjective({ kind: 'dps' }, resolveHard())).toThrow(/cannot score/);
@@ -212,6 +214,53 @@ describe('Celestial objective', () => {
     expect(chunk.main).toEqual(makeObjective({ kind: 'win-chance' }, resolveHard()).sample(myFighter, { seed: 5, from: 0, to: 2 }).main);
   });
 
+  it('Fastest clear: the 1/tries quantile of the clear time, a loss never clearing (Infinity)', () => {
+    const t = resolveHard({ tank: 'me' });
+    const o = makeObjective({ kind: 'fastest-clear' }, t);
+    expect(o.spec).toEqual({ kind: 'fastest-clear', tries: FASTEST_CLEAR_TRIES.default });
+    expect(o).toMatchObject({ unit: 'ms', higherIsBetter: false, statistic: 'censored-quantile', q: 1 / FASTEST_CLEAR_TRIES.default, window: 360 });
+    expect(o.label).toBe('Fastest clear (best of about 10 tries)');
+    expect(makeObjective({ kind: 'fastest-clear', tries: 4 }, t)).toMatchObject({ q: 0.25, spec: { kind: 'fastest-clear', tries: 4 } });
+    for (const bad of [1, 2.5, 101, '10']) expect(() => makeObjective({ kind: 'fastest-clear', tries: bad }, t)).toThrow(/tries/);
+    expect(() => makeObjective({ kind: 'fastest-clear' }, resolveTarget({ kind: 'dungeon', id: 'dungeon_1', step: 1 }))).toThrow(/cannot score/);
+    // the sample: fight i on fightRng(seed, i), the clear time when won, else Infinity
+    const got = o.sample(myFighter, { seed: 7, from: 0, to: 4 }).main[0];
+    const want = [0, 1, 2, 3].map((i) => celestialClearTime(simulateCelestial({
+      difficulty: 'HARD', party: [myFighter, rosterPartner.fighter], level: 85, tankIndex: 0,
+      tactics: defaultCelestialTactics('HARD'), stackPlayerIndex: 0, rng: fightRng(7, i),
+    })));
+    expect(got).toEqual(want);
+    expect(celestialClearTime({ won: true, timeMs: 46000 })).toBe(46000);
+    expect(celestialClearTime({ won: false, timeMs: 360000 })).toBe(Infinity);
+  });
+
+  it('Fastest clear ranks the faster build better and falls back to the clear rate when neither reaches q', () => {
+    const o = makeObjective({ kind: 'fastest-clear', tries: 2 }, resolveHard());
+    const set = (xs) => ({ main: [xs], side: {}, n: xs.length });
+    const fast = set(Array.from({ length: 200 }, (_, i) => 40000 + (i % 20) * 100));
+    const slow = set(fast.main[0].map((v) => v + 5000));
+    const c = o.contrast(fast, slow, { alpha: 0.05, seed: 1, B: 400 });
+    expect(c.basis).toBe('quantile');
+    expect(c.delta).toBeLessThan(0);
+    expect(c.hi).toBeLessThan(0);
+    expect(o.score(fast)).toBeGreaterThan(o.score(slow));
+    // nobody clears half the time: the median is never, so the clear rate decides
+    const rare = set(Array.from({ length: 200 }, (_, i) => (i % 5 === 0 ? 50000 : Infinity)));
+    const none = set(new Array(200).fill(Infinity));
+    expect(o.contrast(rare, none, { alpha: 0.05 }).basis).toBe('winRate');
+    expect(o.score(rare)).toBeGreaterThan(o.score(none));
+    expect(o.score(none)).toBeLessThan(o.score(slow));
+    // the estimate carries the clear rate beside the time
+    expect(o.estimate(fast).aux.winRate.est).toBe(1);
+  });
+
+  it('a saved Fastest clear setup keeps its tries, and drops a bad value', () => {
+    expect(normaliseSetup({ target: hard(), objective: { kind: 'fastest-clear', tries: 5 } }, me, 'standard', roster).objective).toEqual({ kind: 'fastest-clear', tries: 5 });
+    expect(normaliseSetup({ target: hard(), objective: { kind: 'fastest-clear', tries: 0 } }, me, 'standard', roster).objective).toEqual({ kind: 'fastest-clear' });
+    // another target never keeps it
+    expect(normaliseSetup({ target: { kind: 'dungeon', id: 'dungeon_1', step: 1 }, objective: { kind: 'fastest-clear' } }, me).objective.kind).not.toBe('fastest-clear');
+  });
+
   it('prepare runs the search in PVE mode on the base realm', () => {
     const p = prepare({ character: me, partner: rosterPartner, target: hard(), objective: { kind: 'win-chance' }, realm: 'oblivion' });
     expect(p.mode).toBe('pve');
@@ -238,6 +287,16 @@ const expectValidResult = (res) => {
 describe('Celestial optimise run (real fixtures)', () => {
   it('a bounded mount-only run on HARD level 85 with the Warrior tank returns a valid result (seconds)', async () => {
     expectValidResult(await optimize(optimiseRequest('mount', { level: 'quick', n0: 8, maxN: 8 })));
+  }, 60_000);
+
+  it('a bounded mount-only Fastest clear run with me as the tank returns a valid result in seconds', async () => {
+    const res = await optimize({
+      ...optimiseRequest('mount', { level: 'quick', n0: 8, maxN: 16 }),
+      target: hard({ level: 85, tank: 'me' }), objective: { kind: 'fastest-clear', tries: 2 },
+    });
+    expect(res.status).toBe('done');
+    expect(res.objective).toMatchObject({ kind: 'fastest-clear', unit: 'ms', higherIsBetter: false });
+    expect(typeof res.headline.text).toBe('string');
   }, 60_000);
 });
 

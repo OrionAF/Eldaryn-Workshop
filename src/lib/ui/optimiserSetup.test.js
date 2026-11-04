@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { defaultSetup, normaliseSetup, setupFromRun, requestOf, searchCharacter, signatureOf, runIsStale, runApplyBlock, powerFloorPicks, currentCrusadeGate } from './optimiserSetup.js';
+import { defaultSetup, normaliseSetup, setupFromRun, requestOf, TIME_LIMITS, searchCharacter, signatureOf, runIsStale, runApplyBlock, powerFloorPicks, currentCrusadeGate } from './optimiserSetup.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { normaliseCharacter } from '../model/index.js';
 import { cloneAsOpponent } from '../features/duel.js';
@@ -86,6 +86,21 @@ describe('request and signature', () => {
     expect(req).toMatchObject({ mode: 'optimize', presetId: 'p1', effort: 'quick', seed: 5 });
     expect(Object.keys(req.space).sort()).toEqual(Object.keys(SPACE_DEFAULTS).sort());
     for (const k of ['maxMs', 'finalMs', 'maxEvals', 'maxPasses', 'budget']) expect(req).not.toHaveProperty(k);
+  });
+  it('a time limit goes out as the effort object with budgetMs; no limit keeps the plain level', () => {
+    const s = { ...defaultSetup('quick'), presetId: 'p1', timeLimit: 30 };
+    expect(requestOf(s, character()).effort).toEqual({ level: 'quick', budgetMs: 30000 });
+    expect(requestOf({ ...s, timeLimit: null }, character()).effort).toBe('quick');
+    expect(requestOf({ ...s, timeLimit: 45 }, character()).effort).toBe('quick');
+  });
+  it('a saved time limit survives normalising and a run brings its limit back; anything else is no limit', () => {
+    expect(defaultSetup().timeLimit).toBeNull();
+    for (const t of TIME_LIMITS) expect(normaliseSetup({ timeLimit: t }, character()).timeLimit).toBe(t);
+    for (const t of [0, 45, '30', -15, null]) expect(normaliseSetup({ timeLimit: t }, character()).timeLimit).toBeNull();
+    const run = runFromResult(richResult(), { id: 'r1' });
+    run.presetId = 'p1';
+    expect(setupFromRun({ ...run, budget: { ...run.budget, budgetMs: 60000 } }, character()).timeLimit).toBe(60);
+    expect(setupFromRun(run, character()).timeLimit).toBeNull();
   });
   it('searchCharacter detaches from the source', () => {
     const c = character();

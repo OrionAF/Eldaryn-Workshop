@@ -116,14 +116,22 @@ function solveIncreasing(f, target, lo, hi) {
 }
 
 /** Standard normal quantile Φ⁻¹(p). */
+// the same few levels recur (alpha / arms / looks), and the bisection is ~100 gammaQ calls
+const zMemo = new Map();
 export function zQuantile(p) {
   if (!(p > 0)) return -Infinity;
   if (!(p < 1)) return Infinity;
   if (p === 0.5) return 0;
   if (p < 0.5) return -zQuantile(1 - p);
-  // Upper half: solve on the tail 1 - Φ(z) = 1 - p, which keeps precision for p near 1.
-  const q = 1 - p;
-  return solveIncreasing((z) => -0.5 * gammaQ(0.5, (z * z) / 2), -q, 0, 40);
+  let v = zMemo.get(p);
+  if (v === undefined) {
+    // Upper half: solve on the tail 1 - Φ(z) = 1 - p, which keeps precision for p near 1.
+    const q = 1 - p;
+    v = solveIncreasing((z) => -0.5 * gammaQ(0.5, (z * z) / 2), -q, 0, 40);
+    if (zMemo.size > 4096) zMemo.clear();
+    zMemo.set(p, v);
+  }
+  return v;
 }
 
 /** Student-t CDF with `df` degrees of freedom (df > 0, may be non-integer; Infinity = normal). */

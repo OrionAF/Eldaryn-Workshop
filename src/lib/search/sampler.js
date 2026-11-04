@@ -241,8 +241,10 @@ export async function compareSets(objective, getX, getY, o) {
     const n = looks[k];
     const [x, y] = await Promise.all([getX(n), getY(n)]);
     if (x.n < n || y.n < n) throw new RangeError(`compareSets: sampler returned fewer than ${n} fights`);
-    const r = verdictOf(objective, sliceSet(x, n), sliceSet(y, n), o, a, k === looks.length - 1);
-    if (r) return { ...r, looks: k + 1 };
+    // o.stop (a time budget): an open look ends the comparison `unresolved`, which only gives up power
+    const stop = k < looks.length - 1 && o.stop?.() === true;
+    const r = verdictOf(objective, sliceSet(x, n), sliceSet(y, n), stop ? { ...o, open: true } : o, a, k === looks.length - 1);
+    if (r) return { ...r, looks: k + 1, ...(stop && r.verdict === 'unresolved' ? { stopped: true } : {}) };
   }
   throw new Error('unreachable');
 }

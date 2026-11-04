@@ -47,11 +47,14 @@ export const SPEC_INNER = ['sigils', 'utility', 'ancient', 'conditions', 'majorG
 export const MOUNT_INNER = ['minorGlyphs', 'majorGlyphs'];
 const PROGRESS_MS = 250;
 const YIELD_MS = 25;
+/** The part of a time budget the search phase may use; Minimise, confirm and attribution get the rest (simulation.md §Time budget). */
+export const SEARCH_SHARE = 0.5;
 
 /**
  * Effort: Q4's precision (the delta and maxN Drop Check uses, features/swap.js DROP_PRECISION) plus the
- * first look. A string picks a level; an object may override n0, maxN, delta and randomStarts (tests).
- * @returns {{level: string, delta: number, deltaKind: 'relative'|'absolute', alpha: number, n0: number, maxN: number, randomStarts: number}}
+ * first look. A string picks a level; an object may override n0, maxN, delta and randomStarts (tests), and
+ * `budgetMs` sets a time budget for the whole run (null: none; simulation.md §Time budget).
+ * @returns {{level: string, delta: number, deltaKind: 'relative'|'absolute', alpha: number, n0: number, maxN: number, randomStarts: number, budgetMs: number|null}}
  */
 export function resolveEffort(raw, objective) {
   const o = typeof raw === 'string' ? { level: raw } : raw && typeof raw === 'object' ? raw : {};
@@ -63,10 +66,11 @@ export function resolveEffort(raw, objective) {
   const maxN = posInt(o.maxN) && o.maxN >= n0 ? o.maxN : Math.max(n0, p.maxN);
   const delta = typeof o.delta === 'number' && o.delta >= 0 ? o.delta : deltaKind === 'relative' ? p.rel : p.prob * (objective.deltaScale ?? 1);
   const randomStarts = Number.isInteger(o.randomStarts) && o.randomStarts >= 0 ? o.randomStarts : RANDOM_STARTS;
+  const budgetMs = Number.isFinite(o.budgetMs) && o.budgetMs >= 1 ? Math.round(o.budgetMs) : null;
   // futility: false restores the pre-A5 race and accept rule; tieLook: false the look schedule without the
   // win rate's tie look (both benchmarks only; not Effort controls)
   // batchDrop: false restores the one-at-a-time Minimise (benchmarks only; simulation.md §Minimise and confirm)
-  return { level, delta, deltaKind, alpha: ALPHA, n0, maxN, randomStarts, futility: o.futility !== false, tieLook: o.tieLook !== false, batchDrop: o.batchDrop !== false };
+  return { level, delta, deltaKind, alpha: ALPHA, n0, maxN, randomStarts, futility: o.futility !== false, tieLook: o.tieLook !== false, batchDrop: o.batchDrop !== false, budgetMs };
 }
 
 /** Phase seeds (I4: the data that decides is never the data reported). */
@@ -122,6 +126,8 @@ export function prepare(request) {
   const powerFloor = normalisePowerFloor(request.powerFloor);
   const space = createBuildSpace(character, preset, {
     realm, mode, residual, toggles: togglesOf(request.space), powerFloor, relicBudget: request.relicBudget, boardIchorBudget: request.boardIchorBudget, dominance: dominanceContextOf(target, mode),
+    // effort.dominance: false turns the stat-dominance filter off (benchmarks only, like batchDrop)
+    pruneDominated: request.effort?.dominance !== false,
   });
   // Push's warm start (simulation.md §Push): the previous step's optimum, an extra local start; at most
   // two, legalised, the random starts they replace dropped from the end
@@ -135,7 +141,7 @@ export function prepare(request) {
     boardIchorBudget: space.boardIchorBudget,
     // the partner's build is an input of every fight: a changed partner is a different run
     ...(target.partner ? { partnerKey: target.partner.key } : {}),
-    seed, seeds, effort: { level: effort.level, delta: effort.delta, deltaKind: effort.deltaKind, alpha: effort.alpha, n0: effort.n0, maxN: effort.maxN }, characterKey,
+    seed, seeds, effort: { level: effort.level, delta: effort.delta, deltaKind: effort.deltaKind, alpha: effort.alpha, n0: effort.n0, maxN: effort.maxN, ...(effort.budgetMs ? { budgetMs: effort.budgetMs } : {}) }, characterKey,
   };
   const requestKey = metricKey('optimise-request', { ...requestEcho, characterKey: undefined, randomStarts: effort.randomStarts, ...(warmStarts.length ? { warmStarts: warmStarts.map(space.key) } : {}), ...(effort.futility ? {} : { futility: false }), ...(effort.tieLook ? {} : { tieLook: false }), ...(effort.batchDrop ? {} : { batchDrop: false }) });
   return { character, partner, preset, target, realm, mode, objective, effort, seed, seeds, warnings, space, characterKey, requestEcho, requestKey, warmStarts };
@@ -365,12 +371,12 @@ function createRun(prep, hooks) {
    * Sequential paired comparison of X against Y on a stage (logged). `futile` (a challenger against
    * the incumbent) also stops once X cannot beat Y by δ (simulation.md §Search, racing).
    */
-  function compare(X, Y, stage, alpha, { futile = false } = {}) {
+  function compare(X, Y, stage, alpha, { futile = false, stop } = {}) {
     const futility = futile && effort.futility;
     // the tie look is part of the step's inputs: a checkpoint from before it stops replaying here
     const tie = tieLook(objective, effortFor(alpha));
     return step('compare', [stage.id, X.key, Y.key, alpha, ...(futility ? ['futile'] : []), ...(tie != null ? ['tie', tie] : [])], async () => {
-      const c = await compareSets(objective, (n) => getSet(X, stage, n), (n) => getSet(Y, stage, n), { ...effortFor(alpha), futility, seed: stage.seed });
+      const c = await compareSets(objective, (n) => getSet(X, stage, n), (n) => getSet(Y, stage, n), { ...effortFor(alpha), futility, seed: stage.seed, stop });
       const [x, y] = [await getSet(X, stage, c.n), await getSet(Y, stage, c.n)];
       if (log) logPair('compare', X, Y, stage, c);
       return { ...c, identical: identical(x, y, c.n) };
@@ -388,7 +394,7 @@ function createRun(prep, hooks) {
   }
 
   /** A race on a stage (logged; eliminated and futile arms are kept as counts so checkpoints stay small). */
-  function raceArms(list, stage) {
+  function raceArms(list, stage, { stop } = {}) {
     for (const a of list) st.evaluated.add(a.key);
     const tie = list.length > 1 ? tieLook(objective, effortFor(effort.alpha / list.length)) : null;
     return step('race', [stage.id, ...list.map((a) => a.key), ...(effort.futility ? [] : ['no-futility']), ...(tie != null ? ['tie', tie] : [])], async () => {
@@ -396,6 +402,7 @@ function createRun(prep, hooks) {
         objective, effort: { ...effortFor(effort.alpha), futility: effort.futility }, seed: stage.seed,
         getSet: (a, n) => getSet(a, stage, n),
         onLook: () => progress(),
+        stop,
       });
       if (log) logRace(list, r, stage);
       return { ...r, eliminated: r.eliminated.length + r.futile.length, futile: r.futile.length };
@@ -548,6 +555,15 @@ async function searchPhase(prep, run) {
   const sizes = space.domainSizes(B.cand);
   const status = new Map(); // block id -> 'converged' | 'unresolved'
   const unresolvedOut = [];
+  // A time budget stops the exploration at a block boundary once the search's share is spent; the first race
+  // always runs. What was raced keeps its meaning, and the rows are still confirmed on their own seed.
+  const deadline = effort.budgetMs ? run.t0 + effort.budgetMs * SEARCH_SHARE : Infinity;
+  let raced = false;
+  let timedOut = false;
+  const timeUp = () => timedOut || (timedOut = raced && Date.now() >= deadline);
+  // inside a race or an accepting compare: stop at the next look (at least one look always runs)
+  const cutNow = () => timedOut || (timedOut = Date.now() >= deadline);
+  const cutOpts = effort.budgetMs ? { stop: cutNow } : {};
   // the Combat Power guard is a legality rule: an arm below the floor is never raced (simulation.md §Build space)
   const simulable = (a) => {
     if (!space.admissible(a.cand)) {
@@ -633,7 +649,8 @@ async function searchPhase(prep, run) {
     for (const row of st.steps) if (row.state === 'queued') { row.state = 'running'; row.pass = 1; }
     run.progress(true);
     run.log?.enterBlock('all');
-    const r = await run.raceArms(arms, S1);
+    const r = await run.raceArms(arms, S1, cutOpts);
+    if (r.cut) timedOut = true;
     run.log?.enterBlock(null);
     st.eliminated += r.eliminated;
     // one joint race covers every open block: each row shows its tries and fights
@@ -646,11 +663,13 @@ async function searchPhase(prep, run) {
       row.improved = moved.has(row.id);
     }
     for (const id of enabled) status.set(id, 'converged');
-    for (const u of r.unresolved) {
+    // a race the time budget cut left its open arms unexplored, not too close to call: they are not finalists
+    const open = r.cut ? [] : r.unresolved;
+    for (const u of open) {
       for (const c of changesOf(space, arms[r.winner].cand, arms[u.i].cand, { bundles: false })) status.set(c.dimension, 'unresolved');
       unresolvedOut.push({ fromKey: arms[r.winner].key, toKey: arms[u.i].key, change: labelOf(arms[r.winner], arms[u.i]), contrast: contrastOut(u.contrast) });
     }
-    const contenders = [...r.ties, ...r.unresolved.map((u) => u.i)].map((i) => arms[i]);
+    const contenders = [...r.ties, ...open.map((u) => u.i)].map((i) => arms[i]);
     return { strategy: 'exhaustive', starts: 1, optima: [arms[r.winner]], contenders };
   }
 
@@ -692,7 +711,8 @@ async function searchPhase(prep, run) {
   async function acceptable(arms, r, visited) {
     const picks = [r.winner, r.leader].filter((v, i, a) => a.indexOf(v) === i && v !== 0);
     for (const w of picks) {
-      const c = await run.compare(arms[w], arms[0], S1, effort.alpha / arms.length, { futile: true });
+      const c = await run.compare(arms[w], arms[0], S1, effort.alpha / arms.length, { futile: true, ...cutOpts });
+      if (c.stopped) timedOut = true; // also when the step is replayed from a checkpoint
       if (c.verdict !== 'better') continue;
       const W = canonArm(arms[w]);
       if (!visited.has(W.key)) return W;
@@ -712,20 +732,24 @@ async function searchPhase(prep, run) {
       let accepted = false;
       const contenders = [];
       const unresolved = [];
-      const raced = [];
+      const racedHere = [];
       for (const id of ids) {
         if (!enabled.has(id)) continue;
+        if (timeUp()) break;
         st.block = id;
         await inStep(id, async (row) => {
           const arms = await blockArms(id, x);
           if (!status.has(id)) status.set(id, 'converged');
           if (arms.length < 2) return;
           row.tried += arms.length - 1;
-          const r = await run.raceArms(arms, S1);
+          const r = await run.raceArms(arms, S1, cutOpts);
+          raced = true;
+          if (r.cut) timedOut = true;
           st.eliminated += r.eliminated;
-          raced.push({ id, unresolved: r.unresolved.length > 0 });
-          contenders.push(...r.ties.map((i) => arms[i]), ...r.unresolved.map((u) => arms[u.i]));
-          for (const u of r.unresolved) unresolved.push({ fromKey: arms[0].key, toKey: arms[u.i].key, change: labelOf(arms[0], arms[u.i]), contrast: contrastOut(u.contrast) });
+          const open = r.cut ? [] : r.unresolved; // a cut race's open arms are unexplored (see exhaustive)
+          racedHere.push({ id, unresolved: open.length > 0 });
+          contenders.push(...r.ties.map((i) => arms[i]), ...open.map((u) => arms[u.i]));
+          for (const u of open) unresolved.push({ fromKey: arms[0].key, toKey: arms[u.i].key, change: labelOf(arms[0], arms[u.i]), contrast: contrastOut(u.contrast) });
           const W = await acceptable(arms, r, visited);
           if (W) {
             x = W;
@@ -735,17 +759,19 @@ async function searchPhase(prep, run) {
           }
         });
       }
-      if (!accepted && ids.includes('talents') && enabled.has('talents')) {
+      if (!accepted && !timeUp() && ids.includes('talents') && enabled.has('talents')) {
         st.block = 'talents';
         await inStep('talents', async (row) => {
           const arms = prepareArms([x, ...twoPointArms(x)]);
           if (arms.length > 1) {
             row.tried += arms.length - 1;
-            const r = await run.raceArms(arms, S1);
+            const r = await run.raceArms(arms, S1, cutOpts);
+            if (r.cut) timedOut = true;
             st.eliminated += r.eliminated;
-            for (const u of r.unresolved) unresolved.push({ fromKey: arms[0].key, toKey: arms[u.i].key, change: labelOf(arms[0], arms[u.i]), contrast: contrastOut(u.contrast) });
-            if (r.unresolved.length) raced.push({ id: 'talents', unresolved: true });
-            contenders.push(...r.ties.map((i) => arms[i]), ...r.unresolved.map((u) => arms[u.i]));
+            const open = r.cut ? [] : r.unresolved;
+            for (const u of open) unresolved.push({ fromKey: arms[0].key, toKey: arms[u.i].key, change: labelOf(arms[0], arms[u.i]), contrast: contrastOut(u.contrast) });
+            if (open.length) racedHere.push({ id: 'talents', unresolved: true });
+            contenders.push(...r.ties.map((i) => arms[i]), ...open.map((u) => arms[u.i]));
             const W = await acceptable(arms, r, visited);
             if (W) {
               x = W;
@@ -756,8 +782,8 @@ async function searchPhase(prep, run) {
           }
         });
       }
-      if (!accepted) {
-        for (const r of raced) if (r.unresolved) status.set(r.id, 'unresolved');
+      if (!accepted || timedOut) {
+        for (const r of racedHere) if (r.unresolved) status.set(r.id, 'unresolved');
         return { x, contenders, unresolved };
       }
     }
@@ -827,6 +853,7 @@ async function searchPhase(prep, run) {
     const optima = [];
     const contenders = [];
     for (const s of distinct) {
+      if (optima.length && timeUp()) break;
       const r = await ascent(s, BLOCKS);
       optima.push(r.x);
       contenders.push(...r.contenders);
@@ -844,18 +871,20 @@ async function searchPhase(prep, run) {
   }
   if (!out) out = await local();
   // a block never reached has nothing to show but its reason
-  for (const row of st.steps) if (row.state === 'queued') Object.assign(row, { state: 'skipped', reason: 'nothing-to-try' });
+  for (const row of st.steps) if (row.state === 'queued') Object.assign(row, { state: 'skipped', reason: timedOut ? 'time-limit' : 'nothing-to-try' });
   run.progress(true);
   const blocks = BLOCKS.map((id) => ({
     id,
     enabled: enabled.has(id),
     domain: enabled.has(id) ? sizes[id] ?? 1 : 1,
     ...(enabled.has(id) && (id === 'mount' || DOMINANCE_BLOCKS.includes(id)) ? { pruned: space.pruned(id, B.cand) } : {}),
-    status: !enabled.has(id) ? 'disabled' : status.get(id) ?? 'not-reached',
+    // a block the time limit cut short is not known to have converged
+    status: !enabled.has(id) ? 'disabled' : timedOut && status.get(id) === 'converged' ? 'time-limit' : status.get(id) ?? 'not-reached',
   }));
   const optimaKeys = new Set(out.optima.map((a) => a.key));
   return {
     ...out,
+    stopped: timedOut ? 'time' : 'converged',
     jointSize: out.strategy === 'exhaustive' || jointSize <= Number.MAX_SAFE_INTEGER ? jointSize : null,
     blocks,
     optimaCount: optimaKeys.size,
@@ -1022,6 +1051,7 @@ export async function optimize(request, hooks = {}) {
 
     run.setPhase('search');
     searchOut = await searchPhase(prep, run);
+    if (searchOut.stopped === 'time') warnings.push({ code: 'time-limit', severity: 'info', message: `The search stopped at the time limit after ${st.evaluated.size.toLocaleString('en-US')} builds, before it finished. A longer limit may find a better build. Every result shown is still checked on its own fights.` });
     const fmap = new Map();
     for (const a of [...searchOut.optima, ...searchOut.contenders]) {
       if (!a || a.key === B.key) continue;
@@ -1304,6 +1334,7 @@ function searchSummary(s, st) {
   const confirm = f.confirm + f.attribute;
   return {
     strategy: s.strategy,
+    stopped: s.stopped,
     jointSize: s.jointSize,
     blocks: s.blocks,
     steps: st.steps ? st.steps.map((r) => ({ ...r })) : [],

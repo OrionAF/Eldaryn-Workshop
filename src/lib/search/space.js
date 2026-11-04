@@ -308,10 +308,12 @@ export function conditionOptionsFor(species, spec, mode) {
  *   `mode` follows the target (`target.kind === 'pvp'`); `residual` is the preset's sheet residual
  *   (build/residual.js), added to every candidate's computed stats; `powerFloor` is the Combat Power
  *   guard (simulation.md §Build space): a candidate below it is not admissible; `dominance` is the target's
- *   dominance context (search/dominance.js dominanceContextOf), default: no target assumption
+ *   dominance context (search/dominance.js dominanceContextOf), default: no target assumption; `pruneDominated: false`
+ *   turns the stat-dominance filter off (measurements only, effort.dominance: false)
  */
 export function createBuildSpace(character, presetOrId, {
   realm = 'base', mode = 'pve', residual = {}, toggles, powerFloor = null, relicBudget, boardIchorBudget, dominance = NO_DOMINANCE_CONTEXT,
+  pruneDominated = true,
 } = {}) {
   const preset = presetOf(character, presetOrId);
   const presetId = preset.id;
@@ -640,7 +642,7 @@ export function createBuildSpace(character, presetOrId, {
     const mk = `${id}|${key(c)}`;
     if (!domainMemo.has(mk)) {
       const values = distinct(c, domains[id](canon(c))).filter(progressionAllowed);
-      if (!DOMINANCE_BLOCKS.includes(id) || values.length === 0) domainMemo.set(mk, { values, pruned: [] });
+      if (!pruneDominated || !DOMINANCE_BLOCKS.includes(id) || values.length === 0) domainMemo.set(mk, { values, pruned: [] });
       else {
         // an illegal incumbent (a saved preset legality would repair) dominates nothing
         const incumbent = key(legalise(c)) === key(c) ? viewOf(c) : null;

@@ -5,6 +5,7 @@
    * Q5): search/estimate.js computes it; what is exact and what is assumed is simulation.md §Estimates.
    * setup: the page's setup as plain data (presetId resolved, PVP opponents filtered); character: the live one;
    * history: saved runs of every character, which the estimate learns from (simulation.md §Estimates).
+   * characters: the roster's other characters, so a Celestial partner from them resolves as in the run.
    */
   import { prefs } from '../../lib/prefs.svelte.js';
   import { staleReason, durationText } from '../../lib/calibration.js';
@@ -13,12 +14,12 @@
   import { fmtCount } from '../../lib/ui/statsFormat.js';
   import ProvenanceTag from '../ui/ProvenanceTag.svelte';
 
-  let { setup, character, history = [] } = $props();
+  let { setup, character, history = [], characters = [] } = $props();
 
   const cal = $derived(prefs.calibration);
   const est = $derived.by(() => {
     try {
-      return estimateRun(requestOf(setup, character), { calibration: cal, history });
+      return estimateRun(requestOf(setup, character, characters), { calibration: cal, history });
     } catch (e) {
       return { ok: false, reason: e?.message ?? String(e) };
     }

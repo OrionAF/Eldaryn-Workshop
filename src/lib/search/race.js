@@ -37,9 +37,10 @@ import { contrastSets, looksFor } from './sampler.js';
  *   `futility: false` turns the futility stop off (the pre-A5 rule; benchmarks only)
  * @param {number} o.seed        the stage seed (seeds the bootstrap of quantile contrasts)
  * @param {(look: {k: number, n: number, alive: number}) => void} [o.onLook]
+ * @param {() => boolean} [o.stop]  a time budget: true after a look ends the race there, the open arms `unresolved`
  * @returns {Promise<RaceResult>}
  */
-export async function race(arms, { objective, getSet, effort, seed, onLook }) {
+export async function race(arms, { objective, getSet, effort, seed, onLook, stop }) {
   if (!arms.length) throw new RangeError('race: no arms');
   // the doubling looks plus the win rate's tie look (sampler.js looksFor), fixed before any fight
   const looks = looksFor(objective, { ...effort, alpha: effort.alpha / arms.length });
@@ -55,6 +56,7 @@ export async function race(arms, { objective, getSet, effort, seed, onLook }) {
   let open = new Map();
   let ties = [];
   let k = 0;
+  let cut = false;
   for (; k < looks.length; k++) {
     const n = looks[k];
     // every arm's look is requested at once (a worker pool samples them in parallel); the decision
@@ -84,6 +86,10 @@ export async function race(arms, { objective, getSet, effort, seed, onLook }) {
     }
     onLook?.({ k, n, alive: alive.size });
     if (!final && open.size === 0) break;
+    if (!final && stop?.() === true) {
+      cut = true;
+      break;
+    }
   }
   const last = Math.min(k, looks.length - 1);
   const pool = [leader, ...ties];
@@ -99,5 +105,6 @@ export async function race(arms, { objective, getSet, effort, seed, onLook }) {
     looks: last + 1,
     n: looks[last],
     alphaLook,
+    ...(cut ? { cut: true } : {}),
   };
 }

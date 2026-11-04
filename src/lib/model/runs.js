@@ -199,7 +199,7 @@ function normaliseDetail(d, schema = 1) {
 }
 
 const STEP_STATES = ['queued', 'running', 'done', 'skipped'];
-const STEP_REASONS = ['off', 'nothing-to-try'];
+const STEP_REASONS = ['off', 'nothing-to-try', 'time-limit'];
 /** A run's final search steps; null when absent or unusable (an older run simply has none). */
 function normaliseSteps(steps) {
   if (!Array.isArray(steps)) return null;

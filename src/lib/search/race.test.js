@@ -65,6 +65,22 @@ describe('race', () => {
     expect(r.n).toBe(16);
   });
 
+  it('a time budget (stop) ends the race after the look it fires on; the open arms are unresolved', async () => {
+    const arms = [arm('x', 0, { dist: 0, sd: 40 }), arm('y', 1, { sd: 40 }), arm('bad', -300)];
+    const full = await race(arms, { objective, getSet: getter().getSet, effort: effort({ maxN: 256, delta: 0 }), seed: 1 });
+    let looks = 0;
+    const cut = await race(arms, { objective, getSet: getter().getSet, effort: effort({ maxN: 256, delta: 0 }), seed: 1, stop: () => ++looks >= 1 });
+    expect(full.cut).toBeUndefined();
+    expect(full.n).toBe(256);
+    expect(cut).toMatchObject({ cut: true, looks: 1, n: 8 });
+    expect(cut.eliminated.map((e) => e.i)).toEqual([2]); // what the first look decided stands
+    expect(cut.unresolved).toHaveLength(1);
+    expect(cut.unresolved[0].contrast.verdict).toBe('unresolved');
+    // a stop that never fires changes nothing
+    const never = await race(arms, { objective, getSet: getter().getSet, effort: effort({ maxN: 256, delta: 0 }), seed: 1, stop: () => false });
+    expect(never).toEqual(full);
+  });
+
   it('a single arm needs no fights', async () => {
     const g = getter();
     const r = await race([arm('x', 0)], { objective, getSet: g.getSet, effort: effort(), seed: 1 });

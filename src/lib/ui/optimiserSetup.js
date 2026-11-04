@@ -1,7 +1,9 @@
 // ui/optimiserSetup.js - the Optimiser page's setup (preset, fight, objective, allowed-to-change toggles,
-// Combat Power floor, effort, seed): defaults, validation of a stored or re-run setup against the live character, and the
+// Combat Power floor, effort, time limit, seed): defaults, validation of a stored or re-run setup against the live character, and the
 // worker request it stands for. Pure. The setup is kept per character in the UI key (uiState.js).
-import { resolveTarget, objectiveKindsFor, goalRetired, WIN_RATE_TARGET, PUSH_TARGET } from '../search/objectives.js';
+import {
+  resolveTarget, objectiveKindsFor, goalRetired, WIN_RATE_TARGET, PUSH_TARGET, FASTEST_CLEAR_TRIES,
+} from '../search/objectives.js';
 import { SPACE_DEFAULTS, normalisePowerFloor } from '../search/space.js';
 import { EFFORT_LEVELS } from '../search/search.js';
 import { PVP_MAX_OPPONENTS, PVP_SEATS } from '../search/pvpObjective.js';
@@ -16,6 +18,9 @@ import { normaliseIchorBudget } from '../search/boardAllocation.js';
 /** Keys a stored target/objective carries beyond the spec itself (the result's echo adds them). */
 const TARGET_ECHO = ['label', 'key', 'mode', 'fidelity', 'assumptions'];
 const OBJECTIVE_ECHO = ['label', 'unit', 'higherIsBetter', 'statistic', 'q', 'deltaKind'];
+/** Time limit choices in seconds (null: no limit, the default; simulation.md §Time budget). */
+export const TIME_LIMITS = Object.freeze([15, 30, 60, 120, 300]);
+const timeLimitOf = (v) => (TIME_LIMITS.includes(v) ? v : null);
 
 const strip = (obj, keys) => {
   const out = { ...obj };
@@ -32,6 +37,7 @@ export const defaultSetup = (defaultEffort = 'standard') => ({
   relicBudget: normaliseRelicBudget(null),
   boardIchorBudget: null,
   effort: EFFORT_LEVELS.includes(defaultEffort) ? defaultEffort : 'standard',
+  timeLimit: null,
   seed: 1,
 });
 
@@ -103,6 +109,7 @@ export function normaliseSetup(raw, character, defaultEffort = 'standard', chara
   if (out.objective.kind === 'win-chance') out.objective = { kind: 'win-chance' }; // no target: it maximises the clear rate
   const bound = out.objective.kind === 'push' ? PUSH_TARGET : WIN_RATE_TARGET;
   if ((out.objective.kind === 'win-rate' || out.objective.kind === 'push') && !(Number.isFinite(out.objective.target) && out.objective.target >= bound.min && out.objective.target <= bound.max)) delete out.objective.target;
+  if (out.objective.kind === 'fastest-clear' && !(Number.isInteger(out.objective.tries) && out.objective.tries >= FASTEST_CLEAR_TRIES.min && out.objective.tries <= FASTEST_CLEAR_TRIES.max)) delete out.objective.tries;
 
   if (r.space && typeof r.space === 'object') {
     // An older saved setup did not permit writes to equipment-set stone sockets.
@@ -114,6 +121,7 @@ export function normaliseSetup(raw, character, defaultEffort = 'standard', chara
   out.relicBudget = normaliseRelicBudget(r.relicBudget);
   out.boardIchorBudget = normaliseIchorBudget(r.boardIchorBudget);
   if (EFFORT_LEVELS.includes(r.effort)) out.effort = r.effort;
+  out.timeLimit = timeLimitOf(r.timeLimit);
   if (Number.isInteger(r.seed) && r.seed >= 1) out.seed = r.seed;
   return out;
 }
@@ -177,6 +185,7 @@ export function setupFromRun(run, character, defaultEffort = 'standard', charact
       relicBudget: run.relicBudget,
       boardIchorBudget: run.boardIchorBudget,
       effort: EFFORT_LEVELS.includes(level) ? level : undefined,
+      timeLimit: run.budget?.budgetMs ? run.budget.budgetMs / 1000 : null,
       seed: run.seed,
     },
     character,
@@ -224,7 +233,7 @@ export function requestOf(setup, character, characters = []) {
     relicBudget: normaliseRelicBudget(setup.relicBudget),
     boardIchorBudget: normaliseIchorBudget(setup.boardIchorBudget),
     ...(setup.powerFloor != null ? { powerFloor: setup.powerFloor } : {}),
-    effort: setup.effort,
+    effort: timeLimitOf(setup.timeLimit) ? { level: setup.effort, budgetMs: setup.timeLimit * 1000 } : setup.effort,
     seed: setup.seed,
   };
 }

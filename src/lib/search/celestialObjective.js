@@ -197,6 +197,9 @@ export function celestialRunner(target) {
   };
 }
 
+/** One Celestial fight's Fastest clear outcome: the party's clear time in ms, or Infinity when it did not clear. */
+export const celestialClearTime = (r) => (r.won ? r.timeMs : Infinity);
+
 /**
  * One Celestial fight's win-rate score (objectives.js winRateFightScore's scale): a clear scores
  * 1 + the party's HP left / its max HP, a loss the share of the boss's HP removed (< 1).
