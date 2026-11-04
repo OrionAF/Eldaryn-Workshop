@@ -45,4 +45,18 @@ describe('talents store', () => {
     expect(rosterStore.setTalentSetRank(2, tiers[0].talents[0].id, 1)).toBe(false);
     expect(rosterStore.setTalentSetRank(0, talentTiers('WARRIOR_TANK')[0].talents[0].id, 1)).toBe(false);
   });
+
+  it('copies a set onto the other independently, refuses empty, same-index and locked', () => {
+    expect(rosterStore.copyTalentSet(0, 1)).toBe(false); // source has no spec
+    rosterStore.setTalentSetSpec(0, 'WARRIOR_DPS');
+    rosterStore.setTalentSetRank(0, tiers[0].talents[0].id, 3);
+    expect(rosterStore.copyTalentSet(0, 0)).toBe(false);
+    expect(rosterStore.copyTalentSet(0, 2)).toBe(false);
+    expect(rosterStore.copyTalentSet(0, 1)).toBe(true);
+    expect(cur().talentSets[1]).toEqual(cur().talentSets[0]);
+    rosterStore.setTalentSetRank(1, tiers[0].talents[0].id, 1);
+    expect(cur().talentSets[0].allocation[tiers[0].talents[0].id]).toBe(3);
+    rosterStore.setCharacterLevel(30);
+    expect(rosterStore.copyTalentSet(0, 1)).toBe(false);
+  });
 });

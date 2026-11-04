@@ -95,3 +95,28 @@ it('leaves the inspector empty once the page unmounts', () => {
   expect(inspector.current).toBeNull();
   view = setup(CharacterTalentsPage); // afterEach disposes this one
 });
+
+it('warns that a spec change clears points, only while points are spent', () => {
+  pick('WARRIOR_DPS');
+  expect(view.q('[data-testid="spec-warning"]')).toBeNull();
+  click(view.q('button[aria-label="Raise Sharpened Blade"]'));
+  expect(view.q('[data-testid="spec-warning"]').textContent).toContain('clears the 1 point in this set');
+  rosterStore.resetTalentSet(0);
+  flushSync();
+  expect(view.q('[data-testid="spec-warning"]')).toBeNull();
+});
+
+it('copies Set A to Set B after confirming, and hides the button while Set B is locked', () => {
+  const copyBtn = () => view.qa('button').find((b) => b.textContent.includes('Copy to Set B'));
+  expect(copyBtn()).toBeUndefined(); // no spec yet
+  pick('WARRIOR_DPS');
+  click(view.q('button[aria-label="Raise Sharpened Blade"]'));
+  click(copyBtn());
+  expect(rosterStore.current.talentSets[1].spec).toBeNull();
+  click(view.qa('button').find((b) => b.textContent.includes('Confirm copy')));
+  expect(rosterStore.current.talentSets[1].spec).toBe('WARRIOR_DPS');
+  expect(rosterStore.current.talentSets[1].allocation.dps_t1_sharpened_blade).toBe(1);
+  rosterStore.setCharacterLevel(30);
+  flushSync();
+  expect(copyBtn()).toBeUndefined();
+});

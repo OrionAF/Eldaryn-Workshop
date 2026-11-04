@@ -88,6 +88,9 @@
             bind:value={specValue}
             onchange={(v) => rosterStore.setTalentSetSpec(index, v || null)}
           />
+          {#if spent > 0}
+            <p class="points-note spec-warning" data-testid="spec-warning">Changing the specialization clears the {spent} {spent === 1 ? 'point' : 'points'} in this set.</p>
+          {/if}
           <div class="points">
             <span class="points-label" id="points-label">Points</span>
             <div class="bar" role="progressbar" aria-labelledby="points-label" aria-valuemin="0" aria-valuemax={cap} aria-valuenow={spent}>
@@ -96,6 +99,15 @@
             <span class="points-readout num" data-testid="points">{spent} / {cap} pts</span>
             <span class="points-note">{cap === 0 ? `Talents unlock at level ${UNLOCK_LEVELS.TALENTS}.` : `Level ${character.level} grants ${cap} of the 29 points.`}</span>
           </div>
+          {#if dualTalentsUnlocked(character.level) && set.spec}
+            <ConfirmButton
+              variant="ghost"
+              label={`Copy to ${label(1 - index)}`}
+              confirmLabel="Confirm copy"
+              prompt={`Replaces everything in ${label(1 - index)}.`}
+              onConfirm={() => rosterStore.copyTalentSet(index, 1 - index)}
+            />
+          {/if}
           <ConfirmButton
             variant="ghost"
             label={`Reset ${label(index)}`}
@@ -121,6 +133,8 @@
   .talents { display: grid; gap: var(--sp-3); }
   .controls { display: flex; flex-wrap: wrap; gap: var(--sp-5); align-items: flex-end; margin-bottom: var(--sp-4); }
   .controls :global(.confirm-row) { margin-left: auto; }
+  .controls :global(.confirm-row) ~ :global(.confirm-row) { margin-left: 0; }
+  .spec-warning { margin: 0; align-self: center; }
   .points { display: grid; gap: 4px; min-width: min(14rem, 100%); flex: 1; }
   .points-label { font-size: var(--fs-12); font-weight: var(--fw-bold, 700); color: var(--text-soft); }
   .bar { height: 8px; background: var(--surface-3); border: 1px solid var(--line-control); border-radius: var(--r-1); overflow: hidden; }
