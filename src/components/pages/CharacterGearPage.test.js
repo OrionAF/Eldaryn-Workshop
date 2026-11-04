@@ -177,3 +177,25 @@ it('[ and ] step slots, but are ignored while typing in a field', () => {
   expect(target.textContent).toContain('Slot 6 of 9');
   unmount(app);
 });
+
+it('copy from the other set: disabled when empty, confirm replaces, absent in Oblivion', () => {
+  const app = mount(CharacterGearPage, { target });
+  flushSync();
+  expect(button('Copy from Set 2').disabled).toBe(true);
+  rosterStore.setEquipmentItem('set2', 'RING', { rarity: 'RARE', itemLevel: 40, quality: 50, primaryStats: { attack: 0, hp: 900 } });
+  flushSync();
+  press(button('Copy from Set 2'));
+  expect(rosterStore.current.equipment.set1.items.RING).toBeNull(); // not yet
+  expect(target.textContent).toContain('Replaces every item and stone socket in Set 1.');
+  press(button('Confirm copy'));
+  expect(rosterStore.current.equipment.set1.items.RING.primaryStats.hp).toBe(900);
+  press(tab('Set 2'));
+  expect(button('Copy from Set 1')).toBeTruthy();
+  unmount(app);
+
+  const ob = mount(CharacterGearPage, { target, props: { realm: 'oblivion' } });
+  flushSync();
+  expect(button('Copy from Set 1')).toBeUndefined();
+  expect(button('Copy from Set 2')).toBeUndefined();
+  unmount(ob);
+});

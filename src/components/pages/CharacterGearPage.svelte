@@ -16,6 +16,8 @@
   import Panel from '../ui/Panel.svelte';
   import Select from '../ui/Select.svelte';
   import Button from '../ui/Button.svelte';
+  import ConfirmButton from '../ConfirmButton.svelte';
+  import { notify } from '../../lib/notify.svelte.js';
   import SlotSilhouette from '../gear/SlotSilhouette.svelte';
   import ItemEditor from '../gear/ItemEditor.svelte';
   import StoneGrid from '../gear/StoneGrid.svelte';
@@ -61,6 +63,14 @@
   const usersOf = (key) =>
     key === 'oblivion' ? [] : character.presets.filter((p) => p.equipmentSet === (key === 'set2' ? 2 : 1)).map((p) => p.name);
   const usedBy = $derived(usersOf(setKey));
+  /** Base realm only: the other base set, and whether it has anything to copy. */
+  const otherKey = $derived(setKey === 'set1' ? 'set2' : setKey === 'set2' ? 'set1' : null);
+  const otherLabel = $derived(EQUIP_SETS.find((s) => s.key === otherKey)?.label);
+  const otherHasItems = $derived(!!otherKey && Object.values(character.equipment[otherKey].items).some(Boolean));
+  function copyFromOther() {
+    const from = otherLabel;
+    if (rosterStore.copyEquipmentSet(otherKey, setKey)) notify(`Copied ${from} to ${setMeta.label}.`, { kind: 'success' });
+  }
 
   const setTabs = $derived([
     { id: 'set1', label: 'Set 1', sub: usersOf('set1').length ? `used by ${usersOf('set1').join(', ')}` : 'unused' },
@@ -120,6 +130,17 @@
       {setMeta.label} is used by: {usedBy.join(', ')}
     {:else}
       No presets use {setMeta.label} yet.
+    {/if}
+    {#if otherKey}
+      <ConfirmButton
+        variant="ghost"
+        size="small"
+        label="Copy from {otherLabel}"
+        confirmLabel="Confirm copy"
+        prompt="Replaces every item and stone socket in {setMeta.label}."
+        disabled={!otherHasItems}
+        onConfirm={copyFromOther}
+      />
     {/if}
   </p>
 
@@ -238,7 +259,7 @@
 
 <style>
   .pinned-title { margin: 0 0 var(--sp-3); }
-  .scope-line { font-size: var(--fs-12); color: var(--text-muted); margin: var(--sp-2) 0 var(--sp-3); }
+  .scope-line { font-size: var(--fs-12); color: var(--text-muted); margin: var(--sp-2) 0 var(--sp-3); display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }
   .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--sp-6); margin-top: var(--sp-3); }
   .silhouette-col { min-width: 0; }
   .step { display: inline-flex; align-items: center; gap: var(--sp-2); }

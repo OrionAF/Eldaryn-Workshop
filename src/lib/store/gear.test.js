@@ -39,6 +39,38 @@ describe('gear store', () => {
   });
 });
 
+describe('copyEquipmentSet', () => {
+  it('deep-copies items and sockets between base sets', () => {
+    const a = rosterStore.addEnchantStone('base', { type: 'PVE_ATTACK', quality: 55, stats: [] });
+    rosterStore.setEquipmentItem('set1', 'WEAPON', item);
+    rosterStore.setEquipmentItem('set2', 'RING', item);
+    rosterStore.socketStone('set1', 'WEAPON', a);
+    expect(rosterStore.copyEquipmentSet('set1', 'set2')).toBe(true);
+    const eq = rosterStore.current.equipment;
+    expect(eq.set2.items.WEAPON).toEqual(eq.set1.items.WEAPON);
+    expect(eq.set2.items.WEAPON).not.toBe(eq.set1.items.WEAPON);
+    expect(eq.set2.items.RING).toBeNull(); // replaced, not merged
+    expect(eq.set2.enchantSlots.WEAPON).toBe(a);
+    rosterStore.setEquipmentItem('set2', 'WEAPON', { ...item, itemLevel: 10 });
+    expect(rosterStore.current.equipment.set1.items.WEAPON.itemLevel).toBe(50);
+    expect(rosterStore.copyEquipmentSet('set2', 'set1')).toBe(true);
+    expect(rosterStore.current.equipment.set1.items.WEAPON.itemLevel).toBe(10);
+  });
+
+  it('refuses Oblivion, unknown keys and the same key', () => {
+    expect(rosterStore.copyEquipmentSet('set1', 'set1')).toBe(false);
+    expect(rosterStore.copyEquipmentSet('oblivion', 'set1')).toBe(false);
+    expect(rosterStore.copyEquipmentSet('set1', 'oblivion')).toBe(false);
+    expect(rosterStore.copyEquipmentSet('set1', 'nope')).toBe(false);
+  });
+
+  it('persists', () => {
+    rosterStore.setEquipmentItem('set1', 'HEAD', item);
+    rosterStore.copyEquipmentSet('set1', 'set2');
+    expect(JSON.parse(localStorage.getItem('eldaryn_optimiser_state_v2')).characters.find((c) => c.id === id).equipment.set2.items.HEAD.primaryStats.hp).toBe(5000);
+  });
+});
+
 describe('stone store', () => {
   const stone = { type: 'PVE_ATTACK', quality: 55, stats: [{ type: 'CRIT_CHANCE', value: 1.5 }] };
 

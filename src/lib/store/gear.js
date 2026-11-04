@@ -47,5 +47,24 @@ export function createGearStore(ctx) {
     });
   }
 
-  return { setEquipmentItem, clearEquipmentItem, socketStone, unsocketStone };
+  /**
+   * Copy every item and stone socket of one base set onto the other (set1 <-> set2). Items are
+   * re-normalised so the copy shares nothing with the source. Both sets draw from the same stone
+   * pool, so the socketed ids stay valid. Returns false for Oblivion, unknown keys or the same key.
+   */
+  function copyEquipmentSet(fromKey, toKey) {
+    const base = ['set1', 'set2'];
+    if (fromKey === toKey || !base.includes(fromKey) || !base.includes(toKey)) return false;
+    return ctx.edit((c) => {
+      const from = c.equipment[fromKey];
+      const to = c.equipment[toKey];
+      for (const slot of BASE_SLOTS) {
+        to.items[slot] = normaliseItem(JSON.parse(JSON.stringify(from.items[slot])), { cls: c.class, realm: 'base' });
+        to.enchantSlots[slot] = from.enchantSlots[slot];
+      }
+      return true;
+    });
+  }
+
+  return { setEquipmentItem, clearEquipmentItem, socketStone, unsocketStone, copyEquipmentSet };
 }
