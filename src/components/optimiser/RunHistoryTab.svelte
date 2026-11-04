@@ -15,6 +15,7 @@
   import Button from '../ui/Button.svelte';
   import Checkbox from '../ui/Checkbox.svelte';
   import Panel from '../ui/Panel.svelte';
+  import Select from '../ui/Select.svelte';
   import Textarea from '../ui/Textarea.svelte';
   import EmptyState from '../ui/EmptyState.svelte';
   import Banner from '../ui/Banner.svelte';
@@ -35,6 +36,32 @@
   function togglePick(id, on) {
     picked = on ? [...picked.filter((x) => x !== id), id].slice(-2) : picked.filter((x) => x !== id);
   }
+  // Filters (view state only): shown once there are enough runs to scroll through.
+  const FILTER_FROM = 5;
+  let fPreset = $state('');
+  let fText = $state('');
+  let fPinned = $state(false);
+  const showFilters = $derived(runs.length > FILTER_FROM);
+  const presetOptions = $derived([
+    { value: '', label: 'All presets' },
+    ...[...new Set(runs.map((r) => r.presetName || 'Preset'))].sort().map((n) => ({ value: n, label: n })),
+  ]);
+  const filtering = $derived(showFilters && (!!fPreset || !!fText.trim() || fPinned));
+  const shownRuns = $derived.by(() => {
+    if (!filtering) return runs;
+    const q = fText.trim().toLowerCase();
+    return runs.filter((r) => {
+      if (fPreset && (r.presetName || 'Preset') !== fPreset) return false;
+      if (fPinned && !r.pinned) return false;
+      if (!q) return true;
+      return [r.name, r.target?.label, r.objective?.label, r.notes].some((t) => String(t ?? '').toLowerCase().includes(q));
+    });
+  });
+  function clearFilters() {
+    fPreset = '';
+    fText = '';
+    fPinned = false;
+  }
   const pair = $derived(picked.length === 2 ? picked.map((id) => runs.find((r) => r.id === id)) : null);
   const view = $derived(openId ? viewRun(runs.find((r) => r.id === openId) ?? {}) : null);
 </script>
@@ -54,7 +81,19 @@
       <p class="hint">Tick "Compare" on two runs to see them side by side.</p>
     {/if}
 
-    {#each runs as run (run.id)}
+    {#if showFilters}
+      <div class="filters" data-testid="run-filters">
+        <Select label="Preset" options={presetOptions} bind:value={fPreset} />
+        <label class="search">
+          <span class="lbl">Search</span>
+          <input type="text" bind:value={fText} placeholder="Name, target, objective or notes" />
+        </label>
+        <Checkbox label="Pinned only" checked={fPinned} onchange={(on) => (fPinned = on)} />
+        {#if filtering}<span class="hint num" data-testid="run-count">{shownRuns.length} of {runs.length} runs</span>{/if}
+      </div>
+    {/if}
+
+    {#each shownRuns as run (run.id)}
       {@const h = run.headline}
       <article class="run" data-testid="run-row">
         <div class="head">
@@ -117,7 +156,13 @@
         {/if}
       </article>
     {:else}
-      <EmptyState title="No runs yet" text="Run the optimiser and the finished result is saved here." />
+      {#if runs.length}
+        <EmptyState title="No runs match" text="No saved run fits these filters.">
+          {#snippet action()}<Button variant="secondary" size="small" onclick={clearFilters}>Clear filters</Button>{/snippet}
+        </EmptyState>
+      {:else}
+        <EmptyState title="No runs yet" text="Run the optimiser and the finished result is saved here." />
+      {/if}
     {/each}
   </Panel>
 </div>
@@ -126,6 +171,12 @@
   .history { display: grid; gap: var(--sp-4); }
   .top { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; justify-content: space-between; }
   .hint { margin: 0; color: var(--text-muted); font-size: var(--fs-12); }
+  .filters { display: flex; align-items: flex-end; gap: var(--sp-3); flex-wrap: wrap; }
+  .search { display: grid; gap: 4px; flex: 1; min-width: 160px; }
+  .search input {
+    height: var(--control-h); padding: 0 var(--sp-3); background: var(--surface-3); color: var(--text-ink);
+    border: 1px solid var(--line-control); border-radius: var(--r-1); font: inherit; font-size: var(--fs-13);
+  }
   .run { border-top: 1px solid var(--line-hairline); padding-top: var(--sp-3); display: grid; gap: var(--sp-2); }
   .head, .sub, .edit { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
   .spacer { flex: 1; }
