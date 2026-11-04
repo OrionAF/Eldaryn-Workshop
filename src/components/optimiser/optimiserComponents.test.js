@@ -4,6 +4,7 @@ import OptimiserResults from './OptimiserResults.svelte';
 import ApplyReview from './ApplyReview.svelte';
 import SpaceGroups from './SpaceGroups.svelte';
 import RunCompare from './RunCompare.svelte';
+import { notifications } from '../../lib/notify.svelte.js';
 import { setup, click, type, key } from '../ui/testkit.js';
 import { viewResult, viewRun } from '../../lib/ui/optimiserView.js';
 import { runFromResult } from '../../lib/model/runs.js';
@@ -414,4 +415,28 @@ it('Show full build omits the tree when the row kept none', () => {
   toggle(ui, 0);
   click([...ui.qa('button')].find((b) => b.textContent.trim() === 'Show full build'));
   expect(ui.q('[data-testid="recommended-tree"]')).toBeNull();
+});
+
+it('Copy results writes the result text to the clipboard and says so', async () => {
+  const writeText = vi.fn(() => Promise.resolve());
+  vi.stubGlobal('navigator', { clipboard: { writeText } });
+  const ui = mountResults(dpsResult());
+  click(ui.qa('button').find((b) => b.textContent.trim() === 'Copy results'));
+  await new Promise((r) => setTimeout(r, 0));
+  expect(writeText).toHaveBeenCalledOnce();
+  expect(writeText.mock.calls[0][0]).toMatch(/^Optimiser result for Main/);
+  expect(notifications.log.at(-1).message).toMatch(/Copied/);
+  vi.unstubAllGlobals();
+});
+
+it('Copy results says so when the browser blocks it or has no clipboard', async () => {
+  vi.stubGlobal('navigator', { clipboard: { writeText: () => Promise.reject(new Error('no')) } });
+  const ui = mountResults(dpsResult());
+  click(ui.qa('button').find((b) => b.textContent.trim() === 'Copy results'));
+  await new Promise((r) => setTimeout(r, 0));
+  expect(notifications.log.at(-1).message).toMatch(/blocked/);
+  vi.stubGlobal('navigator', {});
+  click(ui.qa('button').find((b) => b.textContent.trim() === 'Copy results'));
+  expect(notifications.log.at(-1).message).toMatch(/blocked/);
+  vi.unstubAllGlobals();
 });
