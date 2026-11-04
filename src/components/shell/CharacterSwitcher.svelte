@@ -8,6 +8,7 @@
   import { CLASSES, classLabel } from '../../lib/game/classes.js';
   import { go } from '../../lib/router.svelte.js';
   import { notify } from '../../lib/notify.svelte.js';
+  import { undoGoneMessage } from '../../lib/deleteUndo.js';
   import { AFTER_IMPORT_PAGE_ID } from '../../lib/routes.js';
   import Menu from '../ui/Menu.svelte';
   import Select from '../ui/Select.svelte';
@@ -87,15 +88,16 @@
     rosterStore.setCharacterClass(character.id, value === NONE ? null : value);
   }
 
-  function undoDelete() {
-    if (rosterStore.restoreDeletedCharacter()) notify(`Restored ${rosterStore.current.name}`, { kind: 'success' });
+  function undoDelete(id, name) {
+    if (rosterStore.restoreDeletedCharacter(id)) notify(`Restored ${name}`, { kind: 'success' });
+    else notify(undoGoneMessage(name), { kind: 'warn' });
   }
 
   function remove() {
-    const name = character.name;
-    if (rosterStore.deleteCharacter(character.id)) {
+    const { id, name } = character;
+    if (rosterStore.deleteCharacter(id)) {
       editOpen = false;
-      notify(`Deleted ${name}`, { action: { label: 'Undo', run: undoDelete } });
+      notify(`Deleted ${name}`, { action: { label: 'Undo', run: () => undoDelete(id, name) } });
     }
   }
 </script>

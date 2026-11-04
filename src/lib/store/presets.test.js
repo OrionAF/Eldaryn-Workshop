@@ -138,3 +138,38 @@ describe('restoreDeletedPreset', () => {
     expect(cur().oblivion.sheet.presetId).toBe(ids()[0]);
   });
 });
+
+describe('restoreDeletedPreset(id)', () => {
+  it('refuses an older delete once a later one replaced the slot, and still restores the later one', () => {
+    store.addPreset('Fourth');
+    const [, b, c] = ids();
+    store.deletePreset(b);
+    store.deletePreset(c);
+    saves = 0;
+    expect(store.deletedPresetStatus(b)).toBe('none');
+    expect(store.restoreDeletedPreset(b)).toBeNull();
+    expect(ids()).not.toContain(b);
+    expect(ids()).not.toContain(c);
+    expect(saves).toBe(0);
+    expect(store.deletedPresetStatus(c)).toBe('ready');
+    expect(store.restoreDeletedPreset(c)).toBe(c);
+    expect(ids()).toContain(c);
+  });
+
+  it('refuses a delete from another character once that character deleted a later preset', () => {
+    const gone = ids()[2];
+    store.deletePreset(gone);
+    roster.currentId = roster.characters[1].id;
+    store.addPreset('Other');
+    const other = ids()[2];
+    store.deletePreset(other);
+    expect(store.restoreDeletedPreset(gone)).toBeNull();
+    expect(store.restoreDeletedPreset(other)).toBe(other);
+  });
+
+  it('restores a single delete by its id', () => {
+    const p = ids()[1];
+    store.deletePreset(p);
+    expect(store.restoreDeletedPreset(p)).toBe(p);
+  });
+});

@@ -91,3 +91,16 @@ it('restoreRemovedOpponent refuses at the cap and keeps the slot until there is 
   rosterStore.duplicateOpponent(opps()[0].id); // refused at the cap, the slot is untouched
   expect(rosterStore.removedOpponentStatus()).toBe('full');
 });
+
+it('restoreRemovedOpponent(id) refuses an older delete once a later one replaced the slot', () => {
+  const a = rosterStore.addOpponent('WARRIOR_TANK', 'Wall');
+  const b = rosterStore.addOpponent('MYSTIC_MAGE', 'Mage');
+  rosterStore.removeOpponent(a);
+  rosterStore.removeOpponent(b);
+  expect(rosterStore.removedOpponentStatus(a)).toBe('none');
+  expect(rosterStore.restoreRemovedOpponent(a)).toBeNull();
+  expect(opps().map((o) => o.id)).not.toContain(a);
+  expect(rosterStore.removedOpponentStatus(b)).toBe('ready');
+  expect(rosterStore.restoreRemovedOpponent(b)).toBe(b);
+  expect(opps().map((o) => o.id)).toContain(b);
+});

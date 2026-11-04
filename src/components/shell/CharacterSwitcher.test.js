@@ -87,3 +87,46 @@ it('the menu duplicates the current character, selects the copy and says so', ()
   unmount(app);
   target.remove();
 });
+
+it('two character deletes: Undo on the first toast does not bring back the second and says why', () => {
+  localStorage.clear();
+  resetNotifications();
+  rosterStore.addCharacter('Keeper', 'WARRIOR');
+  const a = rosterStore.addCharacter('Ash', 'MYSTIC');
+  const target = document.createElement('div');
+  document.body.appendChild(target);
+  const app = mount(CharacterSwitcher, { target });
+  const stack = mount(NotificationStack, { target });
+  flushSync();
+  const byText = (t) => [...document.querySelectorAll('button, li, [role^="menuitem"]')].find((b) => b.textContent.trim() === t);
+  const deleteCurrent = () => {
+    target.querySelector('button.current').click();
+    flushSync();
+    byText('Edit character').click();
+    flushSync();
+    byText('Delete character').click();
+    flushSync();
+    byText('Confirm delete').click();
+    flushSync();
+  };
+  deleteCurrent(); // Ash
+  const b = rosterStore.addCharacter('Bryn', 'MYSTIC');
+  flushSync();
+  deleteCurrent(); // Bryn
+  const toastFor = (name) => [...target.querySelectorAll('.toast')].find((t) => t.textContent.includes(`Deleted ${name}`));
+  const undoIn = (toast) => [...toast.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Undo');
+  undoIn(toastFor('Ash')).click();
+  flushSync();
+  const has = (id) => rosterStore.roster.characters.some((c) => c.id === id);
+  expect(has(a)).toBe(false);
+  expect(has(b)).toBe(false);
+  expect(target.textContent).toContain('Can no longer undo deleting Ash.');
+  undoIn(toastFor('Bryn')).click();
+  flushSync();
+  expect(has(b)).toBe(true);
+  expect(target.textContent).toContain('Restored Bryn');
+  unmount(stack);
+  unmount(app);
+  target.remove();
+  resetNotifications();
+});
