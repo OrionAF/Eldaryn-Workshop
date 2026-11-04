@@ -65,3 +65,25 @@ it('deleting a character raises a toast whose Undo brings it back and re-selects
   target.remove();
   resetNotifications();
 });
+it('the menu duplicates the current character, selects the copy and says so', () => {
+  localStorage.clear();
+  resetNotifications();
+  const id = rosterStore.addCharacter('Orig', 'WARRIOR');
+  const target = document.createElement('div');
+  document.body.appendChild(target);
+  const app = mount(CharacterSwitcher, { target });
+  const stack = mount(NotificationStack, { target });
+  flushSync();
+  target.querySelector('button.current').click();
+  flushSync();
+  const dup = [...document.querySelectorAll('button, li, [role^="menuitem"]')].find((b) => b.textContent.trim() === 'Duplicate character');
+  expect(dup).toBeTruthy();
+  dup.click();
+  flushSync();
+  expect(rosterStore.current.name).toBe('Orig copy');
+  expect(rosterStore.current.id).not.toBe(id);
+  expect(target.textContent).toContain('Created Orig copy');
+  unmount(stack);
+  unmount(app);
+  target.remove();
+});

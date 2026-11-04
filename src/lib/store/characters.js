@@ -20,6 +20,28 @@ export function createCharactersStore(ctx) {
     return c.id;
   }
 
+  /**
+   * Deep-copy character `id` as "<name> copy" ("<name> copy 2"...), with a fresh character id, and select it.
+   * Preset ids stay: they are only unique within a character, and jobs key on the character too.
+   * @returns {string|null} the copy's id, or null when `id` is unknown
+   */
+  function duplicateCharacter(id) {
+    const roster = ctx.roster();
+    const src = roster.characters.find((ch) => ch.id === id);
+    if (!src) return null;
+    const c = normaliseCharacter(JSON.parse(JSON.stringify(src)));
+    c.id = newId('c');
+    const taken = new Set(roster.characters.map((ch) => ch.name.toLowerCase()));
+    const base = `${src.name} copy`;
+    let name = base;
+    for (let n = 2; taken.has(name.toLowerCase()); n += 1) name = `${base} ${n}`;
+    c.name = name;
+    roster.characters.push(c);
+    roster.currentId = c.id;
+    ctx.persist();
+    return c.id;
+  }
+
   function renameCharacter(id, name) {
     const c = ctx.findCharacter(id);
     if (c && name && name.trim()) {
@@ -178,6 +200,7 @@ export function createCharactersStore(ctx) {
 
   return {
     addCharacter,
+    duplicateCharacter,
     renameCharacter,
     deleteCharacter,
     restoreDeletedCharacter,
