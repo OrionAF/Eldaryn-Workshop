@@ -47,3 +47,61 @@ it('without a computed build (an opponent) the empty App, Gap, Allowed gap and S
   expect(o.target.textContent).not.toMatch(/no app number/);
   o.done();
 });
+
+const cb = (x) => x.q('input[type="checkbox"]');
+const flush = () => new Promise((r) => setTimeout(r, 0));
+
+it('"Only rows that are off" hides matching and blank rows and says so when none are left', async () => {
+  const o = setup(SheetTable, {
+    keys: ['totalAttack', 'totalCritChance', 'totalHealth'],
+    values: { totalAttack: 48124, totalCritChance: 6 },
+    computed: { totalAttack: 48000, totalCritChance: 6, totalHealth: 10 },
+    onChange: () => {},
+  });
+  cb(o).click();
+  await flush();
+  expect(o.qa('tr[data-key]').map((r) => r.dataset.key)).toEqual(['totalAttack']);
+  o.done();
+  const m = setup(SheetTable, { keys: ['totalCritChance'], values: { totalCritChance: 6 }, computed: { totalCritChance: 6 }, onChange: () => {} });
+  cb(m).click();
+  await flush();
+  expect(m.qa('tr[data-key]').length).toBe(0);
+  expect(m.target.textContent).toContain('All rows match.');
+  m.done();
+});
+
+it('the filter hides blank and matching rows when nothing is focused', async () => {
+  const o = setup(SheetTable, { keys: ['totalAttack', 'totalCritChance'], values: { totalCritChance: 6 }, computed: { totalAttack: 1, totalCritChance: 6 }, onChange: () => {} });
+  cb(o).click();
+  await flush();
+  expect(o.qa('tr[data-key]').length).toBe(0);
+  o.done();
+});
+
+it('the filter keeps the focused row visible', async () => {
+  const o = setup(SheetTable, { keys: ['totalAttack', 'totalCritChance'], values: { totalCritChance: 6 }, computed: { totalAttack: 1, totalCritChance: 6 }, onChange: () => {} });
+  o.q('#sheet-totalCritChance').dispatchEvent(new Event('focus'));
+  cb(o).click();
+  await flush();
+  expect(o.qa('tr[data-key]').map((r) => r.dataset.key)).toEqual(['totalCritChance']);
+  o.done();
+});
+
+it('Expand all opens every source row, Collapse all closes them; opponents get neither control', async () => {
+  const contributions = () => ({ sources: [], total: {} });
+  const o = setup(SheetTable, { keys: ['totalAttack', 'totalCritChance'], values: {}, computed: { totalAttack: 1, totalCritChance: 2 }, contributions, onChange: () => {} });
+  const btn = () => o.qa('button').find((b) => /all$/.test(b.textContent.trim()));
+  expect(btn().textContent.trim()).toBe('Expand all');
+  btn().click();
+  await flush();
+  expect(o.qa('button.expand').every((b) => b.getAttribute('aria-expanded') === 'true')).toBe(true);
+  expect(btn().textContent.trim()).toBe('Collapse all');
+  btn().click();
+  await flush();
+  expect(o.qa('button.expand').every((b) => b.getAttribute('aria-expanded') === 'false')).toBe(true);
+  o.done();
+  const p = setup(SheetTable, { keys: ['totalAttack'], values: {}, computed: null, onChange: () => {} });
+  expect(p.q('input[type="checkbox"]')).toBeNull();
+  expect(p.qa('button').some((b) => /all$/.test(b.textContent.trim()))).toBe(false);
+  p.done();
+});
