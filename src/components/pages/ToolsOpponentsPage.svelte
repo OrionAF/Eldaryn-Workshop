@@ -8,6 +8,7 @@
   import { go } from '../../lib/router.svelte.js';
   import { requestImportFocus } from '../../lib/importFlow.svelte.js';
   import { prefs } from '../../lib/prefs.svelte.js';
+  import { loadUi, saveUi } from '../../lib/uiState.js';
   import { SPECS, classLabel } from '../../lib/game/classes.js';
   import { MAX_OPPONENTS } from '../../lib/model/opponents.js';
   import { opponentFighter, missingStats } from '../../lib/features/duel.js';
@@ -27,12 +28,24 @@
   };
   const specOptions = SPECS.map((s) => ({ value: s.key, label: specLabel(s.key) }));
 
-  let selectedId = $state(null);
+  const ui0 = loadUi().opponents;
+  let selectedId = $state(ui0.selectedId);
+  let order = $state(ui0.order);
+  let query = $state('');
+  const orderOptions = [
+    { value: 'added', label: 'Order added' },
+    { value: 'newest', label: 'Newest first' },
+    { value: 'name', label: 'Name' },
+    { value: 'ready', label: 'Ready first' },
+  ];
+  function pick(id) {
+    selectedId = id;
+    saveUi({ opponents: { selectedId: id } });
+  }
   let newSpec = $state('WARRIOR_DPS');
   let cloneSpecPick = $state(null); // null: follow the chosen preset's talent-set spec
   let clonePick = $state(null);
 
-  const selected = $derived(character.opponents.find((o) => o.id === selectedId) ?? character.opponents[0] ?? null);
   const full = $derived(character.opponents.length >= MAX_OPPONENTS);
   const clonePreset = $derived(character.presets.some((p) => p.id === clonePick) ? clonePick : character.activePresetId);
   // The spec the preset plays: its chosen talent set's spec, else the class's first spec.
@@ -42,22 +55,33 @@
   };
   const cloneSpec = $derived(cloneSpecPick ?? presetSpec(clonePreset));
   const presetOptions = $derived(character.presets.map((p) => ({ value: p.id, label: p.name })));
-  const rows = $derived(
+  const allRows = $derived(
     character.opponents.map((o) => {
       const missing = missingStats(opponentFighter(o));
       return { o, missing };
     }),
   );
+  // View-only: the stored library is never reordered.
+  const rows = $derived.by(() => {
+    const q = query.trim().toLowerCase();
+    const shown = q ? allRows.filter(({ o }) => `${o.name} ${specLabel(o.spec)}`.toLowerCase().includes(q)) : allRows.slice();
+    if (order === 'newest') shown.reverse();
+    else if (order === 'name') shown.sort((a, b) => a.o.name.localeCompare(b.o.name));
+    else if (order === 'ready') shown.sort((a, b) => (a.missing.length > 0) - (b.missing.length > 0));
+    return shown;
+  });
+  // A stale or missing id falls back to the top of the displayed list.
+  const selected = $derived(character.opponents.find((o) => o.id === selectedId) ?? rows[0]?.o ?? null);
 
   function add() {
     const id = rosterStore.addOpponent(newSpec);
-    if (id) selectedId = id;
+    if (id) pick(id);
     else setStatus(`At most ${MAX_OPPONENTS} saved opponents.`);
   }
   function clone() {
     const id = rosterStore.cloneOpponentFromPreset(clonePreset, cloneSpec);
     if (id) {
-      selectedId = id;
+      pick(id);
       setStatus('Cloned your preset. Adjust the stats to match the real opponent.');
     } else setStatus(`At most ${MAX_OPPONENTS} saved opponents.`);
   }
@@ -68,11 +92,20 @@
     <Panel title="Opponent library" level="primary" scope="tool">
       {#snippet meta()}<span class="count" data-testid="opponent-count">{character.opponents.length} of {MAX_OPPONENTS}</span>{/snippet}
       <div data-testid="opponent-picker">
+        {#if allRows.length > 1}
+          <div class="tools">
+            <Select label="Order" options={orderOptions} bind:value={order} onchange={(v) => saveUi({ opponents: { order: v } })} />
+            <div class="field">
+              <label for="opp-filter">Filter</label>
+              <input id="opp-filter" type="text" placeholder="Name or spec" bind:value={query} />
+            </div>
+          </div>
+        {/if}
         {#if rows.length}
           <ul class="list" aria-label="Saved opponents">
             {#each rows as { o, missing } (o.id)}
               <li>
-                <button type="button" class="row" class:is-sel={selected?.id === o.id} aria-current={selected?.id === o.id ? 'true' : undefined} onclick={() => (selectedId = o.id)}>
+                <button type="button" class="row" class:is-sel={selected?.id === o.id} aria-current={selected?.id === o.id ? 'true' : undefined} onclick={() => pick(o.id)}>
                   <span class="name">{o.name}</span>
                   <span class="sub">{specLabel(o.spec)}{o.imported ? ` · from Rankings, level ${o.imported.level}` : ''}</span>
                   <span class="state" class:warn={missing.length > 0}>{missing.length ? `Needs ${missing.join(', ')}` : 'Ready'}</span>
@@ -80,6 +113,8 @@
               </li>
             {/each}
           </ul>
+        {:else if allRows.length}
+          <EmptyState title="No opponent matches" text="Clear the filter to see all saved opponents." />
         {:else}
           <EmptyState title="No saved opponents yet" text="Add one below, or clone one of your presets as a starting point." />
         {/if}
@@ -115,7 +150,7 @@
   <div class="editor">
     {#if selected}
       {#key selected.id}
-        <OpponentPanel opponent={selected} onRemoved={() => (selectedId = null)} />
+        <OpponentPanel opponent={selected} onRemoved={() => pick(null)} />
       {/key}
     {:else}
       <Panel title="Opponent" scope="tool">
@@ -131,6 +166,21 @@
   .stack { display: grid; gap: var(--sp-4); min-width: 0; }
   .editor { min-width: 0; }
   .count { font-family: var(--font-data); font-size: var(--fs-12); color: var(--text-muted); }
+  .tools { display: grid; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+  .field { display: grid; gap: 4px; min-width: 0; }
+  .field label { font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }
+  input[type='text'] {
+    height: var(--control-h);
+    padding: 0 var(--sp-3);
+    background: var(--surface-3);
+    color: var(--text-ink);
+    border: 1px solid var(--line-control);
+    border-radius: var(--r-1);
+    font-family: var(--font-ui);
+    font-size: var(--fs-14);
+    min-width: 0;
+  }
+  input[type='text']:hover { border-color: var(--line-control-hover); }
   .list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1); }
   .row {
     width: 100%;

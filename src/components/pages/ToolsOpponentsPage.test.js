@@ -1,4 +1,4 @@
-import { it, expect, beforeEach, afterEach } from 'vitest';
+import { it, expect, beforeEach, afterEach, describe } from 'vitest';
 import { flushSync } from 'svelte';
 import ToolsOpponentsPage from './ToolsOpponentsPage.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
@@ -107,4 +107,90 @@ it('the Rankings import line shows only while game-data import is switched on', 
   expect(view.q('[data-testid="rankings-import-note"] a').textContent).toContain('Import a player from Rankings');
   localStorage.clear();
   applyPrefs();
+});
+
+describe('order, filter and remembered selection', () => {
+  const names = () => view.qa('[data-testid="opponent-picker"] .row .name').map((n) => n.textContent);
+  const field = (text) => document.getElementById([...view.qa('label')].find((l) => l.textContent.trim() === text).htmlFor);
+  const seed = () => {
+    const a = rosterStore.addOpponent('WARRIOR_DPS', 'Mia');
+    const b = rosterStore.addOpponent('MYSTIC_MAGE', 'Zed');
+    const c = rosterStore.addOpponent('WARRIOR_DPS', 'Amy');
+    const d = rosterStore.addOpponent('WARRIOR_DPS', 'Bob');
+    rosterStore.setOpponentSheet(b, { totalHp: 800, totalAttack: 30, totalAttackSpeed: 1 });
+    rosterStore.setOpponentSheet(d, { totalHp: 800, totalAttack: 30, totalAttackSpeed: 1 });
+    flushSync();
+    return { a, b, c, d };
+  };
+  const choose = (sel, v) => {
+    sel.value = v;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    flushSync();
+  };
+
+  it('has no controls with fewer than two opponents', () => {
+    rosterStore.addOpponent('WARRIOR_DPS', 'Solo');
+    flushSync();
+    expect(view.qa('label').some((l) => l.textContent.trim() === 'Order')).toBe(false);
+  });
+
+  it('sorts view-only: newest, name and ready first', () => {
+    seed();
+    expect(names()).toEqual(['Mia', 'Zed', 'Amy', 'Bob']);
+    choose(field('Order'), 'newest');
+    expect(names()).toEqual(['Bob', 'Amy', 'Zed', 'Mia']);
+    choose(field('Order'), 'name');
+    expect(names()).toEqual(['Amy', 'Bob', 'Mia', 'Zed']);
+    choose(field('Order'), 'ready');
+    expect(names()).toEqual(['Zed', 'Bob', 'Mia', 'Amy']);
+    expect(opp().map((o) => o.name)).toEqual(['Mia', 'Zed', 'Amy', 'Bob']);
+  });
+
+  it('filters by name or spec and shows an empty state when nothing matches', () => {
+    seed();
+    const f = field('Filter');
+    f.value = 'zed';
+    f.dispatchEvent(new Event('input', { bubbles: true }));
+    flushSync();
+    expect(names()).toEqual(['Zed']);
+    f.value = 'mage';
+    f.dispatchEvent(new Event('input', { bubbles: true }));
+    flushSync();
+    expect(names()).toEqual(['Zed']);
+    f.value = 'zzz';
+    f.dispatchEvent(new Event('input', { bubbles: true }));
+    flushSync();
+    expect(view.q('[data-testid="opponent-picker"]').textContent).toContain('No opponent matches');
+  });
+
+  it('remembers the order and the opened opponent after a remount', () => {
+    seed();
+    choose(field('Order'), 'name');
+    click(view.qa('.row').find((r) => r.textContent.includes('Mia')));
+    view.done();
+    view = setup(ToolsOpponentsPage);
+    expect(names()).toEqual(['Amy', 'Bob', 'Mia', 'Zed']);
+    expect(view.q('.row.is-sel .name').textContent).toBe('Mia');
+    expect(field('Order').value).toBe('name');
+  });
+
+  it('removing the selected opponent clears the stored selection', () => {
+    const { a } = seed();
+    click(view.qa('.row').find((r) => r.textContent.includes('Mia')));
+    expect(JSON.parse(localStorage.getItem('eldaryn_ui_v1')).opponents.selectedId).toBe(a);
+    click(buttonByText(/^Delete$/));
+    click(buttonByText(/Confirm delete/));
+    expect(JSON.parse(localStorage.getItem('eldaryn_ui_v1')).opponents.selectedId).toBeNull();
+  });
+
+  it('falls back to the first displayed opponent when the remembered one is gone and survives broken storage', () => {
+    localStorage.setItem('eldaryn_ui_v1', JSON.stringify({ opponents: { order: 'bogus', selectedId: 'gone' } }));
+    view.done();
+    seed();
+    view = setup(ToolsOpponentsPage);
+    expect(field('Order').value).toBe('added');
+    expect(view.q('.row.is-sel .name').textContent).toBe('Mia');
+    choose(field('Order'), 'name');
+    expect(view.q('.row.is-sel .name').textContent).toBe('Amy');
+  });
 });
