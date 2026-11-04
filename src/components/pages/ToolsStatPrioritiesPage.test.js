@@ -1,9 +1,12 @@
-import { it, expect, beforeEach, afterEach } from 'vitest';
+import { it, expect, describe, beforeEach, afterEach } from 'vitest';
 import { flushSync } from 'svelte';
 import ToolsStatPrioritiesPage from './ToolsStatPrioritiesPage.svelte';
 import data from '../../data/statPriority.json';
 import { presetBrackets } from '../../lib/features/statPriority.js';
 import { loadUi } from '../../lib/uiState.js';
+import { rosterStore } from '../../lib/rosterStore.svelte.js';
+import { fixtureCharacter } from '../../lib/build/fixtures.js';
+import { saveUi } from '../../lib/uiState.js';
 import { setup, click } from '../ui/testkit.js';
 
 let view;
@@ -69,4 +72,47 @@ it('switching spec keeps a custom range and falls back from a missing bracket', 
   click(view.qa('.chip').find((x) => x.textContent.includes(missing)));
   click(view.qa('button.spec').find((x) => x.textContent.includes(b.specName)));
   expect(loadUi().statPriority.range).toBe(presetBrackets(data, b.spec).at(-1).key);
+});
+
+describe('opening on the character', () => {
+  const withChar = (cls, level) => {
+    const c = fixtureCharacter(cls);
+    c.level = level;
+    rosterStore.roster.characters.splice(0, rosterStore.roster.characters.length, c);
+    rosterStore.roster.currentId = c.id;
+  };
+  const reopen = async () => {
+    view.done();
+    view = setup(ToolsStatPrioritiesPage);
+    for (let i = 0; i < 100 && !view.q('[data-testid="priority-card"]'); i++) {
+      await new Promise((r) => setTimeout(r, 10));
+      flushSync();
+    }
+  };
+  afterEach(() => rosterStore.roster.characters.splice(0, rosterStore.roster.characters.length));
+
+  it('opens on the class spec and level bracket, without saving', async () => {
+    withChar('MYSTIC', 62);
+    await reopen();
+    expect(view.q('[aria-pressed="true"].spec').textContent).toContain('Mage');
+    expect(view.q('[data-testid="opened-hint"]').textContent).toContain('Mystic, level 62');
+    expect(view.q('[data-testid="block-text"]').textContent.split('\n')[0]).toBe(presetBrackets(data, 'MYSTIC_MAGE').find((b) => b.key === '60-69').priorityLine);
+    expect(loadUi().statPriority).toEqual({ spec: null, range: null });
+  });
+
+  it('keeps a saved choice', async () => {
+    withChar('MYSTIC', 62);
+    saveUi({ statPriority: { spec: data.specs[0].spec, range: null } });
+    await reopen();
+    expect(view.q('[aria-pressed="true"].spec').textContent).toContain(data.specs[0].specName);
+    expect(view.q('[data-testid="opened-hint"]')).toBeNull();
+  });
+
+  it('shows no hint with an empty roster', async () => {
+    rosterStore.roster.characters.splice(0, rosterStore.roster.characters.length);
+    rosterStore.roster.currentId = null;
+    await reopen();
+    expect(view.q('[aria-pressed="true"].spec').textContent).toContain(data.specs[0].specName);
+    expect(view.q('[data-testid="opened-hint"]')).toBeNull();
+  });
 });

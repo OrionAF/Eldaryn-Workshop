@@ -1,8 +1,8 @@
 <script>
   /**
    * ToolsStatPrioritiesPage.svelte - Tools › Stat Priorities: what leaderboard players keep on their
-   * gear, per class, spec and level range, as a build-guide card. Reads no character, so it also
-   * opens from Welcome with an empty roster (routes.js noCharacter). Method and data:
+   * gear, per class, spec and level range, as a build-guide card. Needs no character (routes.js noCharacter):
+   * it opens from Welcome with an empty roster, and with a character and no saved choice it opens on their class and level. Method and data:
    * lib/features/statPriority.js; the data file loads on first visit (~0.7 MB). The chosen spec and
    * range are per-device view state (uiState.js statPriority).
    */
@@ -12,8 +12,9 @@
   import LevelRange from '../statPriority/LevelRange.svelte';
   import PriorityCard from '../statPriority/PriorityCard.svelte';
   import KeepRateHeatmap from '../statPriority/KeepRateHeatmap.svelte';
-  import { parseLevelRange, presetBrackets, rangeKey, scoreSpecRange } from '../../lib/features/statPriority.js';
+  import { defaultsForCharacter, parseLevelRange, presetBrackets, rangeKey, scoreSpecRange } from '../../lib/features/statPriority.js';
   import { loadUi, saveUi } from '../../lib/uiState.js';
+  import { rosterStore } from '../../lib/rosterStore.svelte.js';
 
   let { setStatus = () => {} } = $props();
 
@@ -22,9 +23,20 @@
   const saved = loadUi().statPriority;
   let specKey = $state(saved.spec);
   let range = $state(saved.range);
+  // With no saved choice, open on the current character's class and level (not saved until picked).
+  let opened = $state(null);
 
   import('../../data/statPriority.json').then(
-    (m) => (data = m.default),
+    (m) => {
+      data = m.default;
+      const c = rosterStore.current;
+      const d = !saved.spec && c ? defaultsForCharacter(data, c.class, c.level) : null;
+      if (d) {
+        specKey = d.spec;
+        range = d.range;
+        opened = d;
+      }
+    },
     () => (loadError = 'The stat priority data could not be loaded.'),
   );
 
@@ -61,6 +73,7 @@
   });
 
   function remember() {
+    opened = null;
     saveUi({ statPriority: { spec: spec.spec, range: key } });
   }
   function pickSpec(next) {
@@ -99,6 +112,10 @@
       on servers {data.servers.join(', ')} (captured {new Date(data.generatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}).
       It shows what players do, not a simulation of what is best.
     </p>
+
+    {#if opened}
+      <p class="hint" data-testid="opened-hint">Opened at your {opened.className}, level <span class="num">{opened.level}</span>.</p>
+    {/if}
 
     <div class="specs" role="group" aria-label="Class and spec">
       {#each groups as g (g.name)}
@@ -203,6 +220,7 @@
 <style>
   .stat-priorities { display: grid; gap: var(--sp-5); }
   .lede { margin: 0; max-width: 72ch; font-size: var(--fs-14); color: var(--text-soft); }
+  .hint { margin: 0; font-size: var(--fs-13); color: var(--text-muted); }
   .specs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); }
   .class-col { display: grid; gap: var(--sp-2); align-content: start; }
   .class-col .micro-label { color: var(--brass-400); }
