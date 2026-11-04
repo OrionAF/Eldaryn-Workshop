@@ -71,6 +71,46 @@ describe('Awakening store + screen', () => {
   });
 });
 
+describe('Awakening page: switching path', () => {
+  const card = (name) => [...target.querySelectorAll('.path-card')].find((b) => b.textContent.includes(name));
+  const btn = (t) => [...document.querySelectorAll('dialog button')].find((b) => b.textContent.trim() === t);
+  it('first pick applies instantly', () => {
+    render(AwakeningScreen);
+    card('Radiant').click();
+    flushSync();
+    expect(rosterStore.current.awakening.path).toBe('RADIANT');
+    expect(document.querySelector('dialog[open]')).toBeNull();
+  });
+  it('same path or level 1 switches without asking', () => {
+    rosterStore.setAwakeningPath('SHADOW');
+    render(AwakeningScreen);
+    card('Shadow').click();
+    card('Radiant').click();
+    flushSync();
+    expect(rosterStore.current.awakening.path).toBe('RADIANT');
+    expect(document.querySelector('dialog[open]')).toBeNull();
+  });
+  it('with points invested asks first; Keep path leaves state, Switch applies', () => {
+    rosterStore.setAwakeningPath('SHADOW');
+    rosterStore.setAwakeningLevel(5);
+    render(AwakeningScreen);
+    const before = rosterStore.current.awakening.level;
+    expect(before).toBeGreaterThan(1);
+    card('Radiant').click();
+    flushSync();
+    expect(rosterStore.current.awakening.path).toBe('SHADOW');
+    expect(document.querySelector('[data-testid="switch-preview"]')).not.toBeNull();
+    btn('Keep path').click();
+    flushSync();
+    expect(rosterStore.current.awakening).toEqual({ path: 'SHADOW', level: before });
+    card('Radiant').click();
+    flushSync();
+    btn('Switch').click();
+    flushSync();
+    expect(rosterStore.current.awakening).toEqual({ path: 'RADIANT', level: 1 });
+  });
+});
+
 const field = (label) => {
   const l = [...target.querySelectorAll('label')].find((el) => el.textContent.trim().startsWith(label));
   return l ? document.getElementById(l.htmlFor) : null;
