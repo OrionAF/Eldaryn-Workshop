@@ -98,3 +98,15 @@ export const RARITY_ORDER = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 
 export function rarityClass(rarity) {
   return RARITY_ORDER.includes(rarity) ? `rarity-${rarity.toLowerCase()}` : 'rarity-unknown';
 }
+
+// Letter cut-offs on a 0..1 grade (the stone roll grade, the Pet Core score). An app convention,
+// not a game grade.
+const GRADE_CUTS = [
+  [0.9, 'S'],
+  [0.75, 'A'],
+  [0.5, 'B'],
+  [0.25, 'C'],
+];
+
+/** S / A / B / C / D for a 0..1 fraction. */
+export const gradeLetter = (fraction) => GRADE_CUTS.find(([min]) => fraction >= min)?.[1] ?? 'D';

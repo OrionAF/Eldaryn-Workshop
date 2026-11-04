@@ -9,6 +9,11 @@
    *
    * Each card shows the altar-scaled ATK/HP and secondaries next to the base values (read-only,
    * computed by engine/sources/petCore.js).
+   *
+   * Each card is scored for a spec of the character's class (features/coreScore.js): its rolls plus
+   * how its secondaries rank in that spec's leaderboard keep rates (Tools > Stat Priorities), at the
+   * character's level bracket. The data loads on first visit, shared with that page; the chosen
+   * spec is per-device view state (uiState.js coreScoreSpec).
    */
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { PET_MAX_TIER, PET_MAX_LEVEL, MAX_OWNED_CORES, CORE_RARITY_NAMES, secondaryTypesFor } from '../../lib/model/pets.js';
@@ -24,6 +29,8 @@
   import PetCard from '../pets/PetCard.svelte';
   import { viewCores, SORT_OPTIONS, SHOW_OPTIONS } from '../pets/petView.js';
   import { orderStats } from '../../lib/ui/statOrder.js';
+  import { coreScore, coreScoreBasis } from '../../lib/features/coreScore.js';
+  import { loadUi, saveUi } from '../../lib/uiState.js';
 
   // eslint-disable-next-line no-unused-vars
   let { setStatus = () => {}, onNavigate = () => {}, tab = null } = $props();
@@ -34,10 +41,25 @@
   const types = $derived(orderStats(secondaryTypesFor(character.class), character.class));
   const rarityOptions = CORE_RARITY_NAMES.map((r) => ({ value: r, label: r }));
 
+  let priorityData = $state.raw(null);
+  import('../../data/statPriority.json').then(
+    (m) => (priorityData = m.default),
+    () => {}, // no data: cards show the roll only
+  );
+  let scoreSpec = $state(loadUi().coreScoreSpec);
+  const basis = $derived(priorityData ? coreScoreBasis(priorityData, character.class, character.level, scoreSpec) : null);
+  const specOptions = $derived(basis ? basis.specs.map((s) => ({ value: s.spec, label: s.specName })) : []);
+  const scores = $derived(new Map(owned.map((c) => [c.id, coreScore(c, basis?.weights ?? null)])));
+  const scoreValues = $derived(new Map([...scores].map(([id, s]) => [id, s?.score ?? s?.roll ?? -1])));
+  function pickSpec(v) {
+    scoreSpec = v;
+    saveUi({ coreScoreSpec: v });
+  }
+
   let sortMode = $state('added');
   let showMode = $state('all');
   const usedIds = $derived(new Set(character.presets.map((p) => p.petId).filter(Boolean)));
-  const shown = $derived(viewCores(owned, sortMode, showMode, usedIds));
+  const shown = $derived(viewCores(owned, sortMode, showMode, usedIds, scoreValues));
   let newRarity = $state(CORE_RARITY_NAMES[0]);
   let pendingTier = $state(null); // null = follows the altar
   let wipeOpen = $state(false);
@@ -150,7 +172,15 @@
     <div class="add-row">
       <Select label="Sort" options={SORT_OPTIONS} bind:value={sortMode} />
       <Select label="Show" options={SHOW_OPTIONS} bind:value={showMode} />
+      {#if specOptions.length}
+        <Select label="Score for" options={specOptions} value={basis.spec.spec} onchange={pickSpec} />
+      {/if}
     </div>
+    {#if basis?.bracket}
+      <p class="hint score-hint">Scored for {basis.spec.specName} on leaderboard stat priorities, levels <span class="num">{basis.bracket.key}</span>. Gold secondaries are high priority, faded ones low; the bar under each is its roll.</p>
+    {:else if basis}
+      <p class="hint score-hint">No leaderboard stat priorities for {basis.spec.specName} yet, so cards show the roll only.</p>
+    {/if}
     {#if !shown.length}<p class="hint">No cores match this filter.</p>{/if}
   {/if}
 
@@ -163,6 +193,8 @@
       altarTier={altar.tier}
       usedBy={usedBy(pet.id)}
       presets={character.presets}
+      score={scores.get(pet.id)}
+      specName={basis?.spec.specName ?? ''}
       onUse={(presetId) => usePet(presetId, pet.id)}
       editing={editingIds.has(pet.id)}
       onRarity={(r) => rosterStore.setCoreRarity(pet.id, r)}
@@ -193,6 +225,7 @@
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--text-ink); }
   .add-row { display: flex; align-items: flex-end; gap: var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-4); }
   .add-row :global(.field) { min-width: min(16rem, 100%); }
+  .score-hint { margin: calc(-1 * var(--sp-2)) 0 var(--sp-3); }
   .pet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); gap: var(--sp-3); min-width: 0; }
   .losses-head { margin: var(--sp-3) 0 var(--sp-1); font-weight: var(--fw-bold); }
   .losses { margin: 0; padding-left: var(--sp-5); }

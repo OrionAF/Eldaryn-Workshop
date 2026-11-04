@@ -11,6 +11,7 @@
 // Oblivion Power is derived from quality and grade by the engine and is not stored. Pure; L1 only.
 import { STONE_TYPES, STONE_STATS, SPECIAL_STONE_STATS, AMPLIFY_TABLE, OBLIVION_GRADES, statPool } from '../game/stones.js';
 import { newId } from './character.js';
+import { gradeLetter } from '../format.js';
 
 export const MAX_AMPLIFY_LEVEL = AMPLIFY_TABLE.length; // stones.md §8: 10
 export const MAX_OBLIVION_GRADE = OBLIVION_GRADES.length; // stones.md §7: 5
@@ -73,15 +74,6 @@ export function statRollFraction(typeEnum, value) {
   return Math.min(1, Math.max(0, (n - def.min) / (def.max - def.min)));
 }
 
-// Letter cut-offs on a stone's roll once attuned to Q100. An app convention, not a game grade: it
-// rates the roll only, never whether the stat suits a build.
-const ROLL_GRADES = [
-  [0.9, 'S'],
-  [0.75, 'A'],
-  [0.5, 'B'],
-  [0.25, 'C'],
-];
-
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
 /**
@@ -90,7 +82,8 @@ const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
  *   potential - the same once attuned to Q100: every row rises by (100 - quality) / 99 of its
  *               range, capped at max (stones.md §6). A floor: the last attune may overshoot.
  *               An unknown quality is taken as the roll's own (never attuned).
- *   grade     - letter on `potential`
+ *   grade     - letter on `potential` (format.js gradeLetter). It rates the roll only, never
+ *               whether the stat suits a build.
  */
 export function stoneRollGrade(stone) {
   const rows = (stone?.stats ?? []).filter((s) => statRollFraction(s.type, s.value) != null);
@@ -105,7 +98,7 @@ export function stoneRollGrade(stone) {
       return statRollFraction(s.type, clampStoneValue(s.type, raised));
     }),
   );
-  return { fraction, potential, grade: ROLL_GRADES.find(([min]) => potential >= min)?.[1] ?? 'D' };
+  return { fraction, potential, grade: gradeLetter(potential) };
 }
 
 /** Stat rows of a stone checked against its type's pools: guaranteed first, then the PvP draw, then free stats; each value clamped. */

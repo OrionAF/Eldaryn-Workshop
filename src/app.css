@@ -397,6 +397,13 @@ button:disabled { color: var(--text-disabled); cursor: not-allowed; }
 .btn-danger.is-expanding.is-confirming { flex: 1 1 100%; width: 100%; font-weight: var(--fw-bold); }
 .rank-controls button { width: 26px; padding: 2px 0; font-size: 13px; border-radius: var(--r-1); background: var(--surface-3); border: 1px solid var(--line-control); color: var(--text-ink); }
 .rank-controls button:hover { border-color: var(--brass-400); }
+/* Grade letters (format.js gradeLetter): the stone roll grade and the Pet Core score. */
+.roll-grade { font-weight: 700; font-size: var(--fs-12); }
+.grade-S { color: var(--brass-200); }
+.grade-A { color: var(--brass-400); }
+.grade-B { color: var(--text-ink); }
+.grade-C { color: var(--text-soft); }
+.grade-D { color: var(--text-muted); }
 /* .subheading is the legacy name of the micro label. */
 .subheading { font-family: var(--font-ui); font-weight: var(--fw-bold); font-size: var(--fs-11); letter-spacing: var(--track-label); color: var(--text-soft); text-transform: uppercase; }
 

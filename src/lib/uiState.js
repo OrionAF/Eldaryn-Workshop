@@ -24,7 +24,7 @@ export const OPPONENT_ORDERS = ['added', 'newest', 'name', 'ready'];
  */
 export const defaultPrefs = () => ({ density: 'comfortable', reduceMotion: false, defaultEffort: 'standard', cpuProfile: DEFAULT_CPU_PROFILE, calibration: null, dropSets: 'all', debugLog: 'off', showImport: false });
 
-const defaults = () => ({ v: 1, lastHash: null, lastBackupAt: null, areaLast: {}, optimiserSetups: {}, dropSetups: {}, statPriority: { spec: null, range: null }, opponents: { order: 'added', selectedId: null }, prefs: defaultPrefs() });
+const defaults = () => ({ v: 1, lastHash: null, lastBackupAt: null, areaLast: {}, optimiserSetups: {}, dropSetups: {}, statPriority: { spec: null, range: null }, coreScoreSpec: null, opponents: { order: 'added', selectedId: null }, prefs: defaultPrefs() });
 
 /** Any value -> valid preferences; a field that is missing or not one of the allowed values keeps its default. */
 export function normalisePrefs(raw) {
@@ -42,7 +42,7 @@ export function normalisePrefs(raw) {
   return out;
 }
 
-/** @returns {{v:1, lastHash:string|null, lastBackupAt:number|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, dropSetups:Record<string,object>, statPriority:{spec:string|null, range:string|null}, opponents:{order:'added'|'newest'|'name'|'ready', selectedId:string|null}, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string, calibration:object|null, dropSets:'all'|'set1', debugLog:'off'|'builds'|'fights', showImport:boolean}}} */
+/** @returns {{v:1, lastHash:string|null, lastBackupAt:number|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, dropSetups:Record<string,object>, statPriority:{spec:string|null, range:string|null}, coreScoreSpec:string|null, opponents:{order:'added'|'newest'|'name'|'ready', selectedId:string|null}, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string, calibration:object|null, dropSets:'all'|'set1', debugLog:'off'|'builds'|'fights', showImport:boolean}}} */
 export function loadUi() {
   const ui = defaults();
   try {
@@ -68,6 +68,8 @@ export function loadUi() {
         if (typeof sp.spec === 'string') ui.statPriority.spec = sp.spec;
         if (typeof sp.range === 'string') ui.statPriority.range = sp.range;
       }
+      // the spec Pet Cores are scored for (Character > Pets; the page checks it against the class)
+      if (typeof raw.coreScoreSpec === 'string') ui.coreScoreSpec = raw.coreScoreSpec;
       // Opponent library: list order and the opponent last opened (the page falls back if the id is gone)
       const op = raw.opponents;
       if (op && typeof op === 'object') {

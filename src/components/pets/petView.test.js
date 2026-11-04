@@ -25,3 +25,7 @@ it('handles empty lists and unknown modes', () => {
   expect(viewCores([], 'rarity', 'unused', new Set())).toEqual([]);
   expect(ids(viewCores(cores, 'zzz', 'zzz', new Set()))).toEqual(['a', 'b', 'c', 'd']);
 });
+it('sorts by score high to low, unscored cores last', () => {
+  const scores = new Map([['a', 0.4], ['b', 0.9], ['d', 0.4]]);
+  expect(ids(viewCores(cores, 'score', 'all', new Set(), scores))).toEqual(['b', 'a', 'd', 'c']);
+});

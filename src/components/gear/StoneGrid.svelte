@@ -171,25 +171,6 @@
   .roll-potential {
     color: var(--text-soft);
   }
-  .roll-grade {
-    font-weight: 700;
-    font-size: var(--fs-12);
-  }
-  .grade-S {
-    color: var(--brass-200);
-  }
-  .grade-A {
-    color: var(--brass-400);
-  }
-  .grade-B {
-    color: var(--text-ink);
-  }
-  .grade-C {
-    color: var(--text-soft);
-  }
-  .grade-D {
-    color: var(--text-muted);
-  }
   .stone-stat {
     display: grid;
     grid-template-columns: 1fr auto;

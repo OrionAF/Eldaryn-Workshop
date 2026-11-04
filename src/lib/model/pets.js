@@ -17,7 +17,7 @@
 //   defaultPets() / normalisePets(rawCharacter, {class, spec}) (idempotent) /
 //   migratePetsFromV1(v1Character) -> { value, idMap } / reconcilePets(character)
 import {
-  CORE_RARITIES, CORE_BASE_STATS, CORE_MAX_OWNED, coreSecondaryCount, coreSecondaryRange, coreSecondaryTypesFor,
+  CORE_RARITIES, CORE_BASE_STATS, CORE_MAX_OWNED, coreBaseBand, coreSecondaryCount, coreSecondaryRange, coreSecondaryTypesFor,
 } from '../game/petCores.js';
 import { available } from '../game/classes.js';
 import { newId } from './character.js';
@@ -58,6 +58,20 @@ export function coreSecondaryRangePoints(type) {
   const k = MULTIPLIER_STATS.has(type) ? 100 : 1;
   const round = (n) => Math.round(n * k * 1e6) / 1e6;
   return { min: round(r.min), max: round(r.max), step: round(10 ** -r.decimals) };
+}
+
+const unit = (n, min, max) => (Number.isFinite(n) && max > min ? Math.min(1, Math.max(0, (n - min) / (max - min))) : null);
+
+/** Where a secondary's stored roll sits in its core range (coreSecondaryRangePoints), 0..1; null for an unknown type. */
+export function coreSecondaryRollFraction(type, value) {
+  const r = coreSecondaryRangePoints(type);
+  return r ? unit(Number(value), r.min, r.max) : null;
+}
+
+/** Where a base roll sits in its rarity's +-10% band (Game/pet-cores.md §5), 0..1; null for an unknown rarity. */
+export function coreBaseRollFraction(rarity, stat, value) {
+  const band = coreBaseBand(coreRarityEnum(rarity))?.[stat];
+  return band ? unit(Number(value), band.min, band.max) : null;
 }
 
 /** Secondary types a class may roll on a core (the class-filtered gear pool). */

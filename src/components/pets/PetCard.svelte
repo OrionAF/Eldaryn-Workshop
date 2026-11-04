@@ -10,6 +10,9 @@
    *
    * A "Used in" menu lists every preset (`presets`), checks those using this core and reports a pick via
    * `onUse(presetId)`; the parent toggles the assignment.
+   *
+   * `score` (features/coreScore.js coreScore, scored for `specName`) adds a grade letter with the score, stat
+   * fit and roll, a roll bar under each secondary, and marks each secondary's priority for that spec.
    */
   import { coreImage } from '../../lib/assets/pets.js';
   import { statByEnum } from '../../lib/game/stats.js';
@@ -25,7 +28,7 @@
   import Button from '../ui/Button.svelte';
   import PresetMenu from '../character/PresetMenu.svelte';
 
-  let { pet, types = [], altarLevel = null, altarTier = 1, usedBy = [], presets = [], editing = false, onRarity, onBase, onType, onValue, onDropSecondary, onToggleEdit, onUse, onDuplicate, onRemove } = $props();
+  let { pet, types = [], altarLevel = null, altarTier = 1, usedBy = [], presets = [], editing = false, score = null, specName = '', onRarity, onBase, onType, onValue, onDropSecondary, onToggleEdit, onUse, onDuplicate, onRemove } = $props();
 
   const slots = $derived(coreSlots(pet.rarity));
   const band = $derived(coreBaseBand(coreRarityEnum(pet.rarity)));
@@ -38,6 +41,16 @@
   const rarityOptions = CORE_RARITY_NAMES.map((r) => ({ value: r, label: r }));
   const typeOptions = (current) => choices(current).map((t) => ({ value: t, label: label(t) }));
   const addOptions = $derived([{ value: '', label: '+ add secondary…' }, ...typeOptions(null)]);
+  const pct = (f) => `${Math.round(f * 100)}%`;
+  const scoreTitle = $derived(
+    !score
+      ? ''
+      : score.grade
+        ? `Scored for ${specName}. Stats ${pct(score.fit)}: its secondaries' priority against the best ${coreSlots(pet.rarity)} a ${pet.rarity} core can hold. Roll ${pct(score.roll)}: how far base ATK, HP and each secondary sit up their ranges.`
+        : 'Mean position of base ATK, HP and each secondary in its possible range. No stat priorities for this class, so no score.',
+  );
+  const secTitle = (sc) =>
+    [sc?.weight != null ? `${pct(sc.weight)} priority for ${specName}` : null, sc?.roll != null ? `${pct(sc.roll)} of range` : null].filter(Boolean).join(', ');
 </script>
 
 <div class="pet-card rarity-card {rarityClass(pet.rarity)}" class:editing>
@@ -45,6 +58,16 @@
     <Select label="Rarity" options={rarityOptions} value={pet.rarity} onchange={(v) => onRarity(v)} />
   {:else}
     <h3 class="card-title">{coreName(pet)}</h3>
+  {/if}
+
+  {#if score}
+    <p class="core-score" title={scoreTitle} data-testid="core-score">
+      {#if score.grade}
+        <span class="roll-grade grade-{score.grade}">{score.grade}</span>
+        <span class="num">Score {pct(score.score)}</span>
+      {/if}
+      <span class="score-parts">{#if score.grade}Stats <span class="num">{pct(score.fit)}</span>{' · '}{/if}Roll <span class="num">{pct(score.roll)}</span></span>
+    </p>
   {/if}
 
   <img class="core-art" src={coreImage(pet.rarity)} alt="" loading="lazy" />
@@ -89,7 +112,9 @@
           <div class="drop-sec"><Button variant="quiet" size="small" aria-label="Remove secondary {i + 1}" onclick={() => onDropSecondary(i)}>×</Button></div>
         </div>
       {:else}
-        <p class="sec-line"><span class="sec-name">{label(sec.type)}</span><span class="num">+{formatPct(sec.value)}%{#if scaled}<span class="scaled"> → +{formatPct(petSecondaryValue(sec.value, altarLevel))}%</span>{/if}</span></p>
+        {@const sc = score?.secondaries[i]}
+        <p class="sec-line" title={secTitle(sc)}><span class="sec-name" class:fit-high={sc?.weight != null && sc.weight >= 2 / 3} class:fit-low={sc?.weight != null && sc.weight < 1 / 3}>{label(sec.type)}</span><span class="num">+{formatPct(sec.value)}%{#if scaled}<span class="scaled"> → +{formatPct(petSecondaryValue(sec.value, altarLevel))}%</span>{/if}</span></p>
+        {#if sc?.roll != null}<span class="stat-bar"><span class="stat-fill" style="width: {pct(sc.roll)}"></span></span>{/if}
       {/if}
     {/each}
     {#if editing && pet.secondaries.length < slots}
@@ -147,6 +172,12 @@
   .drop-sec { align-self: flex-end; }
   .sec-line { margin: 0; display: flex; justify-content: space-between; gap: var(--sp-2); font-size: var(--fs-12); }
   .sec-name { color: var(--text-muted); }
+  .sec-name.fit-high { color: var(--brass-200); }
+  .sec-name.fit-low { opacity: 0.6; }
+  .core-score { margin: 0; display: flex; align-items: baseline; justify-content: center; gap: var(--sp-2); font-size: var(--fs-11); color: var(--text-muted); }
+  .core-score .num { font-size: var(--fs-11); }
+  .stat-bar { display: block; height: 2px; margin-top: calc(-1 * var(--sp-1) + 1px); background: var(--line-hairline); border-radius: 1px; overflow: hidden; }
+  .stat-fill { display: block; height: 100%; background: var(--r-up, var(--brass-400)); }
   .used-by { margin: 0; font-size: var(--fs-11); color: var(--text-muted); }
   .card-foot { display: flex; align-items: center; gap: var(--sp-1); margin-top: auto; padding-top: var(--sp-2); border-top: 1px solid var(--line-hairline); flex-wrap: wrap; }
 </style>
