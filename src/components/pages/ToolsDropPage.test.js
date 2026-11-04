@@ -481,3 +481,47 @@ it('S2: Loot bag without a calibration links to Settings once a bag is imported'
   paste(lootBag);
   expect(estimate().querySelector('a').getAttribute('href')).toBe('#/settings');
 });
+
+it('Copy into drop: copies the equipped item (a deep copy) into the drop; an empty slot is disabled', () => {
+  let status = '';
+  open({ setStatus: (m) => { status = m; } });
+  const copies = () => [...target.querySelectorAll('.equipped button')];
+  expect(copies().length).toBeGreaterThan(1);
+  rosterStore.setEquipmentItem('set1', 'WEAPON', gear(4321));
+  flushSync();
+  const equipped = rosterStore.current.equipment.set1.items.WEAPON;
+  copies()[0].click();
+  flushSync();
+  const item = rosterStore.current.drop.item;
+  expect(item).toMatchObject({ rarity: equipped.rarity, quality: equipped.quality, primaryStats: equipped.primaryStats, secondaryStats: equipped.secondaryStats });
+  expect(item).not.toBe(equipped);
+  expect(item.primaryStats).not.toBe(equipped.primaryStats);
+  expect(status).toContain('Copied');
+  // a slot with nothing equipped in a set leaves its button disabled with the reason
+  rosterStore.setEquipmentItem('set2', 'WEAPON', null);
+  flushSync();
+  const empty = copies()[1];
+  expect(empty.getAttribute('aria-disabled')).toBe('true');
+  expect(empty.title).toBe('Nothing equipped in this slot');
+  const before = JSON.stringify(rosterStore.current.drop);
+  empty.click();
+  flushSync();
+  expect(JSON.stringify(rosterStore.current.drop)).toBe(before);
+});
+
+it('Copy into drop: Oblivion realm copies from the Oblivion set', () => {
+  rosterStore.setOblivionUnlocked(true);
+  rosterStore.setDropRealm('oblivion');
+  rosterStore.setEquipmentItem('oblivion', 'WEAPON', gear(777));
+  flushSync();
+  open();
+  const slot = rosterStore.current.drop.slot;
+  const item = rosterStore.current.equipment.oblivion.items[slot];
+  const b = target.querySelector('.equipped button');
+  expect(target.querySelectorAll('.equipped li')).toHaveLength(1);
+  if (!item) { expect(b.getAttribute('aria-disabled')).toBe('true'); return; }
+  b.click();
+  flushSync();
+  expect(rosterStore.current.drop.realm).toBe('oblivion');
+  expect(rosterStore.current.drop.item.primaryStats).toEqual(item.primaryStats);
+});

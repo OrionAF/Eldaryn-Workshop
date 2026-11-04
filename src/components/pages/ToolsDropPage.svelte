@@ -228,6 +228,12 @@
       ? [{ key: 'oblivion', label: 'Oblivion', item: character.equipment.oblivion.items[slot] ?? null }]
       : EQUIP_SETS.filter((s) => s.realm === 'base').map((s) => ({ key: s.key, label: s.label, item: character.equipment[s.key].items[slot] ?? null })),
   );
+  /** Start the drop from a copy of the equipped item, so a small change (a reroll) needs no retyping. */
+  function copyEquipped(e) {
+    if (!e.item) return;
+    rosterStore.setDropItem(structuredClone($state.snapshot(e.item)));
+    setStatus?.(`Copied the ${e.label} item into the drop`);
+  }
   const anySheet = $derived(rows.some((r) => r.source === 'sheet'));
   const dropRows = $derived(drop ? dropStatRows(drop.item) : []);
 
@@ -384,7 +390,16 @@
             />
             <ul class="equipped" aria-label="Currently equipped in this slot">
               {#each equippedNow as e (e.key)}
-                <li><span class="cap-label">{e.label}</span> <span class="soft">{itemSummary(e.item)}</span></li>
+                <li>
+                  <span class="cap-label">{e.label}</span> <span class="soft">{itemSummary(e.item)}</span>
+                  <Button
+                    variant="ghost"
+                    size="small"
+                    disabled={!e.item}
+                    reason="Nothing equipped in this slot"
+                    onclick={() => copyEquipped(e)}
+                  >Copy into drop</Button>
+                </li>
               {/each}
             </ul>
             <ItemEditor value={drop.item} {realm} {...{ slot }} class={character.class} onchange={(item) => rosterStore.setDropItem(item)} />
@@ -664,6 +679,7 @@
   .cards { display: grid; gap: var(--sp-3); }
   .block { display: grid; gap: var(--sp-2); }
   .row { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+  .equipped li { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); }
   .equipped { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1); font-size: var(--fs-12); }
   .soft,
   .hint { color: var(--text-soft); font-size: var(--fs-12); margin: 0; }
