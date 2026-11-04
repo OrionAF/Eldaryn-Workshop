@@ -143,6 +143,20 @@ export function presetBrackets(data, spec) {
     .filter((b) => b.players >= data.method.MIN_PLAYERS);
 }
 
+/**
+ * Where to open the page for a character: the first spec of their class and the preset bracket
+ * holding their level (the spec's top bracket when none does). null when the data has no spec for
+ * that class. range is null when the spec has no bracket at all.
+ */
+export function defaultsForCharacter(data, cls, level) {
+  const want = String(cls ?? '').toLowerCase();
+  const entry = want && data.specs.find((s) => s.className.toLowerCase() === want);
+  if (!entry) return null;
+  const brackets = presetBrackets(data, entry.spec);
+  const hit = brackets.find((b) => level >= b.lo && level <= b.hi) ?? brackets.at(-1);
+  return { spec: entry.spec, range: hit?.key ?? null, className: entry.className, level };
+}
+
 /** Players of a spec at levels lo..hi. */
 export function playersIn(data, spec, lo, hi) {
   return Object.entries(data.levels[spec]).reduce((s, [l, x]) => s + (+l >= lo && +l <= hi ? x.n : 0), 0);

@@ -48,7 +48,7 @@ export const PAGES = [
   { id: 'tools/duel', label: 'Duel', title: 'Duel', glyph: '⚡', scope: 'tool', sentence: TO, needsClass: true, usesPreset: false, legacy: 'duel' },
   { id: 'tools/opponents', label: 'Opponents', title: 'Opponents', glyph: '☗', scope: 'tool', sentence: TO, needsClass: true, usesPreset: false },
   { id: 'tools/oblivion', label: 'Oblivion Floors', title: 'Oblivion Floors', glyph: '◐', scope: 'oblivion', sentence: TO, needsClass: true, usesPreset: false, legacy: 'oblivion' },
-  { id: 'tools/stat-priorities', label: 'Stat Priorities', title: 'Stat Priorities', glyph: '≡', scope: 'global', sentence: 'From leaderboard players. Does not read or change your characters.', needsClass: false, usesPreset: false, noCharacter: true },
+  { id: 'tools/stat-priorities', label: 'Stat Priorities', title: 'Stat Priorities', glyph: '≡', scope: 'global', sentence: 'From leaderboard players. Reads only your class and level to pick where it opens.', needsClass: false, usesPreset: false, noCharacter: true },
 ].map((p) => {
   const [area, slug] = p.id.split('/');
   return { ...p, area, slug };

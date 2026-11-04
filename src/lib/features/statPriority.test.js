@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  aggregate, blockText, parseLevelRange, playersIn, presetBrackets, priorityTies, rangeKey, scoreRange, scoreSpecRange,
+  aggregate, blockText, defaultsForCharacter, parseLevelRange, playersIn, presetBrackets, priorityTies, rangeKey, scoreRange, scoreSpecRange,
 } from './statPriority.js';
 
 // Two-level toy spec: pool A, B, C, D; A kept far above odds, D far below.
@@ -89,5 +89,28 @@ describe('blockText', () => {
     expect(text[1]).toBe('Avoid (block list): Spell Resist');
     expect(text).toContain('Awakening: Shadow (5 of 9)');
     expect(text.at(-1)).toBe('Typical: Attack 50%');
+  });
+});
+
+describe('defaultsForCharacter', () => {
+  const real = async () => (await import('../../data/statPriority.json')).default;
+
+  it('picks the class first spec and the bracket holding the level', async () => {
+    const data = await real();
+    const d = defaultsForCharacter(data, 'MYSTIC', 62);
+    expect(d.spec).toBe('MYSTIC_MAGE');
+    expect(d.range).toBe('60-69');
+    expect(defaultsForCharacter(data, 'WARRIOR', 100).spec).toBe('WARRIOR_DPS');
+  });
+
+  it('falls back to the top bracket when no bracket holds the level', async () => {
+    const data = await real();
+    expect(defaultsForCharacter(data, 'SENTINEL', 5).range).toBe(presetBrackets(data, 'SENTINEL_MARKSMANSHIP').at(-1).key);
+  });
+
+  it('returns null for a class the data lacks or no class', async () => {
+    const data = await real();
+    expect(defaultsForCharacter(data, 'NECROMANCER', 50)).toBeNull();
+    expect(defaultsForCharacter(data, null, 50)).toBeNull();
   });
 });
