@@ -40,3 +40,34 @@ it('edit mode hints the rarity band of the base rolls', () => {
   render({ editing: true });
   expect(target.querySelector('.hint').textContent).toContain(`${formatFlat(2070)}-${formatFlat(2530)}`);
 });
+
+it('Used in lists every preset, checks the ones using this core, and reports the picked preset id', () => {
+  const picked = [];
+  const presets = [{ id: 'a', name: 'PvP', petId: 'p' }, { id: 'b', name: 'PvE', petId: 'other' }, { id: 'c', name: 'Spare', petId: null }];
+  render({ presets, onUse: (id) => picked.push(id) });
+  target.querySelector('button[aria-haspopup]').click();
+  flushSync();
+  const items = [...target.querySelectorAll('[role^="menuitem"]')];
+  expect(items.map((i) => i.textContent)).toEqual([expect.stringContaining('PvP'), expect.stringContaining('PvE'), expect.stringContaining('Spare')]);
+  expect(items[0].getAttribute('aria-checked')).toBe('true');
+  expect(items[1].getAttribute('aria-checked')).toBe('false');
+  expect(items[1].textContent).toContain('uses another');
+  items[2].click();
+  flushSync();
+  expect(picked).toEqual(['c']);
+});
+
+it('Used in with no presets renders "none" and an empty menu without crashing', () => {
+  render({});
+  const btn = target.querySelector('button[aria-haspopup]');
+  expect(btn.textContent).toContain('Used in: none');
+  btn.click();
+  flushSync();
+  expect(target.querySelectorAll('[role^="menuitem"]').length).toBe(0);
+});
+
+it('the Used in button summarises the presets using this core', () => {
+  render({ presets: [{ id: 'a', name: 'PvP', petId: 'p' }, { id: 'b', name: 'PvE', petId: 'other' }] });
+  expect(target.querySelector('button[aria-haspopup]').textContent).toContain('Used in: PvP');
+  expect(target.querySelector('button[aria-haspopup]').textContent).not.toContain('PvE');
+});

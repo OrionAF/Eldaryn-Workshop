@@ -7,6 +7,9 @@
    *
    * When the parent passes the Core Altar level and tier, a read-only line shows the altar-scaled
    * ATK/HP and each secondary's scaled value, straight from the engine core source (engine/sources/petCore.js).
+   *
+   * A "Used in" menu lists every preset (`presets`), checks those using this core and reports a pick via
+   * `onUse(presetId)`; the parent toggles the assignment.
    */
   import { coreImage } from '../../lib/assets/pets.js';
   import { statByEnum } from '../../lib/game/stats.js';
@@ -20,8 +23,9 @@
   import NumberField from '../ui/NumberField.svelte';
   import Select from '../ui/Select.svelte';
   import Button from '../ui/Button.svelte';
+  import PresetMenu from '../character/PresetMenu.svelte';
 
-  let { pet, types = [], altarLevel = null, altarTier = 1, usedBy = [], editing = false, onRarity, onBase, onType, onValue, onDropSecondary, onToggleEdit, onRemove } = $props();
+  let { pet, types = [], altarLevel = null, altarTier = 1, usedBy = [], presets = [], editing = false, onRarity, onBase, onType, onValue, onDropSecondary, onToggleEdit, onUse, onRemove } = $props();
 
   const slots = $derived(coreSlots(pet.rarity));
   const band = $derived(coreBaseBand(coreRarityEnum(pet.rarity)));
@@ -30,6 +34,7 @@
   const label = (type) => statByEnum(type)?.sheetLabel ?? type;
   const taken = (current) => new Set(pet.secondaries.map((s) => s.type).filter((t) => t !== current));
   const choices = (current) => types.filter((t) => !taken(current).has(t) || t === current);
+  const useItems = $derived(presets.map((p) => ({ id: p.id, label: p.name, checked: p.petId === pet.id, meta: p.petId && p.petId !== pet.id ? 'uses another' : '' })));
   const rarityOptions = CORE_RARITY_NAMES.map((r) => ({ value: r, label: r }));
   const typeOptions = (current) => choices(current).map((t) => ({ value: t, label: label(t) }));
   const addOptions = $derived([{ value: '', label: '+ add secondary…' }, ...typeOptions(null)]);
@@ -97,6 +102,7 @@
   <p class="used-by">{usedBy.length ? `used by ${usedBy.join(', ')}` : 'unused'}</p>
 
   <div class="card-foot">
+    <PresetMenu label="Used in" items={useItems} onselect={(id) => onUse(id)} />
     <Button variant="ghost" size="small" onclick={onToggleEdit}>{editing ? 'Save' : 'Edit'}</Button>
     <ConfirmButton variant="danger" size="small" label="Remove" confirmLabel="Confirm remove" onConfirm={onRemove} />
   </div>
