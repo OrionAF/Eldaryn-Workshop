@@ -12,6 +12,8 @@ export const DENSITIES = ['comfortable', 'compact'];
 export const EFFORTS = ['quick', 'standard', 'thorough'];
 /** Drop Check's "Compare against": every gear set, or Set 1 only (features/swap.js DROP_SET_SCOPES). */
 export const DROP_SETS = ['all', 'set1'];
+/** Opponent library list order (Tools > Opponents): as added, newest first, by name, or duel-ready first. */
+export const OPPONENT_ORDERS = ['added', 'newest', 'name', 'ready'];
 
 /**
  * Preferences (G6): density, reduced motion, the effort tools start with (plan Q4: Standard), and the
@@ -22,7 +24,7 @@ export const DROP_SETS = ['all', 'set1'];
  */
 export const defaultPrefs = () => ({ density: 'comfortable', reduceMotion: false, defaultEffort: 'standard', cpuProfile: DEFAULT_CPU_PROFILE, calibration: null, dropSets: 'all', debugLog: 'off', showImport: false });
 
-const defaults = () => ({ v: 1, lastHash: null, lastBackupAt: null, areaLast: {}, optimiserSetups: {}, statPriority: { spec: null, range: null }, prefs: defaultPrefs() });
+const defaults = () => ({ v: 1, lastHash: null, lastBackupAt: null, areaLast: {}, optimiserSetups: {}, statPriority: { spec: null, range: null }, opponents: { order: 'added', selectedId: null }, prefs: defaultPrefs() });
 
 /** Any value -> valid preferences; a field that is missing or not one of the allowed values keeps its default. */
 export function normalisePrefs(raw) {
@@ -40,7 +42,7 @@ export function normalisePrefs(raw) {
   return out;
 }
 
-/** @returns {{v:1, lastHash:string|null, lastBackupAt:number|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, statPriority:{spec:string|null, range:string|null}, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string, calibration:object|null, dropSets:'all'|'set1', debugLog:'off'|'builds'|'fights', showImport:boolean}}} */
+/** @returns {{v:1, lastHash:string|null, lastBackupAt:number|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, statPriority:{spec:string|null, range:string|null}, opponents:{order:'added'|'newest'|'name'|'ready', selectedId:string|null}, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string, calibration:object|null, dropSets:'all'|'set1', debugLog:'off'|'builds'|'fights', showImport:boolean}}} */
 export function loadUi() {
   const ui = defaults();
   try {
@@ -62,6 +64,12 @@ export function loadUi() {
         if (typeof sp.spec === 'string') ui.statPriority.spec = sp.spec;
         if (typeof sp.range === 'string') ui.statPriority.range = sp.range;
       }
+      // Opponent library: list order and the opponent last opened (the page falls back if the id is gone)
+      const op = raw.opponents;
+      if (op && typeof op === 'object') {
+        if (OPPONENT_ORDERS.includes(op.order)) ui.opponents.order = op.order;
+        if (typeof op.selectedId === 'string') ui.opponents.selectedId = op.selectedId;
+      }
       ui.prefs = normalisePrefs(raw.prefs);
     }
   } catch {
@@ -74,7 +82,7 @@ export function loadUi() {
 export function saveUi(patch) {
   try {
     const cur = loadUi();
-    const next = { ...cur, ...patch, areaLast: { ...cur.areaLast, ...(patch.areaLast ?? {}) }, optimiserSetups: { ...cur.optimiserSetups, ...(patch.optimiserSetups ?? {}) }, prefs: normalisePrefs({ ...cur.prefs, ...(patch.prefs ?? {}) }), v: 1 };
+    const next = { ...cur, ...patch, areaLast: { ...cur.areaLast, ...(patch.areaLast ?? {}) }, optimiserSetups: { ...cur.optimiserSetups, ...(patch.optimiserSetups ?? {}) }, opponents: { ...cur.opponents, ...(patch.opponents ?? {}) }, prefs: normalisePrefs({ ...cur.prefs, ...(patch.prefs ?? {}) }), v: 1 };
     localStorage.setItem(UI_KEY, JSON.stringify(next));
     return true;
   } catch {
