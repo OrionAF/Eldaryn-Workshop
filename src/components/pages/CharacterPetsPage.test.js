@@ -104,3 +104,35 @@ it('the pet grid cannot widen the page', () => {
   expect(rule('.page')).toMatch(/min-width: 0/);
   expect(rule('.page')).toMatch(/overflow-x: auto/);
 });
+
+it('Used in sets a preset to the core, a second pick clears it, and the other preset is untouched', () => {
+  click(btn('+ Add core'));
+  const id = rosterStore.current.pets.cores[0].id;
+  const [a, b] = rosterStore.current.presets;
+  const pick = (n) => {
+    target.querySelector('.pet-card button[aria-haspopup]').click();
+    flushSync();
+    target.querySelectorAll('.pet-card [role^="menuitem"]')[n].click();
+    flushSync();
+  };
+  pick(0);
+  expect(rosterStore.current.presets[0].petId).toBe(id);
+  expect(rosterStore.current.presets[1].petId).toBe(b.petId);
+  expect(target.querySelector('.used-by').textContent).toContain(a.name);
+  pick(0);
+  expect(rosterStore.current.presets[0].petId).toBeNull();
+  expect(target.querySelector('.used-by').textContent).toBe('unused');
+});
+
+it('Used in reassigns a preset that uses another core to this one', () => {
+  click(btn('+ Add core'));
+  click(btn('+ Add core'));
+  const [c1, c2] = rosterStore.current.pets.cores.map((c) => c.id);
+  const presetId = rosterStore.current.presets[0].id;
+  rosterStore.setPresetPet(presetId, c2);
+  target.querySelector('.pet-card button[aria-haspopup]').click();
+  flushSync();
+  target.querySelectorAll('.pet-card [role^="menuitem"]')[0].click();
+  flushSync();
+  expect(rosterStore.current.presets[0].petId).toBe(c1);
+});

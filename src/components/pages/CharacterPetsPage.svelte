@@ -1,7 +1,7 @@
 <script>
   /**
    * CharacterPetsPage.svelte (C6) - the character's Pet Cores (Pets V2, client 2.9.1) and the one Core Altar
-   * that levels and tiers every core. A preset picks which core it uses (Presets screen).
+   * that levels and tiers every core. A preset picks which core it uses, here (each card's "Used in" menu) or on the Presets screen.
    *
    * Changing the altar TIER wipes the collection (the game's evolve, Game/pet-cores.md §4) and clears every
    * preset's pet, so it sits behind a dialog that names the cores and presets it will clear (build/usage.js
@@ -44,6 +44,10 @@
 
   const usedBy = (petId) => character.presets.filter((p) => p.petId === petId).map((p) => p.name);
 
+  function usePet(presetId, petId) {
+    const on = character.presets.find((p) => p.id === presetId)?.petId === petId;
+    rosterStore.setPresetPet(presetId, on ? null : petId);
+  }
   function addCore() {
     const id = rosterStore.addCore(newRarity);
     if (id) editingIds = new Set([...editingIds, id]);
@@ -140,6 +144,8 @@
       altarLevel={altar.level}
       altarTier={altar.tier}
       usedBy={usedBy(pet.id)}
+      presets={character.presets}
+      onUse={(presetId) => usePet(presetId, pet.id)}
       editing={editingIds.has(pet.id)}
       onRarity={(r) => rosterStore.setCoreRarity(pet.id, r)}
       onBase={(stat, v) => rosterStore.setCoreBase(pet.id, stat, v)}
