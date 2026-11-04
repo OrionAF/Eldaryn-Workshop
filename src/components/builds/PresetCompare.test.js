@@ -40,3 +40,19 @@ it('a loadout cell is a button that activates its preset and opens Loadout; stat
   expect(location.hash).toBe('#/builds/loadout');
   spy.mockRestore();
 });
+
+it('Move buttons are disabled at the ends and call movePreset otherwise', async () => {
+  const { rosterStore } = await import('../../lib/rosterStore.svelte.js');
+  const spy = vi.spyOn(rosterStore, 'movePreset').mockImplementation(() => true);
+  t = setup(PresetCompare, { character: character() });
+  const btn = (label) => t.qa('button').find((b) => b.getAttribute('aria-label') === label);
+  expect(btn('Move a left').getAttribute('aria-disabled')).toBe('true');
+  expect(btn('Move b right').getAttribute('aria-disabled')).toBe('true')
+  btn('Move a left').click();
+  expect(spy).not.toHaveBeenCalled();
+  btn('Move a right').click();
+  expect(spy).toHaveBeenCalledWith('a', 1);
+  btn('Move b left').click();
+  expect(spy).toHaveBeenCalledWith('b', -1);
+  spy.mockRestore();
+});

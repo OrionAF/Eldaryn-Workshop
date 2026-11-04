@@ -33,6 +33,17 @@ export function createPresetsStore(ctx) {
     });
   }
 
+  /** Swap a preset with its neighbour (delta -1 = left, +1 = right). False when it cannot move. Ids and the active preset are untouched. */
+  function movePreset(presetId, delta) {
+    return ctx.edit((c) => {
+      const from = c.presets.findIndex((p) => p.id === presetId);
+      const to = from + (delta < 0 ? -1 : 1);
+      if (from === -1 || to < 0 || to >= c.presets.length) return false;
+      [c.presets[from], c.presets[to]] = [c.presets[to], c.presets[from]];
+      return true;
+    });
+  }
+
   /** Refuses below the two-preset minimum. */
   function deletePreset(presetId) {
     return ctx.edit((c) => {
@@ -107,6 +118,7 @@ export function createPresetsStore(ctx) {
   return {
     addPreset,
     duplicatePreset,
+    movePreset,
     deletePreset,
     setActivePreset,
     renamePreset,
