@@ -95,3 +95,44 @@ describe('restoreDeletedCharacter', () => {
     expect(ids()[1]).toBe(c);
   });
 });
+
+describe('duplicateCharacter', () => {
+  it('copies a character under a new id, names it "<name> copy", selects it and persists', () => {
+    const src = roster.characters[0];
+    saves = 0;
+    const id = store.duplicateCharacter(src.id);
+    const copy = roster.characters.at(-1);
+    expect(copy.id).toBe(id);
+    expect(copy.id).not.toBe(src.id);
+    expect(copy.name).toBe('A copy');
+    expect(copy.class).toBe(src.class);
+    expect(copy.level).toBe(src.level);
+    expect(copy.presets.map((p) => p.id)).toEqual(src.presets.map((p) => p.id));
+    expect(roster.characters).toHaveLength(4);
+    expect(roster.currentId).toBe(id);
+    expect(saves).toBe(1);
+  });
+
+  it('makes names unique on repeated duplication', () => {
+    store.duplicateCharacter(roster.characters[0].id);
+    store.duplicateCharacter(roster.characters[0].id);
+    expect(roster.characters.map((c) => c.name).slice(-2)).toEqual(['A copy', 'A copy 2']);
+  });
+
+  it('is a deep copy: editing the copy leaves the original alone', () => {
+    const src = roster.characters[0];
+    store.duplicateCharacter(src.id);
+    const copy = roster.characters.at(-1);
+    copy.presets[0].name = 'Changed';
+    copy.baseResidual.attack = 999;
+    expect(src.presets[0].name).not.toBe('Changed');
+    expect(src.baseResidual.attack).not.toBe(999);
+  });
+
+  it('returns null and changes nothing for an unknown id', () => {
+    saves = 0;
+    expect(store.duplicateCharacter('nope')).toBeNull();
+    expect(roster.characters).toHaveLength(3);
+    expect(saves).toBe(0);
+  });
+});

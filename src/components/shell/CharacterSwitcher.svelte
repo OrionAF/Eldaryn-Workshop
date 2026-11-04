@@ -43,6 +43,7 @@
     { id: '-sep', separator: true },
     { id: '__new', label: '+ New character' },
     { id: '__edit', label: 'Edit character' },
+    { id: '__dup', label: 'Duplicate character' },
   ]);
 
   function onSelect(item) {
@@ -56,6 +57,8 @@
       editName = character.name;
       editClass = character.class ?? NONE;
       editOpen = true;
+    } else if (item.id === '__dup') {
+      if (rosterStore.duplicateCharacter(character.id)) notify(`Created ${rosterStore.current.name}`, { kind: 'success' });
     } else if (item.id !== character.id) {
       rosterStore.selectCharacter(item.id);
       notify(`Switched to ${rosterStore.current.name}`);
