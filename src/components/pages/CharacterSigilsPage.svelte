@@ -11,8 +11,9 @@
   import { classLabel, sigilUnlockLevel } from '../../lib/game/classes.js';
   import { sigilBySpecies, isSigilSpeciesActiveForSpec } from '../../lib/game/sigils.js';
   import { ownableSigils, MAX_ALTAR_TIER, EVOLVE_TIER_CAP } from '../../lib/model/sigils.js';
-  import { equipItems, equipPatch } from '../sigils/sigilView.js';
+  import { equipItems, equipPatch, COLLECTION_FILTERS, matchesCollectionFilter } from '../sigils/sigilView.js';
   import Modal from '../Modal.svelte';
+  import Tabs from '../ui/Tabs.svelte';
   import Panel from '../ui/Panel.svelte';
   import Stepper from '../ui/Stepper.svelte';
   import Button from '../ui/Button.svelte';
@@ -38,6 +39,21 @@
           defs: ownableSigils(character.class).filter((s) => s.rarity === rarity),
         })).filter((s) => s.defs.length > 0)
       : [],
+  );
+
+  let filter = $state('all');
+  const levelOf = (species) => owned[species]?.level ?? 0;
+  const allDefs = $derived(sections.flatMap((s) => s.defs));
+  const filterTabs = $derived(
+    COLLECTION_FILTERS.map((f) => ({
+      ...f,
+      count: allDefs.filter((d) => matchesCollectionFilter(f.id, levelOf(d.species), usedBy(d.species))).length,
+    })),
+  );
+  const shown = $derived(
+    sections
+      .map((s) => ({ ...s, defs: s.defs.filter((d) => matchesCollectionFilter(filter, levelOf(d.species), usedBy(d.species))) }))
+      .filter((s) => s.defs.length > 0),
   );
 
   const equippedIn = (p, species) => p.sigilSpecies.includes(species) || p.utilitySigilSpecies === species || p.ancientSigilSpecies === species;
@@ -121,7 +137,11 @@
     </Panel>
 
     <h2 class="collection-head">Collection</h2>
-    {#each sections as section (section.rarity)}
+    <Tabs items={filterTabs} bind:value={filter} label="Collection filter" idPrefix="sigil-filter" />
+    {#if shown.length === 0}
+      <EmptyState title="No sigils match" text="Nothing in the collection fits this filter." />
+    {/if}
+    {#each shown as section (section.rarity)}
       <section class="rarity-section">
         <h3 class="rarity-head">{section.rarity}</h3>
         <div class="sigil-grid">

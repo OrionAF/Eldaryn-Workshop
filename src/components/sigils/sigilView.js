@@ -179,3 +179,21 @@ export function equipPatch(character, preset, species) {
   }
   return null;
 }
+
+export const COLLECTION_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'owned', label: 'Owned' },
+  { id: 'unowned', label: 'Not owned' },
+  { id: 'unequipped', label: 'Unequipped' },
+];
+
+/**
+ * Whether a sigil passes a collection filter. `level` is its owned level (0 = not owned);
+ * `usedBy` lists the presets that equip it. Unequipped = owned but in no preset.
+ */
+export function matchesCollectionFilter(filter, level, usedBy) {
+  if (filter === 'owned') return level > 0;
+  if (filter === 'unowned') return !(level > 0);
+  if (filter === 'unequipped') return level > 0 && usedBy.length === 0;
+  return true;
+}

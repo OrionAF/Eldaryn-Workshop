@@ -56,3 +56,17 @@ describe('sigilView', () => {
     expect(conditionLabel('MY_HP_BELOW_80')).toBe('My HP at or below 80%');
   });
 });
+
+import { matchesCollectionFilter as mcf } from './sigilView.js';
+describe('matchesCollectionFilter', () => {
+  it('filters owned, unowned and unequipped', () => {
+    expect(mcf('all', 0, [])).toBe(true);
+    expect(mcf('owned', 1, [])).toBe(true);
+    expect(mcf('owned', 0, [])).toBe(false);
+    expect(mcf('unowned', 0, [])).toBe(true);
+    expect(mcf('unowned', 3, [])).toBe(false);
+    expect(mcf('unequipped', 2, [])).toBe(true);
+    expect(mcf('unequipped', 2, ['A'])).toBe(false);
+    expect(mcf('unequipped', 0, [])).toBe(false);
+  });
+});
