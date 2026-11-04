@@ -604,3 +604,20 @@ it('Run again on the open result starts a new job with that result\'s setup', as
   expect(requests[1].presetId).toBe(shownRequest.presetId);
   expect(jobsStore.list).toHaveLength(2);
 });
+
+it('Run again is off with a reason when the result\'s preset was deleted, and starts nothing', async () => {
+  mountPage();
+  click(btn(/^Optimise Main/));
+  await settle();
+  expect(requests).toHaveLength(1);
+  const presetId = richResult().request.presetId;
+  expect(rosterStore.current.presets.some((p) => p.id === presetId)).toBe(true);
+  rosterStore.addPreset?.('Spare');
+  rosterStore.deletePreset(presetId);
+  flushSync();
+  const again = btn(/^Run again$/);
+  expect(again.getAttribute('aria-disabled') ?? String(again.disabled)).toBe('true');
+  expect(view.target.innerHTML).toContain('The preset of this result was deleted.');
+  click(again);
+  expect(requests).toHaveLength(1);
+});

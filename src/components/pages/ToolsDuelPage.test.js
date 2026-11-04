@@ -342,3 +342,35 @@ it('All opponents: cannot run when no opponent has the needed stats, and Cancel 
   expect(calls).toHaveLength(2);
   expect(buttonByText(/^Run /)).toBeTruthy();
 });
+
+it('All opponents: another character\'s roster result is not shown after switching', async () => {
+  threeOpponents();
+  __resetJobs({ run: fakeRun((req) => summary(0.5, req.n, { trace, traceResult: { attackerWon: true, totalDuration: 1000 } })) });
+  view = setup(ToolsDuelPage);
+  pickOpponent('__all__');
+  click(buttonByText(/^Run /));
+  await vi.waitFor(() => expect(view.q('[data-testid="roster-progress"]')).not.toBeNull());
+  const first = rosterStore.current.id;
+  rosterStore.addCharacter('Second', 'WARRIOR');
+  expect(rosterStore.current.id).not.toBe(first);
+  ready();
+  ready();
+  flushSync();
+  pickOpponent('__all__');
+  expect(view.q('[data-testid="roster-progress"]')).toBeNull();
+  expect(view.qa('[data-testid^="roster-row-"]')).toHaveLength(0);
+  rosterStore.selectCharacter(first);
+  flushSync();
+  pickOpponent('__all__');
+  expect(view.q('[data-testid="roster-progress"]')).not.toBeNull();
+});
+
+it('Verify tab in All opponents mode asks to pick one opponent instead of using the first', () => {
+  threeOpponents();
+  setEstimatePrefs({ showImport: true });
+  view = setup(ToolsDuelPage);
+  pickOpponent('__all__');
+  view.done();
+  view = setup(ToolsDuelPage, { tab: 'verify' });
+  expect(view.q('#duel-panel-verify').textContent).toContain('pick one opponent first');
+});
