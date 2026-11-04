@@ -58,6 +58,11 @@
     if (id) editingIds = new Set([...editingIds, id]);
     else setStatus(`Collection is full (${MAX_OWNED_CORES} cores).`);
   }
+  function duplicateCore(id) {
+    const copy = rosterStore.duplicateCore(id);
+    if (copy) editingIds = new Set([...editingIds, copy]);
+    else setStatus(`Collection is full (${MAX_OWNED_CORES} cores).`);
+  }
   function toggleEdit(id) {
     const next = new Set(editingIds);
     if (!next.delete(id)) next.add(id);
@@ -166,6 +171,7 @@
       onValue={(i, v) => rosterStore.setCoreSecondaryValue(pet.id, i, v)}
       onDropSecondary={(i) => rosterStore.removeCoreSecondary(pet.id, i)}
       onToggleEdit={() => toggleEdit(pet.id)}
+      onDuplicate={() => duplicateCore(pet.id)}
       onRemove={() => removeCore(pet.id)}
     />
   {/each}
