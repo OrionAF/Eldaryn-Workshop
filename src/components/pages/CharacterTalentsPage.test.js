@@ -120,3 +120,22 @@ it('copies Set A to Set B after confirming, and hides the button while Set B is 
   flushSync();
   expect(copyBtn()).toBeUndefined();
 });
+
+it('compares the selected set with the other only when Set B is unlocked and both have specs', () => {
+  const outlet = setup(InspectorOutlet);
+  pick('WARRIOR_TANK');
+  expect(outlet.target.textContent).not.toContain('Difference vs');
+  rosterStore.setTalentSetSpec(1, 'WARRIOR_TANK');
+  flushSync();
+  expect(outlet.target.textContent).toContain('Difference vs Set B');
+  expect(outlet.target.textContent).toContain('Same effects');
+  rosterStore.setTalentSetRank(0, 'tank_t1_fortitude', 2);
+  flushSync();
+  const rows = outlet.target.querySelector('[data-testid="set-diff"]').textContent;
+  expect(rows).toContain('Max HP');
+  expect(rows).toContain('+4%');
+  rosterStore.setCharacterLevel(30);
+  flushSync();
+  expect(outlet.target.textContent).not.toContain('Difference vs');
+  outlet.done();
+});

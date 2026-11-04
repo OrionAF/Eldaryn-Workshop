@@ -16,7 +16,7 @@
   import Button from '../ui/Button.svelte';
   import ConfirmButton from '../ConfirmButton.svelte';
   import TalentTierList from '../talents/TalentTierList.svelte';
-  import { setEffects } from '../talents/talentSummary.js';
+  import { setEffects, diffEffects } from '../talents/talentSummary.js';
   import { inspector } from '../../lib/inspector.svelte.js';
 
   // eslint-disable-next-line no-unused-vars
@@ -48,6 +48,9 @@
   const spent = $derived(pointsSpent(set.allocation));
   const specOptions = $derived([{ value: '', label: 'Choose a spec...' }, ...specKeys.map((k) => ({ value: k, label: talentSpec(k).name }))]);
   const effects = $derived(setEffects(set?.spec, set?.allocation));
+  const other = $derived(character.talentSets[1 - index]);
+  const comparing = $derived(dualTalentsUnlocked(character.level) && !!set?.spec && !!other?.spec);
+  const diff = $derived(comparing ? diffEffects(set, other) : []);
   const specName = $derived(set?.spec ? talentSpec(set.spec)?.name : null);
   // Registered once the page has a class; the release clears the slot when the page goes away.
   $effect(() => (character.class ? inspector.set(effectSummary) : undefined));
@@ -70,6 +73,19 @@
       <p class="inspector-sub">{set?.spec ? 'No points spent in this set yet.' : 'Choose a specialization to see what the set grants.'}</p>
     {/if}
   </Panel>
+  {#if comparing}
+    <Panel title="Difference vs {label(1 - index)}">
+      {#if diff.length}
+        <ul class="effects" aria-label="{label(index)} compared with {label(1 - index)}" data-testid="set-diff">
+          {#each diff as d (d.stat)}
+            <li><span>{d.label}</span> <strong class="num" class:up={d.sign > 0} class:down={d.sign < 0}>{d.text}</strong></li>
+          {/each}
+        </ul>
+      {:else}
+        <p class="inspector-sub" data-testid="set-diff-same">Same effects</p>
+      {/if}
+    </Panel>
+  {/if}
 {/snippet}
 
 {#if !character.class}
@@ -146,5 +162,7 @@
   .effects { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1); }
   .effects li { display: flex; justify-content: space-between; gap: var(--sp-3); font-size: var(--fs-13); color: var(--text-soft); }
   .effects strong { color: var(--text-ink); }
+  .effects strong.up { color: var(--verdict-up); }
+  .effects strong.down { color: var(--verdict-down); }
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
 </style>
