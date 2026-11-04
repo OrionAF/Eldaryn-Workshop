@@ -32,11 +32,6 @@
   $effect(() => {
     if (tab === 'glyphs' || tab === 'mounts') view = tab;
   });
-  const SHOW = [
-    { value: 'all', label: 'All glyphs' },
-    { value: 'usable', label: 'Usable (not sealed)' },
-    { value: 'sealed', label: 'Sealed' },
-  ];
   let show = $state('all');
 
   const character = $derived(rosterStore.current);
@@ -55,13 +50,30 @@
   /** 'Night Wolf, Scorpion Hound' or null when empty. */
   const mountList = (list) => (list.length ? list.map((m) => mountName(m.id)).join(', ') : null);
 
+  const FILTERS = {
+    all: () => true,
+    usable: (g) => !g.sealed,
+    sealed: (g) => g.sealed,
+    unsocketed: (g) => mountsOfGlyph(g.id).length === 0,
+    inert: (g) => (inert.get(g.id) ?? []).length > 0,
+  };
+  const SHOW = $derived(
+    [
+      ['all', 'All glyphs'],
+      ['usable', 'Usable (not sealed)'],
+      ['sealed', 'Sealed'],
+      ['unsocketed', 'Not socketed'],
+      ['inert', 'Inert in a preset'],
+    ].map(([value, label]) => ({ value, label: `${label} (${glyphs.filter(FILTERS[value]).length})` })),
+  );
+
   const groups = $derived(
     ['minor', 'major', 'mythic']
       .map((tier) => ({
         tier,
         items: glyphs
           .filter((g) => glyphTier(g.glyphType) === tier)
-          .filter((g) => (show === 'sealed' ? g.sealed : show === 'usable' ? !g.sealed : true))
+          .filter(FILTERS[show] ?? FILTERS.all)
           .toSorted((a, b) => FREE_GLYPH_RARITIES.indexOf(b.rarity) - FREE_GLYPH_RARITIES.indexOf(a.rarity)),
       }))
       .filter((g) => g.items.length > 0),
@@ -177,7 +189,7 @@
   .hint { color: var(--text-muted); font-size: var(--fs-12); margin: 0; }
   .add-mount { display: flex; align-items: flex-end; gap: var(--sp-3); flex-wrap: wrap; margin: var(--sp-4) 0; }
   .add-mount :global(.field) { min-width: min(16rem, 100%); }
-  .filter { max-width: 14rem; margin: var(--sp-3) 0; }
+  .filter { max-width: 16rem; margin: var(--sp-3) 0; }
   .mount-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); gap: var(--sp-3); min-width: 0; }
   .glyph-group { margin: var(--sp-4) 0; min-width: 0; }
   .group-label {

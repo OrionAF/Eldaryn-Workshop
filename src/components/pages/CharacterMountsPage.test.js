@@ -247,3 +247,27 @@ it('the Health and Attack fields and slider ends show the level-scaled values th
   expect(rosterStore.current.mounts[0].baseHp).toBe(38);
   expect(field(cards()[0], 'Health').value).toBe('42');
 });
+
+it('the Show filter finds not-socketed and inert glyphs, with counts', () => {
+  addMountUi('NIGHT_WOLF');
+  addGlyphUi({ tier: 'minor', glyphType: 'g-swift' });
+  addGlyphUi({ tier: 'major', glyphType: 'sg-warborn-cd', rarity: 'Rare' });
+  const c = rosterStore.current;
+  const [minor, major] = c.glyphs;
+  rosterStore.setMountSocket(c.mounts[0].id, 'minor', 0, minor.id);
+  rosterStore.setMountSocket(c.mounts[0].id, 'major', 0, major.id);
+  rosterStore.setPresetMount(c.presets[0].id, c.mounts[0].id);
+  addGlyphUi({ tier: 'minor', glyphType: 'g-swift' });
+  const ids = () => [...target.querySelectorAll('[data-glyph-id]')].map((e) => e.dataset.glyphId);
+  const show = () => byLabel('Show');
+  expect([...show().options].map((o) => o.textContent)).toEqual(
+    expect.arrayContaining(['All glyphs (3)', 'Not socketed (1)', 'Inert in a preset (1)']),
+  );
+  pick(show(), 'unsocketed');
+  const loose = rosterStore.current.glyphs[2].id;
+  expect(ids()).toEqual([loose]);
+  pick(show(), 'inert');
+  expect(ids()).toEqual([major.id]);
+  pick(show(), 'all');
+  expect(ids()).toHaveLength(3);
+});
