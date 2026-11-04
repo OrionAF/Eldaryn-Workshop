@@ -236,9 +236,11 @@
     return partner ? { partner } : {};
   }
 
+  const runAgainReason = $derived(!result ? '' : !resultPreset ? 'The preset of this result was deleted.' : retiredGoalBlock(result) || '');
+
   /** Start the shown result's own setup again, through the same job path as Optimise. */
   function runAgain() {
-    if (live || !result || retiredGoalBlock(result)) return;
+    if (live || !result || !resultPreset || retiredGoalBlock(result)) return;
     setup = setupFromRun(runFromResult(result), character, prefs.defaultEffort, others);
     run();
   }
@@ -514,7 +516,7 @@
           {#snippet meta()}
             {#if result}
               <span class="meta">{result.objective.label} · seed <span class="num">{result.request.seed}</span> · {fmtDuration(result.stats?.ms)}</span>
-              <Button variant="ghost" size="small" disabled={!!live || !!retiredGoalBlock(result)} reason={retiredGoalBlock(result)} onclick={runAgain}>Run again</Button>
+              <Button variant="ghost" size="small" disabled={!!live || !!runAgainReason} reason={runAgainReason} onclick={runAgain}>Run again</Button>
             {/if}
           {/snippet}
 

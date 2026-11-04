@@ -12,8 +12,8 @@
   import Button from '../ui/Button.svelte';
   import Banner from '../ui/Banner.svelte';
 
-  /** @type {{fighters?: {attacker: Object, defender: Object, label: string}|null, handoff?: {text: string, n: number}|null}} */
-  let { fighters = null, handoff = null } = $props();
+  /** @type {{fighters?: {attacker: Object, defender: Object, label: string}|null, handoff?: {text: string, n: number}|null, pickOne?: boolean}} */
+  let { fighters = null, handoff = null, pickOne = false } = $props();
 
   let text = $state('');
   let useFighters = $state(false);
@@ -55,7 +55,7 @@
   <Panel title="Fight log" level="primary" scope="tool">
     <ImportPointer what="a fight log" />
     <p class="note" data-testid="log-state">{text.trim() ? 'A fight log is loaded.' : 'No fight log imported yet.'}</p>
-    <Checkbox bind:checked={useFighters} disabled={!fighters} label={fighters ? `Check against these fighters: ${fighters.label}` : 'Check against the duel fighters (set up a duel first)'} />
+    <Checkbox bind:checked={useFighters} disabled={!fighters} label={fighters ? `Check against these fighters: ${fighters.label}` : pickOne ? 'Check against the duel fighters (pick one opponent first)' : 'Check against the duel fighters (set up a duel first)'} />
     {#snippet footer()}
       <Button variant="primary" size="block" disabled={!text.trim()} onclick={() => check()}>Check log again</Button>
     {/snippet}

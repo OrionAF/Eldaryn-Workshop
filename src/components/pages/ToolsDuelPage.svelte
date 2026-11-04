@@ -76,8 +76,10 @@
   });
   let jobId = $state(jobsStore.list.filter((j) => j.tool === 'duel').at(-1)?.id ?? null);
   // The latest All opponents run: {id, myName, skipped: [{id, name, reason}]}, found again from its jobs.
-  const lastRoster = untrack(() => jobsStore.list.filter((j) => j.tool === 'duel' && j.request?.meta?.roster).at(-1)?.request.meta);
-  let roster = $state(lastRoster ? { id: lastRoster.roster, myName: lastRoster.myName, skipped: lastRoster.rosterSkipped ?? [] } : null);
+  const lastRoster = untrack(() => jobsStore.list.filter((j) => j.tool === 'duel' && j.request?.meta?.roster && j.request.meta.characterId === character.id).at(-1)?.request.meta);
+  let rosterState = $state(lastRoster ? { characterId: lastRoster.characterId, id: lastRoster.roster, myName: lastRoster.myName, skipped: lastRoster.rosterSkipped ?? [] } : null);
+  // A roster result belongs to the character it was run for; another character never shows it.
+  const roster = $derived(rosterState && rosterState.characterId === character.id ? rosterState : null);
   let rosterSeq = 0;
   let reroll = $state(null); // {jobId, trace, traceResult}
   let rerolling = $state(false);
@@ -141,7 +143,7 @@
     const labels = seat === 'both' ? ['I attack', 'I defend'] : [seat === 'attacker' ? 'I attack' : 'I defend'];
     return launch(
       { mode: 'duel', ...pair, n, seed: SEED, trace: true, both: seat === 'both', phaseLabels: labels },
-      { seat, n, seed: SEED, presetId: preset.id, opponentId: o.id, myName: preset.name, theirName: o.name, ...extraMeta },
+      { seat, n, seed: SEED, characterId: character.id, presetId: preset.id, opponentId: o.id, myName: preset.name, theirName: o.name, ...extraMeta },
     );
   }
 
@@ -156,7 +158,7 @@
     const id = `roster-${Date.now()}-${++rosterSeq}`;
     const skipped = rosterPlan.filter((x) => x.reason).map((x) => ({ id: x.o.id, name: x.o.name, reason: x.reason }));
     for (const x of runnable) launchAgainst(x.o, x.fighter, { roster: id, rosterSkipped: skipped });
-    roster = { id, myName: preset.name, skipped };
+    rosterState = { characterId: character.id, id, myName: preset.name, skipped };
   }
 
   const rosterJobs = $derived(roster ? jobsStore.list.filter((j) => j.tool === 'duel' && j.request?.meta?.roster === roster.id) : []);
@@ -278,7 +280,7 @@
   const columns = $derived(opponent && !allMode && !blockers.length ? orderStats(simulatedColumns(mine, theirs), character.class, (row) => row.key)
     .map((row) => ({ ...row, label: orderedStatLabel(row.key, row.label, character.class) })) : []);
   const verifyFighters = $derived(
-    opponent && !blockers.length
+    opponent && !allMode && !blockers.length
       ? { ...arrange(mine, theirs, 'attacker'), label: `${preset.name} vs ${opponent.name}` }
       : null,
   );
@@ -308,7 +310,7 @@
 
 {#if tabId === 'verify' && verifyShown}
   <div role="tabpanel" id="duel-panel-verify">
-    <VerifyFightLog fighters={verifyFighters} handoff={logHandoff} />
+    <VerifyFightLog fighters={verifyFighters} handoff={logHandoff} pickOne={allMode} />
   </div>
 {:else}
   <div role="tabpanel" id="duel-panel-duel" class="panes">
