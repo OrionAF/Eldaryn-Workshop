@@ -173,6 +173,24 @@ describe('store', () => {
     expect(t().presets[0].allocatedNodeIds).toEqual(['n_0,-1']);
     expect(JSON.parse(localStorage.getItem(Object.keys(localStorage)[0]))).toBeTruthy();
   });
+  it('duplicate: copies ids into a distinct array, activates, truncates name, refuses at cap', () => {
+    rosterStore.allocateTranscendenceNode('n_0,-1');
+    const id = rosterStore.duplicateTranscendencePreset('default');
+    expect(id).toBeTruthy();
+    const [a, b] = t().presets;
+    expect(b.id).toBe(id);
+    expect(b.name).toBe('Default copy');
+    expect(b.allocatedNodeIds).toEqual(['n_0,-1']);
+    expect(b.allocatedNodeIds).not.toBe(a.allocatedNodeIds);
+    expect(t().activePresetId).toBe(id);
+    rosterStore.renameTranscendencePreset(id, 'ABCDEFGHIJKLMNOPQR');
+    const id2 = rosterStore.duplicateTranscendencePreset(id);
+    expect(t().presets.find((p) => p.id === id2).name).toBe('ABCDEFGHIJKLMNOPQR');
+    rosterStore.addTranscendencePreset();
+    expect(rosterStore.duplicateTranscendencePreset('default')).toBeNull();
+    expect(t().presets).toHaveLength(4);
+    expect(rosterStore.duplicateTranscendencePreset('nope')).toBeNull();
+  });
   it('presets: add to the cap of 4, rename, delete, default protected, links fall back', () => {
     const ids = [1, 2, 3].map(() => rosterStore.addTranscendencePreset());
     expect(rosterStore.addTranscendencePreset()).toBeNull();

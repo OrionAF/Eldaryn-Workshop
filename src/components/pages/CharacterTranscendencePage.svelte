@@ -110,6 +110,10 @@
     if (rosterStore.addTranscendencePreset() == null) setStatus(`At most ${MAX_TRANSCENDENCE_PRESETS} transcendence presets`);
   }
 
+  function duplicatePreset() {
+    if (rosterStore.duplicateTranscendencePreset(active.id) == null) setStatus(`At most ${MAX_TRANSCENDENCE_PRESETS} transcendence presets`);
+  }
+
   function commitRename() {
     rosterStore.renameTranscendencePreset(active.id, renameDraft);
     renaming = false;
@@ -168,6 +172,7 @@
       <Button variant="primary" size="small" onclick={commitRename}>Save</Button>
       <Button variant="ghost" size="small" onclick={() => (renaming = false)}>Cancel</Button>
     {:else}
+      <Button variant="ghost" size="small" disabled={t.presets.length >= MAX_TRANSCENDENCE_PRESETS} onclick={duplicatePreset}>Duplicate</Button>
       <Button variant="ghost" size="small" onclick={() => { renameDraft = active.name; renaming = true; }}>Rename</Button>
       <ConfirmButton variant="ghost" size="small" label="Reset board" confirmLabel="Reset" onConfirm={() => rosterStore.resetTranscendencePreset(active.id)} disabled={ids.length === 0} />
       {#if active.id !== DEFAULT_TRANSCENDENCE_ID}
