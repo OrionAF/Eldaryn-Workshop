@@ -15,6 +15,7 @@
   import NumberField from '../ui/NumberField.svelte';
   import Banner from '../ui/Banner.svelte';
   import Button from '../ui/Button.svelte';
+  import Modal from '../Modal.svelte';
 
   // eslint-disable-next-line no-unused-vars
   let { setStatus = () => {}, onNavigate = () => {}, tab = null } = $props();
@@ -44,13 +45,31 @@
   const keys = $derived(
     [...new Set([...Object.keys(info?.bundle ?? {}), ...Object.keys(otherInfo?.bundle ?? {})])].filter((k) => info?.bundle[k] || otherInfo?.bundle[k]),
   );
+
+  // Switching path resets the level to 1, so with points invested it asks first and shows the change.
+  let switchTo = $state(null);
+  let switchOpen = $state(false);
+  const switchTotals = $derived(switchTo ? awakeningBonuses(switchTo, 1, character.class, spec) : {});
+  const switchKeys = $derived(
+    switchTo ? [...new Set([...Object.keys(totals), ...Object.keys(switchTotals)])].filter((k) => totals[k] || switchTotals[k]) : [],
+  );
+  function pickPath(key) {
+    if (awakening.path && awakening.path !== key && awakening.level > 1) {
+      switchTo = key;
+      switchOpen = true;
+    } else rosterStore.setAwakeningPath(key);
+  }
+  function confirmSwitch() {
+    rosterStore.setAwakeningPath(switchTo);
+    switchOpen = false;
+  }
 </script>
 
 <Panel title="Awakening" scope="character">
   {#snippet meta()}<span class="sub">one path, shared by all presets · bonuses follow the specialization of {preset.name}</span>{/snippet}
   <div class="path-selector" role="group" aria-label="Awakening path">
     {#each Object.entries(AWAKENING_PATHS) as [key, path] (key)}
-      <button type="button" class="path-card" class:active={awakening.path === key} aria-pressed={awakening.path === key} onclick={() => rosterStore.setAwakeningPath(key)}>
+      <button type="button" class="path-card" class:active={awakening.path === key} aria-pressed={awakening.path === key} onclick={() => pickPath(key)}>
         <span class="path-name">{path.name}</span>
         <span class="path-desc">{path.highlights.join(', ')}</span>
       </button>
@@ -114,7 +133,38 @@
   {/if}
 </Panel>
 
+{#if switchTo}
+  <Modal bind:open={switchOpen} title="Switch to {AWAKENING_PATHS[switchTo].name}?">
+    {#snippet children()}
+      <p class="lead">Switching path resets your Awakening level from <b class="num">{awakening.level}</b> to <b class="num">1</b>. You can raise it again afterwards.</p>
+      <table class="bonus-table" data-testid="switch-preview">
+        <thead>
+          <tr>
+            <th scope="col">Stat</th>
+            <th scope="col" class="r">Now</th>
+            <th scope="col" class="r">After</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each switchKeys as key (key)}
+            <tr>
+              <th scope="row">{LABELS[key] ?? key}</th>
+              <td class="r num">+{totals[key] ?? 0}</td>
+              <td class="r num">+{switchTotals[key] ?? 0}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    {/snippet}
+    {#snippet footer()}
+      <Button variant="ghost" onclick={() => (switchOpen = false)}>Keep path</Button>
+      <Button variant="primary" onclick={confirmSwitch}>Switch</Button>
+    {/snippet}
+  </Modal>
+{/if}
+
 <style>
+  .lead { margin: 0 0 var(--sp-3); font-size: var(--fs-13); color: var(--text-soft); }
   .sub { color: var(--text-muted); font-size: var(--fs-12); }
   .hint { font-size: var(--fs-12); color: var(--text-muted); margin: 0 0 var(--sp-3); }
   .path-selector { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); margin-bottom: var(--sp-4); max-width: 640px; }
