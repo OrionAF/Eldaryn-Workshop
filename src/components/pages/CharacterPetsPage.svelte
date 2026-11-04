@@ -22,6 +22,7 @@
   import Modal from '../Modal.svelte';
   import { tierChangeLosses } from '../../lib/build/usage.js';
   import PetCard from '../pets/PetCard.svelte';
+  import { viewCores, SORT_OPTIONS, SHOW_OPTIONS } from '../pets/petView.js';
   import { orderStats } from '../../lib/ui/statOrder.js';
 
   // eslint-disable-next-line no-unused-vars
@@ -33,6 +34,10 @@
   const types = $derived(orderStats(secondaryTypesFor(character.class), character.class));
   const rarityOptions = CORE_RARITY_NAMES.map((r) => ({ value: r, label: r }));
 
+  let sortMode = $state('added');
+  let showMode = $state('all');
+  const usedIds = $derived(new Set(character.presets.map((p) => p.petId).filter(Boolean)));
+  const shown = $derived(viewCores(owned, sortMode, showMode, usedIds));
   let newRarity = $state(CORE_RARITY_NAMES[0]);
   let pendingTier = $state(null); // null = follows the altar
   let wipeOpen = $state(false);
@@ -136,8 +141,16 @@
     <EmptyState title="No Pet Cores yet" text="Since the 2.9.1 rework a pet's stats come from its core, so pets saved before it were removed. Add your cores to start." />
   {/if}
 
+  {#if owned.length}
+    <div class="add-row">
+      <Select label="Sort" options={SORT_OPTIONS} bind:value={sortMode} />
+      <Select label="Show" options={SHOW_OPTIONS} bind:value={showMode} />
+    </div>
+    {#if !shown.length}<p class="hint">No cores match this filter.</p>{/if}
+  {/if}
+
   <div class="pet-grid">
-  {#each owned as pet (pet.id)}
+  {#each shown as pet (pet.id)}
     <PetCard
       {pet}
       {types}
