@@ -10,6 +10,7 @@
   import { awakeningBundle, awakeningBonuses } from '../../lib/model/awakening.js';
   import { awakeningPointsForLevel } from '../../lib/model/legality.js';
   import { classLabel } from '../../lib/game/classes.js';
+  import { talentSpec } from '../../lib/game/talents.js';
   import ConfirmButton from '../ConfirmButton.svelte';
   import Panel from '../ui/Panel.svelte';
   import NumberField from '../ui/NumberField.svelte';
@@ -40,7 +41,7 @@
   const totals = $derived(awakening.path ? awakeningBonuses(awakening.path, awakening.level, character.class, spec) : {});
   const otherTotals = $derived(other ? awakeningBonuses(other, awakening.level, character.class, spec) : {});
   const sourceText = $derived(
-    info?.source === 'spec' ? `Bonuses set by your specialization (${spec})` : info?.source === 'class' ? `Bonuses set by your class (${classLabel(character.class)})` : 'Standard bonuses for this path',
+    info?.source === 'spec' ? `Bonuses set by your specialization (${talentSpec(spec)?.name ?? spec})` : info?.source === 'class' ? `Bonuses set by your class (${classLabel(character.class)})` : 'Standard bonuses for this path',
   );
   const keys = $derived(
     [...new Set([...Object.keys(info?.bundle ?? {}), ...Object.keys(otherInfo?.bundle ?? {})])].filter((k) => info?.bundle[k] || otherInfo?.bundle[k]),
@@ -67,70 +68,80 @@
 
 <Panel title="Awakening" scope="character">
   {#snippet meta()}<span class="sub">one path, shared by all presets · bonuses follow the specialization of {preset.name}</span>{/snippet}
-  <div class="path-selector" role="group" aria-label="Awakening path">
-    {#each Object.entries(AWAKENING_PATHS) as [key, path] (key)}
-      <button type="button" class="path-card" class:active={awakening.path === key} aria-pressed={awakening.path === key} onclick={() => pickPath(key)}>
-        <span class="path-name">{path.name}</span>
-        <span class="path-desc">{path.highlights.join(', ')}</span>
-      </button>
-    {/each}
-  </div>
-
-  {#if cap === 0}
-    <Banner variant="info">Awakening points unlock at level {AWAKENING_CONSTANTS.unlockLevel}; this character is level {character.level}.</Banner>
-  {/if}
-
-  {#if !awakening.path}
-    <p class="note">Choose a path above to begin allocating Awakening points.</p>
-  {:else}
-    <div class="points-row">
-      <div class="points-field">
-        <NumberField
-          label="Awakening level"
-          value={awakening.level}
-          min={cap > 0 ? 1 : 0}
-          max={cap}
-          disabled={cap === 0}
-          onchange={(v) => rosterStore.setAwakeningLevel(v)}
-        />
-        <span class="of num" data-testid="points-cap">/ {cap} levels</span>
+  <!-- the controls on the left, what they give on the right (stacked on narrow screens) -->
+  <div class="awk-layout">
+    <div class="controls">
+      <div class="path-selector" role="group" aria-label="Awakening path">
+        {#each Object.entries(AWAKENING_PATHS) as [key, path] (key)}
+          <button type="button" class="path-card" class:active={awakening.path === key} aria-pressed={awakening.path === key} onclick={() => pickPath(key)}>
+            <span class="path-name">{path.name}</span>
+            <span class="path-desc">{path.highlights.join(', ')}</span>
+          </button>
+        {/each}
       </div>
-      <Button variant="ghost" disabled={awakening.level >= cap} onclick={() => rosterStore.setAwakeningLevel(cap)}>Max</Button>
-      <ConfirmButton
-        class="reset-btn"
-        variant="danger"
-        label="Reset path and points"
-        confirmLabel="Confirm reset"
-        prompt="Reset your path choice and all invested points?"
-        onConfirm={() => rosterStore.resetAwakening()}
-      />
+
+      {#if cap === 0}
+        <Banner variant="info">Awakening points unlock at level {AWAKENING_CONSTANTS.unlockLevel}; this character is level {character.level}.</Banner>
+      {/if}
+
+      {#if !awakening.path}
+        <p class="note">Choose a path above to begin allocating Awakening points.</p>
+      {:else}
+        <div class="field-row points-row">
+          <div class="points-field">
+            <NumberField
+              label="Awakening level"
+              value={awakening.level}
+              min={cap > 0 ? 1 : 0}
+              max={cap}
+              disabled={cap === 0}
+              onchange={(v) => rosterStore.setAwakeningLevel(v)}
+            />
+          </div>
+          <!-- the cap sits beside the field, not inside it: a unit drawn in the input overlapped the value -->
+          <span class="control-align of num" data-testid="points-cap">/ {cap} levels</span>
+          <div class="control-align"><Button variant="ghost" disabled={awakening.level >= cap} onclick={() => rosterStore.setAwakeningLevel(cap)}>Max</Button></div>
+          <span class="grow"></span>
+          <div class="control-align">
+            <ConfirmButton
+              variant="danger"
+              label="Reset path and points"
+              confirmLabel="Confirm reset"
+              prompt="Reset your path choice and all invested points?"
+              onConfirm={() => rosterStore.resetAwakening()}
+            />
+          </div>
+        </div>
+
+        <p class="hint" data-testid="awakening-level"><span class="num">{upgrades}</span> upgrades spent. Choosing a path grants level 1; each upgrade adds one level.</p>
+        <p class="hint source" data-testid="override-source">{sourceText}: {info.highlights.join(', ')}</p>
+      {/if}
     </div>
 
-    <p class="hint" data-testid="awakening-level"><span class="num">{upgrades}</span> upgrades spent. Choosing a path grants level 1; each upgrade adds one level.</p>
-    <p class="hint source" data-testid="override-source">{sourceText} - {info.highlights.join(', ')}</p>
-
-    <table class="bonus-table" data-testid="other-path">
-      <caption class="sr-only">Bonuses at Awakening level {awakening.level}</caption>
-      <thead>
-        <tr>
-          <th scope="col">Stat</th>
-          <th scope="col" class="r">{AWAKENING_PATHS[awakening.path].name}</th>
-          <th scope="col" class="r">Per level</th>
-          <th scope="col" class="r">{AWAKENING_PATHS[other].name} at the same level</th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each keys as key (key)}
+    {#if awakening.path}
+      <table class="bonus-table" data-testid="other-path">
+        <caption class="sr-only">Bonuses at Awakening level {awakening.level}</caption>
+        <thead>
           <tr>
-            <th scope="row">{LABELS[key] ?? key}</th>
-            <td class="r num">+{totals[key] ?? 0}</td>
-            <td class="r num dim">+{info.bundle[key] ?? 0}</td>
-            <td class="r num dim">+{otherTotals[key] ?? 0}</td>
+            <th scope="col">Stat</th>
+            <th scope="col" class="r">{AWAKENING_PATHS[awakening.path].name}</th>
+            <th scope="col" class="r">Per level</th>
+            <th scope="col" class="r">{AWAKENING_PATHS[other].name} at the same level</th>
           </tr>
-        {/each}
-      </tbody>
-    </table>
-  {/if}
+        </thead>
+        <tbody>
+          {#each keys as key (key)}
+            <tr>
+              <th scope="row">{LABELS[key] ?? key}</th>
+              <td class="r num">+{totals[key] ?? 0}</td>
+              <td class="r num dim">+{info.bundle[key] ?? 0}</td>
+              <td class="r num dim">+{otherTotals[key] ?? 0}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    {/if}
+  </div>
 </Panel>
 
 {#if switchTo}
@@ -167,7 +178,10 @@
   .lead { margin: 0 0 var(--sp-3); font-size: var(--fs-13); color: var(--text-soft); }
   .sub { color: var(--text-muted); font-size: var(--fs-12); }
   .hint { font-size: var(--fs-12); color: var(--text-muted); margin: 0 0 var(--sp-3); }
-  .path-selector { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); margin-bottom: var(--sp-4); max-width: 640px; }
+  .awk-layout { display: grid; grid-template-columns: minmax(0, 36rem) minmax(0, 40rem); gap: var(--sp-4) var(--sp-8); align-items: start; }
+  @media (max-width: 1100px) { .awk-layout { grid-template-columns: minmax(0, 1fr); } }
+  .controls { min-width: 0; }
+  .path-selector { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); margin-bottom: var(--sp-4); }
   @media (max-width: 700px) { .path-selector { grid-template-columns: 1fr; } }
   .path-card {
     display: grid;
@@ -183,14 +197,14 @@
   .path-desc { font-size: var(--fs-13); color: var(--text-muted); }
   .path-card.active { background: var(--brass-tint); border-color: var(--brass-400); color: var(--brass-200); }
   .note { color: var(--text-muted); }
-  .points-row { display: flex; align-items: flex-end; flex-wrap: wrap; gap: var(--sp-3); margin-bottom: var(--sp-3); }
-  /* The cap sits beside the field, not inside it: a unit drawn in the input overlapped the value. */
-  .points-field { display: flex; align-items: flex-end; gap: var(--sp-2); }
-  .points-field :global(.field) { width: 8rem; }
-  .of { font-size: var(--fs-13); color: var(--text-soft); padding-bottom: var(--sp-2); white-space: nowrap; }
-  :global(.reset-btn) { margin-left: auto; }
-  .bonus-table { border-collapse: collapse; width: 100%; max-width: 640px; font-size: var(--fs-13); }
+  .points-row { gap: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3); }
+  .points-field { width: 8rem; }
+  .of { display: flex; align-items: center; min-height: var(--control-h); font-size: var(--fs-13); color: var(--text-soft); white-space: nowrap; }
+  .grow { flex: 1; }
+  .bonus-table { border-collapse: collapse; width: 100%; font-size: var(--fs-13); }
   .bonus-table th, .bonus-table td { padding: var(--sp-2); border-bottom: 1px solid var(--line-hairline); text-align: left; font-weight: normal; }
+  /* row headers are stat names, not the global th micro label */
+  .bonus-table tbody th { font-family: var(--font-ui); font-size: var(--fs-13); letter-spacing: normal; text-transform: none; color: var(--text-soft); }
   .bonus-table thead th { color: var(--text-muted); font-size: var(--fs-12); font-weight: var(--fw-bold); }
   .r { text-align: right !important; }
   .dim { color: var(--text-muted); }
