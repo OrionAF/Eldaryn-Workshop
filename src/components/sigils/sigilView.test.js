@@ -33,8 +33,31 @@ describe('sigilView', () => {
     ]);
   });
 
-  it('STACK sigils have no scaled rows', () => {
-    expect(sigilSpellBlocks('BULWARK_OF_THORNS', 9)[0].rows).toEqual([]);
+  it('STACK sigils list their constant per-stack effects (sigils.md §6)', () => {
+    const [block] = sigilSpellBlocks('BULWARK_OF_THORNS', 9);
+    expect(block.constant).toBe(true);
+    expect(block.rows).toEqual([
+      { label: 'Gains a stack on', value: 'each blocked hit' },
+      { label: 'Health per stack', value: '+8%' },
+      { label: 'Damage Reduction per stack', value: '+4%' },
+      { label: 'Thorns per stack', value: '+7%' },
+      { label: 'Max stacks', value: '8' },
+      { label: 'Lost per unblocked hit', value: '1 stack' },
+    ]);
+    expect(sigilSpellBlocks('BULWARK_OF_THORNS', 1)[0].rows).toEqual(block.rows);
+  });
+
+  it('FORM sigils list their multipliers and bonus stats', () => {
+    const [bear] = sigilSpellBlocks('DIRE_URSINE', 1);
+    expect(bear.rows).toEqual([
+      { label: 'Health from gear', value: '×1.6' },
+      { label: 'Attack', value: '×0.9' },
+      { label: 'Block and Damage Reduction', value: 'Unlocked' },
+      { label: 'Damage Reduction', value: '+5%' },
+      { label: 'Block', value: '+5%' },
+      { label: 'HP Regen', value: '+12%' },
+    ]);
+    expect(sigilSpellBlocks('LUPINE_FORM', 1)[0].rows.map((r) => r.label)).toEqual(['Attack', 'Attack Speed', 'Block and Damage Reduction']);
   });
 
   it('a Druid sees the variant, one block per form; a Mage sees the base spell', () => {

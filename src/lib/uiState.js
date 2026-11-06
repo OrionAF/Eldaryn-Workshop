@@ -24,7 +24,7 @@ export const OPPONENT_ORDERS = ['added', 'newest', 'name', 'ready'];
  */
 export const defaultPrefs = () => ({ density: 'comfortable', reduceMotion: false, defaultEffort: 'standard', cpuProfile: DEFAULT_CPU_PROFILE, calibration: null, dropSets: 'all', debugLog: 'off', showImport: false });
 
-const defaults = () => ({ v: 1, lastHash: null, lastBackupAt: null, areaLast: {}, optimiserSetups: {}, dropSetups: {}, statPriority: { spec: null, range: null }, coreScoreSpec: null, opponents: { order: 'added', selectedId: null }, prefs: defaultPrefs() });
+const defaults = () => ({ v: 1, lastHash: null, lastBackupAt: null, areaLast: {}, optimiserSetups: {}, dropSetups: {}, statPriority: { spec: null, range: null }, coreScoreSpec: null, opponents: { order: 'added', selectedId: null }, views: {}, prefs: defaultPrefs() });
 
 /** Any value -> valid preferences; a field that is missing or not one of the allowed values keeps its default. */
 export function normalisePrefs(raw) {
@@ -42,7 +42,7 @@ export function normalisePrefs(raw) {
   return out;
 }
 
-/** @returns {{v:1, lastHash:string|null, lastBackupAt:number|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, dropSetups:Record<string,object>, statPriority:{spec:string|null, range:string|null}, coreScoreSpec:string|null, opponents:{order:'added'|'newest'|'name'|'ready', selectedId:string|null}, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string, calibration:object|null, dropSets:'all'|'set1', debugLog:'off'|'builds'|'fights', showImport:boolean}}} */
+/** @returns {{v:1, lastHash:string|null, lastBackupAt:number|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, dropSetups:Record<string,object>, statPriority:{spec:string|null, range:string|null}, coreScoreSpec:string|null, opponents:{order:'added'|'newest'|'name'|'ready', selectedId:string|null}, views:Record<string,string>, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string, calibration:object|null, dropSets:'all'|'set1', debugLog:'off'|'builds'|'fights', showImport:boolean}}} */
 export function loadUi() {
   const ui = defaults();
   try {
@@ -76,6 +76,10 @@ export function loadUi() {
         if (OPPONENT_ORDERS.includes(op.order)) ui.opponents.order = op.order;
         if (typeof op.selectedId === 'string') ui.opponents.selectedId = op.selectedId;
       }
+      // small per-page view choices (e.g. sigilEffects: 'shown' | 'hidden'); each page checks its own value
+      if (raw.views && typeof raw.views === 'object') {
+        for (const [k, v] of Object.entries(raw.views)) if (typeof v === 'string') ui.views[k] = v;
+      }
       ui.prefs = normalisePrefs(raw.prefs);
     }
   } catch {
@@ -84,11 +88,11 @@ export function loadUi() {
   return ui;
 }
 
-/** Merge a patch (`areaLast` merges key by key) into the stored state. Returns whether it was written. */
+/** Merge a patch (`areaLast` and `views` merge key by key) into the stored state. Returns whether it was written. */
 export function saveUi(patch) {
   try {
     const cur = loadUi();
-    const next = { ...cur, ...patch, areaLast: { ...cur.areaLast, ...(patch.areaLast ?? {}) }, optimiserSetups: { ...cur.optimiserSetups, ...(patch.optimiserSetups ?? {}) }, dropSetups: { ...cur.dropSetups, ...(patch.dropSetups ?? {}) }, opponents: { ...cur.opponents, ...(patch.opponents ?? {}) }, prefs: normalisePrefs({ ...cur.prefs, ...(patch.prefs ?? {}) }), v: 1 };
+    const next = { ...cur, ...patch, areaLast: { ...cur.areaLast, ...(patch.areaLast ?? {}) }, optimiserSetups: { ...cur.optimiserSetups, ...(patch.optimiserSetups ?? {}) }, dropSetups: { ...cur.dropSetups, ...(patch.dropSetups ?? {}) }, opponents: { ...cur.opponents, ...(patch.opponents ?? {}) }, views: { ...cur.views, ...(patch.views ?? {}) }, prefs: normalisePrefs({ ...cur.prefs, ...(patch.prefs ?? {}) }), v: 1 };
     localStorage.setItem(UI_KEY, JSON.stringify(next));
     return true;
   } catch {

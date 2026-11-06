@@ -20,6 +20,8 @@
   import Banner from '../ui/Banner.svelte';
   import EmptyState from '../ui/EmptyState.svelte';
   import SigilCard from '../sigils/SigilCard.svelte';
+  import SegmentedControl from '../ui/SegmentedControl.svelte';
+  import { loadUi, saveUi } from '../../lib/uiState.js';
 
   // eslint-disable-next-line no-unused-vars
   let { setStatus = () => {}, onNavigate = () => {}, tab = null } = $props();
@@ -42,6 +44,12 @@
   );
 
   let filter = $state('all');
+  // One Effects toggle for the whole collection (remembered per device), instead of a Details button per card.
+  let effects = $state(loadUi().views.sigilEffects === 'hidden' ? 'hidden' : 'shown');
+  function setEffects(v) {
+    effects = v;
+    saveUi({ views: { sigilEffects: v } });
+  }
   const levelOf = (species) => owned[species]?.level ?? 0;
   const allDefs = $derived(sections.flatMap((s) => s.defs));
   const filterTabs = $derived(
@@ -104,12 +112,13 @@
       {#if character.class === 'WARRIOR'} · choose your fourth-slot stance in Loadout{/if}
     </p>
 
+    <div class="top-panels">
     <Panel title="Sigil Altar">
       <div class="altar-row">
         <div class="stepper-group">
           <span class="label" id="altar-label">Altar tier</span>
           <Stepper label="altar tier" value={tier} min={1} max={MAX_ALTAR_TIER} onchange={(n) => rosterStore.setSigilAltarTier(n)} />
-          <span class="num" data-testid="altar-tier">{tier}</span>
+          <span class="of">of <span class="num">{MAX_ALTAR_TIER}</span></span>
         </div>
         <p class="hint">The tier multiplies every sigil's flat Attack and Health by 3 per tier above 1. Spell numbers do not depend on it.</p>
       </div>
@@ -135,9 +144,24 @@
       </ul>
       <p class="hint">Slots and activation conditions are picked per preset in <a href="#/builds/loadout">Loadout</a>.</p>
     </Panel>
+    </div>
 
-    <h2 class="collection-head">Collection</h2>
-    <Tabs items={filterTabs} bind:value={filter} label="Collection filter" idPrefix="sigil-filter" />
+    <div class="collection-bar">
+      <h2 class="collection-head">Collection</h2>
+      <div class="filter-tabs"><Tabs items={filterTabs} bind:value={filter} label="Collection filter" idPrefix="sigil-filter" /></div>
+      <div class="effects-toggle">
+        <span class="label">Effects</span>
+        <SegmentedControl
+          label="Sigil effects"
+          options={[
+            { value: 'shown', label: 'Show' },
+            { value: 'hidden', label: 'Hide' },
+          ]}
+          value={effects}
+          onchange={setEffects}
+        />
+      </div>
+    </div>
     <div role="tabpanel" id="sigil-filter-panel-{filter}" aria-labelledby="sigil-filter-tab-{filter}">
       {#if shown.length === 0}
         <EmptyState title="No sigils match" text="Nothing in the collection fits this filter." />
@@ -157,6 +181,7 @@
                 onLevel={setLevel}
                 equip={equipItems(character, def.species)}
                 onEquip={(presetId) => equipIn(def.species, presetId)}
+                showEffects={effects === 'shown'}
               />
             {/each}
           </div>
@@ -190,13 +215,21 @@
 <style>
   .sigils { display: grid; gap: var(--sp-4); }
   .hint { color: var(--text-muted); font-size: var(--fs-12); margin: 0; }
-  .altar-row { display: flex; align-items: center; gap: var(--sp-5); flex-wrap: wrap; margin-bottom: var(--sp-3); }
-  .stepper-group { display: flex; align-items: center; gap: var(--sp-2); }
-  .danger-zone { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--line-rule); }
+  /* Altar and the per-preset summary side by side: both are short, neither needs the full width */
+  .top-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(26rem, 100%), 1fr)); gap: var(--sp-4); align-items: start; }
+  .altar-row { display: grid; gap: var(--sp-2); }
+  .stepper-group { display: flex; align-items: center; gap: var(--sp-3); }
+  .of { font-size: var(--fs-12); color: var(--text-muted); }
+  .danger-zone { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--line-hairline); }
+  .collection-bar { display: flex; align-items: flex-end; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); margin-top: var(--sp-2); }
+  .filter-tabs { flex: 1; min-width: min(24rem, 100%); }
+  .effects-toggle { display: flex; align-items: center; gap: var(--sp-2); padding-bottom: var(--sp-1); }
+  .rarity-section + .rarity-section { margin-top: var(--sp-5); }
+  .rarity-section:first-child { margin-top: var(--sp-3); }
   .equipped { list-style: none; margin: 0 0 var(--sp-2); padding: 0; display: grid; gap: var(--sp-1); font-size: var(--fs-13); }
   .equipped li { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
   .equipped .names { color: var(--text-soft); }
-  .collection-head { margin: var(--sp-4) 0 0; }
+  .collection-head { margin: 0 0 var(--sp-2); align-self: center; }
   .label, .rarity-head {
     font-family: var(--font-ui);
     font-weight: var(--fw-bold);
