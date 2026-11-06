@@ -4,7 +4,9 @@
    * (design-system §4.5). A role=group of button[aria-pressed]; Left/Right move the selection.
    *
    * options: [{ value, label, sub?, disabled? }]; `sub` is the mono sub-label (Effort's N range).
-   * Cells are equal width and never wrap; `stack` lays them out vertically for a narrow column.
+   * Cells are equal width and never wrap: an inline grid of 1fr columns sizes every cell to the widest one, so
+   * a long `sub` widens the control instead of spilling into the next cell. `stack` lays them out vertically
+   * for a narrow column.
    */
   let { options, value = $bindable(), label = '', stack = false, onchange = () => {} } = $props();
 
@@ -44,7 +46,9 @@
 
 <style>
   .seg {
-    display: inline-flex;
+    display: inline-grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
     max-width: 100%;
     border: 1px solid var(--line-control);
     border-radius: var(--r-1);
@@ -55,7 +59,6 @@
   button {
     position: relative;
     display: inline-flex;
-    flex: 1 1 0; /* equal-width cells that share the row instead of wrapping */
     min-width: 0;
     align-items: center;
     justify-content: center;
@@ -85,9 +88,10 @@
     background: var(--brass-400);
   }
   button:disabled { color: var(--text-disabled); cursor: not-allowed; background: transparent; }
-  .seg.stack { display: flex; flex-direction: column; }
-  .seg.stack button { flex: none; justify-content: flex-start; }
-  .num { font-family: var(--font-data); font-size: var(--fs-12); color: var(--text-muted); }
+  .seg.stack { grid-auto-flow: row; }
+  .seg.stack button { justify-content: flex-start; }
+  /* the sub-label is a quiet aside to the option's name, not a second label */
+  .num { font-family: var(--font-data); font-size: var(--fs-11); font-weight: var(--fw-regular); color: var(--text-muted); }
   @media (pointer: coarse), (max-width: 700px) {
     button { min-height: calc(var(--hit) - 6px); }
   }

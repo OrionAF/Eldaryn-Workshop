@@ -45,7 +45,9 @@
 </script>
 
 <Panel title="Gear & talents" level="primary" scope="preset">
-  <div class="field">
+  <!-- three choices side by side, each as wide as its options (never the panel), hints under each -->
+  <div class="field-row sets">
+  <div class="field gear">
     <span class="label" id="lo-gear-label">Equipment set</span>
     <SegmentedControl
       label="Equipment set"
@@ -59,6 +61,7 @@
       <span class="hint">{SET_LABELS[preset.equipmentSet]} is what this preset wears. Edit items in <a href="#/character/gear">Gear</a>.</span>
     {/if}
   </div>
+  <div class="talent">
   <Select
     label="Talent set"
     options={talentOptions}
@@ -66,6 +69,8 @@
     hint={dualTalentsUnlocked(character.level) ? '' : `Set B unlocks at level ${UNLOCK_LEVELS.DUAL_TALENTS}.`}
     onchange={(v) => rosterStore.setPresetTalentSet(preset.id, Number(v))}
   />
+  </div>
+  <div class="board">
   <Select
     label="Transcendence board"
     options={boardOptions}
@@ -75,11 +80,17 @@
     onchange={(v) => rosterStore.setPresetTranscendence(preset.id, v || null)}
   />
   <a class="link" href="#/character/transcendence">Edit boards</a>
+  </div>
+  </div>
 </Panel>
 
 <style>
-  .field { display: grid; gap: var(--sp-2); }
-  .label { font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }
+  .sets { gap: var(--sp-3) var(--sp-6); }
+  .field { display: grid; gap: var(--field-gap); align-content: start; }
+  .gear { width: min(20rem, 100%); }
+  .talent { width: min(16rem, 100%); }
+  .board { width: min(20rem, 100%); display: grid; gap: var(--sp-1); align-content: start; }
+  .label { font-size: var(--fs-12); line-height: var(--field-label-h); font-weight: var(--fw-bold); color: var(--text-soft); }
   .hint { color: var(--text-muted); font-size: var(--fs-12); }
   .link { font-size: var(--fs-12); }
 </style>

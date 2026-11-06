@@ -135,7 +135,7 @@
   </p>
 
   <section class="conditions" aria-label="Activation conditions">
-    <h3>Activation conditions</h3>
+    <h3>Activation conditions <span class="scope-note">one per sigil, shared by every preset that equips it</span></h3>
     {#if !conditionsOpen}
       <p class="hint">Unlock at character level {SIGIL_CONDITIONS_LEVEL}. Until then every sigil fires as soon as it is ready.</p>
     {:else if equipped.length === 0}
@@ -144,9 +144,12 @@
       {#each equipped as sp (sp)}
         {@const options = sigilConditionOptions(sp, spec)}
         {#if options.length > 1}
+          <!-- sigil | condition | scope: one grid row each, so the selects and chips line up -->
           <div class="cond-row">
+            <span class="cond-name" aria-hidden="true">{sigilBySpecies(sp).name}</span>
             <Select
               label="{sigilBySpecies(sp).name} activation condition"
+              hideLabel
               value={owned[sp]?.condition ?? 'ON_COOLDOWN'}
               options={options.map((id) => ({ value: id, label: conditionLabel(id) }))}
               onchange={(v) => rosterStore.setSigilCondition(sp, v === 'ON_COOLDOWN' ? null : v)}
@@ -170,6 +173,11 @@
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
   .conditions { display: grid; gap: var(--sp-2); border-top: 1px solid var(--line-hairline); padding-top: var(--sp-3); }
   h3 { margin: 0; font-size: var(--fs-13); font-weight: var(--fw-bold); color: var(--text-soft); }
-  .cond-row { display: flex; gap: var(--sp-3); align-items: flex-end; flex-wrap: wrap; }
-  .cond-row :global(.field) { min-width: min(20rem, 100%); }
+  .scope-note { margin-left: var(--sp-2); font-weight: var(--fw-regular); color: var(--text-muted); font-size: var(--fs-12); }
+  .cond-row { display: grid; grid-template-columns: minmax(8rem, 12rem) minmax(10rem, 16rem) auto; gap: var(--sp-3); align-items: center; justify-content: start; }
+  .cond-name { font-size: var(--fs-13); color: var(--text-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cond-row :global(.scope-chip) { justify-self: start; }
+  @media (max-width: 700px) {
+    .cond-row { grid-template-columns: minmax(0, 1fr); gap: var(--sp-1); }
+  }
 </style>
