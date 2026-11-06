@@ -5,6 +5,9 @@
    * The base realm edits Set 1 and Set 2 (9 slots each, one shared stone pool); the Oblivion realm
    * edits its single 12-slot loadout and its own stone pool (gear.md §1/§8, stones.md §4). The
    * `realm` prop pins the realm and hides the set tabs.
+   *
+   * Each item is scored for a spec of the character's class (features/gearScore.js), on the same
+   * leaderboard stat priorities and spec choice as Pet Cores (uiState.js coreScoreSpec).
    */
   import { untrack } from 'svelte';
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
@@ -23,6 +26,9 @@
   import StoneGrid from '../gear/StoneGrid.svelte';
   import StoneForm from '../gear/StoneForm.svelte';
   import { STONE_COLOR, slotLabel, statLabel, formatStatValue } from '../gear/gearFormat.js';
+  import { coreScoreBasis } from '../../lib/features/coreScore.js';
+  import { gearScore } from '../../lib/features/gearScore.js';
+  import { loadUi, saveUi } from '../../lib/uiState.js';
 
   // `tab` is the optional third hash segment: 'stones' opens the Enchant stones tab.
   let { realm: realmProp = null, tab = null } = $props();
@@ -34,6 +40,19 @@
   let selectedStoneId = $state(null);
   let filterType = $state('');
   let sortBy = $state('default');
+
+  let priorityData = $state.raw(null);
+  import('../../data/statPriority.json').then(
+    (m) => (priorityData = m.default),
+    () => {}, // no data: items show the roll only
+  );
+  let scoreSpec = $state(loadUi().coreScoreSpec);
+  const basis = $derived(priorityData && character ? coreScoreBasis(priorityData, character.class, character.level, scoreSpec) : null);
+  const specOptions = $derived(basis ? basis.specs.map((s) => ({ value: s.spec, label: s.specName })) : []);
+  function pickSpec(v) {
+    scoreSpec = v;
+    saveUi({ coreScoreSpec: v });
+  }
 
   const unlocked = $derived(character?.oblivion?.unlocked === true);
   const setKey = $derived(realmProp === 'oblivion' ? 'oblivion' : setTab === 'oblivion' && !unlocked ? 'set1' : setTab);
@@ -47,6 +66,8 @@
   );
   const slot = $derived(slotsForRealm(realm).includes(selectedSlot) ? selectedSlot : 'WEAPON');
   const slotList = $derived(slotsForRealm(realm));
+  const scores = $derived(Object.fromEntries(slotList.map((s) => [s, gearScore(equip?.items[s], basis?.weights ?? null, realm)])));
+  const grades = $derived(Object.fromEntries(slotList.map((s) => [s, scores[s]?.grade ?? null])));
   const slotIndex = $derived(slotList.indexOf(slot));
   /** Moves the selection by `delta` slots, wrapping at both ends. */
   function stepSlot(delta) {
@@ -157,10 +178,23 @@
           label={setMeta.label}
           selectedSlot={slot}
           {stoneColors}
+          {grades}
           onSelect={(s) => {
             selectedSlot = s;
           }}
         />
+        {#if specOptions.length}
+          <div class="score-for">
+            <Select label="Score for" options={specOptions} value={basis.spec.spec} onchange={pickSpec} />
+            <p class="muted">
+              {#if basis.weights}
+                Graded on {basis.spec.specName} leaderboard stat priorities, levels <span class="mono">{basis.bracket.key}</span>, and each secondary's roll.
+              {:else}
+                No leaderboard stat priorities for {basis.spec.specName} yet, so items show the roll only.
+              {/if}
+            </p>
+          </div>
+        {/if}
       </div>
 
       <Panel title={slotLabel(character.class, slot)} scope={realm === 'oblivion' ? 'oblivion' : null}>
@@ -178,6 +212,8 @@
             {slot}
             class={character.class}
             ascension={dropAscension(character) || null}
+            score={scores[slot]}
+            specName={basis?.spec.specName ?? ''}
             onchange={(item) => rosterStore.setEquipmentItem(setKey, slot, item)}
           />
         </div>
@@ -261,7 +297,9 @@
   .pinned-title { margin: 0 0 var(--sp-3); }
   .scope-line { font-size: var(--fs-12); color: var(--text-muted); margin: var(--sp-2) 0 var(--sp-3); display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }
   .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--sp-6); margin-top: var(--sp-3); }
-  .silhouette-col { min-width: 0; }
+  .silhouette-col { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+  .score-for { display: grid; gap: var(--sp-1); max-width: 17rem; }
+  .score-for p { margin: 0; }
   .step { display: inline-flex; align-items: center; gap: var(--sp-2); }
   .step-count { font-size: var(--fs-12); color: var(--text-muted); }
   .socket-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }

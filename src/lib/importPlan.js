@@ -116,11 +116,6 @@ function normalisationNotes(profile, norm) {
     const n = size(at(profile, 'petState.ownedPets')) - size(norm.pets?.cores);
     if (n > 0) notes.push({ kind: 'dropped', what: 'pets', count: n, reason: 'pets from before the 2.9.1 Pet Cores rework; only the equipped one is kept, as a core' });
   }
-  let noQuality = 0;
-  for (const set of Object.values(norm.equipment ?? {})) {
-    for (const item of Object.values(set?.items ?? {})) if (item && item.quality == null) noQuality++;
-  }
-  if (noQuality) notes.push({ kind: 'defaulted', what: 'item quality', count: noQuality, reason: 'the game profile has no quality field' });
   return notes;
 }
 

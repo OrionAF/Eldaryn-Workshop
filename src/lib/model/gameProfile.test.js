@@ -212,7 +212,7 @@ describe('gameProfileToCharacter', () => {
   it('equipment: both sets, secondaries and conduit kept, Oblivion-only slots left out of base sets', () => {
     const { set1, set2 } = c.equipment;
     expect(set1.items.HEAD).toMatchObject({
-      rarity: 'MYTHIC', itemLevel: 100, quality: null,
+      rarity: 'MYTHIC', itemLevel: 100, quality: 29, // derived from the secondaries (gear.md §5)
       primaryStats: { attack: 1200, hp: 9000 },
       secondaryStats: [{ type: 'ATTACK_SPEED', value: 0.05 }, { type: 'CRIT_CHANCE', value: 2.5 }],
       conduit: null,

@@ -2,8 +2,12 @@
 // Persisted character field: equipment. Shape: rebuild-plan §3 Equip/Item.
 //
 //   Equip = { items: Record<Slot, Item|null>, enchantSlots: Record<BaseSlot, stoneId|null> }
-//   Item  = { rarity: RarityId|null, itemLevel: int|null, quality: 1..100|null,
+//   Item  = { rarity: RarityId|null, itemType: ItemType|null, itemLevel: int|null, quality: 1..100|null,
 //             primaryStats: {attack, hp}, secondaryStats: [{type, value}], conduit: {type, value}|null }
+//
+// `quality` is derived, never entered: the game's calculateItemQuality over the secondaries at the
+// item's level (gear.md §5), null without an item level or secondaries. `itemType` is the cosmetic
+// material (gear.md §1 ITEM_TYPES_BY_RARITY) that picks the item's art; null means the rarity's first.
 //
 // set1/set2 hold the 9 base slots, `oblivion` the 12 Oblivion-realm slots (gear.md §1); every set
 // has the 9 base sockets (stones.md §4). `rarity` may be null only for migrated v1 gear, where it
@@ -23,6 +27,8 @@ import {
   MAX_ITEM_LEVEL_BY_ASCENSION,
   itemStatLevel,
   secondaryStatCeiling,
+  calculateItemQuality,
+  itemTypesFor,
 } from '../game/gear.js';
 
 export { itemStatLevel };
@@ -111,7 +117,7 @@ export function secondarySlots(rarity) {
 }
 
 export function emptyItem() {
-  return { rarity: null, itemLevel: null, quality: null, primaryStats: { attack: 0, hp: 0 }, secondaryStats: [], conduit: null };
+  return { rarity: null, itemType: null, itemLevel: null, quality: null, primaryStats: { attack: 0, hp: 0 }, secondaryStats: [], conduit: null };
 }
 
 /**
@@ -150,10 +156,12 @@ export function normaliseItem(raw, { cls = null, realm = 'base', report = null, 
       if (Number.isFinite(value) && value >= 0) conduit = { type: c.type, value };
     }
   }
+  const itemType = itemTypesFor(rarity).some((t) => t.type === raw.itemType) ? raw.itemType : null;
   return {
     rarity,
+    itemType,
     itemLevel,
-    quality: intIn(raw.quality, 1, 100),
+    quality: itemLevel == null ? null : calculateItemQuality({ secondaryStats, itemLevel, realm }),
     primaryStats: { attack: nonNeg(raw.primaryStats?.attack), hp: nonNeg(raw.primaryStats?.hp) },
     secondaryStats,
     conduit,
@@ -224,7 +232,7 @@ function itemFromV1(gear) {
   const attack = nonNeg(gear.attack);
   const hp = nonNeg(gear.health);
   if (!secondaryStats.length && !attack && !hp) return null;
-  return { rarity: null, itemLevel: null, quality: null, primaryStats: { attack, hp }, secondaryStats, conduit: null };
+  return { rarity: null, itemType: null, itemLevel: null, quality: null, primaryStats: { attack, hp }, secondaryStats, conduit: null };
 }
 
 export function migrateEquipmentFromV1(v1Character) {

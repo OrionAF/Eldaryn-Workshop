@@ -1,7 +1,10 @@
 <script>
   /**
-   * ItemEditor.svelte - edit one gear item (rarity, item level, quality, Attack/Health, class-gated
+   * ItemEditor.svelte - edit one gear item (rarity, material, item level, Attack/Health, class-gated
    * secondaries, conduit). Generic on purpose: Drop Check reuses it for the candidate item.
+   * Quality is shown, never entered: the game derives it from the secondaries (gear.md §5).
+   * `score` (features/gearScore.js, scored for `specName`) adds a grade line, a roll bar per secondary
+   * and marks each secondary's priority for that spec.
    *
    * Props: value (Item | null), realm ('base' | 'oblivion'), slot, class (the character class; gates
    * the secondary pool), onchange(item | null). The editor never normalises: it emits the edited
@@ -10,7 +13,7 @@
    * Lowering the item level lowers every secondary's highest roll, and the model clamps to it; the
    * editor names each stat that will drop before it happens.
    */
-  import { RARITIES, secondaryPoolFor, SECONDARY_STAT_POOL, CONDUIT } from '../../lib/game/gear.js';
+  import { RARITIES, secondaryPoolFor, SECONDARY_STAT_POOL, CONDUIT, calculateItemQuality, itemTypesFor } from '../../lib/game/gear.js';
   import { emptyItem, maxItemLevel, secondarySlots, conduitAllowed, secondaryStatMaxValue, itemStatLevel, itemWarnings } from '../../lib/model/equipment.js';
   import { slotLabel, statLabel, toDisplay, fromDisplay } from './gearFormat.js';
   import { orderStats } from '../../lib/ui/statOrder.js';
@@ -19,11 +22,11 @@
   import Button from '../ui/Button.svelte';
 
   // `ascension` (optional) is the character's Ascension step: an item above what it drops gets a warning.
-  let { value = null, realm = 'base', slot, class: cls = null, ascension = null, onchange } = $props();
+  let { value = null, realm = 'base', slot, class: cls = null, ascension = null, score = null, specName = '', onchange } = $props();
 
   const uid = $props.id();
 
-  // Out-of-range input is clamped, not dropped, and the field says so: { itemLevel, quality, 'sec0'... } -> message.
+  // Out-of-range input is clamped, not dropped, and the field says so: { itemLevel, 'sec0'... } -> message.
   let flags = $state({});
   $effect(() => {
     slot;
@@ -44,6 +47,19 @@
     Array.from({ length: rowCount }, (_, i) => item.secondaryStats[i] ?? { type: '', value: '' }),
   );
   const levelMax = $derived(maxItemLevel(realm));
+  const quality = $derived(item.itemLevel == null ? null : calculateItemQuality({ secondaryStats: item.secondaryStats, itemLevel: item.itemLevel, realm }));
+  const typeChoices = $derived(itemTypesFor(item.rarity));
+  const materialOptions = $derived(typeChoices.map((t) => ({ value: t.type, label: t.displayName })));
+  const pct = (f) => `${Math.round(f * 100)}%`;
+  const scoreTitle = $derived(
+    !score
+      ? ''
+      : score.grade
+        ? `Scored for ${specName}. Stats ${pct(score.fit)}: its secondaries' priority against the best ${rowCount} this rarity can hold. Roll ${pct(score.roll)}: how far each secondary sits up its range at this item level.`
+        : 'Mean position of each secondary in its range at this item level. No stat priorities for this class, so no score.',
+  );
+  const secTitle = (sc) =>
+    [sc?.weight != null ? `${pct(sc.weight)} priority for ${specName}` : null, sc?.roll != null ? `${pct(sc.roll)} of range` : null].filter(Boolean).join(', ');
   const showConduit = $derived(conduitAllowed(item.rarity, realm));
 
   function emit(patch) {
@@ -120,7 +136,10 @@
   </div>
 
   <div class="grid">
-    <Select label="Rarity" options={rarityOptions} value={item.rarity ?? ''} onchange={(v) => emit({ rarity: v || null })} />
+    <Select label="Rarity" options={rarityOptions} value={item.rarity ?? ''} onchange={(v) => emit({ rarity: v || null, itemType: null })} />
+    {#if typeChoices.length > 1}
+      <Select label="Material" options={materialOptions} value={item.itemType ?? typeChoices[0].type} onchange={(v) => emit({ itemType: v })} />
+    {/if}
 
     {#key epoch.itemLevel}
       <div class="cell">
@@ -130,16 +149,16 @@
       </div>
     {/key}
 
-    {#key epoch.quality}
-      <div class="cell">
-        <NumberField label="Quality (1-100)" nullable value={item.quality} onchange={(n) => emit({ quality: setBounded('quality', n, 1, 100) })} />
-        <span class="range" id="{uid}-q">Range 1 to 100</span>
-        {#if item.quality == null}
-          <span class="range" data-testid="quality-unknown">Unknown (not in the profile). Left blank: the app's numbers do not use item quality, but the game's Total Power counts it as 0.</span>
-        {/if}
-        {#if flags.quality}<span class="flag" role="alert">{flags.quality}</span>{/if}
-      </div>
-    {/key}
+    <div class="cell" data-testid="item-quality">
+      <span class="readout-label">Quality</span>
+      <span class="readout mono">{quality ?? '–'}</span>
+      <span class="range">
+        {#if quality != null}From the secondaries' rolls at this item level
+        {:else if rowCount === 0}No secondaries, so no quality
+        {:else if item.itemLevel == null}Set the item level to work it out
+        {:else}Add a secondary to work it out{/if}
+      </span>
+    </div>
 
     <NumberField label="Attack" statKey="totalAttack" value={item.primaryStats.attack} onchange={(n) => emit({ primaryStats: { ...item.primaryStats, attack: n } })} />
     <NumberField label="Health" statKey="totalHp" value={item.primaryStats.hp} onchange={(n) => emit({ primaryStats: { ...item.primaryStats, hp: n } })} />
@@ -149,6 +168,16 @@
     <p class="flag" role="status">Item level {w.itemLevel} is above what your Ascension step drops (up to {w.cap}).</p>
   {/each}
   {#if flags.itemLevelSec}<p class="flag" role="status">{flags.itemLevelSec}</p>{/if}
+
+  {#if score}
+    <p class="item-score" title={scoreTitle} data-testid="gear-score">
+      {#if score.grade}
+        <span class="roll-grade grade-{score.grade}">{score.grade}</span>
+        <span class="num">Score {pct(score.score)}</span>
+      {/if}
+      <span class="score-parts">{#if score.grade}Stats <span class="num">{pct(score.fit)}</span>{' · '}{/if}Roll <span class="num">{pct(score.roll)}</span></span>
+    </p>
+  {/if}
 
   <h3 class="sub-head">Secondary stats ({item.secondaryStats.length}/{rowCount})</h3>
   {#if rowCount === 0}
@@ -168,7 +197,13 @@
             />
           {/key}
         </div>
-        {#if row.type}<span class="range">Range {rangeHint(row.type)}</span>{/if}
+        {#if row.type}
+          {@const sc = score?.secondaries.find((x) => x.type === row.type)}
+          <span class="range" title={secTitle(sc)}>
+            <span class:fit-high={sc?.weight != null && sc.weight >= 2 / 3} class:fit-low={sc?.weight != null && sc.weight < 1 / 3}>Range {rangeHint(row.type)}</span>
+          </span>
+          {#if sc?.roll != null}<span class="stat-bar" title="{pct(sc.roll)} of range"><span class="stat-fill" style="width: {pct(sc.roll)}"></span></span>{/if}
+        {/if}
         {#if flags[`sec${i}`]}<span class="flag" role="alert">{flags[`sec${i}`]}</span>{/if}
       {/each}
     </div>
@@ -214,4 +249,12 @@
   .hint { color: var(--text-muted); font-size: var(--fs-12); margin: 0; }
   .range { color: var(--text-muted); font-size: var(--fs-11); font-family: var(--font-data); }
   .flag { color: var(--status-warn); font-size: var(--fs-12); margin: 0; }
+  .readout-label { font-size: var(--fs-12); color: var(--text-soft); }
+  .readout { font-size: var(--fs-14); color: var(--text-ink); line-height: 1.9; }
+  .item-score { margin: var(--sp-2) 0 0; display: flex; align-items: baseline; gap: var(--sp-2); font-size: var(--fs-12); color: var(--text-muted); }
+  .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--text-ink); }
+  .fit-high { color: var(--brass-200); }
+  .fit-low { opacity: 0.6; }
+  .stat-bar { display: block; height: 2px; background: var(--line-hairline); border-radius: 1px; overflow: hidden; }
+  .stat-fill { display: block; height: 100%; background: var(--brass-400); }
 </style>

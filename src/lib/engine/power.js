@@ -11,7 +11,7 @@
 //   }
 // Rarity and relic tier keys are the client's upper-case enums (`EPIC`, `GOLD`).
 import { POWER_CONFIG } from '../game/stats.js';
-import { SECONDARY_STAT_POOL, ascensionEffectiveLevel, itemStatLevel as statLevelOf, secondaryStatCeiling } from '../game/gear.js';
+import { ascensionEffectiveLevel, itemStatLevel as statLevelOf, calculateStatQuality, calculateItemQuality } from '../game/gear.js';
 import { coreTotalPower } from './sources/petCore.js';
 
 export { ascensionEffectiveLevel };
@@ -19,30 +19,11 @@ export { ascensionEffectiveLevel };
 /** The breakdown's terms, in the client's summing order. */
 export const POWER_TERMS = Object.freeze(['equipment', 'sigils', 'enchants', 'transcendence', 'pet', 'mount', 'relics', 'talents', 'awakening', 'level']);
 
-const poolByType = new Map(SECONDARY_STAT_POOL.map((d) => [d.type, d]));
-
 /** gear.md §3 itemStatLevel of a Power input item ({itemLevel, realm}). */
 export const itemStatLevel = (item) => statLevelOf(item.itemLevel, item.realm);
 
-/** gear.md §5 calculateStatQuality: 1..100 (1 for a type outside the pool or an empty range). */
-export function calculateStatQuality(type, value, statLevel) {
-  const def = poolByType.get(type);
-  if (!def) return 1;
-  const range = secondaryStatCeiling(def, statLevel) - def.minValue;
-  if (range <= 0) return 1;
-  const p = 10 ** def.decimals;
-  const span = Math.round((def.minValue + range) * p) / p - def.minValue;
-  if (span <= 0) return 1;
-  return Math.round(Math.max(1, Math.min(100, ((value - def.minValue) / span) * 99 + 1)));
-}
-
-/** gear.md §5 calculateItemQuality: the rounded mean over the secondaries, null with none. */
-export function calculateItemQuality(item) {
-  const stats = item?.secondaryStats ?? [];
-  if (stats.length === 0) return null;
-  const L = itemStatLevel(item);
-  return Math.round(stats.reduce((s, x) => s + calculateStatQuality(x.type, x.value, L), 0) / stats.length);
-}
+// gear.md §5 quality lives in L1 (game/gear.js) so the model can derive an item's quality too.
+export { calculateStatQuality, calculateItemQuality };
 
 const nz = (v) => (v == null ? 0 : v); // the client's `?? 0`
 

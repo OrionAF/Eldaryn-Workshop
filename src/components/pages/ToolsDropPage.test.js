@@ -493,7 +493,8 @@ it('Copy into drop: copies the equipped item (a deep copy) into the drop; an emp
   copies()[0].click();
   flushSync();
   const item = rosterStore.current.drop.item;
-  expect(item).toMatchObject({ rarity: equipped.rarity, quality: equipped.quality, primaryStats: equipped.primaryStats, secondaryStats: equipped.secondaryStats });
+  // quality is not compared: it is derived at the item level, which the drop caps at the character's Ascension step
+  expect(item).toMatchObject({ rarity: equipped.rarity, primaryStats: equipped.primaryStats, secondaryStats: equipped.secondaryStats });
   expect(item).not.toBe(equipped);
   expect(item.primaryStats).not.toBe(equipped.primaryStats);
   expect(status).toContain('Copied');
