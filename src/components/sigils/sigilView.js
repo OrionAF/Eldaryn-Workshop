@@ -37,6 +37,31 @@ const secs = (ms) => `${num(ms / 1000)}s`;
 // ATTACK_SPEED effects are fractions (0.1 = +0.1 Attack Speed); every other stat is a percent.
 const effectValue = (e) => (e.stat === 'ATTACK_SPEED' ? `+${num(e.value)}` : `+${num(e.value)}%`);
 
+/** What a stack sigil gains a stack on, by its kind (sigils.md §6 table). */
+const STACK_TRIGGER = {
+  BULWARK: 'each blocked hit',
+  SUNDER: 'each landed hit (marks the enemy)',
+  SIEGEBREAKER: 'each landed hit (marks the enemy)',
+  ELUSIVE: 'each dodged or Blind-fizzled hit',
+};
+/** Per-stack fields of a stack sigil: [field, label, sign]. Reductions apply to the marked enemy. */
+const STACK_FIELDS = [
+  ['hpPercentPerStack', 'Health per stack', '+'],
+  ['drPercentPerStack', 'Damage Reduction per stack', '+'],
+  ['thornsPercentPerStack', 'Thorns per stack', '+'],
+  ['attackPercentPerStack', 'Attack per stack', '+'],
+  ['critChancePercentPerStack', 'Crit Chance per stack', '+'],
+  ['lifestealPercentPerStack', 'Lifesteal per stack', '+'],
+  ['attackSpeedPercentPerStack', 'Attack Speed per stack', '+'],
+  ['drReductionPerStack', 'Enemy Damage Reduction per stack', '-'],
+  ['hpRegenReductionPerStack', 'Enemy HP Regen per stack', '-'],
+  ['blockReductionPerStack', 'Enemy Block per stack', '-'],
+  ['missReductionPerStack', 'Enemy Miss per stack', '-'],
+  ['blindReductionPerStack', 'Enemy Blind per stack', '-'],
+];
+/** Spell types whose numbers do not move with the sigil's level (sigils.md §5-§6). */
+const CONSTANT_TYPES = new Set(['STACK', 'FORM']);
+
 /**
  * Rows for one scaled spell.
  * @param {Object} spell  scaled spell (scaledSigilSpell result)
@@ -101,8 +126,27 @@ export function spellRows(spell, type) {
       add('Minion Attack', pct(spell.attackPercent));
       add('Minion Health', pct(spell.hpPercent));
       return rows;
+    case 'STACK': {
+      // Constant at every level (sigils.md §6): what a stack is gained on, what each stack gives, the cap, the loss.
+      if (STACK_TRIGGER[spell.kind]) add('Gains a stack on', STACK_TRIGGER[spell.kind]);
+      for (const [key, label, sign] of STACK_FIELDS) if (spell[key]) add(label, `${sign}${pct(spell[key])}`);
+      if (spell.maxStacks) add('Max stacks', num(spell.maxStacks));
+      if (spell.stackLossPerHit) add('Lost per unblocked hit', `${num(spell.stackLossPerHit)} ${spell.stackLossPerHit === 1 ? 'stack' : 'stacks'}`);
+      if (spell.decayPerSecond) add('Enemy stacks decay', `${num(spell.decayPerSecond)}/s`);
+      return rows;
+    }
+    case 'FORM': {
+      // The form's multipliers, then its bonus stats, which count like gear (sigils.md §5).
+      if (spell.gearHpMult != null && spell.gearHpMult !== 1) add('Health from gear', `×${num(spell.gearHpMult)}`);
+      if (spell.attackMult != null && spell.attackMult !== 1) add('Attack', `×${num(spell.attackMult)}`);
+      if (spell.attackSpeedMult != null && spell.attackSpeedMult !== 1) add('Attack Speed', `×${num(spell.attackSpeedMult)}`);
+      // Without the bear, Block and Damage Reduction "count for nothing" (the game's Tank goal text, sigils.md §5).
+      if (spell.unlocksBlockAndDr != null) add('Block and Damage Reduction', spell.unlocksBlockAndDr ? 'Unlocked' : 'Ignored');
+      for (const e of spell.effects ?? []) add(statName(e.stat), effectValue(e));
+      return rows;
+    }
     default:
-      return rows; // STACK / FORM: constant at every level (sigils.md §5)
+      return rows;
   }
   if (spell.durationMs) add('Duration', secs(spell.durationMs));
   if (spell.cooldownMs) add('Cooldown', secs(spell.cooldownMs));
@@ -112,7 +156,8 @@ export function spellRows(spell, type) {
 /**
  * The display blocks for one sigil at `level` on `spec`: a single block normally, one per form
  * (Bear / Wolf) for a Druid's form-conditional variant.
- * @returns {{title: string|null, form: string|null, type: string, rows: {label:string,value:string}[]}[]}
+ * `constant` marks a spell type whose numbers do not change with the level (Stack, Form).
+ * @returns {{title: string|null, form: string|null, type: string, rows: {label:string,value:string}[], constant: boolean}[]}
  */
 export function sigilSpellBlocks(species, level, spec = null) {
   const def = sigilBySpecies(species);
@@ -123,12 +168,12 @@ export function sigilSpellBlocks(species, level, spec = null) {
     return Object.keys(dv.formSpell).map((form) => {
       const spell = scaledSigilSpell(species, lvl, spec, form);
       const type = spellTypeOf(dv.formSpell[form], def.spellType);
-      return { title: dv.name, form, type, rows: spellRows(spell, type) };
+      return { title: dv.name, form, type, rows: spellRows(spell, type), constant: CONSTANT_TYPES.has(type) };
     });
   }
   const spell = scaledSigilSpell(species, lvl, spec, null);
   const type = dv ? spellTypeOf(dv.spell, def.spellType) : def.spellType;
-  return [{ title: dv?.name ?? null, form: null, type, rows: spellRows(spell, type) }];
+  return [{ title: dv?.name ?? null, form: null, type, rows: spellRows(spell, type), constant: CONSTANT_TYPES.has(type) }];
 }
 
 /** Display text for an activation condition id (model/sigils.js, shared with the optimiser). */
