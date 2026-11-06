@@ -643,9 +643,23 @@
   @media (max-width: 1100px) { .panes { grid-template-columns: minmax(0, 1fr); } }
   .stack { display: grid; gap: var(--sp-4); min-width: 0; }
   /* Segmented Effort control and fields fill the panel and wrap instead of overflowing it. */
-  .step :global(.seg) { display: flex; flex-wrap: wrap; width: 100%; max-width: 100%; box-sizing: border-box; }
-  .step :global(.seg button) { flex: 1 1 auto; justify-content: center; white-space: normal; min-width: 0; }
+  .step :global(.seg) { width: 100%; max-width: 100%; box-sizing: border-box; }
+  .step :global(.seg:not(.stack)) { display: flex; flex-wrap: wrap; }
+  .step :global(.seg:not(.stack) button) { flex: 1 1 auto; justify-content: center; white-space: normal; min-width: 0; }
   .step { min-width: 0; display: grid; gap: var(--sp-3); padding-bottom: var(--sp-3); border-bottom: 1px solid var(--line-hairline); }
+  /* Seed, Survive for, Tries: as wide as a number, not the column */
+  .step > :global(.field:has(.input.num)) { width: min(10rem, 100%); }
+  /* The setup is long; its Optimise button stays in reach at the bottom of the window while you scroll it.
+     Static on a phone (the tab bar owns the bottom edge) and on very short windows. */
+  [data-testid='optimiser-setup'] :global(.panel-foot) {
+    position: sticky;
+    bottom: 0;
+    z-index: var(--z-sticky);
+    background: var(--surface-2);
+  }
+  @media (max-width: 700px), (max-height: 520px) {
+    [data-testid='optimiser-setup'] :global(.panel-foot) { position: static; }
+  }
   .step:last-of-type { border-bottom: 0; }
   .step h3 { margin: 0; display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-14); color: var(--text-ink); }
   .n {

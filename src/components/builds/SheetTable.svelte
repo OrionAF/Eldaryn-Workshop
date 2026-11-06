@@ -127,13 +127,18 @@
   {#if contributions}
     <Button variant="ghost" size="small" onclick={toggleAll}>{allOpen ? 'Collapse all' : 'Expand all'}</Button>
   {/if}
-  <span class="summary num" class:all-good={summary.total > 0 && summary.explained === summary.total} data-testid="diff-summary">
+  <span
+    class="summary num"
+    class:all-good={hasModel ? summary.total > 0 && summary.explained === summary.total : summary.total === allRows.length}
+    class:progress={!hasModel && summary.total < allRows.length}
+    data-testid="diff-summary"
+  >
     {#if hasModel}{summary.explained}/{summary.total} match{:else}{summary.total}/{allRows.length} entered{/if}
   </span>
 </div>
 <!-- svelte-ignore a11y_no_noninteractive_tabindex (a scrollable region must be focusable) -->
 <div class="scroll" role="region" aria-label="In-game stats table" tabindex="0">
-  <table class="sheet">
+  <table class="sheet" class:full={hasModel}>
     <thead>
       <tr>
         <th scope="col">Stat</th>{#if hasModel}<th scope="col" class="r">App</th>{/if}<th scope="col" class="r">In-game stats</th>
@@ -247,9 +252,11 @@
   .note.empty { margin-left: var(--sp-3); }
   .summary { font-size: var(--fs-13); color: var(--verdict-down); }
   .summary.all-good { color: var(--verdict-up); }
+  .summary.progress { color: var(--text-soft); }
   .scroll { overflow-x: auto; max-width: 100%; }
   /* sized to its columns, not stretched across the screen, so App and In-game sit side by side */
-  table.sheet { width: auto; min-width: 760px; border-collapse: collapse; font-size: var(--fs-13); }
+  table.sheet { width: auto; border-collapse: collapse; font-size: var(--fs-13); }
+  table.sheet.full { min-width: 760px; }
   thead th {
     text-align: left;
     padding: 0 var(--sp-3);

@@ -72,11 +72,11 @@ it('scan: runs as a job with Standard N and the output cut off; labels the estim
   expect(notifications.toasts.map((x) => x.message)).not.toContain('Floor run started');
 });
 
-it('the three scan steppers carry visible labels, not only aria-labels', () => {
+it('the scan steppers and Effort carry visible labels that match their accessible names', () => {
   rosterStore.setOblivionUnlocked(true);
   mountPage();
   const fields = [...target.querySelectorAll('.setup .field')];
-  expect(fields.map((f) => f.querySelector('.micro-label').textContent.trim())).toEqual(['From floor', 'To floor', 'Win chance needed %']);
+  expect(fields.map((f) => f.querySelector('.micro-label').textContent.trim())).toEqual(['From floor', 'To floor', 'Win chance needed %', 'Effort']);
   for (const f of fields) expect(f.querySelector('[role="group"]').getAttribute('aria-label')).toBe(f.querySelector('.micro-label').textContent.trim());
 });
 
