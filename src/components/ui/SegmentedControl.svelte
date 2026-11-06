@@ -49,6 +49,7 @@
     display: inline-grid;
     grid-auto-flow: column;
     grid-auto-columns: 1fr;
+    justify-self: start;
     max-width: 100%;
     border: 1px solid var(--line-control);
     border-radius: var(--r-1);

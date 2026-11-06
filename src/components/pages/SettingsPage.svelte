@@ -116,6 +116,7 @@
         onchange={(v) => setPrefs({ density: v })}
       />
       <Checkbox switch checked={prefs.reduceMotion} label="Reduce motion" onchange={(on) => setPrefs({ reduceMotion: on })} />
+      <div class="effort-pref">
       <Select
         label="Default effort for new searches"
         value={prefs.defaultEffort}
@@ -127,6 +128,7 @@
         ]}
         onchange={(v) => setPrefs({ defaultEffort: v })}
       />
+      </div>
     </div>
   </Panel>
 
@@ -202,11 +204,12 @@
 <style>
   .settings { display: grid; gap: var(--sp-4); max-width: 44rem; }
   .row { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-  .note { margin: 0 0 var(--sp-3); font-size: var(--fs-13); color: var(--text-soft); }
+  .note { margin: 0; font-size: var(--fs-13); color: var(--text-soft); }
   .restore { display: grid; gap: var(--sp-2); margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--line-hairline); }
   h3 { margin: 0; font-size: var(--fs-16); }
   .undo { display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-3); font-size: var(--fs-13); }
-  .warn { margin: var(--sp-3) 0 0; font-size: var(--fs-13); color: var(--verdict-down); }
+  .warn { margin: 0; font-size: var(--fs-13); color: var(--verdict-down); }
+  .effort-pref { max-width: 18rem; }
   .prefs { display: grid; gap: var(--sp-4); }
   .field { display: grid; gap: var(--sp-2); }
   .profiles { margin: 0; padding-left: var(--sp-4); font-size: var(--fs-13); color: var(--text-soft); display: grid; gap: var(--sp-1); }
