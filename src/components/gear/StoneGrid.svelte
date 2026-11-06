@@ -201,6 +201,8 @@
     white-space: nowrap;
   }
   .stone-socketed {
+    margin-top: auto; /* pinned to the tile's foot, so every footer in a row sits on one line */
+    padding-top: var(--sp-1);
     font-weight: 700;
     font-size: var(--fs-11);
     color: var(--text-ink);
