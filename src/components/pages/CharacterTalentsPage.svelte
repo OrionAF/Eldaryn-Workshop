@@ -96,25 +96,32 @@
   <div class="talents">
     <Tabs items={tabs} bind:value={selected} label="Talent sets" idPrefix="talents" />
     <div role="tabpanel" id="talents-panel-{selected}">
-      <Panel title="{label(index)} · {usedBy(index).length ? `used by ${usedBy(index).join(', ')}` : 'unused'}">
+      <!-- the tab above already names the presets using this set; the panel names its tree -->
+      <Panel title="{label(index)} · {specName || 'no specialization yet'}">
+        <!-- One toolbar row: every control on the same line, captions under their own control. -->
         <div class="controls">
-          <Select
-            label="Specialization for {label(index)}"
-            options={specOptions}
-            bind:value={specValue}
-            onchange={(v) => rosterStore.setTalentSetSpec(index, v || null)}
-          />
-          {#if spent > 0}
-            <p class="points-note spec-warning" data-testid="spec-warning">Changing the specialization clears the {spent} {spent === 1 ? 'point' : 'points'} in this set.</p>
-          {/if}
+          <div class="spec">
+            <Select
+              label="Specialization for {label(index)}"
+              options={specOptions}
+              bind:value={specValue}
+              onchange={(v) => rosterStore.setTalentSetSpec(index, v || null)}
+            />
+            {#if spent > 0}
+              <p class="points-note spec-warning" data-testid="spec-warning">Changing the specialization clears the {spent} {spent === 1 ? 'point' : 'points'} in this set.</p>
+            {/if}
+          </div>
           <div class="points">
             <span class="points-label" id="points-label">Points</span>
-            <div class="bar" role="progressbar" aria-labelledby="points-label" aria-valuemin="0" aria-valuemax={cap} aria-valuenow={spent}>
-              <span class="fill" style="width: {cap > 0 ? Math.min(100, (spent / cap) * 100) : 0}%"></span>
+            <div class="points-line">
+              <div class="bar" role="progressbar" aria-labelledby="points-label" aria-valuemin="0" aria-valuemax={cap} aria-valuenow={spent}>
+                <span class="fill" style="width: {cap > 0 ? Math.min(100, (spent / cap) * 100) : 0}%"></span>
+              </div>
+              <span class="points-readout num" data-testid="points">{spent} / {cap} pts</span>
             </div>
-            <span class="points-readout num" data-testid="points">{spent} / {cap} pts</span>
             <span class="points-note">{cap === 0 ? `Talents unlock at level ${UNLOCK_LEVELS.TALENTS}.` : `Level ${character.level} grants ${cap} of the 29 points.`}</span>
           </div>
+          <span class="grow"></span>
           {#if dualTalentsUnlocked(character.level) && set.spec}
             <ConfirmButton
               variant="ghost"
@@ -147,15 +154,17 @@
 
 <style>
   .talents { display: grid; gap: var(--sp-3); }
-  .controls { display: flex; flex-wrap: wrap; gap: var(--sp-5); align-items: flex-end; margin-bottom: var(--sp-4); }
-  .controls :global(.confirm-row) { margin-left: auto; }
-  .controls :global(.confirm-row) ~ :global(.confirm-row) { margin-left: 0; }
-  .spec-warning { margin: 0; align-self: center; }
-  .points { display: grid; gap: 4px; min-width: min(14rem, 100%); flex: 1; }
-  .points-label { font-size: var(--fs-12); font-weight: var(--fw-bold, 700); color: var(--text-soft); }
-  .bar { height: 8px; background: var(--surface-3); border: 1px solid var(--line-control); border-radius: var(--r-1); overflow: hidden; }
+  .controls { display: flex; flex-wrap: wrap; gap: var(--sp-3) var(--sp-5); align-items: flex-start; margin-bottom: var(--sp-4); }
+  .controls > :global(.confirm-row) { margin-top: calc(var(--field-label-h) + var(--field-gap)); }
+  .spec { display: grid; gap: var(--sp-1); width: min(17rem, 100%); }
+  .spec-warning { margin: 0; }
+  .grow { flex: 1; }
+  .points { display: grid; gap: var(--field-gap); width: min(26rem, 100%); }
+  .points-label { font-size: var(--fs-12); line-height: var(--field-label-h); font-weight: var(--fw-bold, 700); color: var(--text-soft); }
+  .points-line { display: flex; align-items: center; gap: var(--sp-3); height: var(--control-h); }
+  .bar { flex: 1; height: 8px; background: var(--surface-3); border: 1px solid var(--line-control); border-radius: var(--r-1); overflow: hidden; }
   .fill { display: block; height: 100%; background: var(--brass-500); }
-  .points-readout { font-size: var(--fs-13); color: var(--text-ink); }
+  .points-readout { font-size: var(--fs-13); color: var(--text-ink); white-space: nowrap; }
   .points-note { font-size: var(--fs-12); color: var(--text-muted); }
   .note { color: var(--text-soft); }
   .inspector-sub { margin: 0; color: var(--text-soft); font-size: var(--fs-13); }
