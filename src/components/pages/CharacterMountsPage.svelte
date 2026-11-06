@@ -6,6 +6,9 @@
    * 2 major, 1 mythic). Only the ridden mount counts; which one a preset rides is per-preset and is set here through each
    * card's "Ridden in" menu (every preset named) and in the Loadout page. Glyphs are inventory instances: sealed ones cannot be socketed, and major glyphs are limited
    * to the character's class and spec. Game facts: Game/mounts-glyphs.md.
+   *
+   * Minor glyphs are graded (features/glyphScore.js) on the same leaderboard stat priorities and spec
+   * choice as gear and Pet Cores (uiState.js coreScoreSpec); "Best grade" sorts by it.
    */
   import { untrack } from 'svelte';
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
@@ -24,6 +27,9 @@
   import Banner from '../ui/Banner.svelte';
   import { inertGlyphPresets } from '../../lib/build/usage.js';
   import { mountsUnlocked, UNLOCK_LEVELS } from '../../lib/model/legality.js';
+  import { coreScoreBasis } from '../../lib/features/coreScore.js';
+  import { glyphScore } from '../../lib/features/glyphScore.js';
+  import { loadUi, saveUi } from '../../lib/uiState.js';
 
   let { setStatus = () => {}, onNavigate = () => {}, tab = null } = $props();
 
@@ -33,6 +39,20 @@
     if (tab === 'glyphs' || tab === 'mounts') view = tab;
   });
   let show = $state('all');
+  let sortBy = $state('rarity');
+
+  let priorityData = $state.raw(null);
+  import('../../data/statPriority.json').then(
+    (m) => (priorityData = m.default),
+    () => {}, // no data: minor glyphs show the roll only
+  );
+  let scoreSpec = $state(loadUi().coreScoreSpec);
+  const basis = $derived(priorityData && rosterStore.current ? coreScoreBasis(priorityData, rosterStore.current.class, rosterStore.current.level, scoreSpec) : null);
+  const specOptions = $derived(basis ? basis.specs.map((s) => ({ value: s.spec, label: s.specName })) : []);
+  function pickSpec(v) {
+    scoreSpec = v;
+    saveUi({ coreScoreSpec: v });
+  }
 
   const character = $derived(rosterStore.current);
   const mounts = $derived(character?.mounts ?? []);
@@ -67,6 +87,9 @@
     ].map(([value, label]) => ({ value, label: `${label} (${glyphs.filter(FILTERS[value]).length})` })),
   );
 
+  const scores = $derived(new Map(glyphs.map((g) => [g.id, glyphScore(g, basis?.weights ?? null)])));
+  const scoreValue = (g) => scores.get(g.id)?.score ?? scores.get(g.id)?.roll ?? -1;
+  const byRarity = (a, b) => FREE_GLYPH_RARITIES.indexOf(b.rarity) - FREE_GLYPH_RARITIES.indexOf(a.rarity);
   const groups = $derived(
     ['minor', 'major', 'mythic']
       .map((tier) => ({
@@ -74,7 +97,7 @@
         items: glyphs
           .filter((g) => glyphTier(g.glyphType) === tier)
           .filter(FILTERS[show] ?? FILTERS.all)
-          .toSorted((a, b) => FREE_GLYPH_RARITIES.indexOf(b.rarity) - FREE_GLYPH_RARITIES.indexOf(a.rarity)),
+          .toSorted((a, b) => (tier === 'minor' && sortBy === 'grade' ? scoreValue(b) - scoreValue(a) || byRarity(a, b) : byRarity(a, b))),
       }))
       .filter((g) => g.items.length > 0),
   );
@@ -141,7 +164,24 @@
         {#if glyphs.length === 0}
           <EmptyState title="No glyphs yet" text="Add one above, then socket it on a mount." />
         {:else}
-          <div class="filter"><Select label="Show" options={SHOW} bind:value={show} /></div>
+          <div class="filters">
+            <div class="filter"><Select label="Show" options={SHOW} bind:value={show} /></div>
+            <div class="filter">
+              <Select label="Sort minor glyphs" options={[{ value: 'rarity', label: 'Rarity' }, { value: 'grade', label: 'Best grade' }]} bind:value={sortBy} />
+            </div>
+            {#if specOptions.length}
+              <div class="filter"><Select label="Score for" options={specOptions} value={basis.spec.spec} onchange={pickSpec} /></div>
+            {/if}
+          </div>
+          {#if basis}
+            <p class="hint">
+              {#if basis.weights}
+                Minor glyphs are graded on {basis.spec.specName} leaderboard stat priorities, levels <span class="mono">{basis.bracket.key}</span>, and where the roll sits in its rarity's band.
+              {:else}
+                No leaderboard stat priorities for {basis.spec.specName} yet, so minor glyphs show the roll only.
+              {/if}
+            </p>
+          {/if}
         {/if}
         {#each groups as group (group.tier)}
           <div class="glyph-group">
@@ -153,6 +193,8 @@
                   {glyph}
                   mountName={mountList(mountsOfGlyph(glyph.id))}
                   inertIn={inert.get(glyph.id) ?? []}
+                  score={scores.get(glyph.id)}
+                  specName={basis?.spec.specName ?? ''}
                   onUpdate={(patch) => rosterStore.updateGlyph(glyph.id, patch)}
                   onRemove={() => rosterStore.removeGlyph(glyph.id)}
                 />
@@ -189,6 +231,7 @@
   .hint { color: var(--text-muted); font-size: var(--fs-12); margin: 0; }
   .add-mount { display: flex; align-items: flex-end; gap: var(--sp-3); flex-wrap: wrap; margin: var(--sp-4) 0; }
   .add-mount :global(.field) { min-width: min(16rem, 100%); }
+  .filters { display: flex; flex-wrap: wrap; gap: 0 var(--sp-3); }
   .filter { max-width: 16rem; margin: var(--sp-3) 0; }
   .mount-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); gap: var(--sp-3); min-width: 0; }
   .glyph-group { margin: var(--sp-4) 0; min-width: 0; }

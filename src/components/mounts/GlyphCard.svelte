@@ -6,6 +6,7 @@
    *   glyph's rolled secondary (stat + value, as the game shows it) is entered here.
    * - Major glyphs carry no stat. They retune one sigil, so the card says which sigil, and warns when no preset
    *   equips it (the glyph is inert unless the sigil is equipped and the glyph is on the ridden mount, §10).
+   * - `score` (features/glyphScore.js, scored for `specName`) grades a minor glyph's roll and stat, with a roll bar.
    */
   import { glyphTypeInfo, glyphSecondaryDef, glyphSecondaryQuality, glyphSecondaryValue, glyphQualityBand, GLYPH_SECONDARY_STATS } from '../../lib/model/glyphs.js';
   import { glyphImage } from '../../lib/assets/glyphs.js';
@@ -16,7 +17,15 @@
   import Button from '../ui/Button.svelte';
   import { TIER_LABELS, glyphText, majorText, rarityClass, secondaryUnit, secondaryDisplayValue, secondaryInputValue, statLabel } from './mountsView.js';
 
-  let { glyph, playerClass = null, mountName = null, inertIn = [], onUpdate, onRemove } = $props();
+  let { glyph, playerClass = null, mountName = null, inertIn = [], score = null, specName = '', onUpdate, onRemove } = $props();
+  const pct = (f) => `${Math.round(f * 100)}%`;
+  const scoreTitle = $derived(
+    !score
+      ? ''
+      : score.grade
+        ? `Scored for ${specName}. Stat ${pct(score.fit)}: its priority against the spec's best stat. Roll ${pct(score.roll)}: where it sits in the ${glyph.rarity} roll band.`
+        : `Where the roll sits in the ${glyph.rarity} roll band. No stat priorities for this class, so no score.`,
+  );
 
   const info = $derived(glyphTypeInfo(glyph.glyphType));
   const art = $derived(glyphImage(info?.tier, glyph.rarity));
@@ -55,7 +64,17 @@
       <div class="field">
         <NumberField label="Secondary value" unit={secondaryUnit(stat)} value={secondaryDisplayValue(stat, value)} onchange={setValue} />
         <span class="range">Range {secondaryDisplayValue(stat, def.minValue)}-{secondaryDisplayValue(stat, rangeMax)}{secondaryUnit(stat)}</span>
+        {#if score}<span class="stat-bar" title="{pct(score.roll)} of the {glyph.rarity} band"><span class="stat-fill" style="width: {pct(score.roll)}"></span></span>{/if}
       </div>
+    {/if}
+    {#if score}
+      <p class="glyph-score" title={scoreTitle} data-testid="glyph-score">
+        {#if score.grade}
+          <span class="roll-grade grade-{score.grade}">{score.grade}</span>
+          <span class="num">Score {pct(score.score)}</span>
+        {/if}
+        <span>{#if score.grade}Stat <span class="num">{pct(score.fit)}</span>{' · '}{/if}Roll <span class="num">{pct(score.roll)}</span></span>
+      </p>
     {/if}
   {:else if info?.tier === 'major'}
     <p class="effect">{majorText(glyph.glyphType, glyph.rarity)}</p>
@@ -102,5 +121,9 @@
   .warn { margin: 0; font-size: var(--fs-11); color: var(--status-warn); }
   .where { margin: 0; font-size: var(--fs-11); color: var(--text-muted); }
   .range { font-family: var(--font-data); font-size: var(--fs-11); color: var(--text-muted); }
+  .glyph-score { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: var(--sp-1) var(--sp-2); font-size: var(--fs-11); color: var(--text-muted); }
+  .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--text-ink); }
+  .stat-bar { display: block; height: 2px; background: var(--line-hairline); border-radius: 1px; overflow: hidden; }
+  .stat-fill { display: block; height: 100%; background: var(--r-up, var(--brass-400)); }
   .field { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: var(--sp-1); width: 100%; text-align: left; }
 </style>
