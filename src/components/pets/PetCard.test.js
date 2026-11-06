@@ -19,26 +19,31 @@ const render = (props) => {
   flushSync();
 };
 
-it('shows the altar-scaled ATK/HP and secondaries from the engine core source', () => {
+it('shows the altar-scaled ATK/HP and secondaries from the engine core source in an Altar column', () => {
   render({ altarLevel: 30, altarTier: 2 });
   const b = calculateCoreBonuses(pet, 30, 2);
-  const text = target.querySelector('[data-testid="pet-preview"]').textContent;
-  expect(text).toContain(formatFlat(b.flatAttack));
-  expect(text).toContain(formatFlat(b.flatHp));
+  const scaled = [...target.querySelectorAll('[data-testid="core-stats"] .scaled')].map((c) => c.textContent);
+  expect(scaled.slice(0, 2)).toEqual([formatFlat(b.flatAttack), formatFlat(b.flatHp)]);
+  expect(target.querySelector('[data-testid="core-stats"] thead').textContent).toContain('Altar 30');
   expect(target.querySelector('.sec-line').textContent).toContain(`+${petSecondaryValue(10, 30).toFixed(1)}%`);
   expect(target.querySelector('.card-title').textContent).toBe('Legendary Core');
 });
 
 it('shows base values only when no altar is passed', () => {
   render({});
-  expect(target.querySelector('[data-testid="pet-preview"]')).toBeNull();
   expect(target.querySelector('.scaled')).toBeNull();
-  expect(target.querySelector('.base-stats').textContent).toContain(formatFlat(2350));
+  expect(target.querySelector('[data-testid="core-stats"]').textContent).toContain(formatFlat(2350));
+  expect(target.querySelector('[data-testid="core-stats"] thead').textContent).not.toContain('Altar');
 });
 
-it('edit mode hints the rarity band of the base rolls', () => {
-  render({ editing: true });
-  expect(target.querySelector('.hint').textContent).toContain(`${formatFlat(2070)}-${formatFlat(2530)}`);
+it('Edit reports a click and marks the card whose editor is open', () => {
+  let edits = 0;
+  render({ editing: true, onEdit: () => edits++ });
+  const btn = [...target.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Edit');
+  expect(btn.getAttribute('aria-pressed')).toBe('true');
+  expect(target.querySelector('.pet-card').classList.contains('editing')).toBe(true);
+  btn.click();
+  expect(edits).toBe(1);
 });
 
 it('Used in lists every preset, checks the ones using this core, and reports the picked preset id', () => {

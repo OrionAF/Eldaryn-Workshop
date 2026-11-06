@@ -38,8 +38,11 @@ it('starts empty (saying why old pets are gone), adds a core in edit mode, and n
   click(btn('+ Add core'));
   expect(rosterStore.current.pets.cores[0]).toMatchObject({ rarity: 'Mythic', baseAttack: 3850, baseHp: 9750 });
   expect(target.querySelectorAll('.pet-card')).toHaveLength(1);
-  expect(target.querySelector('.pet-card select')).not.toBeNull();
-  click(btn('Save'));
+  // the new core opens in the editor drawer; the card itself never grows into an editor
+  expect(target.querySelector('.core-editor select')).not.toBeNull();
+  expect(target.querySelector('.pet-card select')).toBeNull();
+  click(btn('Done'));
+  expect(target.querySelector('.core-editor')).toBeNull();
   expect(target.querySelector('.card-title').textContent).toBe('Mythic Core');
 });
 
@@ -55,14 +58,14 @@ it('edits rarity, base stats and secondaries through the edit controls', () => {
   expect(rosterStore.current.pets.cores[0].baseAttack).toBe(200);
   change(byLabel('Rarity'), 'Rare');
   expect(rosterStore.current.pets.cores[0]).toMatchObject({ rarity: 'Rare', baseAttack: 730 });
-  click(btn('Save'));
+  click(btn('Done'));
   expect(target.querySelector('.sec-line').textContent).toContain('+1.8%');
 });
 
 it('altar level steppers write the store', () => {
   click(target.querySelector('button[aria-label="Increase Altar level"]'));
   expect(rosterStore.current.pets.altar.level).toBe(2);
-  expect(target.querySelector('[data-testid="altar-level"]').textContent).toBe('2');
+  expect(target.querySelector('input[aria-label="Altar level"]').value).toBe('2');
 });
 
 it('changing the tier asks first, names the cores and presets it will clear, then wipes', () => {
@@ -83,15 +86,13 @@ it('changing the tier asks first, names the cores and presets it will clear, the
   expect(rosterStore.current.presets[0].petId).toBeNull();
 });
 
-it('the altar level has a number field that writes the same value as the slider and steppers', () => {
-  const input = [...target.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith('Core altar level'));
-  const el = document.getElementById(input.htmlFor);
+it('the altar level can be typed into the stepper, and the slider follows', () => {
+  const el = target.querySelector('input[aria-label="Altar level"]');
   el.value = '12';
-  el.dispatchEvent(new Event('input', { bubbles: true }));
-  el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  el.dispatchEvent(new Event('change', { bubbles: true }));
   flushSync();
   expect(rosterStore.current.pets.altar.level).toBe(12);
-  expect(target.querySelector('[data-testid="altar-level"]').textContent).toBe('12');
+  expect(target.querySelector('input[type="range"][aria-label="Core altar level"]').value).toBe('12');
 });
 
 // jsdom applies no layout, so the 1440 overflow fix (scrollWidth 1479) is guarded at the source: the grid carries
@@ -115,13 +116,14 @@ it('Used in sets a preset to the core, a second pick clears it, and the other pr
     target.querySelectorAll('.pet-card [role^="menuitem"]')[n].click();
     flushSync();
   };
+  const menuText = () => target.querySelector('.pet-card button[aria-haspopup]').textContent;
   pick(0);
   expect(rosterStore.current.presets[0].petId).toBe(id);
   expect(rosterStore.current.presets[1].petId).toBe(b.petId);
-  expect(target.querySelector('.used-by').textContent).toContain(a.name);
+  expect(menuText()).toContain(a.name);
   pick(0);
   expect(rosterStore.current.presets[0].petId).toBeNull();
-  expect(target.querySelector('.used-by').textContent).toBe('unused');
+  expect(menuText()).toContain('Used in: none');
 });
 
 it('Used in reassigns a preset that uses another core to this one', () => {
@@ -142,7 +144,7 @@ it('Show: Unused hides a core a preset uses, and Sort orders by rarity', () => {
   click(btn('+ Add core'));
   change(byLabel('Core rarity to add'), 'Mythic');
   click(btn('+ Add core'));
-  for (const b of [...target.querySelectorAll('button')].filter((x) => x.textContent.trim() === 'Save')) click(b);
+  click(btn('Done'));
   const [common, mythic] = rosterStore.current.pets.cores;
   rosterStore.setPresetPet(rosterStore.current.presets[0].id, common.id);
   flushSync();
@@ -158,9 +160,8 @@ it('Show: Unused hides a core a preset uses, and Sort orders by rarity', () => {
   expect(mythic.id).not.toBe(common.id);
 });
 
-it('Duplicate adds a copy of the core in edit mode', () => {
+it('Duplicate (in the editor) adds a copy of the core and opens the copy', () => {
   click(btn('+ Add core'));
-  click(btn('Save'));
   click(btn('Duplicate'));
   const [a, b] = rosterStore.current.pets.cores;
   expect(rosterStore.current.pets.cores).toHaveLength(2);
