@@ -257,6 +257,11 @@
   --row-h: 32px;
   --control-h: 32px;
   --hit: 44px;      /* touch target on coarse pointers / phone */
+  /* A labelled field is label (one line) + gap + control, top-aligned, so every control in a row of
+     fields sits at the same height. Something unlabelled in such a row (a Max button, a readout)
+     takes .control-align to drop by the same amount. */
+  --field-label-h: 16px;
+  --field-gap: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -404,6 +409,10 @@ button:disabled { color: var(--text-disabled); cursor: not-allowed; }
 .grade-B { color: var(--text-ink); }
 .grade-C { color: var(--text-soft); }
 .grade-D { color: var(--text-muted); }
+/* Rows of labelled fields: top-aligned (never end/center: a hint or error under one field must not
+   lift the others), and an unlabelled item in the row drops to the controls' line. */
+.field-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--sp-2) var(--sp-4); }
+.control-align { margin-top: calc(var(--field-label-h) + var(--field-gap)); }
 /* .subheading is the legacy name of the micro label. */
 .subheading { font-family: var(--font-ui); font-weight: var(--fw-bold); font-size: var(--fs-11); letter-spacing: var(--track-label); color: var(--text-soft); text-transform: uppercase; }
 
