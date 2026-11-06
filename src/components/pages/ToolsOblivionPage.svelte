@@ -137,24 +137,27 @@
             <span class="cap-label">Highest floor won {threshold}%+ of the time</span>
             <strong class="num" data-testid="max-floor">{stale ? '-' : maxLabel}</strong>
           </div>
-          <div><span class="cap-label">Oblivion Level</span><strong class="num">{character.oblivion.level}</strong>
-            <a href="#character/overview">Edit</a></div>
+          <div><span class="cap-label">Oblivion Level</span>
+            <span class="val"><strong class="num">{character.oblivion.level}</strong><a href="#character/overview">Edit</a></span></div>
         </div>
         <p class="caption">An estimate: the game server decides the real fight. Gear for this realm is on the <a href="#character/gear">Gear page, Oblivion tab</a>.</p>
       </Panel>
 
       <Panel title="Floor setup" scope="tool">
-        <div class="setup">
+        <div class="setup field-row">
           <div class="field"><span class="micro-label" aria-hidden="true">From floor</span><Stepper label="From floor" bind:value={from} min={1} max={to} /></div>
           <div class="field"><span class="micro-label" aria-hidden="true">To floor</span><Stepper label="To floor" bind:value={to} min={from} max={LAST_FLOOR} /></div>
           <div class="field"><span class="micro-label" aria-hidden="true">Win chance needed %</span><Stepper label="Win chance needed %" bind:value={threshold} min={50} max={99} /></div>
-          <SegmentedControl
-            label="Effort" bind:value={effort}
-            options={Object.entries(FLOOR_EFFORT).map(([value, n]) => ({ value, label: value[0].toUpperCase() + value.slice(1), sub: `${n} fights per floor` }))}
-          />
-          <RunEstimate bound="upper" fights={oblivionFights(to - from + 1, FLOOR_EFFORT[effort] ?? FLOOR_EFFORT.standard)} />
-          <Checkbox label="Apply the instability output cut" bind:checked={applyOutputCut} />
+          <div class="field">
+            <span class="micro-label" aria-hidden="true">Effort</span>
+            <SegmentedControl
+              label="Effort" bind:value={effort}
+              options={Object.entries(FLOOR_EFFORT).map(([value, n]) => ({ value, label: value[0].toUpperCase() + value.slice(1), sub: `${n} fights per floor` }))}
+            />
+          </div>
+          <div class="control-align on-line"><Checkbox label="Apply the instability output cut" bind:checked={applyOutputCut} /></div>
         </div>
+        <RunEstimate bound="upper" fights={oblivionFights(to - from + 1, FLOOR_EFFORT[effort] ?? FLOOR_EFFORT.standard)} />
         <div class="actions">
           <Button variant="primary" disabled={running} loading={running} busyLabel="Running…" onclick={scan}>Simulate floors {from}-{to}</Button>
           {#if running}
@@ -225,9 +228,14 @@
 <style>
   .cap-label { font-size: var(--fs-11); font-weight: var(--fw-heavy); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-soft); }
   .obl { display: grid; gap: var(--sp-4); }
-  .strip, .setup, .actions { display: flex; flex-wrap: wrap; gap: var(--sp-4); align-items: flex-end; }
+  /* label over value, tops aligned (a figure with a link beside it no longer lifts its label) */
+  .strip { display: flex; flex-wrap: wrap; gap: var(--sp-3) var(--sp-8); align-items: flex-start; }
   .strip > div { display: flex; flex-direction: column; gap: var(--sp-1); }
-  .field { display: flex; flex-direction: column; gap: var(--sp-1); }
+  .val { display: flex; align-items: baseline; gap: var(--sp-2); }
+  .actions { display: flex; flex-wrap: wrap; gap: var(--sp-4); align-items: center; }
+  .field { display: flex; flex-direction: column; gap: var(--field-gap); }
+  .field .micro-label { line-height: var(--field-label-h); }
+  .on-line { display: flex; align-items: center; min-height: var(--control-h); }
   .caption, .muted { color: var(--text-muted); font-size: var(--fs-12); }
   .caption { margin: var(--sp-3) 0 0; }
   .chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); list-style: none; margin: 0; padding: 0; }
@@ -236,9 +244,11 @@
     border-radius: var(--r-2); padding: var(--sp-1) var(--sp-2);
   }
   .scroll { overflow-x: auto; max-width: 100%; }
-  .floors { width: 100%; border-collapse: collapse; font-size: var(--fs-13); }
-  .floors th { text-align: left; font-size: var(--fs-11); color: var(--text-muted); padding: var(--sp-1) var(--sp-2); }
-  .floors td { padding: var(--sp-1) var(--sp-2); border-top: 1px solid var(--line-hairline); position: relative; }
+  /* as wide as its columns, so a floor's numbers stay within one glance */
+  .floors { width: auto; min-width: min(100%, 56rem); border-collapse: collapse; font-size: var(--fs-13); }
+  .floors th { text-align: left; font-size: var(--fs-11); color: var(--text-muted); padding: var(--sp-1) var(--sp-4); }
+  .floors td { padding: var(--sp-1) var(--sp-4); border-top: 1px solid var(--line-hairline); position: relative; }
+  .floors th:first-child, .floors td:first-child { padding-left: var(--sp-2); }
   .floors .r { text-align: right; }
   .floors.stale { opacity: 0.45; filter: grayscale(1); }
   .bar { position: absolute; left: 0; bottom: 0; height: calc(var(--sp-1) * 0.5); background: var(--brass-500); }

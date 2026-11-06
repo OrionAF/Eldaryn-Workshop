@@ -90,11 +90,14 @@
   const mine = $derived(presetDuelFighter(character, preset.id));
   const theirs = $derived(opponent ? opponentFighter(opponent) : null);
 
+  /** One warning per fighter, naming every stat it lacks (not one banner per missing stat). */
+  const blockerFor = (fighter, name, fix, to) => {
+    const missing = missingStats(fighter);
+    return missing.length ? [{ text: `${name} has no ${missing.join(', ')}.`, fix, to }] : [];
+  };
   const blockers = $derived([
-    ...missingStats(mine).map((m) => ({ text: `${preset.name} has no ${m}.`, fix: 'Open Stat Sheet', to: '#/builds/sheet' })),
-    ...(theirs && !allMode
-      ? missingStats(theirs).map((m) => ({ text: `${opponent.name} has no ${m}.`, fix: 'Open Opponents', to: '#/tools/opponents' }))
-      : []),
+    ...blockerFor(mine, preset.name, 'Open Stat Sheet', '#/builds/sheet'),
+    ...(theirs && !allMode ? blockerFor(theirs, opponent.name, 'Open Opponents', '#/tools/opponents') : []),
   ]);
   const blankRows = $derived(!allMode && theirs?.defaulted?.length ? defaultedLabels(theirs.defaulted) : []);
   // All opponents: an opponent whose sheet lacks a required stat is skipped and listed with the reason.
@@ -339,7 +342,7 @@
         </div>
         <div class="field">
           <span class="lbl">Effort</span>
-          <SegmentedControl label="Effort" options={effortOptions} bind:value={effort} />
+          <SegmentedControl label="Effort" stack options={effortOptions} bind:value={effort} />
           <RunEstimate fights={duelFights(perSeat, (seat === 'both' ? 2 : 1) * (allMode ? runnable.length : 1))} />
           <span class="hint">Fights per seat. More effort spots smaller differences and takes longer. Seed <span class="num">{SEED}</span>: the same seed gives the same result.</span>
         </div>
@@ -473,8 +476,9 @@
   .stack { display: grid; gap: var(--sp-4); min-width: 0; }
   .field { display: grid; gap: var(--sp-1); min-width: 0; }
   /* The segmented Seat and Effort controls fill the panel and wrap their segments instead of overflowing it. */
-  .field :global(.seg) { display: flex; flex-wrap: wrap; width: 100%; max-width: 100%; box-sizing: border-box; }
-  .field :global(.seg button) { flex: 1 1 auto; justify-content: center; white-space: normal; min-width: 0; }
+  .field :global(.seg) { width: 100%; max-width: 100%; box-sizing: border-box; }
+  .field :global(.seg:not(.stack)) { display: flex; flex-wrap: wrap; }
+  .field :global(.seg:not(.stack) button) { flex: 1 1 auto; justify-content: center; white-space: normal; min-width: 0; }
   .lbl { font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }
   .hint, .note { color: var(--text-muted); font-size: var(--fs-12); margin: 0; overflow-wrap: anywhere; }
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }

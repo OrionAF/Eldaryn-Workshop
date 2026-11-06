@@ -97,8 +97,9 @@
 <style>
   .estimate { min-width: 0; display: grid; gap: var(--sp-3); }
   .estimate h3 { margin: 0; display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-14); color: var(--text-ink); }
-  .figures { margin: 0; display: grid; gap: var(--sp-2); }
-  .fig { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--sp-2); align-items: baseline; }
+  /* one grid for every figure, so the values line up whatever each label's width */
+  .figures { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--sp-2) var(--sp-3); align-items: baseline; }
+  .fig { display: contents; }
   dt { font-size: var(--fs-12); color: var(--text-muted); }
   dd { margin: 0; font-size: var(--fs-12); color: var(--text-soft); min-width: 0; }
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--text-ink); }
