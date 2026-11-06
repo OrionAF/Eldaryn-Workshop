@@ -48,13 +48,14 @@
         {@const lv = character.relics[def.id] ?? 0}
         {@const on = preset.relicIds.includes(def.id)}
         <div class="cell">
+          <!-- the level-0 note sits inside the tile, so every tile in the grid is the same height -->
           <ItemTile name={def.name} art={relicImage(def.tier)} selected={on} disabled={lv === 0 && !on} onclick={() => toggle(def)}>
-            {#snippet meta()}Level {lv}{/snippet}
+            {#snippet meta()}{lv === 0 && !on ? 'Level 0: set it on Relics' : `Level ${lv}`}{/snippet}
           </ItemTile>
-          {#if lv === 0 && !on}<a class="hint" href="#/character/relics">Level 0: set it on Relics</a>{/if}
         </div>
       {/each}
     </div>
+    <a class="hint link" href="#/character/relics">Set relic levels on Relics</a>
     {#if error}<p class="err" role="alert">{error}</p>{/if}
   {/if}
 </Panel>
@@ -66,6 +67,7 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-2); }
   .cell { display: grid; gap: var(--sp-1); }
   .hint, .note { font-size: var(--fs-12); color: var(--text-muted); }
+  .link { justify-self: start; }
   .err { margin: 0; color: var(--verdict-down); font-size: var(--fs-12); }
   .num { font-family: var(--font-data); }
 </style>
