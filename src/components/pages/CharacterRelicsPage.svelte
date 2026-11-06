@@ -213,4 +213,13 @@
     .relic-stats { grid-column: 1; }
     .equip { grid-column: 2; justify-self: end; }
   }
+  /* a phone has no room for columns: the name gets its own line, the level and Equipped in share the next
+     (Equipped in drops below when both presets are named), and the effects close the card */
+  @media (max-width: 700px) {
+    .relic-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+    .relic-title { flex: 1 1 100%; }
+    .level-controls { flex: none; }
+    .equip { flex: 0 1 auto; }
+    .relic-stats { flex: 1 1 100%; order: 1; }
+  }
 </style>

@@ -473,6 +473,11 @@
   .panes { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
   .panes > * { min-width: 0; }
   @media (max-width: 1100px) { .panes { grid-template-columns: minmax(0, 1fr); } }
+  /* stacked above the result, the setup uses the width: two columns instead of page-wide fields */
+  @media (min-width: 701px) and (max-width: 1100px) {
+    [data-testid='duel-setup'] :global(.panel-body) { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--sp-8); align-items: start; }
+    [data-testid='duel-setup'] :global(.panel-body > .banner) { grid-column: 1 / -1; }
+  }
   .stack { display: grid; gap: var(--sp-4); min-width: 0; }
   .field { display: grid; gap: var(--sp-1); min-width: 0; }
   /* The segmented Seat and Effort controls fill the panel and wrap their segments instead of overflowing it. */

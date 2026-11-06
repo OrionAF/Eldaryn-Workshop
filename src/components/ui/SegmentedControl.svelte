@@ -45,10 +45,12 @@
 </div>
 
 <style>
+  /* Cells share the widest cell's width while there is room; squeezed (a phone, a narrow column) they shrink
+     to their longest word and the label wraps, so the control never pushes past its column. */
   .seg {
     display: inline-grid;
     grid-auto-flow: column;
-    grid-auto-columns: 1fr;
+    grid-auto-columns: minmax(min-content, 1fr);
     justify-self: start;
     max-width: 100%;
     border: 1px solid var(--line-control);
@@ -63,10 +65,12 @@
     min-width: 0;
     align-items: center;
     justify-content: center;
-    gap: var(--sp-2);
-    white-space: nowrap;
-    height: calc(var(--control-h) - 6px);
-    padding: 0 var(--sp-3);
+    flex-wrap: wrap;
+    gap: 0 var(--sp-2);
+    min-height: calc(var(--control-h) - 6px);
+    padding: 2px var(--sp-3);
+    line-height: 1.15;
+    text-align: center;
     border: 0;
     border-radius: var(--r-1);
     background: transparent;

@@ -122,22 +122,25 @@
             <span class="points-note">{cap === 0 ? `Talents unlock at level ${UNLOCK_LEVELS.TALENTS}.` : `Level ${character.level} grants ${cap} of the 29 points.`}</span>
           </div>
           <span class="grow"></span>
-          {#if dualTalentsUnlocked(character.level) && set.spec}
+          <!-- on the control line (not the caption line), and together when the row wraps -->
+          <div class="control-align set-actions">
+            {#if dualTalentsUnlocked(character.level) && set.spec}
+              <ConfirmButton
+                variant="ghost"
+                label={`Copy to ${label(1 - index)}`}
+                confirmLabel="Confirm copy"
+                prompt={`Replaces everything in ${label(1 - index)}.`}
+                onConfirm={() => rosterStore.copyTalentSet(index, 1 - index)}
+              />
+            {/if}
             <ConfirmButton
               variant="ghost"
-              label={`Copy to ${label(1 - index)}`}
-              confirmLabel="Confirm copy"
-              prompt={`Replaces everything in ${label(1 - index)}.`}
-              onConfirm={() => rosterStore.copyTalentSet(index, 1 - index)}
+              label={`Reset ${label(index)}`}
+              confirmLabel="Confirm reset"
+              prompt={`Reset all points spent in ${label(index)}?`}
+              onConfirm={() => rosterStore.resetTalentSet(index)}
             />
-          {/if}
-          <ConfirmButton
-            variant="ghost"
-            label={`Reset ${label(index)}`}
-            confirmLabel="Confirm reset"
-            prompt={`Reset all points spent in ${label(index)}?`}
-            onConfirm={() => rosterStore.resetTalentSet(index)}
-          />
+          </div>
         </div>
 
         {#if !set.spec}
@@ -155,6 +158,7 @@
 <style>
   .talents { display: grid; gap: var(--sp-3); }
   .controls { display: flex; flex-wrap: wrap; gap: var(--sp-3) var(--sp-5); align-items: flex-start; margin-bottom: var(--sp-4); }
+  .set-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--sp-2); }
   .controls > :global(.confirm-row) { margin-top: calc(var(--field-label-h) + var(--field-gap)); }
   .spec { display: grid; gap: var(--sp-1); width: min(17rem, 100%); }
   .spec-warning { margin: 0; }
