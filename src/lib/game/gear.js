@@ -87,3 +87,43 @@ export function secondaryStatCeiling(def, statLevel) {
   const base = def.minValue + (def.maxValue - def.minValue) * (0.5 + 0.5 * frac);
   return statLevel > 100 ? (base * ascensionEffectiveLevel(statLevel)) / 100 : base;
 }
+
+// Quality sits here for the same reason: the engine (Power) and the model (derived item quality) both need it.
+const poolByType = new Map(SECONDARY_STAT_POOL.map((d) => [d.type, d]));
+
+/**
+ * Where a secondary sits between its minimum and its ceiling at `statLevel` (0..1, unrounded): the
+ * fraction calculateStatQuality rounds onto 1..100 (gear.md §5). Null for a type outside the pool or an empty range.
+ */
+export function secondaryRollFraction(type, value, statLevel) {
+  const def = poolByType.get(type);
+  if (!def) return null;
+  const range = secondaryStatCeiling(def, statLevel) - def.minValue;
+  if (range <= 0) return null;
+  const p = 10 ** def.decimals;
+  const span = Math.round((def.minValue + range) * p) / p - def.minValue;
+  if (span <= 0) return null;
+  return Math.max(0, Math.min(1, (value - def.minValue) / span));
+}
+
+/** gear.md §5 calculateStatQuality: 1..100 (1 for a type outside the pool or an empty range). */
+export function calculateStatQuality(type, value, statLevel) {
+  const f = secondaryRollFraction(type, value, statLevel);
+  return f == null ? 1 : Math.round(f * 99 + 1);
+}
+
+/** gear.md §5 calculateItemQuality over {secondaryStats, itemLevel, realm}: the rounded mean, null with no secondaries. */
+export function calculateItemQuality(item) {
+  const stats = item?.secondaryStats ?? [];
+  if (stats.length === 0) return null;
+  const L = itemStatLevel(item.itemLevel, item.realm);
+  return Math.round(stats.reduce((s, x) => s + calculateStatQuality(x.type, x.value, L), 0) / stats.length);
+}
+
+// gear.md §1 ITEM_TYPES_BY_RARITY: the cosmetic material an item of a rarity is made of. Uncommon lists
+// STEEL twice (Steel and Reinforced share the type), so the list is deduplicated.
+/** Distinct item types (e.g. 'SAPPHIRE') a rarity can drop as, first one first. */
+export function itemTypesFor(rarity) {
+  const types = rarityById(rarity)?.itemTypes ?? [];
+  return types.filter((t, i) => types.findIndex((u) => u.type === t.type) === i);
+}

@@ -13,12 +13,13 @@ import {
   emptyItem,
 } from './equipment.js';
 import { newCharacter, normaliseCharacter, normaliseRoster, migrateCharacterFromV1 } from './index.js';
-import { BASE_SLOTS, slotsForRealm } from '../game/gear.js';
+import { BASE_SLOTS, slotsForRealm, calculateItemQuality } from '../game/gear.js';
 
 const legendary = {
   rarity: 'LEGENDARY',
+  itemType: 'VOID',
   itemLevel: 100,
-  quality: 80,
+  quality: 61, // derived: calculateItemQuality of the two secondaries below
   primaryStats: { attack: 2750, hp: 8230 },
   secondaryStats: [
     { type: 'CRIT_CHANCE', value: 3.2 },
@@ -76,14 +77,27 @@ describe('normaliseItem', () => {
     expect(got.secondaryStats).toEqual([{ type: 'CRIT_CHANCE', value: 3 }]);
   });
 
-  it('clamps item level per realm and quality to 1..100', () => {
+  it('clamps item level per realm', () => {
     expect(maxItemLevel('base')).toBe(240);
     expect(maxItemLevel('oblivion')).toBe(480);
     expect(normaliseItem({ ...legendary, itemLevel: 999 }, { realm: 'base' }).itemLevel).toBe(240);
     expect(normaliseItem({ ...legendary, itemLevel: 999 }, { realm: 'oblivion' }).itemLevel).toBe(480);
-    expect(normaliseItem({ ...legendary, itemLevel: 0, quality: 500 }).itemLevel).toBe(1);
-    expect(normaliseItem({ ...legendary, quality: 500 }).quality).toBe(100);
-    expect(normaliseItem({ ...legendary, itemLevel: '', quality: null })).toMatchObject({ itemLevel: null, quality: null });
+    expect(normaliseItem({ ...legendary, itemLevel: 0 }).itemLevel).toBe(1);
+  });
+
+  it('derives quality from the secondaries at the item level and ignores a stored one (gear.md §5)', () => {
+    const got = normaliseItem({ ...legendary, quality: 500 });
+    expect(got.quality).toBe(calculateItemQuality({ secondaryStats: got.secondaryStats, itemLevel: 100, realm: 'base' }));
+    const top = normaliseItem({ ...legendary, secondaryStats: [{ type: 'CRIT_CHANCE', value: 99 }] });
+    expect(top.quality).toBe(100);
+    expect(normaliseItem({ ...legendary, itemLevel: '' })).toMatchObject({ itemLevel: null, quality: null });
+    expect(normaliseItem({ ...legendary, secondaryStats: [] }).quality).toBeNull();
+  });
+
+  it('keeps an item type only when the rarity drops as it (gear.md §1)', () => {
+    expect(normaliseItem(legendary).itemType).toBe('VOID');
+    expect(normaliseItem({ ...legendary, itemType: 'COSMIC' }).itemType).toBeNull();
+    expect(normaliseItem({ ...legendary, rarity: null }).itemType).toBeNull();
   });
 
   it('keeps a conduit only on Eternal+ gear (or Divine+ in the Oblivion realm, gear.md §7)', () => {
@@ -211,7 +225,8 @@ describe('through the character', () => {
 
   it('a character round-trips through normaliseRoster unchanged', () => {
     const c = newCharacter('A', 'WARRIOR');
-    c.equipment.oblivion.items.RIFT_CORE = { ...legendary, rarity: 'OBLIVION', itemLevel: 300, conduit: { type: 'DARK', value: 60 } };
+    const riftCore = { ...legendary, rarity: 'OBLIVION', itemType: 'RIFTFORGED', itemLevel: 300, conduit: { type: 'DARK', value: 60 } };
+    c.equipment.oblivion.items.RIFT_CORE = { ...riftCore, quality: calculateItemQuality({ ...riftCore, realm: 'oblivion' }) };
     const roster = { schemaVersion: 2, characters: [c], currentId: c.id };
     expect(normaliseRoster(JSON.parse(JSON.stringify(roster)))).toEqual(roster);
   });

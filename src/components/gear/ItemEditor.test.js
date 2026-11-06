@@ -63,8 +63,6 @@ it('emits the edited item on change: rarity, item level, attack with thousands s
   expect(changes.at(-1).itemLevel).toBe(150);
   change(q('Attack'), '48.124');
   expect(changes.at(-1).primaryStats).toEqual({ attack: 48124, hp: 8230 });
-  change(q('Quality'), '');
-  expect(changes.at(-1).quality).toBeNull();
   unmount(app);
 });
 
@@ -133,7 +131,6 @@ it('shows the item level, quality and secondary ranges as visible text, not only
   const { app } = render({ value: legendary });
   const text = target.textContent;
   expect(text).toMatch(/Range 1 to \d+/);
-  expect(text).toContain('Range 1 to 100');
   expect(text).toMatch(/Range [\d.]+ to [\d.]+ at item level 100/);
   unmount(app);
 });
@@ -178,13 +175,35 @@ it('raising the item level shows no clamp note', () => {
   unmount(app);
 });
 
-it('an item without a quality says so, and says what the model does with it', () => {
-  const { app } = render({ value: { ...legendary, quality: null } });
-  const note = target.querySelector('[data-testid="quality-unknown"]');
-  expect(note.textContent).toContain('Unknown (not in the profile)');
-  expect(note.textContent).toContain('numbers do not use item quality');
+it('shows quality worked out from the secondaries, not a field to type into', () => {
+  const { app } = render({ value: { ...legendary, quality: null, secondaryStats: [{ type: 'CRIT_CHANCE', value: 99 }] } });
+  const cell = target.querySelector('[data-testid="item-quality"]');
+  expect(cell.textContent).toContain('100');
+  expect(cell.textContent).toContain("From the secondaries' rolls");
+  expect(cell.querySelector('input')).toBeNull();
   unmount(app);
-  const known = render({ value: legendary });
-  expect(target.querySelector('[data-testid="quality-unknown"]')).toBeNull();
-  unmount(known.app);
+  const noLevel = render({ value: { ...legendary, itemLevel: null } });
+  expect(target.querySelector('[data-testid="item-quality"]').textContent).toContain('Set the item level');
+  unmount(noLevel.app);
+});
+
+it('offers a material only for rarities that drop as two, and resets it on a rarity change', () => {
+  const { app, changes } = render({ value: legendary });
+  expect(q('Material')).toBeTruthy();
+  change(q('Rarity'), 'ANCIENT');
+  expect(changes.at(-1)).toMatchObject({ rarity: 'ANCIENT', itemType: null });
+  unmount(app);
+  const ancient = render({ value: { ...legendary, rarity: 'ANCIENT' } });
+  expect(target.textContent).not.toContain('Material');
+  unmount(ancient.app);
+});
+
+it('shows the gear score with a roll bar per secondary', () => {
+  const score = { roll: 0.5, fit: 1, score: 0.75, grade: 'A', secondaries: [{ type: 'CRIT_CHANCE', roll: 0.5, weight: 1 }] };
+  const { app } = render({ value: legendary, score, specName: 'Arms' });
+  const line = target.querySelector('[data-testid="gear-score"]');
+  expect(line.textContent).toContain('A');
+  expect(line.textContent).toContain('Score 75%');
+  expect(target.querySelectorAll('.stat-fill')).toHaveLength(1);
+  unmount(app);
 });

@@ -60,8 +60,9 @@ export function mapItem(raw) {
   if (!isObj(raw)) return null;
   const item = {
     rarity: str(raw.rarity),
+    itemType: str(raw.itemType),
     itemLevel: num(raw.itemLevel),
-    quality: null, // the client has no item quality field (only `qualityBonus`, which is not a 1..100 quality)
+    quality: null, // not on server items (`qualityBonus` is not a 1..100 quality); normaliseItem derives it
     primaryStats: { attack: num(raw.primaryStats?.attack) ?? 0, hp: num(raw.primaryStats?.hp) ?? 0 },
     secondaryStats: arr(raw.secondaryStats).filter(isObj).map((s) => ({ type: s.type, value: s.value })),
     conduit: isObj(raw.conduit) ? { type: raw.conduit.type, value: raw.conduit.value } : null,
