@@ -12,6 +12,9 @@
    * on blur / Enter (ui/NumberField), so a half-typed number is never clamped under the cursor.
    * Lowering the item level lowers every secondary's highest roll, and the model clamps to it; the
    * editor names each stat that will drop before it happens.
+   *
+   * Layout: a container (container queries), so one editor serves the wide Gear panel (each secondary
+   * is one line: stat, value, RangeMeter) and the narrow Drop Check column (the meter drops under).
    */
   import { RARITIES, secondaryPoolFor, SECONDARY_STAT_POOL, CONDUIT, calculateItemQuality, itemTypesFor } from '../../lib/game/gear.js';
   import { emptyItem, maxItemLevel, secondarySlots, conduitAllowed, secondaryStatMaxValue, itemStatLevel, itemWarnings } from '../../lib/model/equipment.js';
@@ -20,11 +23,11 @@
   import Select from '../ui/Select.svelte';
   import NumberField from '../ui/NumberField.svelte';
   import Button from '../ui/Button.svelte';
+  import RangeMeter from '../ui/RangeMeter.svelte';
 
   // `ascension` (optional) is the character's Ascension step: an item above what it drops gets a warning.
-  let { value = null, realm = 'base', slot, class: cls = null, ascension = null, score = null, specName = '', onchange } = $props();
-
-  const uid = $props.id();
+  // `showSlotLabel` false when the surrounding panel already titles the slot (Gear page).
+  let { value = null, realm = 'base', slot, class: cls = null, ascension = null, score = null, specName = '', showSlotLabel = true, onchange } = $props();
 
   // Out-of-range input is clamped, not dropped, and the field says so: { itemLevel, 'sec0'... } -> message.
   let flags = $state({});
@@ -47,6 +50,7 @@
     Array.from({ length: rowCount }, (_, i) => item.secondaryStats[i] ?? { type: '', value: '' }),
   );
   const levelMax = $derived(maxItemLevel(realm));
+  const levelShown = $derived(item.itemLevel ?? levelMax);
   const quality = $derived(item.itemLevel == null ? null : calculateItemQuality({ secondaryStats: item.secondaryStats, itemLevel: item.itemLevel, realm }));
   const typeChoices = $derived(itemTypesFor(item.rarity));
   const materialOptions = $derived(typeChoices.map((t) => ({ value: t.type, label: t.displayName })));
@@ -60,7 +64,21 @@
   );
   const secTitle = (sc) =>
     [sc?.weight != null ? `${pct(sc.weight)} priority for ${specName}` : null, sc?.roll != null ? `${pct(sc.roll)} of range` : null].filter(Boolean).join(', ');
+  /** Stat priority as the meter's tone: gold for a high-priority secondary, faded for a low one. */
+  const toneOf = (sc) => (sc?.weight == null ? null : sc.weight >= 2 / 3 ? 'high' : sc.weight < 1 / 3 ? 'low' : null);
   const showConduit = $derived(conduitAllowed(item.rarity, realm));
+  const qualityCaption = $derived(
+    quality != null ? 'From the rolls' : rowCount === 0 ? 'No secondaries' : item.itemLevel == null ? 'Set the item level' : 'Add a secondary',
+  );
+  const qualityWhy = $derived(
+    quality != null
+      ? "From the secondaries' rolls at this item level. The game works it out, so it is not typed in."
+      : rowCount === 0
+        ? 'No secondaries, so no quality.'
+        : item.itemLevel == null
+          ? 'Set the item level to work it out.'
+          : 'Add a secondary to work it out.',
+  );
 
   function emit(patch) {
     onchange?.({ ...item, ...patch });
@@ -78,6 +96,12 @@
   function secondaryMax(type) {
     const max = secondaryStatMaxValue(type, itemStatLevel(item.itemLevel ?? levelMax, realm));
     return max == null ? null : max;
+  }
+  /** A secondary's roll range at this item level, in the unit the field shows (gear.md §4). */
+  function rangeOf(type) {
+    const def = SECONDARY_STAT_POOL.find((s) => s.type === type);
+    const max = secondaryMax(type);
+    return def && max != null ? { min: Number(toDisplay(type, def.minValue)), max: Number(toDisplay(type, max)) } : null;
   }
   function setRowValue(i, shown) {
     const next = rows.map((r) => ({ ...r }));
@@ -121,17 +145,22 @@
     const taken = new Set(rows.filter((_, j) => j !== i).map((r) => r.type));
     return pool.filter((s) => !taken.has(s.type));
   }
-  function rangeHint(type) {
-    const def = SECONDARY_STAT_POOL.find((s) => s.type === type);
-    const max = secondaryMax(type);
-    return def && max != null ? `${toDisplay(type, def.minValue)} to ${toDisplay(type, max)} at item level ${item.itemLevel ?? levelMax}` : '';
-  }
   const warnings = $derived(itemWarnings(item, { realm, ascension }));
 </script>
 
 <div class="item-editor" data-slot={slot}>
   <div class="editor-head">
-    <p class="head-label">{slotLabel(cls, slot)}</p>
+    {#if showSlotLabel}<p class="head-label">{slotLabel(cls, slot)}</p>{/if}
+    {#if score}
+      <p class="item-score" title={scoreTitle} data-testid="gear-score">
+        {#if score.grade}
+          <span class="roll-grade grade-{score.grade}">{score.grade}</span>
+          <span class="num">Score {pct(score.score)}</span>
+        {/if}
+        <span class="score-parts">{#if score.grade}Stats <span class="num">{pct(score.fit)}</span>{' · '}{/if}Roll <span class="num">{pct(score.roll)}</span></span>
+      </p>
+    {/if}
+    <span class="grow"></span>
     <Button variant="ghost" size="small" disabled={!value} onclick={() => onchange?.(null)}>Clear slot</Button>
   </div>
 
@@ -144,20 +173,18 @@
     {#key epoch.itemLevel}
       <div class="cell">
         <NumberField label="Item level (1-{levelMax})" nullable value={item.itemLevel} onchange={setItemLevel} />
-        <span class="range" id="{uid}-il">Range 1 to {levelMax}</span>
         {#if flags.itemLevel}<span class="flag" role="alert">{flags.itemLevel}</span>{/if}
       </div>
     {/key}
 
-    <div class="cell" data-testid="item-quality">
+    <!-- Quality is a readout in the same box shape as the fields, so the row stays level. -->
+    <div class="cell" data-testid="item-quality" title={qualityWhy}>
       <span class="readout-label">Quality</span>
-      <span class="readout mono">{quality ?? '–'}</span>
-      <span class="range">
-        {#if quality != null}From the secondaries' rolls at this item level
-        {:else if rowCount === 0}No secondaries, so no quality
-        {:else if item.itemLevel == null}Set the item level to work it out
-        {:else}Add a secondary to work it out{/if}
+      <span class="readout" class:is-empty={quality == null}>
+        <span class="num">{quality ?? '–'}</span>
+        {#if quality != null}<span class="q-bar" aria-hidden="true"><span style:width="{Math.min(100, quality)}%"></span></span>{/if}
       </span>
+      <span class="caption">{qualityCaption}<span class="visually-hidden">. {qualityWhy}</span></span>
     </div>
 
     <NumberField label="Attack" statKey="totalAttack" value={item.primaryStats.attack} onchange={(n) => emit({ primaryStats: { ...item.primaryStats, attack: n } })} />
@@ -169,26 +196,24 @@
   {/each}
   {#if flags.itemLevelSec}<p class="flag" role="status">{flags.itemLevelSec}</p>{/if}
 
-  {#if score}
-    <p class="item-score" title={scoreTitle} data-testid="gear-score">
-      {#if score.grade}
-        <span class="roll-grade grade-{score.grade}">{score.grade}</span>
-        <span class="num">Score {pct(score.score)}</span>
-      {/if}
-      <span class="score-parts">{#if score.grade}Stats <span class="num">{pct(score.fit)}</span>{' · '}{/if}Roll <span class="num">{pct(score.roll)}</span></span>
-    </p>
-  {/if}
-
-  <h3 class="sub-head">Secondary stats ({item.secondaryStats.length}/{rowCount})</h3>
+  <div class="sec-head">
+    <h3 class="sub-head">Secondary stats ({item.secondaryStats.length}/{rowCount})</h3>
+    {#if rowCount > 0}<span class="sec-note">Ranges at item level <span class="num">{levelShown}</span></span>{/if}
+  </div>
   {#if rowCount === 0}
     <p class="hint">A {item.rarity ? RARITIES.find((r) => r.id === item.rarity)?.name : ''} item has no secondary stats.</p>
   {:else}
+    <!-- One line per secondary: stat, value, and where the value sits in its range (RangeMeter). -->
     <div class="secondary-rows">
+      <div class="sec-cols" aria-hidden="true"><span>Stat</span><span class="r">Value</span><span class="c-roll">Roll in range</span></div>
       {#each rows as row, i (i)}
+        {@const sc = score?.secondaries.find((x) => x.type === row.type)}
+        {@const rg = row.type ? rangeOf(row.type) : null}
         <div class="secondary-row">
-          <Select label="Secondary {i + 1} stat" options={typeOptions(i)} value={row.type} onchange={(v) => setRowType(i, v)} />
+          <Select hideLabel label="Secondary {i + 1} stat" options={typeOptions(i)} value={row.type} onchange={(v) => setRowType(i, v)} />
           {#key epoch[`sec${i}`]}
             <NumberField
+              hideLabel
               label="Secondary {i + 1} value"
               unit="%"
               disabled={!row.type}
@@ -196,22 +221,31 @@
               onchange={(n) => setRowValue(i, n)}
             />
           {/key}
+          <div class="c-meter">
+            {#if rg}
+              <RangeMeter
+                min={rg.min}
+                max={rg.max}
+                value={Number(toDisplay(row.type, row.value))}
+                fraction={sc?.roll ?? null}
+                tone={toneOf(sc)}
+                unit="%"
+                label="{statLabel(row.type)} roll"
+                title={secTitle(sc)}
+              />
+            {:else}
+              <span class="meter-empty">Pick a stat</span>
+            {/if}
+          </div>
+          {#if flags[`sec${i}`]}<span class="flag row-flag" role="alert">{flags[`sec${i}`]}</span>{/if}
         </div>
-        {#if row.type}
-          {@const sc = score?.secondaries.find((x) => x.type === row.type)}
-          <span class="range" title={secTitle(sc)}>
-            <span class:fit-high={sc?.weight != null && sc.weight >= 2 / 3} class:fit-low={sc?.weight != null && sc.weight < 1 / 3}>Range {rangeHint(row.type)}</span>
-          </span>
-          {#if sc?.roll != null}<span class="stat-bar" title="{pct(sc.roll)} of range"><span class="stat-fill" style="width: {pct(sc.roll)}"></span></span>{/if}
-        {/if}
-        {#if flags[`sec${i}`]}<span class="flag" role="alert">{flags[`sec${i}`]}</span>{/if}
       {/each}
     </div>
   {/if}
 
   {#if showConduit}
-    <h3 class="sub-head">Conduit</h3>
-    <div class="secondary-row">
+    <h3 class="sub-head sec-head">Conduit</h3>
+    <div class="conduit-row">
       <Select
         label="Conduit type"
         options={conduitOptions}
@@ -229,8 +263,10 @@
 </div>
 
 <style>
-  .item-editor { display: flex; flex-direction: column; gap: var(--sp-2); }
-  .editor-head { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); }
+  /* A container, so the same editor lays out for the wide Gear panel and the narrow Drop Check column. */
+  .item-editor { container-type: inline-size; display: flex; flex-direction: column; gap: var(--sp-3); }
+  .editor-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); min-height: var(--control-h); }
+  .grow { flex: 1; }
   .head-label,
   .sub-head {
     margin: 0;
@@ -241,20 +277,53 @@
     text-transform: uppercase;
     color: var(--text-soft);
   }
-  .sub-head { margin: var(--sp-3) 0 var(--sp-1); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(9rem, 100%), 1fr)); gap: var(--sp-2) var(--sp-4); }
-  .cell { display: grid; gap: 3px; min-width: 0; align-content: start; }
-  .secondary-rows { display: flex; flex-direction: column; gap: var(--sp-2); }
-  .secondary-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(6rem, 8rem); gap: var(--sp-2); align-items: end; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 11rem)); gap: var(--sp-3) var(--sp-4); align-items: start; }
+  .cell { display: grid; gap: var(--field-gap); min-width: 0; align-content: start; }
+  .readout-label { font-size: var(--fs-12); line-height: var(--field-label-h); font-weight: var(--fw-bold); color: var(--text-soft); }
+  .readout {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    height: var(--control-h);
+    padding: 0 var(--sp-3);
+    background: var(--surface-2);
+    border: 1px dashed var(--line-control);
+    border-radius: var(--r-1);
+    font-size: var(--fs-13);
+    color: var(--text-ink);
+    cursor: help;
+  }
+  .readout.is-empty { color: var(--text-muted); }
+  .q-bar { position: absolute; left: 3px; right: 3px; bottom: 3px; height: 2px; border-radius: 1px; background: var(--line-hairline); overflow: hidden; }
+  .q-bar span { display: block; height: 100%; background: var(--brass-400); }
+  .caption { font-size: var(--fs-11); color: var(--text-muted); }
+  .sec-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); margin-top: var(--sp-2); }
+  .sec-note { font-size: var(--fs-12); color: var(--text-muted); }
+  .secondary-rows { display: grid; gap: var(--sp-2); max-width: 52rem; }
+  .sec-cols,
+  .secondary-row,
+  .conduit-row {
+    display: grid;
+    grid-template-columns: minmax(8rem, 15rem) minmax(5.5rem, 7rem) minmax(10rem, 1fr);
+    gap: var(--sp-1) var(--sp-3);
+    align-items: center;
+  }
+  .conduit-row { align-items: start; max-width: 52rem; }
+  .sec-cols { font-size: var(--fs-11); font-weight: var(--fw-bold); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-muted); }
+  .sec-cols .r { text-align: right; }
+  .c-meter { min-width: 0; }
+  .meter-empty { font-size: var(--fs-12); color: var(--text-disabled); }
+  .row-flag { grid-column: 1 / -1; }
   .hint { color: var(--text-muted); font-size: var(--fs-12); margin: 0; }
-  .range { color: var(--text-muted); font-size: var(--fs-11); font-family: var(--font-data); }
   .flag { color: var(--status-warn); font-size: var(--fs-12); margin: 0; }
-  .readout-label { font-size: var(--fs-12); color: var(--text-soft); }
-  .readout { font-size: var(--fs-14); color: var(--text-ink); line-height: 1.9; }
-  .item-score { margin: var(--sp-2) 0 0; display: flex; align-items: baseline; gap: var(--sp-2); font-size: var(--fs-12); color: var(--text-muted); }
+  .item-score { margin: 0; display: inline-flex; align-items: baseline; gap: var(--sp-2); font-size: var(--fs-12); color: var(--text-muted); cursor: help; }
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--text-ink); }
-  .fit-high { color: var(--brass-200); }
-  .fit-low { opacity: 0.6; }
-  .stat-bar { display: block; height: 2px; background: var(--line-hairline); border-radius: 1px; overflow: hidden; }
-  .stat-fill { display: block; height: 100%; background: var(--brass-400); }
+  /* Narrow (Drop Check column, phone): stat and value side by side, the meter on its own line under them. */
+  @container (max-width: 32rem) {
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .sec-cols, .secondary-row, .conduit-row { grid-template-columns: minmax(0, 1fr) 6.5rem; }
+    .sec-cols .c-roll { display: none; }
+    .c-meter { grid-column: 1 / -1; padding-bottom: var(--sp-1); }
+  }
 </style>

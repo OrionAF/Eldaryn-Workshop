@@ -83,7 +83,6 @@
   }
   const usersOf = (key) =>
     key === 'oblivion' ? [] : character.presets.filter((p) => p.equipmentSet === (key === 'set2' ? 2 : 1)).map((p) => p.name);
-  const usedBy = $derived(usersOf(setKey));
   /** Base realm only: the other base set, and whether it has anything to copy. */
   const otherKey = $derived(setKey === 'set1' ? 'set2' : setKey === 'set2' ? 'set1' : null);
   const otherLabel = $derived(EQUIP_SETS.find((s) => s.key === otherKey)?.label);
@@ -139,18 +138,12 @@
 </script>
 
 {#if character}
-  {#if realmProp === 'oblivion'}
-    <h2 class="pinned-title">Oblivion Gear</h2>
-  {:else}
-    <Tabs items={setTabs} bind:value={setTab} label="Equipment sets" idPrefix="gear-set" />
-  {/if}
-  <p class="scope-line">
-    {#if realm === 'oblivion'}
-      One loadout. The rest of the active preset carries over into the Oblivion realm.
-    {:else if usedBy.length}
-      {setMeta.label} is used by: {usedBy.join(', ')}
+  <!-- The set tabs already say which presets use each set, so the row only adds the copy action. -->
+  <div class="set-row">
+    {#if realmProp === 'oblivion'}
+      <h2 class="pinned-title">Oblivion Gear</h2>
     {:else}
-      No presets use {setMeta.label} yet.
+      <div class="set-tabs"><Tabs items={setTabs} bind:value={setTab} label="Equipment sets" idPrefix="gear-set" /></div>
     {/if}
     {#if otherKey}
       <ConfirmButton
@@ -163,7 +156,10 @@
         onConfirm={copyFromOther}
       />
     {/if}
-  </p>
+  </div>
+  {#if realm === 'oblivion'}
+    <p class="scope-line">One loadout. The rest of the active preset carries over into the Oblivion realm.</p>
+  {/if}
 
   <Tabs items={viewTabs} bind:value={view} label="Gear sections" idPrefix="gear-view" />
 
@@ -211,6 +207,7 @@
             {realm}
             {slot}
             class={character.class}
+            showSlotLabel={false}
             ascension={dropAscension(character) || null}
             score={scores[slot]}
             specName={basis?.spec.specName ?? ''}
@@ -294,9 +291,11 @@
 {/if}
 
 <style>
-  .pinned-title { margin: 0 0 var(--sp-3); }
-  .scope-line { font-size: var(--fs-12); color: var(--text-muted); margin: var(--sp-2) 0 var(--sp-3); display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }
-  .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--sp-6); margin-top: var(--sp-3); }
+  .pinned-title { margin: 0; }
+  .set-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); margin-bottom: var(--sp-3); }
+  .set-tabs { flex: 1; min-width: 0; }
+  .scope-line { font-size: var(--fs-12); color: var(--text-muted); margin: 0 0 var(--sp-3); }
+  .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--sp-6); align-items: start; margin-top: var(--sp-3); }
   .silhouette-col { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
   .score-for { display: grid; gap: var(--sp-1); max-width: 17rem; }
   .score-for p { margin: 0; }
@@ -306,7 +305,7 @@
   .socket-line { font-size: var(--fs-13); color: var(--text-soft); display: inline-flex; flex-wrap: wrap; gap: var(--sp-2); align-items: baseline; }
   .stat { color: var(--text-muted); font-size: var(--fs-12); }
   .muted { color: var(--text-muted); font-size: var(--fs-12); }
-  .stones-layout { display: grid; grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr); gap: var(--sp-4); align-items: start; margin-top: var(--sp-1); }
+  .stones-layout { display: grid; grid-template-columns: minmax(14rem, 19rem) minmax(0, 1fr); gap: var(--sp-4); align-items: start; margin-top: var(--sp-1); }
   .grid-col { display: grid; gap: var(--sp-3); min-width: 0; }
   .grid-controls { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
   @media (max-width: 700px) {
