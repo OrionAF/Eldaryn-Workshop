@@ -134,10 +134,10 @@
 
     {#if view === 'mounts'}
       <div role="tabpanel" id="mg-panel-mounts" aria-labelledby="mg-tab-mounts">
-        <section class="add-mount" aria-label="Add a mount">
-          <Select label="Mount species" options={MOUNT_SPECIES.map((s) => ({ value: s.species, label: `${s.name} (${s.rarity})` }))} bind:value={newSpecies} />
-          <Button variant="primary" onclick={addMount}>+ Add mount</Button>
-          <span class="hint">Each mount you own is its own roll: add the same species twice for two mounts.</span>
+        <section class="add-mount field-row" aria-label="Add a mount">
+          <div class="species"><Select label="Mount species" options={MOUNT_SPECIES.map((s) => ({ value: s.species, label: `${s.name} (${s.rarity})` }))} bind:value={newSpecies} /></div>
+          <div class="control-align"><Button variant="primary" onclick={addMount}>+ Add mount</Button></div>
+          <span class="hint control-align add-hint">Each mount you own is its own roll: add the same species twice for two mounts.</span>
         </section>
 
         {#if mounts.length === 0}
@@ -229,8 +229,9 @@
   .page [role='tabpanel'] { min-width: 0; }
   .sub { color: var(--text-muted); font-size: var(--fs-12); }
   .hint { color: var(--text-muted); font-size: var(--fs-12); margin: 0; }
-  .add-mount { display: flex; align-items: flex-end; gap: var(--sp-3); flex-wrap: wrap; margin: var(--sp-4) 0; }
-  .add-mount :global(.field) { min-width: min(16rem, 100%); }
+  .add-mount { margin: var(--sp-4) 0; }
+  .add-mount .species { width: min(16rem, 100%); }
+  .add-hint { display: flex; align-items: center; min-height: var(--control-h); margin-top: calc(var(--field-label-h) + var(--field-gap)); }
   .filters { display: flex; flex-wrap: wrap; gap: 0 var(--sp-3); }
   .filter { max-width: 16rem; margin: var(--sp-3) 0; }
   .mount-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); gap: var(--sp-3); min-width: 0; }
@@ -244,5 +245,5 @@
     text-transform: uppercase;
     color: var(--text-soft);
   }
-  .glyph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); gap: var(--sp-2); margin-top: var(--sp-2); min-width: 0; }
+  .glyph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(170px, 100%), 1fr)); gap: var(--sp-2); margin-top: var(--sp-2); min-width: 0; }
 </style>

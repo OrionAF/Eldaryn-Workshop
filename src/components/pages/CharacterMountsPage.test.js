@@ -65,7 +65,7 @@ it('adds a mount card with level, rolls, effective bonus and six sockets', () =>
   const card = cards()[0];
   expect(card.textContent).toContain('Storm Roc');
   expect(card.textContent).toContain('Epic');
-  expect(card.textContent).toContain('+34% HP');
+  expect(field(card, 'Health').value).toBe('34'); // the bonus when ridden, at its level
   expect(card.querySelectorAll('.socket')).toHaveLength(6);
   expect(card.querySelectorAll('[role="radio"]').length).toBe(5);
   expect(rosterStore.current.mounts[0].species).toBe('STORM_ROC');
@@ -77,7 +77,7 @@ it('the level stars write the level, and the effective bonus follows', () => {
   stars[4].click();
   flushSync();
   expect(rosterStore.current.mounts[0].level).toBe(5);
-  expect(cards()[0].textContent).toContain('+48% HP'); // round(34 * 1.4)
+  expect(field(cards()[0], 'Health').value).toBe('48'); // round(34 * 1.4)
 });
 
 it('Ridden in toggles a named preset on the mount', () => {
@@ -143,7 +143,7 @@ it('a minor glyph secondary is entered as stat + value', () => {
   flushSync();
   expect(rosterStore.current.glyphs[0].secondary.stat).toBe('critChance');
   expect(rosterStore.current.glyphs[0].secondary.quality).toBeCloseTo(0.3, 1);
-  expect(target.textContent).toContain('0.6-5');
+  expect(target.querySelector('.glyph-card [role="meter"]').getAttribute('aria-valuetext')).toContain('in 0.6 to 5%');
 });
 
 it('shows and edits Crit Damage as percent while saving its fractional roll', async () => {
@@ -154,7 +154,7 @@ it('shows and edits Crit Damage as percent while saving its fractional roll', as
   setField(field(target, 'Secondary value'), '9');
   expect(field(target, 'Secondary value').value).toBe('9');
   expect(target.querySelector('.glyph-card .unit').textContent).toBe('%');
-  expect(target.textContent).toContain('Range 5-30%');
+  expect(target.querySelector('.glyph-card [role="meter"]').getAttribute('aria-valuetext')).toBe('9% in 5 to 30%, 16% of the range');
   expect(glyphSecondaryValue(rosterStore.current.glyphs[0].secondary)).toBe(0.09);
   setField(field(target, 'Secondary value'), '10');
   expect(rosterStore.current.glyphs[0].secondary.quality).toBeCloseTo(0.2);
@@ -242,7 +242,7 @@ it('the Health and Attack fields and slider ends show the level-scaled values th
   expect(atk.value).toBe('28'); // round(25 * 1.1)
   const bounds = [...card.querySelectorAll('.bound')].map((b) => b.textContent.trim());
   expect(bounds).toEqual(['41', '43', '26', '29']); // the Crystal Drake roll range 37-39 / 24-26 at level 2
-  expect(card.querySelector('[data-testid="mount-roll"]').textContent.replace(/\s+/g, ' ')).toContain('level 1 roll: 37% HP, 25% ATK');
+  expect(card.querySelector('[data-testid="mount-roll"]').textContent.replace(/\s+/g, ' ')).toContain('Level 1 roll: 37% HP · 25% ATK');
   setField(hp, '42');
   expect(rosterStore.current.mounts[0].baseHp).toBe(38);
   expect(field(cards()[0], 'Health').value).toBe('42');

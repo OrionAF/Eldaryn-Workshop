@@ -6,7 +6,10 @@
    *   glyph's rolled secondary (stat + value, as the game shows it) is entered here.
    * - Major glyphs carry no stat. They retune one sigil, so the card says which sigil, and warns when no preset
    *   equips it (the glyph is inert unless the sigil is equipped and the glyph is on the ridden mount, §10).
-   * - `score` (features/glyphScore.js, scored for `specName`) grades a minor glyph's roll and stat, with a roll bar.
+   * - `score` (features/glyphScore.js, scored for `specName`) grades a minor glyph's roll and stat.
+   * The stat and value controls carry no visible label (the select names the stat, the box shows the value); a
+   * meter shows where the value sits in the stat's full range. Mark sealed and Remove are a footer pinned to the
+   * card's bottom, so the cards in a row end level.
    */
   import { glyphTypeInfo, glyphSecondaryDef, glyphSecondaryQuality, glyphSecondaryValue, glyphQualityBand, GLYPH_SECONDARY_STATS } from '../../lib/model/glyphs.js';
   import { glyphImage } from '../../lib/assets/glyphs.js';
@@ -15,6 +18,7 @@
   import Select from '../ui/Select.svelte';
   import NumberField from '../ui/NumberField.svelte';
   import Button from '../ui/Button.svelte';
+  import RangeMeter from '../ui/RangeMeter.svelte';
   import { TIER_LABELS, glyphText, majorText, rarityClass, secondaryUnit, secondaryDisplayValue, secondaryInputValue, statLabel } from './mountsView.js';
 
   let { glyph, playerClass = null, mountName = null, inertIn = [], score = null, specName = '', onUpdate, onRemove } = $props();
@@ -58,13 +62,19 @@
     <Button variant="ghost" size="small" onclick={() => onUpdate({ sealed: false })}>Unlock</Button>
   {:else if info?.tier === 'minor'}
     <div class="field">
-      <Select label="Secondary stat" options={statOptions} value={stat} onchange={setStat} />
+      <Select label="Secondary stat" hideLabel options={statOptions} value={stat} onchange={setStat} />
     </div>
     {#if def}
       <div class="field">
-        <NumberField label="Secondary value" unit={secondaryUnit(stat)} value={secondaryDisplayValue(stat, value)} onchange={setValue} />
-        <span class="range">Range {secondaryDisplayValue(stat, def.minValue)}-{secondaryDisplayValue(stat, rangeMax)}{secondaryUnit(stat)}</span>
-        {#if score}<span class="stat-bar" title="{pct(score.roll)} of the {glyph.rarity} band"><span class="stat-fill" style="width: {pct(score.roll)}"></span></span>{/if}
+        <NumberField label="Secondary value" hideLabel unit={secondaryUnit(stat)} value={secondaryDisplayValue(stat, value)} onchange={setValue} />
+        <RangeMeter
+          min={secondaryDisplayValue(stat, def.minValue)}
+          max={secondaryDisplayValue(stat, rangeMax)}
+          value={secondaryDisplayValue(stat, value)}
+          unit={secondaryUnit(stat)}
+          showPct={false}
+          label="{statLabel(stat)} in its range"
+        />
       </div>
     {/if}
     {#if score}
@@ -84,12 +94,12 @@
   {/if}
 
   {#if mountName}<p class="where">On {mountName}</p>{/if}
-  {#if info?.tier === 'minor' || info?.tier === 'major'}
-    {#if !glyph.sealed}
+  <div class="card-foot">
+    {#if (info?.tier === 'minor' || info?.tier === 'major') && !glyph.sealed}
       <Button variant="quiet" size="small" onclick={() => onUpdate({ sealed: true })}>Mark sealed</Button>
     {/if}
-  {/if}
-  <ConfirmButton variant="danger" size="small" label="Remove" confirmLabel="Confirm remove" onConfirm={onRemove} />
+    <ConfirmButton variant="danger" size="small" label="Remove" confirmLabel="Confirm remove" onConfirm={onRemove} />
+  </div>
 </div>
 
 <style>
@@ -120,10 +130,18 @@
   .sealed { color: var(--status-warn); }
   .warn { margin: 0; font-size: var(--fs-11); color: var(--status-warn); }
   .where { margin: 0; font-size: var(--fs-11); color: var(--text-muted); }
-  .range { font-family: var(--font-data); font-size: var(--fs-11); color: var(--text-muted); }
   .glyph-score { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: var(--sp-1) var(--sp-2); font-size: var(--fs-11); color: var(--text-muted); }
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--text-ink); }
-  .stat-bar { display: block; height: 2px; background: var(--line-hairline); border-radius: 1px; overflow: hidden; }
-  .stat-fill { display: block; height: 100%; background: var(--r-up, var(--brass-400)); }
-  .field { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: var(--sp-1); width: 100%; text-align: left; }
+  /* the meter's ends are short here ("0.6", "30%"), so it fits the narrow card */
+  .field { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: var(--sp-1); width: 100%; text-align: left; --meter-lo: 4ch; --meter-hi: 5ch; }
+  .card-foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--sp-1);
+    width: 100%;
+    margin-top: auto;
+    padding-top: var(--sp-2);
+    border-top: 1px solid var(--line-hairline);
+  }
 </style>
