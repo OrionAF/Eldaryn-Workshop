@@ -28,6 +28,7 @@
   class:tone-high={tone === 'high'}
   class:tone-low={tone === 'low'}
   class:compact
+  class:no-pct={!showPct}
   role="meter"
   aria-label={label || undefined}
   aria-valuemin={min}
@@ -63,6 +64,9 @@
     color: var(--text-muted);
   }
   .range-meter.compact { grid-template-columns: minmax(2rem, 1fr) 4ch; }
+  /* no percent column: the bar takes its width instead of leaving it empty */
+  .range-meter.no-pct { grid-template-columns: var(--meter-lo, 4.5ch) minmax(3rem, 1fr) var(--meter-hi, 6.5ch); }
+  .range-meter.compact.no-pct { grid-template-columns: minmax(2rem, 1fr); }
   .range-meter.tone-high { --meter-c: var(--brass-200); }
   .range-meter.tone-low { --meter-c: var(--text-muted); }
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; white-space: nowrap; }

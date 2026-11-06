@@ -7,7 +7,9 @@
    * The fields and slider ends show that contribution at the mount's level, as the game's mount list does; a typed
    * value is stored as the roll that gives it (mountBaseForValue). The sliders step through the species' level-1
    * roll envelope (§3, derived), widened if a saved value falls outside it.
-   * Six socket buttons (3 minor / 2 major / 1 mythic) open the glyph picker.
+   * Six socket buttons (3 minor / 2 major / 1 mythic, grouped and captioned by tier) open the glyph picker.
+   * Each stat is one compact row (name, field, then the slider), the level-1 rolls sit on one line under them,
+   * and the footer is pinned, so every card in a row has the same shape whatever its level.
    */
   import { mountBySpecies } from '../../lib/game/mountsGlyphs.js';
   import { MOUNT_MAX_LEVEL, mountEffectiveStats, mountRollBounds, mountStatAtLevel, mountBaseForValue } from '../../lib/model/mounts.js';
@@ -30,18 +32,22 @@
   const effective = $derived(mountEffectiveStats(mount));
   const atLevel = (base) => mountStatAtLevel(base, mount.level);
   const art = $derived(mountImage(mount.species));
-  const riddenBy = $derived(presets.filter((p) => p.mountId === mount.id).map((p) => p.name));
   const rideItems = $derived(presets.map((p) => ({ id: p.id, label: p.name, checked: p.mountId === mount.id, meta: p.mountId && p.mountId !== mount.id ? 'rides another' : '' })));
   const glyphById = $derived(new Map(glyphs.map((g) => [g.id, g])));
 
-  const slots = $derived(
-    SOCKET_LAYOUT.flatMap(({ tier, count }) =>
-      Array.from({ length: count }, (_, index) => {
+  const socketGroups = $derived(
+    SOCKET_LAYOUT.map(({ tier, count }) => ({
+      tier,
+      slots: Array.from({ length: count }, (_, index) => {
         const glyph = glyphById.get(mount.glyphs[tier][index]) ?? null;
         return { tier, index, glyph, label: glyph ? glyphText(glyph) : 'Empty' };
       }),
-    ),
+    })),
   );
+  const stats = $derived([
+    { key: 'hp', name: 'Health', value: effective.hpPercent, base: mount.baseHp, range: hpRange, patch: (v) => ({ baseHp: v }) },
+    { key: 'atk', name: 'Attack', value: effective.attackPercent, base: mount.baseAtk, range: atkRange, patch: (v) => ({ baseAtk: v }) },
+  ]);
 </script>
 
 <div class="mount-card rarity-card {rarityClass(mount.rarity)}" data-mount-id={mount.id}>
@@ -59,47 +65,49 @@
     onchange={(level) => level > 0 && onPatch({ level })}
   />
 
-  <div class="stat-block">
-    <NumberField label="Health" value={effective.hpPercent} min={0} unit="%" onchange={(v) => onPatch({ baseHp: mountBaseForValue(v, mount.level) })} />
-    <div class="slider-row">
-      <span class="bound">{atLevel(hpRange[0])}</span>
-      <Slider min={hpRange[0]} max={hpRange[1]} step={1} value={mount.baseHp} ariaLabel="{species?.name} health percent" ariaValueText="{effective.hpPercent}%" oninput={(v) => onPatch({ baseHp: v })} />
-      <span class="bound">{atLevel(hpRange[1])}</span>
-    </div>
+  <div class="stats">
+    {#each stats as st (st.key)}
+      <div class="stat-row">
+        <span class="stat-name" aria-hidden="true">{st.name}</span>
+        <NumberField label={st.name} hideLabel value={st.value} min={0} unit="%" onchange={(v) => onPatch(st.patch(mountBaseForValue(v, mount.level)))} />
+        <div class="slider-row">
+          <span class="bound">{atLevel(st.range[0])}</span>
+          <Slider min={st.range[0]} max={st.range[1]} step={1} value={st.base} ariaLabel="{species?.name} {st.name.toLowerCase()} percent" ariaValueText="{st.value}%" oninput={(v) => onPatch(st.patch(v))} />
+          <span class="bound">{atLevel(st.range[1])}</span>
+        </div>
+      </div>
+    {/each}
+    <p class="roll" data-testid="mount-roll" title="The stored rolls; the fields show them at level {mount.level}, as the game does">
+      Level 1 roll: <span class="stat-num">{mount.baseHp}%</span> HP · <span class="stat-num">{mount.baseAtk}%</span> ATK
+    </p>
   </div>
-  <div class="stat-block">
-    <NumberField label="Attack" value={effective.attackPercent} min={0} unit="%" onchange={(v) => onPatch({ baseAtk: mountBaseForValue(v, mount.level) })} />
-    <div class="slider-row">
-      <span class="bound">{atLevel(atkRange[0])}</span>
-      <Slider min={atkRange[0]} max={atkRange[1]} step={1} value={mount.baseAtk} ariaLabel="{species?.name} attack percent" ariaValueText="{effective.attackPercent}%" oninput={(v) => onPatch({ baseAtk: v })} />
-      <span class="bound">{atLevel(atkRange[1])}</span>
-    </div>
-  </div>
-
-  <p class="effective" data-testid="mount-roll">
-    Ridden: <span class="stat-num">+{effective.hpPercent}%</span> HP, <span class="stat-num">+{effective.attackPercent}%</span> ATK at level {mount.level}{#if mount.level > 1}{' '}(level 1 roll: <span class="stat-num">{mount.baseHp}%</span> HP, <span class="stat-num">{mount.baseAtk}%</span> ATK){/if}
-  </p>
 
   <div class="sockets" role="group" aria-label="Glyph sockets">
-    {#each slots as slot (slot.tier + slot.index)}
-      {@const info = slot.glyph ? glyphTypeInfo(slot.glyph.glyphType) : null}
-      <button
-        type="button"
-        class="socket"
-        class:filled={!!slot.glyph}
-        title={slot.label}
-        aria-label="{TIER_LABELS[slot.tier]} socket {slot.index + 1}: {slot.label}"
-        onclick={() => onSocket(slot.tier, slot.index)}
-      >
-        {#if slot.glyph && info}
-          {@const src = glyphImage(info.tier, slot.glyph.rarity)}
-          {#if src}<img src={src} alt="" />{:else}<span class="socket-dot"></span>{/if}
-        {/if}
-      </button>
+    {#each socketGroups as group (group.tier)}
+      <div class="socket-group">
+        <div class="socket-row">
+          {#each group.slots as slot (slot.index)}
+            {@const info = slot.glyph ? glyphTypeInfo(slot.glyph.glyphType) : null}
+            <button
+              type="button"
+              class="socket"
+              class:filled={!!slot.glyph}
+              title={slot.label}
+              aria-label="{TIER_LABELS[slot.tier]} socket {slot.index + 1}: {slot.label}"
+              onclick={() => onSocket(slot.tier, slot.index)}
+            >
+              {#if slot.glyph && info}
+                {@const src = glyphImage(info.tier, slot.glyph.rarity)}
+                {#if src}<img src={src} alt="" />{:else}<span class="socket-dot"></span>{/if}
+              {/if}
+            </button>
+          {/each}
+        </div>
+        <span class="socket-tier" aria-hidden="true">{TIER_LABELS[group.tier]}</span>
+      </div>
     {/each}
   </div>
 
-  <p class="ridden-by" data-testid="ridden-in">Ridden in: {riddenBy.length ? riddenBy.join(', ') : 'no preset'}</p>
   <div class="card-foot">
     <PresetMenu label="Ridden in" items={rideItems} onselect={(id) => onRide(id)} />
     <ConfirmButton variant="danger" size="small" label="Remove" confirmLabel="Confirm remove" onConfirm={onRemove} />
@@ -127,13 +135,18 @@
     text-transform: uppercase;
   }
   .mount-art { display: block; width: 96px; height: 96px; margin: 0 auto; object-fit: contain; border-radius: var(--r-2); }
-  .stat-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  .effective { font-size: var(--fs-12); color: var(--text-soft); margin: 0; }
-  .stat-num { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--text-ink); }
-  .slider-row { display: flex; align-items: center; gap: 2px; min-width: 0; }
-  .slider-row :global(.slider) { flex: 1; min-width: 0; }
-  .bound { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: var(--fs-11); color: var(--text-muted); min-width: 18px; text-align: center; }
-  .sockets { display: flex; flex-wrap: wrap; gap: var(--sp-1); justify-content: center; padding-top: var(--sp-2); border-top: 2px solid var(--frame-mount); }
+  .stats { display: grid; gap: var(--sp-2); min-width: 0; }
+  /* name | field on one line, the slider over the roll range under them */
+  .stat-row { display: grid; grid-template-columns: minmax(0, 1fr) 5.5rem; align-items: center; gap: 2px var(--sp-2); min-width: 0; }
+  .stat-name { font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }
+  .roll { margin: 0; font-size: var(--fs-11); color: var(--text-muted); }
+  .stat-num { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--text-soft); }
+  .slider-row { grid-column: 1 / -1; display: grid; grid-template-columns: 3ch minmax(0, 1fr) 3ch; align-items: center; gap: var(--sp-2); min-width: 0; }
+  .bound { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: var(--fs-11); color: var(--text-muted); text-align: center; }
+  .sockets { display: flex; gap: var(--sp-3); justify-content: center; padding-top: var(--sp-2); border-top: 2px solid var(--frame-mount); }
+  .socket-group { display: grid; justify-items: center; gap: 2px; }
+  .socket-row { display: flex; gap: var(--sp-1); }
+  .socket-tier { font-size: var(--fs-11); line-height: 1.2; color: var(--text-muted); }
   .socket {
     width: 32px;
     height: 32px;
@@ -151,8 +164,9 @@
   .socket.filled { border-style: solid; border-color: var(--brass-400); }
   .socket img { width: 100%; height: 100%; object-fit: contain; }
   .socket-dot { width: 10px; height: 10px; border-radius: var(--r-pill); background: var(--brass-400); }
-  .card-foot { display: flex; gap: var(--sp-2); align-items: center; justify-content: space-between; flex-wrap: wrap; }
-  .ridden-by { margin: 0; font-size: var(--fs-11); color: var(--text-muted); }
+  .card-foot { display: flex; gap: var(--sp-2); align-items: center; justify-content: space-between; margin-top: auto; padding-top: var(--sp-2); border-top: 1px solid var(--line-hairline); }
+  .card-foot :global(.preset-menu) { min-width: 0; }
+  .card-foot :global(.preset-menu > button) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   @media (max-width: 700px) {
     .socket { width: var(--hit); height: var(--hit); }
   }
