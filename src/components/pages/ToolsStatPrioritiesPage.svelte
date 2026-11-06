@@ -248,7 +248,8 @@
     background: var(--ember-500);
   }
   .nm { font-weight: var(--fw-bold); font-size: var(--fs-14); }
-  .gist { overflow: hidden; font-size: var(--fs-12); color: var(--text-muted); white-space: nowrap; text-overflow: ellipsis; }
+  /* three stat names wrap rather than lose the third to an ellipsis */
+  .gist { font-size: var(--fs-12); color: var(--text-muted); }
   .table-scroll { overflow-x: auto; }
   /* as wide as its columns (the eye should not cross the page from a stat to its numbers) */
   .stats { width: auto; min-width: min(100%, 40rem); border-collapse: collapse; font-size: var(--fs-13); }

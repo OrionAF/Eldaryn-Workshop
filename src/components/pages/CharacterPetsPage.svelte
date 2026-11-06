@@ -236,7 +236,8 @@
   .altar-level { display: grid; gap: var(--field-gap); min-width: 0; }
   .field-label { font-size: var(--fs-12); line-height: var(--field-label-h); font-weight: var(--fw-bold); color: var(--text-soft); }
   .level-line { display: flex; align-items: center; gap: var(--sp-3); height: var(--control-h); }
-  .level-slider { width: 14rem; max-width: 40vw; }
+  /* the slider is the part that gives way on a phone, so "of 50" always stays on screen */
+  .level-slider { flex: 1 1 14rem; min-width: 4rem; max-width: 14rem; }
   .of { font-size: var(--fs-12); color: var(--text-muted); white-space: nowrap; }
   .tier-field { width: 12rem; }
   .tier-actions { display: flex; gap: var(--sp-2); }

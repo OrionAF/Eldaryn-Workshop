@@ -213,10 +213,12 @@
 {/if}
 
 <style>
-  .sigils { display: grid; gap: var(--sp-4); }
+  /* minmax(0, 1fr): no child's minimum (the filter tabs' 24rem) may widen the page past a phone screen */
+  .sigils { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); }
   .hint { color: var(--text-muted); font-size: var(--fs-12); margin: 0; }
-  /* Altar and the per-preset summary side by side: both are short, neither needs the full width */
-  .top-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(26rem, 100%), 1fr)); gap: var(--sp-4); align-items: start; }
+  /* Altar and the per-preset summary side by side: both are short, neither needs the full width; one height,
+     so the pair reads as a row of cards */
+  .top-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(26rem, 100%), 1fr)); gap: var(--sp-4); align-items: stretch; }
   .altar-row { display: grid; gap: var(--sp-2); }
   .stepper-group { display: flex; align-items: center; gap: var(--sp-3); }
   .of { font-size: var(--fs-12); color: var(--text-muted); }

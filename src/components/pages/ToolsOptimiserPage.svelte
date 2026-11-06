@@ -641,6 +641,13 @@
   .panes { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
   .panes > * { min-width: 0; }
   @media (max-width: 1100px) { .panes { grid-template-columns: minmax(0, 1fr); } }
+  /* Stacked above the results, the setup flows its steps into two balanced columns: half the height, and no
+     field stretched across the page. A step never splits between columns. */
+  @media (min-width: 701px) and (max-width: 1100px) {
+    [data-testid='optimiser-setup'] :global(.panel-body) { display: block; columns: 2; column-gap: var(--sp-8); }
+    [data-testid='optimiser-setup'] :global(.panel-body > *) { break-inside: avoid; margin-bottom: var(--sp-3); }
+    [data-testid='optimiser-setup'] :global(.panel-body > :last-child) { margin-bottom: 0; }
+  }
   .stack { display: grid; gap: var(--sp-4); min-width: 0; }
   /* Segmented Effort control and fields fill the panel and wrap instead of overflowing it. */
   .step :global(.seg) { width: 100%; max-width: 100%; box-sizing: border-box; }
