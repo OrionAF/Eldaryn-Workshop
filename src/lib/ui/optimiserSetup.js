@@ -6,6 +6,7 @@ import {
 } from '../search/objectives.js';
 import { SPACE_DEFAULTS, normalisePowerFloor } from '../search/space.js';
 import { EFFORT_LEVELS } from '../search/search.js';
+import { estimateRun } from '../search/estimate.js';
 import { PVP_MAX_OPPONENTS, PVP_SEATS } from '../search/pvpObjective.js';
 import { CELESTIAL_TARGET_KIND, rosterPartnerFor } from '../search/celestialObjective.js';
 import { metricKey } from '../engine/metrics.js';
@@ -236,6 +237,23 @@ export function requestOf(setup, character, characters = []) {
     effort: timeLimitOf(setup.timeLimit) ? { level: setup.effort, budgetMs: setup.timeLimit * 1000 } : setup.effort,
     seed: setup.seed,
   };
+}
+
+/**
+ * A time-limited request with the estimate's `reserve` (the later phases' likely fights, learned from
+ * `history` when it has runs like this one), so the search leaves them the right time (simulation.md §Time
+ * budget). Any other request, or one the estimate cannot read, is returned as it is.
+ */
+export function withTimeReserve(request, history = []) {
+  const e = request?.effort;
+  if (!e || typeof e !== 'object' || !e.budgetMs) return request;
+  let est;
+  try {
+    est = estimateRun(request, { history });
+  } catch {
+    return request;
+  }
+  return est?.ok && est.reserve ? { ...request, effort: { ...e, reserve: est.reserve } } : request;
 }
 
 /** Staleness signature of a run: the preset and the character snapshot the search sees. */

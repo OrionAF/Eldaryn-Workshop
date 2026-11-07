@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  orientContrast, orientRow, viewResult, viewRun, legacyRows, progressSegments, progressLine, effortPlan,
+  orientContrast, orientRow, viewResult, viewRun, legacyRows, progressSegments, progressLine, bestLine, effortPlan,
   changeSummary, changeIdLabel, bundleText, onlyWith, dimensionLabel,
   setGroup, enabledCount, toggleTotal, SPACE_GROUPS, applyPlan, sideEffectsOf, fmtDuration, optimiserJobChips, resultText,
 } from './optimiserView.js';
@@ -126,6 +126,23 @@ describe('progress', () => {
   it('prints what the search is doing', () => {
     expect(progressLine({ phases, block: 'relics', counts: { evaluated: 12, fights: 3400 } })).toBe('Search, relics: 12 builds tried, 3,400 fights');
     expect(progressLine(null)).toBe('Starting');
+  });
+});
+
+describe('bestLine', () => {
+  const p = (best) => ({ best });
+  it('prints a proportion as itself beside the current build', () => {
+    expect(bestLine(p({ unit: 'p', est: 0.875, baseEst: 0.62, isBaseline: false }))).toBe('Best so far: 87.5% (current build 62.0%)');
+    expect(bestLine(p({ unit: 'p', est: 0.62, baseEst: 0.62, isBaseline: true }))).toBe('Best so far: the current build, 62.0%');
+  });
+  it('prints anything else as the change from the current build, oriented', () => {
+    expect(bestLine(p({ unit: 'dps', est: 1042, baseEst: 1000, higherIsBetter: true }))).toBe('Best so far: 4.2% better than the current build');
+    expect(bestLine(p({ unit: 'ms', est: 9000, baseEst: 10000, higherIsBetter: false }))).toBe('Best so far: 10.0% better than the current build');
+    expect(bestLine(p({ unit: 'dps', est: 1000, baseEst: 1000, isBaseline: true }))).toBe('Best so far: the current build');
+  });
+  it('is empty without a reading', () => {
+    expect(bestLine(null)).toBe('');
+    expect(bestLine(p({ unit: 'p', est: null }))).toBe('');
   });
 });
 

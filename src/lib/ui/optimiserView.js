@@ -377,6 +377,28 @@ export function progressLine(progress) {
   return `${cur?.label ?? 'Working'}${block}: ${fmtCount(c.evaluated ?? 0)} builds tried, ${fmtCount(c.fights ?? 0)} fights`;
 }
 
+const pct1 = (x) => `${(x * 100).toFixed(1)}%`;
+
+/**
+ * The live best-so-far line (progress `best`, simulation.md §Progress), or '' before there is one. A
+ * proportion (unit 'p') prints as itself beside the current build's; anything else as the change from the
+ * current build, oriented by `higherIsBetter`.
+ */
+export function bestLine(progress) {
+  const b = progress?.best;
+  if (!b || !finite(b.est)) return '';
+  if (b.unit === 'p') {
+    if (b.isBaseline) return `Best so far: the current build, ${pct1(b.est)}`;
+    return `Best so far: ${pct1(b.est)}${finite(b.baseEst) ? ` (current build ${pct1(b.baseEst)})` : ''}`;
+  }
+  if (b.isBaseline) return 'Best so far: the current build';
+  if (finite(b.baseEst) && b.baseEst !== 0) {
+    const gain = ((b.est - b.baseEst) / Math.abs(b.baseEst)) * (b.higherIsBetter === false ? -1 : 1);
+    return `Best so far: ${pct1(Math.abs(gain))} ${gain >= 0 ? 'better' : 'worse'} than the current build`;
+  }
+  return `Best so far: ${formatFlat(b.est)}${b.unit ? ` ${b.unit}` : ''}`;
+}
+
 // ---- effort ---------------------------------------------------------------------------------
 
 /** The numbers an effort level means for an objective, as printed on the Effort control. */

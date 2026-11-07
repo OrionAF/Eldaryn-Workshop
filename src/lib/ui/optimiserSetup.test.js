@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { defaultSetup, normaliseSetup, setupFromRun, requestOf, TIME_LIMITS, searchCharacter, signatureOf, runIsStale, runApplyBlock, powerFloorPicks, currentCrusadeGate } from './optimiserSetup.js';
+import { defaultSetup, normaliseSetup, setupFromRun, requestOf, withTimeReserve, TIME_LIMITS, searchCharacter, signatureOf, runIsStale, runApplyBlock, powerFloorPicks, currentCrusadeGate } from './optimiserSetup.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { normaliseCharacter } from '../model/index.js';
 import { cloneAsOpponent } from '../features/duel.js';
@@ -92,6 +92,15 @@ describe('request and signature', () => {
     expect(requestOf(s, character()).effort).toEqual({ level: 'quick', budgetMs: 30000 });
     expect(requestOf({ ...s, timeLimit: null }, character()).effort).toBe('quick');
     expect(requestOf({ ...s, timeLimit: 45 }, character()).effort).toBe('quick');
+  });
+  it('withTimeReserve adds the estimate reserve to a time-limited request only', () => {
+    const s = { ...defaultSetup('quick'), presetId: 'p1', timeLimit: 30 };
+    const timed = withTimeReserve(requestOf(s, character()), []);
+    expect(timed.effort).toMatchObject({ level: 'quick', budgetMs: 30000 });
+    expect(timed.effort.reserve.fixed).toBeGreaterThan(0);
+    expect(timed.effort.reserve.ratio).toBeGreaterThanOrEqual(0);
+    const plain = requestOf({ ...s, timeLimit: null }, character());
+    expect(withTimeReserve(plain, [])).toBe(plain);
   });
   it('a saved time limit survives normalising and a run brings its limit back; anything else is no limit', () => {
     expect(defaultSetup().timeLimit).toBeNull();
