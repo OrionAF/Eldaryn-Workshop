@@ -48,7 +48,7 @@ const note = (key, text) => Object.freeze({ key, text });
 export const CELESTIAL_ASSUMPTIONS = Object.freeze({
   serverFight: note('celestial-server', 'Server-run fight: rules read from five server logs (2026-10-15); not the client\'s code.'),
   addPhase: note('celestial-add-phase', 'Each add\'s first swing comes 10-1000 ms after it spawns (uniform random draw, fitted to the logs).'),
-  stackPlayer: note('celestial-stack-player', 'Stack sigils (Bulwark, Elusive, Sunder, Siegebreaker) and thorns run for one player only, by default the one who started the run (fitted to the logs).'),
+  stackPlayer: note('celestial-stack-player', 'Without per-player stack sigils (`stackSigils`), stack sigils (Bulwark, Elusive, Sunder, Siegebreaker) and thorns run for one player only, by default the one who started the run (fitted to the logs). With them, each carrier runs its own (2.9.2 client; not yet seen in a server log).'),
   overloadEnd: note('celestial-overload-end', 'Overload is assumed to end when the living adds fall below the threshold (never seen in a log).'),
   overloadJudgment: note('celestial-overload-judgment', 'Judgment Strike is assumed to take the Overload multiplier too (never seen in a log; the cautious reading).'),
   timeLimit: note('celestial-time-limit', 'The time limit is counted from 0, so the fight has 500 ms less than the limit (the cautious reading).'),
@@ -169,7 +169,10 @@ export function defaultTankIndex(fighters) {
  * @property {'NORMAL'|'HARD'} difficulty
  * @property {number} [level]  scaling level; default the party's highest `fighter.level`
  * @property {number} [tankIndex]  default defaultTankIndex
- * @property {number} [stackPlayerIndex=0]  the one member whose stack sigils and thorns run
+ * @property {number} [stackPlayerIndex=0]  legacy path: the one member whose stack sigils and thorns run
+ * @property {Array<boolean|null>} [stackSigils]  per slot: the member carries its own stack sigils. Any
+ *   entry other than undefined switches to the per-slot path; a truthy entry gives that member its own
+ *   stacks and Iron Bastion thorns (combat-pve.md §20.7, 2.9.2 addendum)
  * @property {CelestialTactics} [tactics]  default the difficulty's finder default
  * @property {() => number} [rng]
  * @property {Object} [rolls]  overrides celestialRolls(rng)
@@ -238,6 +241,11 @@ export function simulateCelestial(o) {
   if (!(level >= 1)) throw new EngineInputError('the Celestial scaling level is missing', { kind: 'celestial', key: 'level' });
   const tankIndex = o.tankIndex ?? defaultTankIndex(party);
   const stackPlayer = o.stackPlayerIndex ?? 0;
+  // resolvePartyStacks: per-slot when any member carries stackSigils, else the single-holder path
+  // (combat-pve.md §20.7, 2.9.2 addendum)
+  const GROUP = CELESTIAL_CONSTANTS.GROUP_SIZE;
+  const legacySlot = stackPlayer >= 0 && stackPlayer < GROUP ? stackPlayer : -1;
+  const perSlot = Array.isArray(o.stackSigils) && party.some((_, i) => o.stackSigils[i] !== undefined);
   const tactics = resolveTactics(o.tactics, difficulty);
   if (typeof o.rng !== 'function' && !o.rolls) throw new EngineInputError('the rng is missing', { kind: 'celestial', key: 'rng' });
   const rolls = o.rolls ?? celestialRolls(o.rng);
@@ -277,7 +285,8 @@ export function simulateCelestial(o) {
   // --- members
   const M = party.map((prep, i) => {
     const f = prep.fresh();
-    const stacks = i === stackPlayer && f.stacks ? f.stacks : null;
+    const carries = perSlot ? Boolean(o.stackSigils[i]) : i === legacySlot;
+    const stacks = carries && f.stacks ? f.stacks : null;
     return {
       i,
       player: f.player,
@@ -290,7 +299,11 @@ export function simulateCelestial(o) {
       transforms: f.spells ? f.spells.filter((rt) => rt.config.spell.spellType === 'TRANSFORM') : null,
       debuffs: initDebuffState(),
       stacks,
-      thornsPercent: stacks ? f.thornsPercent : 0,
+      // per-slot: every member reacts (spell thorns too); legacy: the holder, only with live stacks
+      reacts: perSlot || stacks != null,
+      thornsPercent: (perSlot ? carries : stacks != null) ? f.thornsPercent : 0,
+      snapMods: null,
+      thorns: 0,
       chrono: f.chrono,
       // this tick's Chrono Flux events: own landed hits, hits taken, own avoids
       fluxHits: 0,
@@ -390,14 +403,23 @@ export function simulateCelestial(o) {
     }
   };
 
-  // end-of-tick fields: the stack player's counters and every Chrono Flux bar (combat-pve.md §20.1)
+  // end-of-tick fields: the legacy slot's counters, per-player counters when any member has live
+  // stacks, and every Chrono Flux bar (combat-pve.md §20.1, §20.7)
+  const EMPTY_SNAP = { bulwarkStacks: 0, sunderStacks: 0 };
+  const snapOf = (m) => (m?.stacks ? m.stacks.snapshot() : EMPTY_SNAP);
+  const perSlotOut = perSlot && M.some((m) => m.stacks != null);
   const stampTick = () => {
     if (!log) return;
-    const snap = M[stackPlayer]?.stacks ? M[stackPlayer].stacks.snapshot() : { bulwarkStacks: 0, sunderStacks: 0 };
+    const snap = snapOf(legacySlot >= 0 ? M[legacySlot] : null);
     const flux = M.map((m) => (m.chrono ? m.chrono.flux : 0));
+    const snaps = perSlotOut ? M.map(snapOf) : null;
     for (let k = tickFrom; k < ticks.length; k++) {
       ticks[k].bulwarkStacks = snap.bulwarkStacks;
       ticks[k].sunderStacks = snap.sunderStacks;
+      if (snaps) {
+        ticks[k].playerBulwarkStacks = snaps.map((x) => x.bulwarkStacks);
+        ticks[k].playerSunderStacks = snaps.map((x) => x.sunderStacks);
+      }
       ticks[k].chronoFlux = flux;
     }
   };
@@ -421,21 +443,18 @@ export function simulateCelestial(o) {
     return result(true, false);
   };
 
-  // enemy-phase state: the stack player's Bulwark at the phase start, the once-per-tick bonus-HP
-  // clamp, and the tick's summed thorns
-  const sp = M[stackPlayer] ?? null;
-  let snapMods = null;
+  // enemy-phase state: each member's Bulwark at the phase start (m.snapMods), the once-per-tick
+  // bonus-HP clamp, and each member's summed thorns (m.thorns)
   let clamped = false;
-  let thorns = 0;
   // one swing against the current target; `kind` 'boss' | 'judgment' | add
   const swingAt = (A, kind, add) => {
     if (!add) A = weakenedAttack(A, bossAttackDown);
     const t = target();
     if (!t) return;
-    const isSp = t === sp && t.stacks != null;
+    const sm = t.snapMods;
     if (!clamped) {
       clamped = true;
-      const cap = getBuffedMaxHp(baseMax(t), t.buffHpPct + (isSp && snapMods ? snapMods.hpPercent : 0));
+      const cap = getBuffedMaxHp(baseMax(t), t.buffHpPct + (sm ? sm.hpPercent : 0));
       if (t.hp > cap) t.hp = cap;
     }
     const addId = add ? add.id : -1;
@@ -450,8 +469,8 @@ export function simulateCelestial(o) {
       if (avoid > 0 && rolls.avoid(t.i, avoid, ts, addId)) {
         if (t.i === tankIndex && furyOn) fury = Math.min(maxBlockStacks, fury + 1);
         emit({ type: add ? 'add_block' : 'player_block', damage: 0, playerIndex: t.i, addId });
-        if (isSp) {
-          thorns += t.stacks.blockReflect(0);
+        if (t.stacks) {
+          t.thorns += t.stacks.blockReflect(0);
           t.stacks.onEvaded();
         }
         if (v.missChance === 0 && t.hp > 0) {
@@ -467,20 +486,20 @@ export function simulateCelestial(o) {
       }
     }
     const drBase = applyCombatCeiling(t.view.damageReduction, C_DR);
-    const dr = (isSp && snapMods ? applyBulwarkDr(drBase, snapMods) : drBase) * (1 - damageReductionPerAdd * n());
+    const dr = (sm ? applyBulwarkDr(drBase, sm) : drBase) * (1 - damageReductionPerAdd * n());
     const m = kind === 'judgment' ? JS.attackMultiplier : 1;
     const ovl = overload && (kind === 'boss' || (kind === 'judgment' && overloadJudgment)) ? ovlMult : 1;
     const dmg = Math.round(A * m * (1 - dr / 100) * (1 + damageTakenPerAdd * n()) * ovl);
     t.hp -= dmg;
     t.fluxTaken += 1;
-    if (kind !== 'judgment' && isSp) {
-      thorns += t.stacks.hitTakenReflect(dmg);
+    if (kind !== 'judgment' && t.reacts) {
+      if (t.stacks) t.thorns += t.stacks.hitTakenReflect(dmg);
       if (t.thornsPercent > 0 && t.spells && isSpellBuffActive(t.spells, 'IRON_BASTION')) {
-        thorns += Math.round((dmg * t.thornsPercent) / 100);
+        t.thorns += Math.round((dmg * t.thornsPercent) / 100);
       }
       if (t.spells) {
         const pct = activeBuffThornsPercent(t.spells);
-        if (pct > 0) thorns += Math.round((dmg * pct) / 100);
+        if (pct > 0) t.thorns += Math.round((dmg * pct) / 100);
       }
     }
     if (t.hp <= 0) {
@@ -660,10 +679,12 @@ export function simulateCelestial(o) {
       if (bossHp <= 0) return bossDead();
     }
 
-    // 4. enemy phase: boss swing, Judgment Strike, add swings, then one combined thorns reflect
-    snapMods = sp?.stacks ? sp.stacks.selfModifiers() : null;
+    // 4. enemy phase: boss swing, Judgment Strike, add swings, then one combined thorns reflect per member
+    for (const m of M) {
+      m.snapMods = m.stacks ? m.stacks.selfModifiers() : null;
+      m.thorns = 0;
+    }
     clamped = false;
-    thorns = 0;
     bossTimer += CELESTIAL_TICK_MS;
     if (bossTimer >= bossInterval) {
       bossTimer -= bossInterval;
@@ -686,9 +707,10 @@ export function simulateCelestial(o) {
       a.nextSwingMs += ADD_SWING_MS;
       swingAt(addStats.attack, 'add', a);
     }
-    if (thorns > 0 && bossHp > 0 && sp && !sp.dead) {
-      bossHp = Math.max(0, bossHp - thorns);
-      emit({ type: 'thorns_reflect', damage: thorns, playerIndex: sp.i, addId: -1 });
+    for (const m of M) {
+      if (!(m.thorns > 0 && bossHp > 0 && !m.dead)) continue;
+      bossHp = Math.max(0, bossHp - m.thorns);
+      emit({ type: 'thorns_reflect', damage: m.thorns, playerIndex: m.i, addId: -1 });
       if (bossHp <= 0) return bossDead();
     }
 
@@ -721,7 +743,7 @@ export function simulateCelestial(o) {
         }
       }
     }
-    if (sp?.stacks) sp.stacks.tick(CELESTIAL_TICK_MS);
+    for (const m of M) if (m.stacks) m.stacks.tick(CELESTIAL_TICK_MS);
     stampTick();
     if (afterTick) afterTick(ts, { members: M, adds, get bossHp() { return bossHp; }, set bossHp(v) { bossHp = v; } });
 

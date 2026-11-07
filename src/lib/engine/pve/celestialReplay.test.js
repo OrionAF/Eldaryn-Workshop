@@ -23,6 +23,25 @@ describe('compareCelestialLogs', () => {
     const r = compareCelestialLogs([row({ type: 'player_regen', playerHpsAfter: [5.25, 6] })], [row({ type: 'player_regen', playerHpsAfter: [5.250000001, 6] })]);
     expect(r.fields.hp).toEqual({ checked: 2, failed: 0 });
   });
+
+  it('compares the per-player stack arrays when the log has them, the scalars otherwise', () => {
+    const scalarLog = [row({ type: 'player_attack', bulwarkStacks: 2, sunderStacks: 1 })];
+    const scalar = compareCelestialLogs(scalarLog, [row({ type: 'player_attack', bulwarkStacks: 3, sunderStacks: 1 })]);
+    expect(scalar.fields.bulwarkStacks).toEqual({ checked: 1, failed: 1 });
+    expect(scalar.fields.playerBulwarkStacks).toEqual({ checked: 0, failed: 0 });
+
+    // the client pads its tuples to three slots: a slot the engine lacks counts as 0
+    const arrLog = [row({ type: 'player_attack', bulwarkStacks: 9, playerBulwarkStacks: [0, 4, 0], playerSunderStacks: [1, 0, 0] })];
+    const ok = compareCelestialLogs(arrLog, [row({ type: 'player_attack', bulwarkStacks: 0, playerBulwarkStacks: [0, 4], playerSunderStacks: [1, 0] })]);
+    expect(ok.fields.bulwarkStacks).toEqual({ checked: 0, failed: 0 });
+    expect(ok.fields.playerBulwarkStacks).toEqual({ checked: 3, failed: 0 });
+    expect(ok.fields.playerSunderStacks).toEqual({ checked: 3, failed: 0 });
+    expect(ok.ticksChecked).toBe(1);
+
+    const bad = compareCelestialLogs(arrLog, [row({ type: 'player_attack', playerBulwarkStacks: [0, 3], playerSunderStacks: [1, 0] })]);
+    expect(bad.fields.playerBulwarkStacks).toEqual({ checked: 3, failed: 1 });
+    expect(bad.mismatches[0]).toMatchObject({ kind: 'playerBulwarkStacks[1]', expected: 4, actual: 3 });
+  });
 });
 
 describe('celestialLogRolls', () => {

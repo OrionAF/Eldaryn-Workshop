@@ -270,6 +270,42 @@ describe('stack player', () => {
     const notStack = run({ party: [fighter({}), bulwark()], tankIndex: 1, stackPlayerIndex: 0, rolls });
     expect(notStack.log.every((t) => (t.bulwarkStacks ?? 0) === 0)).toBe(true);
     expect(rows(notStack, 'thorns_reflect')).toHaveLength(0);
+    // the legacy path writes no per-player arrays
+    expect(asStack.log.some((t) => 'playerBulwarkStacks' in t)).toBe(false);
+  });
+
+  it('per-slot stack sigils (2.9.2): each carrier runs its own stacks and thorns, whatever stackPlayerIndex says', () => {
+    const rolls = scripted({ avoid: (p, pct, ts) => (ts / 10) % 2 === 0 });
+    const r = run({ party: [fighter({}), bulwark()], tankIndex: 1, stackPlayerIndex: 0, stackSigils: [null, true], rolls });
+    const thorns = rows(r, 'thorns_reflect');
+    expect(thorns.length).toBeGreaterThan(0);
+    expect(thorns.every((t) => t.playerIndex === 1)).toBe(true);
+    // the opening rows (before the first tick) carry no end-of-tick fields
+    const stamped = r.log.filter((t) => t.timestamp > 500);
+    expect(stamped.every((t) => Array.isArray(t.playerBulwarkStacks) && t.playerBulwarkStacks.length === 2)).toBe(true);
+    expect(Math.max(...stamped.map((t) => t.playerBulwarkStacks[1]))).toBeGreaterThan(0);
+    expect(stamped.every((t) => t.playerBulwarkStacks[0] === 0 && t.playerSunderStacks[0] === 0)).toBe(true);
+    // the scalars stay the legacy slot's (player 0, no stacks here)
+    expect(stamped.every((t) => t.bulwarkStacks === 0)).toBe(true);
+    // with the carrier as the legacy slot the scalars follow its per-slot counters
+    const r1 = run({ party: [fighter({}), bulwark()], tankIndex: 1, stackPlayerIndex: 1, stackSigils: [null, true], rolls });
+    expect(r1.log.filter((t) => t.timestamp > 500).every((t) => t.bulwarkStacks === t.playerBulwarkStacks[1])).toBe(true);
+    // per-slot thorns match the legacy holder's when one member carries
+    const legacy = run({ party: [fighter({}), bulwark()], tankIndex: 1, stackPlayerIndex: 1, rolls });
+    expect(rows(r1, 'thorns_reflect').map((t) => t.damage)).toEqual(rows(legacy, 'thorns_reflect').map((t) => t.damage));
+  });
+
+  it('per-slot path with no carrier: no stacks, no arrays, no thorns', () => {
+    const rolls = scripted({ avoid: (p, pct, ts) => (ts / 10) % 2 === 0 });
+    const r = run({ party: [fighter({}), bulwark()], tankIndex: 1, stackPlayerIndex: 1, stackSigils: [null, false], rolls });
+    expect(rows(r, 'thorns_reflect')).toHaveLength(0);
+    expect(r.log.every((t) => (t.bulwarkStacks ?? 0) === 0 && !('playerBulwarkStacks' in t))).toBe(true);
+  });
+
+  it('a stackPlayerIndex outside the group gives the legacy path no holder', () => {
+    const rolls = scripted({ avoid: (p, pct, ts) => (ts / 10) % 2 === 0 });
+    const r = run({ party: [fighter({}), bulwark()], tankIndex: 1, stackPlayerIndex: 2, rolls });
+    expect(rows(r, 'thorns_reflect')).toHaveLength(0);
   });
 });
 

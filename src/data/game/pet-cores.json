@@ -1,5 +1,5 @@
 {
- "source": "2.9.1 decompiled.js (docs/2.9.0): module 3935 L1064693-1065652 (constants, tier tables), 3987 L1078711-1079033 (core altar), 3985 L1077818-1078337 (rolls), 4271 L1218663-1218964 (calculateCoreBonuses), 4272 L1218965-1219187 (power). Formulas and tags: Reference/Game/pet-cores.md.",
+ "source": "2.9.1 decompiled.js (docs/2.9.0): module 3935 L1064693-1065652 (constants, tier tables), 3987 L1078711-1079033 (core altar), 3985 L1077818-1078337 (rolls), 4271 L1218663-1218964 (calculateCoreBonuses), 4272 L1218965-1219187 (power). Altar XP tables v1-v3: 2.9.2 decompiled.js (docs/2.9.2) module 3985 L1064831-1064843, CORE_ALTAR_XP_TABLE_VERSION 3 L1064551. Formulas and tags: Reference/Game/pet-cores.md.",
  "rarities": ["COMMON", "UNCOMMON", "RARE", "EPIC", "LEGENDARY", "MYTHIC", "ANCIENT", "DIVINE", "ETERNAL", "OBLIVION"],
  "baseStats": {
   "COMMON": {"attack": 180, "hp": 530},
@@ -20,7 +20,7 @@
  "secondaryGrowthPerLevel": 0.02,
  "maxAltarLevel": 50,
  "tierStatMult": {"table": [1, 3.3, 17, 24.5, 26.5], "growth": 1.1},
- "altarTierXpMult": {"table": [0.67, 1.4, 6.86, 13.82], "growth": 1.1, "xpTableVersion": 2},
+ "altarTierXpMult": {"tables": {"1": [0.67, 1.4, 5.2, 8.6], "2": [0.67, 1.4, 6.86, 13.82], "3": [0.65, 1.6, 9.17, 17.51, 18.61]}, "growth": 1.1, "currentVersion": 3},
  "sacrificeXp": {"COMMON": 30, "UNCOMMON": 75, "RARE": 180, "EPIC": 420, "LEGENDARY": 1100, "MYTHIC": 1700, "ANCIENT": 2600, "DIVINE": 3500, "ETERNAL": 4500, "OBLIVION": 6000},
  "rarityUnlockTier": {"COMMON": 1, "UNCOMMON": 1, "RARE": 1, "EPIC": 1, "LEGENDARY": 1, "MYTHIC": 1, "ANCIENT": 2, "DIVINE": 3, "ETERNAL": 4, "OBLIVION": 5},
  "summonBaseCost": 100,

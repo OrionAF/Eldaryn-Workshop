@@ -190,9 +190,12 @@ export function celestialRunner(target) {
   const mate = target.partner ? prepareCelestialMember(target.partner.fighter) : null;
   return (fighter) => {
     const party = mate ? [prepareCelestialMember(fighter), mate] : [prepareCelestialMember(fighter)];
+    // 2.9.2: every member with a stack sigil builds its own stacks (combat-pve.md §20.7 addendum);
+    // stackPlayerIndex now only picks the legacy scalar slot
+    const stackSigils = party.map(() => true);
     return {
       party,
-      fight: (rng) => simulateCelestial({ difficulty, party, level, tankIndex, stackPlayerIndex, tactics, rng }),
+      fight: (rng) => simulateCelestial({ difficulty, party, level, tankIndex, stackPlayerIndex, stackSigils, tactics, rng }),
     };
   };
 }

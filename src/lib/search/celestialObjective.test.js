@@ -173,7 +173,7 @@ describe('Celestial objective', () => {
     const got = o.sample(myFighter, { seed: 7, from: 3, to: 6 }).main[0];
     const want = [3, 4, 5].map((i) => celestialFightScore(simulateCelestial({
       difficulty: 'HARD', party: [myFighter, rosterPartner.fighter], level: 85,
-      tactics: defaultCelestialTactics('HARD'), stackPlayerIndex: 0, rng: fightRng(7, i),
+      tactics: defaultCelestialTactics('HARD'), stackPlayerIndex: 0, stackSigils: [true, true], rng: fightRng(7, i),
     })));
     expect(got).toEqual(want);
     expect(o.sample(myFighter, { seed: 7, from: 3, to: 6 }).main[0]).toEqual(got);
@@ -197,10 +197,12 @@ describe('Celestial objective', () => {
     expect(resolveHard({ starter: 'me' }).celestial.stackPlayerIndex).toBe(0);
     expect(resolveHard({ starter: 'partner' }).celestial.stackPlayerIndex).toBe(1);
     const direct = (stackPlayerIndex) => simulateCelestial({
-      difficulty: 'HARD', party: [myFighter, rosterPartner.fighter], level: 85, tactics: defaultCelestialTactics('HARD'), stackPlayerIndex, rng: fightRng(3, 0),
+      difficulty: 'HARD', party: [myFighter, rosterPartner.fighter], level: 85, tactics: defaultCelestialTactics('HARD'), stackPlayerIndex, stackSigils: [true, true], rng: fightRng(3, 0),
     });
     expect(fightOf({ starter: 'partner' })).toEqual(direct(1));
     expect(fightOf({ starter: 'me' })).toEqual(direct(0));
+    // 2.9.2: both members carry their own stacks, so the starter no longer changes the fight
+    expect(fightOf({ starter: 'partner' }).hpLeft).toEqual(fightOf({ starter: 'me' }).hpLeft);
     // solo: a party of one, me tanking and starting
     const solo = celestialRunner(resolveTarget({ kind: 'celestial', difficulty: 'NORMAL', partner: null }, { character: me }))(myFighter);
     expect(solo.party).toHaveLength(1);
@@ -227,7 +229,7 @@ describe('Celestial objective', () => {
     const got = o.sample(myFighter, { seed: 7, from: 0, to: 4 }).main[0];
     const want = [0, 1, 2, 3].map((i) => celestialClearTime(simulateCelestial({
       difficulty: 'HARD', party: [myFighter, rosterPartner.fighter], level: 85, tankIndex: 0,
-      tactics: defaultCelestialTactics('HARD'), stackPlayerIndex: 0, rng: fightRng(7, i),
+      tactics: defaultCelestialTactics('HARD'), stackPlayerIndex: 0, stackSigils: [true, true], rng: fightRng(7, i),
     })));
     expect(got).toEqual(want);
     expect(celestialClearTime({ won: true, timeMs: 46000 })).toBe(46000);

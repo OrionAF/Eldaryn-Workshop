@@ -21,7 +21,7 @@
 import { CLASSES } from '../game/classes.js';
 import { BASE_SLOTS, OBLIVION_ONLY_SLOTS } from '../game/gear.js';
 import { PET_ALTAR_XP_NEEDED_BY_TIER, petSpeciesById } from '../game/pets.js';
-import { coreAltarProgress } from '../game/petCores.js';
+import { coreAltarProgress, coreAltarXpTableVersion } from '../game/petCores.js';
 import { GLYPH_SECONDARY_POOL, mountBySpecies } from '../game/mountsGlyphs.js';
 import { SKILL_IDS } from '../game/skills.js';
 import { fortressById } from '../game/fortress.js';
@@ -129,7 +129,8 @@ function mapPetCores(petV2) {
     secondaries: mapSecondaries(c.secondaryStats),
   }));
   const tier = num(petV2.altar?.tier) ?? 1;
-  return { pets: { altar: { level: coreAltarProgress(num(petV2.altar?.totalXp) ?? 0, tier).level, tier }, cores }, activeCoreId: str(petV2.activeCoreId) };
+  const ver = coreAltarXpTableVersion(petV2.altar?.xpTableVersion);
+  return { pets: { altar: { level: coreAltarProgress(num(petV2.altar?.totalXp) ?? 0, tier, ver).level, tier }, cores }, activeCoreId: str(petV2.activeCoreId) };
 }
 
 /**
