@@ -27,6 +27,7 @@ import { createSampler, compareSets, contrastSets, tieLook, setOf, isAbort, Abor
 import { race } from './race.js';
 import { createDebugLog } from './debugLog.js';
 import { minimise, attribute, holmSequential, holmFixed } from './minimise.js';
+import { EFFORT_LEVELS, familyOf, choiceBlocks, priorReserve, searchCutoffMs } from './costModel.js';
 import {
   RESULT_SCHEMA, CHECKPOINT_SCHEMA, PHASES, MULTIPLICITY, estimateOut, contrastOut, targetOut, objectiveOut,
   headlineOf, rankRows, failedResult, rowViolations, nearestOfEqual, groupTies, paidChanges,
@@ -38,7 +39,7 @@ export const EXHAUSTIVE_MAX = 50_000;
 export const RANDOM_STARTS = 3;
 /** First look per Effort level (fights per arm, per lane). */
 export const EFFORT_N0 = Object.freeze({ quick: 8, standard: 16, thorough: 32 });
-export const EFFORT_LEVELS = Object.freeze(['quick', 'standard', 'thorough']);
+export { EFFORT_LEVELS };
 /** Family-wise level of every family (racing, confirm, attribution). */
 export const ALPHA = 0.05;
 
@@ -47,14 +48,13 @@ export const SPEC_INNER = ['sigils', 'utility', 'ancient', 'conditions', 'majorG
 export const MOUNT_INNER = ['minorGlyphs', 'majorGlyphs'];
 const PROGRESS_MS = 250;
 const YIELD_MS = 25;
-/** The part of a time budget the search phase may use; Minimise, confirm and attribution get the rest (simulation.md §Time budget). */
-export const SEARCH_SHARE = 0.5;
 
 /**
  * Effort: Q4's precision (the delta and maxN Drop Check uses, features/swap.js DROP_PRECISION) plus the
  * first look. A string picks a level; an object may override n0, maxN, delta and randomStarts (tests), and
- * `budgetMs` sets a time budget for the whole run (null: none; simulation.md §Time budget).
- * @returns {{level: string, delta: number, deltaKind: 'relative'|'absolute', alpha: number, n0: number, maxN: number, randomStarts: number, budgetMs: number|null}}
+ * `budgetMs` sets a time budget for the whole run (null: none; simulation.md §Time budget) and `reserve`
+ * ({fixed, ratio}, the estimate's `reserve`) the later phases' fights it keeps time for (null: the prior's).
+ * @returns {{level: string, delta: number, deltaKind: 'relative'|'absolute', alpha: number, n0: number, maxN: number, randomStarts: number, budgetMs: number|null, reserve: {fixed: number, ratio: number}|null}}
  */
 export function resolveEffort(raw, objective) {
   const o = typeof raw === 'string' ? { level: raw } : raw && typeof raw === 'object' ? raw : {};
@@ -67,10 +67,13 @@ export function resolveEffort(raw, objective) {
   const delta = typeof o.delta === 'number' && o.delta >= 0 ? o.delta : deltaKind === 'relative' ? p.rel : p.prob * (objective.deltaScale ?? 1);
   const randomStarts = Number.isInteger(o.randomStarts) && o.randomStarts >= 0 ? o.randomStarts : RANDOM_STARTS;
   const budgetMs = Number.isFinite(o.budgetMs) && o.budgetMs >= 1 ? Math.round(o.budgetMs) : null;
+  const nonNeg = (v) => Number.isFinite(v) && v >= 0;
+  // a scheduling hint only: it moves when a time-limited search stops, never a decision, so it is not in the request key
+  const reserve = budgetMs && nonNeg(o.reserve?.fixed) && nonNeg(o.reserve?.ratio) ? { fixed: o.reserve.fixed, ratio: o.reserve.ratio } : null;
   // futility: false restores the pre-A5 race and accept rule; tieLook: false the look schedule without the
   // win rate's tie look (both benchmarks only; not Effort controls)
   // batchDrop: false restores the one-at-a-time Minimise (benchmarks only; simulation.md §Minimise and confirm)
-  return { level, delta, deltaKind, alpha: ALPHA, n0, maxN, randomStarts, futility: o.futility !== false, tieLook: o.tieLook !== false, batchDrop: o.batchDrop !== false, budgetMs };
+  return { level, delta, deltaKind, alpha: ALPHA, n0, maxN, randomStarts, futility: o.futility !== false, tieLook: o.tieLook !== false, batchDrop: o.batchDrop !== false, budgetMs, reserve };
 }
 
 /** Phase seeds (I4: the data that decides is never the data reported). */
@@ -215,6 +218,8 @@ function createRun(prep, hooks) {
     lastProgress: 0,
     lastYield: Date.now(),
     provisional: null,
+    best: null, // the live best-so-far readout (progress `best`; simulation.md §Progress)
+    replayedFights: 0,
     notSimulable: 0,
     belowFloor: new Set(),
   };
@@ -340,7 +345,9 @@ function createRun(prep, hooks) {
     if (st.replay) {
       const e = st.replay[st.log.length];
       if (e && e.kind === kind && e.sig === sig) {
+        const f0 = st.fights[st.phase];
         for (const [k, n] of e.gets) raise(k, n);
+        st.replayedFights += st.fights[st.phase] - f0;
         st.log.push(e);
         return e.out;
       }
@@ -441,7 +448,39 @@ function createRun(prep, hooks) {
       counts: { evaluated: st.evaluated.size, fights: Object.values(st.fights).reduce((a, b) => a + b, 0), eliminated: st.eliminated, merged: st.merged.inert + st.merged.engineIdentical + st.merged.sampleIdentical },
       elapsedMs: now - t0,
       provisional: st.provisional,
+      best: st.best,
     });
+  }
+
+  // ---- live best so far (progress `best`, simulation.md §Progress) ---------------------------------
+  // Read from fights already held on the search seed, so it draws nothing and changes no decision. The
+  // same fights picked the build, so the number leans high; the result's confirm replaces it.
+  let bestArm = null;
+  const S_SEARCH = { id: 'search', seed: prep.seeds.search };
+  async function searchValue(a) {
+    const set = await heldSet(a, S_SEARCH);
+    const v = set ? objective.estimate(set, { alpha: ALPHA }).value : null;
+    return v && Number.isFinite(v.est) ? v : null;
+  }
+  /** Offer an accepted build to the readout: it shows whichever offered build estimates best now. */
+  async function noteBest(a) {
+    if (!hooks.onProgress || !a) return;
+    const hib = objective.higherIsBetter !== false;
+    let arm = a;
+    let v = await searchValue(a);
+    if (bestArm && bestArm.key !== a.key) {
+      const cur = await searchValue(bestArm);
+      if (cur && (!v || (hib ? cur.est >= v.est : cur.est <= v.est))) [arm, v] = [bestArm, cur];
+    }
+    if (!v) return;
+    bestArm = arm;
+    const B = armOf(base);
+    const bv = arm.key === B.key ? v : await searchValue(B);
+    st.best = {
+      isBaseline: arm.key === B.key, est: v.est, n: v.n, baseEst: bv?.est ?? null,
+      unit: objective.unit ?? null, label: objective.label ?? null, higherIsBetter: hib,
+    };
+    progress(true);
   }
 
   function checkpoint(extra = {}) {
@@ -485,7 +524,7 @@ function createRun(prep, hooks) {
     });
   }
 
-  return { st, sampler, log, logCtx, base, armOf, ekOf, getSet, heldSet, prefetch, compare, contrastAt, raceArms, goalCheck, setPhase, progress, checkpoint, t0, signal, workers: pool?.size ?? 1 };
+  return { st, sampler, log, logCtx, base, armOf, ekOf, getSet, heldSet, prefetch, compare, contrastAt, raceArms, goalCheck, setPhase, progress, checkpoint, noteBest, t0, signal, workers: pool?.size ?? 1 };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -555,14 +594,32 @@ async function searchPhase(prep, run) {
   const sizes = space.domainSizes(B.cand);
   const status = new Map(); // block id -> 'converged' | 'unresolved'
   const unresolvedOut = [];
-  // A time budget stops the exploration at a block boundary once the search's share is spent; the first race
-  // always runs. What was raced keeps its meaning, and the rows are still confirmed on their own seed.
-  const deadline = effort.budgetMs ? run.t0 + effort.budgetMs * SEARCH_SHARE : Infinity;
+  const fightsNow = () => Object.values(st.fights).reduce((a, b) => a + b, 0);
+  // A time budget stops the exploration once only the time the later phases need is left (costModel.js
+  // searchCutoffMs, re-read at every check from this run's own speed); the first race always runs. What was
+  // raced keeps its meaning, and the rows are still confirmed on their own seed. simulation.md §Time budget.
+  const reserve = effort.reserve ?? priorReserve(familyOf(objective.kind, prep.target.kind), effort.level, Math.max(1, objective.lanes ?? 1), choiceBlocks(Object.fromEntries([...enabled].map((id) => [id, sizes[id] ?? 1]))));
+  const pastCutoff = (aheadMs = 0) => {
+    if (!effort.budgetMs) return false;
+    const elapsedMs = Date.now() - run.t0;
+    // fights replayed from a checkpoint cost no time, so they do not count toward the speed
+    const fights = fightsNow() - st.replayedFights;
+    return elapsedMs + aheadMs >= searchCutoffMs({ budgetMs: effort.budgetMs, elapsedMs, fights, searchFights: st.fights.search, reserve });
+  };
   let raced = false;
   let timedOut = false;
-  const timeUp = () => timedOut || (timedOut = raced && Date.now() >= deadline);
-  // inside a race or an accepting compare: stop at the next look (at least one look always runs)
-  const cutNow = () => timedOut || (timedOut = Date.now() >= deadline);
+  const timeUp = () => timedOut || (timedOut = raced && pastCutoff());
+  // Inside a race or an accepting compare: stop at the next look (at least one look always runs). Looks
+  // double n, so the next look costs about twice the work since the last check: stop now when ending after
+  // it would land further past the cutoff than stopping lands short of it (elapsed + next / 2 >= cutoff).
+  let lastCut = null;
+  const cutNow = () => {
+    if (timedOut) return true;
+    const now = Date.now();
+    const nextMs = lastCut == null ? 0 : 2 * (now - lastCut);
+    lastCut = now;
+    return (timedOut = pastCutoff(nextMs / 2));
+  };
   const cutOpts = effort.budgetMs ? { stop: cutNow } : {};
   // the Combat Power guard is a legality rule: an arm below the floor is never raced (simulation.md §Build space)
   const simulable = (a) => {
@@ -585,7 +642,6 @@ async function searchPhase(prep, run) {
   }));
   run.progress(true); // the rows, all queued, before the first block starts
   const stepOf = (id) => st.steps.find((r) => r.id === id);
-  const fightsNow = () => Object.values(st.fights).reduce((a, b) => a + b, 0);
   /**
    * Run one visit of a block as a step row. Work nested inside it (the inner ascents that Spec and Mount
    * run per value) belongs to the outer row, so only the outermost visit is recorded.
@@ -653,6 +709,7 @@ async function searchPhase(prep, run) {
     if (r.cut) timedOut = true;
     run.log?.enterBlock(null);
     st.eliminated += r.eliminated;
+    await run.noteBest(arms[r.winner]);
     // one joint race covers every open block: each row shows its tries and fights
     const moved = new Set(changesOf(space, B.cand, arms[r.winner].cand, { bundles: false }).map((c) => c.dimension));
     for (const row of st.steps) {
@@ -715,7 +772,9 @@ async function searchPhase(prep, run) {
       if (c.stopped) timedOut = true; // also when the step is replayed from a checkpoint
       if (c.verdict !== 'better') continue;
       const W = canonArm(arms[w]);
-      if (!visited.has(W.key)) return W;
+      if (visited.has(W.key)) continue;
+      await run.noteBest(W);
+      return W;
     }
     return null;
   }
@@ -856,6 +915,7 @@ async function searchPhase(prep, run) {
       if (optima.length && timeUp()) break;
       const r = await ascent(s, BLOCKS);
       optima.push(r.x);
+      await run.noteBest(r.x);
       contenders.push(...r.contenders);
       unresolvedOut.push(...r.unresolved);
       st.provisional = optima.map((a) => ({ key: a.key, candidate: a.cand, provisional: true }));
@@ -1044,6 +1104,7 @@ export async function optimize(request, hooks = {}) {
     // screen: the baseline's first look (the space and its legality are checked above)
     run.setPhase('screen');
     await run.getSet(B, S1, effort.n0);
+    await run.noteBest(B);
     // win rate: a baseline that already meets the target needs no change (the check is on S3, whose
     // baseline fights confirm reuses; the baseline is fixed, so no selection rides on it)
     const goal = isWinRateKind(objective.kind) ? await run.goalCheck(B, S3) : null;

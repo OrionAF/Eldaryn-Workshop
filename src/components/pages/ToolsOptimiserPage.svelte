@@ -31,10 +31,10 @@
   import { runFromResult } from '../../lib/model/runs.js';
   import { presetDuelFighter, opponentFighter, missingStats } from '../../lib/features/duel.js';
   import {
-    normaliseSetup, setupFromRun, requestOf, TIME_LIMITS, searchCharacter, signatureOf, runApplyBlock, retiredGoalBlock, otherCharacters, targetContext,
+    normaliseSetup, setupFromRun, requestOf, withTimeReserve, TIME_LIMITS, searchCharacter, signatureOf, runApplyBlock, retiredGoalBlock, otherCharacters, targetContext,
   } from '../../lib/ui/optimiserSetup.js';
   import {
-    viewResult, progressSegments, progressLine, effortPlan, enabledCount, toggleTotal, optimiserJobChips,
+    viewResult, progressSegments, progressLine, bestLine, effortPlan, enabledCount, toggleTotal, optimiserJobChips,
     fmtDuration, viewRun, OBJECTIVE_LABEL, MEASURED_COST, goalWinRate,
   } from '../../lib/ui/optimiserView.js';
   import { triesPerClear } from '../../lib/ui/winRateFormat.js';
@@ -58,7 +58,7 @@
   import SpaceGroups from '../optimiser/SpaceGroups.svelte';
   import PowerGuard from '../optimiser/PowerGuard.svelte';
   import { presetPower } from '../../lib/build/power.js';
-  import { powerFloorText, SEARCH_SHARE } from '../../lib/search/search.js';
+  import { powerFloorText } from '../../lib/search/search.js';
   import OptimiserResults from '../optimiser/OptimiserResults.svelte';
   import ApplyReview from '../optimiser/ApplyReview.svelte';
   import RunHistoryTab from '../optimiser/RunHistoryTab.svelte';
@@ -223,7 +223,7 @@
     if (isPvp) s.target = { ...s.target, opponentIds: [...pvpIds] };
     // the debug log setting (Settings, per device) rides in the request: the search never reads prefs
     const debug = prefs.debugLog !== 'off' ? { debug: prefs.debugLog } : {};
-    start({ ...requestOf(s, character, others), ...debug }, { characterId: character.id, presetId: preset.id, presetName: preset.name, mode: 'optimize' }, {
+    start({ ...withTimeReserve(requestOf(s, character, others), allRuns), ...debug }, { characterId: character.id, presetId: preset.id, presetName: preset.name, mode: 'optimize' }, {
       title: `Optimise ${preset.name}`,
       context: `${targetLabel} · ${OBJECTIVE_LABEL[s.objective.kind]}`,
     });
@@ -431,7 +431,7 @@
           <h3><span class="n">V</span> Effort</h3>
           <SegmentedControl label="Effort" stack options={effortOptions} value={setup.effort} onchange={(v) => (setup.effort = v)} />
           <Select label="Time limit" options={timeLimitOptions} value={setup.timeLimit ?? 0} onchange={(v) => (setup.timeLimit = Number(v) || null)}
-            hint={setup.timeLimit ? `The search stops after about ${Math.round(setup.timeLimit * SEARCH_SHARE)} s, then the best builds are checked as usual, so the run can take longer.` : ''} />
+            hint={setup.timeLimit ? 'The search stops early enough to leave time for checking the best builds, which always finishes, so the run may end a little after the limit.' : ''} />
           <NumberField label="Seed" min={1} value={setup.seed} onchange={(v) => (setup.seed = Math.max(1, Math.round(v)))} />
           <p class="hint" data-testid="effort-plan">
             Spots differences of <span class="num">{plan.zone}</span> or more. Each build starts with <span class="num">{fmtCount(plan.n0)}</span> fights and gets up to <span class="num">{fmtCount(plan.maxN)}</span> if the result is still unclear. After that it is called too close to call.
@@ -537,6 +537,12 @@
           {/if}
           {#if live}
             <p class="hint num" data-testid="progress-line">{progressLine(live.progress)}</p>
+            {#if bestLine(live.progress)}
+              <p class="best-line" data-testid="progress-best" aria-live="polite">
+                <span class="num">{bestLine(live.progress)}</span>
+                <span class="hint">Measured during the search, so it reads a little high. The final result re-checks it on fresh fights.</span>
+              </p>
+            {/if}
             {#if live.progress?.steps?.length}
               <ol class="rung-steps" data-testid="push-steps" aria-label="Steps climbed">
                 {#each live.progress.steps as st (st.id)}
@@ -682,5 +688,7 @@
   .violations { margin: 0; padding-left: var(--sp-5); color: var(--text-soft); font-size: var(--fs-13); }
   .rung-steps { margin: 0; padding-left: var(--sp-5); display: grid; gap: 2px; color: var(--text-muted); font-size: var(--fs-12); max-height: calc(var(--sp-5) * 8); overflow-y: auto; }
   .rung-steps .current { color: var(--text-ink); }
+  .best-line { margin: 0; display: grid; gap: 2px; color: var(--text-ink); font-size: var(--fs-13); font-weight: var(--fw-bold); }
+  .best-line .hint { font-weight: var(--fw-regular); }
   .read { margin: 0; padding-left: var(--sp-5); display: grid; gap: var(--sp-2); color: var(--text-soft); font-size: var(--fs-13); }
 </style>

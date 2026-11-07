@@ -4,14 +4,15 @@
 import { BLOCKS } from './space.js';
 import { normaliseRelicBudget } from './relicProgression.js';
 import { normaliseIchorBudget } from './boardAllocation.js';
-import { prepare, enumerateJoint, EXHAUSTIVE_MAX, EFFORT_LEVELS, RANDOM_STARTS, SEARCH_SHARE } from './search.js';
+import { prepare, enumerateJoint, EXHAUSTIVE_MAX, RANDOM_STARTS } from './search.js';
+import { PRIOR, EFFORT_STEP, familyOf, effortScale, choiceBlocks, priorReserve, SEARCH_SHARE } from './costModel.js';
 
 const fmtSeconds = (ms) => (ms >= 60_000 ? `${+(ms / 60_000).toFixed(1)} min` : `${Math.round(ms / 1000)} s`);
 import { looksFor } from './sampler.js';
-import { CELESTIAL_TARGET_KIND } from './celestialObjective.js';
-import { PVP_OBJECTIVE_KIND } from './pvpObjective.js';
 import { estimateSeconds } from '../calibration.js';
 import { CALIBRATION_FIGHT_SECONDS } from '../tasks/calibrate.js';
+
+export { PRIOR, EFFORT_STEP, familyOf, effortScale };
 
 /** The joint space is counted build by build (exact) up to this size; above it the product of block sizes stands in. */
 export const LIVE_ENUMERATE_MAX = 1000;
@@ -29,32 +30,6 @@ export const FIGHT_KIND_OF = Object.freeze({
   fortressBoss: 'duel', pvp: 'duel',
 });
 
-/**
- * Objective families: runs in one family cost alike per build (the statistic's noise against δ decides how
- * many fights a comparison needs). simulation.md §Estimates.
- */
-export function familyOf(objectiveKind, targetKind) {
-  if (targetKind === CELESTIAL_TARGET_KIND) return 'celestial';
-  if (objectiveKind === PVP_OBJECTIVE_KIND || targetKind === 'pvp') return 'pvp';
-  if (targetKind === 'fortressBoss') return 'fortress';
-  if (objectiveKind === 'dps') return 'dps';
-  return 'winrate'; // win-chance, win-rate, Push and survival: proportions against PVE
-}
-
-/**
- * The prior per family, at Quick and per lane: `search` = search fights per build tried, by strategy;
- * minimise, confirm and attribute = `later` fights per block with a choice (they depend on the finalists and
- * their changes; in a small space they are most of the run) plus `share` of the search fights (a long
- * search leaves more close finalists). [lo, likely, hi], measured on reference characters
- * (simulation.md §Estimates, estimate.bench.test.js); `measured: false` marks a guessed band.
- */
-export const PRIOR = Object.freeze({
-  dps: { measured: true, search: { exhaustive: [6, 9, 20], local: [6, 9, 20] }, later: [20, 50, 150], share: [0, 0.02, 0.1] },
-  fortress: { measured: true, search: { exhaustive: [6, 9, 20], local: [6, 9, 20] }, later: [20, 50, 150], share: [0, 0.02, 0.1] },
-  winrate: { measured: true, search: { exhaustive: [120, 380, 1600], local: [120, 380, 1600] }, later: [100, 1000, 4000], share: [0.002, 0.02, 0.6] },
-  pvp: { measured: true, search: { exhaustive: [120, 450, 1600], local: [120, 450, 1600] }, later: [100, 2000, 4000], share: [0.002, 0.03, 0.4] },
-  celestial: { measured: false, search: { exhaustive: [50, 500, 5000], local: [50, 500, 5000] }, later: [100, 2000, 10000], share: [0, 0.05, 1] },
-});
 
 /**
  * Builds a local search tries per start (simulation.md §Estimates): the start itself, `base` times each
@@ -68,17 +43,11 @@ export const SWEEP_MODEL = Object.freeze({
   band: [0.35, 1, 2.2],
 });
 
-/**
- * Fights per build from one Effort level to the next: n0 doubles (2x) and δ halves, so a near-tie needs
- * about 4x (fights ~ 1/δ²). An assumption, simulation.md §Estimates.
- */
-export const EFFORT_STEP = Object.freeze([2, Math.SQRT2 * 2, 4]);
 /** Widening of the range around the past runs: one run, then two or more. */
 export const HISTORY_MARGIN = Object.freeze({ one: 1.5, more: 1.25 });
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const geo = (xs) => Math.exp(xs.reduce((s, x) => s + Math.log(x), 0) / xs.length);
-const levelIndex = (l) => Math.max(0, EFFORT_LEVELS.indexOf(l));
 const sizesOf = (ids, sizes) => Object.fromEntries([...ids].map((id) => [id, sizes[id] ?? 1]));
 
 /**
@@ -98,8 +67,6 @@ export function sweepBuilds(domains, family) {
   return 1 + m.base * other + m.talent * (Math.sqrt(talents + 1) - 1);
 }
 
-/** Blocks with a choice (more than one value): what the later phases' cost grows with. */
-const choiceBlocks = (domains) => Math.max(1, Object.values(domains ?? {}).filter((n) => n > 1).length);
 
 const enabledIds = (space) => BLOCKS.filter((id) => ['stones', 'relicUpgrades', 'relicPurchases', 'boardAllocation', 'awakening'].includes(id) ? space?.[id] === true : space?.[id] !== false).sort().join(',');
 
@@ -282,13 +249,6 @@ function banded({ unit, lanes, g, fpb, share, later }) {
   };
 }
 
-/** Fights-per-build scale from Effort level `from` to `to`: [lo, likely, hi]. */
-export function effortScale(from, to) {
-  const d = levelIndex(to) - levelIndex(from);
-  if (d === 0) return [1, 1, 1];
-  const s = EFFORT_STEP.map((f) => f ** Math.abs(d));
-  return d > 0 ? s : [1 / s[2], 1 / s[1], 1 / s[0]];
-}
 
 /**
  * The estimate of one Optimiser run. Push runs the same search at its start rung, so for Push this
@@ -302,7 +262,9 @@ export function effortScale(from, to) {
  *   builds: {lo: number, likely: number, hi: number, exact: boolean, basis: string},
  *   fights: {lo: number, likely: number, hi: number, perBuild: number, laterShare: number|null, basis: string},
  *   kind: string|null, time: {lo: number, likely: number, hi: number, rate: number, workers: number|null, source: 'observed'|'calibration', basis: string}|null,
- *   timeReason: null|'no-calibration'|'unmapped-kind', assumptions: string[]}}
+ *   timeReason: null|'no-calibration'|'unmapped-kind', assumptions: string[],
+ *   reserve: {fixed: number, ratio: number}}}  reserve: the later phases' likely fights (fixed + ratio x search
+ *   fights) a time-limited run keeps time for (costModel.js searchCutoffMs; request `effort.reserve`)
  */
 export function estimateRun(request, { calibration = null, history = [] } = {}) {
   let prep;
@@ -366,6 +328,7 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
   const satFloor = (fpb) => (sat ? fpb.map((x) => Math.max(x, sat.perBuild)) : fpb);
   let band;
   let source;
+  let reserve;
   if (match) {
     const sc = (r) => effortScale(r.budget?.level, effort.level);
     const per = match.runs.map((r, i) => {
@@ -427,6 +390,8 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
         later: [0, 0, 0],
       });
     }
+    // the time budget keeps back the past runs' own later-to-search ratio (simulation.md §Time budget)
+    reserve = { fixed: 0, ratio: geo(per.map((q) => Math.max(1e-6, q.ratio))) };
     const n = match.runs.length;
     const fromDebug = match.costs.filter((c) => c.from === 'debug').length;
     source = {
@@ -445,6 +410,7 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
       share: p.share,
       later: p.later.map((x, i) => x * sc[i] * lanes * choices),
     });
+    reserve = priorReserve(family, effort.level, lanes, choices);
     source = {
       kind: 'prior', tier: null, runs: 0, scaled: effort.level !== 'quick', measured: p.measured,
       text: p.measured
@@ -489,7 +455,7 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
     basis: `About ${perBuild.toLocaleString('en-US')} fights per build tried in the search${lanes > 1 ? ` and matchup (times ${lanes} matchups)` : ''}, plus minimise and confirm (${laterShare < 0.01 ? 'under 1%' : `about ${Math.round(laterShare * 100)}%`} of the total).`,
   };
   if (source.scaled) assumptions.push(`Scaled from ${source.kind === 'history' ? 'runs at another Effort' : 'Quick'}: each Effort level costs about 2 to 4 times the fights per build (n0 doubles, δ halves).`);
-  if (effort.budgetMs) assumptions.push(`The time limit stops the search after about ${fmtSeconds(effort.budgetMs * SEARCH_SHARE)}, so the run may try fewer builds than this. Minimise and confirm always finish, so the run can take longer than the limit. The numbers above are for an uncut search.`);
+  if (effort.budgetMs) assumptions.push(`The time limit stops the search early enough to leave time for minimise and confirm (after ${fmtSeconds(effort.budgetMs * SEARCH_SHARE.min)} to ${fmtSeconds(effort.budgetMs * SEARCH_SHARE.max)}, from the speed the run measures), so the run may try fewer builds than this. Minimise and confirm always finish, so the run can still take a little longer than the limit. The numbers above are for an uncut search.`);
   else assumptions.push('No run is capped, so an unlucky run with many close builds can go past the range.');
   if (already) {
     // the check alone, unless this run's seed lands it short of the target: then the full search above is the top
@@ -508,7 +474,7 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
 
   return {
     ok: true, strategy, push: request?.objective?.kind === 'push', family, blocks, starts, lanes,
-    source, builds, fights, kind, time, timeReason, assumptions,
+    source, builds, fights, kind, time, timeReason, assumptions, reserve,
   };
 }
 

@@ -41,6 +41,22 @@ describe('optimize: time budget (simulation.md §Time budget)', { timeout: 12000
     for (const v of [undefined, null, 0, -5, NaN, Infinity, '30000']) expect(resolveEffort({ level: 'quick', budgetMs: v }, { deltaKind: 'relative' }).budgetMs).toBeNull();
   });
 
+  it('resolveEffort keeps a valid reserve only with a budget', () => {
+    const r = { fixed: 100, ratio: 0.2 };
+    expect(resolveEffort({ level: 'quick', budgetMs: 30000, reserve: r }, { deltaKind: 'relative' }).reserve).toEqual(r);
+    expect(resolveEffort({ level: 'quick', reserve: r }, { deltaKind: 'relative' }).reserve).toBeNull();
+    for (const bad of [null, { fixed: -1, ratio: 0 }, { fixed: 0, ratio: NaN }, { fixed: 1 }]) {
+      expect(resolveEffort({ level: 'quick', budgetMs: 30000, reserve: bad }, { deltaKind: 'relative' }).reserve).toBeNull();
+    }
+  });
+
+  it('the reserve is a scheduling hint: it is not echoed and does not change an uncut run', async () => {
+    const long = await optimize({ ...req, effort: { ...TINY, budgetMs: 3_600_000 } });
+    const hinted = await optimize({ ...req, effort: { ...TINY, budgetMs: 3_600_000, reserve: { fixed: 1e9, ratio: 5 } } });
+    expect(hinted.request.effort).not.toHaveProperty('reserve');
+    expect(timeless(hinted)).toEqual(timeless(long));
+  });
+
   it('a spent budget stops the search after its first race; the rows are still confirmed and the stop is said', async () => {
     const free = await optimize(req);
     const cut = await optimize({ ...req, effort: { ...TINY, budgetMs: 1 } });
@@ -365,6 +381,22 @@ describe('cancel and resume', { timeout: 120000 }, () => {
     const last = seen.at(-1);
     expect(last.phases.map((p) => p.id)).toEqual(['screen', 'search', 'minimise', 'confirm', 'attribute']);
     expect(last.counts.fights).toBeGreaterThan(0);
+  });
+
+  it('progress carries a live best-so-far read from held search fights, never worse than the current build', async () => {
+    const seen = [];
+    const watched = await optimize(req, { onProgress: (p) => seen.push(p) });
+    // the readout draws nothing: the result is the same without anyone watching
+    expect(timeless(watched)).toEqual(timeless(await optimize(req)));
+    const bests = seen.map((p) => p.best).filter(Boolean);
+    expect(bests.length).toBeGreaterThan(0);
+    // the first is the current build, measured in the screen
+    expect(bests[0]).toMatchObject({ isBaseline: true, unit: 'dps', higherIsBetter: true });
+    expect(bests[0].est).toBe(bests[0].baseEst);
+    const final = bests.at(-1);
+    expect(Number.isFinite(final.est)).toBe(true);
+    expect(final.n).toBeGreaterThanOrEqual(TINY.n0);
+    if (!final.isBaseline) expect(final.est).toBeGreaterThan(0);
   });
 });
 
