@@ -18,27 +18,37 @@ describe('Pet Core tiers (pet-cores.md §3)', () => {
     expect(coreTierStatMultiplier(6)).toBeCloseTo(29.15, 10);
     expect(coreTierStatMultiplier(8)).toBeCloseTo(35.2715, 10);
   });
-  it('altar XP multiplier follows the version 2 table, then x1.1', () => {
-    expect([1, 2, 3, 4].map(coreAltarTierXpMultiplier)).toEqual([0.67, 1.4, 6.86, 13.82]);
-    expect(coreAltarTierXpMultiplier(5)).toBeCloseTo(15.202, 10);
+  it('altar XP multiplier follows the save table version, then x1.1', () => {
+    expect([1, 2, 3, 4, 5].map((t) => coreAltarTierXpMultiplier(t))).toEqual([0.65, 1.6, 9.17, 17.51, 18.61]);
+    expect(coreAltarTierXpMultiplier(6)).toBeCloseTo(20.471, 10);
+    expect([1, 2, 3, 4].map((t) => coreAltarTierXpMultiplier(t, 2))).toEqual([0.67, 1.4, 6.86, 13.82]);
+    expect(coreAltarTierXpMultiplier(5, 2)).toBeCloseTo(15.202, 10);
+    expect([1, 2, 3, 4].map((t) => coreAltarTierXpMultiplier(t, 1))).toEqual([0.67, 1.4, 5.2, 8.6]);
+    expect(coreAltarTierXpMultiplier(3, 99)).toBe(9.17); // unknown version reads the current table
   });
 });
 
 describe('Core Altar (pet-cores.md §4)', () => {
   it('scales the V1 tier-1 need', () => {
-    expect(coreAltarXpRequired(1, 1)).toBe(117);
-    expect(coreAltarXpRequired(49, 1)).toBe(5552);
+    expect(coreAltarXpRequired(1, 1, 2)).toBe(117);
+    expect(coreAltarXpRequired(49, 1, 2)).toBe(5552);
+    expect(coreAltarXpRequired(1, 1)).toBe(114);
     expect(coreAltarXpRequired(50, 1)).toBe(Infinity);
   });
   it('total XP 1 -> 50 matches the derived table', () => {
-    const total = (tier) => Array.from({ length: 49 }, (_, i) => coreAltarXpRequired(i + 1, tier)).reduce((a, b) => a + b, 0);
-    expect([1, 2, 3, 4, 5].map(total)).toEqual([87545, 182928, 896351, 1805766, 1986340]);
+    const total = (tier, ver) => Array.from({ length: 49 }, (_, i) => coreAltarXpRequired(i + 1, tier, ver)).reduce((a, b) => a + b, 0);
+    expect([1, 2, 3, 4, 5].map((t) => total(t, 2))).toEqual([87545, 182928, 896351, 1805766, 1986340]);
   });
   it('walks levels from cumulative XP', () => {
-    expect(coreAltarProgress(0, 1)).toEqual({ level: 1, xp: 0, need: 117 });
-    expect(coreAltarProgress(117 + 10, 1).level).toBe(2);
-    expect(coreAltarProgress(87545, 1)).toEqual({ level: 50, xp: 0, need: Infinity });
-    expect(coreAltarProgress(87544, 1).level).toBe(49);
+    expect(coreAltarProgress(0, 1, 2)).toEqual({ level: 1, xp: 0, need: 117 });
+    expect(coreAltarProgress(117 + 10, 1, 2).level).toBe(2);
+    expect(coreAltarProgress(87545, 1, 2)).toEqual({ level: 50, xp: 0, need: Infinity });
+    expect(coreAltarProgress(87544, 1, 2).level).toBe(49);
+  });
+  it('the same level reads from different XP on each table version', () => {
+    // 1,000,000 XP at Tier 3: past level 50 on the v1 table, short of it on v2 and v3
+    expect(coreAltarProgress(1e6, 3, 1).level).toBe(50);
+    expect(coreAltarProgress(1e6, 3, 3).level).toBeLessThan(coreAltarProgress(1e6, 3, 2).level);
   });
 });
 

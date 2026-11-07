@@ -45,6 +45,8 @@ export function celestialLogRolls(celestialResult) {
 
 const keyOf = (t) => `${t.type}|${t.playerIndex}|${t.addId}`;
 const HP_EPS = 0.01;
+/** Per-player stack arrays (2.9.2); a row that has them is compared on them instead of the scalars. */
+const STACK_ARRAYS = [['playerBulwarkStacks', 'bulwarkStacks'], ['playerSunderStacks', 'sunderStacks']];
 const sameNum = (a, b) => (a === b) || (typeof a === 'number' && typeof b === 'number' && Math.abs(a - b) < HP_EPS);
 
 /** The compared fields of a matched event pair, with how each is compared. */
@@ -78,6 +80,7 @@ const FIELDS = [
  * @param {'NORMAL'|'HARD'} o.difficulty
  * @param {Object} [o.tactics]
  * @param {number} [o.stackPlayerIndex]
+ * @param {Array<boolean|null>} [o.stackSigils]  per-slot stack sigils (simulateCelestial)
  * @param {Array<{timestamp: number, reason: string}>} [o.resync]  listed unexplained ticks: after each,
  *   the engine's player HP is reset to the logged value so one known miss does not cascade
  * @param {number} [o.maxMismatches=40]
@@ -94,6 +97,7 @@ export function celestialReplay(fight, o) {
     level: cr.highestLevel,
     tankIndex: cr.tankIndex,
     stackPlayerIndex: o.stackPlayerIndex,
+    stackSigils: o.stackSigils,
     tactics: o.tactics,
     rolls: celestialLogRolls(cr),
     log: true,
@@ -130,6 +134,7 @@ export function compareCelestialLogs(logRows, engineRows, { maxMismatches = 40, 
   const L = byTimestamp(logRows);
   const E = byTimestamp(engineRows);
   const fields = { hp: { checked: 0, failed: 0 }, chronoFlux: { checked: 0, failed: 0 } };
+  for (const [f] of STACK_ARRAYS) fields[f] = { checked: 0, failed: 0 };
   for (const [f] of FIELDS) fields[f] = { checked: 0, failed: 0 };
   const events = { logged: logRows.length, matched: 0, missing: 0, extra: 0 };
   const mismatches = [];
@@ -155,8 +160,9 @@ export function compareCelestialLogs(logRows, engineRows, { maxMismatches = 40, 
       events.matched += 1;
       const e = er[j];
       let ok = true;
+      const skip = new Set(STACK_ARRAYS.filter(([arr]) => Array.isArray(t[arr])).map(([, scalar]) => scalar));
       for (const [f, eq] of FIELDS) {
-        if (!(f in t)) continue;
+        if (!(f in t) || skip.has(f)) continue;
         fields[f].checked += 1;
         if (!eq(t[f], e[f])) {
           fields[f].failed += 1;
@@ -164,14 +170,18 @@ export function compareCelestialLogs(logRows, engineRows, { maxMismatches = 40, 
           miss({ timestamp: ts, kind: f, type: t.type, playerIndex: t.playerIndex, addId: t.addId, expected: t[f], actual: e[f] });
         }
       }
-      for (const [f, rec] of [['playerHpsAfter', fields.hp], ['chronoFlux', fields.chronoFlux]]) {
+      // a slot the engine does not have (the client pads its tuples) counts as 0 stacks
+      const arrays = [['playerHpsAfter', fields.hp, null], ['chronoFlux', fields.chronoFlux, null],
+        ...STACK_ARRAYS.map(([f]) => [f, fields[f], 0])];
+      for (const [f, rec, pad] of arrays) {
         if (!Array.isArray(t[f])) continue;
         t[f].forEach((v, i) => {
           rec.checked += 1;
-          if (!sameNum(v, e[f]?.[i])) {
+          const got = e[f]?.[i] ?? pad;
+          if (!sameNum(v, got)) {
             rec.failed += 1;
             ok = false;
-            miss({ timestamp: ts, kind: `${f}[${i}]`, type: t.type, playerIndex: t.playerIndex, addId: t.addId, expected: v, actual: e[f]?.[i] });
+            miss({ timestamp: ts, kind: `${f}[${i}]`, type: t.type, playerIndex: t.playerIndex, addId: t.addId, expected: v, actual: got });
           }
         });
       }

@@ -289,6 +289,14 @@ describe('gameProfileToCharacter', () => {
     expect(v2.presets[0].petId).toBe('core-1');
   });
 
+  it('pets (2.9.2+): the altar level reads totalXp with the save xpTableVersion (missing = 1)', () => {
+    const f = fixture();
+    const at = (altar) => { f.petV2 = { cores: [], altar, activeCoreId: null }; return normaliseCharacter(gameProfileToCharacter(f)).pets.altar.level; };
+    expect(at({ totalXp: 400000, tier: 2, xpTableVersion: 3 })).toBe(coreAltarProgress(400000, 2, 3).level);
+    expect(at({ totalXp: 400000, tier: 3 })).toBe(coreAltarProgress(400000, 3, 1).level);
+    expect(at({ totalXp: 400000, tier: 3, xpTableVersion: 3 })).toBeLessThan(at({ totalXp: 400000, tier: 3, xpTableVersion: 2 }));
+  });
+
   it('pets (2.9.1+): a preset without petV2CoreId follows the active core; its V1 petId is stale', () => {
     const f = fixture();
     f.petV2 = {

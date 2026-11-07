@@ -64,8 +64,18 @@ export function tierTableValue(table, growth, tier) {
   return t <= table.length ? table[t - 1] : table[table.length - 1] * growth ** (t - table.length);
 }
 
-// port of coreAltarTierXpMultiplier L1064988 (current XP table version only)
-export const coreAltarTierXpMultiplier = (tier) => tierTableValue(CORE_ALTAR_TIER_XP_MULT.table, CORE_ALTAR_TIER_XP_MULT.growth, tier);
+export const CORE_ALTAR_XP_TABLE_VERSION = CORE_ALTAR_TIER_XP_MULT.currentVersion;
+
+// The save's `xpTableVersion`: missing means 1, unknown means current (2.9.2 currentCoreAltar L1078197,
+// coreAltarTierXpMultiplier L1064269; Game/pet-cores.md §3).
+export function coreAltarXpTableVersion(v) {
+  if (v === undefined || v === null) return 1;
+  return CORE_ALTAR_TIER_XP_MULT.tables[v] ? Number(v) : CORE_ALTAR_XP_TABLE_VERSION;
+}
+
+// port of coreAltarTierXpMultiplier 2.9.2 L1064269
+export const coreAltarTierXpMultiplier = (tier, ver = CORE_ALTAR_XP_TABLE_VERSION) =>
+  tierTableValue(CORE_ALTAR_TIER_XP_MULT.tables[coreAltarXpTableVersion(ver)], CORE_ALTAR_TIER_XP_MULT.growth, tier);
 
 // V1 altarXpRequired(level, tier 1) L1063380, which the core altar scales
 function v1TierOneNeed(level) {
@@ -74,25 +84,26 @@ function v1TierOneNeed(level) {
   return Math.floor(base);
 }
 
-// port of coreAltarXpRequired L1078716: XP to go from `level` to level + 1
-export function coreAltarXpRequired(level, tier) {
+// port of coreAltarXpRequired 2.9.2 L1078007: XP to go from `level` to level + 1
+export function coreAltarXpRequired(level, tier, ver = CORE_ALTAR_XP_TABLE_VERSION) {
   if (level >= CORE_MAX_ALTAR_LEVEL) return Infinity;
-  return Math.round(v1TierOneNeed(level) * coreAltarTierXpMultiplier(tier));
+  return Math.round(v1TierOneNeed(level) * coreAltarTierXpMultiplier(tier, ver));
 }
 
 /**
- * port of getCoreAltarProgress L1078805: level 1..50 from cumulative altar XP at a tier.
+ * port of getCoreAltarProgress: level 1..50 from cumulative altar XP at a tier, read with the XP table
+ * the save was written under (`ver`). The level is the same on every table: the game's migration keeps it.
  * @returns {{level:number, xp:number, need:number}}
  */
-export function coreAltarProgress(totalXp, tier) {
+export function coreAltarProgress(totalXp, tier, ver = CORE_ALTAR_XP_TABLE_VERSION) {
   let xp = Number.isFinite(totalXp) ? Math.max(0, Math.floor(totalXp)) : 0;
   let level = 1;
   while (level < CORE_MAX_ALTAR_LEVEL) {
-    const need = coreAltarXpRequired(level, tier);
+    const need = coreAltarXpRequired(level, tier, ver);
     if (xp < need) break;
     xp -= need;
     level += 1;
   }
   if (level >= CORE_MAX_ALTAR_LEVEL) xp = 0;
-  return { level, xp, need: coreAltarXpRequired(level, tier) };
+  return { level, xp, need: coreAltarXpRequired(level, tier, ver) };
 }
