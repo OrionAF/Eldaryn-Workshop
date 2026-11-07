@@ -33,6 +33,19 @@
   function describe(t, rank) {
     return t.description.replace('{value}', valueAt(t, rank));
   }
+  /**
+   * The description split around its {value}, so a tile shows one sentence whatever the rank:
+   * "Increases Attack by 6% -> 8%" (the change a point buys), the plain sentence at max rank, and the
+   * rank-1 value at rank 0. `unit` is a "%" that follows {value}, repeated after the current value.
+   */
+  function parts(t) {
+    const at = t.description.indexOf('{value}');
+    if (at < 0) return null;
+    const before = t.description.slice(0, at);
+    const after = t.description.slice(at + '{value}'.length);
+    const unit = after.startsWith('%') ? '%' : '';
+    return { before, unit, after: after.slice(unit.length) };
+  }
 </script>
 
 {#each tiers as tier, i (tier.tier)}
@@ -52,6 +65,7 @@
         {@const rank = rankOf(talent)}
         {@const art = talentImage(specKey, talent.name)}
         {@const noPoints = unlocked && rank < talent.maxRank && pointsLeft <= 0}
+        {@const p = parts(talent)}
         <div class="talent-tile" class:locked={!unlocked} class:maxed={rank >= talent.maxRank} data-talent={talent.id}>
           {#if art}
             <img class="talent-art" src={art} alt="" loading="lazy" />
@@ -82,10 +96,17 @@
               onclick={() => rosterStore.setTalentSetRank(talentSetIndex, talent.id, rank + 1)}>+</Button
             >
           </div>
-          <p class="talent-value">
-            {#if rank > 0}<strong>{describe(talent, rank)}</strong>{/if}
-            {#if rank > 0 && rank < talent.maxRank}&middot;{/if}
-            {#if rank < talent.maxRank}<span class="next">NEXT: {describe(talent, rank + 1)}</span>{/if}
+          <!-- Always one sentence in a two-line box: the tile is the same height at every rank. -->
+          <p class="talent-value" class:unlearned={rank === 0} title={rank < talent.maxRank ? `Next rank: ${describe(talent, rank + 1)}` : 'Max rank'}>
+            {#if !p}
+              {describe(talent, Math.max(1, rank))}
+            {:else if rank === 0}
+              <span class="next-tag">Rank 1</span> {p.before}<span class="v-next">{valueAt(talent, 1)}{p.unit}</span>{p.after}
+            {:else if rank >= talent.maxRank}
+              {p.before}<strong class="v-now">{valueAt(talent, rank)}{p.unit}</strong>{p.after}
+            {:else}
+              {p.before}<strong class="v-now">{valueAt(talent, rank)}{p.unit}</strong><span class="arrow" aria-hidden="true">→</span><span class="visually-hidden">, next rank </span><span class="v-next">{valueAt(talent, rank + 1)}{p.unit}</span>{p.after}
+            {/if}
           </p>
         </div>
       {/each}
@@ -119,6 +140,7 @@
     grid-template-columns: 40px minmax(0, 1fr) auto auto;
     grid-template-areas: 'art main rank controls' 'art value value value';
     align-items: center;
+    align-content: start;
     gap: var(--sp-1) var(--sp-3);
     padding: var(--sp-2) var(--sp-3);
     min-width: 0;
@@ -144,7 +166,28 @@
   .talent-rank-badge { grid-area: rank; font-size: var(--fs-12); color: var(--text-muted); white-space: nowrap; }
   .talent-controls { grid-area: controls; display: flex; gap: var(--sp-1); }
   /* Prose in the UI face; only the figures elsewhere are mono. */
-  .talent-value { grid-area: value; margin: 0; font-family: var(--font-ui); font-variant-numeric: tabular-nums; font-size: var(--fs-12); color: var(--text-muted); }
-  .talent-value strong { color: var(--brass-200); }
+  /* Two lines reserved: a long sentence wraps inside the box instead of growing the tile. */
+  .talent-value {
+    grid-area: value;
+    align-self: start;
+    margin: 0;
+    min-height: calc(2 * var(--lh-body) * var(--fs-12));
+    font-family: var(--font-ui);
+    font-variant-numeric: tabular-nums;
+    font-size: var(--fs-12);
+    line-height: var(--lh-body);
+    color: var(--text-soft);
+  }
+  .talent-value.unlearned { color: var(--text-muted); }
+  .v-now { color: var(--brass-200); font-weight: var(--fw-bold); }
+  .v-next { color: var(--text-ink); font-weight: var(--fw-bold); }
+  .arrow { margin: 0 0.25em; color: var(--text-muted); }
+  .next-tag {
+    font-size: var(--fs-11);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
 </style>

@@ -100,7 +100,6 @@
             <tr>
               <th scope="col">Skill</th>
               <th scope="col">Level</th>
-              <th scope="col" class="r">Cap</th>
               <th scope="col" class="r">Effect now → next</th>
               <th scope="col" class="r">Next gems</th>
               <th scope="col" class="r">Gems to max</th>
@@ -119,7 +118,6 @@
                     <span class="num" data-testid="level-{r.skill.id}">{r.lvl} / {r.cap}</span>
                   </span>
                 </td>
-                <td class="r num">{r.cap}</td>
                 <td class="r num">{r.now ?? '-'} → {r.next ?? 'max'}</td>
                 <td class="r num">{r.cost != null ? formatFlat(r.cost) : '-'}</td>
                 <td class="r num">{r.toMax > 0 ? formatFlat(r.toMax) : '-'}</td>
@@ -128,7 +126,7 @@
           </tbody>
           <tfoot>
             <tr>
-              <th scope="row" colspan="5">Total gems to max everything (from level 1)</th>
+              <th scope="row" colspan="4">Total gems to max everything (from level 1)</th>
               <td class="r num" data-testid="gems-total">{formatFlat(totalToMax)}</td>
             </tr>
           </tfoot>
@@ -197,19 +195,22 @@
   .note { margin: 0 0 var(--sp-3); color: var(--text-soft); font-size: var(--fs-13); }
   .bulk { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-3); }
   .muted { color: var(--text-muted); font-weight: var(--fw-regular, 400); }
-  /* On a phone the table scrolls inside its panel instead of being clipped; cells stay on one line so the Cap
-     column and a level like "8 / 10" are never cut or wrapped. */
+  /* On a phone the table scrolls inside its panel instead of being clipped; cells stay on one line so a level
+     like "8 / 10" (which also carries the cap) is never cut or wrapped. */
   .table-wrap { overflow-x: auto; max-width: 100%; }
-  table { width: 100%; min-width: 44rem; border-collapse: collapse; font-size: var(--fs-13); }
-  th, td { padding: var(--sp-2) var(--sp-3); text-align: left; border-bottom: 1px solid var(--line-rule); vertical-align: middle; white-space: nowrap; }
+  /* as wide as its columns (a skill's numbers stay near its name), never narrower than 44rem */
+  table { width: auto; min-width: 44rem; border-collapse: collapse; font-size: var(--fs-13); }
+  th, td { padding: var(--sp-2) var(--sp-4); text-align: left; border-bottom: 1px solid var(--line-rule); vertical-align: middle; white-space: nowrap; }
   thead th {
     color: var(--text-soft);
     font-size: var(--fs-11);
     letter-spacing: var(--track-label);
     text-transform: uppercase;
   }
-  tbody th { font-weight: var(--fw-bold, 700); }
-  tfoot th { color: var(--text-soft); }
+  /* row heads are skill names, not the global th micro label */
+  tbody th, tfoot th { font-family: var(--font-ui); font-size: var(--fs-13); letter-spacing: normal; text-transform: none; }
+  tbody th { font-weight: var(--fw-bold, 700); color: var(--text-ink); }
+  tfoot th { color: var(--text-soft); font-weight: var(--fw-regular); }
   .r { text-align: right; }
   .level-cell { display: inline-flex; align-items: center; gap: var(--sp-2); }
   .chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }

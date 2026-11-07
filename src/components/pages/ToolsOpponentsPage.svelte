@@ -122,12 +122,19 @@
     </Panel>
 
     <Panel title="Add an opponent" scope="tool">
-      <Select label="New opponent spec" options={specOptions} bind:value={newSpec} />
-      <Button variant="primary" disabled={full} reason={full ? `At most ${MAX_OPPONENTS} saved opponents.` : ''} onclick={add}>+ New opponent</Button>
-      <hr />
-      <Select label="Clone my preset" options={presetOptions} value={clonePreset} onchange={(v) => { clonePick = v; cloneSpecPick = null; }} />
-      <Select label="as spec" options={specOptions} value={cloneSpec} onchange={(v) => (cloneSpecPick = v)} />
-      <Button variant="secondary" disabled={full} reason={full ? `At most ${MAX_OPPONENTS} saved opponents.` : ''} onclick={clone}>Clone</Button>
+      <div class="add">
+        <div class="add-grid">
+          <div class="add-group">
+            <Select label="New opponent spec" options={specOptions} bind:value={newSpec} />
+            <Button variant="primary" disabled={full} reason={full ? `At most ${MAX_OPPONENTS} saved opponents.` : ''} onclick={add}>+ New opponent</Button>
+          </div>
+          <div class="add-group clone">
+            <Select label="Clone my preset" options={presetOptions} value={clonePreset} onchange={(v) => { clonePick = v; cloneSpecPick = null; }} />
+            <Select label="as spec" options={specOptions} value={cloneSpec} onchange={(v) => (cloneSpecPick = v)} />
+            <Button variant="secondary" disabled={full} reason={full ? `At most ${MAX_OPPONENTS} saved opponents.` : ''} onclick={clone}>Clone</Button>
+          </div>
+        </div>
+      </div>
     </Panel>
 
     {#if selected}
@@ -165,6 +172,17 @@
   @media (max-width: 1100px) { .panes { grid-template-columns: minmax(0, 1fr); } }
   .stack { display: grid; gap: var(--sp-4); min-width: 0; }
   .editor { min-width: 0; }
+  /* New | Clone: one above the other in the side column, side by side when the panel spans the page */
+  .add { container-type: inline-size; }
+  .add-grid { display: grid; gap: var(--sp-3); }
+  /* the button closes its group, so side by side + New opponent and Clone share one line */
+  .add-group { display: flex; flex-direction: column; gap: var(--sp-3); }
+  .add-group > :global(:last-child) { margin-top: auto; }
+  .add-group.clone { padding-top: var(--sp-3); border-top: 1px solid var(--line-hairline); }
+  @container (min-width: 36rem) {
+    .add-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-8); }
+    .add-group.clone { padding-top: 0; border-top: 0; padding-left: calc(var(--sp-8) / 2); border-left: 1px solid var(--line-hairline); margin-left: calc(var(--sp-8) / -2); }
+  }
   .count { font-family: var(--font-data); font-size: var(--fs-12); color: var(--text-muted); }
   .tools { display: grid; gap: var(--sp-2); margin-bottom: var(--sp-3); }
   .field { display: grid; gap: 4px; min-width: 0; }
@@ -203,5 +221,4 @@
   .state { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--text-muted); font-size: var(--fs-12); }
   .state.warn { color: var(--verdict-warn, var(--text-soft)); }
   .note { margin: 0; font-size: var(--fs-13); color: var(--text-soft); }
-  hr { border: 0; border-top: 1px solid var(--line-hairline); width: 100%; margin: 0; }
 </style>

@@ -14,13 +14,14 @@
   import { sigilSpellBlocks } from './sigilView.js';
 
   // `equip` is the "Equip in" menu (sigilView.equipItems); `onEquip(presetId)` toggles the sigil in that preset.
-  let { def, level = 0, tier = 1, spec = null, usedBy = [], note = '', onLevel = () => {}, equip = [], onEquip = () => {} } = $props();
+  // `showEffects` is the page's one Effects toggle: every card shows or hides its effects together, so a
+  // row of cards never turns ragged because one card was opened.
+  let { def, level = 0, tier = 1, spec = null, usedBy = [], note = '', onLevel = () => {}, equip = [], onEquip = () => {}, showEffects = true } = $props();
 
   const owned = $derived(level > 0);
   const ancient = $derived(def.rarity === 'Ancient');
   // Ancients are unique and Form sigils are granted, not forged: both stay at level 1 (model/sigils.js clampSigilLevel).
   const fixed = $derived(ancient || isFormSigil(def.species) || isGrantedSigil(def.species));
-  let details = $state(false);
   let menuOpen = $state(false);
   // Show level-1 numbers for a sigil that is not owned yet, so the card still reads as a catalogue.
   const shownLevel = $derived(Math.max(1, level));
@@ -28,6 +29,9 @@
   const hp = $derived(getSigilBonusHp(def, shownLevel, tier));
   const blocks = $derived(sigilSpellBlocks(def.species, shownLevel, spec));
   const art = $derived(sigilImage(def.class, def.id));
+  // 'DAMAGE' -> 'Damage', 'BEAR' -> 'Bear form'
+  const typeLabel = (t) => (t ? t.charAt(0) + t.slice(1).toLowerCase() : '');
+  const formLabel = (f) => `${typeLabel(f)} form`;
 </script>
 
 <div class="sigil-card rarity-card {rarityClass(def.rarity)}" class:unowned={!owned} data-species={def.species}>
@@ -36,6 +40,8 @@
     <img class="sigil-art" src={art} alt="" loading="lazy" />
   {/if}
 
+  <!-- the same height for a stepper and an owned toggle, so the stats line sits level across the row -->
+  <div class="level-slot">
   {#if fixed}
     <label class="owned-toggle">
       <input type="checkbox" checked={owned} disabled={isGrantedSigil(def.species)} aria-label="{def.name} owned" onchange={(e) => onLevel(def.species, e.currentTarget.checked ? 1 : 0)} />
@@ -58,6 +64,7 @@
       {#if !owned}<span class="level-caption">not owned</span>{/if}
     </div>
   {/if}
+  </div>
 
   <p class="base-stats">
     Attack <span class="stat-num" data-testid="atk">{formatFlat(attack)}</span>
@@ -65,21 +72,19 @@
     Health <span class="stat-num" data-testid="hp">{formatFlat(hp)}</span>
   </p>
 
-  <button type="button" class="details-toggle" aria-expanded={details} onclick={() => (details = !details)}>{details ? 'Hide details' : 'Details'}</button>
-
-  {#if details}
+  {#if showEffects}
   <div class="effects">
     {#each blocks as block (block.form ?? 'base')}
       {#if block.rows.length || block.title}
         <div class="effect">
-          <span class="effect-title">{block.type}{block.form ? ` · ${block.form}` : ''}{block.title ? ` · ${block.title}` : ''}</span>
+          <span class="effect-title">{typeLabel(block.type)}{block.form ? ` · ${formLabel(block.form)}` : ''}{block.title ? ` · ${block.title}` : ''}</span>
           {#each block.rows as row}
             <span class="stat-row">
               <span class="stat-name">{row.label}</span>
               <span class="derived-stat">{row.value}</span>
             </span>
           {/each}
-          {#if !block.rows.length}
+          {#if !block.rows.length || block.constant}
             <span class="timing">The same at every level</span>
           {/if}
         </div>
@@ -118,20 +123,37 @@
   .sigil-card.unowned { opacity: 0.6; }
   .rarity-title { margin: 0; }
   .sigil-art { display: block; width: 64px; height: 64px; margin: 0 auto; object-fit: contain; border-radius: var(--r-1); }
-  .level-row { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); }
-  .stepper { display: flex; align-items: center; gap: var(--sp-1); }
+  .level-slot { display: flex; align-items: center; justify-content: center; min-height: var(--control-h); }
+  .level-row { position: relative; display: flex; align-items: center; justify-content: center; }
+  /* one bordered group, like ui/Stepper */
+  .stepper { display: inline-flex; align-items: stretch; height: var(--control-h); border: 1px solid var(--line-control); border-radius: var(--r-1); background: var(--surface-3); }
   .stepper button {
-    width: 26px;
-    padding: 2px 0;
-    font-size: var(--fs-13);
-    border-radius: var(--r-1);
-    background: var(--surface-3);
-    border: 1px solid var(--line-control);
-    color: var(--text-ink);
+    display: grid;
+    place-items: center;
+    width: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--text-soft);
+    font-size: var(--fs-16);
+    line-height: 1;
   }
-  .stepper button:hover:not(:disabled) { border-color: var(--brass-400); }
-  .level-input { width: 42px; text-align: center; padding: var(--sp-1) 2px; }
-  .level-caption { font-size: var(--fs-11); color: var(--text-muted); }
+  .stepper button:hover:not(:disabled) { color: var(--text-ink); background: var(--surface-4); }
+  .stepper button:disabled { color: var(--text-disabled); }
+  .level-input {
+    width: 44px;
+    height: 100%;
+    padding: 0 2px;
+    text-align: center;
+    border: 0;
+    border-left: 1px solid var(--line-rule);
+    border-right: 1px solid var(--line-rule);
+    border-radius: 0;
+    background: transparent;
+  }
+  /* beside the stepper without pushing it off centre */
+  .level-caption { position: absolute; left: calc(100% + var(--sp-2)); white-space: nowrap; font-size: var(--fs-11); color: var(--text-muted); }
   .owned-toggle { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); font-size: var(--fs-12); color: var(--text-soft); }
   .base-stats { margin: 0; text-align: center; font-size: var(--fs-12); color: var(--text-soft); }
   .stat-num { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--text-ink); }
@@ -163,7 +185,7 @@
     flex-wrap: wrap;
   }
   .used-by { color: var(--text-muted); }
-  .details-toggle, .equip-btn {
+  .equip-btn {
     background: transparent;
     border: 1px solid var(--line-control);
     color: var(--text-soft);
@@ -172,8 +194,7 @@
     font-size: var(--fs-12);
     cursor: pointer;
   }
-  .details-toggle:hover, .equip-btn:hover { border-color: var(--line-control-hover); color: var(--text-ink); }
-  .details-toggle { align-self: flex-start; }
+  .equip-btn:hover { border-color: var(--line-control-hover); color: var(--text-ink); }
   .equip-wrap { position: relative; }
   .equip-menu { position: absolute; right: 0; bottom: 100%; z-index: 5; }
 </style>

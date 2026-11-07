@@ -59,10 +59,12 @@
   {#if space.relicUpgrades || space.relicPurchases}
     <div class="group" data-testid="relic-budget">
       <span class="cap-label">Medal spending limits</span>
-      {#each MEDAL_TIERS as tier (tier)}
-        <NumberField label={`${tier[0].toUpperCase() + tier.slice(1)} medal budget`} value={relicBudget[tier]} min={0} max={Number.MAX_SAFE_INTEGER} flat
-          onchange={(value) => (relicBudget = normaliseRelicBudget({ ...relicBudget, [tier]: Math.floor(value) }))} />
-      {/each}
+      <div class="budgets">
+        {#each MEDAL_TIERS as tier (tier)}
+          <NumberField label={`${tier[0].toUpperCase() + tier.slice(1)} medal budget`} value={relicBudget[tier]} min={0} max={Number.MAX_SAFE_INTEGER} flat
+            onchange={(value) => (relicBudget = normaliseRelicBudget({ ...relicBudget, [tier]: Math.floor(value) }))} />
+        {/each}
+      </div>
       <p class="note">Costs are catalogue estimates; check prices in-game. Purchases assume level 1. No medal exchanges or extra slots are included. Apply updates your local build only.</p>
     </div>
   {/if}
@@ -75,6 +77,9 @@
   .count { flex: 1; font-size: var(--fs-12); color: var(--text-soft); }
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--text-ink); }
   .group { display: grid; gap: 4px; }
+  /* number fields sized to a number: the board budget alone, the medal budgets two to a row */
+  .group > :global(.field:has(.input.num)) { width: min(12rem, 100%); }
+  .budgets { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: var(--sp-2) var(--sp-3); }
   .cap-label { font-size: var(--fs-11); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-muted); }
   .chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
   .link {

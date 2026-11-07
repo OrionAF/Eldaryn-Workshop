@@ -37,12 +37,12 @@
   }
 </script>
 
-<div class="add-form">
-  <Select label="Tier" options={tierOptions} bind:value={tier} />
-  <div class="grow"><Select label="Glyph" options={typeOptions} value={selected} onchange={(v) => (glyphType = v)} /></div>
-  <Select label="Rarity" options={rarityOptions} value={rarity} disabled={rarities.length < 2} onchange={(v) => (rarityPick = v)} />
-  <Checkbox bind:checked={sealed} label="Sealed" />
-  <Button variant="primary" disabled={!selected} onclick={add}>Add to inventory</Button>
+<div class="add-form field-row">
+  <div class="tier"><Select label="Tier" options={tierOptions} bind:value={tier} /></div>
+  <div class="glyph"><Select label="Glyph" options={typeOptions} value={selected} onchange={(v) => (glyphType = v)} /></div>
+  <div class="rarity"><Select label="Rarity" options={rarityOptions} value={rarity} disabled={rarities.length < 2} onchange={(v) => (rarityPick = v)} /></div>
+  <div class="control-align on-line"><Checkbox bind:checked={sealed} label="Sealed" /></div>
+  <div class="control-align"><Button variant="primary" disabled={!selected} onclick={add}>Add to inventory</Button></div>
 </div>
 
 {#if tier === 'major' && types.length === 0}
@@ -51,10 +51,6 @@
 
 <style>
   .add-form {
-    display: flex;
-    align-items: flex-end;
-    gap: var(--sp-2);
-    flex-wrap: wrap;
     padding: var(--sp-3);
     background: var(--surface-1);
     border: 1px solid var(--line-rule);
@@ -62,6 +58,10 @@
     margin-bottom: var(--sp-3);
     min-width: 0;
   }
-  .grow { flex: 1; min-width: min(180px, 100%); }
+  /* sized to their longest option (a major's "name - sigil"), not to the panel */
+  .tier { width: 7rem; }
+  .glyph { width: min(24rem, 100%); }
+  .rarity { width: 9rem; }
+  .on-line { display: flex; align-items: center; min-height: var(--control-h); }
   .hint { margin: 0 0 var(--sp-2); font-size: var(--fs-12); color: var(--text-muted); }
 </style>

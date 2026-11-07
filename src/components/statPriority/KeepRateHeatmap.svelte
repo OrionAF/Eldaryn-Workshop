@@ -102,7 +102,8 @@
   }
   .hm thead th button:hover { color: var(--text-ink); }
   .hm thead th.sel button { background: var(--ember-500); color: var(--on-ember); font-weight: var(--fw-bold); }
-  .hm tbody th { text-align: left; font-size: var(--fs-13); color: var(--text-soft); }
+  /* row heads are stat names, not the global th micro label */
+  .hm tbody th { text-align: left; font-family: var(--font-ui); font-size: var(--fs-13); letter-spacing: normal; text-transform: none; color: var(--text-soft); }
   .hm tbody th,
   .hm thead th:first-child { position: sticky; left: 0; z-index: 1; background: var(--surface-2); }
   .hm td { height: 28px; min-width: 3.25rem; text-align: center; font-size: var(--fs-12); border-radius: var(--r-1); }

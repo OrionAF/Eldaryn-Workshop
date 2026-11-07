@@ -23,6 +23,7 @@
   import NumberField from '../ui/NumberField.svelte';
   import Stepper from '../ui/Stepper.svelte';
   import Button from '../ui/Button.svelte';
+  import RangeMeter from '../ui/RangeMeter.svelte';
 
   let { realm = 'base', stones, cls = null, setKey, setLabel, selectedSlot, canSocket = true, selectedStoneId = null, onSelect } = $props();
 
@@ -158,8 +159,20 @@
     {/if}
 
     {#each selected.stats as s (s.type)}
-      <NumberField label={statLabel(s.type)} unit={unitOf(s.type)} value={Number(toDisplay(s.type, s.value))} onchange={(n) => setStatValue(s.type, n)} />
-      <span class="hint mono">{statHint(s.type)}</span>
+      {@const d = STONE_STAT_DEFS.get(s.type)}
+      <div class="stat-field">
+        <NumberField label={statLabel(s.type)} unit={unitOf(s.type)} value={Number(toDisplay(s.type, s.value))} onchange={(n) => setStatValue(s.type, n)} />
+        {#if d}
+          <RangeMeter
+            min={Number(toDisplay(s.type, d.min))}
+            max={Number(toDisplay(s.type, d.max))}
+            value={Number(toDisplay(s.type, s.value))}
+            unit={unitOf(s.type)}
+            label="{statLabel(s.type)} roll"
+            title={statHint(s.type)}
+          />
+        {/if}
+      </div>
     {/each}
 
     <div class="actions">
@@ -197,9 +210,10 @@
     text-transform: uppercase;
     color: var(--text-soft);
   }
-  .label { font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }
-  .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(6rem, 8rem); gap: var(--sp-2); align-items: end; }
-  .amplify { display: grid; gap: 4px; }
+  .label { font-size: var(--fs-12); line-height: var(--field-label-h); font-weight: var(--fw-bold); color: var(--text-soft); }
+  .pair { display: grid; grid-template-columns: minmax(0, 1fr) 6.5rem; gap: var(--sp-2); align-items: start; }
+  .stat-field { display: grid; gap: var(--sp-1); }
+  .amplify { display: grid; gap: var(--field-gap); }
   .amplify-row { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
   .hint { color: var(--text-muted); font-size: var(--fs-12); margin: 0; }
   .actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }

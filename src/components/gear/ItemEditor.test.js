@@ -130,8 +130,12 @@ it('parse / format helpers', () => {
 it('shows the item level, quality and secondary ranges as visible text, not only a tooltip', () => {
   const { app } = render({ value: legendary });
   const text = target.textContent;
-  expect(text).toMatch(/Range 1 to \d+/);
-  expect(text).toMatch(/Range [\d.]+ to [\d.]+ at item level 100/);
+  expect(text).toMatch(/Item level \(1-\d+\)/);
+  expect(text).toContain('Ranges at item level 100');
+  // the secondary's range ends are visible text on its meter, not only a tooltip
+  const meter = target.querySelector('.secondary-row [role="meter"]');
+  expect(meter.textContent).toMatch(/[\d.]+\s*[\d.]+%/);
+  expect(Number(meter.getAttribute('aria-valuemax'))).toBeGreaterThan(Number(meter.getAttribute('aria-valuemin')));
   unmount(app);
 });
 
