@@ -207,15 +207,19 @@
   /* The property column stays put while the preset columns scroll under it. */
   th.sticky { position: sticky; left: 0; z-index: 1; background: var(--surface-2); }
   thead th.sticky { background: var(--surface-3); }
-  table.compare { width: 100%; border-collapse: collapse; font-size: var(--fs-13); min-width: 520px; }
+  /* Columns sized to what they hold (a preset column is a column of values, not a third of the screen), so
+     values being compared sit close together; more presets widen the table and the wrapper scrolls. */
+  table.compare { width: max-content; max-width: none; border-collapse: collapse; font-size: var(--fs-13); min-width: 520px; }
   thead th {
     text-align: left;
     vertical-align: top;
     padding: var(--sp-3);
     background: var(--surface-3);
     border-bottom: 1px solid var(--line-rule);
+    width: 19rem;
     min-width: 150px;
   }
+  thead th.sticky { width: 13rem; }
   thead th.active { box-shadow: inset 0 3px 0 var(--brass-400); background: var(--surface-4); }
   .colname {
     background: none;
@@ -246,7 +250,8 @@
     text-align: left;
     vertical-align: middle;
   }
-  tbody th.lbl { font-size: var(--fs-14); color: var(--text-soft); white-space: nowrap; }
+  /* row headers name a property; not the global th micro label */
+  tbody th.lbl { font-family: var(--font-ui); font-size: var(--fs-13); font-weight: var(--fw-regular); letter-spacing: normal; text-transform: none; color: var(--text-soft); white-space: nowrap; }
   td.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; text-align: right; }
   td.best { font-weight: var(--fw-bold); color: var(--verdict-up); }
   .cell-link {

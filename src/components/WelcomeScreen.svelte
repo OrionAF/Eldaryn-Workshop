@@ -125,7 +125,6 @@
   .field { display: grid; gap: 4px; font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }
   .field input { min-height: var(--control-h); }
   .import-link { margin: 0; font-size: var(--fs-13); color: var(--text-soft); }
-  .muted { margin: 0 0 var(--sp-3); font-size: var(--fs-12); color: var(--text-muted); }
   .browse { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); }
   .browse p { margin: 0; flex: 1 1 16rem; font-size: var(--fs-13); color: var(--text-soft); }
   .privacy-note { margin: 0; font-size: var(--fs-12); color: var(--text-muted); text-align: center; }

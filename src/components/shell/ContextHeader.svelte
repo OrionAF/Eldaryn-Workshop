@@ -34,15 +34,19 @@
 </script>
 
 <div class="context-header">
-  <nav class="crumb" aria-label="Breadcrumb">{crumb[0]} / {crumb[1]}</nav>
-  <div class="row">
-    <h1 {id} aria-describedby="{id}-scope">{title}</h1>
-    <ScopeChip {scope} {target} />
-    <span class="sentence" id="{id}-scope">{sentence}</span>
-    <span class="grow"></span>
-    {#if page?.usesPreset && activePreset}
-      <button type="button" class="echo" onclick={focusPreset}>Context: {activePreset.name}</button>
-    {/if}
+  <!-- .inner shares the page column's width and centring (App.svelte .page), so the title lines up
+       with the panels under it on any screen width -->
+  <div class="inner">
+    <nav class="crumb" aria-label="Breadcrumb">{crumb[0]} / {crumb[1]}</nav>
+    <div class="row">
+      <h1 {id} aria-describedby="{id}-scope">{title}</h1>
+      <ScopeChip {scope} {target} />
+      <span class="sentence" id="{id}-scope">{sentence}</span>
+      <span class="grow"></span>
+      {#if page?.usesPreset && activePreset}
+        <button type="button" class="echo" onclick={focusPreset}>Context: {activePreset.name}</button>
+      {/if}
+    </div>
   </div>
 </div>
 
@@ -51,10 +55,11 @@
     position: sticky;
     top: var(--topbar-h);
     z-index: var(--z-sticky);
-    padding: var(--sp-3) var(--page-pad);
+    padding: var(--sp-3) 0;
     background: var(--surface-0);
     border-bottom: 1px solid var(--line-rule);
   }
+  .inner { max-width: var(--content-max); margin: 0 auto; padding: 0 var(--page-pad); }
   .crumb { font-size: var(--fs-12); color: var(--text-muted); }
   .row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-3); }
   h1 { margin: 0; font-size: var(--fs-26); line-height: var(--lh-tight); }
@@ -71,7 +76,8 @@
   }
   .echo:hover { border-color: var(--line-control-hover); color: var(--text-ink); }
   @media (max-width: 700px) {
-    .context-header { position: static; padding: var(--sp-3) var(--page-pad-phone); }
+    .context-header { position: static; }
+    .inner { padding: 0 var(--page-pad-phone); }
     .crumb { display: none; }
     h1 { font-size: var(--fs-20); }
   }

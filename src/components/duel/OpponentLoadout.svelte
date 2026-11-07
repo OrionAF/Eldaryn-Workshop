@@ -70,7 +70,7 @@
 
 <div class="loadout" data-testid="opponent-loadout">
   <div class="group">
-    <span class="cap-label">Sigils - {opponent.sigils.length}/{OPPONENT_SIGIL_CAP} generic</span>
+    <span class="cap-label">Sigils · {opponent.sigils.length}/{OPPONENT_SIGIL_CAP} generic</span>
     <div class="chip-list">
       {#each generic as def (def.species)}
         <Chip
@@ -102,49 +102,57 @@
   {#if equipped.length}
     <div class="group">
       <span class="cap-label">Level and condition</span>
-      {#each equipped as e (e.species)}
-        <div class="equipped-row" role="group" aria-label={e.name}>
-          <span class="name">{e.name}</span>
-          <div class="lvl">
-            <NumberField label="Level" value={e.level} min={1} max={MAX_SIGIL_LEVEL} disabled={e.slot === 'ancient'} onchange={(n) => setLevel(e, n)} />
+      <div class="eq-grid">
+        <span class="col-head" aria-hidden="true">Sigil</span>
+        <span class="col-head" aria-hidden="true">Level</span>
+        <span class="col-head" aria-hidden="true">Condition</span>
+        {#each equipped as e (e.species)}
+          <div class="equipped-row" role="group" aria-label={e.name}>
+            <span class="name">{e.name}</span>
+            <NumberField label="{e.name} level" hideLabel value={e.level} min={1} max={MAX_SIGIL_LEVEL} disabled={e.slot === 'ancient'} onchange={(n) => setLevel(e, n)} />
+            <Select label="{e.name} condition" hideLabel options={conditionOptions(e)} value={opponent.conditions[e.species]} onchange={(v) => setCondition(e.species, v)} />
           </div>
-          <div class="cond">
-            <Select label="Condition" options={conditionOptions(e)} value={opponent.conditions[e.species]} onchange={(v) => setCondition(e.species, v)} />
-          </div>
-        </div>
-      {/each}
+        {/each}
+      </div>
     </div>
   {/if}
 
   <div class="group">
-    <span class="cap-label">Major glyphs - {opponent.majorGlyphs.length}/{MOUNT_GLYPH_SOCKETS.major} (do nothing without their sigil)</span>
+    <span class="cap-label">Major glyphs · {opponent.majorGlyphs.length}/{MOUNT_GLYPH_SOCKETS.major} <span class="aside">do nothing without their sigil</span></span>
     <div class="chip-list">
       {#each majors as def (def.id)}
         <Chip label={def.name} size="compact" selected={!!glyph(def.id)} onClick={() => toggleGlyph(def.id)} />
       {/each}
     </div>
-    {#each opponent.majorGlyphs as g (g.glyphType)}
-      <div class="equipped-row">
-        <span class="name">{majors.find((d) => d.id === g.glyphType)?.name ?? g.glyphType}</span>
-        <div class="cond">
-          <Select label="Glyph rarity" options={rarityOptions} value={g.rarity} onchange={(v) => setRarity(g.glyphType, v)} />
-        </div>
+    {#if opponent.majorGlyphs.length}
+      <div class="glyph-grid">
+        {#each opponent.majorGlyphs as g (g.glyphType)}
+          {@const gName = majors.find((d) => d.id === g.glyphType)?.name ?? g.glyphType}
+          <div class="glyph-row">
+            <span class="name">{gName}</span>
+            <Select label="{gName} rarity" hideLabel options={rarityOptions} value={g.rarity} onchange={(v) => setRarity(g.glyphType, v)} />
+          </div>
+        {/each}
       </div>
-    {/each}
+    {/if}
   </div>
 
-  <div class="group">
+  <div class="group altar">
     <Select label="Sigil altar tier" options={tierOptions} value={opponent.altarTier} onchange={(v) => patch({ altarTier: Number(v) })} />
   </div>
 </div>
 
 <style>
-  .loadout { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: var(--sp-4) var(--sp-5); min-width: 0; }
+  .loadout { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr)); gap: var(--sp-4) var(--sp-6); min-width: 0; }
   .group { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
   .cap-label.sub { margin-top: var(--sp-2); }
   .chip-list { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-  .equipped-row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
-  .equipped-row .name { flex: 1 1 100%; font-size: var(--fs-12); color: var(--text-soft); }
-  .lvl { flex: 0 0 calc(var(--sp-10) * 2); min-width: 0; }
-  .cond { flex: 1 1 0; min-width: 0; }
+  .aside { margin-left: var(--sp-1); text-transform: none; letter-spacing: normal; font-weight: var(--fw-regular); color: var(--text-muted); }
+  /* Sigil | Level | Condition: headed once, one row per equipped sigil */
+  .eq-grid { display: grid; grid-template-columns: minmax(7rem, 14rem) 4.5rem minmax(8rem, 11rem); gap: var(--sp-2) var(--sp-3); align-items: center; justify-content: start; }
+  .equipped-row, .glyph-row { display: contents; }
+  .col-head { font-size: var(--fs-11); font-weight: var(--fw-bold); color: var(--text-muted); }
+  .name { font-size: var(--fs-13); color: var(--text-soft); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .glyph-grid { display: grid; grid-template-columns: minmax(7rem, 14rem) minmax(8rem, 10rem); gap: var(--sp-2) var(--sp-3); align-items: center; justify-content: start; }
+  .altar { max-width: 12rem; }
 </style>

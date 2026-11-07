@@ -408,56 +408,76 @@
       <div id="dc-panel-single" role="tabpanel" class="grid">
         <div class="col setup">
           <Panel title="Drop" scope="tool">
-            {#if unlocked}
-              <SegmentedControl
-                label="Realm"
-                value={realm}
-                options={[{ value: 'base', label: 'Base realm' }, { value: 'oblivion', label: 'Oblivion' }]}
-                onchange={(v) => rosterStore.setDropRealm(v)}
-              />
-            {/if}
-            <SlotSilhouette
-              items={character.equipment[silhouetteSet].items}
-              {realm}
-              cls={character.class}
-              selectedSlot={slot}
-              onSelect={(s) => rosterStore.setDropSlot(s)}
-              label="Drop"
-            />
-            <ul class="equipped" aria-label="Currently equipped in this slot">
-              {#each equippedNow as e (e.key)}
-                <li>
-                  <span class="cap-label">{e.label}</span> <span class="soft">{itemSummary(e.item)}</span>
-                  <Button
-                    variant="ghost"
-                    size="small"
-                    disabled={!e.item}
-                    reason="Nothing equipped in this slot"
-                    onclick={() => copyEquipped(e)}
-                  >Copy into drop</Button>
-                </li>
-              {/each}
-            </ul>
-            <ItemEditor value={drop.item} {realm} {...{ slot }} class={character.class} onchange={(item) => rosterStore.setDropItem(item)} />
-            {#if dropRows.length}
-              <StatTable rows={dropRows} playerClass={character.class} caption="Stats of this drop" />
-            {/if}
-            <Button variant="ghost" size="small" onclick={() => { rosterStore.discardDrop(); setStatus?.('Drop discarded'); }}>Discard this drop</Button>
+            <!-- pick the slot on the left, describe the drop on the right; stacked when the column is narrow -->
+            <div class="drop-body">
+              <div class="pick">
+                {#if unlocked}
+                  <SegmentedControl
+                    label="Realm"
+                    value={realm}
+                    options={[{ value: 'base', label: 'Base realm' }, { value: 'oblivion', label: 'Oblivion' }]}
+                    onchange={(v) => rosterStore.setDropRealm(v)}
+                  />
+                {/if}
+                <SlotSilhouette
+                  items={character.equipment[silhouetteSet].items}
+                  {realm}
+                  cls={character.class}
+                  selectedSlot={slot}
+                  onSelect={(s) => rosterStore.setDropSlot(s)}
+                  label="Drop"
+                />
+                <!-- one small card per set: label and Copy on one line, the item under them -->
+                <ul class="equipped" aria-label="Currently equipped in this slot">
+                  {#each equippedNow as e (e.key)}
+                    <li>
+                      <div class="eq-head">
+                        <span class="cap-label">{e.label}</span>
+                        <Button
+                          variant="ghost"
+                          size="small"
+                          disabled={!e.item}
+                          reason="Nothing equipped in this slot"
+                          onclick={() => copyEquipped(e)}
+                        >Copy into drop</Button>
+                      </div>
+                      <span class="soft">{itemSummary(e.item)}</span>
+                    </li>
+                  {/each}
+                </ul>
+              </div>
+              <div class="edit">
+                <ItemEditor value={drop.item} {realm} {...{ slot }} class={character.class} onchange={(item) => rosterStore.setDropItem(item)} />
+                {#if dropRows.length}
+                  <StatTable rows={dropRows} playerClass={character.class} caption="Stats of this drop" />
+                {/if}
+                <div class="discard">
+                  <Button variant="ghost" size="small" onclick={() => { rosterStore.discardDrop(); setStatus?.('Drop discarded'); }}>Discard this drop</Button>
+                </div>
+              </div>
+            </div>
           </Panel>
 
           <Panel title="Measure" scope="tool">
-            {#if realm === 'base'}
-              <div class="block">
-                <span class="cap-label">Compare against</span>
-                <SegmentedControl label="Compare against" value={dropSets} options={SETS} onchange={(v) => setPrefs({ dropSets: v })} />
+            <div class="measure">
+            <div class="group">
+              {#if realm === 'base'}
+                <div class="block">
+                  <span class="cap-label">Compare against</span>
+                  <SegmentedControl label="Compare against" value={dropSets} options={SETS} onchange={(v) => setPrefs({ dropSets: v })} />
+                </div>
+              {/if}
+              <div class="presets">
+                <Select
+                  label="Presets"
+                  value={scopeId}
+                  options={[{ value: 'all', label: 'All presets' }, ...scopedPresets.map((p) => ({ value: p.id, label: p.name }))]}
+                  onchange={(v) => (scope = v)}
+                />
               </div>
-            {/if}
-            <Select
-              label="Presets"
-              value={scopeId}
-              options={[{ value: 'all', label: 'All presets' }, ...scopedPresets.map((p) => ({ value: p.id, label: p.name }))]}
-              onchange={(v) => (scope = v)}
-            />
+            </div>
+            <div class="group" role="group" aria-labelledby="dc-measure-what">
+            <span class="cap-label" id="dc-measure-what">What to measure</span>
             <Checkbox bind:checked={simOn} label={`DPS against a training dummy (${SECONDS} s)`} />
             <div class="block">
               <Checkbox bind:checked={survivalOn} label="Survival vs an enemy" />
@@ -484,10 +504,13 @@
                 {/each}
               {/if}
             </div>
-            <div class="block">
+            </div>
+            <div class="block effort">
               <span class="cap-label">Effort</span>
-              <SegmentedControl label="Effort" bind:value={precision} options={EFFORT} onchange={() => (maxNOverride = null)} />
-              <p class="hint">More effort spots smaller differences and takes longer. If an item stays too close to call, the check says so.</p>
+              <div class="effort-line">
+                <SegmentedControl label="Effort" bind:value={precision} options={EFFORT} onchange={() => (maxNOverride = null)} />
+                <p class="hint">More effort spots smaller differences and takes longer. If an item stays too close to call, the check says so.</p>
+              </div>
               <details class="basis">
                 <summary>How this works</summary>
                 <p>
@@ -497,6 +520,7 @@
                 </p>
               </details>
               {#if request}<RunEstimate bound="upper" fights={dropFights(request, request.maxN ?? DROP_PRECISION[precision].maxN)} />{/if}
+            </div>
             </div>
             {#snippet footer()}
               <Button variant="primary" disabled={!request || singleBusy} reason={!hasStats ? 'Enter at least one stat for the drop' : !rows.length ? 'No preset wears Set 1' : !request ? 'Choose a metric to measure' : ''} loading={singleBusy} busyLabel="Checking…" onclick={() => checkDrop()}>
@@ -714,14 +738,32 @@
 <style>
   .cap-label { font-size: var(--fs-11); font-weight: var(--fw-heavy); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--text-soft); }
   .page { display: grid; gap: var(--sp-4); padding-top: var(--sp-4); min-width: 0; }
-  .grid { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+  /* The setup column is as wide as the slot picker and a full item editor side by side; the verdict takes the
+     rest, and on a wide screen its set cards sit side by side. */
+  .grid { display: grid; grid-template-columns: minmax(22rem, 58rem) minmax(24rem, 1fr); gap: var(--sp-4); align-items: start; }
   .col,
   .stack { display: grid; gap: var(--sp-4); min-width: 0; }
-  .cards { display: grid; gap: var(--sp-3); }
-  .block { display: grid; gap: var(--sp-2); }
+  .setup { container-type: inline-size; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(30rem, 100%), 1fr)); gap: var(--sp-3); align-items: start; }
+  .block { display: grid; gap: var(--sp-2); align-content: start; }
   .row { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
-  .equipped li { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); }
-  .equipped { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1); font-size: var(--fs-12); }
+  .drop-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); }
+  .pick, .edit { display: grid; gap: var(--sp-3); align-content: start; min-width: 0; }
+  .discard { display: flex; justify-content: flex-end; }
+  @container (min-width: 50rem) {
+    .drop-body { grid-template-columns: 17rem minmax(0, 1fr); gap: var(--sp-6); }
+    .edit { padding-left: var(--sp-6); border-left: 1px solid var(--line-hairline); }
+  }
+  .equipped { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); font-size: var(--fs-12); }
+  .equipped li { display: grid; gap: var(--sp-1); padding: var(--sp-2); background: var(--surface-2); border: 1px solid var(--line-hairline); border-radius: var(--r-1); }
+  .eq-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+  /* Measure: what to compare against | what to measure, then Effort across the panel */
+  .measure { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); gap: var(--sp-4) var(--sp-6); }
+  .group { display: grid; gap: var(--sp-3); align-content: start; min-width: 0; }
+  .presets { max-width: 20rem; }
+  .effort { grid-column: 1 / -1; }
+  .effort-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); }
+  .effort-line .hint { flex: 1 1 18rem; max-width: 46ch; }
   .soft,
   .hint { color: var(--text-soft); font-size: var(--fs-12); margin: 0; }
   .basis { font-size: var(--fs-12); color: var(--text-muted); }

@@ -319,6 +319,8 @@
 
 <style>
   .picker { display: grid; gap: var(--sp-3); }
+  /* a number field on its own line is as wide as a number, not the column */
+  .picker > :global(.field:has(.input.num)) { width: min(10rem, 100%); }
   .field { display: grid; gap: 4px; }
   .lbl { font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }
   .chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }

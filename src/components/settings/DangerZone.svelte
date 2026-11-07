@@ -14,7 +14,8 @@
   let text = $state('');
 
   const matches = $derived(text === RESET_WORD);
-  const wrong = $derived(text !== '' && !matches);
+  // only text that cannot become RESET is wrong: "RES" is on its way, "res" is not
+  const wrong = $derived(text !== '' && !RESET_WORD.startsWith(text));
 
   function doReset() {
     if (!matches) return;
@@ -36,19 +37,21 @@
     <Button variant="ghost" disabled={rosterStore.roster.characters.length === 0} onclick={() => rosterStore.exportDownload()}>Export first</Button>
   </div>
   <div class="confirm">
-    <label for="reset-text">Type RESET to confirm</label>
-    <input
-      id="reset-text"
-      type="text"
-      placeholder={RESET_WORD}
-      autocomplete="off"
-      bind:value={text}
-      aria-invalid={wrong ? 'true' : undefined}
-      aria-describedby={wrong ? 'reset-err' : undefined}
-      onkeydown={(e) => e.key === 'Enter' && doReset()}
-    />
-    {#if wrong}<span id="reset-err" class="err" role="alert">Type RESET exactly, in capitals</span>{/if}
-    <Button variant="danger" disabled={!matches} onclick={doReset}>Reset all data</Button>
+    <div class="cf-field">
+      <label for="reset-text">Type RESET to confirm</label>
+      <input
+        id="reset-text"
+        type="text"
+        placeholder={RESET_WORD}
+        autocomplete="off"
+        bind:value={text}
+        aria-invalid={wrong ? 'true' : undefined}
+        aria-describedby={wrong ? 'reset-err' : undefined}
+        onkeydown={(e) => e.key === 'Enter' && doReset()}
+      />
+      {#if wrong}<span id="reset-err" class="err" role="alert">Type RESET exactly, in capitals</span>{/if}
+    </div>
+    <div class="control-align"><Button variant="danger" disabled={!matches} onclick={doReset}>Reset all data</Button></div>
   </div>
 </section>
 
@@ -66,8 +69,9 @@
   .lead { margin: 0; font-size: var(--fs-13); }
   ul { margin: 0; padding-left: var(--sp-4); font-size: var(--fs-13); color: var(--text-soft); display: grid; gap: 2px; }
   .row { display: flex; gap: var(--sp-2); }
-  .confirm { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
-  label { font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }
+  .confirm { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--sp-2) var(--sp-3); }
+  .cf-field { display: grid; gap: var(--field-gap); width: min(14rem, 100%); }
+  label { font-size: var(--fs-12); line-height: var(--field-label-h); font-weight: var(--fw-bold); color: var(--text-soft); }
   input {
     min-height: var(--control-h);
     padding: 0 var(--sp-3);

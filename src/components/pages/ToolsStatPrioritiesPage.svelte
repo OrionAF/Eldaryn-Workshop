@@ -248,11 +248,14 @@
     background: var(--ember-500);
   }
   .nm { font-weight: var(--fw-bold); font-size: var(--fs-14); }
-  .gist { overflow: hidden; font-size: var(--fs-12); color: var(--text-muted); white-space: nowrap; text-overflow: ellipsis; }
+  /* three stat names wrap rather than lose the third to an ellipsis */
+  .gist { font-size: var(--fs-12); color: var(--text-muted); }
   .table-scroll { overflow-x: auto; }
-  .stats { width: 100%; border-collapse: collapse; font-size: var(--fs-13); }
-  .stats th { padding: 6px var(--sp-2); text-align: left; font-weight: normal; font-size: var(--fs-12); color: var(--text-muted); border-bottom: 1px solid var(--line-rule); white-space: nowrap; }
-  .stats td { padding: 6px var(--sp-2); border-bottom: 1px solid var(--line-hairline); }
+  /* as wide as its columns (the eye should not cross the page from a stat to its numbers) */
+  .stats { width: auto; min-width: min(100%, 40rem); border-collapse: collapse; font-size: var(--fs-13); }
+  .stats th { padding: 6px var(--sp-4); text-align: left; font-weight: normal; font-size: var(--fs-12); color: var(--text-muted); border-bottom: 1px solid var(--line-rule); white-space: nowrap; }
+  .stats td { padding: 6px var(--sp-4); border-bottom: 1px solid var(--line-hairline); }
+  .stats th:first-child, .stats td:first-child { padding-left: var(--sp-2); }
   .stats .r { text-align: right; }
   .stats tr:hover td { background: var(--surface-3); }
   .stats .over { color: var(--ember-300); }

@@ -68,13 +68,18 @@
     cursor: pointer;
     display: grid;
     place-items: center;
+    padding: 0; /* the global button padding pushed the glyph below centre */
+    font-family: var(--font-data); /* its minus and plus sit on the centre line */
     font-size: var(--fs-16);
+    line-height: 1;
   }
   button:hover { color: var(--text-ink); background: var(--surface-4); }
   button[aria-disabled='true'] { color: var(--text-disabled); cursor: not-allowed; background: transparent; }
   input {
     width: 56px;
     height: 100%;
+    padding: 0;
+    border-radius: 0; /* the global input radius bent the divider borders into an inner box */
     text-align: center;
     background: transparent;
     color: var(--text-ink);

@@ -127,13 +127,18 @@
   {#if contributions}
     <Button variant="ghost" size="small" onclick={toggleAll}>{allOpen ? 'Collapse all' : 'Expand all'}</Button>
   {/if}
-  <span class="summary num" class:all-good={summary.total > 0 && summary.explained === summary.total} data-testid="diff-summary">
+  <span
+    class="summary num"
+    class:all-good={hasModel ? summary.total > 0 && summary.explained === summary.total : summary.total === allRows.length}
+    class:progress={!hasModel && summary.total < allRows.length}
+    data-testid="diff-summary"
+  >
     {#if hasModel}{summary.explained}/{summary.total} match{:else}{summary.total}/{allRows.length} entered{/if}
   </span>
 </div>
 <!-- svelte-ignore a11y_no_noninteractive_tabindex (a scrollable region must be focusable) -->
 <div class="scroll" role="region" aria-label="In-game stats table" tabindex="0">
-  <table class="sheet">
+  <table class="sheet" class:full={hasModel}>
     <thead>
       <tr>
         <th scope="col">Stat</th>{#if hasModel}<th scope="col" class="r">App</th>{/if}<th scope="col" class="r">In-game stats</th>
@@ -173,6 +178,8 @@
                 onkeydown={onKey}
               />
               <span class="unit">{unit(m)}</span>
+              <!-- the echo floats under the box, so typing never changes the row's height -->
+              {#if !invalid[m.key] && echo?.key === m.key}<span class="echo" id="echo-{m.key}">Read as <span class="num">{echo.text}</span></span>{/if}
             </span>
             {#if invalid[m.key]}
               <span class="msg err" id="err-{m.key}" role="alert">
@@ -180,8 +187,6 @@
                   ? 'That is not a number. For flat stats, "." separates thousands: 48.124 is 48124.'
                   : 'That is not a number. For percent stats, "." is the decimal point.'}
               </span>
-            {:else if echo?.key === m.key}
-              <span class="msg" id="echo-{m.key}">Read as {echo.text}</span>
             {/if}
           </td>
           <td class="r raw" data-label="Before cap">
@@ -194,6 +199,7 @@
                   class:invalid={invalid[m.rawKey]}
                   aria-invalid={invalid[m.rawKey] ? 'true' : 'false'}
                   aria-label={`${m.label} before cap`}
+                  aria-describedby={echo?.key === m.rawKey ? `echo-${m.rawKey}` : undefined}
                   placeholder="before cap"
                   value={drafts[m.rawKey] ?? ''}
                   oninput={(e) => (drafts[m.rawKey] = e.target.value)}
@@ -202,6 +208,7 @@
                   onkeydown={onKey}
                 />
                 <span class="unit">{unit(m)}</span>
+                {#if !invalid[m.rawKey] && echo?.key === m.rawKey}<span class="echo" id="echo-{m.rawKey}">Read as <span class="num">{echo.text}</span></span>{/if}
               </span>
             {/if}
           </td>
@@ -245,8 +252,11 @@
   .note.empty { margin-left: var(--sp-3); }
   .summary { font-size: var(--fs-13); color: var(--verdict-down); }
   .summary.all-good { color: var(--verdict-up); }
+  .summary.progress { color: var(--text-soft); }
   .scroll { overflow-x: auto; max-width: 100%; }
-  table.sheet { width: 100%; min-width: 760px; border-collapse: collapse; font-size: var(--fs-13); }
+  /* sized to its columns, not stretched across the screen, so App and In-game sit side by side */
+  table.sheet { width: auto; border-collapse: collapse; font-size: var(--fs-13); }
+  table.sheet.full { min-width: 760px; }
   thead th {
     text-align: left;
     padding: 0 var(--sp-3);
@@ -260,14 +270,33 @@
     color: var(--text-soft);
   }
   .r { text-align: right; }
-  td, tbody th { padding: var(--sp-1) var(--sp-3); border-bottom: 1px solid var(--line-hairline); font-weight: inherit; vertical-align: top; }
-  tbody th.lbl { text-align: left; color: var(--text-soft); font-size: var(--fs-14); }
+  /* every cell centred on the input's line, so labels, numbers and boxes in a row share one baseline */
+  td, tbody th { padding: var(--sp-1) var(--sp-3); border-bottom: 1px solid var(--line-hairline); font-weight: inherit; vertical-align: middle; }
+  tbody th.lbl { text-align: left; color: var(--text-soft); font-family: var(--font-ui); font-size: var(--fs-14); font-weight: var(--fw-regular); letter-spacing: normal; text-transform: none; white-space: nowrap; }
+  .src-row > td { vertical-align: top; }
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
   .dim { color: var(--text-muted); }
   .warn { color: var(--status-warn); }
   tr.off { background: var(--verdict-down-tint); }
   .expand { display: inline-flex; gap: var(--sp-1); align-items: center; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; font: inherit; }
-  .input-wrap { display: inline-flex; align-items: center; gap: 3px; }
+  .input-wrap { position: relative; display: inline-flex; align-items: center; gap: 3px; }
+  .echo {
+    position: absolute;
+    top: calc(100% + 3px);
+    right: 13px;
+    z-index: var(--z-popover);
+    padding: 1px 6px;
+    background: var(--surface-4);
+    border: 1px solid var(--line-control);
+    border-radius: var(--r-1);
+    box-shadow: var(--elev-2);
+    color: var(--text-soft);
+    font-size: var(--fs-11);
+    line-height: 16px;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .echo .num { color: var(--text-ink); }
   .input-wrap input { width: 112px; text-align: right; font-family: var(--font-data); }
   .unit { width: 10px; color: var(--text-muted); font-size: var(--fs-12); }
   input.invalid { border-color: var(--verdict-down); }

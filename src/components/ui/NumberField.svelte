@@ -9,6 +9,8 @@
    * text was read ("Read as 48.124"), so a wrongly typed separator is visible before it is saved.
    * The value commits on blur or Enter and the box then shows the formatted value. A value outside
    * [min, max] is not committed and shows an error linked by aria-describedby.
+   * The echo floats under the box (it never takes layout space, so typing moves nothing), and the
+   * label stays on one line (full text in its title) so a row of fields keeps its boxes level.
    */
   import { parseStat, parsePct, parseFlat, formatStat, formatPct, formatFlat } from '../../lib/format.js';
 
@@ -23,6 +25,7 @@
     nullable = false,
     error = '',
     disabled = false,
+    hideLabel = false, // the label stays for assistive tech and tests, visually hidden (a column header names it)
     onchange = () => {},
   } = $props();
   const id = $props.id();
@@ -66,31 +69,61 @@
 </script>
 
 <div class="field">
-  <label for={id}>{label}</label>
-  <div class="input num" class:is-error={!!shownError} class:is-disabled={disabled}>
-    <input
-      {id}
-      type="text"
-      inputmode="decimal"
-      autocomplete="off"
-      {disabled}
-      value={shown}
-      aria-invalid={shownError ? 'true' : undefined}
-      aria-describedby={describedBy}
-      oninput={(e) => (draft = e.currentTarget.value)}
-      onfocus={() => (localError = '')}
-      onblur={commit}
-      onkeydown={(e) => e.key === 'Enter' && commit()}
-    />
-    {#if unit}<span class="unit">{unit}</span>{/if}
+  <label for={id} title={label} class:visually-hidden={hideLabel}>{label}</label>
+  <div class="box">
+    <div class="input num" class:is-error={!!shownError} class:is-disabled={disabled}>
+      <input
+        {id}
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        {disabled}
+        value={shown}
+        aria-invalid={shownError ? 'true' : undefined}
+        aria-describedby={describedBy}
+        oninput={(e) => (draft = e.currentTarget.value)}
+        onfocus={() => (localError = '')}
+        onblur={commit}
+        onkeydown={(e) => e.key === 'Enter' && commit()}
+      />
+      {#if unit}<span class="unit">{unit}</span>{/if}
+    </div>
+    {#if echo}<span class="echo" id="{id}-echo" aria-live="polite">Read as <span class="num">{echo}</span>{unit ? ` ${unit}` : ''}</span>{/if}
   </div>
-  {#if echo}<span class="hint" id="{id}-echo" aria-live="polite">Read as <span class="num">{echo}</span>{unit ? ` ${unit}` : ''}</span>{/if}
   {#if shownError}<span class="err" id="{id}-err" role="alert"><span aria-hidden="true">⚠</span> {shownError}</span>{/if}
 </div>
 
 <style>
-  .field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; }
-  label { font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }
+  .field { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: var(--field-gap); min-width: 0; }
+  label {
+    font-size: var(--fs-12);
+    line-height: var(--field-label-h);
+    font-weight: var(--fw-bold);
+    color: var(--text-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .box { position: relative; min-width: 0; }
+  /* The live echo is a small tag hanging under the box's right edge, over whatever is below it, while
+     the field is being typed in. */
+  .echo {
+    position: absolute;
+    top: calc(100% + 3px);
+    right: 0;
+    z-index: var(--z-popover);
+    padding: 1px 6px;
+    background: var(--surface-4);
+    border: 1px solid var(--line-control);
+    border-radius: var(--r-1);
+    box-shadow: var(--elev-2);
+    color: var(--text-soft);
+    font-size: var(--fs-11);
+    line-height: 16px;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .echo .num { color: var(--text-ink); }
   .input {
     box-sizing: border-box;
     width: 100%;
@@ -128,7 +161,6 @@
   .unit { color: var(--text-muted); font-family: var(--font-ui); font-size: var(--fs-12); }
   .input.is-error { border-color: var(--verdict-down); box-shadow: inset 2px 0 0 var(--verdict-down); }
   .input.is-disabled { color: var(--text-disabled); border-color: var(--line-rule); background: var(--surface-2); }
-  .hint { font-size: var(--fs-12); color: var(--text-muted); }
   .err { font-size: var(--fs-12); color: var(--verdict-down); display: flex; gap: 4px; align-items: center; }
   @media (pointer: coarse), (max-width: 700px) {
     .input { height: var(--hit); }
