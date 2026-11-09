@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { scripted, mulberry32 } from '../rng.js';
 import { createMobEntity, createPlayerEntity } from '../core/entity.js';
-import { applyRegen, processAttack, pvpRatingToFraction, REGEN_PULSE_MS } from './attack.js';
+import { applyRegen, processAttack, pvpRatedDamage, pvpRatingToFraction, REGEN_PULSE_MS } from './attack.js';
 import { applyPvpHpBuff, getPvpHpMultiplier } from './hpBuff.js';
 
 const ent = (over = {}) => Object.assign(createMobEntity({ hp: 1000, attack: 100, attackSpeed: 1 }), over);
@@ -333,15 +333,17 @@ describe('processAttack: lost swings (L1452886-1452905)', () => {
 });
 
 describe('processAttack: minion intercept (L1452906-1452912, L1453570-1453754)', () => {
-  it('hits the minion with no avoid roll, DR or PVP; HP untouched; events are target-side', () => {
+  it('hits the minion with no avoid roll or DR, PVP-rated since 2.9.3; HP untouched; events are target-side', () => {
     const atk = ent({ attack: 30, pvpAttack: 500 });
     const def = ent({ hp: 500, blockChance: 100, damageReduction: 50, pvpDefense: 500 });
     const m = minion({ hp: 50 });
     const rng = scripted([MISS]); // crit only
     const ev = processAttack(atk, def, 0, true, null, m, rng);
+    const dealt = pvpRatedDamage(30, 500, 500); // 30 * (1 + 500/700) = 51, * (1 - 500/700) = 15
+    expect(dealt).toBe(15);
     expect(rng.draws).toBe(1);
-    expect(ev).toEqual([{ timestamp: 0, type: 'defender_minion_damaged', damage: 30, attackerHpAfter: 1000, defenderHpAfter: 500 }]);
-    expect([m.hp, def.hp]).toEqual([20, 500]);
+    expect(ev).toEqual([{ timestamp: 0, type: 'defender_minion_damaged', damage: dealt, attackerHpAfter: 1000, defenderHpAfter: 500 }]);
+    expect([m.hp, def.hp]).toEqual([50 - dealt, 500]);
   });
   it('overkill clamps to remaining minion HP, logs a death event with the respawn meta; double hit does not carry over', () => {
     const atk = ent({ attack: 100, doubleHit: 100 });
@@ -394,5 +396,16 @@ describe('processAttack: log=false', () => {
     expect(b.atk).toEqual(a.atk);
     expect(b.def).toEqual(a.def);
     expect(b.next).toBe(a.next);
+  });
+});
+
+describe('pvpRatedDamage (2.9.3, combat-pvp.md §5, 2.9.3 addendum)', () => {
+  it('boosts by the attacker rating, then cuts by the defender rating (min 1); 0 passes through', () => {
+    expect(pvpRatedDamage(0, 500, 500)).toBe(0);
+    expect(pvpRatedDamage(100, 0, 0)).toBe(100);
+    expect(pvpRatedDamage(100, 200, 0)).toBe(Math.round(100 * (1 + pvpRatingToFraction(200))));
+    const up = Math.round(100 * (1 + pvpRatingToFraction(200)));
+    expect(pvpRatedDamage(100, 200, 200)).toBe(Math.max(1, Math.round(up * (1 - pvpRatingToFraction(200)))));
+    expect(pvpRatedDamage(1, 0, 1e9)).toBe(1);
   });
 });

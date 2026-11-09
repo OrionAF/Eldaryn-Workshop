@@ -8,10 +8,28 @@ import warrior from './profile-warrior-l73.json';
 import mystic291 from './profile-mystic-l79-291.json';
 import { normaliseCharacter } from '../../model/index.js';
 import { gameProfileToCharacter } from '../../model/gameProfile.js';
-import { presetPower } from '../../build/power.js';
+import { presetPower, powerInputs } from '../../build/power.js';
+import { resolvePreset, equipSetKey } from '../../build/presetInputs.js';
+import { calculatePowerBreakdown } from '../../engine/power.js';
+import { itemStatLevel, calculateStatQuality } from '../../game/gear.js';
 import { computePresetStats } from '../../build/stats.js';
 import { coreTotalPower } from '../../engine/sources/petCore.js';
 import { POWER_TERMS } from '../../engine/power.js';
+
+// The captures predate 2.9.3, whose item quality caps a not-all-100 item at Q99 (gear.md §5.1); the
+// server scored them with the earlier rule, the rounded mean of the stat qualities. (The test setup loads
+// the app before any module mock could apply, so the inputs are rebuilt here instead.)
+function preQ99Power(character, presetId) {
+  const { input } = powerInputs(character, presetId);
+  const items = Object.values(character.equipment?.[equipSetKey(resolvePreset(character, presetId), 'base')]?.items ?? {});
+  const equipment = input.equipment.map((e, i) => {
+    const stats = items[i]?.secondaryStats ?? [];
+    if (!e || stats.length === 0) return e;
+    const L = itemStatLevel(e.itemLevel, e.realm);
+    return { ...e, quality: Math.round(stats.reduce((sum, x) => sum + calculateStatQuality(x.type, x.value, L), 0) / stats.length) };
+  });
+  return calculatePowerBreakdown({ ...input, equipment });
+}
 
 function imported(profile) {
   const report = [];
@@ -43,8 +61,9 @@ describe.each([
   });
 });
 
-// The first 2.9.1 capture (petV2): the server's pet term is the core's, so the whole figure and every
-// computedStats key must match with no V1 correction.
+// The first 2.9.1 capture (petV2): every computedStats key must match. Its server pet term is the 2.9.1
+// petV2TotalPower (Epic, tier 3, altar 2: 1200 x 185 / 27); 2.9.3 rescored it (pet-cores.md §7), so the
+// figure matches with that term swapped in, like the V1 captures above.
 describe('real profile Mystic L79 (2.9.1, Pet Cores)', () => {
   const { character, live } = imported(mystic291);
 
@@ -55,10 +74,12 @@ describe('real profile Mystic L79 (2.9.1, Pet Cores)', () => {
     }
   });
 
-  it(`Combat Power equals the server's totalPower (${mystic291.totalPower})`, () => {
+  it(`Combat Power equals the server's totalPower (${mystic291.totalPower}) with the 2.9.1 pet term`, () => {
     const p = presetPower(character, live);
-    expect(Math.round(POWER_TERMS.reduce((s, k) => s + p.exact[k], 0))).toBe(mystic291.totalPower);
-    expect(p.terms.pet).toBe(8222);
+    const old = preQ99Power(character, live);
+    const rest = POWER_TERMS.filter((k) => k !== 'pet').reduce((s, k) => s + old.exact[k], 0);
+    expect(Math.round(rest + (1200 * 185) / 27)).toBe(mystic291.totalPower);
+    expect(p.terms.pet).toBe(2432);
     expect(p.gaps).toEqual([]);
   });
 

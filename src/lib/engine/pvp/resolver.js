@@ -9,7 +9,7 @@
 import { tickDazedMs } from '../core/stances.js';
 import { getEquippedStanceConfig, stanceRuntimeFields } from '../sources/stance.js';
 import { ARENA_CONSTANTS } from '../../game/combatPvp.js';
-import { processAttack, applyRegen, pvpRatingToFraction } from './attack.js';
+import { processAttack, applyRegen, pvpRatingToFraction, pvpRatedDamage } from './attack.js';
 import { applyPvpHpBuff, applyPvpHpBuffPair, getPvpHpMultiplier } from './hpBuff.js';
 import {
   LEGACY_PVP_BALANCE, DEFAULT_PVP_BALANCE, pvpDamageRampMult, pvpLateFightDamageMult, rampDebuffTick,
@@ -160,7 +160,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
   });
   // this tick's damage ramp (L1608570-1608581), read by every hit: swings, minion strikes, spells, DoTs
   s.damageMult = 1;
-  const R = createReactions(s, { isSpellBuffActive, activeBuffThornsPercent, pvpRatingToFraction });
+  const R = createReactions(s, { isSpellBuffActive, activeBuffThornsPercent, pvpRatingToFraction, pvpRatedDamage });
   const A = s.attacker;
   const D = s.defender;
   assertFiniteEntity('attacker', A, ENTITY_KEYS);
@@ -443,7 +443,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     }
     aE.attack = attackA;
     undoElusiveA();
-    if (aMin) R.minionStrike(aMin, 'attacker', D, dE, dStack, aStack, dMin);
+    if (aMin) R.minionStrike(aMin, 'attacker', D, dE, dStack, aStack, dMin, aE);
 
     // ... then the defender, even if the attacker's swing killed it (L1457110-1457230)
     const undoElusiveD = R.applyElusiveToSwinger(dE, dStack);
@@ -464,7 +464,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     }
     dE.attack = attackD;
     undoElusiveD();
-    if (dMin) R.minionStrike(dMin, 'defender', A, aE, aStack, dStack, aMin);
+    if (dMin) R.minionStrike(dMin, 'defender', A, aE, aStack, dStack, aMin, dE);
 
     // end of tick (L1457231-1457309)
     if (s.hasMinions) R.finishMinionTick(start);

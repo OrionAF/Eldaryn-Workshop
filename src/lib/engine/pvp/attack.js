@@ -22,6 +22,16 @@ export function pvpRatingToFraction(rating) {
   return rating / (rating + PVP_RATING.K);
 }
 
+// port of pvpRatedDamage 2.9.3 L1650262-1650306 (combat-pvp.md §5, 2.9.3 addendum): a hit on or by a minion.
+/** `dmg <= 0` -> `dmg`; else × (1 + f(atk)) rounded when atk > 0, then × (1 − f(def)) rounded, min 1, when def > 0. */
+export function pvpRatedDamage(dmg, atkRating, defRating) {
+  if (dmg <= 0) return dmg;
+  let x = dmg;
+  if (atkRating > 0) x = Math.round(dmg * (1 + pvpRatingToFraction(atkRating)));
+  if (defRating > 0) x = Math.max(1, Math.round(x * (1 - pvpRatingToFraction(defRating))));
+  return x;
+}
+
 // port of applyRegen L1452765-1452839
 /**
  * One call per tick with the accumulating regen `timer`. Below 100 ms nothing happens. At or above it
@@ -132,7 +142,7 @@ export function processAttack(atk, def, t, atkIsAttacker, maxHp, defMinion, rng,
     let thorns = 0;
     for (const s of strikes) {
       if (!defMinion.alive) break;
-      const r = damageMinion(defMinion, rampDamage(s.damage, damageMult), { swing: !s.doubleHit, followUp: s.doubleHit, penetration: atk.penetration }, lane(X, 'minion-block'));
+      const r = damageMinion(defMinion, rampDamage(pvpRatedDamage(s.damage, atk.pvpAttack, def.pvpDefense), damageMult), { swing: !s.doubleHit, followUp: s.doubleHit, penetration: atk.penetration }, lane(X, 'minion-block'));
       thorns += r.thorns ?? 0;
       applyLifesteal(atk, r.dealt, cap);
       const extra = {};

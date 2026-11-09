@@ -205,8 +205,8 @@ const EXPECTED = {
     oblivion: ['2f7a817e', 'ccec0707'],
     'oblivion-cut': ['90a757e0', '02851059'],
     worldBoss: ['91d4b0ac', 'aa17355a'],
-    'pvp-attacker': ['f0e82d28', '2f1396dc'],
-    'pvp-defender': ['b22278fa', 'e46df2db'],
+    'pvp-attacker': ['13cccfab', 'f9a69e6e'],
+    'pvp-defender': ['74e1203c', '64003252'],
   },
   'NECROMANCER_DOOMWEAVER': {
     dummy: ['2f678f75', 'fbeff6b2'],
@@ -217,8 +217,8 @@ const EXPECTED = {
     oblivion: ['c8c1488d', '00e11230'],
     'oblivion-cut': ['ba9ce0fe', '5f28d90c'],
     worldBoss: ['ef231a9d', 'e818bd99'],
-    'pvp-attacker': ['9d0fa4bb', 'a1745001'],
-    'pvp-defender': ['c7f62ee4', '650613ff'],
+    'pvp-attacker': ['4d71de4c', '39379b2b'],
+    'pvp-defender': ['24816fb5', '7fd706be'],
   },
   'REAL_WARRIOR_L72': {
     dummy: ['754f8475', '3fafb564'],
