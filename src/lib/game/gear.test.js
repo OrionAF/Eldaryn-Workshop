@@ -92,3 +92,17 @@ describe('item stat-level maths (shared by engine/power.js and model/equipment.j
     expect(secondaryStatCeiling(def, 240)).toBeCloseTo((def.maxValue * ascensionEffectiveLevel(240)) / 100, 9);
   });
 });
+
+describe('item quality (gear.md §5, 2.9.3 max-quality rule §5.1)', () => {
+  it('is 100 only when every stat is 100, else the rounded mean capped at 99', async () => {
+    const { calculateItemQuality, calculateStatQuality } = await import('./gear.js');
+    expect(calculateStatQuality('ATTACK_SPEED', 0.2, 100)).toBe(100);
+    expect(calculateStatQuality('ATTACK_SPEED', 0.198, 100)).toBe(99);
+    const item = (...values) => ({ itemLevel: 100, realm: 'base', secondaryStats: values.map((value) => ({ type: 'ATTACK_SPEED', value })) });
+    expect(calculateItemQuality(item(0.2, 0.2, 0.2))).toBe(100);
+    // mean 99.5 rounded to 100 before 2.9.3; one stat below 100 now caps the item at 99
+    expect(calculateItemQuality(item(0.2, 0.198))).toBe(99);
+    expect(calculateItemQuality(item(0.2, 0.03))).toBe(51);
+    expect(calculateItemQuality(item())).toBeNull();
+  });
+});

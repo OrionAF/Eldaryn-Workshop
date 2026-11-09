@@ -204,7 +204,9 @@ export function processArenaSpells(runtimes, input, rng) {
     for (const ev of result.events) {
       if (ev.type === 'spell_damage' && ev.value > 0 && targetMinion.alive) {
         targetHpDelta += ev.value; // the whole hit, whatever the minion's remaining HP
-        (minionHits ??= new Map()).set(ev, damageMinion(targetMinion, ev.value));
+        // 2.9.3: the minion's owner's PVP Defense, no PVP Attack (L1651777; combat-pvp.md §5, 2.9.3 addendum)
+        const hit = target.pvpDefense > 0 ? Math.max(1, Math.round(ev.value * (1 - defFraction))) : ev.value;
+        (minionHits ??= new Map()).set(ev, damageMinion(targetMinion, hit));
       }
     }
   }

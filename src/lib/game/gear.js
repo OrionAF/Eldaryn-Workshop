@@ -112,12 +112,17 @@ export function calculateStatQuality(type, value, statLevel) {
   return f == null ? 1 : Math.round(f * 99 + 1);
 }
 
-/** gear.md §5 calculateItemQuality over {secondaryStats, itemLevel, realm}: the rounded mean, null with no secondaries. */
+/**
+ * gear.md §5 calculateItemQuality over {secondaryStats, itemLevel, realm}: null with no secondaries,
+ * 100 only when every stat is 100, else the rounded mean capped at 99 (2.9.3 rule, gear.md §5.1).
+ */
 export function calculateItemQuality(item) {
   const stats = item?.secondaryStats ?? [];
   if (stats.length === 0) return null;
   const L = itemStatLevel(item.itemLevel, item.realm);
-  return Math.round(stats.reduce((s, x) => s + calculateStatQuality(x.type, x.value, L), 0) / stats.length);
+  const qs = stats.map((x) => calculateStatQuality(x.type, x.value, L));
+  if (qs.every((q) => q >= 100)) return 100;
+  return Math.min(Math.round(qs.reduce((s, q) => s + q, 0) / qs.length), 99);
 }
 
 // gear.md §1 ITEM_TYPES_BY_RARITY: the cosmetic material an item of a rarity is made of. Uncommon lists

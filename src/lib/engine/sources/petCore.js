@@ -36,20 +36,12 @@ export function calculateCoreBonuses(core, altarLevel, tier) {
   return out;
 }
 
-// port of coreTpTierK L1065087: past the table it follows the stat multiplier
-function coreTpTierK(tier) {
-  const t = normalizeCoreTier(tier);
-  const k = CORE_POWER.tierK;
-  if (t <= k.length) return k[t - 1];
-  return (k[k.length - 1] * coreTierStatMultiplier(t)) / coreTierStatMultiplier(k.length);
-}
-
-// port of coreTpLevelSlope L1065117
-const coreTpLevelSlope = (tier) => CORE_POWER.levelSlope[Math.min(normalizeCoreTier(tier), CORE_POWER.levelSlope.length) - 1];
+// port of coreTpTierK (2.9.3 L1064369)
+const coreTpTierK = (tier) => coreTierStatMultiplier(tier) ** CORE_POWER.statExponent;
 
 /**
- * port of petV2TotalPower L1218970. Total Power feeds it through an Ancient-equivalent pet
- * (powerPetForTarget L1219031) whose V1 term equals this value, so it is the pet term itself.
+ * port of petV2TotalPower (2.9.3 L1218425; pet-cores.md §7). Total Power feeds it through an
+ * Ancient-equivalent pet (powerPetForTarget) whose V1 term equals this value, so it is the pet term itself.
  * `rarity` is the upper-case enum.
  */
 export function coreTotalPower(rarity, altarLevel, tier) {
@@ -57,5 +49,7 @@ export function coreTotalPower(rarity, altarLevel, tier) {
   const p = CORE_POWER.rarityPower[rarity] ?? 0;
   const L = Math.min(altarLevel, CORE_MAX_ALTAR_LEVEL);
   if (t === 1) return (p * coreTpTierK(1) * Math.max(0, L)) / CORE_MAX_ALTAR_LEVEL;
-  return p * coreTpTierK(t) * CORE_POWER.levelBase ** ((L - CORE_MAX_ALTAR_LEVEL) / coreTpLevelSlope(t));
+  const growth = (lv) => 1 + (lv - 1) * CORE_STAT_GROWTH;
+  const levelFrac = (growth(Math.max(1, L)) / growth(CORE_MAX_ALTAR_LEVEL)) ** CORE_POWER.statExponent;
+  return p * coreTpTierK(t) * levelFrac;
 }

@@ -1,5 +1,5 @@
 {
- "source": "2.9.1 decompiled.js (docs/2.9.0): module 3935 L1064693-1065652 (constants, tier tables), 3987 L1078711-1079033 (core altar), 3985 L1077818-1078337 (rolls), 4271 L1218663-1218964 (calculateCoreBonuses), 4272 L1218965-1219187 (power). Altar XP tables v1-v3: 2.9.2 decompiled.js (docs/2.9.2) module 3985 L1064831-1064843, CORE_ALTAR_XP_TABLE_VERSION 3 L1064551. Formulas and tags: Reference/Game/pet-cores.md.",
+ "source": "2.9.1 decompiled.js (docs/2.9.0): module 3935 L1064693-1065652 (constants, tier tables), 3987 L1078711-1079033 (core altar), 3985 L1077818-1078337 (rolls), 4271 L1218663-1218964 (calculateCoreBonuses), 4272 L1218965-1219187 (power). Altar XP tables v1-v3: 2.9.2 decompiled.js (docs/2.9.2) module 3985 L1064831-1064843, CORE_ALTAR_XP_TABLE_VERSION 3 L1064551. Power (statExponent replaces tierK/levelSlope/levelBase): 2.9.3 decompiled.js (docs/2.9.3) module 3985 CORE_TP_STAT_EXPONENT 0.5 L1064856, petV2TotalPower module 4322 L1218425. Formulas and tags: Reference/Game/pet-cores.md.",
  "rarities": ["COMMON", "UNCOMMON", "RARE", "EPIC", "LEGENDARY", "MYTHIC", "ANCIENT", "DIVINE", "ETERNAL", "OBLIVION"],
  "baseStats": {
   "COMMON": {"attack": 180, "hp": 530},
@@ -30,8 +30,6 @@
  "maxSealed": 20,
  "power": {
   "rarityPower": {"COMMON": 120, "UNCOMMON": 280, "RARE": 600, "EPIC": 1200, "LEGENDARY": 2400, "MYTHIC": 4400, "ANCIENT": 7200, "DIVINE": 10500, "ETERNAL": 15000, "OBLIVION": 21000},
-  "tierK": [1, 7.8, 185, 890],
-  "levelSlope": [16, 16, 16, 32],
-  "levelBase": 3
+  "statExponent": 0.5
  }
 }

@@ -48,6 +48,7 @@ import {
  * @property {(runtimes: Array<Object>, species: string) => boolean} isSpellBuffActive
  * @property {(runtimes: Array<Object>) => number} activeBuffThornsPercent
  * @property {(rating: number) => number} pvpRatingToFraction
+ * @property {(dmg: number, atk: number, def: number) => number} pvpRatedDamage
  */
 
 const IRON_BASTION = 'IRON_BASTION';
@@ -393,15 +394,18 @@ export function createReactions(s, deps) {
    * @param {Object} ownStack the target's stack bundle (Bulwark)
    * @param {Object} foeStack the minion owner's stack bundle (Sunder)
    * @param {Object|null} [foeMinion] the target's minion
+   * @param {Object|null} [owner] the minion's owner: since 2.9.3 its PVP Attack boosts every minion hit
+   *   (combat-pvp.md §5, 2.9.3 addendum)
    */
-  function minionStrike(minion, side, target, drTarget, ownStack, foeStack, foeMinion = null) {
+  function minionStrike(minion, side, target, drTarget, ownStack, foeStack, foeMinion = null, owner = null) {
+    const ownerAtk = owner?.pvpAttack ?? 0;
     if (!minion.alive || target.hp <= 0) return;
     const minionLane = lane(lane(s.rng, side), 'minion');
     const swing = minionSwing(minion, s.tickMs, minionLane);
     if (!swing) return;
     if (foeMinion && foeMinion.alive) {
       const foe = side === 'attacker' ? 'defender' : 'attacker';
-      const r = damageMinion(foeMinion, rampDamage(swing.damage, s.damageMult ?? 1), { swing: true }, lane(minionLane, 'minion-block'));
+      const r = damageMinion(foeMinion, rampDamage(deps.pvpRatedDamage(swing.damage, ownerAtk, target.pvpDefense), s.damageMult ?? 1), { swing: true }, lane(minionLane, 'minion-block'));
       healMinionLifesteal(minion, r.dealt);
       s.events.push({
         timestamp: s.timestamp, type: `${side}_minion_${swing.isCrit ? 'crit' : 'hit'}`, damage: 0, ...hpAfter(), minionVsMinion: true,
@@ -419,6 +423,7 @@ export function createReactions(s, deps) {
     const dr = drTarget.damageReduction;
     undo();
     let damage = mitigateMinionHit(swing.damage, dr);
+    if (ownerAtk > 0) damage = Math.round(damage * (1 + deps.pvpRatingToFraction(ownerAtk))); // 2.9.3
     if (target.pvpDefense > 0) {
       damage = Math.max(1, Math.round(damage * (1 - deps.pvpRatingToFraction(target.pvpDefense))));
     }

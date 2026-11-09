@@ -269,6 +269,12 @@ describe('processArenaSpells: minions (L1454054-1454112, L1454408-1454664)', () 
     ]);
   });
 
+  it('2.9.3: the minion takes the hit after its owner PVP Defense (no caster PVP Attack)', () => {
+    const targetMinion = minionOf({ hp: 600, maxHp: 600 });
+    run(ready([cfg('BLADE', blade())]), { targetMinion, caster: { ...duelist(), pvpAttack: 400 }, target: { ...duelist(), pvpDefense: 200 } });
+    expect(targetMinion.hp).toBe(600 - Math.max(1, Math.round(550 * (1 - 200 / (200 + 200))))); // K = 200
+  });
+
   it('a defender minion is hit by an attacker caster; an attacker minion by a defender caster', () => {
     const r = run(ready([cfg('BLADE', blade())]), { side: 'defender', targetMinion: minionOf() });
     expect(r.events[1].type).toBe('attacker_minion_damaged');

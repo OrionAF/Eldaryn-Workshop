@@ -86,12 +86,17 @@ describe('coreTotalPower (pet-cores.md §7)', () => {
     expect(coreTotalPower('ANCIENT', 50, 1)).toBe(7200);
     expect(coreTotalPower('ANCIENT', 25, 1)).toBe(3600);
   });
-  it('higher tiers use K and a base-3 level curve', () => {
-    expect(coreTotalPower('MYTHIC', 50, 2)).toBeCloseTo(4400 * 7.8, 8);
-    expect(coreTotalPower('MYTHIC', 34, 2)).toBeCloseTo((4400 * 7.8) / 3, 8);
-    expect(coreTotalPower('OBLIVION', 50, 4)).toBe(21000 * 890);
-    expect(coreTotalPower('OBLIVION', 18, 4)).toBeCloseTo((21000 * 890) / 3, 6);
-    expect(coreTotalPower('OBLIVION', 50, 5)).toBeCloseTo((21000 * 890 * 26.5) / 24.5, 6);
+  it('higher tiers: sqrt of the tier stat multiplier and of the level growth ratio (2.9.3)', () => {
+    const g = (L) => 1 + (L - 1) * 0.07;
+    expect(coreTotalPower('MYTHIC', 50, 2)).toBeCloseTo(4400 * Math.sqrt(3.3), 8);
+    expect(coreTotalPower('MYTHIC', 34, 2)).toBeCloseTo(4400 * Math.sqrt(3.3) * Math.sqrt(g(34) / g(50)), 8);
+    expect(coreTotalPower('OBLIVION', 50, 4)).toBeCloseTo(21000 * Math.sqrt(24.5), 6);
+    expect(coreTotalPower('OBLIVION', 50, 5)).toBeCloseTo(21000 * Math.sqrt(26.5), 6);
+    expect(coreTotalPower('OBLIVION', 50, 6)).toBeCloseTo(21000 * Math.sqrt(26.5 * 1.1), 6);
+  });
+  it('higher tiers clamp the level to 1..50', () => {
+    expect(coreTotalPower('DIVINE', 0, 3)).toBeCloseTo(10500 * Math.sqrt(17) * Math.sqrt(1 / 4.43), 8);
+    expect(coreTotalPower('DIVINE', 70, 3)).toBeCloseTo(10500 * Math.sqrt(17), 8);
   });
   it('unknown rarity counts 0', () => {
     expect(coreTotalPower('SHINY', 50, 3)).toBe(0);

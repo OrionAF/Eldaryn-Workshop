@@ -20,10 +20,18 @@ const sheet = (o = {}) => ({
 const summon = { species: 'SKELETON', name: 'Skeleton', icon: 'x', minion: 'MELEE', hpPercent: 50, attackPercent: 50, respawnCooldownMs: 5000, summonCastMs: 0 };
 
 // Fake pieces of modules this file does not import (spells.js, pvp/attack.js).
+const fakeFraction = (r) => r / (r + 100);
+const pvpRatedDamage = (dmg, atk, def) => {
+  if (dmg <= 0) return dmg;
+  let x = atk > 0 ? Math.round(dmg * (1 + fakeFraction(atk))) : dmg;
+  if (def > 0) x = Math.max(1, Math.round(x * (1 - fakeFraction(def))));
+  return x;
+};
 const deps = (o = {}) => ({
   isSpellBuffActive: () => true,
   activeBuffThornsPercent: () => 0,
   pvpRatingToFraction: (r) => r / (r + 100),
+  pvpRatedDamage,
   ...o,
 });
 
@@ -377,6 +385,21 @@ describe('minionStrike (L1455564-1455680)', () => {
     const t = setup({ defenderStats: sheet({ totalPvpDefense: 1e9 }) });
     createReactions(t, deps()).minionStrike(t.attackerMinion, 'attacker', t.defender, t.defender, t.defenderStack, t.attackerStack);
     expect(t.events[0].damage).toBe(1);
+  });
+
+  it('2.9.3: the owner PVP Attack boosts the hit after DR, before the target PVP Defense', () => {
+    const s = setup({ defenderStats: sheet({ totalPvpDefense: 100 }) });
+    const owner = { pvpAttack: 100 };
+    createReactions(s, deps()).minionStrike(s.attackerMinion, 'attacker', s.defender, s.defender, s.defenderStack, s.attackerStack, null, owner);
+    expect(s.events[0].damage).toBe(30); // 40 * 1.5 = 60, * 0.5 = 30
+  });
+
+  it('2.9.3 minion-vs-minion: pvpRatedDamage(swing, owner PVP Attack, target PVP Defense)', () => {
+    const s = setup({ defenderSummon: summon, defenderStats: sheet({ totalPvpDefense: 100 }) });
+    summonMinion(s.defenderMinion);
+    s.defenderMinion.hp = 1000;
+    createReactions(s, deps()).minionStrike(s.attackerMinion, 'attacker', s.defender, s.defender, s.defenderStack, s.attackerStack, s.defenderMinion, { pvpAttack: 300 });
+    expect(s.defenderMinion.hp).toBe(1000 - pvpRatedDamage(50, 300, 100));
   });
 
   it('uses Bulwark/Sunder for the DR read, restores the entity, and syncs a distinct drTarget', () => {
