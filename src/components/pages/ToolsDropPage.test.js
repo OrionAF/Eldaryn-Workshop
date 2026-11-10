@@ -702,3 +702,97 @@ it('Loot bag: Copy summary writes the visible rows, and a blocked clipboard is r
   await vi.waitFor(() => expect(setStatus).toHaveBeenCalledWith('Copying was blocked by the browser.'));
   delete navigator.clipboard;
 });
+
+// --- slice 2: goal profiles, guards, preset scope, the loot-bag screen (drop-check-goals.md §4) ---------------
+
+it('goal profiles: New starts an empty list, switching back shows the first list, Delete asks first', () => {
+  open();
+  const profile = () => target.querySelector('[data-testid="goal-profile"]');
+  const pbtn = (text) => [...profile().querySelectorAll('button')].find((x) => x.textContent.trim() === text);
+  pbtn('New').click();
+  flushSync();
+  expect(rosterStore.current.dropCheck.profiles).toHaveLength(2);
+  expect(goalRows()).toHaveLength(0);
+  const first = rosterStore.current.dropCheck.profiles[0].id;
+  rosterStore.selectDropProfile(first);
+  flushSync();
+  expect(goalRows()).toHaveLength(1);
+  pbtn('Copy').click();
+  flushSync();
+  expect(goalRows()).toHaveLength(1);
+  expect(rosterStore.current.dropCheck.profiles).toHaveLength(3);
+  pbtn('Delete').click();
+  flushSync();
+  expect(rosterStore.current.dropCheck.profiles).toHaveLength(3);
+  [...profile().querySelectorAll('button')].find((x) => x.textContent.trim().startsWith('Delete ')).click();
+  flushSync();
+  expect(rosterStore.current.dropCheck.profiles).toHaveLength(2);
+});
+
+it('a guard goal: the editor offers only rates, and saves the line to keep', () => {
+  rosterStore.setDropGoals([]);
+  open();
+  btn('+ Add goal').click();
+  flushSync();
+  [...target.querySelectorAll('[role="group"][aria-label="Role"] button')].find((b) => b.textContent.trim() === 'Guard').click();
+  flushSync();
+  // the default dummy target has no rate to keep
+  expect([...target.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Add goal').getAttribute('aria-disabled')).toBe('true');
+  expect(target.querySelector('[aria-label="New goal"]').textContent).toContain('A guard needs a fight with a clear rate');
+});
+
+it('a guard that the drop breaks makes the card a downgrade and names the line', async () => {
+  rosterStore.addDropGoal({ target: { kind: 'chapter', chapter: 1, level: 2 }, objective: { kind: 'win-chance' }, role: 'guard', guard: { target: 0.95 } });
+  __resetJobs({
+    run(request) {
+      calls.push(request);
+      const results = request.items.map((it) => ({
+        presetId: it.presetId,
+        goals: [
+          ...goalRes({ goals: request.goals.filter((g) => g.role !== 'guard') }, it, metric('better')),
+          ...request.goals.filter((g) => g.role === 'guard').map((g) => ({
+            goalId: g.id, label: 'Chapter 1: chance', targetLabel: 'Chapter 1-2', role: 'guard', unit: 'p',
+            guard: { status: 'fail', target: 0.95, after: { est: 0.88, lo: 0.85, hi: 0.9, n: 400 }, before: { est: 0.99, lo: 0.97, hi: 1, n: 400 } },
+          })),
+        ],
+      }));
+      return { promise: Promise.resolve({ results, aborted: false }), cancel() {} };
+    },
+  });
+  open();
+  change(q('Attack'), '9.000');
+  btn('Check drop').click();
+  flushSync();
+  await settle();
+  expect(calls[0].goals.find((g) => g.role === 'guard')).toMatchObject({ guard: { target: 0.95 } });
+  expect(card('set1').dataset.verdict).toBe('worse');
+  expect(card('set1').textContent).toContain('Fails a guard');
+  expect(card('set1').querySelector('[data-guard]').textContent).toContain('Chapter 1-2 drops to 88% (guard 95%)');
+});
+
+it('a goal limited to one preset judges only that preset; one limited to none blocks with the reason', async () => {
+  const [p1] = rosterStore.current.presets.map((p) => p.id);
+  rosterStore.updateDropGoal(dummyId, { target: { kind: 'dummy', seconds: 60 }, objective: { kind: 'dps' }, presetIds: [p1] });
+  open();
+  change(q('Attack'), '9.000');
+  btn('Check drop').click();
+  flushSync();
+  await settle();
+  expect(calls[0].items.map((it) => it.goalIds)).toEqual(calls[0].items.map((it) => (it.presetId === p1 ? [dummyId] : [])));
+  expect(goalRows()[0].textContent).toContain(`Only ${rosterStore.current.presets[0].name}`);
+});
+
+it('Loot bag: the screen simulates the best few drops of a slot, says how many it left out, and Check all runs them', async () => {
+  const base = lootBag.pendingItems[0];
+  const many = Array.from({ length: 8 }, (_, i) => ({ ...base, id: `x${i}`, name: `Helm ${i}`, primaryStats: { attack: 1000 + i * 4000, hp: 0 }, secondaryStats: [] }));
+  open({ tab: 'bag' });
+  paste({ pendingItems: many });
+  await settle();
+  const simulated = (req) => new Set(req.items.filter((it) => it.goalIds.length).map((it) => it.after.stats.totalAttack)).size;
+  expect(simulated(calls[0])).toBe(5);
+  expect(target.querySelector('[data-testid="bag-screened"]').textContent).toContain('3 drops scored well below');
+  btn('Check all').click();
+  flushSync();
+  await vi.waitFor(() => expect(calls).toHaveLength(2));
+  expect(simulated(calls[1])).toBe(8);
+});

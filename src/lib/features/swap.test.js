@@ -283,6 +283,26 @@ describe('runSwapMetrics', () => {
     expect(results.find((r) => r.presetId === 'p2')?.goals ?? []).toEqual([]);
   });
 
+  it('a guard checks the after-build against its rate: pass, fail (the drop breaks it) and below (it was already short)', async () => {
+    const guard = { ...chapter, id: 'gd', role: 'guard', guard: { target: 0.5 } };
+    const weak = { ...plain(1), stats: { ...plain(1).stats, totalHp: 1 } };
+    const run = (before, after) => runSwapMetrics([{ presetId: 'p1', before, after }], { goals: [guard], n0: 16, maxN: 16, seed: 2 });
+    const pass = (await run(plain(1000), plain(1000))).results[0].goals[0];
+    expect(pass).toMatchObject({ goalId: 'gd', role: 'guard', unit: 'p', guard: { status: 'pass', target: 0.5, before: null } });
+    expect(pass.delta).toBeUndefined();
+    expect((await run(plain(1000), weak)).results[0].goals[0].guard).toMatchObject({ status: 'fail', after: { est: 0 }, before: { est: 1 } });
+    expect((await run(weak, weak)).results[0].goals[0].guard.status).toBe('below');
+  });
+
+  it('an item no goal runs on says so (noGoals), so the view can leave its preset out', async () => {
+    const { results } = await runSwapMetrics([{ presetId: 'p1', goalIds: [], before: plain(1000), after: plain(1000) }, ...items], { goals: [dummy(5)], n0: 4, maxN: 4 });
+    expect(results.map((r) => !!r.noGoals)).toEqual([true, false]);
+  });
+
+  it('refuses a guard on an objective that is not a rate', () => {
+    expect(() => goalObjective({ ...dummy(), role: 'guard' })).toThrow(/guard needs a clear rate/);
+  });
+
   it('reports the comparator fields and applies the family', async () => {
     const { results } = await runSwapMetrics([{ presetId: 'p1', before: plain(1000), after: plain(1300) }], { goals: [dummy(10)], n0: 4, maxN: 16 });
     expect(results[0].goals[0].delta).toMatchObject({ verdict: 'better', n: 4, maxN: 16, nLooks: 3, holmReject: true });
@@ -339,6 +359,27 @@ describe('verdict', () => {
     const u = verdictFor(row(0), res(goal('a', ci(40, 10, 70)), goal('b', ci(0.02, -0.1, 0.14, 0.01))));
     expect(u.verdict).toBe('inconclusive');
     expect(u.unresolved).toEqual(['b']);
+  });
+
+  it('guards: a failed guard is a downgrade whatever the judges say; an open guard blocks an upgrade or sidegrade', () => {
+    const gd = (status) => ({ goalId: `g-${status}`, label: 'Dungeon', targetLabel: 'Dungeon 8', role: 'guard', guard: { status, target: 0.95, after: { est: 0.88 } } });
+    const up = goal('a', ci(40, 10, 70));
+    const flat = goal('a', ci(1, -3, 5, 10));
+    const down = goal('a', ci(-40, -70, -10));
+    const v = (...g) => verdictFor(row(5), res(...g));
+    expect(v(up, gd('pass')).verdict).toBe('upgrade');
+    expect(v(up, gd('fail')).verdict).toBe('downgrade');
+    expect(v(up, gd('fail')).guardNotes[0].text).toBe('Dungeon 8 drops to 88% (guard 95%)');
+    expect(v(up, gd('fail')).failedGuards).toEqual(['g-fail']);
+    expect(v(up, gd('unresolved')).verdict).toBe('inconclusive');
+    expect(v(up, gd('unresolved')).unresolved).toEqual(['g-unresolved']);
+    expect(v(flat, gd('unresolved')).verdict).toBe('inconclusive');
+    expect(v(down, gd('unresolved')).verdict).toBe('downgrade');
+    expect(v(up, gd('below')).verdict).toBe('upgrade');
+    expect(v(up, gd('below')).guardNotes[0].status).toBe('below');
+    // guards alone: kept is a sidegrade (never an upgrade), broken a downgrade; either way simulated
+    expect(v(gd('pass'))).toMatchObject({ verdict: 'sidegrade', basis: 'sim', notJudged: [] });
+    expect(v(gd('fail')).verdict).toBe('downgrade');
   });
 
   it('aggregateVerdict combines presets sharing a set', () => {

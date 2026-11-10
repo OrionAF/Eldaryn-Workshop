@@ -3,13 +3,13 @@
 // "Run more" request. The statistics stay in swap.js (verdictFor, Holm); nothing here decides a verdict.
 //
 //   chipFor(verdict, basis, state)   VerdictChip props for a set verdict
-//   setCards(rows, results)          one card per equipment set: Holm verdict, coverage, notJudged, metrics
+//   setCards(rows, results)          one card per equipment set: Holm verdict, coverage, notJudged, metrics, guards
 //   pctInterval(m), goalFigure(m)    a goal's contrast on its axis (percent of the start, points, or raw)
 //   tally(judged, skipped)           counts for the summary bar
 //   isDowngrade(best)                a judged (simulated) downgrade, the rows "Hide downgrades" drops
 //   bagSummaryText(rows)             the loot bag as plain text lines for the clipboard
 //   runMoreRequest(request)          a stricter request for the same inputs, or null at the ceiling
-import { groupBySet, verdictFor, aggregateVerdict, statKeyLabel, DROP_PRECISION } from './swap.js';
+import { groupBySet, verdictFor, aggregateVerdict, statKeyLabel, guardText, DROP_PRECISION } from './swap.js';
 import { EQUIP_SETS } from '../model/equipment.js';
 
 export const setLabelOf = (setKey) => EQUIP_SETS.find((s) => s.key === setKey)?.label ?? setKey;
@@ -74,6 +74,11 @@ function metricsOf(res) {
   return (res?.goals ?? []).filter((g) => g?.delta).map((g) => ({ id: g.goalId, label: g.label, unit: g.unit, m: g }));
 }
 
+/** A result's guards (swap.js guardCheck), each with its one-line reason. */
+function guardsOf(res) {
+  return (res?.goals ?? []).filter((g) => g?.role === 'guard' && g.guard).map((g) => ({ id: g.goalId, label: g.label, status: g.guard.status, text: guardText(g) }));
+}
+
 /**
  * One card per equipment set the item could go into. The set verdict covers every preset wearing the set
  * (aggregateVerdict over the Holm-judged preset verdicts); `coverageLabel` and `notJudged` say what the
@@ -85,10 +90,13 @@ export function setCards(rows, results = {}) {
   const resOf = (row, i) => (Array.isArray(results) ? results[i] : results[row.presetId]) ?? null;
   const index = new Map(rows.map((r, i) => [r, i]));
   return groupBySet(rows).map(({ setKey, rows: members }) => {
-    const per = members.map((row) => {
+    const all0 = members.map((row) => {
       const res = resOf(row, index.get(row));
       return { row, res, v: verdictFor(row, res) };
     });
+    // a preset no goal judges (goal preset lists) stays out of the set's verdict while another preset is judged
+    const unjudged = all0.filter((p) => p.res?.noGoals);
+    const per = unjudged.length < all0.length ? all0.filter((p) => !p.res?.noGoals) : all0;
     const verdict = aggregateVerdict(per.map((p) => p.v.verdict));
     const sim = per.every((p) => p.v.basis === 'sim');
     const all = per.flatMap((p) => metricsOf(p.res));
@@ -103,7 +111,8 @@ export function setCards(rows, results = {}) {
       notJudged: [...new Set(per.flatMap((p) => p.v.notJudged))].map(statKeyLabel),
       unresolved: per.some((p) => p.v.unresolved.length > 0),
       nNeeded: needed.length ? Math.max(...needed) : null,
-      presetNames: per.map((p) => p.row.name),
+      presetNames: all0.map((p) => p.row.name),
+      unjudgedNames: per === all0 ? [] : unjudged.map((p) => p.row.name),
       presets: per.map((p) => ({
         presetId: p.row.presetId,
         name: p.row.name,
@@ -111,7 +120,9 @@ export function setCards(rows, results = {}) {
         approx: p.row.approx,
         verdict: p.v.verdict,
         metrics: metricsOf(p.res),
+        guards: guardsOf(p.res),
       })),
+      failedGuard: per.some((p) => p.v.failedGuards?.length > 0),
       estimatePct: estimates.length ? estimates.reduce((a, b) => a + b, 0) / estimates.length : null,
     };
   });

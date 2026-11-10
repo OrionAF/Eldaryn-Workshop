@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
-  defaultDropCheck, normaliseDropCheck, normaliseDropGoals, reconcileDropCheck, activeDropProfile, DROP_GOAL_MAX,
+  defaultDropCheck, normaliseDropCheck, normaliseDropGoals, reconcileDropCheck, activeDropProfile, DROP_GOAL_MAX, GUARD_TARGET,
 } from './dropCheck.js';
 import { newCharacter, normaliseCharacter } from './index.js';
 
 const dummy = { target: { kind: 'dummy', seconds: 60 }, objective: { kind: 'dps' } };
+const judge = { role: 'judge', presetIds: null };
 
 describe('model/dropCheck', () => {
   it('defaults to one empty profile', () => {
@@ -24,7 +25,18 @@ describe('model/dropCheck', () => {
       { id: 'c', target: dummy.target },
       'junk',
     ]);
-    expect(goals).toEqual([{ id: 'a', target: { kind: 'dummy', seconds: 60 }, objective: { kind: 'dps' } }]);
+    expect(goals).toEqual([{ id: 'a', target: { kind: 'dummy', seconds: 60 }, objective: { kind: 'dps' }, ...judge }]);
+  });
+
+  it('a guard keeps a target in range; a judge carries none; presetIds are deduplicated', () => {
+    const [g, h, j] = normaliseDropGoals([
+      { id: 'g', ...dummy, role: 'guard', guard: { target: 7 }, presetIds: ['a', 'a', 3, 'b'] },
+      { id: 'h', ...dummy, role: 'guard' },
+      { id: 'j', ...dummy, role: 'nonsense', guard: { target: 0.5 }, presetIds: 'x' },
+    ]);
+    expect(g).toMatchObject({ role: 'guard', guard: { target: GUARD_TARGET.max }, presetIds: ['a', 'b'] });
+    expect(h.guard.target).toBe(GUARD_TARGET.default);
+    expect(j).toEqual({ id: 'j', ...dummy, ...judge });
   });
 
   it('makes goal ids unique and caps the list', () => {
@@ -60,10 +72,21 @@ describe('model/dropCheck', () => {
     expect(g2.target).toMatchObject({ partner: null, tank: 'auto', starter: 'me' });
   });
 
+  it('reconciles deleted presets but keeps a goal left with none (it then judges no preset)', () => {
+    const c = {
+      presets: [{ id: 'p1' }],
+      dropCheck: { profiles: [{ id: 'p', name: 'G', goals: [{ id: 'g1', ...dummy, presetIds: ['p1', 'gone'] }, { id: 'g2', ...dummy, presetIds: ['gone'] }] }], activeProfileId: 'p' },
+    };
+    reconcileDropCheck(c);
+    const [g1, g2] = c.dropCheck.profiles[0].goals;
+    expect(g1.presetIds).toEqual(['p1']);
+    expect(g2.presetIds).toEqual([]);
+  });
+
   it('round-trips through normaliseCharacter', () => {
     const c = newCharacter('A', 'WARRIOR');
-    c.dropCheck.profiles[0].goals = [{ id: 'g', ...dummy }];
+    c.dropCheck.profiles[0].goals = [{ id: 'g', ...dummy, ...judge }, { id: 'h', ...dummy, role: 'guard', guard: { target: 0.9 }, presetIds: [c.presets[0].id] }];
     const back = normaliseCharacter(JSON.parse(JSON.stringify(c)));
-    expect(activeDropProfile(back).goals).toEqual([{ id: 'g', ...dummy }]);
+    expect(activeDropProfile(back).goals).toEqual(c.dropCheck.profiles[0].goals);
   });
 });

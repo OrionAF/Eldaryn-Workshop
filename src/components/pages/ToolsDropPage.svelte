@@ -25,9 +25,9 @@
   import { go } from '../../lib/router.svelte.js';
   import { loadUi, saveUi } from '../../lib/uiState.js';
   import { normaliseDropSetup } from '../../lib/ui/dropSetup.js';
-  import { resolveDropGoals, goalsForRealm, requestGoals, goalIdsByRealm, legacyDropGoals, expandLegacyGoals } from '../../lib/ui/dropGoals.js';
+  import { resolveDropGoals, goalsForRealm, requestGoals, goalIdsFor, goalsSeeDefence, legacyDropGoals, expandLegacyGoals } from '../../lib/ui/dropGoals.js';
   import { otherCharacters } from '../../lib/ui/optimiserSetup.js';
-  import { activeDropProfile, DROP_GOAL_MAX } from '../../lib/model/dropCheck.js';
+  import { activeDropProfile, DROP_GOAL_MAX, DROP_PROFILE_MAX } from '../../lib/model/dropCheck.js';
   import { formatHash } from '../../lib/routes.js';
   import { jobsStore, startJob, cancelJob, jobSignature, isStale } from '../../lib/jobs.svelte.js';
   import { prepareSwap, setInScope, DROP_PRECISION } from '../../lib/features/swap.js';
@@ -44,6 +44,7 @@
   import ItemEditor from '../gear/ItemEditor.svelte';
   import { slotLabel } from '../gear/gearFormat.js';
   import DropGoalList from '../drop/DropGoalList.svelte';
+  import GoalProfile from '../drop/GoalProfile.svelte';
   import ImportPointer from '../import/ImportPointer.svelte';
   import DropSetCard from '../drop/DropSetCard.svelte';
   import DropMetricTables from '../drop/DropMetricTables.svelte';
@@ -177,11 +178,13 @@
       ? prepareSwap(character, { slot: drop.slot, item: drop.item, realm, presetIds: scopeId === 'all' ? null : [scopeId], sets: dropSets })
       : [],
   );
+  // each preset meets the goals of the drop's realm that judge it (a goal may be limited to some presets)
+  const singleItems = $derived(rows.map((r) => ({ presetId: r.presetId, goalIds: goalIdsFor(realmGoals, realm, r.presetId), before: r.before, after: r.after })));
   const request = $derived.by(() => {
-    if (!rows.length || !realmGoals.length) return null;
+    if (!rows.length || !singleItems.some((it) => it.goalIds.length)) return null;
     return {
       mode: 'dropCheck',
-      items: rows.map((r) => ({ presetId: r.presetId, before: r.before, after: r.after })),
+      items: singleItems,
       goals: requestGoals(realmGoals),
       character: goalCharacter(character),
       seed: BATCH_SIM.seed,
@@ -272,8 +275,14 @@
   const counts = $derived(tally(ranked.map((r) => r.best), bag?.skipped ?? []));
   const bagStale = $derived(!!bagJob && (isStale(bagJob) || bag.sets !== dropSets));
   /** The next loot-bag run's request (null before an import), for the run-time estimate. */
-  const batchGoals = () => ({ goals: requestGoals(resolvedGoals), goalIdsByRealm: goalIdsByRealm(resolvedGoals) });
-  const bagRequest = $derived(bag && character ? prepareBatch(character, liveBag().entries, { sets: dropSets, ...batchGoals() }).request : null);
+  // The screen simulates only the best few drops per slot (dropBatch.js screenKeep); "Check all" runs every one.
+  const batchGoals = (all = false) => ({
+    goals: requestGoals(resolvedGoals),
+    goalIdsFor: (r, presetId) => goalIdsFor(resolvedGoals, r, presetId),
+    screen: all ? null : { seesDefence: goalsSeeDefence(resolvedGoals) },
+  });
+  const bagRequest = $derived(bag && character ? prepareBatch(character, liveBag().entries, { sets: dropSets, ...batchGoals(bag.all) }).request : null);
+  const screenedOut = $derived(bag ? (bag.screened ?? []).filter((k) => !applied.has(k)).length : 0);
   const bagBusy = $derived(bagJob?.status === 'queued' || bagJob?.status === 'running');
   const bagRowState = $derived(stateOf(bagJob));
 
@@ -319,9 +328,9 @@
     return chip.verdict === 'better' ? 'up' : chip.verdict === 'worse' ? 'down' : 'side';
   }
 
-  function runBatch(base, { precision: withPrecision = precision, maxN = null } = {}) {
+  function runBatch(base, { precision: withPrecision = precision, maxN = null, all = false } = {}) {
     const sets = dropSets;
-    const prep = prepareBatch(character, base.entries, { sets, ...batchGoals() });
+    const prep = prepareBatch(character, base.entries, { sets, ...batchGoals(all) });
     const key = character.id;
     let jobId = null;
     if (prep.request) {
@@ -339,7 +348,7 @@
           tallyChips(tally(rankEntries(base.entries, prep.rows, prep.offsets, res?.results ?? []).map((r) => r.best), base.skipped)),
       });
     }
-    keptBags.set(key, { entries: base.entries, skipped: base.skipped, source: base.source, rows: prep.rows, offsets: prep.offsets, jobId, precision: withPrecision, maxN, sets });
+    keptBags.set(key, { entries: base.entries, skipped: base.skipped, source: base.source, rows: prep.rows, offsets: prep.offsets, jobId, precision: withPrecision, maxN, sets, all, screened: prep.screened });
     bump += 1;
   }
 
@@ -363,7 +372,7 @@
     const next = bagNext();
     if (!next) return;
     precision = next.precision;
-    runBatch(liveBag(), { precision: next.precision, maxN: next.maxN ?? null });
+    runBatch(liveBag(), { precision: next.precision, maxN: next.maxN ?? null, all: bag.all });
   }
 
   function loadFromBag(entry) {
@@ -485,6 +494,15 @@
             </div>
             <div class="group goals-group" role="group" aria-labelledby="dc-measure-what">
               <span class="cap-label" id="dc-measure-what">Goals</span>
+              <GoalProfile
+                profiles={character.dropCheck.profiles}
+                activeId={character.dropCheck.activeProfileId}
+                max={DROP_PROFILE_MAX}
+                onselect={(id) => rosterStore.selectDropProfile(id)}
+                onadd={(name, from) => rosterStore.addDropProfile(name, { copyFrom: from })}
+                onrename={(id, name) => rosterStore.renameDropProfile(id, name)}
+                onremove={(id) => rosterStore.removeDropProfile(id)}
+              />
               <DropGoalList
                 resolved={resolvedGoals}
                 {character}
@@ -515,7 +533,7 @@
             </div>
             </div>
             {#snippet footer()}
-              <Button variant="primary" disabled={!request || singleBusy} reason={!hasStats ? 'Enter at least one stat for the drop' : !rows.length ? 'No preset wears Set 1' : !anyGoal ? 'Add a goal to measure' : !request ? `No goal judges ${realm === 'oblivion' ? 'Oblivion' : 'base-realm'} drops` : ''} loading={singleBusy} busyLabel="Checking…" onclick={() => checkDrop()}>
+              <Button variant="primary" disabled={!request || singleBusy} reason={!hasStats ? 'Enter at least one stat for the drop' : !rows.length ? 'No preset wears Set 1' : !anyGoal ? 'Add a goal to measure' : !realmGoals.length ? `No goal judges ${realm === 'oblivion' ? 'Oblivion' : 'base-realm'} drops` : !request ? 'No goal judges the chosen presets' : ''} loading={singleBusy} busyLabel="Checking…" onclick={() => checkDrop()}>
                 Check drop
               </Button>
               {#if singleBusy}<Button variant="ghost" onclick={() => cancelJob(singleJob.id)}>Cancel</Button>{/if}
@@ -608,10 +626,16 @@
               {#if bagBusy}
                 <Button variant="ghost" size="small" onclick={() => cancelJob(bagJob.id)}>Cancel</Button>
               {:else}
-                <Button variant="secondary" size="small" disabled={!liveCount} onclick={() => runBatch(liveBag())}>Check again</Button>
+                <Button variant="secondary" size="small" disabled={!liveCount} onclick={() => runBatch(liveBag(), { all: bag.all })}>Check again</Button>
               {/if}
             {/snippet}
             {#if bagJob}<RunProgress segments={segmentsOf(bagJob)} />{/if}
+            {#if screenedOut && !bagBusy}
+              <p class="hint" data-testid="bag-screened">
+                {screenedOut} drop{screenedOut === 1 ? '' : 's'} scored well below the best few of {screenedOut === 1 ? 'its' : 'their'} slot on the quick screen and {screenedOut === 1 ? 'was' : 'were'} not simulated.
+                <Button variant="ghost" size="small" onclick={() => runBatch(liveBag(), { all: true })}>Check all</Button>
+              </p>
+            {/if}
             {#if applied.size}
               <p class="hint" data-testid="bag-applied">{applied.size} applied item{applied.size === 1 ? '' : 's'} removed from the list.{liveCount ? ' Check again to compare the rest with your new gear.' : ''}</p>
             {/if}

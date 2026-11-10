@@ -2,24 +2,30 @@
 // the drop's realm, turned into the dropCheck request's `goals`, and imported once from the old Measure settings.
 // Pure. The goals themselves are persisted on the character (model/dropCheck.js); what a goal measures is
 // simulation.md §Drop Check.
-import { goalObjective, DROP_OBJECTIVE_KINDS } from '../features/swap.js';
+import { goalObjective, goalIsDamageOnly, DROP_OBJECTIVE_KINDS, GUARD_OBJECTIVE_KINDS } from '../features/swap.js';
 import { objectiveKindsFor } from '../search/objectives.js';
 import { rosterPartnerFor } from '../search/celestialObjective.js';
 import { PVP_MAX_OPPONENTS } from '../search/pvpObjective.js';
 import { OBJECTIVE_LABEL, TARGET_KIND_LABEL } from './optimiserView.js';
 
-/** Objective kinds a target kind offers in Drop Check (the Optimiser's list without the ones a swap cannot use). */
-export function dropObjectiveKinds(targetKind, rawTarget = null) {
-  return objectiveKindsFor(targetKind, rawTarget).filter((k) => DROP_OBJECTIVE_KINDS.includes(k));
+/**
+ * Objective kinds a target kind offers in Drop Check (the Optimiser's list without the ones a swap cannot use);
+ * a guard only the rates it can hold to a target.
+ */
+export function dropObjectiveKinds(targetKind, rawTarget = null, role = 'judge') {
+  const kinds = role === 'guard' ? GUARD_OBJECTIVE_KINDS : DROP_OBJECTIVE_KINDS;
+  return objectiveKindsFor(targetKind, rawTarget).filter((k) => kinds.includes(k));
 }
 
 /** A new goal's starting point (the Add goal editor). */
-export const NEW_GOAL = Object.freeze({ target: { kind: 'dummy', seconds: 60 }, objective: { kind: 'dps' } });
+export const NEW_GOAL = Object.freeze({ target: { kind: 'dummy', seconds: 60 }, objective: { kind: 'dps' }, role: 'judge', presetIds: null });
 
 /**
- * One saved goal, checked against today's character: deleted PVP opponents drop out, a Celestial roster
- * partner is looked up in `characters`. A goal that no longer runs keeps its place with the reason.
- * @returns {{goal: Object, ok: boolean, error: string, realm: 'base'|'oblivion'|null, label: string, partner: Object|null}}
+ * One saved goal, checked against today's character: deleted PVP opponents and presets drop out, a Celestial
+ * roster partner is looked up in `characters`. A goal that no longer runs keeps its place with the reason; one
+ * scoped to presets that are all gone runs on none and says so (`error`), never silently on every preset.
+ * @returns {{goal: Object, ok: boolean, error: string, realm: 'base'|'oblivion'|null, label: string, partner: Object|null,
+ *   role: 'judge'|'guard', presetIds: string[]|null}}
  */
 export function resolveDropGoal(goal, character, characters = []) {
   let target = goal.target;
@@ -27,14 +33,22 @@ export function resolveDropGoal(goal, character, characters = []) {
     const known = new Set((character?.opponents ?? []).map((o) => o.id));
     target = { ...target, opponentIds: (target.opponentIds ?? []).filter((id) => known.has(id)) };
   }
-  const fixed = { ...goal, target };
+  const role = goal.role === 'guard' ? 'guard' : 'judge';
+  const presets = new Set((character?.presets ?? []).map((p) => p.id));
+  const presetIds = Array.isArray(goal.presetIds) ? goal.presetIds.filter((id) => presets.has(id)) : null;
+  const fixed = { ...goal, target, role, presetIds };
+  const scope = { role, presetIds };
+  if (presetIds && !presetIds.length) {
+    const label = `${TARGET_KIND_LABEL[target?.kind] ?? target?.kind ?? 'Goal'}: ${OBJECTIVE_LABEL[goal.objective?.kind] ?? goal.objective?.kind ?? ''}`;
+    return { goal: fixed, ok: false, error: 'Judges no preset: pick one', realm: null, label, partner: null, ...scope };
+  }
   const partner = target?.kind === 'celestial' ? rosterPartnerFor(target, characters) : null;
   try {
     const { target: t, objective } = goalObjective(fixed, { character, partner });
-    return { goal: fixed, ok: true, error: '', realm: t.realm ?? 'base', label: `${t.label}: ${objective.label}`, partner };
+    return { goal: fixed, ok: true, error: '', realm: t.realm ?? 'base', label: `${t.label}: ${objective.label}`, partner, damageOnly: goalIsDamageOnly(t, objective), ...scope };
   } catch (e) {
     const label = `${TARGET_KIND_LABEL[target?.kind] ?? target?.kind ?? 'Goal'}: ${OBJECTIVE_LABEL[goal.objective?.kind] ?? goal.objective?.kind ?? ''}`;
-    return { goal: fixed, ok: false, error: e?.message ?? String(e), realm: null, label, partner: null };
+    return { goal: fixed, ok: false, error: e?.message ?? String(e), realm: null, label, partner: null, ...scope };
   }
 }
 
@@ -50,11 +64,21 @@ export function requestGoals(resolved) {
     id: r.goal.id,
     target: JSON.parse(JSON.stringify(r.goal.target)),
     objective: JSON.parse(JSON.stringify(r.goal.objective)),
+    ...(r.role === 'guard' ? { role: 'guard', guard: { target: r.goal.guard?.target ?? 0.95 } } : {}),
     ...(r.partner ? { partner: r.partner } : {}),
   }));
 }
 
-/** The goal ids each realm's drops are judged by. */
+/** True when a resolved goal judges `presetId` (no preset list: every preset). */
+export const goalJudgesPreset = (r, presetId) => !r.presetIds || r.presetIds.includes(presetId);
+
+/** The goal ids a drop in `realm` meets on one preset: its realm's goals scoped to that preset. */
+export const goalIdsFor = (resolved, realm, presetId) => goalsForRealm(resolved, realm).filter((r) => goalJudgesPreset(r, presetId)).map((r) => r.goal.id);
+
+/** True when a goal that runs can see defence (a guard, or a fight that hits back): the loot-bag screen then counts HP. */
+export const goalsSeeDefence = (resolved) => resolved.some((r) => r.ok && (r.role === 'guard' || !r.damageOnly));
+
+/** The goal ids each realm's drops are judged by (before preset scoping). */
 export const goalIdsByRealm = (resolved) => ({
   base: goalsForRealm(resolved, 'base').map((r) => r.goal.id),
   oblivion: goalsForRealm(resolved, 'oblivion').map((r) => r.goal.id),

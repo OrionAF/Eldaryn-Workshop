@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { parseDropBatch, prepareBatch, entryResults, judgeEntry, rankEntries } from './dropBatch.js';
+import { parseDropBatch, prepareBatch, entryResults, judgeEntry, rankEntries, screenKeep, screenScore } from './dropBatch.js';
 import { runSwapMetrics } from './swap.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { clearMetricCache } from '../engine/metrics.js';
@@ -110,6 +110,35 @@ describe('prepareBatch and ranking', () => {
   it('without a goal for the realm of the drops there is nothing to simulate', () => {
     expect(prepareBatch(c, entries).request).toBeNull();
     expect(prepareBatch(c, entries, { goals: DUMMY, goalIdsByRealm: { oblivion: ['dps'] } }).request).toBeNull();
+  });
+
+  it('goalIdsFor scopes each item to the goals of its preset', () => {
+    const first = c.presets[0].id;
+    const { request } = prepareBatch(c, entries, { goals: DUMMY, goalIdsFor: (realm, presetId) => (realm === 'base' && presetId === first ? ['dps'] : []) });
+    expect(request.items.map((it) => it.goalIds.length > 0)).toEqual(request.items.map((it) => it.presetId === first));
+  });
+
+  it('the screen keeps the top drops per slot and lists the rest without goals', () => {
+    const bag = parseDropBatch({ pendingItems: [weak, strong, bagItem({ name: 'Mid', slot: 'WEAPON', primaryStats: { attack: 5000, hp: 0 }, secondaryStats: [] })] }, c).entries;
+    const { request, offsets, rows, screened } = prepareBatch(c, bag, { ...goalOpts, screen: { top: 2, tol: 0, seesDefence: false } });
+    expect(screened).toEqual([bag[0].key]);
+    expect(request.items.slice(offsets[0], offsets[0] + rows[0].length).every((it) => it.goalIds.length === 0)).toBe(true);
+    expect(request.items.slice(offsets[1], offsets[1] + rows[1].length).every((it) => it.goalIds.length === 1)).toBe(true);
+    expect(prepareBatch(c, bag, goalOpts).screened).toEqual([]);
+  });
+
+  it('screenKeep: top k per slot and realm, ties within tol kept, a small slot kept whole', () => {
+    const e = (slot, realm = 'base') => ({ slot, realm });
+    const entries5 = [e('WEAPON'), e('WEAPON'), e('WEAPON'), e('HEAD'), e('WEAPON', 'oblivion')];
+    expect(screenKeep(entries5, [5, 1, 4.5, -9, -9], { top: 1, tol: 0 })).toEqual([true, false, false, true, true]);
+    expect(screenKeep(entries5, [5, 1, 4.5, -9, -9], { top: 1, tol: 1 })).toEqual([true, false, true, true, true]);
+    expect(screenKeep(entries5, [5, 1, 4.5, -9, -9], { top: 3, tol: 0 })).toEqual([true, true, true, true, true]);
+  });
+
+  it('screenScore counts effective HP only when a goal sees defence', () => {
+    const row = { closed: { pct: 1 }, statsBefore: { totalHp: 1000 }, statsAfter: { totalHp: 1500 } };
+    expect(screenScore([row], { seesDefence: true })).toBeCloseTo(50);
+    expect(screenScore([row], { seesDefence: false })).toBe(1);
   });
 
   it('Set 1 only requests and judges only the presets wearing Set 1', () => {

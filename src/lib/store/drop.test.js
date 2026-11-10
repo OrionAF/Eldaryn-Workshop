@@ -98,7 +98,7 @@ describe('drop goals store', () => {
     expect(goals()).toEqual([]);
     const id = rosterStore.addDropGoal(dummy);
     expect(typeof id).toBe('string');
-    expect(goals()).toEqual([{ id, ...dummy }]);
+    expect(goals()).toEqual([{ id, ...dummy, role: 'judge', presetIds: null }]);
     expect(rosterStore.updateDropGoal(id, { target: { kind: 'worldBoss', affinity: 'NONE' }, objective: { kind: 'dps' } })).toBe(true);
     expect(goals()[0]).toMatchObject({ id, target: { kind: 'worldBoss' } });
     expect(rosterStore.updateDropGoal('nope', dummy)).toBe(false);
@@ -111,6 +111,38 @@ describe('drop goals store', () => {
     for (let i = 0; i < 8; i++) expect(rosterStore.addDropGoal(dummy)).not.toBeNull();
     expect(rosterStore.addDropGoal(dummy)).toBeNull();
     expect(goals()).toHaveLength(8);
+  });
+
+  it('keeps a guard and a preset list through add and update', () => {
+    const pid = rosterStore.current.presets[0].id;
+    const id = rosterStore.addDropGoal({ ...dummy, role: 'guard', guard: { target: 0.9 }, presetIds: [pid] });
+    expect(goals()[0]).toMatchObject({ role: 'guard', guard: { target: 0.9 }, presetIds: [pid] });
+    rosterStore.updateDropGoal(id, { ...dummy, role: 'judge', presetIds: null });
+    expect(goals()[0]).toEqual({ id, ...dummy, role: 'judge', presetIds: null });
+  });
+
+  it('profiles: add (empty or a copy), rename, select and remove, never the last', () => {
+    const dc = () => rosterStore.current.dropCheck;
+    const first = dc().activeProfileId;
+    rosterStore.addDropGoal(dummy);
+    const copy = rosterStore.addDropProfile('Ranked', { copyFrom: first });
+    expect(dc().activeProfileId).toBe(copy);
+    const copied = dc().profiles.find((p) => p.id === copy);
+    expect(copied.name).toBe('Ranked');
+    expect(copied.goals).toHaveLength(1);
+    expect(copied.goals[0].id).not.toBe(dc().profiles[0].goals[0].id);
+    const empty = rosterStore.addDropProfile('  ');
+    expect(dc().profiles.find((p) => p.id === empty)).toMatchObject({ name: 'Goals 3', goals: [] });
+    expect(rosterStore.renameDropProfile(empty, ' Dailies ')).toBe(true);
+    expect(rosterStore.renameDropProfile(empty, '   ')).toBe(false);
+    expect(dc().profiles.find((p) => p.id === empty).name).toBe('Dailies');
+    expect(rosterStore.selectDropProfile(first)).toBe(true);
+    expect(rosterStore.selectDropProfile('nope')).toBe(false);
+    expect(rosterStore.removeDropProfile(first)).toBe(true);
+    expect(dc().activeProfileId).toBe(copy);
+    rosterStore.removeDropProfile(empty);
+    expect(rosterStore.removeDropProfile(copy)).toBe(false);
+    expect(dc().profiles).toHaveLength(1);
   });
 
   it('setDropGoals replaces the list and persists it', () => {

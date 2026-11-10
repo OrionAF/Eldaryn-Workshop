@@ -53,6 +53,23 @@ describe('setCards', () => {
     expect(c.verdict).toBe('upgrade');
     expect(c.presets.map((p) => p.metrics.length)).toEqual([1, 1]);
   });
+
+  it('a preset no goal judges stays out of the set verdict and is named; with none judged the card is not simulated', () => {
+    const rows = [row('set1', 'a'), row('set1', 'b')];
+    const [c] = setCards(rows, { a: { goals: [metric('better', 60)] }, b: { goals: [], noGoals: true } });
+    expect(c).toMatchObject({ verdict: 'upgrade', basis: 'sim', presetNames: ['a', 'b'], unjudgedNames: ['b'] });
+    expect(c.presets.map((p) => p.presetId)).toEqual(['a']);
+    const [none] = setCards(rows, { a: { goals: [], noGoals: true }, b: { goals: [], noGoals: true } });
+    expect(none).toMatchObject({ basis: 'closed', unjudgedNames: [] });
+  });
+
+  it('guards show per preset with their reason, and a broken one flags the card', () => {
+    const guard = { goalId: 'gd', label: 'Dungeon: chance', targetLabel: 'Dungeon 8', role: 'guard', guard: { status: 'fail', target: 0.95, after: { est: 0.88 } } };
+    const [c] = setCards([row('set1', 'a')], { a: { goals: [metric('better', 60), guard] } });
+    expect(c.verdict).toBe('downgrade');
+    expect(c.failedGuard).toBe(true);
+    expect(c.presets[0].guards).toEqual([{ id: 'gd', label: 'Dungeon: chance', status: 'fail', text: 'Dungeon 8 drops to 88% (guard 95%)' }]);
+  });
 });
 
 describe('chipFor', () => {

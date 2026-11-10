@@ -6,7 +6,8 @@
 //   runSwapMetrics()   async (the worker task 'dropCheck' calls it): every goal (an Optimiser target and
 //                      objective, search/objectives.js) as a common-random-number paired contrast resolved by
 //                      the Optimiser's sequential comparator (search/sampler.js compareSets, simulation.md §Drop Check).
-//   verdictFor()       upgrade / sidegrade / downgrade / mixed / inconclusive from those contrasts,
+//                      A guard goal is instead a one-sided check that the after-build keeps a clear rate.
+//   verdictFor()       upgrade / sidegrade / downgrade / mixed / inconclusive from those contrasts and guards,
 //                      with the goals it covers and the changed stats no goal judged.
 //
 // How the "after" stats are made. With a sheet (tier 2) the in-game numbers are authoritative, so the
@@ -19,7 +20,8 @@ import { anchoredDeltaDetailed } from '../engine/pipeline/anchoredDelta.js';
 import { sheetKeyMeta, toDisplay } from '../engine/pipeline/sheet.js';
 import { holm } from '../engine/metrics.js';
 import { statByEnum } from '../game/stats.js';
-import { resolveTarget, makeObjective, enemyDealsDamage } from '../search/objectives.js';
+import { resolveTarget, makeObjective, enemyDealsDamage, meetsTarget } from '../search/objectives.js';
+import { lookSchedule } from '../engine/stats/index.js';
 import { createSampler, compareSets, looksFor, sliceSet, isAbort } from '../search/sampler.js';
 
 // ---------------------------------------------------------------------------------------------
@@ -235,6 +237,9 @@ const precisionOf = (p) => DROP_PRECISION[p] ?? DROP_PRECISION.standard;
  * search) mean nothing for one swap (docs/WIP/being-worked-on/drop-check-goals.md §3.2).
  */
 export const DROP_OBJECTIVE_KINDS = Object.freeze(['dps', 'win-chance', 'fastest-clear', 'pvp-winrate', 'arena-reward', 'survival']);
+/** Objective kinds a guard can hold to a rate: the ones whose statistic is a proportion. */
+export const GUARD_OBJECTIVE_KINDS = Object.freeze(['win-chance', 'pvp-winrate', 'survival']);
+const DEFAULT_GUARD_TARGET = 0.95;
 
 /**
  * A goal's target and objective, resolved (search/objectives.js). Throws with the Optimiser's own message
@@ -244,6 +249,7 @@ export const DROP_OBJECTIVE_KINDS = Object.freeze(['dps', 'win-chance', 'fastest
  */
 export function goalObjective(goal, ctx = {}) {
   if (!DROP_OBJECTIVE_KINDS.includes(goal?.objective?.kind)) throw new Error(`Drop Check cannot judge by '${goal?.objective?.kind}'`);
+  if (goal.role === 'guard' && !GUARD_OBJECTIVE_KINDS.includes(goal.objective.kind)) throw new Error('A guard needs a clear rate: pick a win or survival chance');
   const target = resolveTarget(goal.target, ctx);
   return { target, objective: makeObjective(goal.objective, target) };
 }
@@ -320,6 +326,31 @@ function briefOf(objective, set) {
 }
 
 /**
+ * A guard (simulation.md §Drop Check): does the after-build keep the goal's rate at its target? Looks n0, 2 n0,
+ * ... maxN on the after side, Wilson at alpha / looks, until `meetsTarget` resolves (inside the zone counts as
+ * kept). When the after-build falls short, the before-build is checked the same way on the same fights: a
+ * build already below the target without the drop is `below` (the drop did not break it), not `fail`.
+ * @returns {Promise<{status: 'pass'|'fail'|'below'|'unresolved', target: number, after: Object, before: Object|null}>}
+ */
+async function guardCheck(objective, tau, getSide, effort, alpha) {
+  const looks = lookSchedule(effort.n0, effort.maxN);
+  const a = alpha / looks.length;
+  const run = async (side) => {
+    for (let k = 0; k < looks.length; k++) {
+      const v = objective.estimate(await getSide(side, looks[k]), { alpha: a }).value;
+      const meets = meetsTarget(v, tau, effort.deltaWinRate);
+      if (meets != null || k === looks.length - 1) return { meets, value: { est: v.est, lo: v.lo, hi: v.hi, n: looks[k] } };
+    }
+    throw new Error('unreachable');
+  };
+  const after = await run('after');
+  if (after.meets !== false) return { status: after.meets ? 'pass' : 'unresolved', target: tau, after: after.value, before: null };
+  const before = await run('before');
+  const status = before.meets === true ? 'fail' : before.meets === false ? 'below' : 'unresolved';
+  return { status, target: tau, after: after.value, before: before.value };
+}
+
+/**
  * Run every goal for every item. Before and after share the stage seed, so fight i draws the same randomness
  * on both sides (common random numbers). Each (item, goal) is the Optimiser's sequential comparison
  * (sampler.js compareSets): looks at n0, 2 n0, ... until the after-build is better, worse or equivalent
@@ -337,7 +368,8 @@ function briefOf(objective, set) {
  *   is {done, total} in whole comparisons. `sampleFor(goal)` returns a sampler `(fighter, {seed, from, to, signal}) =>
  *   chunk` for the goal (tasks/dropCheck.js: the objective kernel on the job's pool); without it the objective
  *   samples inline. Goals run one at a time over every item; `onGoalDone(goal)` follows each (to free its pool).
- * @returns {Promise<{results: Array<Object>, aborted: boolean}>}  per item `{presetId, goals: [...], errors?}`;
+ * @returns {Promise<{results: Array<Object>, aborted: boolean}>}  per item `{presetId, goals: [...], noGoals?, errors?}`
+ *   (`noGoals` when no goal runs on the item);
  *   a goal that cannot run (its target no longer resolves) is listed in `errors`, never thrown
  */
 export async function runSwapMetrics(items, o = {}, { signal, onProgress, sampleFor, onGoalDone } = {}) {
@@ -360,7 +392,9 @@ export async function runSwapMetrics(items, o = {}, { signal, onProgress, sample
   // can close before the next opens (`onGoalDone`).
   const results = items.map((item) => {
     const errors = goalsOf(item).filter((g) => g.error).map((g) => ({ goalId: g.goal.id, error: g.error }));
-    return { presetId: item.presetId, goals: [], ...(errors.length ? { errors } : {}) };
+    // no goal judges this item (its preset is out of every goal's scope, or the batch screen left it out)
+    const noGoals = !goalsOf(item).some((g) => !g.error);
+    return { presetId: item.presetId, goals: [], ...(noGoals ? { noGoals: true } : {}), ...(errors.length ? { errors } : {}) };
   });
   const alphaOf = items.map((item) => FAMILY_ALPHA / Math.max(1, goalsOf(item).filter((g) => !g.error).length));
 
@@ -373,6 +407,13 @@ export async function runSwapMetrics(items, o = {}, { signal, onProgress, sample
         const stage = { id: g.goal.id, seed };
         const keys = [item.baseKey == null ? `${idx}|before` : `base|${item.baseKey}`, `${idx}|after`];
         const effort = goalEffort(g.objective, precision, o.maxN, o.n0);
+        if (g.goal.role === 'guard') {
+          const getSide = (side, n) => g.sampler.get(keys[side === 'after' ? 1 : 0], stage, item[side], n, { signal });
+          const guard = await guardCheck(g.objective, g.goal.guard?.target ?? DEFAULT_GUARD_TARGET, getSide, effort, alpha);
+          results[idx].goals.push({ goalId: g.goal.id, ...g.meta, role: 'guard', unit: 'p', guard });
+          onProgress?.({ done: ++done, total });
+          continue;
+        }
         let before = null;
         let after = null;
         const getAfter = async (n) => (after = await g.sampler.get(keys[1], stage, item.after, n, { signal }));
@@ -382,6 +423,7 @@ export async function runSwapMetrics(items, o = {}, { signal, onProgress, sample
         results[idx].goals.push({
           goalId: g.goal.id,
           ...g.meta,
+          role: 'judge',
           unit: contrastUnit(g.objective, c),
           before: briefOf(g.objective, sliceSet(before, n)),
           after: briefOf(g.objective, sliceSet(after, n)),
@@ -458,13 +500,29 @@ function closedSignal(row) {
   return pct > 0 ? 'up' : 'down';
 }
 
+/** A guard's one-line reason ("Dungeon 8 drops to 88% (keeps 95%)"). */
+export function guardText(g) {
+  const pct = (v) => `${Math.round(v * 1000) / 10}%`;
+  const r = g.guard;
+  if (!r) return '';
+  const name = g.targetLabel ?? g.label;
+  const at = Number.isFinite(r.after?.est) ? pct(r.after.est) : '?';
+  if (r.status === 'fail') return `${name} drops to ${at} (guard ${pct(r.target)})`;
+  if (r.status === 'below') return `${name} is below ${pct(r.target)} with or without the drop`;
+  if (r.status === 'unresolved') return `${name}: too close to ${pct(r.target)} to call`;
+  return `${name} stays at ${pct(r.target)} or more`;
+}
+
 /**
- * Verdict for one preset.
+ * Verdict for one preset. Over the judges:
  *  'upgrade'      something improves, nothing worsens, nothing is unresolved
  *  'downgrade'    the reverse
  *  'mixed'        something improves and something worsens
  *  'sidegrade'    every measured goal is equivalent within the precision zone
  *  'inconclusive' a goal was still unresolved at its maxN ("too close to call") and nothing contradicts
+ * Then the guards (drop-check-goals.md §4.3): a failed guard makes it a downgrade whatever the judges say; an
+ * unresolved guard turns an upgrade into inconclusive. A guard never makes a drop an upgrade, and one already
+ * failing without the drop (`below`) does not count.
  * Without a simulation the closed-form estimate decides (`basis: 'closed'`, `estimate: true`).
  *
  * `coverage` names the goals measured and `notJudged` the stat keys this item changes that no measured goal
@@ -479,23 +537,30 @@ function closedSignal(row) {
  */
 export function verdictFor(row, simResult = null) {
   const measured = (simResult?.goals ?? []).filter((g) => g?.delta);
+  const guards = (simResult?.goals ?? []).filter((g) => g?.role === 'guard' && g.guard);
   const signals = {};
   for (const g of measured) signals[g.goalId] = metricSignal(g.delta);
-  const coverage = measured.map((g) => g.goalId);
-  const basis = measured.length ? 'sim' : 'closed';
+  const coverage = [...measured, ...guards].map((g) => g.goalId);
+  const basis = measured.length || guards.length ? 'sim' : 'closed';
   if (basis === 'closed') signals.dps = closedSignal(row);
   const all = Object.values(signals);
   const up = all.includes('up');
   const down = all.includes('down');
   const unresolved = Object.keys(signals).filter((k) => signals[k] === 'unknown');
-  const verdict = up && down ? 'mixed' : unresolved.length ? 'inconclusive' : up ? 'upgrade' : down ? 'downgrade' : 'sidegrade';
-  const seesDefence = measured.some((g) => !g.damageOnly);
+  let verdict = up && down ? 'mixed' : unresolved.length ? 'inconclusive' : up ? 'upgrade' : down ? 'downgrade' : 'sidegrade';
+  const failed = guards.filter((g) => g.guard.status === 'fail');
+  const guardOpen = guards.filter((g) => g.guard.status === 'unresolved').map((g) => g.goalId);
+  unresolved.push(...guardOpen);
+  if (failed.length) verdict = 'downgrade';
+  else if (guardOpen.length && (verdict === 'upgrade' || verdict === 'sidegrade')) verdict = 'inconclusive';
+  const seesDefence = guards.length > 0 || measured.some((g) => !g.damageOnly);
   const notJudged = seesDefence ? [] : Object.keys(row?.rawDelta ?? {}).filter((k) => !DPS_STAT_KEYS.has(k));
-  const labels = measured.map((g) => g.label).join('; ');
-  const coverageLabel = !measured.length ? 'Quick estimate from auto-attacks only'
+  const labels = [...measured.map((g) => g.label), ...guards.map((g) => `Guard: ${g.label}`)].join('; ');
+  const coverageLabel = basis === 'closed' ? 'Quick estimate from auto-attacks only'
     : seesDefence ? labels
       : `${labels}. Damage only: defence not measured`;
-  return { verdict, basis, estimate: basis === 'closed', signals, unresolved, coverage, coverageLabel, notJudged };
+  const guardNotes = guards.filter((g) => g.guard.status !== 'pass').map((g) => ({ goalId: g.goalId, status: g.guard.status, text: guardText(g) }));
+  return { verdict, basis, estimate: basis === 'closed', signals, unresolved, coverage, coverageLabel, notJudged, guardNotes, failedGuards: failed.map((g) => g.goalId) };
 }
 
 /** Aggregate verdict of a set of preset verdicts (an Apply button writes to the whole set). */
