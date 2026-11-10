@@ -5,12 +5,12 @@
 // is kept. Character-wide data the profile carries (class, level, both gear sets, stones, talents,
 // pets, mounts, glyphs, sigils, relics, awakening, transcendence, skills, fortress, Oblivion) comes from
 // the profile. Kept from the existing character: id, name, the base residual, saved opponents, run
-// history and the Drop Check state. Presets are merged (mergePresets; rule in data-model.md §7.1).
+// history and the Drop Check state and goals. Presets are merged (mergePresets; rule in data-model.md §7.1).
 import { normaliseCharacter } from './index.js';
 import { MAX_PRESETS } from './presets.js';
 
 /** Fields the existing character keeps. `presets` / `activePresetId` are merged; everything else comes from the profile. */
-export const KEPT_ON_UPDATE = Object.freeze(['id', 'name', 'baseResidual', 'opponents', 'runs', 'drop']);
+export const KEPT_ON_UPDATE = Object.freeze(['id', 'name', 'baseResidual', 'opponents', 'runs', 'drop', 'dropCheck']);
 
 /** Preset fields the game owns: everything but the id and the sheet. */
 const GAME_PRESET_FIELDS = ['name', 'equipmentSet', 'talentSet', 'petId', 'mountId', 'relicIds', 'sigilSpecies', 'utilitySigilSpecies', 'ancientSigilSpecies', 'transcendencePresetId'];

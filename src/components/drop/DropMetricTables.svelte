@@ -1,9 +1,9 @@
 <script>
   /**
-   * DropMetricTables.svelte - the single drop's simulated metrics as one forest table per metric
-   * (design-system §4.15, mockup view 3): DPS in percent, survival and each PVP opponent's win rate in points.
-   * A table's rows are its metric for every preset in every gear set, so Set 2 sits next to Set 1 on that
-   * metric's own labelled axis. Colour comes from the verdict, never from the sign of the estimate.
+   * DropMetricTables.svelte - the single drop's simulated goals as one forest table per goal
+   * (design-system §4.15, mockup view 3): relative goals in percent, rates in points, other units raw.
+   * A table's rows are its goal for every preset in every gear set, so Set 2 sits next to Set 1 on that
+   * goal's own labelled axis. Colour comes from the verdict, never from the sign of the estimate.
    *
    * Props: cards (features/dropView.js setCards output).
    */
@@ -17,7 +17,7 @@
   let { cards } = $props();
 
   const tables = $derived(metricTables(cards).map((t) => ({ ...t, domain: forestDomain(t.rows) })));
-  const num = (t, v) => (t.unit === 'pct' ? signedPct(v, 1) : `${v > 0 ? '+' : ''}${v.toFixed(1)} pts`);
+  const num = (t, v) => (t.unit === 'pct' ? signedPct(v, 1) : t.unit === 'pts' ? `${v > 0 ? '+' : ''}${v.toFixed(1)} pts` : `${v > 0 ? '+' : ''}${+v.toFixed(3)}`);
   const sentence = (t, r) => `${r.label}: ${num(t, r.est)}, likely range ${num(t, r.lo)} to ${num(t, r.hi)}, ${fmtCount(r.n)} fights`;
   const chipLabel = { better: 'Clearly better', worse: 'Clearly worse', equivalent: 'About the same', unresolved: 'Too close to call' };
 </script>

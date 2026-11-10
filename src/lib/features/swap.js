@@ -3,11 +3,11 @@
 // Two halves:
 //   prepareSwap()      main thread, synchronous: per preset, the stats before and after the swap, the
 //                      before/after Fighters and the closed-form auto-attack DPS (combat-pve.md §7).
-//   runSwapMetrics()   async, pure over engine/metrics.js (the worker task 'dropCheck' calls it):
-//                      sim DPS, survival and PVP win rate, each a common-random-number paired contrast
-//                      resolved by the sequential comparator (engine/stats, simulation.md §Statistics).
+//   runSwapMetrics()   async (the worker task 'dropCheck' calls it): every goal (an Optimiser target and
+//                      objective, search/objectives.js) as a common-random-number paired contrast resolved by
+//                      the Optimiser's sequential comparator (search/sampler.js compareSets, simulation.md §Drop Check).
 //   verdictFor()       upgrade / sidegrade / downgrade / mixed / inconclusive from those contrasts,
-//                      with the metrics it covers and the changed stats no metric judged.
+//                      with the goals it covers and the changed stats no goal judged.
 //
 // How the "after" stats are made. With a sheet (tier 2) the in-game numbers are authoritative, so the
 // item difference is added to them in raw space (engine/pipeline/anchoredDelta.js). Without a sheet the
@@ -17,14 +17,10 @@ import { computePresetStats } from '../build/stats.js';
 import { equipSetKey } from '../build/presetInputs.js';
 import { anchoredDeltaDetailed } from '../engine/pipeline/anchoredDelta.js';
 import { sheetKeyMeta, toDisplay } from '../engine/pipeline/sheet.js';
-import {
-  dpsVsDummyAsync, survivalAsync, pvpWinRateAsync, meanCI, wilson, compareAsync, lookSchedule, holm,
-} from '../engine/metrics.js';
-import { opponentFighter, missingStats } from './duel.js';
+import { holm } from '../engine/metrics.js';
 import { statByEnum } from '../game/stats.js';
-import { PVE_HARD_CHAPTER_OFFSET } from '../game/combatPve.js';
-import { raidById } from '../game/fortress.js';
-import { chapterMobs, dungeonMobs, raidMobs, oblivionFloorMob } from '../engine/pve/enemies.js';
+import { resolveTarget, makeObjective, enemyDealsDamage } from '../search/objectives.js';
+import { createSampler, compareSets, looksFor, sliceSet, isAbort } from '../search/sampler.js';
 
 // ---------------------------------------------------------------------------------------------
 // item -> raw delta
@@ -215,134 +211,87 @@ export function groupBySet(rows) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// enemies and opponents
-
-/**
- * A PVE target for the survival metric.
- * @param {{kind: 'campaign', chapter: number, level: number}
- *   | {kind: 'dungeon', id: string, step: number}
- *   | {kind: 'raid', id: string, step: number}
- *   | {kind: 'oblivion', floor: number}} spec
- * @returns {{label: string, mobs: Object[], oblivion: boolean}|null}
- */
-export function buildEnemy(spec) {
-  if (!spec) return null;
-  if (spec.kind === 'campaign') {
-    const mobs = chapterMobs(spec.chapter, spec.level);
-    if (!mobs) return null;
-    const hard = spec.chapter > PVE_HARD_CHAPTER_OFFSET;
-    const n = hard ? spec.chapter - PVE_HARD_CHAPTER_OFFSET : spec.chapter;
-    return { label: `${hard ? 'Hard ' : ''}Chapter ${n}, level ${spec.level}`, mobs, oblivion: false };
-  }
-  if (spec.kind === 'dungeon') {
-    const mobs = dungeonMobs(spec.id, spec.step);
-    return mobs ? { label: `${spec.id}, step ${spec.step}`, mobs, oblivion: false } : null;
-  }
-  if (spec.kind === 'raid') {
-    const mobs = raidMobs(spec.id, spec.step);
-    return mobs ? { label: `Village raid ${raidById(spec.id).name}, step ${spec.step}`, mobs, oblivion: false } : null;
-  }
-  if (spec.kind === 'oblivion') {
-    const mob = oblivionFloorMob(spec.floor);
-    return mob ? { label: `Oblivion floor ${spec.floor}`, mobs: [mob], oblivion: true } : null;
-  }
-  return null;
-}
-
-
-/**
- * Saved opponents as Drop Check PVP targets. features/duel.js builds each Fighter, so Drop Check fights
- * the same opponent the Duel screen does (Druid form and glyph gate included, #93). An opponent that
- * cannot fight (a blank or partial sheet) is left out and listed with the required stats it lacks.
- * @param {{opponents?: Object[]}} character
- * @returns {{
- *   opponents: Array<{id: string, name: string, fighter: Object}>,
- *   skipped: Array<{id: string, name: string, missing: string[]}>,
- * }}
- */
-export function dropOpponents(character) {
-  const opponents = [];
-  const skipped = [];
-  for (const o of character?.opponents ?? []) {
-    const fighter = opponentFighter(o);
-    const missing = missingStats(fighter);
-    if (missing.length) skipped.push({ id: o.id, name: o.name, missing });
-    else opponents.push({ id: o.id, name: o.name, fighter });
-  }
-  return { opponents, skipped };
-}
-
-// ---------------------------------------------------------------------------------------------
 // precision (open decision Q4, plan §F)
 
 /**
- * Indifference zone and give-up size per comparison. `rel` is the relative DPS zone, `prob` the absolute
- * survival / win-rate zone (docs/Reference/simulation.md §Statistics, sequential comparator).
+ * Indifference zone and give-up size per comparison. `rel` is the zone of a relative goal (DPS, clear time),
+ * `prob` the absolute zone of a rate (win chance, win rate, survival) (docs/Reference/simulation.md §Statistics).
  */
 export const DROP_PRECISION = {
   quick: { rel: 0.01, prob: 0.02, maxN: 8192 },
   standard: { rel: 0.005, prob: 0.01, maxN: 32768 },
   thorough: { rel: 0.0025, prob: 0.005, maxN: 131072 },
 };
-/** Family-wise level over the metrics of one preset. */
+/** Family-wise level over the goals of one preset. */
 export const FAMILY_ALPHA = 0.05;
 
 const precisionOf = (p) => DROP_PRECISION[p] ?? DROP_PRECISION.standard;
 
-const METRIC = {
-  dps: { statistic: 'mean', deltaKind: 'relative' },
-  survival: { statistic: 'proportion', deltaKind: 'absolute' },
-  pvp: { statistic: 'proportion', deltaKind: 'absolute' },
-};
-
-/** Value and interval of one side's samples, in the metric's own statistic. */
-function briefOf(kind, xs) {
-  if (kind === 'dps') {
-    const r = meanCI(xs);
-    return { mean: r.mean, lo: r.lo, hi: r.hi, n: r.n };
-  }
-  const w = wilson(xs.reduce((a, b) => a + b, 0), xs.length);
-  return { mean: w.p, lo: w.lo, hi: w.hi, n: w.n };
-}
+// ---------------------------------------------------------------------------------------------
+// goals (the Optimiser's targets and objectives; simulation.md §Drop Check)
 
 /**
- * One metric: the after-minus-before contrast, resolved by the sequential comparator. `getBefore(n)` and
- * `getAfter(n)` return the first n per-fight outcomes (same fight index, same random draws on both sides).
- * `alpha` is already divided by the metric family (see applyFamily).
- *
- * @param {'dps'|'survival'|'pvp'} kind
- * @param {{n0: number, maxN: number, alpha?: number, precision?: string, seed?: number}} o
- * @returns {Promise<{before: Object, after: Object, delta: Object}>}  `delta.verdict` is
- *   'better' | 'worse' | 'equivalent' | 'unresolved'; `delta.zone` the indifference zone in the metric's units
+ * Objective kinds Drop Check judges a drop by. `win-rate` ("fewest changes to reach X") and `push` (a ladder
+ * search) mean nothing for one swap (docs/WIP/being-worked-on/drop-check-goals.md §3.2).
  */
-export async function contrastMetric(kind, getBefore, getAfter, { n0, maxN, alpha = FAMILY_ALPHA, precision = 'standard', seed = 1 }) {
-  const prec = precisionOf(precision);
-  const spec = METRIC[kind];
-  const cap = Math.max(1, Math.floor(maxN));
-  const first = Math.min(Math.max(1, Math.floor(n0)), cap);
-  let lastBefore = [];
-  let lastAfter = [];
-  const r = await compareAsync(
-    async (n) => (lastAfter = await getAfter(n)),
-    async (n) => (lastBefore = await getBefore(n)),
-    { ...spec, delta: kind === 'dps' ? prec.rel : prec.prob, alpha, n0: first, maxN: cap, seed },
-  );
-  return {
-    before: briefOf(kind, lastBefore.slice(0, r.n)),
-    after: briefOf(kind, lastAfter.slice(0, r.n)),
-    delta: {
-      delta: r.delta, lo: r.lo, hi: r.hi, n: r.n, significant: r.significant, verdict: r.verdict,
-      pct: r.pct, zone: r.zone, p: r.p, sd: r.sd, nNeeded: r.nNeeded, method: r.method,
-      alphaAdj: r.alphaAdj, looks: r.looks, nLooks: lookSchedule(first, cap).length, maxN: cap, seed,
-    },
-  };
-}
-
-const contrastsOf = (res) => [res?.sim, res?.survival, ...(res?.pvp ?? [])].filter((m) => m?.delta);
+export const DROP_OBJECTIVE_KINDS = Object.freeze(['dps', 'win-chance', 'fastest-clear', 'pvp-winrate', 'arena-reward', 'survival']);
 
 /**
- * Holm step-down over one preset's metrics (the family). Each p-value is first multiplied by the number of
- * looks its comparator spent (Bonferroni over looks). Adds `delta.pHolm` and `delta.holmReject` in place.
+ * A goal's target and objective, resolved (search/objectives.js). Throws with the Optimiser's own message
+ * when the target does not resolve or the objective cannot score it, or when Drop Check does not take it.
+ * @param {{target: Object, objective: Object}} goal
+ * @param {{character?: Object, partner?: Object|null}} ctx  pvp needs the character's opponents, Celestial its partner
+ */
+export function goalObjective(goal, ctx = {}) {
+  if (!DROP_OBJECTIVE_KINDS.includes(goal?.objective?.kind)) throw new Error(`Drop Check cannot judge by '${goal?.objective?.kind}'`);
+  const target = resolveTarget(goal.target, ctx);
+  return { target, objective: makeObjective(goal.objective, target) };
+}
+
+/** True when nothing in the fight can hurt the player: the goal then sees damage stats only. */
+export function goalIsDamageOnly(target, objective) {
+  if (objective.kind !== 'dps') return false;
+  try {
+    return !enemyDealsDamage(target.enemy);
+  } catch {
+    return false;
+  }
+}
+
+/** First look per objective statistic (fights per lane): the mean settles fastest, a rate needs more. */
+export function firstLook(objective) {
+  if (objective.statistic === 'mean') return 32;
+  return (objective.lanes ?? 1) > 1 ? 64 : 200;
+}
+
+/** The comparator options of one goal at a precision: δ in the objective's own kind. `firstN` overrides the first look (tests). */
+export function goalEffort(objective, precision = 'standard', maxN = null, firstN = null) {
+  const p = precisionOf(precision);
+  const n0 = Number.isInteger(firstN) && firstN >= 1 ? firstN : firstLook(objective);
+  const cap = Math.max(n0, Math.floor(maxN ?? p.maxN));
+  const delta = objective.deltaKind === 'relative' ? p.rel : p.prob * (objective.deltaScale ?? 1);
+  return { n0, maxN: cap, delta, deltaKind: objective.deltaKind, deltaWinRate: p.prob };
+}
+
+/**
+ * The unit a contrast is shown in: its basis decides (a win-rate goal decided on the HP margin is still in
+ * points; Fastest clear falls back to the clear rate when neither build reaches the quantile).
+ */
+export function contrastUnit(objective, delta) {
+  const b = delta?.basis;
+  if (b === 'quantile') return 'ms';
+  if (b === 'winRate' || b === 'win-rate' || b === 'margin') return 'p';
+  return objective.unit ?? (objective.statistic === 'mean' ? 'dps' : 'p');
+}
+
+// ---------------------------------------------------------------------------------------------
+// family
+
+const contrastsOf = (res) => (res?.goals ?? []).filter((m) => m?.delta);
+
+/**
+ * Holm step-down over one preset's goals (the family). Each p-value is first multiplied by the number of
+ * looks its comparator could spend (Bonferroni over looks). Adds `delta.pHolm` and `delta.holmReject` in place.
  * @returns {Object} the same `res`
  */
 export function applyFamily(res, alpha = FAMILY_ALPHA) {
@@ -358,107 +307,115 @@ export function applyFamily(res, alpha = FAMILY_ALPHA) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// metrics (pure over engine/metrics.js; runs in the worker)
+// metrics (pure over search/objectives.js and search/sampler.js; runs in the worker)
 
-const ABORTED = Symbol('aborted');
+/** The estimate of one side in the objective's statistic, as `{mean, lo, hi, n}`. */
+function briefOf(objective, set) {
+  try {
+    const v = objective.estimate(set).value;
+    return { mean: v.est ?? null, lo: v.lo ?? null, hi: v.hi ?? null, n: set.n };
+  } catch {
+    return { mean: null, lo: null, hi: null, n: set.n };
+  }
+}
 
 /**
- * Run the requested metrics for every item. Before and after use the same seed, so fight i sees the
- * same random draws on both sides (common random numbers). Each metric is a sequential comparison: it
- * looks at n0, 2 n0, 4 n0 ... fights and stops when the contrast is better, worse or equivalent
- * (within the precision zone), or at `maxN`, where it is reported `unresolved`. A preset's metrics share
- * one family-wise level, split evenly (`alpha / metrics`) and re-checked with Holm (applyFamily).
+ * Run every goal for every item. Before and after share the stage seed, so fight i draws the same randomness
+ * on both sides (common random numbers). Each (item, goal) is the Optimiser's sequential comparison
+ * (sampler.js compareSets): looks at n0, 2 n0, ... until the after-build is better, worse or equivalent
+ * within the precision zone, or `unresolved` at maxN. A preset's goals share one family-wise level, split
+ * evenly (`alpha / goals`) and re-checked with Holm (applyFamily).
  *
- * @param {Array<{presetId: string, before: Object, after: Object, baseKey?: string}>} items  Fighters, plain data;
- *   `baseKey` marks items whose `before` is identical so its samples are drawn once and extended on demand
+ * @param {Array<{presetId: string, before: Object, after: Object, baseKey?: string, goalIds?: string[]}>} items
+ *   Fighters, plain data; `baseKey` marks items whose `before` is identical (its fights are drawn once);
+ *   `goalIds` limits an item to some goals (an Oblivion drop only meets Oblivion goals), all when omitted
  * @param {{
- *   sim?: boolean, seconds?: number, nSim?: number,
- *   enemy?: {mobs: Object[], oblivion?: boolean}|null, survivalSeconds?: number, nSurvival?: number,
- *   opponents?: Array<{id: string, name?: string, fighter: Object}>, nPvp?: number, seed?: number,
- *   precision?: 'quick'|'standard'|'thorough', maxN?: number,
- * }} o  `nSim` / `nSurvival` / `nPvp` are the first look of each comparison, not its size
- * @param {{signal?: AbortSignal, onProgress?: Function, sampleRange?: Function}} [ctx]  progress is {done, total} in
- *   whole metrics. `sampleRange(metric, fighter, from, to, {signal})` (tasks/dropCheck.js, over a worker pool) draws
- *   fights from..to-1 of 'sim' | 'survival' | 'pvp:<id>' as the engine metric would, and promises a chunk
- *   `{main: [samples], aborted}`; with it a side's samples are extended instead of re-drawn from 0.
- * @returns {Promise<{results: Array<Object>, aborted: boolean}>}  cancelling returns what finished
+ *   goals: Array<{id: string, target: Object, objective: Object, partner?: Object}>, character?: Object, partner?: Object|null,
+ *   seed?: number, precision?: 'quick'|'standard'|'thorough', maxN?: number, n0?: number,
+ * }} o  `n0` overrides every goal's first look (tests)
+ * @param {{signal?: AbortSignal, onProgress?: Function, sampleFor?: Function, onGoalDone?: Function}} [ctx]  progress
+ *   is {done, total} in whole comparisons. `sampleFor(goal)` returns a sampler `(fighter, {seed, from, to, signal}) =>
+ *   chunk` for the goal (tasks/dropCheck.js: the objective kernel on the job's pool); without it the objective
+ *   samples inline. Goals run one at a time over every item; `onGoalDone(goal)` follows each (to free its pool).
+ * @returns {Promise<{results: Array<Object>, aborted: boolean}>}  per item `{presetId, goals: [...], errors?}`;
+ *   a goal that cannot run (its target no longer resolves) is listed in `errors`, never thrown
  */
-export async function runSwapMetrics(items, o = {}, { signal, onProgress, sampleRange } = {}) {
-  const {
-    sim = true, seconds = 60, nSim = 32, enemy = null, survivalSeconds = 60, nSurvival = 200,
-    opponents = [], nPvp = 64, seed = 1, precision = 'standard',
-  } = o;
-  const maxN = o.maxN ?? precisionOf(precision).maxN;
-  const perItem = (sim ? 1 : 0) + (enemy ? 1 : 0) + opponents.length;
-  const total = items.length * perItem;
-  const alpha = FAMILY_ALPHA / Math.max(1, perItem);
+export async function runSwapMetrics(items, o = {}, { signal, onProgress, sampleFor, onGoalDone } = {}) {
+  const { goals = [], character = null, partner = null, seed = 1, precision = 'standard' } = o;
+  const resolved = goals.map((goal) => {
+    try {
+      const { target, objective } = goalObjective(goal, { character, partner: goal.partner ?? partner });
+      const sample = sampleFor ? sampleFor(goal) : objective.sample;
+      return { goal, target, objective, sampler: createSampler({ sample }), meta: metaOf(goal, target, objective) };
+    } catch (e) {
+      return { goal, error: e?.message ?? String(e) };
+    }
+  });
+  const goalsOf = (item) => resolved.filter((g) => !item.goalIds || item.goalIds.includes(g.goal.id));
+  const total = items.reduce((a, it) => a + goalsOf(it).filter((g) => !g.error).length, 0);
   let done = 0;
-  const step = () => onProgress?.({ done: ++done, total });
-  const common = { seed, signal, keepSamples: true, cache: false };
-  const results = [];
   let aborted = false;
 
-  // Samples per side and metric, extended on demand (a longer run is a prefix-stable superset of a shorter
-  // one, so reusing a prefix changes no number). Items that share a `baseKey` have the same "before"
-  // Fighter (a batch of drops against one preset): its samples are drawn once.
-  const store = new Map();
-  const sampler = (key, run) => async (n) => {
-    const have = store.get(key);
-    if (have && have.length >= n) return have.length === n ? have : have.slice(0, n);
-    const r = await run(n);
-    if (r.aborted || signal?.aborted) throw ABORTED;
-    store.set(key, r.samples);
-    return r.samples;
-  };
-  const ranged = (key, metric, f) => async (n) => {
-    let have = store.get(key) ?? [];
-    if (have.length < n) {
-      const c = await sampleRange(metric, f, have.length, n, { signal });
-      have = have.concat(c.main[0] ?? []); // a new array: sets already handed out never change
-      store.set(key, have);
-      if (c.aborted || signal?.aborted) throw ABORTED;
-    }
-    return have.length === n ? have : have.slice(0, n);
-  };
-  const pair = (item, idx, metric, runFor) => {
-    const keys = [item.baseKey == null ? `${idx}|before|${metric}` : `${item.baseKey}|${metric}`, `${idx}|after|${metric}`];
-    const sides = [item.before, item.after];
-    return sampleRange
-      ? keys.map((k, j) => ranged(k, metric, sides[j]))
-      : keys.map((k, j) => sampler(k, runFor(sides[j])));
-  };
-  const contrast = (kind, [getBefore, getAfter], n0) => contrastMetric(kind, getBefore, getAfter, { n0, maxN, alpha, precision, seed });
+  // One result per item up front; goals run one after another (each over every item), so a goal's worker pool
+  // can close before the next opens (`onGoalDone`).
+  const results = items.map((item) => {
+    const errors = goalsOf(item).filter((g) => g.error).map((g) => ({ goalId: g.goal.id, error: g.error }));
+    return { presetId: item.presetId, goals: [], ...(errors.length ? { errors } : {}) };
+  });
+  const alphaOf = items.map((item) => FAMILY_ALPHA / Math.max(1, goalsOf(item).filter((g) => !g.error).length));
 
   try {
-    for (const [idx, item] of items.entries()) {
-      const r = { presetId: item.presetId };
-      results.push(r);
-      if (sim) {
-        r.sim = await contrast('dps', pair(item, idx, 'sim', (f) => (n) => dpsVsDummyAsync(f, { ...common, seconds, n })), nSim);
-        step();
+    for (const g of resolved) {
+      if (g.error) continue;
+      for (const [idx, item] of items.entries()) {
+        if (item.goalIds && !item.goalIds.includes(g.goal.id)) continue;
+        const alpha = alphaOf[idx];
+        const stage = { id: g.goal.id, seed };
+        const keys = [item.baseKey == null ? `${idx}|before` : `base|${item.baseKey}`, `${idx}|after`];
+        const effort = goalEffort(g.objective, precision, o.maxN, o.n0);
+        let before = null;
+        let after = null;
+        const getAfter = async (n) => (after = await g.sampler.get(keys[1], stage, item.after, n, { signal }));
+        const getBefore = async (n) => (before = await g.sampler.get(keys[0], stage, item.before, n, { signal }));
+        const c = await compareSets(g.objective, getAfter, getBefore, { ...effort, alpha, seed });
+        const n = c.n;
+        results[idx].goals.push({
+          goalId: g.goal.id,
+          ...g.meta,
+          unit: contrastUnit(g.objective, c),
+          before: briefOf(g.objective, sliceSet(before, n)),
+          after: briefOf(g.objective, sliceSet(after, n)),
+          delta: {
+            delta: c.delta, lo: c.lo, hi: c.hi, n, significant: c.significant, verdict: c.verdict, pct: c.pct,
+            zone: c.zone, p: c.p, sd: c.sd, nNeeded: c.nNeeded, method: c.method, basis: c.basis ?? null,
+            higherIsBetter: c.higherIsBetter, alphaAdj: c.alphaAdj, looks: c.looks,
+            nLooks: looksFor(g.objective, { ...effort, alpha }).length, maxN: effort.maxN, seed,
+          },
+        });
+        onProgress?.({ done: ++done, total });
       }
-      if (enemy) {
-        const optsFor = (f) => (enemy.oblivion ? { oblivion: { power: f.stats?.totalOblivionPower ?? 0 } } : {});
-        const runFor = (f) => (n) => survivalAsync(f, enemy.mobs, { ...common, seconds: survivalSeconds, n, opts: optsFor(f) });
-        r.survival = await contrast('survival', pair(item, idx, 'survival', runFor), nSurvival);
-        step();
-      }
-      if (opponents.length) {
-        r.pvp = [];
-        for (const opp of opponents) {
-          const runFor = (f) => (n) => pvpWinRateAsync(f, opp.fighter, { ...common, n });
-          const c = await contrast('pvp', pair(item, idx, `pvp:${opp.id}`, runFor), nPvp);
-          r.pvp.push({ opponentId: opp.id, name: opp.name ?? opp.id, ...c });
-          step();
-        }
-      }
-      applyFamily(r);
+      g.sampler = null;
+      onGoalDone?.(g.goal);
     }
   } catch (e) {
-    if (e !== ABORTED) throw e;
+    if (!isAbort(e)) throw e;
     aborted = true;
   }
+  for (const r of results) applyFamily(r);
   return { results, aborted };
+}
+
+/** What the page shows about a goal, without resolving it again. */
+function metaOf(goal, target, objective) {
+  return {
+    label: `${target.label}: ${objective.label}`,
+    targetLabel: target.label,
+    objectiveLabel: objective.label,
+    objectiveKind: objective.kind,
+    deltaKind: objective.deltaKind,
+    higherIsBetter: objective.higherIsBetter,
+    damageOnly: goalIsDamageOnly(target, objective),
+  };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -467,18 +424,17 @@ export async function runSwapMetrics(items, o = {}, { signal, onProgress, sample
 /** The closed-form DPS change smaller than this (percent) is a sidegrade. It is an estimate, never a result. */
 export const NEUTRAL_PCT = 0.25;
 
-/** Stat keys the training-dummy DPS run can move (it has no defence, no damage dealt to the player). */
+/** Stat keys a damage-only goal (a dummy, a boss that never hits back) can move. */
 export const DPS_STAT_KEYS = new Set([
   'totalAttack', 'totalAttackPercent', 'totalAttackSpeed', 'totalCritChance', 'totalCritDamage', 'totalDoubleHit',
   'totalSpellDamage', 'totalSpellCritChance', 'totalMinionAttack', 'totalMinionAttackSpeed', 'totalMinionCritChance',
   'totalFlameConduit', 'totalEarthenConduit', 'totalDarkConduit',
 ]);
 
-const COVERAGE_LABEL = { dps: 'DPS', survival: 'survival', pvp: 'PVP win rate' };
-
 /**
  * 'up' | 'down' | 'flat' | 'unknown' for one contrast. An effect inside the indifference zone is flat even
- * when its interval excludes zero; an unresolved contrast is unknown unless Holm rejects it.
+ * when its interval excludes zero; an unresolved contrast is unknown unless Holm rejects it. The direction
+ * follows the contrast's own sense (a shorter clear time is `better`).
  */
 export function metricSignal(d) {
   if (!d || !d.verdict) return 'unknown';
@@ -488,7 +444,10 @@ export function metricSignal(d) {
     if (small) return 'flat';
     return d.verdict === 'better' ? 'up' : 'down';
   }
-  if (d.holmReject && !small && d.delta !== 0) return d.delta > 0 ? 'up' : 'down';
+  if (d.holmReject && !small && d.delta !== 0) {
+    const gain = d.higherIsBetter === false ? -d.delta : d.delta;
+    return gain > 0 ? 'up' : 'down';
+  }
   return 'unknown';
 }
 
@@ -504,12 +463,12 @@ function closedSignal(row) {
  *  'upgrade'      something improves, nothing worsens, nothing is unresolved
  *  'downgrade'    the reverse
  *  'mixed'        something improves and something worsens
- *  'sidegrade'    every measured metric is equivalent within the precision zone
- *  'inconclusive' a metric was still unresolved at its maxN ("too close to call") and nothing contradicts
+ *  'sidegrade'    every measured goal is equivalent within the precision zone
+ *  'inconclusive' a goal was still unresolved at its maxN ("too close to call") and nothing contradicts
  * Without a simulation the closed-form estimate decides (`basis: 'closed'`, `estimate: true`).
  *
- * `coverage` names the metrics measured and `notJudged` the stat keys this item changes that no measured
- * metric can see (HP% with survival and PVP off), so "Sidegrade" is never read as "defence is fine".
+ * `coverage` names the goals measured and `notJudged` the stat keys this item changes that no measured goal
+ * can see (HP% when every goal is damage-only), so "Sidegrade" is never read as "defence is fine".
  *
  * @param {{closed: {pct: number|null}, rawDelta?: Object<string, number>}} row  a prepareSwap row
  * @param {Object|null} [simResult]  its runSwapMetrics result, when it has run
@@ -519,26 +478,23 @@ function closedSignal(row) {
  * }}
  */
 export function verdictFor(row, simResult = null) {
+  const measured = (simResult?.goals ?? []).filter((g) => g?.delta);
   const signals = {};
-  const coverage = [];
-  if (simResult?.sim) { signals.dps = metricSignal(simResult.sim.delta); coverage.push('dps'); }
-  if (simResult?.survival) { signals.survival = metricSignal(simResult.survival.delta); coverage.push('survival'); }
-  if (simResult?.pvp?.length) {
-    simResult.pvp.forEach((p, i) => { signals[`pvp${i}`] = metricSignal(p.delta); });
-    coverage.push('pvp');
-  }
-  const basis = Object.keys(signals).length ? 'sim' : 'closed';
+  for (const g of measured) signals[g.goalId] = metricSignal(g.delta);
+  const coverage = measured.map((g) => g.goalId);
+  const basis = measured.length ? 'sim' : 'closed';
   if (basis === 'closed') signals.dps = closedSignal(row);
   const all = Object.values(signals);
   const up = all.includes('up');
   const down = all.includes('down');
   const unresolved = Object.keys(signals).filter((k) => signals[k] === 'unknown');
   const verdict = up && down ? 'mixed' : unresolved.length ? 'inconclusive' : up ? 'upgrade' : down ? 'downgrade' : 'sidegrade';
-  const everything = coverage.includes('survival') || coverage.includes('pvp');
-  const notJudged = everything ? [] : Object.keys(row?.rawDelta ?? {}).filter((k) => !DPS_STAT_KEYS.has(k));
-  const coverageLabel = !coverage.length ? 'Quick estimate from auto-attacks only'
-    : everything ? coverage.map((c) => COVERAGE_LABEL[c]).join(', ')
-      : 'DPS only: defence not measured';
+  const seesDefence = measured.some((g) => !g.damageOnly);
+  const notJudged = seesDefence ? [] : Object.keys(row?.rawDelta ?? {}).filter((k) => !DPS_STAT_KEYS.has(k));
+  const labels = measured.map((g) => g.label).join('; ');
+  const coverageLabel = !measured.length ? 'Quick estimate from auto-attacks only'
+    : seesDefence ? labels
+      : `${labels}. Damage only: defence not measured`;
   return { verdict, basis, estimate: basis === 'closed', signals, unresolved, coverage, coverageLabel, notJudged };
 }
 

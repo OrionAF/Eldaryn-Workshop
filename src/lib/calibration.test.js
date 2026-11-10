@@ -75,9 +75,13 @@ describe('estimates', () => {
 });
 
 describe('fight counts', () => {
-  it('Drop Check: a before/after pair up to maxN per item, per metric', () => {
-    expect(dropFights({ items: [1, 2], sim: true, enemy: null, opponents: [] }, 100)).toEqual({ dummy: 400 });
-    expect(dropFights({ items: [1], sim: true, enemy: { mobs: [] }, opponents: [{}, {}] }, 100)).toEqual({ dummy: 200, dungeon: 200, duel: 400 });
+  it('Drop Check: a before/after pair up to maxN per item, per goal and lane', () => {
+    const dummy = { id: 'd', target: { kind: 'dummy' } };
+    expect(dropFights({ items: [{}, {}], goals: [dummy] }, 100)).toEqual({ dummy: 400 });
+    const goals = [dummy, { id: 'c', target: { kind: 'dungeon' } }, { id: 'p', target: { kind: 'pvp', opponentIds: ['a', 'b'], seats: 'attacker' } }];
+    expect(dropFights({ items: [{}], goals }, 100)).toEqual({ dummy: 200, dungeon: 200, duel: 400 });
+    expect(dropFights({ items: [{ goalIds: ['c'] }], goals }, 100)).toEqual({ dungeon: 200 });
+    expect(dropFights({ items: [{}], goals: [] }, 100)).toEqual({});
   });
   it('Duel and Oblivion', () => {
     expect(duelFights(800, 2)).toEqual({ duel: 1600 });

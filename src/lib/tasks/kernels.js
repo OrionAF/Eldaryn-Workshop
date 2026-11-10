@@ -56,7 +56,8 @@ export const KERNELS = {
   },
 
   /**
-   * Drop Check's metrics (features/swap.js runSwapMetrics), each as engine/metrics.js draws it.
+   * Fixed probes as engine/metrics.js draws them: the speed calibration's dummy and dungeon fights
+   * (tasks/calibrate.js). Drop Check runs its goals on `objective` since 2026-11-10.
    * args: {metric: 'sim' | 'survival' | 'pvp:<opponent id>', fighter, seed}.
    */
   swap: {

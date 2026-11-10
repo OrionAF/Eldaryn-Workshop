@@ -2,39 +2,43 @@
 // after, closed-form DPS) is features/swap.js prepareSwap(), which the screen runs on the main thread.
 //
 // request: {
-//   items: [{presetId, before: Fighter, after: Fighter, baseKey?}],  Fighters from prepareSwap, plain JSON;
-//                                                                 items sharing a baseKey share one "before" run
-//   sim?: true, seconds?: 60, nSim?: 32,                          sim DPS vs a training dummy
-//   enemy?: {mobs: MobSpec[], oblivion?: boolean},                survival target (buildEnemy)
-//   survivalSeconds?: 60, nSurvival?: 200,
-//   opponents?: [{id, name, fighter: Fighter}], nPvp?: 64,        PVP win rate as the attacker (dropOpponents)
-//   seed?: 1, precision?: 'quick'|'standard'|'thorough', maxN?,   nSim / nSurvival / nPvp are the first look
-// }                                                               of each sequential comparison, maxN its end
-// result: { results: [{presetId, sim?, survival?, pvp?: [...]}], aborted }
-//   each metric is {before: {mean, lo, hi, n}, after: {...}, delta: {delta, lo, hi, n, significant, verdict, ...}},
-//   the delta being the common-random-number paired difference (after - before) at the look where it
-//   resolved ('better' | 'worse' | 'equivalent') or at maxN ('unresolved'). Contract: simulation.md §Drop Check.
+//   items: [{presetId, before: Fighter, after: Fighter, baseKey?, goalIds?}],  Fighters from prepareSwap, plain
+//                                     JSON; items sharing a baseKey share one "before"; goalIds limits an item's goals
+//   goals: [{id, target, objective, partner?}],  Optimiser targets and objectives (search/objectives.js), Drop
+//                                      Check's kinds; `partner` a Celestial roster partner, resolved on the main thread
+//   character?,                        what resolveTarget reads (PVP opponents, the Fortress server)
+//   seed?: 1, precision?: 'quick'|'standard'|'thorough', maxN?,
+// }
+// result: { results: [{presetId, goals: [{goalId, label, unit, before, after, delta}], errors?}], aborted }
+//   each delta is the common-random-number paired contrast (after - before) at the look where it resolved
+//   ('better' | 'worse' | 'equivalent') or at maxN ('unresolved'). Contract: simulation.md §Drop Check.
 // Cancelling resolves with the finished presets and aborted: true.
-// The fights run on the job's pool (ctx.pool, tasks/pool.js; inline without one): KERNELS.swap, prepared
-// once per worker with the dummy length, the survival enemy and the opponents.
+// The fights run on the job's pool (ctx.pool, tasks/pool.js; inline without one): one KERNELS.objective pool
+// per goal, prepared once per worker with that goal's target and objective, as the Optimiser's are.
 import { runSwapMetrics } from '../features/swap.js';
 import { poolScope } from './pool.js';
 
 export async function dropCheck(request, { signal, onProgress, pool } = {}) {
-  const { items } = request ?? {};
+  const { items, goals } = request ?? {};
   if (!Array.isArray(items)) throw new Error('dropCheck: items is required');
+  if (!Array.isArray(goals)) throw new Error('dropCheck: goals is required');
   for (const it of items) {
     if (!it?.before || !it?.after) throw new Error('dropCheck: every item needs before and after Fighters');
   }
-  const { seconds = 60, enemy = null, survivalSeconds = 60, opponents = [], seed = 1 } = request;
+  const { character = null, partner = null } = request;
   const scope = poolScope(pool);
-  let fights = null;
-  const sampleRange = (metric, fighter, from, to, o) => {
-    fights ??= scope.open('swap', { seconds, enemy, survivalSeconds, opponents });
-    return fights.run({ metric, fighter, seed }, from, to, o);
+  const pools = new Map();
+  const sampleFor = (goal) => (fighter, { seed, from, to, signal: s }) => {
+    if (!pools.has(goal.id)) pools.set(goal.id, scope.open('objective', { target: goal.target, objective: goal.objective, character, partner: goal.partner ?? partner }));
+    return pools.get(goal.id).run({ fighter, seed }, from, to, { signal: s });
   };
   try {
-    return await runSwapMetrics(items, request, { signal, onProgress, sampleRange });
+    // a finished goal's workers go before the next goal's start, so at most one pool runs at a time
+    const onGoalDone = (goal) => {
+      pools.get(goal.id)?.close();
+      pools.delete(goal.id);
+    };
+    return await runSwapMetrics(items, request, { signal, onProgress, sampleFor, onGoalDone });
   } finally {
     scope.close();
   }

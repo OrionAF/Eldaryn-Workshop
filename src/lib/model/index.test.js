@@ -84,9 +84,9 @@ describe('character', () => {
   });
 
   it('every domain is registered once and contributes its fields', () => {
-    expect(new Set(DOMAINS.map((d) => d.name)).size).toBe(16);
+    expect(new Set(DOMAINS.map((d) => d.name)).size).toBe(17);
     const c = newCharacter('X', 'MYSTIC');
-    for (const key of ['equipment', 'enchantStones', 'oblivionEnchantStones', 'talentSets', 'pets', 'mounts', 'glyphs', 'sigils', 'relics', 'awakening', 'transcendence', 'fortress', 'skills', 'attunementBans', 'oblivion', 'drop', 'opponents', 'runs', 'presets', 'activePresetId', 'baseResidual']) {
+    for (const key of ['equipment', 'enchantStones', 'oblivionEnchantStones', 'talentSets', 'pets', 'mounts', 'glyphs', 'sigils', 'relics', 'awakening', 'transcendence', 'fortress', 'skills', 'attunementBans', 'oblivion', 'drop', 'dropCheck', 'opponents', 'runs', 'presets', 'activePresetId', 'baseResidual']) {
       expect(c, key).toHaveProperty(key);
     }
     expect(c.transcendence.presets[0].id).toBe('default');

@@ -15,7 +15,7 @@
   import ScopeChip from '../ui/ScopeChip.svelte';
   import ProvenanceTag from '../ui/ProvenanceTag.svelte';
   import Button from '../ui/Button.svelte';
-  import { chipFor, pctInterval } from '../../lib/features/dropView.js';
+  import { chipFor, pctInterval, axisOf } from '../../lib/features/dropView.js';
   import { fmtContrast, fmtContrastCi, fmtCount, fmtScalar, nNeededText } from '../../lib/ui/statsFormat.js';
   import { signedPct } from './dropFormat.js';
 
@@ -27,17 +27,21 @@
   const pending = $derived(card.basis !== 'sim' && phase !== 'idle');
   const names = $derived(card.presetNames);
 
-  /** Delta figure of one metric: DPS as percent of the starting DPS, win rate and survival in points. */
+  /** Delta figure of one goal: relative goals in percent of the starting value, rates in points, else its unit. */
   function figure(m) {
-    if (m.unit === 'dps') {
+    if (axisOf(m.m) === 'pct') {
       const p = pctInterval(m.m);
       return p ? { text: signedPct(p.est, 2), ci: `likely range ${signedPct(p.lo, 2)} to ${signedPct(p.hi, 2)}` } : { text: 'n/a', ci: '' };
     }
-    return { text: fmtContrast('p', m.m.delta), ci: fmtContrastCi('p', m.m.delta) };
+    return { text: fmtContrast(m.unit, m.m.delta), ci: fmtContrastCi(m.unit, m.m.delta) };
   }
+  /** A win-rate goal whose rates tied is decided on the HP margin: say so next to the figure. */
+  const basisNote = (m) => (m.m.delta.basis === 'margin' ? ' · decided on HP left' : '');
   /** Plain-words verdict of one metric; a close call names the fights it stopped at. */
   const verdictLine = (c) =>
     c.verdict === 'better' ? 'Clearly better' : c.verdict === 'worse' ? 'Clearly worse' : c.verdict === 'equivalent' ? 'About the same' : `Too close to call after ${fmtCount(c.n)} fights`;
+  /** Unit of the before/after values: the objective's statistic (a Fastest-clear goal's clear rate is still a time goal). */
+  const statUnit = (m) => (m.m.objectiveKind === 'fastest-clear' ? 'ms' : m.unit);
   const tone = (m) => (m.m.delta.verdict === 'better' ? 'up' : m.m.delta.verdict === 'worse' ? 'down' : 'side');
 
   function apply() {
@@ -71,9 +75,9 @@
           {@const f = figure(m)}
           <div class="met" data-metric={m.id}>
             <span class="lbl">{m.label}</span>
-            <span class="val num">{fmtScalar(m.unit === 'dps' ? 'dps' : 'p', m.m.before.mean)} → {fmtScalar(m.unit === 'dps' ? 'dps' : 'p', m.m.after.mean)}</span>
+            <span class="val num">{fmtScalar(statUnit(m), m.m.before.mean)} → {fmtScalar(statUnit(m), m.m.after.mean)}</span>
             <span class="d num {tone(m)}">{f.text}</span>
-            <span class="ci num">{f.ci} · {fmtCount(m.m.delta.n)} fights · {verdictLine(m.m.delta)}</span>
+            <span class="ci num">{f.ci} · {fmtCount(m.m.delta.n)} fights · {verdictLine(m.m.delta)}{basisNote(m)}</span>
           </div>
         {/each}
       {/each}

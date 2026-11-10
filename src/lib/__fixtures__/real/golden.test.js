@@ -92,16 +92,17 @@ describe('golden: drop-batch', () => {
   it('batch-checks through the dropCheck task: finite deltas and a verdict for every entry', async () => {
     const c = character();
     const { entries } = parseDropBatch(batch, c);
-    const { request, rows, offsets } = prepareBatch(c, entries);
-    const res = await runTask('dropCheck', { ...request, nSim: 4, seconds: 10 });
+    const goals = [{ id: 'd', target: { kind: 'dummy', seconds: 10 }, objective: { kind: 'dps' } }];
+    const { request, rows, offsets } = prepareBatch(c, entries, { goals, goalIdsByRealm: { base: ['d'] } });
+    const res = await runTask('dropCheck', { ...request, n0: 4, maxN: 8 });
     expect(res.results).toHaveLength(request.items.length);
     entries.forEach((_, i) => {
       const per = entryResults(offsets, rows, i, res.results);
       for (const r of per) {
         expect(r).toBeTruthy();
-        for (const v of [r.sim.before.mean, r.sim.after.mean, r.sim.delta.delta]) expect(Number.isFinite(v)).toBe(true);
+        for (const v of [r.goals[0].before.mean, r.goals[0].after.mean, r.goals[0].delta.delta]) expect(Number.isFinite(v)).toBe(true);
       }
-      expect(['upgrade', 'mixed', 'sidegrade', 'downgrade']).toContain(judgeEntry(rows[i], per).verdict);
+      expect(['upgrade', 'mixed', 'sidegrade', 'downgrade', 'inconclusive']).toContain(judgeEntry(rows[i], per).verdict);
     });
   }, 60000);
 });

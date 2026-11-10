@@ -3,6 +3,7 @@
 import { slotsForRealm } from '../game/gear.js';
 import { EQUIP_SET_KEYS, realmOfSet, normaliseItem } from '../model/equipment.js';
 import { newDrop, dropAscension } from '../model/drop.js';
+import { normaliseDropGoal, normaliseDropGoals, DROP_GOAL_MAX } from '../model/dropCheck.js';
 
 export function createDropStore(ctx) {
   /** Start a fresh, empty drop. Defaults keep the current slot and realm. Returns false for an unknown slot. */
@@ -69,5 +70,53 @@ export function createDropStore(ctx) {
     });
   }
 
-  return { startDrop, setDropSlot, setDropRealm, setDropItem, discardDrop, applyDropToSet };
+  // --- goals (model/dropCheck.js): the active profile's list ---------------------------------------
+
+  const profileOf = (c) => c.dropCheck.profiles.find((p) => p.id === c.dropCheck.activeProfileId) ?? c.dropCheck.profiles[0];
+
+  /** Add a goal `{target, objective}` to the active profile. Returns its id, or null when it is malformed or the list is full. */
+  function addDropGoal(goal) {
+    let id = null;
+    ctx.edit((c) => {
+      const p = profileOf(c);
+      const g = normaliseDropGoal({ target: goal?.target, objective: goal?.objective });
+      if (!g || p.goals.length >= DROP_GOAL_MAX) return false;
+      p.goals.push(g);
+      id = g.id;
+      return true;
+    });
+    return id;
+  }
+
+  /** Replace a goal's target and objective (same id). False when the goal is gone or the spec is malformed. */
+  function updateDropGoal(id, goal) {
+    return ctx.edit((c) => {
+      const p = profileOf(c);
+      const i = p.goals.findIndex((g) => g.id === id);
+      const g = normaliseDropGoal({ id, target: goal?.target, objective: goal?.objective });
+      if (i < 0 || !g) return false;
+      p.goals[i] = g;
+      return true;
+    });
+  }
+
+  /** Remove a goal from the active profile. */
+  function removeDropGoal(id) {
+    return ctx.edit((c) => {
+      const p = profileOf(c);
+      const before = p.goals.length;
+      p.goals = p.goals.filter((g) => g.id !== id);
+      return p.goals.length < before;
+    });
+  }
+
+  /** Replace the active profile's goals (normalised; the one-time import of the old Measure settings). */
+  function setDropGoals(goals) {
+    return ctx.edit((c) => {
+      profileOf(c).goals = normaliseDropGoals(goals);
+      return true;
+    });
+  }
+
+  return { startDrop, setDropSlot, setDropRealm, setDropItem, discardDrop, applyDropToSet, addDropGoal, updateDropGoal, removeDropGoal, setDropGoals };
 }

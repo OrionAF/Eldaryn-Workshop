@@ -25,11 +25,26 @@ const metric = (verdict, n = 1024) => ({
   },
 });
 
+/** A runSwapMetrics item result: `m` (a metric) for every goal the item meets, shaped as swap.js reports a goal. */
+function goalRes(request, it, m) {
+  return request.goals
+    .filter((g) => !it.goalIds || it.goalIds.includes(g.id))
+    .map((g) => {
+      const rate = g.objective.kind !== 'dps';
+      return {
+        goalId: g.id, label: rate ? 'PVP: win rate' : 'Training dummy: DPS', objectiveKind: g.objective.kind,
+        unit: rate ? 'p' : 'dps', deltaKind: rate ? 'absolute' : 'relative', higherIsBetter: true, damageOnly: !rate,
+        ...m, delta: { pct: m.delta.delta / Math.abs(m.before.mean), ...m.delta, higherIsBetter: true },
+      };
+    });
+}
+
 let calls;
 let verdict;
+let dummyId;
 function runner(request) {
   calls.push(request);
-  const results = request.items.map((it) => ({ presetId: it.presetId, ...(request.sim ? { sim: metric(verdict) } : {}) }));
+  const results = request.items.map((it) => ({ presetId: it.presetId, goals: goalRes(request, it, metric(verdict)) }));
   return { promise: Promise.resolve({ results, aborted: false }), cancel() {} };
 }
 
@@ -45,6 +60,7 @@ beforeEach(() => {
   rosterStore.addCharacter('Drop Page', 'WARRIOR');
   rosterStore.setEquipmentItem('set1', 'WEAPON', gear(1000));
   rosterStore.setEquipmentItem('set2', 'WEAPON', gear(1000));
+  dummyId = rosterStore.addDropGoal({ target: { kind: 'dummy', seconds: 60 }, objective: { kind: 'dps' } });
   target = document.createElement('div');
   document.body.appendChild(target);
   app = null;
@@ -83,10 +99,11 @@ it('Check drop runs a job with the chosen effort; the card shows the Holm verdic
   flushSync();
   expect(jobsStore.list[0]).toMatchObject({ tool: 'drop' });
   await settle();
-  expect(calls[0]).toMatchObject({ mode: 'dropCheck', precision: 'standard', sim: true });
+  expect(calls[0]).toMatchObject({ mode: 'dropCheck', precision: 'standard', goals: [{ id: dummyId, target: { kind: 'dummy' }, objective: { kind: 'dps' } }] });
+  expect(calls[0].character.id).toBe(rosterStore.current.id);
   expect(card('set1').dataset.verdict).toBe('better');
   expect(card('set1').textContent).toContain('Upgrade');
-  expect(card('set1').textContent).toContain('DPS only: defence not measured');
+  expect(card('set1').textContent).toContain('Damage only: defence not measured');
   expect(card('set1').querySelector('.vchip.up')).not.toBeNull();
   // the estimate stays under the simulated figures, uncoloured
   expect(card('set1').querySelector('.estimate .est').className).not.toMatch(/up|down/);
@@ -195,7 +212,7 @@ it('Loot bag: a ranked row expands to its own item\'s set cards, whose figure ma
       const results = request.items.map((it, k) => {
         const m = metric('better');
         const d = 20 + 10 * k;
-        return { presetId: it.presetId, sim: { ...m, after: { ...m.after, mean: 1000 + d }, delta: { ...m.delta, delta: d, lo: d - 5, hi: d + 5 } } };
+        return { presetId: it.presetId, goals: goalRes(request, it, { ...m, after: { ...m.after, mean: 1000 + d }, delta: { ...m.delta, delta: d, lo: d - 5, hi: d + 5 } }) };
       });
       return { promise: Promise.resolve({ results, aborted: false }), cancel() {} };
     },
@@ -383,32 +400,19 @@ it('Import dialog handoff: a page that is already open reacts to a new loot bag'
   expect(jobsStore.list.filter((j) => j.tool === 'drop-bag')).toHaveLength(1);
 });
 
-it('PVP win rate measures every saved opponent as soon as it is switched on, and Set 2 gets its own table', async () => {
+it('a PVP goal and the dummy goal each get their own table on their own axis, with Set 2 in each', async () => {
   const oppId = rosterStore.addOpponent('WARRIOR_TANK', 'Rival');
   rosterStore.setOpponentSheet(oppId, { totalHp: 800, totalAttack: 30, totalAttackSpeed: 1, totalCritChance: 5, totalCritDamage: 150 });
-  __resetJobs({
-    run: (request) => {
-      calls.push(request);
-      const results = request.items.map((it) => ({
-        presetId: it.presetId,
-        ...(request.sim ? { sim: metric('better') } : {}),
-        pvp: request.opponents.map((o) => ({ opponentId: o.id, name: o.name, ...metric('better') })),
-      }));
-      return { promise: Promise.resolve({ results, aborted: false }), cancel() {} };
-    },
-  });
+  const pvpId = rosterStore.addDropGoal({ target: { kind: 'pvp', opponentIds: [oppId], seats: 'attacker' }, objective: { kind: 'pvp-winrate' } });
   open();
   change(q('Attack'), '9.000');
-  const toggle = [...target.querySelectorAll('input[type="checkbox"]')].find((c) => c.closest('label')?.textContent.includes('PVP win rate'));
-  toggle.click();
-  flushSync();
   btn('Check drop').click();
   flushSync();
   await settle();
-  expect(calls[0].opponents.map((o) => o.id)).toEqual([oppId]);
+  expect(calls[0].goals.map((g) => g.id)).toEqual([dummyId, pvpId]);
   const tables = [...target.querySelectorAll('[data-metric-table]')].map((t) => t.dataset.metricTable);
-  expect(tables).toEqual(['sim', `pvp:${oppId}`]);
-  const pvp = target.querySelector(`[data-metric-table="pvp:${oppId}"]`);
+  expect(tables).toEqual([`${dummyId}|pct`, `${pvpId}|pts`]);
+  const pvp = target.querySelector(`[data-metric-table="${pvpId}|pts"]`);
   expect(pvp.textContent).toContain('Set 2');
   expect(pvp.querySelectorAll('.axis')).toHaveLength(1);
 });
@@ -527,59 +531,86 @@ it('Copy into drop: Oblivion realm copies from the Oblivion set', () => {
   expect(rosterStore.current.drop.item.primaryStats).toEqual(item.primaryStats);
 });
 
-const tick = (text) => [...target.querySelectorAll('input[type="checkbox"]')].find((c) => c.closest('label')?.textContent.includes(text));
+const pickEffortBtn = (name) => [...target.querySelectorAll('[role="group"][aria-label="Effort"] button')].find((b) => b.textContent.trim().startsWith(name));
+const goalRows = () => [...target.querySelectorAll('[data-testid="drop-goals"] li')];
 
-it('the Measure settings are remembered per character: remount keeps them, another character gets defaults', () => {
+it('without a goal Check drop is off with the reason, and the goal list explains goals', () => {
+  rosterStore.setDropGoals([]);
   open();
-  tick('Survival vs').click();
-  tick('PVP win rate').click();
-  tick('training dummy').click();
+  change(q('Attack'), '9.000');
+  expect(target.querySelector('[data-testid="drop-goals"]').textContent).toContain('No goals yet');
+  expect(btn('Check drop').getAttribute('aria-disabled')).toBe('true');
+  expect(btn('Check drop').title).toBe('Add a goal to measure');
+});
+
+it('+ Add goal opens the editor and saves a goal on the character; Remove asks first', () => {
+  rosterStore.setDropGoals([]);
+  open();
+  btn('+ Add goal').click();
   flushSync();
-  expect(tick('Survival vs').checked).toBe(true);
-  unmount(app);
-  open();
-  expect(tick('Survival vs').checked).toBe(true);
-  expect(tick('PVP win rate').checked).toBe(true);
-  expect(tick('training dummy').checked).toBe(false);
-  unmount(app);
-  rosterStore.addCharacter('Other', 'MAGE');
-  open();
-  expect(tick('Survival vs').checked).toBe(false);
-  expect(tick('PVP win rate').checked).toBe(false);
-  expect(tick('training dummy').checked).toBe(true);
+  expect(target.querySelector('[aria-label="New goal"]')).not.toBeNull();
+  [...target.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Add goal').click();
+  flushSync();
+  expect(rosterStore.current.dropCheck.profiles[0].goals).toHaveLength(1);
+  expect(goalRows()).toHaveLength(1);
+  btn('Remove').click();
+  flushSync();
+  expect(goalRows()).toHaveLength(1);
+  btn('Confirm remove').click();
+  flushSync();
+  expect(goalRows()).toHaveLength(0);
 });
 
-it('a broken saved setup falls back to the defaults', () => {
-  localStorage.setItem('eldaryn_ui_v1', JSON.stringify({ dropSetups: { [rosterStore.current.id]: { survivalOn: 'yes', enemySpec: { kind: 'x' }, precision: 'huge', pvpIds: 4 } } }));
+it('an Oblivion goal does not judge a base-realm drop, and says so', () => {
+  rosterStore.setOblivionUnlocked(true);
+  rosterStore.setDropGoals([{ target: { kind: 'oblivion', floor: 10 }, objective: { kind: 'win-chance' } }]);
   open();
-  expect(tick('Survival vs').checked).toBe(false);
-  expect(tick('training dummy').checked).toBe(true);
+  change(q('Attack'), '9.000');
+  expect(goalRows()[0].textContent).toContain('Judges Oblivion drops only');
+  expect(btn('Check drop').title).toBe('No goal judges base-realm drops');
 });
 
-it('switching character while mounted reloads that character\'s setup, and switching back restores the first', () => {
+it('the old metric toggles become goals once, into an empty list, and are not imported again', () => {
+  rosterStore.setDropGoals([]);
+  const oppId = rosterStore.addOpponent('WARRIOR_TANK', 'Rival');
+  const id = rosterStore.current.id;
+  localStorage.setItem('eldaryn_ui_v1', JSON.stringify({ dropSetups: { [id]: { simOn: true, pvpOn: true, pvpIds: null, precision: 'quick' } } }));
+  open();
+  const goals = rosterStore.current.dropCheck.profiles[0].goals;
+  expect(goals.map((g) => g.objective.kind)).toEqual(['dps', 'pvp-winrate']);
+  expect(goals[1].target.opponentIds).toEqual([oppId]);
+  expect(JSON.parse(localStorage.getItem('eldaryn_ui_v1')).dropSetups[id].goalsImported).toBe(true);
+  unmount(app);
+  rosterStore.setDropGoals([]);
+  open();
+  expect(rosterStore.current.dropCheck.profiles[0].goals).toHaveLength(0);
+});
+
+it('the effort is remembered per character: remount keeps it, another character gets the default', () => {
   const a = rosterStore.current.id;
   open();
-  tick('Survival vs').click();
+  pickEffortBtn('Quick').click();
   flushSync();
+  unmount(app);
+  open();
+  expect(pickEffortBtn('Quick').getAttribute('aria-pressed')).toBe('true');
   rosterStore.addCharacter('Other', 'MAGE');
-  const b = rosterStore.current.id;
   flushSync();
-  expect(tick('Survival vs').checked).toBe(false);
-  tick('PVP win rate').click();
-  flushSync();
+  expect(pickEffortBtn('Standard').getAttribute('aria-pressed')).toBe('true');
   rosterStore.selectCharacter(a);
   flushSync();
-  expect(tick('Survival vs').checked).toBe(true);
-  expect(tick('PVP win rate').checked).toBe(false);
-  rosterStore.selectCharacter(b);
+  expect(pickEffortBtn('Quick').getAttribute('aria-pressed')).toBe('true');
+  expect(JSON.parse(localStorage.getItem('eldaryn_ui_v1')).dropSetups[a]).toMatchObject({ precision: 'quick', goalsImported: true });
+});
+
+it('a broken saved setup falls back to the defaults', async () => {
+  localStorage.setItem('eldaryn_ui_v1', JSON.stringify({ dropSetups: { [rosterStore.current.id]: { survivalOn: 'yes', enemySpec: { kind: 'x' }, precision: 'huge', pvpIds: 4 } } }));
+  open();
+  change(q('Attack'), '9.000');
+  btn('Check drop').click();
   flushSync();
-  expect(tick('Survival vs').checked).toBe(false);
-  expect(tick('PVP win rate').checked).toBe(true);
-  const saved = JSON.parse(localStorage.getItem('eldaryn_ui_v1')).dropSetups;
-  expect(saved[a].survivalOn).toBe(true);
-  expect(saved[a].pvpOn).toBe(false);
-  expect(saved[b].survivalOn).toBe(false);
-  expect(saved[b].pvpOn).toBe(true);
+  await settle();
+  expect(calls[0].precision).toBe('standard');
 });
 
 it('merely opening the page stores nothing, so a later default-effort change still applies', () => {
@@ -596,9 +627,9 @@ function mixedBagRunner() {
       const per = request.items.length / 4;
       const results = request.items.map((it, k) => {
         const m = metric('better');
-        if (Math.floor(k / per) % 2) return { presetId: it.presetId, sim: m };
+        if (Math.floor(k / per) % 2) return { presetId: it.presetId, goals: goalRes(request, it, m) };
         const d = { ...m.delta, delta: -100, lo: -140, hi: -60, verdict: 'worse', significant: true, holmReject: true };
-        return { presetId: it.presetId, sim: { ...m, after: { ...m.after, mean: 900 }, delta: d } };
+        return { presetId: it.presetId, goals: goalRes(request, it, { ...m, after: { ...m.after, mean: 900 }, delta: d }) };
       });
       return { promise: Promise.resolve({ results, aborted: false }), cancel() {} };
     },
@@ -633,7 +664,7 @@ it('Loot bag: before the job finishes nothing is hidden, and an all-downgrade ba
   __resetJobs({
     run: (request) => ({
       promise: Promise.resolve({
-        results: request.items.map((it) => ({ presetId: it.presetId, sim: { ...metric('better'), delta: { ...metric('better').delta, delta: -100, lo: -140, hi: -60, verdict: 'worse', significant: true, holmReject: true } } })),
+        results: request.items.map((it) => ({ presetId: it.presetId, goals: goalRes(request, it, { ...metric('better'), delta: { ...metric('better').delta, delta: -100, lo: -140, hi: -60, verdict: 'worse', significant: true, holmReject: true } }) })),
         aborted: false,
       }),
       cancel() {},

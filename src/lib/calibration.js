@@ -97,15 +97,27 @@ export function estimateText(cal, fights, { bound = 'about', stale = null } = {}
 
 // Optimiser: search/estimate.js (it models the search itself; simulation.md §Estimates).
 
-/** Drop Check: per preset and metric a before/after pair, each up to maxN fights (an upper bound). */
+/** The calibration fight kind a goal's target runs on, and its lanes (PVP: one per opponent and seat). */
+function goalFightKind(target) {
+  const k = target?.kind;
+  if (k === 'dummy' || k === 'worldBoss') return { kind: 'dummy', lanes: 1 };
+  if (k === 'pvp') return { kind: 'duel', lanes: Math.max(1, target.opponentIds?.length ?? 0) * (target.seats === 'both' ? 2 : 1) };
+  if (k === 'fortressBoss') return { kind: 'duel', lanes: 1 };
+  return { kind: 'dungeon', lanes: 1 };
+}
+
+/** Drop Check: per item and goal a before/after pair, each up to maxN fights per lane (an upper bound). */
 export function dropFights(request, maxN) {
-  const items = request?.items?.length ?? 0;
-  const per = 2 * maxN * items;
-  return {
-    ...(request?.sim ? { dummy: per } : {}),
-    ...(request?.enemy ? { dungeon: per } : {}),
-    ...((request?.opponents?.length ?? 0) > 0 ? { duel: per * request.opponents.length } : {}),
-  };
+  const out = {};
+  const goals = request?.goals ?? [];
+  for (const it of request?.items ?? []) {
+    for (const g of goals) {
+      if (it.goalIds && !it.goalIds.includes(g.id)) continue;
+      const { kind, lanes } = goalFightKind(g.target);
+      out[kind] = (out[kind] ?? 0) + 2 * maxN * lanes;
+    }
+  }
+  return out;
 }
 
 /** Duel: n duels per seat. */
