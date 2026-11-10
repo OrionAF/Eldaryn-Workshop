@@ -118,7 +118,10 @@ export function prepare(request) {
   const effort = resolveEffort(request.effort, objective);
   const seed = Number.isFinite(request.seed) ? request.seed : 1;
   const seeds = seedsFor(seed, target.key);
-  const { residual, warnings } = residualFor(computePresetStats(character, preset.id, { realm }));
+  // `residual` override: Drop Check's deep check runs the drop on a copy whose sheet no longer matches its gear,
+  // so it carries the original preset's residual to both sides (simulation.md §Drop Check, deep check)
+  const override = request.residual && typeof request.residual === 'object' && !Array.isArray(request.residual);
+  const { residual, warnings } = override ? { residual: { ...request.residual }, warnings: [] } : residualFor(computePresetStats(character, preset.id, { realm }));
   if (target.opponents) {
     for (const o of target.opponents) {
       if (o.fighter.defaulted?.length) {
@@ -144,6 +147,7 @@ export function prepare(request) {
     boardIchorBudget: space.boardIchorBudget,
     // the partner's build is an input of every fight: a changed partner is a different run
     ...(target.partner ? { partnerKey: target.partner.key } : {}),
+    ...(override ? { residualKey: metricKey('residual', residual) } : {}),
     seed, seeds, effort: { level: effort.level, delta: effort.delta, deltaKind: effort.deltaKind, alpha: effort.alpha, n0: effort.n0, maxN: effort.maxN, ...(effort.budgetMs ? { budgetMs: effort.budgetMs } : {}) }, characterKey,
   };
   const requestKey = metricKey('optimise-request', { ...requestEcho, characterKey: undefined, randomStarts: effort.randomStarts, ...(warmStarts.length ? { warmStarts: warmStarts.map(space.key) } : {}), ...(effort.futility ? {} : { futility: false }), ...(effort.tieLook ? {} : { tieLook: false }), ...(effort.batchDrop ? {} : { batchDrop: false }) });

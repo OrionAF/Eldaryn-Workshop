@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { optimize, optimizeMore, resolveEffort, EXHAUSTIVE_MAX } from './search.js';
+import { optimize, optimizeMore, prepare, resolveEffort, EXHAUSTIVE_MAX } from './search.js';
 import { BLOCKS, createBuildSpace } from './space.js';
 import { changesOf, writesOf } from './effect.js';
 import { rowViolations } from './result.js';
@@ -459,5 +459,17 @@ describe('objectives through the driver', { timeout: 120000 }, () => {
   it('the space follows the target mode', () => {
     const o = makeObjective({ kind: 'dps' }, resolveTarget(SHORT));
     expect(resolveEffort({ level: 'thorough' }, o)).toMatchObject({ level: 'thorough', n0: 32, maxN: 131072, delta: 0.0025 });
+  });
+});
+
+describe('prepare: residual override (Drop Check deep check)', () => {
+  it('a given residual replaces the preset\'s own and is echoed in the request key', () => {
+    const c = normaliseCharacter(JSON.parse(JSON.stringify(fixtureCharacter('WARRIOR'))));
+    const r0 = { presetId: c.presets[0].id, character: c, target: SHORT, objective: { kind: 'dps' }, effort: TINY };
+    const own = prepare(r0);
+    const given = prepare({ ...r0, residual: { attack: 123 } });
+    expect(own.requestEcho.residualKey).toBeUndefined();
+    expect(given.requestEcho.residualKey).toBeTruthy();
+    expect(given.requestKey).not.toBe(own.requestKey);
   });
 });

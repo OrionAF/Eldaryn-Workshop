@@ -47,6 +47,7 @@
   import GoalProfile from '../drop/GoalProfile.svelte';
   import ImportPointer from '../import/ImportPointer.svelte';
   import DropSetCard from '../drop/DropSetCard.svelte';
+  import DropDeepCheck from '../drop/DropDeepCheck.svelte';
   import DropMetricTables from '../drop/DropMetricTables.svelte';
   import { itemSummary, signedPct, dropStatRows, dropStatLines } from '../drop/dropFormat.js';
   import StatTable from '../ui/StatTable.svelte';
@@ -582,6 +583,9 @@
                 {/each}
               </div>
             {/if}
+          </Panel>
+          <Panel title="Deep check" scope="tool">
+            <DropDeepCheck {character} {realm} {drop} resolved={resolvedGoals} {precision} {hasStats} signature={() => storeSignature()} {setStatus} />
           </Panel>
         </div>
       </div>
