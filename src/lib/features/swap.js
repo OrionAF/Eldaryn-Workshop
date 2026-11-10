@@ -124,7 +124,7 @@ export function statDeltas(before, after, keys = DIFF_KEYS) {
 }
 
 /** A clone of `character` whose set `setKey` has `item` in `slot` (everything else shared, not copied). */
-function withItem(character, setKey, slot, item) {
+export function withItem(character, setKey, slot, item) {
   const set = character.equipment[setKey];
   return { ...character, equipment: { ...character.equipment, [setKey]: { ...set, items: { ...set.items, [slot]: item } } } };
 }
