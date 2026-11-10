@@ -36,8 +36,19 @@ it('cancel() resolves with best-so-far flagged aborted', async () => {
   expect((await promise).aborted).toBe(true);
 });
 
+it('finish() (Stop early) reaches the task as ctx.finishSignal, without cancelling it', async () => {
+  TASKS.stubFinish = async (_req, ctx) => {
+    await new Promise((r) => setTimeout(r, 5));
+    return { finish: ctx.finishSignal.aborted, cancel: ctx.signal.aborted };
+  };
+  const { promise, finish } = runOptimizerTask({ mode: 'stubFinish' });
+  finish();
+  expect(await promise).toEqual({ finish: true, cancel: false });
+});
+
 afterEach(() => {
   delete TASKS.stubCheckpoint;
+  delete TASKS.stubFinish;
   vi.unstubAllGlobals();
 });
 

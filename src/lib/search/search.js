@@ -524,7 +524,7 @@ function createRun(prep, hooks) {
     });
   }
 
-  return { st, sampler, log, logCtx, base, armOf, ekOf, getSet, heldSet, prefetch, compare, contrastAt, raceArms, goalCheck, setPhase, progress, checkpoint, noteBest, t0, signal, workers: pool?.size ?? 1 };
+  return { st, sampler, log, logCtx, base, armOf, ekOf, getSet, heldSet, prefetch, compare, contrastAt, raceArms, goalCheck, setPhase, progress, checkpoint, noteBest, t0, signal, finishSignal: hooks.finishSignal ?? null, workers: pool?.size ?? 1 };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -599,12 +599,19 @@ async function searchPhase(prep, run) {
   // searchCutoffMs, re-read at every check from this run's own speed); the first race always runs. What was
   // raced keeps its meaning, and the rows are still confirmed on their own seed. simulation.md §Time budget.
   const reserve = effort.reserve ?? priorReserve(familyOf(objective.kind, prep.target.kind), effort.level, Math.max(1, objective.lanes ?? 1), choiceBlocks(Object.fromEntries([...enabled].map((id) => [id, sizes[id] ?? 1]))));
+  // Stop early (hooks.finishSignal, the user's "Stop early"): the same cut as the time limit, from now
+  const finishSignal = run.finishSignal;
+  const finishing = () => finishSignal?.aborted === true;
+  let stoppedBy = null; // 'time' | 'user'
   const pastCutoff = (aheadMs = 0) => {
+    if (finishing()) return (stoppedBy = 'user'), true;
     if (!effort.budgetMs) return false;
     const elapsedMs = Date.now() - run.t0;
     // fights replayed from a checkpoint cost no time, so they do not count toward the speed
     const fights = fightsNow() - st.replayedFights;
-    return elapsedMs + aheadMs >= searchCutoffMs({ budgetMs: effort.budgetMs, elapsedMs, fights, searchFights: st.fights.search, reserve });
+    const past = elapsedMs + aheadMs >= searchCutoffMs({ budgetMs: effort.budgetMs, elapsedMs, fights, searchFights: st.fights.search, reserve });
+    if (past) stoppedBy = 'time';
+    return past;
   };
   let raced = false;
   let timedOut = false;
@@ -620,7 +627,7 @@ async function searchPhase(prep, run) {
     lastCut = now;
     return (timedOut = pastCutoff(nextMs / 2));
   };
-  const cutOpts = effort.budgetMs ? { stop: cutNow } : {};
+  const cutOpts = effort.budgetMs || finishSignal ? { stop: cutNow } : {};
   // the Combat Power guard is a legality rule: an arm below the floor is never raced (simulation.md §Build space)
   const simulable = (a) => {
     if (!space.admissible(a.cand)) {
@@ -931,7 +938,7 @@ async function searchPhase(prep, run) {
   }
   if (!out) out = await local();
   // a block never reached has nothing to show but its reason
-  for (const row of st.steps) if (row.state === 'queued') Object.assign(row, { state: 'skipped', reason: timedOut ? 'time-limit' : 'nothing-to-try' });
+  for (const row of st.steps) if (row.state === 'queued') Object.assign(row, { state: 'skipped', reason: timedOut ? (stoppedBy === 'user' ? 'stopped' : 'time-limit') : 'nothing-to-try' });
   run.progress(true);
   const blocks = BLOCKS.map((id) => ({
     id,
@@ -939,12 +946,12 @@ async function searchPhase(prep, run) {
     domain: enabled.has(id) ? sizes[id] ?? 1 : 1,
     ...(enabled.has(id) && (id === 'mount' || DOMINANCE_BLOCKS.includes(id)) ? { pruned: space.pruned(id, B.cand) } : {}),
     // a block the time limit cut short is not known to have converged
-    status: !enabled.has(id) ? 'disabled' : timedOut && status.get(id) === 'converged' ? 'time-limit' : status.get(id) ?? 'not-reached',
+    status: !enabled.has(id) ? 'disabled' : timedOut && status.get(id) === 'converged' ? (stoppedBy === 'user' ? 'stopped' : 'time-limit') : status.get(id) ?? 'not-reached',
   }));
   const optimaKeys = new Set(out.optima.map((a) => a.key));
   return {
     ...out,
-    stopped: timedOut ? 'time' : 'converged',
+    stopped: timedOut ? (stoppedBy === 'user' ? 'user' : 'time') : 'converged',
     jointSize: out.strategy === 'exhaustive' || jointSize <= Number.MAX_SAFE_INTEGER ? jointSize : null,
     blocks,
     optimaCount: optimaKeys.size,
@@ -1113,6 +1120,7 @@ export async function optimize(request, hooks = {}) {
     run.setPhase('search');
     searchOut = await searchPhase(prep, run);
     if (searchOut.stopped === 'time') warnings.push({ code: 'time-limit', severity: 'info', message: `The search stopped at the time limit after ${st.evaluated.size.toLocaleString('en-US')} builds, before it finished. A longer limit may find a better build. Every result shown is still checked on its own fights.` });
+    else if (searchOut.stopped === 'user') warnings.push({ code: 'stopped-early', severity: 'info', message: `You stopped the search early after ${st.evaluated.size.toLocaleString('en-US')} builds. Letting it finish may find a better build. Every result shown is still checked on its own fights.` });
     const fmap = new Map();
     for (const a of [...searchOut.optima, ...searchOut.contenders]) {
       if (!a || a.key === B.key) continue;

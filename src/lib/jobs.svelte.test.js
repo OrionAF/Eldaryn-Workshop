@@ -14,6 +14,7 @@ vi.mock('./tasks/index.js', () => ({
         ctx.onCheckpoint({ next: i, acc });
         return { aborted: true, acc, i };
       }
+      if (ctx.finishSignal?.aborted) return { acc, i, finishedEarly: true };
       acc += (i + 1) * (request.seed ?? 1);
       i++;
       ctx.onProgress?.({ phases: [{ id: 'p', label: 'Measure', state: 'current', done: i, total: STEPS }] });
@@ -24,7 +25,7 @@ vi.mock('./tasks/index.js', () => ({
 }));
 
 const {
-  startJob, cancelJob, resumeJob, retryJob, dismissJob, clearFinished, isStale, jobsStore, jobSignature,
+  startJob, cancelJob, finishJob, resumeJob, retryJob, dismissJob, clearFinished, isStale, jobsStore, jobSignature,
   progressOf, openResult, setPersistCheckpoints, restoreInterrupted, __resetJobs, MAX_RUNNING,
 } = await import('./jobs.svelte.js');
 const { router, syncRouter } = await import('./router.svelte.js');
@@ -105,6 +106,16 @@ describe('job store', () => {
     expect(job(ids.at(-1)).status).toBe('queued');
     expect(jobsStore.running).toBe(MAX_RUNNING);
     await settled(ids.at(-1), 'finished');
+  });
+
+  it('finishJob (Stop early) ends a running job as finished, not cancelled', async () => {
+    const id = startJob({ tool: 'optimiser', title: 'Run', request: { mode: 'optimize', seed: 1 } });
+    await vi.waitFor(() => expect(job(id).progress).toBeTruthy());
+    finishJob(id);
+    expect(job(id).finishRequested).toBe(true);
+    await settled(id, 'finished');
+    expect(job(id).result.finishedEarly).toBe(true);
+    expect(job(id).result.i).toBeLessThan(STEPS);
   });
 
   it('a queued job cancels at once, with nothing to resume from', async () => {

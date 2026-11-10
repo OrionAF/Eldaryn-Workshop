@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  orientContrast, orientRow, viewResult, viewRun, legacyRows, progressSegments, progressLine, bestLine, effortPlan,
+  orientContrast, orientRow, viewResult, viewRun, legacyRows, progressSegments, progressLine, bestLine, canStopEarly, effortPlan,
   changeSummary, changeIdLabel, bundleText, onlyWith, dimensionLabel,
   setGroup, enabledCount, toggleTotal, SPACE_GROUPS, applyPlan, sideEffectsOf, fmtDuration, optimiserJobChips, resultText,
 } from './optimiserView.js';
@@ -298,5 +298,12 @@ describe('resultText', () => {
   });
   it('writes a Push result', () => {
     expect(resultText(viewResult(pushResult()), 'Main')).toMatch(/Rank 1/);
+  });
+});
+
+describe('canStopEarly', () => {
+  it('only during an optimiser search phase', () => {
+    expect(canStopEarly({ phase: 'search' })).toBe(true);
+    for (const p of [null, undefined, { phase: 'screen' }, { phase: 'minimise' }, { phase: 'confirm' }, { phase: 'climb' }]) expect(canStopEarly(p)).toBe(false);
   });
 });

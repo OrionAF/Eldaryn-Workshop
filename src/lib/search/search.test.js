@@ -74,6 +74,22 @@ describe('optimize: time budget (simulation.md §Time budget)', { timeout: 12000
     for (const row of cut.rows) expect(['better', 'unresolved', 'equivalent']).toContain(row.vsBaseline.verdict);
   });
 
+  it('Stop early (finishSignal) cuts the search like a spent budget, still confirms, and says it was stopped', async () => {
+    const free = await optimize(req);
+    const finisher = new AbortController();
+    finisher.abort(); // pressed before the search: the first race still runs, cut at its first look
+    const cut = await optimize(req, { finishSignal: finisher.signal });
+    expect(cut.search.stopped).toBe('user');
+    expect(cut.aborted).toBeFalsy();
+    expect(cut.warnings.find((w) => w.code === 'stopped-early')).toMatchObject({ severity: 'info' });
+    expect(cut.warnings.some((w) => w.code === 'time-limit')).toBe(false);
+    expect(cut.search.evaluated).toBeLessThan(free.search.evaluated);
+    expect(cut.search.steps.some((r) => r.reason === 'stopped')).toBe(true);
+    expect(cut.phases.map((p) => [p.id, p.state])).toEqual(free.phases.map((p) => [p.id, p.state]));
+    // an unpressed finishSignal changes nothing
+    expect(timeless(await optimize(req, { finishSignal: new AbortController().signal }))).toEqual(timeless(free));
+  });
+
   it('a budget the search never reaches changes nothing but the echo', async () => {
     const free = await optimize(req);
     const long = await optimize({ ...req, effort: { ...TINY, budgetMs: 3_600_000 } });

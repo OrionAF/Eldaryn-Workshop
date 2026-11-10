@@ -8,6 +8,7 @@ const REASON_TEXT = {
   off: 'turned off under Allowed to change',
   'nothing-to-try': 'nothing to try',
   'time-limit': 'not reached before the time limit',
+  stopped: 'not reached before you stopped the search',
 };
 // StepList states: the search's 'running' is the list's 'active'
 const STATE = { queued: 'queued', running: 'active', done: 'done', skipped: 'skipped' };

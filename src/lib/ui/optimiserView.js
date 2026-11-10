@@ -379,6 +379,9 @@ export function progressLine(progress) {
 
 const pct1 = (x) => `${(x * 100).toFixed(1)}%`;
 
+/** Whether a live run can be stopped early: an optimiser run still in its search phase (Push has none). */
+export const canStopEarly = (progress) => progress?.phase === 'search';
+
 /**
  * The live best-so-far line (progress `best`, simulation.md §Progress), or '' before there is one. A
  * proportion (unit 'p') prints as itself beside the current build's; anything else as the change from the

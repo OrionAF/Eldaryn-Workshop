@@ -61,6 +61,7 @@ function launch(id) {
   job.error = null;
   job.progress = null;
   job.cancelRequested = false;
+  job.finishRequested = false;
   // The pool size is fixed when the job starts (a changed CPU profile applies to the next job) and shown in the tray.
   job.workers = Number.isInteger(job.request.workers) && job.request.workers >= 1 ? job.request.workers : jobWorkers();
   const request = { ...job.request, workers: job.workers, ...(job.resumeFrom ? { resumeFrom: job.resumeFrom } : {}) };
@@ -156,6 +157,7 @@ export function startJob(spec) {
     checkpoint: null,
     resumeFrom: null,
     cancelRequested: false,
+    finishRequested: false,
     interrupted: false,
     queuedAt: Date.now(),
     startedAt: null,
@@ -179,6 +181,17 @@ export function cancelJob(id) {
     job.cancelRequested = true;
     handles.get(id)?.cancel();
   }
+}
+
+/**
+ * Stop early: a running optimiser job ends its search at the next check and finishes normally
+ * (Minimise and confirm still run). Other tasks ignore it.
+ */
+export function finishJob(id) {
+  const job = find(id);
+  if (!job || job.status !== 'running' || job.cancelRequested || job.finishRequested) return;
+  job.finishRequested = true;
+  handles.get(id)?.finish?.();
 }
 
 /** Resume a cancelled job from its checkpoint (or from scratch when it has none). */
@@ -284,6 +297,7 @@ export async function restoreInterrupted() {
       checkpoint: r.checkpoint ?? null,
       resumeFrom: null,
       cancelRequested: false,
+      finishRequested: false,
       interrupted: true,
       queuedAt: r.at ?? Date.now(),
       startedAt: null,
