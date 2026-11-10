@@ -205,6 +205,8 @@ describe('estimateRun: learning from past runs', () => {
     want.targetKey = run.target.key;
     expect(matchHistory(want, [run])).not.toBeNull();
     expect(matchHistory(want, [{ ...run, budget: { ...run.budget, budgetMs: 30000 } }])).toBeNull();
+    // a run stopped early by hand cut its search short too
+    expect(matchHistory(want, [{ ...run, headline: { ...run.headline, truncated: 'user' } }])).toBeNull();
   });
 
   it('a real run fed back as history: the likely value is the run\'s own cost', async () => {

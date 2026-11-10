@@ -5,7 +5,8 @@
  * too), runs the matching task off the main thread, streams progress and checkpoints back, and
  * posts the result. { type: 'cancel' } (legacy 'abort') stops the task softly; it then resolves
  * with its best-so-far result carrying `aborted: true`. A cancel that arrives before the start
- * message still cancels the job.
+ * message still cancels the job. { type: 'finish' } (Stop early) asks a task that supports it
+ * (the optimiser) to wrap up now: it skips the rest of its search and finishes normally.
  *
  * Messages out: { type: 'progress', progress }
  *               { type: 'checkpoint', checkpoint }
@@ -32,11 +33,16 @@ export function poolFactory(workers, spawn = spawnPoolWorker) {
 /** Builds the onmessage handler; `post` is injected so tests can drive it without a Worker. */
 export function createWorkerHandler(post) {
   const controller = new AbortController();
+  const finisher = new AbortController();
   let started = false;
   return async (e) => {
     const msg = e.data;
     if (msg?.type === 'cancel' || msg?.type === 'abort') {
       controller.abort();
+      return;
+    }
+    if (msg?.type === 'finish') {
+      finisher.abort();
       return;
     }
     if (started) return; // one job per worker
@@ -45,6 +51,7 @@ export function createWorkerHandler(post) {
     try {
       const result = await runTask(request?.mode, request, {
         signal: controller.signal,
+        finishSignal: finisher.signal,
         pool: poolFactory(request?.workers),
         onProgress: (progress) => post({ type: 'progress', progress }),
         onCheckpoint: (checkpoint) => post({ type: 'checkpoint', checkpoint }),

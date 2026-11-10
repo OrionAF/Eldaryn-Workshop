@@ -16,12 +16,15 @@
  * worker builds the pool (optimizerWorker.js). The inline path runs without a pool. Pool size never
  * changes a result (simulation.md §Worker pool).
  *
- * Wire protocol, see optimizerWorker.js. In: { type: 'start', request }, { type: 'cancel' }.
+ * finish() (Stop early) asks the task to skip the rest of its search and finish normally; a task
+ * without a search ignores it.
+ *
+ * Wire protocol, see optimizerWorker.js. In: { type: 'start', request }, { type: 'cancel' }, { type: 'finish' }.
  * Out: progress, checkpoint, done, error.
  *
  * @param {{ mode: 'optimize' | 'duel' | 'dropCheck' | 'oblivionFloors', [k: string]: any }} request
  * @param {{ onProgress?: (p) => void, onCheckpoint?: (c) => void }} hooks
- * @returns {{ promise: Promise<result>, cancel: () => void }}
+ * @returns {{ promise: Promise<result>, cancel: () => void, finish: () => void }}
  */
 
 import { runTask } from './tasks/index.js';
@@ -42,8 +45,9 @@ export function runOptimizerTask(request, hooks = {}) {
 
 function runInline(plain, { onProgress, onCheckpoint }) {
   const controller = new AbortController();
-  const promise = runTask(plain.mode, plain, { signal: controller.signal, onProgress, onCheckpoint });
-  return { promise, cancel: () => controller.abort() };
+  const finisher = new AbortController();
+  const promise = runTask(plain.mode, plain, { signal: controller.signal, finishSignal: finisher.signal, onProgress, onCheckpoint });
+  return { promise, cancel: () => controller.abort(), finish: () => finisher.abort() };
 }
 
 function runInWorker(plain, hooks) {
@@ -57,6 +61,7 @@ function runInWorker(plain, hooks) {
   let settled = false;
   let heard = false; // any message from the worker: it started, so a later failure is real
   let cancelled = false;
+  let finished = false;
   let fallback = null;
   const promise = new Promise((resolve, reject) => {
     const finish = (fn, value) => {
@@ -80,6 +85,7 @@ function runInWorker(plain, hooks) {
         worker.terminate();
         fallback = runInline(plain, hooks);
         if (cancelled) fallback.cancel();
+        if (finished) fallback.finish();
         fallback.promise.then(resolve, reject);
         return;
       }
@@ -92,6 +98,7 @@ function runInWorker(plain, hooks) {
       worker.terminate();
       fallback = runInline(plain, hooks);
       if (cancelled) fallback.cancel();
+      if (finished) fallback.finish();
       fallback.promise.then(resolve, reject);
     }
   });
@@ -102,5 +109,11 @@ function runInWorker(plain, hooks) {
     if (fallback) fallback.cancel();
     else if (!settled) worker.postMessage({ type: 'cancel' });
   };
-  return { promise, cancel };
+  // Stop early: the search ends at its next check, then Minimise and confirm run as usual.
+  const finish = () => {
+    finished = true;
+    if (fallback) fallback.finish();
+    else if (!settled) worker.postMessage({ type: 'finish' });
+  };
+  return { promise, cancel, finish };
 }

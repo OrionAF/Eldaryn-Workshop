@@ -149,8 +149,8 @@ const TIERS = [
 export function matchHistory(want, history) {
   const pool = [];
   for (const r of Array.isArray(history) ? history : []) {
-    // a run under a time limit may have stopped its search early, so its builds and fights understate the cost
-    if (!isObj(r) || r.schema !== 2 || r.headline?.aborted || r.budget?.budgetMs) continue;
+    // a run under a time limit, or one stopped early by hand, may have cut its search short, so its builds and fights understate the cost
+    if (!isObj(r) || r.schema !== 2 || r.headline?.aborted || r.headline?.truncated === 'user' || r.budget?.budgetMs) continue;
     const c = runCost(r);
     if (!c || c.strategy !== want.strategy) continue;
     const v = runView(r, want);

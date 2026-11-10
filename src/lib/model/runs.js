@@ -199,7 +199,7 @@ function normaliseDetail(d, schema = 1) {
 }
 
 const STEP_STATES = ['queued', 'running', 'done', 'skipped'];
-const STEP_REASONS = ['off', 'nothing-to-try', 'time-limit'];
+const STEP_REASONS = ['off', 'nothing-to-try', 'time-limit', 'stopped'];
 /** A run's final search steps; null when absent or unusable (an older run simply has none). */
 function normaliseSteps(steps) {
   if (!Array.isArray(steps)) return null;
@@ -256,7 +256,7 @@ function normaliseHeadline(h) {
   const x = isObj(h) ? h : {};
   return {
     unit: str(x.unit), higherIsBetter: x.higherIsBetter !== false, tier: x.tier === 2 ? 2 : 1,
-    aborted: x.aborted === true, truncated: x.truncated === 'evals' || x.truncated === 'time' ? x.truncated : null,
+    aborted: x.aborted === true, truncated: ['evals', 'time', 'user'].includes(x.truncated) ? x.truncated : null,
     baseline: num(x.baseline), best: num(x.best), gainPct: num(x.gainPct),
     significant: typeof x.significant === 'boolean' ? x.significant : null,
     n: num(x.n) ?? 0, evaluated: num(x.evaluated) ?? 0, changes: num(x.changes) ?? 0,
@@ -410,7 +410,9 @@ function runFromResultV2(result, fields) {
     cost: costOf(result),
     debug: result.debug?.summary ?? null,
     headline: {
-      unit, higherIsBetter: result.objective?.higherIsBetter, tier: 2, aborted: false, truncated: null,
+      unit, higherIsBetter: result.objective?.higherIsBetter, tier: 2, aborted: false,
+      // 'user': the search was stopped early (Stop early), so its cost understates a full run (estimate.js)
+      truncated: result.search?.stopped === 'user' ? 'user' : null,
       baseline: base?.value?.est ?? null, best: (top ?? base)?.value?.est ?? null,
       gainPct: top ? (unit === 'dps' ? vs?.pct ?? null : null) : 0,
       significant: top ? vs?.significant ?? null : null,

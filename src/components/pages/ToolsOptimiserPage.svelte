@@ -21,7 +21,7 @@
   import { notify } from '../../lib/notify.svelte.js';
   import { loadUi, saveUi, EFFORTS } from '../../lib/uiState.js';
   import {
-    startJob, cancelJob, resumeJob, retryJob, isStale, jobsStore, jobDebugLog,
+    startJob, cancelJob, finishJob, resumeJob, retryJob, isStale, jobsStore, jobDebugLog,
   } from '../../lib/jobs.svelte.js';
   import { debugLogFileName } from '../../lib/search/debugLog.js';
   import DebugLog from '../optimiser/DebugLog.svelte';
@@ -34,7 +34,7 @@
     normaliseSetup, setupFromRun, requestOf, withTimeReserve, TIME_LIMITS, searchCharacter, signatureOf, runApplyBlock, retiredGoalBlock, otherCharacters, targetContext,
   } from '../../lib/ui/optimiserSetup.js';
   import {
-    viewResult, progressSegments, progressLine, bestLine, effortPlan, enabledCount, toggleTotal, optimiserJobChips,
+    viewResult, progressSegments, progressLine, bestLine, canStopEarly, effortPlan, enabledCount, toggleTotal, optimiserJobChips,
     fmtDuration, viewRun, OBJECTIVE_LABEL, MEASURED_COST, goalWinRate,
   } from '../../lib/ui/optimiserView.js';
   import { triesPerClear } from '../../lib/ui/winRateFormat.js';
@@ -543,6 +543,16 @@
                 <span class="hint">Measured during the search, so it reads a little high. The final result re-checks it on fresh fights.</span>
               </p>
             {/if}
+            {#if canStopEarly(live.progress) && !live.cancelRequested}
+              <div class="stop-early" data-testid="stop-early">
+                {#if live.finishRequested}
+                  <p class="hint" aria-live="polite">Stopping the search. The best builds are checked next.</p>
+                {:else}
+                  <Button variant="ghost" size="small" onclick={() => finishJob(live.id)}>Stop early</Button>
+                  <span class="hint">Ends the search now and checks the best builds found so far.</span>
+                {/if}
+              </div>
+            {/if}
             {#if live.progress?.steps?.length}
               <ol class="rung-steps" data-testid="push-steps" aria-label="Steps climbed">
                 {#each live.progress.steps as st (st.id)}
@@ -690,5 +700,7 @@
   .rung-steps .current { color: var(--text-ink); }
   .best-line { margin: 0; display: grid; gap: 2px; color: var(--text-ink); font-size: var(--fs-13); font-weight: var(--fw-bold); }
   .best-line .hint { font-weight: var(--fw-regular); }
+  .stop-early { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+  .stop-early .hint { margin: 0; }
   .read { margin: 0; padding-left: var(--sp-5); display: grid; gap: var(--sp-2); color: var(--text-soft); font-size: var(--fs-13); }
 </style>
