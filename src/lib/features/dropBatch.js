@@ -5,7 +5,9 @@
 // and ranks the verdicts the single-drop view already produces.
 //
 //   parseDropBatch(input, character)   JSON text or object -> {entries, skipped, source, error}
-//   prepareBatch(character, entries, {sets, goals})  -> {request, rows, offsets}: the dropCheck request for all of them
+//   prepareBatch(character, entries, {sets, goals, screen})  -> {request, rows, offsets, screened}: the dropCheck
+//                                      request; with `screen` only the top drops per slot are simulated
+//   screenScores / screenKeep          the screen: closed-form DPS and effective-HP change, top k per slot
 //   entryResults(offsets, rows, i, results)  the slice of the task's results belonging to entry i
 //   judgeEntry(rows, results)          per equipment set (all presets wearing it), the best set's verdict
 //   rankEntries(...)                   best verdict first
@@ -15,6 +17,7 @@ import { dropAscension } from '../model/drop.js';
 import { dropHasStats } from '../model/drop.js';
 import { slotsForRealm } from '../game/gear.js';
 import { prepareSwap, verdictFor, aggregateVerdict } from './swap.js';
+import { ehpProxy } from '../search/objectives.js';
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
@@ -84,51 +87,104 @@ export function parseDropBatch(input, character) {
   return { entries, skipped, source, error: null };
 }
 
+/** The screen keeps this many drops per slot (and realm) by default (drop-check-goals.md §4.4). */
+export const SCREEN_TOP = 5;
+/** A drop whose screen is within this many percent of the k-th kept one is simulated too: the closed forms miss spells, procs and the fight. */
+export const SCREEN_TOL = 1;
+
+const relPct = (a, b) => (b > 0 && Number.isFinite(a) ? ((a - b) / b) * 100 : 0);
+
+/**
+ * One entry's screen: its best change over its prepared rows, in percent. The closed-form auto-attack DPS
+ * always counts; the effective-HP proxy (search/objectives.js ehpProxy) counts too when any goal sees defence
+ * (a guard, or a fight that hits back), so an HP item is never screened out by a damage-only measure.
+ * @param {Array<object>} rows  prepareSwap rows of the entry
+ */
+export function screenScore(rows, { seesDefence = true } = {}) {
+  let best = -Infinity;
+  for (const r of rows) {
+    const dps = r.closed.pct ?? 0;
+    const ehp = seesDefence ? relPct(ehpProxy(r.statsAfter), ehpProxy(r.statsBefore)) : -Infinity;
+    best = Math.max(best, dps, ehp);
+  }
+  return Number.isFinite(best) ? best : 0;
+}
+
+/**
+ * Which entries the screen keeps: per slot and realm, the `top` best screens and every one within `tol` of the
+ * k-th. A slot with `top` drops or fewer keeps them all.
+ * @param {Array<{slot: string, realm: string}>} entries
+ * @param {number[]} scores  screenScore per entry
+ * @returns {boolean[]}  per entry, kept
+ */
+export function screenKeep(entries, scores, { top = SCREEN_TOP, tol = SCREEN_TOL } = {}) {
+  const keep = entries.map(() => false);
+  const groups = new Map();
+  entries.forEach((e, i) => {
+    const k = `${e.realm}|${e.slot}`;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(i);
+  });
+  for (const idx of groups.values()) {
+    const sorted = [...idx].sort((a, b) => scores[b] - scores[a]);
+    const bar = sorted.length > top ? scores[sorted[top - 1]] - tol : -Infinity;
+    sorted.forEach((i, rank) => { keep[i] = rank < top || scores[i] >= bar; });
+  }
+  return keep;
+}
+
 /** What resolveTarget needs of the character in the worker: the build, opponents and server, no run history. */
 export const goalCharacter = (character) => ({ ...JSON.parse(JSON.stringify(character)), runs: [] });
 
 /**
  * The dropCheck task request for every entry against every preset, judged by the goals of its realm, plus the
- * prepared rows to judge with. `goals` are the request's goals (ui/dropGoals.js requestGoals) and
- * `goalIdsByRealm` the ids each realm meets (an Oblivion drop meets only Oblivion goals). `sets: 'set1'` leaves
+ * prepared rows to judge with. `goals` are the request's goals (ui/dropGoals.js requestGoals); `goalIdsFor(realm,
+ * presetId)` gives the ids a drop meets on a preset (realm and the goal's preset list; ui/dropGoals.js goalIdsFor),
+ * else `goalIdsByRealm` the ids each realm meets (an Oblivion drop meets only Oblivion goals). `sets: 'set1'` leaves
  * out the presets wearing Set 2 (swap.js setInScope). The unchanged "before" of a preset is simulated once and
- * shared (`baseKey`). Null request when no entry has a goal to run.
- * @returns {{request: object|null, rows: Array<Array<object>>, offsets: number[]}}
- *   `rows[i]` are entry i's prepareSwap rows; `offsets[i]` is where they start in the request's items
+ * shared (`baseKey`). With `screen: {top, tol, seesDefence}` an entry the screen drops (screenKeep) stays in the
+ * request with no goals, so it is listed but not simulated. Null request when no entry has a goal to run.
+ * @returns {{request: object|null, rows: Array<Array<object>>, offsets: number[], screened: string[]}}
+ *   `rows[i]` are entry i's prepareSwap rows; `offsets[i]` is where they start in the request's items;
+ *   `screened` the keys of the entries the screen left out
  */
-export function prepareBatch(character, entries, { sets = 'all', goals = [], goalIdsByRealm = {} } = {}) {
-  const rows = [];
+export function prepareBatch(character, entries, { sets = 'all', goals = [], goalIdsByRealm = {}, goalIdsFor = null, screen = null } = {}) {
+  const rows = entries.map((e) => prepareSwap(character, { slot: e.slot, item: e.item, realm: e.realm, sets }));
   const offsets = [];
   const items = [];
-  const idsFor = { base: goalIdsByRealm.base ?? [], oblivion: goalIdsByRealm.oblivion ?? [] };
-  for (const e of entries) {
-    const r = prepareSwap(character, { slot: e.slot, item: e.item, realm: e.realm, sets });
+  const byRealm = { base: goalIdsByRealm.base ?? [], oblivion: goalIdsByRealm.oblivion ?? [] };
+  const idsFor = goalIdsFor ?? ((realm) => byRealm[realm]);
+  const keep = screen ? screenKeep(entries, rows.map((r) => screenScore(r, screen)), screen) : entries.map(() => true);
+  entries.forEach((e, i) => {
     offsets.push(items.length);
-    rows.push(r);
-    for (const row of r) items.push({ presetId: row.presetId, baseKey: `${e.realm}:${row.presetId}`, goalIds: idsFor[e.realm], before: row.before, after: row.after });
-  }
+    for (const row of rows[i]) {
+      items.push({ presetId: row.presetId, baseKey: `${e.realm}:${row.presetId}`, goalIds: keep[i] ? idsFor(e.realm, row.presetId) : [], before: row.before, after: row.after });
+    }
+  });
+  const screened = entries.filter((_, i) => !keep[i]).map((e) => e.key);
   const live = items.some((it) => it.goalIds.length);
   const request = live ? { mode: 'dropCheck', items, goals, character: goalCharacter(character), ...BATCH_SIM } : null;
-  return { request, rows, offsets };
+  return { request, rows, offsets, screened };
 }
 
 /** Entry i's slice of a flat dropCheck `results` array; null where the run has not got to it. */
 export function entryResults(offsets, rows, i, results) {
   return rows[i].map((_, k) => {
     const r = results?.[offsets[i] + k];
-    return r?.goals?.length ? r : null;
+    return r?.goals?.length || r?.noGoals ? r : null;
   });
 }
 
 const VERDICT_RANK = { upgrade: 4, mixed: 3, inconclusive: 2, sidegrade: 1, downgrade: 0 };
 
 /**
- * Percent change of a row, for ordering within a verdict: the mean relative gain over its simulated goals (a
- * shorter clear time counts as a gain), else the closed form.
+ * Percent change of a row, for ordering within a verdict: the summed relative gain over its judged goals (a
+ * shorter clear time counts as a gain), so "PvP +3 %, Celestial flat" sorts above "PvP +1 %"
+ * (drop-check-goals.md §4.3); else the closed form. Guards carry no change.
  */
 function scoreOf(row, res) {
   const gs = (res?.goals ?? []).filter((g) => Number.isFinite(g?.delta?.pct));
-  if (gs.length) return (gs.reduce((a, g) => a + g.delta.pct * (g.delta.higherIsBetter === false ? -1 : 1), 0) / gs.length) * 100;
+  if (gs.length) return gs.reduce((a, g) => a + g.delta.pct * (g.delta.higherIsBetter === false ? -1 : 1), 0) * 100;
   return row.closed.pct ?? 0;
 }
 
@@ -153,7 +209,10 @@ export function judgeEntry(rows, results = []) {
     const res = results[k] ?? null;
     bySet.get(row.setKey).push({ row, res, v: verdictFor(row, res), score: scoreOf(row, res) });
   });
-  const sets = [...bySet.entries()].map(([setKey, members]) => {
+  const sets = [...bySet.entries()].map(([setKey, everyone]) => {
+    // presets no goal judges stay out of the set's verdict while another preset is judged (as setCards does)
+    const judged = everyone.filter((m) => !m.res?.noGoals);
+    const members = judged.length ? judged : everyone;
     const verdict = aggregateVerdict(members.map((m) => m.v.verdict));
     const score = members.reduce((a, m) => a + m.score, 0) / members.length;
     const lead = members.reduce((a, m) => (m.score > a.score ? m : a), members[0]);
@@ -181,6 +240,7 @@ export function judgeEntry(rows, results = []) {
     upgrades: best.members.filter((m) => m.v.verdict === 'upgrade').length,
     coverage: best.coverage,
     coverageLabel: best.members[0].v.coverageLabel,
+    guardNotes: [...new Map(best.members.flatMap((m) => m.v.guardNotes ?? []).map((n) => [n.text, n])).values()],
     notJudged,
     sets: sets.map((s) => ({ setKey: s.setKey, verdict: s.verdict, score: s.score, presetCount: s.members.length })),
   };

@@ -26,6 +26,16 @@
   const chip = $derived(chipFor(card.verdict, card.basis, phase));
   const pending = $derived(card.basis !== 'sim' && phase !== 'idle');
   const names = $derived(card.presetNames);
+  /** What the verdict covered, then what it did not, as sentences. */
+  const coverage = $derived(
+    [
+      card.basis === 'sim' ? card.coverageLabel : pending ? 'Check not finished' : 'Not checked yet',
+      card.notJudged.length ? `Not checked: ${card.notJudged.join(', ')}` : '',
+      card.unresolved ? 'Still too close to call after the most fights allowed' : '',
+      card.failedGuard ? 'Fails a guard' : '',
+      card.unjudgedNames?.length ? `No goal judges ${card.unjudgedNames.join(', ')}` : '',
+    ].filter(Boolean).join('. '),
+  );
 
   /** Delta figure of one goal: relative goals in percent of the starting value, rates in points, else its unit. */
   function figure(m) {
@@ -58,11 +68,7 @@
     <VerdictChip verdict={chip.verdict} label={chip.label} />
   </header>
 
-  <p class="coverage" data-coverage={card.basis}>
-    {card.basis === 'sim' ? card.coverageLabel : pending ? 'Check not finished' : 'Not checked yet'}
-    {#if card.notJudged.length}. Not checked: {card.notJudged.join(', ')}{/if}
-    {#if card.unresolved}. Still too close to call after the most fights allowed.{/if}
-  </p>
+  <p class="coverage" data-coverage={card.basis}>{coverage}</p>
 
   {#if card.basis === 'sim'}
     <div class="body">
@@ -78,6 +84,12 @@
             <span class="val num">{fmtScalar(statUnit(m), m.m.before.mean)} → {fmtScalar(statUnit(m), m.m.after.mean)}</span>
             <span class="d num {tone(m)}">{f.text}</span>
             <span class="ci num">{f.ci} · {fmtCount(m.m.delta.n)} fights · {verdictLine(m.m.delta)}{basisNote(m)}</span>
+          </div>
+        {/each}
+        {#each p.guards as g (g.id)}
+          <div class="met guard" data-guard={g.id} data-status={g.status}>
+            <span class="lbl">Guard: {g.label}</span>
+            <span class="gtxt" class:fail={g.status === 'fail'}>{g.status === 'pass' ? 'Kept' : g.status === 'fail' ? 'Broken' : g.status === 'below' ? 'Already below' : 'Too close to call'}: {g.text}</span>
           </div>
         {/each}
       {/each}
@@ -152,6 +164,8 @@
   }
   .coverage,
   .estimate { margin: 0; }
+  .gtxt { font-size: var(--fs-12); color: var(--text-soft); grid-column: 2 / -1; }
+  .gtxt.fail { color: var(--status-warn); }
   .pchip {
     margin-left: var(--sp-1);
     padding: 0 var(--sp-2);

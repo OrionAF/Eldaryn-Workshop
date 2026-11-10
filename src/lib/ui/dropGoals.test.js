@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   dropObjectiveKinds, resolveDropGoal, resolveDropGoals, goalsForRealm, requestGoals, legacyDropGoals, expandLegacyGoals,
+  goalIdsFor, goalsSeeDefence,
 } from './dropGoals.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 
@@ -12,6 +13,31 @@ describe('ui/dropGoals', () => {
     expect(dropObjectiveKinds('dummy')).toEqual(['dps']);
     expect(dropObjectiveKinds('celestial')).toEqual(['win-chance', 'fastest-clear']);
     expect(dropObjectiveKinds('pvp')).toEqual(['pvp-winrate', 'arena-reward']);
+  });
+
+  it('a guard is offered only the rates it can hold', () => {
+    expect(dropObjectiveKinds('dungeon', null, 'guard')).toEqual(['win-chance']);
+    expect(dropObjectiveKinds('dummy', null, 'guard')).toEqual([]);
+    expect(dropObjectiveKinds('pvp', null, 'guard')).toEqual(['pvp-winrate']);
+  });
+
+  it('scopes goals to presets: deleted presets drop out, a goal with none left says so, ids per preset', () => {
+    const c = fixtureCharacter('WARRIOR');
+    const [p1, p2] = c.presets.map((p) => p.id);
+    const resolved = resolveDropGoals([
+      { ...goal('all', { kind: 'dummy', seconds: 60 }, { kind: 'dps' }), presetIds: null },
+      { ...goal('one', { kind: 'dummy', seconds: 60 }, { kind: 'dps' }), presetIds: [p2, 'gone'] },
+      { ...goal('none', { kind: 'dummy', seconds: 60 }, { kind: 'dps' }), presetIds: ['gone'] },
+      { ...goal('gd', { kind: 'chapter', chapter: 1, level: 2 }, { kind: 'win-chance' }), role: 'guard', guard: { target: 0.9 } },
+    ], c);
+    expect(resolved[1].presetIds).toEqual([p2]);
+    expect(resolved[2]).toMatchObject({ ok: false, error: 'Judges no preset: pick one' });
+    expect(goalIdsFor(resolved, 'base', p1)).toEqual(['all', 'gd']);
+    expect(goalIdsFor(resolved, 'base', p2)).toEqual(['all', 'one', 'gd']);
+    expect(requestGoals(resolved).find((g) => g.id === 'gd')).toMatchObject({ role: 'guard', guard: { target: 0.9 } });
+    expect(requestGoals(resolved).find((g) => g.id === 'all').role).toBeUndefined();
+    expect(goalsSeeDefence(resolved.slice(0, 2))).toBe(false);
+    expect(goalsSeeDefence(resolved)).toBe(true);
   });
 
   it('resolves goals, keeps broken ones with the reason, and filters by realm', () => {
