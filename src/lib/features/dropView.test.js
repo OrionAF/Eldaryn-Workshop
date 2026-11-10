@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { setCards, chipFor, pctInterval, tally, tallyChips, runMoreRequest, isDowngrade, bagSummaryText } from './dropView.js';
+import { setCards, chipFor, pctInterval, goalFigure, axisOf, tally, tallyChips, runMoreRequest, isDowngrade, bagSummaryText } from './dropView.js';
 import { statKeyLabel } from './swap.js';
 
 const row = (setKey, presetId, { pct = 3, rawDelta = { totalAttack: 100 } } = {}) => ({
   presetId, name: presetId, setKey, method: 'recomputed', approx: false, rawDelta, closed: { pct },
 });
 const metric = (verdict, delta, o = {}) => ({
+  goalId: 'dps', label: 'Training dummy, 60 s: Damage per second', unit: 'dps', deltaKind: 'relative', damageOnly: true,
   before: { mean: 1000, n: 512 },
   after: { mean: 1000 + delta, n: 512 },
   delta: {
@@ -17,7 +18,7 @@ const metric = (verdict, delta, o = {}) => ({
 describe('setCards', () => {
   it('a comparison unresolved at maxN makes the set inconclusive ("Too close to call"), not a sidegrade', () => {
     const rows = [row('set1', 'a')];
-    const [c] = setCards(rows, { a: { sim: metric('unresolved', 2, { nNeeded: 90000, holmReject: false }) } });
+    const [c] = setCards(rows, { a: { goals: [metric('unresolved', 2, { nNeeded: 90000, holmReject: false })] } });
     expect(c.verdict).toBe('inconclusive');
     expect(c.unresolved).toBe(true);
     expect(c.nNeeded).toBe(90000);
@@ -26,29 +27,29 @@ describe('setCards', () => {
 
   it('DPS-only coverage is labelled and the stats it cannot see are listed as not judged', () => {
     const rows = [row('set1', 'a', { rawDelta: { totalHealthPercent: 20 } })];
-    const [c] = setCards(rows, { a: { sim: metric('equivalent', 0) } });
-    expect(c.coverageLabel).toBe('DPS only: defence not measured');
+    const [c] = setCards(rows, { a: { goals: [metric('equivalent', 0)] } });
+    expect(c.coverageLabel).toBe('Training dummy, 60 s: Damage per second. Damage only: defence not measured');
     expect(c.notJudged).toEqual([statKeyLabel('totalHealthPercent')]);
     expect(c.verdict).toBe('sidegrade');
   });
 
   it('presets on one set are judged together: +6 on one and -9 on the other is mixed', () => {
     const rows = [row('set1', 'a'), row('set1', 'b')];
-    const [c] = setCards(rows, { a: { sim: metric('better', 60) }, b: { sim: metric('worse', -90) } });
+    const [c] = setCards(rows, { a: { goals: [metric('better', 60)] }, b: { goals: [metric('worse', -90)] } });
     expect(c.verdict).toBe('mixed');
     expect(c.presetNames).toEqual(['a', 'b']);
   });
 
   it('one card per set, and only a finished simulation is "sim"; the closed-form figure is carried as an estimate', () => {
     const rows = [row('set1', 'a', { pct: 2 }), row('set2', 'b', { pct: 4 })];
-    const cards = setCards(rows, { a: { sim: metric('better', 60) } });
+    const cards = setCards(rows, { a: { goals: [metric('better', 60)] } });
     expect(cards.map((c) => [c.setKey, c.basis])).toEqual([['set1', 'sim'], ['set2', 'closed']]);
     expect(cards[1].estimatePct).toBe(4);
   });
 
   it('accepts results per row as well as by preset id', () => {
     const rows = [row('set1', 'a'), row('set1', 'b')];
-    const [c] = setCards(rows, [{ sim: metric('better', 60) }, { sim: metric('better', 80) }]);
+    const [c] = setCards(rows, [{ goals: [metric('better', 60)] }, { goals: [metric('better', 80)] }]);
     expect(c.verdict).toBe('upgrade');
     expect(c.presets.map((p) => p.metrics.length)).toEqual([1, 1]);
   });
@@ -62,6 +63,18 @@ describe('chipFor', () => {
     expect(chipFor('upgrade', 'closed', 'running')).toEqual({ verdict: 'pending', label: 'Simulating…' });
     expect(chipFor('upgrade', 'closed', 'queued')).toEqual({ verdict: 'queued', label: 'Queued' });
     expect(chipFor('mixed', 'sim').verdict).toBe('unresolved');
+  });
+});
+
+describe('goalFigure', () => {
+  it('draws relative goals in percent, rates in points and other units raw', () => {
+    expect(axisOf(metric('better', 100))).toBe('pct');
+    expect(goalFigure(metric('better', 100))).toMatchObject({ axis: 'pct', est: 10, n: 512 });
+    const rate = { unit: 'p', deltaKind: 'absolute', before: { mean: 0.5 }, delta: { delta: 0.03, lo: 0.01, hi: 0.05, n: 200, verdict: 'better' } };
+    expect(goalFigure(rate)).toMatchObject({ axis: 'pts', est: 3, lo: 1, hi: 5 });
+    const raw = { unit: 'influence', deltaKind: 'absolute', before: { mean: 2 }, delta: { delta: 0.4, lo: 0.1, hi: 0.7, n: 64, verdict: 'better' } };
+    expect(goalFigure(raw)).toMatchObject({ axis: 'raw', est: 0.4 });
+    expect(goalFigure(null)).toBeNull();
   });
 });
 

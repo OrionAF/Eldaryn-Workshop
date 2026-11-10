@@ -158,10 +158,10 @@ describe('pool', () => {
 });
 
 /** Run a task on a fake pool of `size` and check that it really used the pool's workers. */
-async function onPool(mode, req, size) {
+async function onPool(mode, req, size, pools = 1) {
   const pool = fakePoolFactory(size, { seed: size });
   const r = await runTask(mode, req, { pool });
-  if (size > 1) expect(pool.spawn.made, `${mode} did not use the pool`).toBe(size);
+  if (size > 1) expect(pool.spawn.made, `${mode} did not use the pool`).toBe(size * pools);
   return r;
 }
 
@@ -190,19 +190,23 @@ describe('tasks on a pool give the same result for pool sizes 1, 2 and 4', () =>
     for (const size of [2, 4]) expect(await onPool('oblivionFloors', req, size)).toEqual(base);
   });
 
-  it('drop check (sim, survival and PVP), against the engine-metric path', async () => {
-    const { fighter: f } = warrior();
+  it('drop check (a dummy and a chapter goal), against the inline path', async () => {
+    const { character: c, fighter: f } = warrior();
     const better = { ...f, stats: { ...f.stats, totalAttack: f.stats.totalAttack * 1.2 } };
     const { runSwapMetrics } = await import('../features/swap.js');
     const req = {
       items: [{ presetId: 'p1', before: f, after: better }],
-      seconds: 5, nSim: 4, enemy: { mobs: [{ name: 'm', hp: 2e6, attack: 3000, attackSpeed: 1, damageReduction: 0, blockChance: 0, missChance: 0 }] },
-      survivalSeconds: 5, nSurvival: 8, opponents: [{ id: 'o1', name: 'O', fighter: f }], nPvp: 8, seed: 4, maxN: 64,
+      goals: [
+        { id: 'd', target: { kind: 'dummy', seconds: 5 }, objective: { kind: 'dps' } },
+        { id: 'c', target: { kind: 'chapter', chapter: 1, level: 1 }, objective: { kind: 'win-chance' } },
+      ],
+      character: c, seed: 4, n0: 8, maxN: 16,
     };
     clearMetricCache();
     const engine = await runSwapMetrics(req.items, req);
     const base = await runTask('dropCheck', req);
     expect(base).toEqual(engine);
-    for (const size of [2, 4]) expect(await onPool('dropCheck', req, size)).toEqual(base);
+    // one pool per goal, opened one after the other
+    for (const size of [2, 4]) expect(await onPool('dropCheck', req, size, 2)).toEqual(base);
   }, 30000);
 });

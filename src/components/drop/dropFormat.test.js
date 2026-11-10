@@ -13,16 +13,16 @@ it('flat numbers group thousands with "." like every other screen (lib/format.js
 });
 
 const m = (id, label, unit, delta, verdict, base = 1000) => ({
-  id, label, unit, m: { before: { mean: unit === 'dps' ? base : 0.5 }, after: { mean: 0 }, delta: { delta, lo: delta - 0.01 * base, hi: delta + 0.01 * base, n: 256, verdict } },
+  id, label, unit, m: { unit, deltaKind: unit === 'dps' ? 'relative' : 'absolute', before: { mean: unit === 'dps' ? base : 0.5 }, after: { mean: 0 }, delta: { delta, lo: delta - 0.01 * base, hi: delta + 0.01 * base, n: 256, verdict } },
 });
 
-it('metricTables: one table per metric, Set 2 and PVP rows on their own point axis', () => {
+it('metricTables: one table per goal, Set 2 and PVP rows on their own point axis', () => {
   const cards = [
     { setKey: 'set1', setLabel: 'Set 1', presets: [{ presetId: 'a', name: 'Farm', metrics: [m('sim', 'DPS vs training dummy', 'dps', 50, 'better')] }] },
     { setKey: 'set2', setLabel: 'Set 2', presets: [{ presetId: 'b', name: 'PVP build', metrics: [m('sim', 'DPS vs training dummy', 'dps', -10, 'unresolved'), m('pvp:o1', 'PVP win rate vs Rival', 'p', 0.03, 'worse')] }] },
   ];
   const t = metricTables(cards);
-  expect(t.map((x) => x.id)).toEqual(['sim', 'pvp:o1']);
+  expect(t.map((x) => x.id)).toEqual(['sim|pct', 'pvp:o1|pts']);
   expect(t[0].unit).toBe('pct');
   expect(t[0].rows.map((r) => [r.label, r.tone, +r.est.toFixed(1)])).toEqual([['Set 1 · Farm', 'up', 5], ['Set 2 · PVP build', 'side', -1]]);
   expect(t[1].unit).toBe('pts');

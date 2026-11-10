@@ -13,10 +13,10 @@
    *
    * Both tabs run as jobs (jobs.svelte.js), so a run survives navigation and shows in the tray; the page
    * reads its result from the job store and keeps no second copy. A set's verdict is the Holm-judged
-   * verdict of every preset wearing it (features/swap.js); the card says what it covered and what it did
-   * not judge. One table per metric with its own labelled axis (the batch measures DPS only). The
-   * closed-form figure is an ESTIMATE under the simulated one, never coloured. Apply names its scope
-   * first. Run more raises the precision step (features/dropView.js runMoreRequest).
+   * verdict of every preset wearing it (features/swap.js), judged by the character's goals (DropGoalList,
+   * design: drop-check-goals.md); the card says what it covered and what it did not judge. One table per
+   * goal with its own labelled axis. The closed-form figure is an ESTIMATE under the simulated one, never
+   * coloured. Apply names its scope first. Run more raises the precision step (features/dropView.js runMoreRequest).
    */
   import { untrack } from 'svelte';
   import { prefs, setPrefs } from '../../lib/prefs.svelte.js';
@@ -25,22 +25,25 @@
   import { go } from '../../lib/router.svelte.js';
   import { loadUi, saveUi } from '../../lib/uiState.js';
   import { normaliseDropSetup } from '../../lib/ui/dropSetup.js';
+  import { resolveDropGoals, goalsForRealm, requestGoals, goalIdsByRealm, legacyDropGoals, expandLegacyGoals } from '../../lib/ui/dropGoals.js';
+  import { otherCharacters } from '../../lib/ui/optimiserSetup.js';
+  import { activeDropProfile, DROP_GOAL_MAX } from '../../lib/model/dropCheck.js';
   import { formatHash } from '../../lib/routes.js';
   import { jobsStore, startJob, cancelJob, jobSignature, isStale } from '../../lib/jobs.svelte.js';
-  import { prepareSwap, buildEnemy, dropOpponents, setInScope, DROP_PRECISION } from '../../lib/features/swap.js';
+  import { prepareSwap, setInScope, DROP_PRECISION } from '../../lib/features/swap.js';
   import { equipSetKey } from '../../lib/build/presetInputs.js';
   import { dropFights } from '../../lib/calibration.js';
   import RunEstimate from '../ui/RunEstimate.svelte';
   import { dropHasStats } from '../../lib/model/drop.js';
-  import { parseDropBatch, prepareBatch, rankEntries, entryResults } from '../../lib/features/dropBatch.js';
-  import { setCards, setLabelOf, chipFor, pctInterval, tally, tallyChips, runMoreRequest, isDowngrade, bagSummaryText } from '../../lib/features/dropView.js';
+  import { parseDropBatch, prepareBatch, rankEntries, entryResults, goalCharacter, BATCH_SIM } from '../../lib/features/dropBatch.js';
+  import { setCards, setLabelOf, chipFor, goalFigure, tally, tallyChips, runMoreRequest, isDowngrade, bagSummaryText } from '../../lib/features/dropView.js';
   import { EQUIP_SETS } from '../../lib/model/equipment.js';
   import { forestDomain } from '../../lib/ui/forestScale.js';
   import { fmtCount } from '../../lib/ui/statsFormat.js';
   import SlotSilhouette from '../gear/SlotSilhouette.svelte';
   import ItemEditor from '../gear/ItemEditor.svelte';
   import { slotLabel } from '../gear/gearFormat.js';
-  import EnemyPicker from '../drop/EnemyPicker.svelte';
+  import DropGoalList from '../drop/DropGoalList.svelte';
   import ImportPointer from '../import/ImportPointer.svelte';
   import DropSetCard from '../drop/DropSetCard.svelte';
   import DropMetricTables from '../drop/DropMetricTables.svelte';
@@ -63,10 +66,6 @@
   // eslint-disable-next-line no-unused-vars
   let { setStatus = () => {}, onNavigate = () => {}, tab = null } = $props();
 
-  const N_SIM = 32;
-  const N_SURVIVAL = 200;
-  const N_PVP = 64;
-  const SECONDS = 60;
   const EFFORT = [
     { value: 'quick', label: 'Quick', sub: '1%' },
     { value: 'standard', label: 'Standard', sub: '0.5%' },
@@ -108,7 +107,7 @@
   /** Staleness of a job against the saved character: gear, presets and drop (the inputs of any verdict). */
   function storeSignature(extra = '') {
     const c = rosterStore.current;
-    return jobSignature({ characterKey: c?.id ?? '', presetId: '', inputs: JSON.stringify([c?.equipment, c?.presets, c?.drop ?? null, extra]) });
+    return jobSignature({ characterKey: c?.id ?? '', presetId: '', inputs: JSON.stringify([c?.equipment, c?.presets, c?.drop ?? null, c?.dropCheck ?? null, extra]) });
   }
   const ownedBy = (j, tool) => j.tool === tool && (() => { try { return JSON.parse(j.signature)[0] === character?.id; } catch { return false; } })();
   const stateOf = (job) => (job?.status === 'queued' ? 'queued' : job?.status === 'running' ? 'running' : 'idle');
@@ -120,55 +119,55 @@
     return [{ id: 'metrics', label: 'Comparisons', state, done: p?.done, total: p?.total, text: job.status === 'failed' ? 'failed' : undefined }];
   }
 
-  // Measure settings: which presets, which metrics, the enemy and opponents, effort. Kept per character in the
-  // UI key (uiState.js, ui/dropSetup.js), so they are per device and survive leaving the page.
+  // Measure settings: which presets and effort. Kept per character in the UI key (uiState.js, ui/dropSetup.js),
+  // so they are per device and survive leaving the page. The goals are on the character (model/dropCheck.js).
   const loadSetup = (c) => normaliseDropSetup(loadUi().dropSetups[c.id], prefs.defaultEffort);
+  /**
+   * The old metric toggles (simOn, survivalOn, pvpOn) stored in this character's setup become its goals, once,
+   * and only into an empty goal list (ui/dropGoals.js legacyDropGoals). A page never touched stored nothing.
+   */
+  function importLegacyGoals(c) {
+    const raw = loadUi().dropSetups[c.id];
+    if (!raw || typeof raw !== 'object' || raw.goalsImported) return;
+    const legacy = legacyDropGoals(raw);
+    if (legacy.length && !activeDropProfile(c).goals.length) rosterStore.setDropGoals(expandLegacyGoals(legacy, c));
+    saveUi({ dropSetups: { [c.id]: { ...raw, goalsImported: true } } });
+  }
+  untrack(() => importLegacyGoals(character));
   let loadedId = untrack(() => character.id);
   const first = untrack(() => loadSetup(character));
   // JSON of the setup last loaded or saved: the save effect writes only on a real change, so opening the page
   // stores nothing and the default-effort pref keeps applying until the user changes a setting.
   let lastJson = JSON.stringify(first);
   let scope = $state(first.scope);
-  let simOn = $state(first.simOn);
-  let survivalOn = $state(first.survivalOn);
-  let enemySpec = $state(first.enemySpec);
-  let pvpOn = $state(first.pvpOn);
-  let pvpIds = $state(first.pvpIds); // null = every saved opponent (the toggle never leaves PVP measuring nothing)
   let precision = $state(first.precision);
   $effect.pre(() => {
     if (character.id !== loadedId) {
       loadedId = character.id;
+      untrack(() => importLegacyGoals(character));
       const next = loadSetup(character);
       lastJson = JSON.stringify(next);
-      scope = next.scope; simOn = next.simOn; survivalOn = next.survivalOn; enemySpec = next.enemySpec;
-      pvpOn = next.pvpOn; pvpIds = next.pvpIds; precision = next.precision;
+      scope = next.scope; precision = next.precision;
     }
   });
   $effect(() => {
-    const snap = $state.snapshot({ scope, simOn, survivalOn, enemySpec, pvpOn, pvpIds, precision });
+    const snap = $state.snapshot({ scope, precision });
     const json = JSON.stringify(snap);
     if (json === lastJson) return;
     lastJson = json;
-    saveUi({ dropSetups: { [loadedId]: snap } });
+    saveUi({ dropSetups: { [loadedId]: { ...snap, goalsImported: true } } });
   });
   let maxNOverride = $state(null);
 
   const dropSets = $derived(prefs.dropSets);
   const scopedPresets = $derived(character.presets.filter((p) => setInScope(equipSetKey(p, realm), dropSets)));
   const scopeId = $derived(scope === 'all' || scopedPresets.some((p) => p.id === scope) ? scope : 'all');
-  const enemyEffective = $derived(
-    realm === 'oblivion'
-      ? enemySpec.kind === 'oblivion' ? enemySpec : { kind: 'oblivion', floor: 10 }
-      : enemySpec.kind === 'oblivion' ? { kind: 'campaign', chapter: 1, level: 1 } : enemySpec,
-  );
-  const enemy = $derived(survivalOn ? buildEnemy(enemyEffective) : null);
-  const opponentSet = $derived(dropOpponents(character));
-  const opponents = $derived(opponentSet.opponents);
-  const chosenOpponents = $derived(pvpOn ? opponents.filter((o) => pvpIds === null || pvpIds.includes(o.id)) : []);
-  const pickOpponent = (id, on) => {
-    const cur = pvpIds ?? opponents.map((o) => o.id);
-    pvpIds = on ? [...new Set([...cur, id])] : cur.filter((x) => x !== id);
-  };
+
+  // Goals: every saved goal checked against today's character and roster; a drop meets those of its realm.
+  const others = $derived(otherCharacters(character, rosterStore.roster?.characters ?? []));
+  const resolvedGoals = $derived(resolveDropGoals(activeDropProfile(character).goals, character, others));
+  const realmGoals = $derived(goalsForRealm(resolvedGoals, realm));
+  const anyGoal = $derived(resolvedGoals.some((r) => r.ok));
 
   // --- single drop -------------------------------------------------------------------------------
 
@@ -179,20 +178,13 @@
       : [],
   );
   const request = $derived.by(() => {
-    if (!rows.length) return null;
-    if (!simOn && !enemy && !chosenOpponents.length) return null;
+    if (!rows.length || !realmGoals.length) return null;
     return {
       mode: 'dropCheck',
       items: rows.map((r) => ({ presetId: r.presetId, before: r.before, after: r.after })),
-      sim: simOn,
-      seconds: SECONDS,
-      nSim: N_SIM,
-      enemy: enemy ? { mobs: enemy.mobs, oblivion: enemy.oblivion } : null,
-      survivalSeconds: SECONDS,
-      nSurvival: N_SURVIVAL,
-      opponents: chosenOpponents,
-      nPvp: N_PVP,
-      seed: 1,
+      goals: requestGoals(realmGoals),
+      character: goalCharacter(character),
+      seed: BATCH_SIM.seed,
       precision,
       ...(maxNOverride ? { maxN: maxNOverride } : {}),
     };
@@ -280,24 +272,39 @@
   const counts = $derived(tally(ranked.map((r) => r.best), bag?.skipped ?? []));
   const bagStale = $derived(!!bagJob && (isStale(bagJob) || bag.sets !== dropSets));
   /** The next loot-bag run's request (null before an import), for the run-time estimate. */
-  const bagRequest = $derived(bag && character ? prepareBatch(character, liveBag().entries, { sets: dropSets }).request : null);
+  const batchGoals = () => ({ goals: requestGoals(resolvedGoals), goalIdsByRealm: goalIdsByRealm(resolvedGoals) });
+  const bagRequest = $derived(bag && character ? prepareBatch(character, liveBag().entries, { sets: dropSets, ...batchGoals() }).request : null);
   const bagBusy = $derived(bagJob?.status === 'queued' || bagJob?.status === 'running');
   const bagRowState = $derived(stateOf(bagJob));
 
-  /** One entry's table figures on the DPS axis: the simulated interval, or the hollow closed-form estimate. */
+  /**
+   * The goal the bag table plots: the first goal of the list that judges the drops (the axis must be one goal's).
+   * Other goals still count in each verdict; the expanded row shows them all.
+   */
+  const leadGoal = $derived(resolvedGoals.find((r) => r.ok) ?? null);
+  /** One entry's figures for the lead goal: the simulated interval, or the hollow closed-form estimate (percent). */
   function figureOf(best) {
     if (!best) return null;
-    if (best.basis === 'sim' && best.sim) {
-      const p = pctInterval(best.sim);
-      if (p) return { kind: 'sim', est: p.est, lo: p.lo, hi: p.hi, n: p.n };
+    if (best.basis === 'sim' && best.res) {
+      const m = best.res.goals.find((g) => g.goalId === leadGoal?.goal.id) ?? best.res.goals[0];
+      const f = m ? goalFigure(m) : null;
+      if (f) return { kind: 'sim', axis: f.axis, unit: m.unit, est: f.est, lo: f.lo, hi: f.hi, n: f.n };
     }
-    return { kind: 'est', est: best.row.closed.pct, lo: null, hi: null, n: null };
+    return { kind: 'est', axis: 'pct', est: best.row.closed.pct, lo: null, hi: null, n: null };
   }
+  /** A figure's value on its axis: percent, points or the goal's own unit. */
+  const fig = (f, v) => (f?.axis === 'pts' ? `${v > 0 ? '+' : ''}${v.toFixed(1)} pts` : f?.axis === 'raw' ? `${v > 0 ? '+' : ''}${+v.toFixed(3)}` : signedPct(v, 1));
   // "Hide downgrades" is view state only; the summary counts above always cover the whole bag.
   let hideDowngrades = $state(false);
   const shown = $derived(hideDowngrades ? ranked.filter((r) => !isDowngrade(r.best)) : ranked);
   const figures = $derived(shown.map((r) => figureOf(r.best)));
-  const dpsDomain = $derived(forestDomain(figures.map((f) => (f ? { est: f.est, lo: f.lo, hi: f.hi } : null))));
+  // The table's axis is the lead goal's; a quick estimate (always percent) is drawn only on a percent axis.
+  const bagAxis = $derived(figures.find((f) => f?.kind === 'sim')?.axis ?? 'pct');
+  const onAxis = (f) => !!f && f.axis === bagAxis;
+  const bagDomain = $derived(forestDomain(figures.map((f) => (onAxis(f) ? { est: f.est, lo: f.lo, hi: f.hi } : null))));
+  const bagAxisTitle = $derived(
+    bagAxis === 'pts' ? 'Change vs current (pts)' : bagAxis === 'raw' ? `Change vs current (${figures.find((f) => f?.kind === 'sim')?.unit ?? ''})` : 'Change vs current (%)',
+  );
 
   function copyBag() {
     const text = bagSummaryText(shown.map((r, i) => ({ name: r.entry.name, slot: slotLabel(character.class, r.entry.slot), figure: figures[i], verdict: chipOf(r.best).label })));
@@ -314,7 +321,7 @@
 
   function runBatch(base, { precision: withPrecision = precision, maxN = null } = {}) {
     const sets = dropSets;
-    const prep = prepareBatch(character, base.entries, { sets });
+    const prep = prepareBatch(character, base.entries, { sets, ...batchGoals() });
     const key = character.id;
     let jobId = null;
     if (prep.request) {
@@ -476,34 +483,18 @@
                 />
               </div>
             </div>
-            <div class="group" role="group" aria-labelledby="dc-measure-what">
-            <span class="cap-label" id="dc-measure-what">What to measure</span>
-            <Checkbox bind:checked={simOn} label={`DPS against a training dummy (${SECONDS} s)`} />
-            <div class="block">
-              <Checkbox bind:checked={survivalOn} label="Survival vs an enemy" />
-              {#if survivalOn}
-                <EnemyPicker value={enemyEffective} {realm} playerLevel={character.level} onchange={(s) => (enemySpec = s)} />
-              {/if}
-            </div>
-            <div class="block">
-              <Checkbox bind:checked={pvpOn} label="PVP win rate vs saved opponents" />
-              {#if pvpOn}
-                {#if opponents.length}
-                  {#each opponents as o (o.id)}
-                    <Checkbox
-                      checked={pvpIds === null || pvpIds.includes(o.id)}
-                      label={o.name}
-                      onchange={(on) => pickOpponent(o.id, on)}
-                    />
-                  {/each}
-                {:else}
-                  <p class="hint">No saved opponents with full in-game stats yet. Add one on Opponents.</p>
-                {/if}
-                {#each opponentSet.skipped as k (k.id)}
-                  <p class="hint">{k.name} is skipped: its in-game stats are missing {k.missing.join(', ')}.</p>
-                {/each}
-              {/if}
-            </div>
+            <div class="group goals-group" role="group" aria-labelledby="dc-measure-what">
+              <span class="cap-label" id="dc-measure-what">Goals</span>
+              <DropGoalList
+                resolved={resolvedGoals}
+                {character}
+                characters={others}
+                {realm}
+                max={DROP_GOAL_MAX}
+                onadd={(g) => rosterStore.addDropGoal(g)}
+                onupdate={(id, g) => rosterStore.updateDropGoal(id, g)}
+                onremove={(id) => rosterStore.removeDropGoal(id)}
+              />
             </div>
             <div class="block effort">
               <span class="cap-label">Effort</span>
@@ -515,15 +506,16 @@
                 <summary>How this works</summary>
                 <p>
                   Each comparison starts with a few fights and adds more until the item is clearly better or clearly worse, or until it reaches a limit and is reported as too close to call.
-                  Effort sets the smallest difference it tries to spot: {EFFORT.map(({ value: k }) => k).map((k) => `${+(DROP_PRECISION[k].rel * 100).toFixed(2)}%`).join(', ')} of DPS, and {EFFORT.map(({ value: k }) => k).map((k) => +(DROP_PRECISION[k].prob * 100).toFixed(2)).join(', ')} points of survival or win rate (Quick, Standard, Thorough).
-                  The limit is {EFFORT.map(({ value: k }) => k).map((k) => fmtCount(DROP_PRECISION[k].maxN)).join(', ')} fights per build.
+                  Every goal is checked on its own, and a preset's verdict weighs all its goals together.
+                  Effort sets the smallest difference it tries to spot: {EFFORT.map(({ value: k }) => k).map((k) => `${+(DROP_PRECISION[k].rel * 100).toFixed(2)}%`).join(', ')} of DPS, clear time or reward, and {EFFORT.map(({ value: k }) => k).map((k) => +(DROP_PRECISION[k].prob * 100).toFixed(2)).join(', ')} points of a clear chance, survival or win rate (Quick, Standard, Thorough).
+                  The limit is {EFFORT.map(({ value: k }) => k).map((k) => fmtCount(DROP_PRECISION[k].maxN)).join(', ')} fights per build and goal.
                 </p>
               </details>
               {#if request}<RunEstimate bound="upper" fights={dropFights(request, request.maxN ?? DROP_PRECISION[precision].maxN)} />{/if}
             </div>
             </div>
             {#snippet footer()}
-              <Button variant="primary" disabled={!request || singleBusy} reason={!hasStats ? 'Enter at least one stat for the drop' : !rows.length ? 'No preset wears Set 1' : !request ? 'Choose a metric to measure' : ''} loading={singleBusy} busyLabel="Checking…" onclick={() => checkDrop()}>
+              <Button variant="primary" disabled={!request || singleBusy} reason={!hasStats ? 'Enter at least one stat for the drop' : !rows.length ? 'No preset wears Set 1' : !anyGoal ? 'Add a goal to measure' : !request ? `No goal judges ${realm === 'oblivion' ? 'Oblivion' : 'base-realm'} drops` : ''} loading={singleBusy} busyLabel="Checking…" onclick={() => checkDrop()}>
                 Check drop
               </Button>
               {#if singleBusy}<Button variant="ghost" onclick={() => cancelJob(singleJob.id)}>Cancel</Button>{/if}
@@ -640,12 +632,15 @@
             {#if bagStale}
               <Banner variant="warn" lead="Out of date.">Your gear, presets or the gear sets compared changed since this check. Check again for up-to-date verdicts.</Banner>
             {/if}
-            <p class="hint">Only DPS is checked, not defence. {bag.sets === 'set1' ? 'Compared against Set 1 only.' : 'Each drop shows its best gear set.'} A set's verdict covers every preset that wears it.</p>
+            <p class="hint">
+              {#if leadGoal}Judged by your goals; the chart shows {leadGoal.label}.{:else}Add a goal under Single drop to judge these drops.{/if}
+              {bag.sets === 'set1' ? 'Compared against Set 1 only.' : 'Each drop shows its best gear set.'} A set's verdict covers every preset that wears it.
+            </p>
 
-            <div class="tbl" role="table" aria-label="Drops: change in DPS, with likely range">
+            <div class="tbl" role="table" aria-label="Drops: change on the first goal, with likely range">
               <div class="trow thead" role="row">
                 <span role="columnheader" class="cap-label">Drop</span>
-                <div role="columnheader"><ForestAxis domain={dpsDomain} title="DPS change vs current (%)" format={(x) => `${x}`} /></div>
+                <div role="columnheader"><ForestAxis domain={bagDomain} title={bagAxisTitle} format={(x) => `${x}`} /></div>
                 <span role="columnheader" class="cap-label right">Change · likely range</span>
                 <span role="columnheader" class="cap-label">Verdict</span>
               </div>
@@ -665,21 +660,21 @@
                     </button>
                   </div>
                   <div role="cell">
-                    {#if f}
+                    {#if onAxis(f)}
                       <CIForest
-                        domain={dpsDomain}
+                        domain={bagDomain}
                         est={f.est}
                         lo={f.lo}
                         hi={f.hi}
                         tone={bagTone(chip, f)}
-                        label={f.kind === 'sim' ? `${e.name}: ${signedPct(f.est, 1)}, likely range ${signedPct(f.lo, 1)} to ${signedPct(f.hi, 1)}` : `${e.name}: quick estimate ${signedPct(f.est, 1)}, no range`}
+                        label={f.kind === 'sim' ? `${e.name}: ${fig(f, f.est)}, likely range ${fig(f, f.lo)} to ${fig(f, f.hi)}` : `${e.name}: quick estimate ${signedPct(f.est, 1)}, no range`}
                       />
                     {/if}
                   </div>
                   <div role="cell" class="delta">
                     {#if f?.kind === 'sim'}
-                      <span class="v num {bagTone(chip, f)}">{signedPct(f.est, 1)}</span>
-                      <span class="ci num">[{signedPct(f.lo, 1)}, {signedPct(f.hi, 1)}] · {fmtCount(f.n)} fights</span>
+                      <span class="v num {bagTone(chip, f)}">{fig(f, f.est)}</span>
+                      <span class="ci num">[{fig(f, f.lo)}, {fig(f, f.hi)}] · {fmtCount(f.n)} fights</span>
                     {:else if f}
                       <span class="est num">{signedPct(f.est, 1)}</span>
                       <span class="ci"><ProvenanceTag kind="estimate" /> no range</span>
@@ -761,6 +756,7 @@
   .measure { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); gap: var(--sp-4) var(--sp-6); }
   .group { display: grid; gap: var(--sp-3); align-content: start; min-width: 0; }
   .presets { max-width: 20rem; }
+  .goals-group { grid-column: 1 / -1; }
   .effort { grid-column: 1 / -1; }
   .effort-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); }
   .effort-line .hint { flex: 1 1 18rem; max-width: 46ch; }

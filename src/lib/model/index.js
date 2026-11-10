@@ -33,6 +33,7 @@ import * as oblivion from './oblivion.js';
 import * as drop from './drop.js';
 import * as opponents from './opponents.js';
 import * as runs from './runs.js';
+import * as dropCheck from './dropCheck.js';
 
 export const SCHEMA_VERSION = 2;
 
@@ -54,6 +55,7 @@ export const DOMAINS = [
   { name: 'drop', mod: drop, P: 'Drop' },
   { name: 'opponents', mod: opponents, P: 'Opponents' },
   { name: 'runs', mod: runs, P: 'Runs' },
+  { name: 'dropCheck', mod: dropCheck, P: 'DropCheck' },
 ].map((d) => {
   const P = d.P;
   return {

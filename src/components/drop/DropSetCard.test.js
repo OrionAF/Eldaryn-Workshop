@@ -3,6 +3,7 @@ import DropSetCard from './DropSetCard.svelte';
 import { setup, click } from '../ui/testkit.js';
 
 const metric = (verdict, delta, o = {}) => ({
+  unit: 'dps', deltaKind: 'relative', objectiveKind: 'dps',
   before: { mean: 1000, n: 512 },
   after: { mean: 1000 + delta, n: 512 },
   delta: { delta, lo: delta - 20, hi: delta + 20, n: 512, verdict, zone: 5, ...o },

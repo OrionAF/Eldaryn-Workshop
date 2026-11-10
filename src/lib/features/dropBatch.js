@@ -5,7 +5,7 @@
 // and ranks the verdicts the single-drop view already produces.
 //
 //   parseDropBatch(input, character)   JSON text or object -> {entries, skipped, source, error}
-//   prepareBatch(character, entries, {sets})  -> {request, rows, offsets}: the dropCheck request for all of them
+//   prepareBatch(character, entries, {sets, goals})  -> {request, rows, offsets}: the dropCheck request for all of them
 //   entryResults(offsets, rows, i, results)  the slice of the task's results belonging to entry i
 //   judgeEntry(rows, results)          per equipment set (all presets wearing it), the best set's verdict
 //   rankEntries(...)                   best verdict first
@@ -18,8 +18,8 @@ import { prepareSwap, verdictFor, aggregateVerdict } from './swap.js';
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
-/** Mirrors the Drop Check screen's simulated line (N, seconds), so a batch verdict matches the single view. */
-export const BATCH_SIM = { seconds: 60, nSim: 32, seed: 1, precision: 'standard' };
+/** The batch runs the single view's comparator settings, so a batch verdict matches the single view. */
+export const BATCH_SIM = { seed: 1, precision: 'standard' };
 
 /**
  * @typedef {Object} BatchEntry
@@ -84,23 +84,31 @@ export function parseDropBatch(input, character) {
   return { entries, skipped, source, error: null };
 }
 
+/** What resolveTarget needs of the character in the worker: the build, opponents and server, no run history. */
+export const goalCharacter = (character) => ({ ...JSON.parse(JSON.stringify(character)), runs: [] });
+
 /**
- * The dropCheck task request for every entry against every preset (sim DPS only), plus the prepared
- * rows to judge with. `sets: 'set1'` leaves out the presets wearing Set 2 (swap.js setInScope). The unchanged "before" of a preset is simulated once and shared (`baseKey`).
+ * The dropCheck task request for every entry against every preset, judged by the goals of its realm, plus the
+ * prepared rows to judge with. `goals` are the request's goals (ui/dropGoals.js requestGoals) and
+ * `goalIdsByRealm` the ids each realm meets (an Oblivion drop meets only Oblivion goals). `sets: 'set1'` leaves
+ * out the presets wearing Set 2 (swap.js setInScope). The unchanged "before" of a preset is simulated once and
+ * shared (`baseKey`). Null request when no entry has a goal to run.
  * @returns {{request: object|null, rows: Array<Array<object>>, offsets: number[]}}
  *   `rows[i]` are entry i's prepareSwap rows; `offsets[i]` is where they start in the request's items
  */
-export function prepareBatch(character, entries, { sets = 'all' } = {}) {
+export function prepareBatch(character, entries, { sets = 'all', goals = [], goalIdsByRealm = {} } = {}) {
   const rows = [];
   const offsets = [];
   const items = [];
+  const idsFor = { base: goalIdsByRealm.base ?? [], oblivion: goalIdsByRealm.oblivion ?? [] };
   for (const e of entries) {
     const r = prepareSwap(character, { slot: e.slot, item: e.item, realm: e.realm, sets });
     offsets.push(items.length);
     rows.push(r);
-    for (const row of r) items.push({ presetId: row.presetId, baseKey: `${e.realm}:${row.presetId}`, before: row.before, after: row.after });
+    for (const row of r) items.push({ presetId: row.presetId, baseKey: `${e.realm}:${row.presetId}`, goalIds: idsFor[e.realm], before: row.before, after: row.after });
   }
-  const request = items.length ? { mode: 'dropCheck', items, sim: true, ...BATCH_SIM } : null;
+  const live = items.some((it) => it.goalIds.length);
+  const request = live ? { mode: 'dropCheck', items, goals, character: goalCharacter(character), ...BATCH_SIM } : null;
   return { request, rows, offsets };
 }
 
@@ -108,18 +116,19 @@ export function prepareBatch(character, entries, { sets = 'all' } = {}) {
 export function entryResults(offsets, rows, i, results) {
   return rows[i].map((_, k) => {
     const r = results?.[offsets[i] + k];
-    return r?.sim ? r : null;
+    return r?.goals?.length ? r : null;
   });
 }
 
 const VERDICT_RANK = { upgrade: 4, mixed: 3, inconclusive: 2, sidegrade: 1, downgrade: 0 };
 
-/** Percent change of a row: the simulated DPS delta over its starting DPS, else the closed form. */
+/**
+ * Percent change of a row, for ordering within a verdict: the mean relative gain over its simulated goals (a
+ * shorter clear time counts as a gain), else the closed form.
+ */
 function scoreOf(row, res) {
-  if (res?.sim) {
-    const base = res.sim.before.mean;
-    return base > 0 ? (res.sim.delta.delta / base) * 100 : 0;
-  }
+  const gs = (res?.goals ?? []).filter((g) => Number.isFinite(g?.delta?.pct));
+  if (gs.length) return (gs.reduce((a, g) => a + g.delta.pct * (g.delta.higherIsBetter === false ? -1 : 1), 0) / gs.length) * 100;
   return row.closed.pct ?? 0;
 }
 
@@ -127,12 +136,12 @@ function scoreOf(row, res) {
  * The best verdict across the equipment sets an item could go into. Applying a drop writes to a whole
  * set, so every preset wearing that set is judged together (aggregateVerdict, as the single view does):
  * an item that helps one preset and hurts another on the same set is `mixed` (#97). Sets rank
- * upgrade, mixed, inconclusive, sidegrade, downgrade; ties go to the larger mean DPS change. Rows without
+ * upgrade, mixed, inconclusive, sidegrade, downgrade; ties go to the larger mean change. Rows without
  * a finished simulation are judged on the closed form (`basis: 'closed'`, an estimate).
  *
  * @param {Array<object>} rows  the item's prepareSwap rows
  * @param {Array<object|null>} results  per row, its runSwapMetrics result or null
- * @returns {{verdict: string, basis: 'sim'|'closed', score: number, row: object, sim: object|null,
+ * @returns {{verdict: string, basis: 'sim'|'closed', score: number, row: object, res: object|null,
  *   setKey: string, presetCount: number, upgrades: number, coverage: string[], coverageLabel: string,
  *   notJudged: string[], sets: Array<{setKey: string, verdict: string, score: number, presetCount: number}>}|null}
  *   `row` is the set's row with the largest change (what the list shows); `score` the set's mean change in percent
@@ -166,7 +175,7 @@ export function judgeEntry(rows, results = []) {
     basis: best.basis,
     score: best.score,
     row: best.lead.row,
-    sim: best.lead.res?.sim ?? null,
+    res: best.lead.res ?? null,
     setKey: best.setKey,
     presetCount: best.members.length,
     upgrades: best.members.filter((m) => m.v.verdict === 'upgrade').length,
@@ -177,7 +186,7 @@ export function judgeEntry(rows, results = []) {
   };
 }
 
-/** Entries with their judgement, best first (verdict, then DPS change; import order breaks ties). */
+/** Entries with their judgement, best first (verdict, then mean change; import order breaks ties). */
 export function rankEntries(entries, rows, offsets, results) {
   return entries
     .map((entry, i) => ({ entry, order: i, best: judgeEntry(rows[i], entryResults(offsets, rows, i, results)) }))

@@ -4,7 +4,7 @@
 //
 //   chipFor(verdict, basis, state)   VerdictChip props for a set verdict
 //   setCards(rows, results)          one card per equipment set: Holm verdict, coverage, notJudged, metrics
-//   pctInterval(sim)                 a sim DPS contrast as percent of the starting DPS (the table's axis)
+//   pctInterval(m), goalFigure(m)    a goal's contrast on its axis (percent of the start, points, or raw)
 //   tally(judged, skipped)           counts for the summary bar
 //   isDowngrade(best)                a judged (simulated) downgrade, the rows "Hide downgrades" drops
 //   bagSummaryText(rows)             the loot bag as plain text lines for the clipboard
@@ -38,21 +38,40 @@ export function chipFor(verdict, basis, state = 'idle') {
   return CHIP[verdict] ?? CHIP.inconclusive;
 }
 
-/** A DPS contrast in percent of the starting DPS: the unit of the DPS table's axis. */
-export function pctInterval(sim) {
-  const base = sim?.before?.mean;
-  const d = sim?.delta;
+/** A relative contrast in percent of the starting value (DPS, clear time): the unit of a relative goal's axis. */
+export function pctInterval(m) {
+  const base = Math.abs(m?.before?.mean ?? NaN);
+  const d = m?.delta;
   if (!d || !(base > 0)) return null;
   const f = 100 / base;
   return { est: d.delta * f, lo: d.lo * f, hi: d.hi * f, n: d.n, verdict: d.verdict };
 }
 
+/**
+ * The axis a goal's contrast is drawn on: 'pct' (relative goals, in percent of the starting value), 'pts'
+ * (rates, in percentage points) or 'raw' (the objective's own unit, e.g. Arena Influence).
+ */
+export function axisOf(m) {
+  if (m?.unit === 'p') return 'pts';
+  if (m?.deltaKind === 'relative' || m?.unit === 'dps' || m?.unit === 'ms') return 'pct';
+  return 'raw';
+}
+
+/** One goal's contrast on its axis: `{axis, est, lo, hi, n, verdict}`, or null without one. */
+export function goalFigure(m) {
+  const d = m?.delta;
+  if (!d || !Number.isFinite(d.delta)) return null;
+  const axis = axisOf(m);
+  if (axis === 'pct') {
+    const p = pctInterval(m);
+    return p ? { axis, ...p } : null;
+  }
+  const f = axis === 'pts' ? 100 : 1;
+  return { axis, est: d.delta * f, lo: d.lo * f, hi: d.hi * f, n: d.n, verdict: d.verdict };
+}
+
 function metricsOf(res) {
-  const out = [];
-  if (res?.sim) out.push({ id: 'sim', label: 'DPS vs training dummy', unit: 'dps', m: res.sim });
-  if (res?.survival) out.push({ id: 'survival', label: 'Survival', unit: 'p', m: res.survival });
-  for (const p of res?.pvp ?? []) out.push({ id: `pvp:${p.opponentId}`, label: `PVP win rate vs ${p.name}`, unit: 'p', m: p });
-  return out;
+  return (res?.goals ?? []).filter((g) => g?.delta).map((g) => ({ id: g.goalId, label: g.label, unit: g.unit, m: g }));
 }
 
 /**
@@ -128,16 +147,19 @@ export function tallyChips(t) {
 /** True only for a finished simulated downgrade; pending, mixed and too-close rows are never hidden. */
 export const isDowngrade = (best) => !!best && best.basis === 'sim' && best.verdict === 'downgrade';
 
-const signed = (n) => (n > 0 ? '+' : '') + n.toFixed(1) + '%';
+const SUFFIX = { pct: '%', pts: ' pts', raw: '' };
 
 /**
- * One line per row, `Name | slot | change | verdict`. `figure` is the table's figure ({kind:'sim', est, lo, hi}
- * or {kind:'est', est}, null when nothing was computed); the closed-form figure is labelled an estimate.
+ * One line per row, `Name | slot | change | verdict`. `figure` is the table's figure ({kind:'sim', axis, est, lo, hi}
+ * or {kind:'est', est}, null when nothing was computed); the closed-form figure is labelled an estimate. The
+ * axis (goalFigure) picks the suffix; percent when it is missing.
  * @param {Array<{name: string, slot: string, figure: object|null, verdict: string}>} rows
  */
 export function bagSummaryText(rows) {
   return rows
     .map(({ name, slot, figure, verdict }) => {
+      const sfx = SUFFIX[figure?.axis] ?? '%';
+      const signed = (n) => (n > 0 ? '+' : '') + n.toFixed(1) + sfx;
       const change = !figure ? 'no figure' : figure.kind === 'sim' ? `${signed(figure.est)} [${signed(figure.lo)}, ${signed(figure.hi)}]` : `${signed(figure.est)} (estimate)`;
       return [name, slot, change, verdict].join(' | ');
     })

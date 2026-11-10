@@ -8,6 +8,8 @@ import real from '../__fixtures__/real/drop-batch.json';
 beforeEach(() => clearMetricCache());
 
 const warrior = () => fixtureCharacter('WARRIOR');
+const DUMMY = [{ id: 'dps', target: { kind: 'dummy', seconds: 10 }, objective: { kind: 'dps' } }];
+const goalOpts = { goals: DUMMY, goalIdsByRealm: { base: ['dps'], oblivion: [] } };
 const bagItem = (o = {}) => ({
   name: 'Test Helm', itemType: 'CELESTIAL', slot: 'HEAD', rarity: 'MYTHIC', itemLevel: 100, qualityBonus: 0, class: 'WARRIOR',
   primaryStats: { attack: 3000, hp: 20000 }, secondaryStats: [{ type: 'ATTACK_PERCENT', value: 5 }], ...o,
@@ -95,16 +97,23 @@ describe('prepareBatch and ranking', () => {
   const entries = parseDropBatch({ pendingItems: [weak, strong] }, c).entries;
 
   it('makes one request item per entry and preset, sharing the unchanged "before" of a preset', () => {
-    const { request, rows, offsets } = prepareBatch(c, entries);
+    const { request, rows, offsets } = prepareBatch(c, entries, goalOpts);
     expect(rows.map((r) => r.length)).toEqual([c.presets.length, c.presets.length]);
     expect(offsets).toEqual([0, c.presets.length]);
     expect(request.items).toHaveLength(2 * c.presets.length);
-    expect(request).toMatchObject({ mode: 'dropCheck', sim: true });
+    expect(request).toMatchObject({ mode: 'dropCheck', goals: DUMMY, precision: 'standard' });
+    expect(request.character.runs).toEqual([]);
+    expect(request.items[0].goalIds).toEqual(['dps']);
     expect(request.items[0].baseKey).toBe(request.items[c.presets.length].baseKey);
   });
 
+  it('without a goal for the realm of the drops there is nothing to simulate', () => {
+    expect(prepareBatch(c, entries).request).toBeNull();
+    expect(prepareBatch(c, entries, { goals: DUMMY, goalIdsByRealm: { oblivion: ['dps'] } }).request).toBeNull();
+  });
+
   it('Set 1 only requests and judges only the presets wearing Set 1', () => {
-    const { request, rows } = prepareBatch(c, entries, { sets: 'set1' });
+    const { request, rows } = prepareBatch(c, entries, { sets: 'set1', ...goalOpts });
     expect(rows.every((r) => r.every((row) => row.setKey === 'set1'))).toBe(true);
     expect(request.items).toHaveLength(2 * c.presets.filter((p) => p.equipmentSet !== 2).length);
     expect(judgeEntry(rows[1]).sets.map((s) => s.setKey)).toEqual(['set1']);
@@ -119,17 +128,17 @@ describe('prepareBatch and ranking', () => {
   });
 
   it('with simulated results the best verdict carries the paired delta and its interval', async () => {
-    const { request, rows, offsets } = prepareBatch(c, entries);
-    const { results, aborted } = await runSwapMetrics(request.items, { ...request, nSim: 8, seconds: 10, maxN: 8 });
+    const { request, rows, offsets } = prepareBatch(c, entries, goalOpts);
+    const { results, aborted } = await runSwapMetrics(request.items, { ...request, n0: 8, maxN: 8 });
     expect(aborted).toBe(false);
     const ranked = rankEntries(entries, rows, offsets, results);
     expect(ranked[0].entry.name).toBe('Big');
     expect(ranked[0].best.basis).toBe('sim');
-    expect(ranked[0].best.sim.delta).toMatchObject({ n: 8 });
-    expect(ranked[0].best.sim.delta.lo).toBeGreaterThan(0);
+    expect(ranked[0].best.res.goals[0].delta).toMatchObject({ n: 8 });
+    expect(ranked[0].best.res.goals[0].delta.lo).toBeGreaterThan(0);
     // the simulated numbers equal the single-drop view's: the same task on the same pair, no shared-before drift
-    const solo = await runSwapMetrics([{ presetId: request.items[0].presetId, before: request.items[0].before, after: request.items[0].after }], { nSim: 8, seconds: 10, maxN: 8 });
-    expect(results[0].sim).toEqual(solo.results[0].sim);
+    const solo = await runSwapMetrics([{ presetId: request.items[0].presetId, before: request.items[0].before, after: request.items[0].after }], { goals: DUMMY, n0: 8, maxN: 8 });
+    expect(results[0].goals).toEqual(solo.results[0].goals);
   });
 
   it('an unfinished entry (cancelled run) falls back to the closed form', () => {
@@ -148,10 +157,11 @@ describe('judging per equipment set (#97, #100)', () => {
   };
   const drop = parseDropBatch({ pendingItems: [bagItem({ name: 'Ring', slot: 'WEAPON', primaryStats: { attack: 20000, hp: 0 } })] }, sharedSet()).entries;
   const res = (base, delta, verdict) => ({
-    sim: {
+    goals: [{
+      goalId: 'dps', label: 'Training dummy', unit: 'dps', damageOnly: true,
       before: { mean: base }, after: { mean: base + delta },
-      delta: { delta, lo: delta - 1, hi: delta + 1, n: 64, zone: 1, verdict, significant: true },
-    },
+      delta: { delta, lo: delta - 1, hi: delta + 1, n: 64, zone: 1, verdict, significant: true, pct: delta / base },
+    }],
   });
 
   it('presets on one set that disagree make the item mixed, not an upgrade (A +6 %, B -9 %)', () => {
@@ -185,7 +195,7 @@ describe('judging per equipment set (#97, #100)', () => {
     const best = judgeEntry(rows[0], [res(1000, 0, 'equivalent'), res(1000, 0, 'equivalent')]);
     expect(best.verdict).toBe('sidegrade');
     expect(best.coverage).toEqual(['dps']);
-    expect(best.coverageLabel).toBe('DPS only: defence not measured');
+    expect(best.coverageLabel).toBe('Training dummy. Damage only: defence not measured');
     expect(best.notJudged).toContain('totalHealthPercent');
   });
 

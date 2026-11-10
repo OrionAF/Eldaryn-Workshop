@@ -3,7 +3,7 @@ import { statLabel, toDisplay, rarityColor } from '../gear/gearFormat.js';
 import { statParts } from '../../lib/build/statText.js';
 import { rarityById } from '../../lib/game/gear.js';
 import { formatFlat } from '../../lib/format.js';
-import { pctInterval } from '../../lib/features/dropView.js';
+import { goalFigure } from '../../lib/features/dropView.js';
 import { sheetKeyMeta } from '../../lib/engine/pipeline/sheet.js';
 
 export const VERDICT_LABEL = {
@@ -77,29 +77,33 @@ export { rarityColor };
 
 const TONE = { better: 'up', worse: 'down' };
 
+const AXIS_TITLE = { pct: 'Change vs current (%)', pts: 'Change vs current (pts)' };
+
 /**
- * One table per metric of the cards (setCards output): DPS in percent of the starting DPS, survival and each
- * PVP opponent's win rate in points. A table's rows are its metric of every preset in every set, so Set 1 and
- * Set 2 sit side by side on that metric's own axis; the three scales are never mixed.
- * @returns {{id: string, title: string, axisTitle: string, unit: 'pct'|'pts', rows: object[]}[]}
+ * One table per goal of the cards (setCards output), on the goal's own axis: relative goals (DPS, clear time)
+ * in percent of the starting value, rates in points, anything else in its unit. A table's rows are its goal for
+ * every preset in every set, so Set 1 and Set 2 sit side by side; scales are never mixed (a goal whose presets
+ * resolved on different bases gets one table per axis).
+ * @returns {{id: string, title: string, axisTitle: string, unit: 'pct'|'pts'|'raw', rows: object[]}[]}
  */
 export function metricTables(cards) {
   const byId = new Map();
   for (const card of cards ?? []) {
     for (const p of card.presets) {
       for (const m of p.metrics) {
-        if (!byId.has(m.id)) {
-          const dps = m.unit === 'dps';
-          byId.set(m.id, {
-            id: m.id,
+        const iv = goalFigure(m.m);
+        if (!iv) continue;
+        const id = `${m.id}|${iv.axis}`;
+        if (!byId.has(id)) {
+          byId.set(id, {
+            id,
             title: m.label,
-            axisTitle: dps ? 'DPS change vs current (%)' : `${m.id === 'survival' ? 'Survival' : 'PVP win rate'} change vs current (pts)`,
-            unit: dps ? 'pct' : 'pts',
+            axisTitle: AXIS_TITLE[iv.axis] ?? `Change vs current (${m.unit})`,
+            unit: iv.axis,
             rows: [],
           });
         }
-        const t = byId.get(m.id);
-        const iv = t.unit === 'pct' ? pctInterval(m.m) : { est: m.m.delta.delta * 100, lo: m.m.delta.lo * 100, hi: m.m.delta.hi * 100, n: m.m.delta.n };
+        const t = byId.get(id);
         const verdict = m.m.delta.verdict;
         t.rows.push({
           key: `${card.setKey}:${p.presetId}`,

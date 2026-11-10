@@ -89,3 +89,35 @@ describe('drop store', () => {
     expect(c.drop.item.primaryStats.hp).toBe(5000);
   });
 });
+
+describe('drop goals store', () => {
+  const dummy = { target: { kind: 'dummy', seconds: 60 }, objective: { kind: 'dps' } };
+  const goals = () => rosterStore.current.dropCheck.profiles[0].goals;
+
+  it('starts empty, adds, updates and removes goals', () => {
+    expect(goals()).toEqual([]);
+    const id = rosterStore.addDropGoal(dummy);
+    expect(typeof id).toBe('string');
+    expect(goals()).toEqual([{ id, ...dummy }]);
+    expect(rosterStore.updateDropGoal(id, { target: { kind: 'worldBoss', affinity: 'NONE' }, objective: { kind: 'dps' } })).toBe(true);
+    expect(goals()[0]).toMatchObject({ id, target: { kind: 'worldBoss' } });
+    expect(rosterStore.updateDropGoal('nope', dummy)).toBe(false);
+    expect(rosterStore.removeDropGoal(id)).toBe(true);
+    expect(goals()).toEqual([]);
+  });
+
+  it('refuses malformed goals and a full list', () => {
+    expect(rosterStore.addDropGoal({ target: {}, objective: { kind: 'dps' } })).toBeNull();
+    for (let i = 0; i < 8; i++) expect(rosterStore.addDropGoal(dummy)).not.toBeNull();
+    expect(rosterStore.addDropGoal(dummy)).toBeNull();
+    expect(goals()).toHaveLength(8);
+  });
+
+  it('setDropGoals replaces the list and persists it', () => {
+    rosterStore.setDropGoals([dummy, { target: 'bad' }]);
+    expect(goals()).toHaveLength(1);
+    const saved = JSON.parse(localStorage.getItem('eldaryn_optimiser_state_v2'));
+    const c = saved.characters.find((x) => x.id === rosterStore.current.id);
+    expect(c.dropCheck.profiles[0].goals[0]).toMatchObject(dummy);
+  });
+});
