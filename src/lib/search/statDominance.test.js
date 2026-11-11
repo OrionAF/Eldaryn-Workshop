@@ -1,6 +1,6 @@
 // Stat dominance pruning (backlog §16, simulation.md §Build space / Dominance): talents, relics, pets, and the
 // damage-only and thorns rules, on small synthetic characters.
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createBuildSpace, BLOCKS } from './space.js';
 import { optimize } from './search.js';
 import { dpsVsDummy } from '../engine/metrics.js';
@@ -9,6 +9,7 @@ import { resolveTarget } from './objectives.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { normaliseCharacter } from '../model/index.js';
 import { RELICS } from '../game/relics.js';
+import { usePre294Relics } from '../__fixtures__/real/relicsPre294.js';
 import { TALENT_SPECS } from '../game/talents.js';
 import { CORE_BASE_STATS } from '../game/petCores.js';
 import { sigilBySpecies } from '../game/sigils.js';
@@ -212,6 +213,10 @@ describe('a full optimise with pruning', () => {
   // seed) and the search phase's fights.
   const BEFORE_DPS = 929150.512666667;
   const BEFORE_SEARCH_FIGHTS = 17720;
+  // both were measured on the pre-2.9.4 relic tables (Game/relics.md §10)
+  let restore;
+  beforeAll(() => { restore = usePre294Relics(); });
+  afterAll(() => restore());
   it('reaches a result at least as good as before on the same seed', { timeout: 120000 }, async () => {
     const character = warrior({ relics: { relic_iron_heart: 3, relic_phoenix_feather: 2, relic_war_charm: 4, relic_swift_emblem: 2, relic_fortune_token: 3 } });
     const space = Object.fromEntries(BLOCKS.map((b) => [b, ['talents', 'relics', 'pet'].includes(b)]));

@@ -1,6 +1,6 @@
 {
-  "source": "Eldaryn 2.7.0 decompiled.js module 4150 (L1156882-1160944); season tiers L1777405-1777716; 2.7.4 OTA Mythic burden config L1172417-1172443 (2.7.2 rules); ranking helper L1920137 and patch notes L2108128-2108217",
-  "notes": "Server-authoritative fight; these are the shared constants/helpers. Level axis: NORMAL/HARD = character level (client shows drops at player.level), MYTHIC = Oblivion Level. Exact server rule for the party's boss level (max/avg of both players, or committed level) is UNRESOLVED. MYTHIC boss HP is additionally multiplied server-side by partyPowerHpMultiplier (not included in table). Tables extend beyond unlock (playable flag) and beyond any known cap.",
+  "source": "Eldaryn 2.7.0 decompiled.js module 4150 (L1156882-1160944); season tiers L1777405-1777716; 2.7.4 OTA Mythic burden config L1172417-1172443 (2.7.2 rules); ranking helper L1920137 and patch notes L2108128-2108217; 2.9.4 Mythic rescale: module 4256 L1186732-1186989 (getCelestialAddStats L1185365), celestialRankScore L2131165 (pve-content.md §6 2.9.4 addendum)",
+  "notes": "Server-authoritative fight; these are the shared constants/helpers. Level axis: NORMAL/HARD = character level (client shows drops at player.level), MYTHIC = Oblivion Level; the 2.9.4 patch notes (L2323110) say the Mythic boss scales with the duo's higher Oblivion Level. NORMAL/HARD use the party's highest level (combat-pve.md §20.2). Since 2.9.4 PARTY_POWER_SCALING is disabled, so MYTHIC boss HP is the table value (no party-power multiplier) and its adds use HALO_BREACH.addHpCurve. Tables extend beyond unlock (playable flag) and beyond any known cap.",
   "constants": {
     "MAP_ID": "celestial_trial",
     "UNLOCK_LEVEL": 40,
@@ -20,10 +20,11 @@
   },
   "formulas": {
     "bossStats": "getCelestialBossStats(level, difficulty=NORMAL, atkLevel=level) L1156882: mult(L)=prod_{l=ref+1..L}(1+band(l).growth), band(l)=last band with fromLevel<=l; hp=round(baseHp*hpMult(level)*bossStatMultiplier); attack=round(baseAttack*atkMult(atkLevel)*bossStatMultiplier); attackSpeed=scaling.attackSpeed; spellResist=bossSpellResist. Optional 3rd arg atkLevel has no client caller (server-side, UNRESOLVED).",
-    "addStats": "getCelestialAddStats(level, difficulty) L1158519: hp=round(boss.hp*addHpFraction), attack=round(boss.attack*addAttackFraction), attackSpeed=addAttackSpeed, spellResist=boss.spellResist",
+    "addStats": "getCelestialAddStats(level, difficulty) L1158519 (2.9.4 L1185365): hp=round(addHpCurve ? addHpCurve.baseHp*(1+addHpCurve.growthPerLevel)^max(0,level-addHpCurve.referenceLevel) : boss.hp*addHpFraction), attack=round(boss.attack*addAttackFraction), attackSpeed=addAttackSpeed, spellResist=boss.spellResist",
     "playerPowerProxy": "celestialPlayerPowerProxy(stats, resonanceMult) L1157065 = totalAttack*totalAttackSpeed*(1+totalCritChance/100*(totalCritDamage-1))*(1+totalDoubleHit/100)*resonanceMult",
     "partyPowerProxy": "celestialPartyPowerProxy(members, aggregation='MAX') L1158572: MAX (or SUM) of playerPowerProxy",
-    "partyPowerHpMultiplier": "celestialPartyPowerHpMultiplier(proxy, cfg) L1158649 = proxy finite & >0 ? max(1, multiplier*(proxy/referenceProxy)^exponent) : 1  (MYTHIC only: 2.5, 0.75, 139e6)",
+    "partyPowerHpMultiplier": "celestialPartyPowerHpMultiplier(proxy, cfg) L1158649 = proxy finite & >0 ? max(1, multiplier*(proxy/referenceProxy)^exponent) : 1  (MYTHIC only: 2.5, 0.75, 139e6; disabled since 2.9.4, L1186989)",
+    "rankScore": "celestialRankScore(entry, mythic) 2.9.4 L2131165 = mythic ? -bossLevel*1e9 + clearTimeMs : clearTimeMs (1e9 at L2131885); lower ranks first, so Mythic ranks by boss Oblivion Level, then time",
     "committedScalingLevel": "celestialCommittedScalingLevel(OL, difficulty) L1158449 = round(intercept + perOblivionLevel*max(1,OL)); null for MYTHIC. Presumably maps an Oblivion-committed character to a NORMAL/HARD boss level (caller server-side).",
     "dustRange": "get*DustRange(level, difficulty) L1157278/L1157386/L1157498: avg=baseAvgAtRef+max(0,level-ref)*perLevel; min=max(1,floor(avg)), max=max(1,ceil(avg)); roll=min+floor(rand*(max-min+1)); total split 1 unit at a time to random participants (rollCelestialDrops L1158913).",
     "glyphChance": "getGlyphRarityChances(tierCfg, level) L1157088: per rarity, linear interpolation between anchor levels, clamped to first/last anchor. Each rarity rolled independently (rand < chance), winner = random participant.",
@@ -921,8 +922,7 @@
         "GATEKEEPERS_BURDEN",
         "JUDGMENT_STRIKE",
         "CELESTIAL_OVERLOAD",
-        "OBLIVION_RESONANCE",
-        "PARTY_POWER_SCALING"
+        "OBLIVION_RESONANCE"
       ],
       "glyphDrops": [
         {
@@ -936,14 +936,24 @@
       ],
       "levelAxis": "Oblivion Level (rift character only, celestialRealmLock L1348765)",
       "bossScaling": {
-        "baseHp": 12500000000.0,
+        "baseHp": 30000000000.0,
         "baseAttack": 75000,
         "attackSpeed": 1.9,
         "referenceLevel": 1,
         "levelBands": [
           {
             "fromLevel": 2,
-            "hpGrowthPerLevel": 0.03,
+            "hpGrowthPerLevel": 0.05,
+            "attackGrowthPerLevel": 0.02
+          },
+          {
+            "fromLevel": 45,
+            "hpGrowthPerLevel": 0.125,
+            "attackGrowthPerLevel": 0.02
+          },
+          {
+            "fromLevel": 61,
+            "hpGrowthPerLevel": 0.1,
             "attackGrowthPerLevel": 0.02
           }
         ]
@@ -957,7 +967,12 @@
           "addHpFraction": 0.05,
           "addAttackFraction": 0.2,
           "addAttackSpeed": 1,
-          "maxAlive": 12
+          "maxAlive": 12,
+          "addHpCurve": {
+            "baseHp": 625000000,
+            "growthPerLevel": 0.04,
+            "referenceLevel": 1
+          }
         },
         "GATEKEEPERS_BURDEN": {
           "enabled": true,
@@ -995,7 +1010,7 @@
           "coefficient": 0.2
         },
         "PARTY_POWER_SCALING": {
-          "enabled": true,
+          "enabled": false,
           "multiplier": 2.5,
           "exponent": 0.75,
           "referenceProxy": 139000000,

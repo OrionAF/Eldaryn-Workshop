@@ -14,6 +14,7 @@ import batch from './drop-batch.json';
 import { normaliseCharacter } from '../../model/index.js';
 import { isGameProfile, gameProfileToCharacter } from '../../model/gameProfile.js';
 import { computePresetStats } from '../../build/stats.js';
+import { withPre294Relics } from './relicsPre294.js'; // the captures predate the 2.9.4 relic tables
 import { toleranceFor, SHEET_KEYS } from '../../engine/pipeline/sheet.js';
 import { replayCheck } from '../../engine/pvp/replayCheck.js';
 import { dungeonMobs, DUNGEON_IDS } from '../../engine/pve/enemies.js';
@@ -36,7 +37,7 @@ describe('golden: profile-warrior-l72', () => {
 
   it('every computedStats key matches the recomputed stat within the sheet tolerance; no residual remains', () => {
     const c = character();
-    const { computed, residual } = computePresetStats(c, c.activePresetId, { realm: 'base' });
+    const { computed, residual } = withPre294Relics(() => computePresetStats(c, c.activePresetId, { realm: 'base' }));
     const keys = Object.keys(profile.computedStats);
     expect(keys.length).toBeGreaterThanOrEqual(35);
     for (const key of keys) {

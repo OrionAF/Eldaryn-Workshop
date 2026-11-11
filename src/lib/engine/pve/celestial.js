@@ -32,6 +32,27 @@ const C_BLOCK = ceilingFor('BLOCK_CHANCE');
 const C_MISS = ceilingFor('MISS_CHANCE');
 const C_DR = ceilingFor('DAMAGE_REDUCTION');
 
+/**
+ * The Mythic boss level: the duo's higher Oblivion Level (2.9.4 patch notes; pve-content.md §6 2.9.4
+ * addendum). Unknown entries (null/undefined) are skipped; null when none is known.
+ * @param {Array<number|null|undefined>} oblivionLevels
+ */
+export function celestialMythicLevel(oblivionLevels) {
+  const known = (oblivionLevels ?? []).filter((l) => Number.isFinite(l));
+  return known.length ? Math.max(1, ...known) : null;
+}
+
+/**
+ * port of celestialRankScore (2.9.4 L2131165): lower ranks first; Mythic ranks by boss level, then time.
+ * @param {{clearTimeMs: number, bossLevel?: number}} entry
+ * @param {boolean} mythic
+ */
+export function celestialRankScore(entry, mythic) {
+  return mythic ? -entry.bossLevel * CELESTIAL_MYTHIC_RANK_LEVEL_WEIGHT + entry.clearTimeMs : entry.clearTimeMs;
+}
+/** The boss-level weight of the Mythic rank score (2.9.4 L2131885). */
+export const CELESTIAL_MYTHIC_RANK_LEVEL_WEIGHT = 1e9;
+
 /** Reference-only Mythic Fury scaling; this does not enable Mythic fights (pve-content.md addendum). */
 export function celestialFuryPowerMultiplier(power, difficulty = 'MYTHIC') {
   const cfg = celestialDifficulty(difficulty)?.spells?.GATEKEEPERS_BURDEN;
@@ -65,14 +86,16 @@ export const CELESTIAL_ASSUMPTIONS = Object.freeze({
 // Boss and add stats
 // ---------------------------------------------------------------------------------------------
 
-// port of getCelestialBossStats L1156882-1157030 (rateFor, compound): the band of a level is the last
-// one with fromLevel <= level; HP and attack multipliers compound from referenceLevel + 1 to level
+// port of getCelestialBossStats L1156882-1157030 (2.9.4: L1183626, unchanged; rateFor, compound): the
+// band of a level is the last one with fromLevel <= level; HP and attack multipliers compound from
+// referenceLevel + 1 to level. MYTHIC uses the same table since 2.9.4 (pve-content.md §6 2.9.4 addendum).
 /**
- * @param {number} level  the party's scaling level
- * @param {'NORMAL'|'HARD'} difficulty
+ * @param {number} level  the party's scaling level (MYTHIC: Oblivion Level)
+ * @param {'NORMAL'|'HARD'|'MYTHIC'} difficulty
+ * @param {number} [attackLevel=level]  the client's optional third argument; attack compounds to it
  * @returns {{hp: number, attack: number, attackSpeed: number, spellResist: number}}
  */
-export function celestialBossStats(level, difficulty) {
+export function celestialBossStats(level, difficulty, attackLevel = level) {
   const diff = celestialDifficulty(difficulty);
   if (!diff) throw new EngineInputError(`unknown Celestial difficulty '${difficulty}'`, { kind: 'celestial', key: 'difficulty', value: difficulty });
   const sc = diff.bossScaling;
@@ -85,30 +108,42 @@ export function celestialBossStats(level, difficulty) {
     }
     return band;
   };
-  let hp = 1;
-  let atk = 1;
-  for (let l = ref + 1; l <= level; l++) {
-    const b = rateFor(l);
-    if (b) {
-      hp *= 1 + b.hpGrowthPerLevel;
-      atk *= 1 + b.attackGrowthPerLevel;
+  const compound = (to) => {
+    let hp = 1;
+    let atk = 1;
+    for (let l = ref + 1; l <= to; l++) {
+      const b = rateFor(l);
+      if (b) {
+        hp *= 1 + b.hpGrowthPerLevel;
+        atk *= 1 + b.attackGrowthPerLevel;
+      }
     }
-  }
+    return { hp, atk };
+  };
+  const m = compound(level);
+  const atk = attackLevel === level ? m.atk : compound(attackLevel).atk;
   return {
-    hp: Math.round(sc.baseHp * hp * diff.bossStatMultiplier),
+    hp: Math.round(sc.baseHp * m.hp * diff.bossStatMultiplier),
     attack: Math.round(sc.baseAttack * atk * diff.bossStatMultiplier),
     attackSpeed: sc.attackSpeed,
     spellResist: diff.bossSpellResist,
   };
 }
 
-// port of getCelestialAddStats L1158519-1158571
-/** Halo Stalker stats: round(boss HP * addHpFraction), round(boss attack * addAttackFraction). */
+// port of getCelestialAddStats L1158519-1158571 (2.9.4: L1185365-1185435, adds the addHpCurve branch)
+/**
+ * Halo Stalker stats: HP round(boss HP * addHpFraction), or with `addHpCurve` (MYTHIC since 2.9.4)
+ * round(baseHp * (1 + growthPerLevel)^max(0, level - referenceLevel)); attack round(boss attack * addAttackFraction).
+ */
 export function celestialAddStats(level, difficulty) {
   const boss = celestialBossStats(level, difficulty);
   const hb = celestialDifficulty(difficulty).spells.HALO_BREACH;
+  const curve = hb.addHpCurve;
+  const hp = curve
+    ? curve.baseHp * Math.pow(1 + curve.growthPerLevel, Math.max(0, level - curve.referenceLevel))
+    : boss.hp * hb.addHpFraction;
   return {
-    hp: Math.round(boss.hp * hb.addHpFraction),
+    hp: Math.round(hp),
     attack: Math.round(boss.attack * hb.addAttackFraction),
     attackSpeed: hb.addAttackSpeed,
     spellResist: boss.spellResist,
@@ -230,6 +265,8 @@ function resolveTactics(tactics, difficulty) {
 export function simulateCelestial(o) {
   const difficulty = o.difficulty;
   const diff = celestialDifficulty(difficulty);
+  // MYTHIC's enemy stats are client-computable since 2.9.4, but its Oblivion Resonance and Oblivion
+  // Block Fury are applied by the server with no client code and no log (combat-pve.md §20 2.9.4 addendum)
   if (!diff || difficulty === 'MYTHIC') {
     throw new EngineInputError(`Celestial difficulty '${difficulty}' is not simulated`, { kind: 'celestial', key: 'difficulty', value: difficulty });
   }

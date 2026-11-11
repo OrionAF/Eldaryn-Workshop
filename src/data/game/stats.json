@@ -662,6 +662,8 @@
    "OBLIVION": 7000
   },
   "EQUIP_ILVL_WEIGHT": 0.6,
+  "RIFT_EQUIV_LADDER": ["COMMON", "UNCOMMON", "RARE", "EPIC", "LEGENDARY", "MYTHIC", "ANCIENT", "DIVINE", "ETERNAL", "OBLIVION"],
+  "RIFT_EQUIV_REF_ILVL": 100,
   "EQUIP_QUALITY_WEIGHT": 0.35,
   "SIGIL_RARITY_POWER": {
    "COMMON": 150,
@@ -697,13 +699,13 @@
   "ENCHANT_AMPLIFY_WEIGHT": 0.06,
   "TRANSCENDENCE_PER_NODE": 100,
   "RELIC_TIER_POWER": {
-   "BRONZE": 400,
-   "SILVER": 900,
-   "GOLD": 1800
+   "BRONZE": 600,
+   "SILVER": 1200,
+   "GOLD": 2250
   },
   "TALENT_PER_POINT": 150,
   "AWAKENING_PER_POINT": 350,
   "LEVEL_POWER": 40,
-  "citation": "L1187673-1187818 (several values register-traced; see stats.md section 8)"
+  "citation": "L1187673-1187818 (several values register-traced; see stats.md section 8); 2.9.4: RELIC_TIER_POWER, RIFT_EQUIV_LADDER and RIFT_EQUIV_REF_ILVL from 2.9.4 L1218422-1218596 (stats.md section 8.1)"
  }
 }

@@ -1,5 +1,5 @@
 {
- "source": "decompiled.js L1142668-1143967 (RELIC_DEFINITIONS array, module 4130, L1142336-1143998); constants L1142660-1142667; migration map L1143969; MEDAL_EXCHANGE L1143988-1143993. defLine = first line of each definition. Stat values: value at level 1 (base) and at maxLevel (max); linear between (getRelicStatAtLevel L1142576).",
+ "source": "decompiled.js L1142668-1143967 (RELIC_DEFINITIONS array, module 4130, L1142336-1143998); constants L1142660-1142667; migration map L1143969; MEDAL_EXCHANGE L1143988-1143993. defLine = first line of each definition. Stat values: value at level 1 (base) and at maxLevel (max); linear between (getRelicStatAtLevel L1142576). 2.9.4 (module 4234, RELIC_DEFINITIONS L1166835-1168136): maxLevel and max raised (bronze 15, silver 20, gold 25; relics.md §10); base, cost and defLine (2.7.0) unchanged.",
  "constants": {
   "baseSlots": 2,
   "maxExtraSlots": 2,
@@ -46,13 +46,13 @@
    "class": "Warrior",
    "tier": "bronze",
    "cost": 5,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "HP_PERCENT",
-     "base": 6.0,
-     "max": 26.0
+     "base": 6,
+     "max": 37.1
     }
    ],
    "defLine": 1142668
@@ -63,13 +63,13 @@
    "class": "Warrior",
    "tier": "bronze",
    "cost": 5,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "ATTACK_PERCENT",
-     "base": 4.0,
-     "max": 20.0
+     "base": 4,
+     "max": 28.9
     }
    ],
    "defLine": 1142687
@@ -80,13 +80,13 @@
    "class": "Warrior",
    "tier": "bronze",
    "cost": 6,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "BLOCK_CHANCE",
-     "base": 2.0,
-     "max": 10.0
+     "base": 2,
+     "max": 14.4
     }
    ],
    "defLine": 1142703
@@ -97,13 +97,13 @@
    "class": "Warrior",
    "tier": "bronze",
    "cost": 6,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "DAMAGE_REDUCTION",
-     "base": 3.0,
-     "max": 12.0
+     "base": 3,
+     "max": 17
     }
    ],
    "defLine": 1142718
@@ -114,13 +114,13 @@
    "class": "Warrior",
    "tier": "bronze",
    "cost": 6,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "ATTACK_SPEED",
      "base": 0.08,
-     "max": 0.35
+     "max": 0.5
     }
    ],
    "defLine": 1142733
@@ -131,13 +131,13 @@
    "class": "Warrior",
    "tier": "bronze",
    "cost": 5,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "HP_REGEN",
-     "base": 2.0,
-     "max": 8.0
+     "base": 2,
+     "max": 11.3
     }
    ],
    "defLine": 1142748
@@ -148,18 +148,18 @@
    "class": "Warrior",
    "tier": "silver",
    "cost": 8,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": null,
    "bonuses": [
     {
      "stat": "HP_PERCENT",
-     "base": 12.0,
-     "max": 30.0
+     "base": 12,
+     "max": 36.4
     },
     {
      "stat": "DAMAGE_REDUCTION",
-     "base": 5.0,
-     "max": 12.0
+     "base": 5,
+     "max": 14.5
     }
    ],
    "defLine": 1142763
@@ -170,18 +170,18 @@
    "class": "Warrior",
    "tier": "silver",
    "cost": 8,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": null,
    "bonuses": [
     {
      "stat": "ATTACK_PERCENT",
-     "base": 12.0,
-     "max": 28.0
+     "base": 12,
+     "max": 33.7
     },
     {
      "stat": "PENETRATION",
-     "base": 6.0,
-     "max": 10.0
+     "base": 6,
+     "max": 11.4
     }
    ],
    "defLine": 1142783
@@ -192,18 +192,18 @@
    "class": "Warrior",
    "tier": "silver",
    "cost": 10,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": null,
    "bonuses": [
     {
      "stat": "CRIT_CHANCE",
-     "base": 6.0,
-     "max": 14.0
+     "base": 6,
+     "max": 16.9
     },
     {
      "stat": "CRIT_DAMAGE",
      "base": 0.4,
-     "max": 0.8
+     "max": 0.94
     }
    ],
    "defLine": 1142803
@@ -214,18 +214,18 @@
    "class": "Warrior",
    "tier": "silver",
    "cost": 8,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": null,
    "bonuses": [
     {
      "stat": "HP_REGEN",
-     "base": 4.0,
-     "max": 12.0
+     "base": 4,
+     "max": 14.9
     },
     {
      "stat": "BLOCK_CHANCE",
-     "base": 6.0,
-     "max": 12.0
+     "base": 6,
+     "max": 14.1
     }
    ],
    "defLine": 1142823
@@ -236,18 +236,18 @@
    "class": "Warrior",
    "tier": "gold",
    "cost": 5,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": null,
    "bonuses": [
     {
      "stat": "PENETRATION",
-     "base": 6.0,
-     "max": 22.0
+     "base": 6,
+     "max": 26.2
     },
     {
      "stat": "PVP_ATTACK",
-     "base": 40.0,
-     "max": 120.0
+     "base": 40,
+     "max": 141
     }
    ],
    "defLine": 1142843
@@ -258,18 +258,18 @@
    "class": "Warrior",
    "tier": "gold",
    "cost": 5,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": null,
    "bonuses": [
     {
      "stat": "HP_PERCENT",
-     "base": 15.0,
-     "max": 50.0
+     "base": 15,
+     "max": 59.2
     },
     {
      "stat": "PVP_DEFENSE",
-     "base": 50.0,
-     "max": 180.0
+     "base": 50,
+     "max": 214.2
     }
    ],
    "defLine": 1142863
@@ -280,13 +280,13 @@
    "class": "Warrior",
    "tier": "gold",
    "cost": 6,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": null,
    "bonuses": [
     {
      "stat": "DAMAGE_REDUCTION",
-     "base": 8.0,
-     "max": 26.0
+     "base": 8,
+     "max": 30.7
     }
    ],
    "defLine": 1142883
@@ -297,18 +297,18 @@
    "class": "Warrior",
    "tier": "gold",
    "cost": 6,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": null,
    "bonuses": [
     {
      "stat": "CRIT_CHANCE",
-     "base": 8.0,
-     "max": 18.0
+     "base": 8,
+     "max": 20.6
     },
     {
      "stat": "CRIT_DAMAGE",
      "base": 0.6,
-     "max": 1.2
+     "max": 1.36
     }
    ],
    "defLine": 1142898
@@ -319,13 +319,13 @@
    "class": "Sentinel",
    "tier": "bronze",
    "cost": 5,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "CRIT_CHANCE",
-     "base": 3.0,
-     "max": 10.0
+     "base": 3,
+     "max": 13.9
     }
    ],
    "defLine": 1142918
@@ -336,13 +336,13 @@
    "class": "Sentinel",
    "tier": "bronze",
    "cost": 5,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "ATTACK_PERCENT",
-     "base": 6.0,
-     "max": 26.0
+     "base": 6,
+     "max": 37.1
     }
    ],
    "defLine": 1142933
@@ -353,13 +353,13 @@
    "class": "Sentinel",
    "tier": "bronze",
    "cost": 6,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "MISS_CHANCE",
-     "base": 4.0,
-     "max": 12.0
+     "base": 4,
+     "max": 16.4
     }
    ],
    "defLine": 1142948
@@ -370,13 +370,13 @@
    "class": "Sentinel",
    "tier": "bronze",
    "cost": 6,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "BLIND_CHANCE",
-     "base": 3.0,
-     "max": 10.0
+     "base": 3,
+     "max": 13.9
     }
    ],
    "defLine": 1142963
@@ -387,13 +387,13 @@
    "class": "Sentinel",
    "tier": "bronze",
    "cost": 6,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "ATTACK_SPEED",
      "base": 0.08,
-     "max": 0.35
+     "max": 0.5
     }
    ],
    "defLine": 1142978
@@ -404,13 +404,13 @@
    "class": "Sentinel",
    "tier": "bronze",
    "cost": 5,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "LIFESTEAL",
-     "base": 3.0,
-     "max": 10.0
+     "base": 3,
+     "max": 13.9
     }
    ],
    "defLine": 1142993
@@ -421,18 +421,18 @@
    "class": "Sentinel",
    "tier": "silver",
    "cost": 8,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": null,
    "bonuses": [
     {
      "stat": "HP_PERCENT",
-     "base": 15.0,
-     "max": 35.0
+     "base": 15,
+     "max": 42.1
     },
     {
      "stat": "MISS_CHANCE",
-     "base": 5.0,
-     "max": 13.0
+     "base": 5,
+     "max": 15.9
     }
    ],
    "defLine": 1143008
@@ -443,18 +443,18 @@
    "class": "Sentinel",
    "tier": "silver",
    "cost": 8,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": null,
    "bonuses": [
     {
      "stat": "ATTACK_PERCENT",
-     "base": 14.0,
-     "max": 32.0
+     "base": 14,
+     "max": 38.4
     },
     {
      "stat": "PENETRATION",
-     "base": 6.0,
-     "max": 10.0
+     "base": 6,
+     "max": 11.4
     }
    ],
    "defLine": 1143028
@@ -465,18 +465,18 @@
    "class": "Sentinel",
    "tier": "silver",
    "cost": 10,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": null,
    "bonuses": [
     {
      "stat": "CRIT_CHANCE",
-     "base": 6.0,
-     "max": 14.0
+     "base": 6,
+     "max": 16.9
     },
     {
      "stat": "CRIT_DAMAGE",
      "base": 0.4,
-     "max": 0.8
+     "max": 0.94
     }
    ],
    "defLine": 1143048
@@ -487,18 +487,18 @@
    "class": "Sentinel",
    "tier": "silver",
    "cost": 8,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": null,
    "bonuses": [
     {
      "stat": "PARALYZE_CHANCE",
-     "base": 1.0,
-     "max": 3.0
+     "base": 1,
+     "max": 3.7
     },
     {
      "stat": "BLIND_CHANCE",
-     "base": 2.0,
-     "max": 10.0
+     "base": 2,
+     "max": 12.9
     }
    ],
    "defLine": 1143068
@@ -509,18 +509,18 @@
    "class": "Sentinel",
    "tier": "gold",
    "cost": 5,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": null,
    "bonuses": [
     {
      "stat": "PENETRATION",
-     "base": 6.0,
-     "max": 22.0
+     "base": 6,
+     "max": 26.2
     },
     {
      "stat": "PVP_ATTACK",
-     "base": 40.0,
-     "max": 120.0
+     "base": 40,
+     "max": 141
     }
    ],
    "defLine": 1143088
@@ -531,18 +531,18 @@
    "class": "Sentinel",
    "tier": "gold",
    "cost": 5,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": null,
    "bonuses": [
     {
      "stat": "HP_PERCENT",
-     "base": 15.0,
-     "max": 50.0
+     "base": 15,
+     "max": 59.2
     },
     {
      "stat": "PVP_DEFENSE",
-     "base": 50.0,
-     "max": 180.0
+     "base": 50,
+     "max": 214.2
     }
    ],
    "defLine": 1143108
@@ -553,13 +553,13 @@
    "class": "Sentinel",
    "tier": "gold",
    "cost": 6,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": null,
    "bonuses": [
     {
      "stat": "PARALYZE_CHANCE",
-     "base": 2.0,
-     "max": 6.0
+     "base": 2,
+     "max": 7
     }
    ],
    "defLine": 1143128
@@ -570,18 +570,18 @@
    "class": "Sentinel",
    "tier": "gold",
    "cost": 6,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": null,
    "bonuses": [
     {
      "stat": "CRIT_CHANCE",
-     "base": 8.0,
-     "max": 18.0
+     "base": 8,
+     "max": 20.6
     },
     {
      "stat": "CRIT_DAMAGE",
      "base": 0.6,
-     "max": 1.2
+     "max": 1.36
     }
    ],
    "defLine": 1143143
@@ -592,13 +592,13 @@
    "class": "Mystic",
    "tier": "bronze",
    "cost": 5,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "HP_PERCENT",
-     "base": 6.0,
-     "max": 26.0
+     "base": 6,
+     "max": 37.1
     }
    ],
    "defLine": 1143163
@@ -609,13 +609,13 @@
    "class": "Mystic",
    "tier": "bronze",
    "cost": 5,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": "MYSTIC_MAGE",
    "bonuses": [
     {
      "stat": "SPELL_DAMAGE",
-     "base": 8.0,
-     "max": 40.0
+     "base": 8,
+     "max": 57.8
     }
    ],
    "defLine": 1143178,
@@ -627,13 +627,13 @@
    "class": "Mystic",
    "tier": "bronze",
    "cost": 6,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": "MYSTIC_DRUID",
    "bonuses": [
     {
      "stat": "BLOCK_CHANCE",
-     "base": 2.0,
-     "max": 10.0
+     "base": 2,
+     "max": 14.4
     }
    ],
    "defLine": 1143198,
@@ -645,13 +645,13 @@
    "class": "Mystic",
    "tier": "bronze",
    "cost": 6,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "SPELL_RESIST",
-     "base": 6.0,
-     "max": 24.0
+     "base": 6,
+     "max": 34
     }
    ],
    "defLine": 1143218
@@ -662,13 +662,13 @@
    "class": "Mystic",
    "tier": "bronze",
    "cost": 6,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "ATTACK_SPEED",
      "base": 0.08,
-     "max": 0.35
+     "max": 0.5
     }
    ],
    "defLine": 1143233
@@ -679,13 +679,13 @@
    "class": "Mystic",
    "tier": "bronze",
    "cost": 5,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": "MYSTIC_MAGE",
    "bonuses": [
     {
      "stat": "SPELL_VAMP",
-     "base": 6.0,
-     "max": 20.0
+     "base": 6,
+     "max": 27.8
     }
    ],
    "defLine": 1143248,
@@ -697,18 +697,18 @@
    "class": "Mystic",
    "tier": "silver",
    "cost": 8,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": null,
    "bonuses": [
     {
      "stat": "HP_PERCENT",
-     "base": 12.0,
-     "max": 30.0
+     "base": 12,
+     "max": 36.4
     },
     {
      "stat": "SPELL_RESIST",
-     "base": 10.0,
-     "max": 24.0
+     "base": 10,
+     "max": 29
     }
    ],
    "defLine": 1143268
@@ -719,18 +719,18 @@
    "class": "Mystic",
    "tier": "silver",
    "cost": 8,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": "MYSTIC_MAGE",
    "bonuses": [
     {
      "stat": "SPELL_DAMAGE",
-     "base": 24.0,
-     "max": 56.0
+     "base": 24,
+     "max": 67.4
     },
     {
      "stat": "ATTACK_PERCENT",
-     "base": 4.0,
-     "max": 10.0
+     "base": 4,
+     "max": 12.1
     }
    ],
    "defLine": 1143288,
@@ -742,18 +742,18 @@
    "class": "Mystic",
    "tier": "silver",
    "cost": 10,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": "MYSTIC_MAGE",
    "bonuses": [
     {
      "stat": "SPELL_CRIT_CHANCE",
-     "base": 12.0,
-     "max": 28.0
+     "base": 12,
+     "max": 33.7
     },
     {
      "stat": "CRIT_DAMAGE",
      "base": 0.4,
-     "max": 0.8
+     "max": 0.94
     }
    ],
    "defLine": 1143313,
@@ -765,18 +765,18 @@
    "class": "Mystic",
    "tier": "silver",
    "cost": 8,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": "MYSTIC_DRUID",
    "bonuses": [
     {
      "stat": "DISRUPTION_CHANCE",
-     "base": 1.0,
-     "max": 3.0
+     "base": 1,
+     "max": 3.7
     },
     {
      "stat": "HP_REGEN",
-     "base": 4.0,
-     "max": 12.0
+     "base": 4,
+     "max": 14.9
     }
    ],
    "defLine": 1143338,
@@ -788,18 +788,18 @@
    "class": "Mystic",
    "tier": "gold",
    "cost": 5,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": null,
    "bonuses": [
     {
      "stat": "SPELL_DAMAGE",
-     "base": 20.0,
-     "max": 60.0
+     "base": 20,
+     "max": 70.5
     },
     {
      "stat": "PVP_ATTACK",
-     "base": 40.0,
-     "max": 120.0
+     "base": 40,
+     "max": 141
     }
    ],
    "defLine": 1143363
@@ -810,18 +810,18 @@
    "class": "Mystic",
    "tier": "gold",
    "cost": 5,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": null,
    "bonuses": [
     {
      "stat": "HP_PERCENT",
-     "base": 15.0,
-     "max": 50.0
+     "base": 15,
+     "max": 59.2
     },
     {
      "stat": "PVP_DEFENSE",
-     "base": 50.0,
-     "max": 180.0
+     "base": 50,
+     "max": 214.2
     }
    ],
    "defLine": 1143383
@@ -832,18 +832,18 @@
    "class": "Mystic",
    "tier": "gold",
    "cost": 6,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": null,
    "bonuses": [
     {
      "stat": "DISRUPTION_CHANCE",
-     "base": 2.0,
-     "max": 6.0
+     "base": 2,
+     "max": 7
     },
     {
      "stat": "SPELL_DAMAGE",
-     "base": 12.0,
-     "max": 36.0
+     "base": 12,
+     "max": 42.3
     }
    ],
    "defLine": 1143403
@@ -854,18 +854,18 @@
    "class": "Mystic",
    "tier": "gold",
    "cost": 6,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": "MYSTIC_MAGE",
    "bonuses": [
     {
      "stat": "SPELL_CRIT_CHANCE",
-     "base": 16.0,
-     "max": 36.0
+     "base": 16,
+     "max": 41.3
     },
     {
      "stat": "CRIT_DAMAGE",
      "base": 0.6,
-     "max": 1.2
+     "max": 1.36
     }
    ],
    "defLine": 1143423,
@@ -877,13 +877,13 @@
    "class": "Mystic",
    "tier": "bronze",
    "cost": 5,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": "MYSTIC_DRUID",
    "bonuses": [
     {
      "stat": "ATTACK_PERCENT",
-     "base": 4.0,
-     "max": 20.0
+     "base": 4,
+     "max": 28.9
     }
    ],
    "defLine": 1143448,
@@ -895,13 +895,13 @@
    "class": "Mystic",
    "tier": "bronze",
    "cost": 6,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": "MYSTIC_DRUID",
    "bonuses": [
     {
      "stat": "DAMAGE_REDUCTION",
-     "base": 3.0,
-     "max": 12.0
+     "base": 3,
+     "max": 17
     }
    ],
    "defLine": 1143468,
@@ -913,18 +913,18 @@
    "class": "Mystic",
    "tier": "silver",
    "cost": 8,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": "MYSTIC_DRUID",
    "bonuses": [
     {
      "stat": "ATTACK_PERCENT",
-     "base": 12.0,
-     "max": 28.0
+     "base": 12,
+     "max": 33.7
     },
     {
      "stat": "CRIT_CHANCE",
-     "base": 5.0,
-     "max": 12.0
+     "base": 5,
+     "max": 14.5
     }
    ],
    "defLine": 1143488,
@@ -936,18 +936,18 @@
    "class": "Mystic",
    "tier": "silver",
    "cost": 8,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": "MYSTIC_DRUID",
    "bonuses": [
     {
      "stat": "HP_PERCENT",
-     "base": 12.0,
-     "max": 30.0
+     "base": 12,
+     "max": 36.4
     },
     {
      "stat": "DAMAGE_REDUCTION",
-     "base": 5.0,
-     "max": 12.0
+     "base": 5,
+     "max": 14.5
     }
    ],
    "defLine": 1143513,
@@ -959,13 +959,13 @@
    "class": "Mystic",
    "tier": "gold",
    "cost": 6,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": "MYSTIC_DRUID",
    "bonuses": [
     {
      "stat": "DAMAGE_REDUCTION",
-     "base": 8.0,
-     "max": 26.0
+     "base": 8,
+     "max": 30.7
     }
    ],
    "defLine": 1143538,
@@ -977,18 +977,18 @@
    "class": "Mystic",
    "tier": "gold",
    "cost": 6,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": "MYSTIC_DRUID",
    "bonuses": [
     {
      "stat": "CRIT_CHANCE",
-     "base": 8.0,
-     "max": 18.0
+     "base": 8,
+     "max": 20.6
     },
     {
      "stat": "CRIT_DAMAGE",
      "base": 0.6,
-     "max": 1.2
+     "max": 1.36
     }
    ],
    "defLine": 1143558,
@@ -1000,13 +1000,13 @@
    "class": "Necromancer",
    "tier": "bronze",
    "cost": 5,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "HP_PERCENT",
-     "base": 6.0,
-     "max": 26.0
+     "base": 6,
+     "max": 37.1
     }
    ],
    "defLine": 1143583
@@ -1017,13 +1017,13 @@
    "class": "Necromancer",
    "tier": "bronze",
    "cost": 5,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": "NECROMANCER_DOOMWEAVER",
    "bonuses": [
     {
      "stat": "SPELL_DAMAGE",
-     "base": 8.0,
-     "max": 40.0
+     "base": 8,
+     "max": 57.8
     }
    ],
    "defLine": 1143598,
@@ -1035,13 +1035,13 @@
    "class": "Necromancer",
    "tier": "bronze",
    "cost": 5,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "MINION_ATTACK",
-     "base": 8.0,
-     "max": 40.0
+     "base": 8,
+     "max": 57.8
     }
    ],
    "defLine": 1143618
@@ -1052,13 +1052,13 @@
    "class": "Necromancer",
    "tier": "bronze",
    "cost": 6,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "MINION_HEALTH",
-     "base": 9.0,
-     "max": 38.0
+     "base": 9,
+     "max": 54.1
     }
    ],
    "defLine": 1143633
@@ -1069,13 +1069,13 @@
    "class": "Necromancer",
    "tier": "bronze",
    "cost": 6,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "SPELL_RESIST",
-     "base": 6.0,
-     "max": 24.0
+     "base": 6,
+     "max": 34
     }
    ],
    "defLine": 1143648
@@ -1086,13 +1086,13 @@
    "class": "Necromancer",
    "tier": "bronze",
    "cost": 6,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "ATTACK_SPEED",
      "base": 0.08,
-     "max": 0.35
+     "max": 0.5
     }
    ],
    "defLine": 1143663
@@ -1103,13 +1103,13 @@
    "class": "Necromancer",
    "tier": "bronze",
    "cost": 5,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": "NECROMANCER_DOOMWEAVER",
    "bonuses": [
     {
      "stat": "SPELL_VAMP",
-     "base": 6.0,
-     "max": 20.0
+     "base": 6,
+     "max": 27.8
     }
    ],
    "defLine": 1143678,
@@ -1121,13 +1121,13 @@
    "class": "Necromancer",
    "tier": "bronze",
    "cost": 5,
-   "maxLevel": 10,
+   "maxLevel": 15,
    "specHint": null,
    "bonuses": [
     {
      "stat": "MINION_LIFESTEAL",
-     "base": 6.0,
-     "max": 20.0
+     "base": 6,
+     "max": 27.8
     }
    ],
    "defLine": 1143698
@@ -1138,18 +1138,18 @@
    "class": "Necromancer",
    "tier": "silver",
    "cost": 8,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": null,
    "bonuses": [
     {
      "stat": "HP_PERCENT",
-     "base": 12.0,
-     "max": 30.0
+     "base": 12,
+     "max": 36.4
     },
     {
      "stat": "SPELL_RESIST",
-     "base": 10.0,
-     "max": 24.0
+     "base": 10,
+     "max": 29
     }
    ],
    "defLine": 1143713
@@ -1160,18 +1160,18 @@
    "class": "Necromancer",
    "tier": "silver",
    "cost": 8,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": "NECROMANCER_DOOMWEAVER",
    "bonuses": [
     {
      "stat": "SPELL_DAMAGE",
-     "base": 24.0,
-     "max": 56.0
+     "base": 24,
+     "max": 67.4
     },
     {
      "stat": "ATTACK_PERCENT",
-     "base": 4.0,
-     "max": 10.0
+     "base": 4,
+     "max": 12.1
     }
    ],
    "defLine": 1143733,
@@ -1183,18 +1183,18 @@
    "class": "Necromancer",
    "tier": "silver",
    "cost": 10,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": "NECROMANCER_DOOMWEAVER",
    "bonuses": [
     {
      "stat": "SPELL_CRIT_CHANCE",
-     "base": 12.0,
-     "max": 28.0
+     "base": 12,
+     "max": 33.7
     },
     {
      "stat": "CRIT_DAMAGE",
      "base": 0.4,
-     "max": 0.8
+     "max": 0.94
     }
    ],
    "defLine": 1143758,
@@ -1206,18 +1206,18 @@
    "class": "Necromancer",
    "tier": "silver",
    "cost": 8,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": null,
    "bonuses": [
     {
      "stat": "MINION_ATTACK",
-     "base": 24.0,
-     "max": 56.0
+     "base": 24,
+     "max": 67.4
     },
     {
      "stat": "MINION_CRIT_CHANCE",
-     "base": 5.0,
-     "max": 12.0
+     "base": 5,
+     "max": 14.5
     }
    ],
    "defLine": 1143783
@@ -1228,18 +1228,18 @@
    "class": "Necromancer",
    "tier": "silver",
    "cost": 8,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": null,
    "bonuses": [
     {
      "stat": "MINION_HEALTH",
-     "base": 18.0,
-     "max": 44.0
+     "base": 18,
+     "max": 53.3
     },
     {
      "stat": "SOUL_LINK",
-     "base": 4.0,
-     "max": 10.0
+     "base": 4,
+     "max": 12.1
     }
    ],
    "defLine": 1143803
@@ -1250,18 +1250,18 @@
    "class": "Necromancer",
    "tier": "silver",
    "cost": 8,
-   "maxLevel": 15,
+   "maxLevel": 20,
    "specHint": null,
    "bonuses": [
     {
      "stat": "FEAR_CHANCE",
-     "base": 1.0,
-     "max": 3.0
+     "base": 1,
+     "max": 3.7
     },
     {
      "stat": "HP_REGEN",
-     "base": 4.0,
-     "max": 12.0
+     "base": 4,
+     "max": 14.9
     }
    ],
    "defLine": 1143823
@@ -1272,18 +1272,18 @@
    "class": "Necromancer",
    "tier": "gold",
    "cost": 5,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": null,
    "bonuses": [
     {
      "stat": "SPELL_DAMAGE",
-     "base": 20.0,
-     "max": 60.0
+     "base": 20,
+     "max": 70.5
     },
     {
      "stat": "PVP_ATTACK",
-     "base": 40.0,
-     "max": 120.0
+     "base": 40,
+     "max": 141
     }
    ],
    "defLine": 1143843
@@ -1294,18 +1294,18 @@
    "class": "Necromancer",
    "tier": "gold",
    "cost": 5,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": null,
    "bonuses": [
     {
      "stat": "HP_PERCENT",
-     "base": 15.0,
-     "max": 50.0
+     "base": 15,
+     "max": 59.2
     },
     {
      "stat": "PVP_DEFENSE",
-     "base": 50.0,
-     "max": 180.0
+     "base": 50,
+     "max": 214.2
     }
    ],
    "defLine": 1143863
@@ -1316,18 +1316,18 @@
    "class": "Necromancer",
    "tier": "gold",
    "cost": 6,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": null,
    "bonuses": [
     {
      "stat": "FEAR_CHANCE",
-     "base": 2.0,
-     "max": 6.0
+     "base": 2,
+     "max": 7
     },
     {
      "stat": "SPELL_DAMAGE",
-     "base": 12.0,
-     "max": 36.0
+     "base": 12,
+     "max": 42.3
     }
    ],
    "defLine": 1143883
@@ -1338,18 +1338,18 @@
    "class": "Necromancer",
    "tier": "gold",
    "cost": 6,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": null,
    "bonuses": [
     {
      "stat": "MINION_ATTACK_SPEED",
      "base": 0.1,
-     "max": 0.4
+     "max": 0.48
     },
     {
      "stat": "MINION_ATTACK",
-     "base": 12.0,
-     "max": 36.0
+     "base": 12,
+     "max": 42.3
     }
    ],
    "defLine": 1143903
@@ -1360,18 +1360,18 @@
    "class": "Necromancer",
    "tier": "gold",
    "cost": 6,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": "NECROMANCER_DOOMWEAVER",
    "bonuses": [
     {
      "stat": "SPELL_CRIT_CHANCE",
-     "base": 16.0,
-     "max": 36.0
+     "base": 16,
+     "max": 41.3
     },
     {
      "stat": "CRIT_DAMAGE",
      "base": 0.6,
-     "max": 1.2
+     "max": 1.36
     }
    ],
    "defLine": 1143923,
@@ -1383,18 +1383,18 @@
    "class": "Necromancer",
    "tier": "gold",
    "cost": 6,
-   "maxLevel": 20,
+   "maxLevel": 25,
    "specHint": null,
    "bonuses": [
     {
      "stat": "MINION_CRIT_CHANCE",
-     "base": 16.0,
-     "max": 36.0
+     "base": 16,
+     "max": 41.3
     },
     {
      "stat": "CRIT_DAMAGE",
      "base": 0.6,
-     "max": 1.2
+     "max": 1.36
     }
    ],
    "defLine": 1143948

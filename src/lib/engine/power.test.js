@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculatePowerBreakdown, calculateTotalPower, calculateStatQuality, calculateItemQuality, ascensionEffectiveLevel, POWER_TERMS } from './power.js';
+import { calculatePowerBreakdown, calculateTotalPower, calculateStatQuality, calculateItemQuality, ascensionEffectiveLevel, POWER_TERMS, equipmentSlotBasePower, attackForItem } from './power.js';
 
 const empty = { level: 0, equipment: [], sigils: [], sigilAltarTier: 1, enchants: [], transcendenceNodeCount: 0, pet: null, mount: null, relics: [], talentPointsSpent: 0, awakeningPoints: 0 };
 const only = (patch) => calculatePowerBreakdown({ ...empty, ...patch });
@@ -14,10 +14,22 @@ describe('calculatePowerBreakdown terms (stats.md §8)', () => {
   it('equipment: rarity x (1 + 0.6 effLevel/100) x (1 + 0.35 quality/100); a null quality counts 0', () => {
     expect(only({ equipment: [{ rarity: 'EPIC', itemLevel: 100, quality: 100 }] }).exact.equipment).toBeCloseTo(65 * 1.6 * 1.35, 9);
     expect(only({ equipment: [{ rarity: 'EPIC', itemLevel: 50, quality: null }, null] }).exact.equipment).toBeCloseTo(65 * 1.3, 9);
-    // above 100 the level counts at 40%; an Oblivion-realm item at half its level
+    // above 100 the level counts at 40%
     expect(only({ equipment: [{ rarity: 'ETERNAL', itemLevel: 200, quality: 0 }] }).exact.equipment).toBeCloseTo(3400 * (1 + 0.6 * 1.4), 9);
-    expect(only({ equipment: [{ rarity: 'OBLIVION', itemLevel: 200, quality: 0, realm: 'OBLIVION' }] }).exact.equipment).toBeCloseTo(7000 * 1.6, 9);
     expect(only({ equipment: [{ rarity: 'NOPE', itemLevel: 100, quality: 0 }] }).exact.equipment).toBe(0);
+  });
+
+  it('2.9.4 rift items: Attack placed on the base ladder at item level 100, interpolated log-log', () => {
+    // Mythic rift L100: Attack floor((3900 + 50 x 35) x 2.75) = 15537, between Mythic (7400, 340 x 1.6) and Ancient (20800, 750 x 1.6)
+    expect(attackForItem('MYTHIC', 100, true)).toBe(15537);
+    const t = Math.log(15537 / 7400) / Math.log(20800 / 7400);
+    expect(equipmentSlotBasePower({ rarity: 'MYTHIC', itemLevel: 100, realm: 'OBLIVION' })).toBeCloseTo(544 * (1200 / 544) ** t, 6);
+    // past the top rung it extrapolates Eternal (60000, 5440) -> Oblivion (98000, 11200); quality still multiplies
+    const u = Math.log(269500 / 60000) / Math.log(98000 / 60000);
+    expect(only({ equipment: [{ rarity: 'OBLIVION', itemLevel: 200, quality: 100, realm: 'OBLIVION' }] }).exact.equipment).toBeCloseTo(5440 * (11200 / 5440) ** u * 1.35, 6);
+    expect(equipmentSlotBasePower({ rarity: 'NOPE', itemLevel: 100, realm: 'OBLIVION' })).toBe(0);
+    // a base-realm item keeps the rarity x level rule
+    expect(equipmentSlotBasePower({ rarity: 'OBLIVION', itemLevel: 100 })).toBeCloseTo(7000 * 1.6, 9);
   });
 
   it('sigils: rarity x min(level,30)/30 x 3^(altarTier-1), COMMON 150 and ANCIENT 1000', () => {
@@ -35,7 +47,7 @@ describe('calculatePowerBreakdown terms (stats.md §8)', () => {
     expect(only({ pet: { rarity: 'ANCIENT', altarLevel: 25, tier: 1 } }).exact.pet).toBe(7200 / 2);
     expect(only({ pet: { rarity: 'ANCIENT', altarLevel: 60, tier: 2 } }).exact.pet).toBeCloseTo(7200 * Math.sqrt(3.3), 9);
     expect(only({ mount: { rarity: 'EPIC', stars: 3 } }).exact.mount).toBeCloseTo(3000 * 1.2, 9);
-    expect(only({ relics: [{ tier: 'GOLD', level: 5, maxLevel: 10 }, { tier: 'BRONZE', level: 3, maxLevel: 0 }] }).exact.relics).toBe(900);
+    expect(only({ relics: [{ tier: 'GOLD', level: 10, maxLevel: 25 }, { tier: 'BRONZE', level: 3, maxLevel: 0 }] }).exact.relics).toBe(900);
     const flat = only({ transcendenceNodeCount: 7, talentPointsSpent: 10, awakeningPoints: 2, level: 50 });
     expect([flat.exact.transcendence, flat.exact.talents, flat.exact.awakening, flat.exact.level]).toEqual([700, 1500, 700, 2000]);
   });

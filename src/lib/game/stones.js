@@ -32,7 +32,7 @@ export function amplifyStep(targetLevel) {
   return AMPLIFY_TABLE.find((r) => r.targetLevel === targetLevel) ?? null;
 }
 
-// stones.md §7. Oblivion grades 1..5.
+// stones.md §7. Oblivion grades 1..7 (Mythic and Ancient since 2.9.4).
 export const OBLIVION_GRADES = stonesJson.oblivionGrades;
 export function oblivionGrade(level) {
   return OBLIVION_GRADES.find((g) => g.level === level) ?? null;

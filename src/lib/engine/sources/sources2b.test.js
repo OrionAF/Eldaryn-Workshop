@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculatePetBonuses, altarProgress, tierStatMultiplier, petSecondaryValue, emptyPetBonuses } from './pet.js';
-import { calculateStoneBonuses, oblivionPowerForQuality, amplifyStatMultiplier } from './stones.js';
+import { calculateStoneBonuses, oblivionPowerForQuality, amplifyStatMultiplier, oblivionPowerGradeMult, normalizeOblivionLevel } from './stones.js';
 import { calculateMountBonuses, glyphSecondaryValue, mountEffectiveStats } from './mount.js';
 import { calculateRelicBonuses, relicStatAt } from './relic.js';
 import { PET_ALTAR_TOTAL_XP_TO_MAX } from '../../game/pets.js';
@@ -79,6 +79,16 @@ describe('stones source', () => {
       expect(b.pvpAttack).toBeCloseTo(16, 9);
     }
   });
+  it('2.9.4 grades: Legendary -11% base, Mythic / Ancient added, power mult table (stones.md §7)', () => {
+    const base = (level) => calculateStoneBonuses([{ type: 'OBLIVION', oblivionLevel: level, stats: [] }]);
+    expect(base(5)).toMatchObject({ flatAttack: 45200, flatHp: 116000 });
+    expect(base(6)).toMatchObject({ flatAttack: 50800, flatHp: 130500 });
+    expect(base(7)).toMatchObject({ flatAttack: 63500, flatHp: 163000 });
+    expect([1, 2, 3, 4, 5, 6, 7].map(oblivionPowerGradeMult)).toEqual([1, 1.5, 2.25, 3.375, 5.0625, 5.7, 6.33]);
+    expect(normalizeOblivionLevel(9)).toBe(7);
+    expect(normalizeOblivionLevel(6.9)).toBe(6);
+    expect(normalizeOblivionLevel(NaN)).toBe(1);
+  });
 });
 
 describe('mount source', () => {
@@ -112,8 +122,8 @@ describe('relic source', () => {
     expect(relicStatAt(6, 26, 5, 1)).toBe(6);
   });
   it('maps HP_PERCENT to healthPercent and sums across relics', () => {
-    const b = calculateRelicBonuses([{ id: 'relic_iron_heart', level: 10 }, { id: 'relic_iron_heart', level: 1 }, { id: 'nope', level: 3 }]);
-    expect(b.healthPercent).toBe(32);
+    const b = calculateRelicBonuses([{ id: 'relic_iron_heart', level: 15 }, { id: 'relic_iron_heart', level: 1 }, { id: 'nope', level: 3 }]);
+    expect(b.healthPercent).toBeCloseTo(37.1 + 6, 9); // 2.9.4 max level 15 (relics.md §10)
   });
   it('every catalogue relic bonus lands on a known key', () => {
     for (const cls of ['WARRIOR', 'SENTINEL', 'MYSTIC', 'NECROMANCER']) {

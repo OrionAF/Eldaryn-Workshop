@@ -5,7 +5,7 @@ import data from '../../data/game/celestial.json';
 export const CELESTIAL_CONSTANTS = data.constants;
 export const CELESTIAL_TACTICS = data.tactics;
 export const CELESTIAL_DUST = data.dust;
-/** The playable fight difficulties of the engine (MYTHIC's party-power HP scaling is [SERVER]). */
+/** The playable fight difficulties of the engine (MYTHIC's resonance rules are [SERVER]; combat-pve.md §20). */
 export const CELESTIAL_DIFFICULTIES = Object.freeze(['NORMAL', 'HARD']);
 
 /** Difficulty entry ('NORMAL' | 'HARD' | 'MYTHIC'), or null. */
