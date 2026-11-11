@@ -15,6 +15,7 @@ import { mountBySpecies } from '../game/mountsGlyphs.js';
 import { isMultiplierStat } from '../model/equipment.js';
 import { glyphSecondaryDef, glyphSecondaryValue, glyphTypeInfo } from '../model/glyphs.js';
 import { mountStatAtLevel } from '../model/mounts.js';
+import { petSecondaryValue } from '../engine/sources/pet.js';
 import { formatFlat, formatPct } from '../format.js';
 import { STONE_TYPES } from '../game/stones.js';
 
@@ -91,7 +92,10 @@ const glyphSig = (g) => JSON.stringify([g.glyphType, g.rarity, !!g.sealed, g.sec
 /** "Mythic Core (Crit Chance +3%, Health +4.5%)": the core's rarity and secondaries (base rolls). */
 export function petText(character, pet) {
   if (!pet) return 'None';
-  const stats = (pet.secondaries ?? []).map((s) => statLine(s.type, s.value, { points: true }));
+  // At the Core Altar level, as the Pets page's altar column shows them (the rolls scale with it).
+  const level = character.pets?.altar?.level ?? 1;
+  const at = (v) => (level > 1 ? petSecondaryValue(v, level) : v);
+  const stats = (pet.secondaries ?? []).map((s) => statLine(s.type, at(s.value), { points: true }));
   return `${coreName(pet)}${stats.length ? ` (${stats.join(', ')})` : ''}${twinsText(character.pets?.cores, pet, petSig)}`;
 }
 

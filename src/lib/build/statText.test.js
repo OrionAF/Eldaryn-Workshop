@@ -41,10 +41,16 @@ describe('owned items, named so copies are told apart', () => {
   const pet = c.pets.cores[0];
 
   it('a pet core: rarity name and every secondary in percent points', () => {
-    const text = petText(c, pet);
+    const at1 = { ...c, pets: { ...c.pets, altar: { ...c.pets.altar, level: 1 } } };
+    const text = petText(at1, pet);
     expect(text).toMatch(/^Legendary Core \(/);
     for (const s of pet.secondaries) expect(text).toContain(statLine(s.type, s.value, { points: true }));
     expect(text).not.toMatch(/[A-Z]{2,}_|identical/);
+  });
+  it('a pet core: secondaries at the Core Altar level, as the Pets page shows them', () => {
+    const core = { ...pet, secondaries: [{ type: 'ATTACK', value: 8.7 }] };
+    const at26 = { ...c, pets: { ...c.pets, cores: [core], altar: { ...c.pets.altar, level: 26 } } };
+    expect(petText(at26, core)).toContain(statLine('ATTACK', 13.05, { points: true }));
   });
   it('two identical pets: "either of your 2 identical copies"', () => {
     const twin = { ...c, pets: { ...c.pets, cores: [pet, { ...pet, id: 'pet-b' }] } };
