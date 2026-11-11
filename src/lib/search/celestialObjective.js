@@ -140,7 +140,8 @@ const partnerLabel = (p) => {
  */
 export function resolveCelestialTarget(raw, { character, partner } = {}) {
   const difficulty = raw?.difficulty;
-  if (difficulty === 'MYTHIC') throw new Error('Celestial MYTHIC is not simulated (its party-power HP scaling is server-side)');
+  // see the engine guard in simulateCelestial (combat-pve.md §20 2.9.4 addendum)
+  if (difficulty === 'MYTHIC') throw new Error('Celestial MYTHIC is not simulated (its Oblivion Resonance and Oblivion Block Fury are applied server-side)');
   if (!CELESTIAL_DIFFICULTIES.includes(difficulty)) throw new Error(`unknown Celestial difficulty '${difficulty}'`);
   const ref = partnerRefOf(raw.partner);
   const mate = ref ? partnerOf(ref, { character, partner }) : null;

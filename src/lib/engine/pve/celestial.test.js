@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 import {
   simulateCelestial, celestialBossStats, celestialAddStats, celestialRolls, celestialMaxHoldCount,
   defaultTankIndex, CELESTIAL_ASSUMPTIONS,
-  celestialFuryPowerMultiplier, celestialHolderFuryShare,
+  celestialFuryPowerMultiplier, celestialHolderFuryShare, celestialMythicLevel, celestialRankScore,
 } from './celestial.js';
 import { laneRng } from '../rng.js';
 
@@ -78,8 +78,36 @@ describe('boss and add scaling', () => {
     expect(r.bossMaxHp).toBe(33935521328);
   });
 
-  it('MYTHIC is refused (its party-power HP scaling is server-side)', () => {
+  it('MYTHIC is refused (its Oblivion Resonance and Oblivion Block Fury are server-side)', () => {
     expect(() => run({ party: [tank({})], difficulty: 'MYTHIC' })).toThrow(/not simulated/);
+  });
+
+  it('2.9.4 MYTHIC: boss from 3e10 HP with bands at 2/45/61, adds on their own HP curve', () => {
+    expect(celestialBossStats(1, 'MYTHIC')).toEqual({ hp: 30000000000, attack: 75000, attackSpeed: 1.9, spellResist: 45 });
+    expect(celestialBossStats(44, 'MYTHIC')).toMatchObject({ hp: 244490007986, attack: 175739 });
+    expect(celestialBossStats(45, 'MYTHIC')).toMatchObject({ hp: 275051258984, attack: 179254 });
+    expect(celestialBossStats(61, 'MYTHIC')).toMatchObject({ hp: 1770492775848, attack: 246077 });
+    expect(celestialBossStats(100, 'MYTHIC')).toMatchObject({ hp: 72846531839721, attack: 532695 });
+    // addHpCurve: 625e6 * 1.04^(L-1), independent of the boss HP; attack stays 0.2 of the boss's
+    expect(celestialAddStats(1, 'MYTHIC')).toMatchObject({ hp: 625000000, attack: 15000, attackSpeed: 1 });
+    expect(celestialAddStats(100, 'MYTHIC')).toMatchObject({ hp: 30351531361, attack: 106539 });
+  });
+
+  it('the optional attack level compounds attack only', () => {
+    const a = celestialBossStats(85, 'HARD', 95);
+    expect(a.hp).toBe(8388341867);
+    expect(a.attack).toBe(477916);
+  });
+
+  it('Mythic level is the duo\'s higher Oblivion Level; rank score orders by boss level, then time', () => {
+    expect(celestialMythicLevel([40, 72])).toBe(72);
+    expect(celestialMythicLevel([55, null])).toBe(55);
+    expect(celestialMythicLevel([undefined])).toBeNull();
+    expect(celestialRankScore({ clearTimeMs: 90000 }, false)).toBe(90000);
+    const deep = celestialRankScore({ bossLevel: 80, clearTimeMs: 350000 }, true);
+    const fast = celestialRankScore({ bossLevel: 79, clearTimeMs: 20000 }, true);
+    expect(deep).toBeLessThan(fast);
+    expect(celestialRankScore({ bossLevel: 80, clearTimeMs: 1000 }, true)).toBe(-80e9 + 1000);
   });
 });
 

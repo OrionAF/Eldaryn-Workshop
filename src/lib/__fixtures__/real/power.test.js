@@ -13,6 +13,7 @@ import { resolvePreset, equipSetKey } from '../../build/presetInputs.js';
 import { calculatePowerBreakdown } from '../../engine/power.js';
 import { itemStatLevel, calculateStatQuality } from '../../game/gear.js';
 import { computePresetStats } from '../../build/stats.js';
+import { withPre294Relics } from './relicsPre294.js'; // the captures predate the 2.9.4 relic tables
 import { coreTotalPower } from '../../engine/sources/petCore.js';
 import { POWER_TERMS } from '../../engine/power.js';
 
@@ -46,7 +47,7 @@ describe.each([
 
   it('imports its live loadout into the expected preset, whose stats are the server\'s', () => {
     expect(character.presets.some((x) => x.id === live)).toBe(true);
-    const { computed } = computePresetStats(character, live, { realm: 'base' });
+    const { computed } = withPre294Relics(() => computePresetStats(character, live, { realm: 'base' }));
     for (const key of ['totalAttack', 'totalHp']) expect(computed[key], key).toBe(profile.computedStats[key]);
   });
 
@@ -68,7 +69,7 @@ describe('real profile Mystic L79 (2.9.1, Pet Cores)', () => {
   const { character, live } = imported(mystic291);
 
   it('reproduces every server computedStats key for the live preset', () => {
-    const { computed } = computePresetStats(character, live, { realm: 'base' });
+    const { computed } = withPre294Relics(() => computePresetStats(character, live, { realm: 'base' }));
     for (const key of Object.keys(mystic291.computedStats)) {
       expect(Math.abs(computed[key] - mystic291.computedStats[key]), key).toBeLessThanOrEqual(1e-9);
     }

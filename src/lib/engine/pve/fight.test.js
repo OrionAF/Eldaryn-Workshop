@@ -510,7 +510,7 @@ describe('Oblivion (L1088127-1088208, getInstabilityCombatState L1706880-1707000
     expect(o.trueDamagePercentPerPulse).toBeCloseTo(6, 10); // 0.06 * 100, under the 12 % cap
     expect(o.healingMult).toBeCloseTo(1 - ((100 * 100) / 112 / 100) * 0.98, 10);
     expect(o.regenMult).toBeCloseTo(1 - ((100 * 100) / 106 / 100) * 0.99, 10);
-    expect(o.playerDamageMult).toBeCloseTo(1 - (97 * 100) / 106 / 100, 10);
+    expect(o.playerDamageMult).toBeCloseTo(1 - (99 * 100) / 101 / 100, 10); // 2.9.4 cut: max 99, half point 1
     expect(o.healCapPctPerSec).toBe(1.5);
     expect(o.blocksShieldOverflow).toBe(true);
     expect(o.defenceBand).toEqual({ drFloor: 35, blockCap: 15, missCap: 10, blindCap: 8 });

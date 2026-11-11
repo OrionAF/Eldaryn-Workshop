@@ -81,12 +81,16 @@ describe('normaliseStone', () => {
     expect(normaliseStone(once)).toEqual(once);
   });
 
-  it('clamps amplify to 0..10 and the Oblivion grade to 1..5 (Oblivion type only)', () => {
+  it('clamps amplify to 0..10 and the Oblivion grade to 1..7 (Oblivion type only)', () => {
     expect(normaliseStone({ ...base, amplifyLevel: 99 }).amplifyLevel).toBe(10);
     expect(normaliseStone({ ...base, amplifyLevel: -3 }).amplifyLevel).toBe(0);
     expect(normaliseStone({ ...base, oblivionLevel: 4 }).oblivionLevel).toBeNull();
-    expect(normaliseStone({ ...base, type: 'OBLIVION', oblivionLevel: 9 }).oblivionLevel).toBe(5);
+    expect(normaliseStone({ ...base, type: 'OBLIVION', oblivionLevel: 9 }).oblivionLevel).toBe(7);
     expect(normaliseStone({ ...base, type: 'OBLIVION' }).oblivionLevel).toBe(1);
+    // 2.9.4 Mythic / Ancient grades survive, as do stored 2.9.3 grades (stones.md §7)
+    expect(normaliseStone({ ...base, type: 'OBLIVION', oblivionLevel: 6 }).oblivionLevel).toBe(6);
+    expect(normaliseStone({ ...base, type: 'OBLIVION', oblivionLevel: 7 }).oblivionLevel).toBe(7);
+    expect(normaliseStone({ ...base, type: 'OBLIVION', oblivionLevel: 5 }).oblivionLevel).toBe(5);
   });
 
   it('drops unknown types, unknown or duplicate stats, and caps the stat count at the type count', () => {

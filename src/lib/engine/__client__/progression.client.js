@@ -38,14 +38,16 @@ export const STONE_ZERO = {
 const OBLIVION_POWER_CFG = { minValue: 8, maxValue: 30 };
 // transcribed from L1206371 (AMPLIFICATION_CONSTANTS.STAT_BONUS_PER_LEVEL)
 const STAT_BONUS_PER_LEVEL = 0.06;
-// transcribed from L1206735-1206808 (stone grades: first level 1, last 5; base stats; POWER_GRADE_MULT)
+// transcribed from 2.9.4 L1245426-1245521 (module 4437: stone grades, first level 1, last 7; base
+// stats; OBLIVION_POWER_GRADE_MULT). 2.7.0 had five grades and POWER_GRADE_MULT 1.5 (L1206735-1206808).
 const OBLIVION_LEVEL_FIRST = 1;
-const OBLIVION_LEVEL_LAST = 5;
+const OBLIVION_LEVEL_LAST = 7;
 const OBLIVION_LEVEL_STATS = {
   1: { attack: 3250, hp: 10700 }, 2: { attack: 10650, hp: 25900 }, 3: { attack: 17500, hp: 43500 },
-  4: { attack: 30800, hp: 77700 }, 5: { attack: 50800, hp: 130500 },
+  4: { attack: 30800, hp: 77700 }, 5: { attack: 45200, hp: 116000 }, 6: { attack: 50800, hp: 130500 },
+  7: { attack: 63500, hp: 163000 },
 };
-const POWER_GRADE_MULT = 1.5;
+const OBLIVION_POWER_GRADE_MULT = { 1: 1, 2: 1.5, 3: 2.25, 4: 3.375, 5: 5.0625, 6: 5.7, 7: 6.33 };
 
 // transcribed from L1205241-1205276
 export function oblivionPowerForQuality(a0) {
@@ -74,9 +76,9 @@ export function getOblivionStoneLevelStats(a0) {
   return { attack: r1.attack, hp: r1.hp };
 }
 
-// transcribed from L1206564-1206580
+// transcribed from 2.9.4 L1245271-1245280 (a table lookup; 2.7.0 L1206564-1206580 was 1.5^(L-1))
 export function getOblivionPowerGradeMult(a0) {
-  return Math.pow(POWER_GRADE_MULT, normalizeOblivionStoneLevel(a0) - OBLIVION_LEVEL_FIRST);
+  return OBLIVION_POWER_GRADE_MULT[normalizeOblivionStoneLevel(a0)];
 }
 
 // transcribed from L1205639-1205675

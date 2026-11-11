@@ -3,7 +3,7 @@
 // oblivionEnchantStones. Shape: rebuild-plan §3 Stone.
 //
 //   Stone = { id, type: EnchantStoneType, activated: bool, quality: 1..100|null, amplifyLevel: 0..10,
-//             oblivionLevel: 1..5|null (OBLIVION type only), stats: [{type, value}] }
+//             oblivionLevel: 1..7|null (OBLIVION type only), stats: [{type, value}] }
 //
 // `stats[].value` is the rolled value BEFORE amplify (stones.md §5 applies 1+0.06*L at calculation
 // time); `type` is a SecondaryStatType enum name. Attack Speed / Crit Damage / Minion Attack Speed
@@ -14,7 +14,7 @@ import { newId } from './character.js';
 import { gradeLetter } from '../format.js';
 
 export const MAX_AMPLIFY_LEVEL = AMPLIFY_TABLE.length; // stones.md §8: 10
-export const MAX_OBLIVION_GRADE = OBLIVION_GRADES.length; // stones.md §7: 5
+export const MAX_OBLIVION_GRADE = OBLIVION_GRADES.length; // stones.md §7: 7 since 2.9.4
 export const STONE_POOLS = ['base', 'oblivion'];
 
 /** Enum name -> {min, max, decimals, key} for every stat a stone may carry. */

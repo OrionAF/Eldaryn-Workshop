@@ -8,6 +8,7 @@ import fight from './arena-fight-warrior.json';
 import { normaliseCharacter } from '../../model/index.js';
 import { isGameProfile, gameProfileToCharacter } from '../../model/gameProfile.js';
 import { computePresetStats } from '../../build/stats.js';
+import { withPre294Relics } from './relicsPre294.js'; // the captures predate the 2.9.4 relic tables
 import { replayCheck } from '../../engine/pvp/replayCheck.js';
 
 describe('real profile capture (Warrior L72)', () => {
@@ -17,7 +18,7 @@ describe('real profile capture (Warrior L72)', () => {
 
   it('reproduces every server computedStats key for the active preset', () => {
     const character = normaliseCharacter(gameProfileToCharacter(profile));
-    const { computed } = computePresetStats(character, character.activePresetId, { realm: 'base' });
+    const { computed } = withPre294Relics(() => computePresetStats(character, character.activePresetId, { realm: 'base' }));
     const keys = Object.keys(profile.computedStats);
     expect(keys).toHaveLength(35);
     for (const key of keys) {
@@ -43,7 +44,7 @@ describe('real profile with a stale selected preset (the Sentinel case)', () => 
     expect(character.activePresetId).toBe(f.activePresetId);
     expect(preset.sheet).not.toBeNull();
     expect(report.find((e) => e.kind === 'liveLoadoutApplied')?.presetId).toBe(f.activePresetId);
-    const { computed } = computePresetStats(character, character.activePresetId, { realm: 'base' });
+    const { computed } = withPre294Relics(() => computePresetStats(character, character.activePresetId, { realm: 'base' }));
     for (const key of Object.keys(f.computedStats)) {
       expect(Math.abs(computed[key] - f.computedStats[key]), key).toBeLessThanOrEqual(1e-9);
     }

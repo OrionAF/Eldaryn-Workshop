@@ -123,7 +123,7 @@ export function pveModeOf(o, first) {
 // Oblivion strain
 // ---------------------------------------------------------------------------------------------
 
-// OBLIVION_DUNGEON constants, L1706694 (pve-content.md §Oblivion Dungeon)
+// OBLIVION_DUNGEON constants, L1706694; output cut from the 2.9.4 config L2036778 (pve-content.md §Oblivion Dungeon)
 const OBL = Object.freeze({
   pulseMs: 500,
   trueDamagePctPerPoint: 0.06,
@@ -135,8 +135,8 @@ const OBL = Object.freeze({
   biteHealing: 0.98,
   biteRegen: 0.99,
   biteRegenHalfPoint: 6,
-  outputCutMaxPct: 97,
-  outputCutHalfPoint: 6,
+  outputCutMaxPct: 99,
+  outputCutHalfPoint: 1,
   sustainCapPctPerSec: 1.5,
   mobAttackHpPct: 4,
   mobAttackHpCapMult: 4,
