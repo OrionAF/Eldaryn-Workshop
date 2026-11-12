@@ -56,11 +56,11 @@ describe('win-chance: the goal and its target', () => {
     expect(() => winRateTarget(0.009)).toThrow(/between/);
   });
 
-  it('Push keeps its 10% floor', () => {
-    expect(PUSH_TARGET.min).toBe(0.1);
+  it('the Push target also goes down to 1%', () => {
+    expect(PUSH_TARGET.min).toBe(0.01);
     const chapter = resolveTarget({ kind: 'chapter', chapter: 1, level: 1 });
-    expect(makeObjective({ kind: 'push', target: 0.1 }, chapter).spec.target).toBe(0.1);
-    expect(() => makeObjective({ kind: 'push', target: 0.05 }, chapter)).toThrow(/push target must be between 0.1 and 1/);
+    expect(makeObjective({ kind: 'push', target: 0.01 }, chapter).spec.target).toBe(0.01);
+    expect(() => makeObjective({ kind: 'push', target: 0.009 }, chapter)).toThrow(/push target must be between 0.01 and 1/);
   });
 });
 
