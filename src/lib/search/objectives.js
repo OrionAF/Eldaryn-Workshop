@@ -404,10 +404,10 @@ export function winRateTarget(v) {
   return v;
 }
 
-/** The default and the allowed range of a Push target (simulation.md §Push): it keeps the 10% floor. */
-export const PUSH_TARGET = Object.freeze({ default: WIN_RATE_TARGET.default, min: 0.1, max: 1 });
+/** The default and the allowed range of a Push target (simulation.md §Push). */
+export const PUSH_TARGET = Object.freeze({ default: WIN_RATE_TARGET.default, min: 0.01, max: 1 });
 
-/** A Push objective's target rate: the default when absent; throws outside [0.1, 1]. */
+/** A Push objective's target rate: the default when absent; throws outside [0.01, 1]. */
 export function pushTarget(v) {
   if (v == null) return PUSH_TARGET.default;
   if (!isNum(v) || v < PUSH_TARGET.min || v > PUSH_TARGET.max) {

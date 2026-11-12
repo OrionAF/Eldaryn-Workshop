@@ -2,8 +2,8 @@
   /**
    * WinRateTarget.svelte - the "Target" field of the "Reach a win rate" goal and of Push (backlog §4, §10;
    * simulation.md §Win rate, §Push). `objective` is the bindable plain spec `{kind: 'win-rate'|'push',
-   * target?}`; target is stored as a fraction, shown as a percent in [1, 100] for a win rate and [10, 100]
-   * for Push (default 95, `WIN_RATE_TARGET` / `PUSH_TARGET`). `start` names Push's starting rung; `rung` what a rung is called
+   * target?}`; target is stored as a fraction, shown as a percent in [1, 100] for both a win rate and
+   * Push (default 95, `WIN_RATE_TARGET` / `PUSH_TARGET`). `start` names Push's starting rung; `rung` what a rung is called
    * ('step', or 'level' on the Celestial Trial).
    */
   import NumberField from '../ui/NumberField.svelte';

@@ -4,7 +4,7 @@
    *            [Head]
    *            [Shoulders]
    * [Weapon]   [Chest]      [Off-hand]
-   * [Ring]     [Legs]       [Amulet]
+   * [Ring]     [Legs]       [Trinket]
    *            [Boots]
    * and, for the Oblivion realm, a fourth row: [Belt] [Gloves] [Rift Core].
    * A filled slot shows the item's game art (assets/gear.js gearImage) framed in its rarity colour,
