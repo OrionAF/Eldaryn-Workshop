@@ -41,11 +41,11 @@ describe('a saved setup with a retired objective', () => {
     expect(normaliseSetup({ target, objective: { kind: 'survival' } }, character()).objective).toEqual({ kind: 'survival' });
   });
 
-  it('a win-rate target of 1 % is kept and 0.9 % falls back to the default; Push keeps its 10 % floor', () => {
+  it('a win-rate or Push target of 1 % is kept and 0.9 % falls back to the default', () => {
     const target = { kind: 'dungeon', id: 'dungeon_1', step: 1 };
     expect(normaliseSetup({ target, objective: { kind: 'win-rate', target: 0.01 } }, character()).objective).toEqual({ kind: 'win-rate', target: 0.01 });
-    expect(normaliseSetup({ target, objective: { kind: 'push', target: 0.1 } }, character()).objective).toEqual({ kind: 'push', target: 0.1 });
-    expect(normaliseSetup({ target, objective: { kind: 'push', target: 0.09 } }, character()).objective).toEqual({ kind: 'push' });
+    expect(normaliseSetup({ target, objective: { kind: 'push', target: 0.01 } }, character()).objective).toEqual({ kind: 'push', target: 0.01 });
+    expect(normaliseSetup({ target, objective: { kind: 'push', target: 0.009 } }, character()).objective).toEqual({ kind: 'push' });
     expect(normaliseSetup({ target, objective: { kind: 'win-rate', target: 0.009 } }, character()).objective).toEqual({ kind: 'win-rate' });
   });
 });
