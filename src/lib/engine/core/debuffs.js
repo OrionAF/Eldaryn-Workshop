@@ -361,6 +361,34 @@ export function processDebuffsTick(state, dtMs, timestamp, rng) {
   return { targetHpDelta, debuffModifiers: computeDebuffModifiers(state), events };
 }
 
+/**
+ * True when processDebuffsTick would only count timers down this tick: no debuff expires and no
+ * BLEED / POISON tick is due (so no damage, no event, no rng draw, and the list keeps its entries).
+ * Reads only; a duel driver asks this before it skips a tick.
+ * @param {Debuff[]} state @param {number} dtMs
+ */
+export function debuffsTickIsQuiet(state, dtMs) {
+  for (let i = 0; i < state.length; i++) {
+    const d = state[i];
+    if (!d.isPermanent && d.remainingMs - dtMs <= 0) return false;
+    if ((d.type === DEBUFF_TYPES.BLEED || d.type === DEBUFF_TYPES.POISON) && d.tickIntervalMs > 0
+      && d.nextTickIn - dtMs <= 0) return false;
+  }
+  return true;
+}
+
+/** The timer countdown of a quiet tick (debuffsTickIsQuiet): what processDebuffsTick mutates then. */
+export function advanceQuietDebuffs(state, dtMs) {
+  for (let i = state.length - 1; i >= 0; i--) {
+    const d = state[i];
+    if (d.partyFeeders) {
+      for (const f of d.partyFeeders) if (!f.isPermanent) f.remainingMs -= dtMs;
+    }
+    if (!d.isPermanent) d.remainingMs -= dtMs;
+    if ((d.type === DEBUFF_TYPES.BLEED || d.type === DEBUFF_TYPES.POISON) && d.tickIntervalMs > 0) d.nextTickIn -= dtMs;
+  }
+}
+
 // port of critDownChance L1093869-1093903
 /** Crit chance after CRIT_DOWN: max(0, chance - reduction). Unchanged with no debuffs. */
 export function critDownChance(chance, state) {

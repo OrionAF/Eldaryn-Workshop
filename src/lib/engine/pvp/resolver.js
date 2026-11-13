@@ -9,20 +9,21 @@
 import { tickDazedMs } from '../core/stances.js';
 import { getEquippedStanceConfig, stanceRuntimeFields } from '../sources/stance.js';
 import { ARENA_CONSTANTS } from '../../game/combatPvp.js';
-import { processAttack, applyRegen, pvpRatingToFraction, pvpRatedDamage } from './attack.js';
+import { processAttack, applyRegen, pvpRatingToFraction, pvpRatedDamage, REGEN_PULSE_MS } from './attack.js';
 import { applyPvpHpBuff, applyPvpHpBuffPair, getPvpHpMultiplier } from './hpBuff.js';
 import {
   LEGACY_PVP_BALANCE, DEFAULT_PVP_BALANCE, pvpDamageRampMult, pvpLateFightDamageMult, rampDebuffTick,
 } from './balance.js';
-import { processArenaSpells } from './arenaSpells.js';
+import { processArenaSpells, arenaSpellsTickIsQuiet } from './arenaSpells.js';
 import { createDuelState, createReactions } from './reactions.js';
 import { duelEvent, hpAfter } from './events.js';
 import {
   initSpellRuntimes, computeActiveBuffModifiers, isSpellBuffActive, activeBuffThornsPercent, hasActiveEffects,
-  EMPTY_BUFF_MODIFIERS,
+  EMPTY_BUFF_MODIFIERS, advanceQuietSpells,
 } from '../core/spells.js';
 import {
   initDebuffState, processDebuffsTick, computeDebuffModifiers, slowedAttackSpeed, weakenedAttack,
+  debuffsTickIsQuiet, advanceQuietDebuffs,
 } from '../core/debuffs.js';
 import { applyBuffsToEntity, hasActiveBuffs, getBuffedMaxHp } from '../core/buffs.js';
 import { absorbWithShield } from '../core/shield.js';
@@ -109,6 +110,9 @@ function countDown(e, dtMs) {
   if (e.fearedMs > 0) e.fearedMs = Math.max(0, e.fearedMs - dtMs);
 }
 
+// Whether castLockoutMs(e) is above 0 once countDown has run for this tick (a timer at or below 0 stays).
+const lockedOutAfter = (e, dtMs) => e.silencedMs - dtMs > 0 || e.paralyzedMs - dtMs > 0 || e.fearedMs - dtMs > 0;
+
 // computeActiveBuffModifiers sums the active runtimes only; skip the walk when none is active.
 const buffMods = (runtimes) => (hasActiveEffects(runtimes) ? computeActiveBuffModifiers(runtimes) : EMPTY_BUFF_MODIFIERS);
 
@@ -136,12 +140,13 @@ function syncStatus(to, from) {
  * @param {Object|null} a11 defender stack context
  * @param {Object|null} a12 attacker summon config (getEquippedSummonConfig)
  * @param {Object|null} a13 defender summon config
- * @param {{rng: () => number, log?: boolean, defenderDamageVariance?: number, balance?: Object}} opts
+ * @param {{rng: () => number, log?: boolean, defenderDamageVariance?: number, balance?: Object, quietTicks?: boolean}} opts
  *   `log=false` is the event-free mode: same draws and state, `ticks` is []. `defenderDamageVariance`
  *   (default 0, the arena) is not a client rule: v > 0 scales the defender's attack on each swing by a
  *   uniform draw in [1 - v, 1 + v], rounded, from its own 'defender-variance' lane. Only the Fortress boss
  *   port sets it (clan-fortress.md §1.4). `balance` is the client's 15th argument (pvp/balance.js; default
  *   LEGACY): its damage ramps scale every hit (updates-2.8.2.md §2). The HP multiplier is the caller's.
+ *   `quietTicks: false` turns the quiet-tick skip off (the plain loop; quietTicks.test.js compares the two).
  * @returns {ArenaPvpResult}
  */
 export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, opts) {
@@ -306,9 +311,99 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     if (defE !== def) defE.hp = def.hp;
   };
 
+  // The quiet-tick skip (not the client's; same state, draws and rows). Most ticks only count timers
+  // down. `calm` says the values below, read in the last full tick, still hold: they depend on each
+  // side's spell runtimes and debuffs, which change only in a full tick before they are read, and on the
+  // stack counters, which a swing's reactions and the Sunder decay move (a swing changes nothing else they
+  // read). So calm holds while no stack counter moved. A calm tick is quiet when no swing is due,
+  // neither HP clamp would act, and each side's spells and debuffs only count down
+  // (arenaSpellsTickIsQuiet, debuffsTickIsQuiet); its regen pulse runs as in a full tick. Minions keep
+  // the plain loop.
+  const skipQuiet = opts.quietTicks !== false && !s.hasMinions;
+  let calm = false;
+  let qIntervalA = 0; // each side's swing interval
+  let qIntervalD = 0;
+  let qRegenA = 0; // the hpRegen its regen pulse reads (after Wound and Sunder)
+  let qRegenD = 0;
+  let qMaxA = 0; // its HP cap with the spell and Bulwark bonuses
+  let qMaxD = 0;
+  let qHpPctA = 0; // the HP bonus processArenaSpells clamps the caster's HP by
+  let qHpPctD = 0;
+  let qBulwarkA = false; // whether the loop's Bulwark clamp runs for it
+  let qBulwarkD = false;
+
   // --- the clock (L1456045-1457455) ---
   while (A.hp > 0 && D.hp > 0 && elapsed < horizon) {
     const t = elapsed + dt;
+    if (calm) {
+      const sA = swingA + dt;
+      const sD = swingD + dt;
+      const rA = regenA + dt;
+      const rD = regenD + dt;
+      if (!(sA >= qIntervalA) && !(sD >= qIntervalD)
+        && !(aRt && qHpPctA <= 0 && A.hp > A.maxHp) && !(qBulwarkA && A.hp > qMaxA)
+        && !(dRt && qHpPctD <= 0 && D.hp > D.maxHp) && !(qBulwarkD && D.hp > qMaxD)
+        && (!aRt || arenaSpellsTickIsQuiet(aRt, A, D, dt, lockedOutAfter(A, dt)))
+        && (!dRt || arenaSpellsTickIsQuiet(dRt, D, A, dt, lockedOutAfter(D, dt)))
+        && (dDebuffs.length === 0 || debuffsTickIsQuiet(dDebuffs, dt))
+        && (aDebuffs.length === 0 || debuffsTickIsQuiet(aDebuffs, dt))) {
+        const start = events.length;
+        s.timestamp = t;
+        swingA = sA;
+        swingD = sD;
+        countDown(A, dt);
+        countDown(D, dt);
+        if (aRt) advanceQuietSpells(aRt, dt);
+        if (dRt) advanceQuietSpells(dRt, dt);
+        if (dDebuffs.length > 0) advanceQuietDebuffs(dDebuffs, dt);
+        if (aDebuffs.length > 0) advanceQuietDebuffs(aDebuffs, dt);
+        // the regen pulse of the full tick below (every REGEN_PULSE_MS), on the entity itself: the buffed
+        // copy it runs on there differs from the entity only in hpRegen, which is set for the call
+        if (rA >= REGEN_PULSE_MS) {
+          const own = A.hpRegen;
+          A.hpRegen = qRegenA;
+          const ra = applyRegen(A, rA, qMaxA);
+          A.hpRegen = own;
+          regenA = ra.timer;
+          if (ra.healed > 0 && log) events.push(duelEvent(t, 'attacker_regen', ra.healed, A, D, false));
+          if (ra.overflow > 0 && A.shieldMax > 0 && A.shieldHp < A.shieldMax) A.shieldHp = Math.min(A.shieldMax, A.shieldHp + ra.overflow);
+        } else regenA = rA;
+        if (rD >= REGEN_PULSE_MS) {
+          const own = D.hpRegen;
+          D.hpRegen = qRegenD;
+          const rd = applyRegen(D, rD, qMaxD);
+          D.hpRegen = own;
+          regenD = rd.timer;
+          if (rd.healed > 0 && log) events.push(duelEvent(t, 'defender_regen', rd.healed, A, D, false));
+          if (rd.overflow > 0 && D.shieldMax > 0 && D.shieldHp < D.shieldMax) D.shieldHp = Math.min(D.shieldMax, D.shieldHp + rd.overflow);
+        } else regenD = rD;
+        const rows = events.length > start; // regen rows, with log only
+        if (s.stacksActive) {
+          const lostA = aStack.tick(dt);
+          const lostD = dStack.tick(dt);
+          if (lostA || lostD) calm = false;
+          if (rows) {
+            const sa = aStack.snapshot();
+            const sd = dStack.snapshot();
+            for (let i = start; i < events.length; i++) {
+              const ev = events[i];
+              ev.attackerBulwarkStacks = sa.bulwarkStacks;
+              ev.attackerSunderStacks = sa.sunderStacks;
+              ev.defenderBulwarkStacks = sd.bulwarkStacks;
+              ev.defenderSunderStacks = sd.sunderStacks;
+            }
+          }
+        }
+        if (rows && s.hasShields) R.tagShieldSnapshots(start);
+        elapsed = t;
+        continue;
+      }
+    }
+    // the stack counters at the start of the tick: the tick's own reads below all see these
+    const aSelf0 = s.stacksActive ? aStack.selfStacks() : 0;
+    const aTarget0 = s.stacksActive ? aStack.targetStacks() : 0;
+    const dSelf0 = s.stacksActive ? dStack.selfStacks() : 0;
+    const dTarget0 = s.stacksActive ? dStack.targetStacks() : 0;
     s.timestamp = t;
     if (ramps) {
       const e = t - combatStart;
@@ -352,6 +447,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
       aMods = spellsOut.buffModifiers;
       aBuff = aMods;
       aMaxHp = getBuffedMaxHp(A.maxHp, aBuff.hpPercent);
+      qHpPctA = (aBuff.hpPercent ?? 0) + aStackHp;
     }
     if (dRt) {
       dSpellIn.timestamp = t;
@@ -363,12 +459,16 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
       dMods = spellsOut.buffModifiers;
       dBuff = dMods;
       dMaxHp = getBuffedMaxHp(D.maxHp, dBuff.hpPercent);
+      qHpPctD = (dBuff.hpPercent ?? 0) + dStackHp;
     }
     // Bulwark's max-HP bonus stacks on the spell one and clamps HP (L1456422-1456487)
+    qBulwarkA = false;
+    qBulwarkD = false;
     if (s.stacksActive) {
       if (aStack.active) {
         const m = aStack.selfModifiers();
         if (m.hpPercent > 0) {
+          qBulwarkA = true;
           aMaxHp = getBuffedMaxHp(A.maxHp, (aBuff ? aBuff.hpPercent : 0) + m.hpPercent);
           if (A.hp > aMaxHp) A.hp = aMaxHp;
         }
@@ -376,6 +476,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
       if (dStack.active) {
         const m = dStack.selfModifiers();
         if (m.hpPercent > 0) {
+          qBulwarkD = true;
           dMaxHp = getBuffedMaxHp(D.maxHp, (dBuff ? dBuff.hpPercent : 0) + m.hpPercent);
           if (D.hp > dMaxHp) D.hp = dMaxHp;
         }
@@ -413,6 +514,10 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
       if (onA > 0) aE.hpRegen = Math.max(0, aE.hpRegen - onA);
       if (onD > 0) dE.hpRegen = Math.max(0, dE.hpRegen - onD);
     }
+    qRegenA = aE.hpRegen;
+    qRegenD = dE.hpRegen;
+    qMaxA = aMaxHp;
+    qMaxD = dMaxHp;
     const ra = applyRegen(aE, regenA, aMaxHp);
     regenA = ra.timer;
     aE.hpRegen = aRegen0;
@@ -437,6 +542,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     const attackA = aE.attack;
     aE.attack = weakenedAttack(attackA, aDebuffs);
     const intervalA = Math.round(1000 / slowedAttackSpeed(aE.attackSpeed, aDebuffs));
+    qIntervalA = intervalA;
     if (swingA >= intervalA) {
       swingA -= intervalA;
       swing(aE, dE, A, D, t, true, aMaxHp, dMin, aDebuffs, dStack, aStack);
@@ -450,6 +556,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     const attackD = dE.attack;
     dE.attack = weakenedAttack(attackD, dDebuffs);
     const intervalD = Math.round(1000 / slowedAttackSpeed(dE.attackSpeed, dDebuffs));
+    qIntervalD = intervalD;
     if (swingD >= intervalD) {
       swingD -= intervalD;
       if (dVariance > 0) {
@@ -468,9 +575,13 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
 
     // end of tick (L1457231-1457309)
     if (s.hasMinions) R.finishMinionTick(start);
+    calm = skipQuiet;
     if (s.stacksActive) {
       aStack.tick(dt);
       dStack.tick(dt);
+      // a swing's reactions or the Sunder decay moved a counter: the values read above are stale
+      if (aStack.selfStacks() !== aSelf0 || aStack.targetStacks() !== aTarget0
+        || dStack.selfStacks() !== dSelf0 || dStack.targetStacks() !== dTarget0) calm = false;
       if (log) {
         const sa = aStack.snapshot();
         const sd = dStack.snapshot();
@@ -585,13 +696,13 @@ export function fighterDuelArgs(f) {
  *   DEFAULT_PVP_BALANCE.
  * @returns {DuelSummary & {result: ArenaPvpResult}}
  */
-export function runDuel({ attacker, defender, rng, log = false, balance = DEFAULT_PVP_BALANCE }) {
+export function runDuel({ attacker, defender, rng, log = false, balance = DEFAULT_PVP_BALANCE, quietTicks }) {
   const a = attacker.stackCtx ? attacker : fighterDuelArgs(attacker);
   const d = defender.stackCtx ? defender : fighterDuelArgs(defender);
   const [aStats, dStats] = applyPvpHpBuffPair(a.stats, d.stats, a.level, d.level, balance);
   const r = simulateArenaPvP(
     aStats, dStats, a.spells, d.spells, a.equipped, d.equipped, a.glyphCombat, d.glyphCombat,
-    a.shield, d.shield, a.stackCtx, d.stackCtx, a.summon, d.summon, { rng, log, balance },
+    a.shield, d.shield, a.stackCtx, d.stackCtx, a.summon, d.summon, { rng, log, balance, quietTicks },
   );
   const timedOut = r.attackerHpRemaining > 0 && r.defenderHpRemaining > 0;
   const summary = {

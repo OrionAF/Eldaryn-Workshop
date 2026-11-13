@@ -8,7 +8,7 @@
 // spell crit rolls inside processSpellsTick (draw order is behaviour).
 import { PVP_RATING } from '../../game/stats.js';
 import { castLockoutMs } from '../core/stances.js';
-import { processSpellsTick } from '../core/spells.js';
+import { processSpellsTick, spellsTickIsQuiet } from '../core/spells.js';
 import { applyDebuff, computeDebuffModifiers, weakenedAttack } from '../core/debuffs.js';
 import { getBuffedMaxHp } from '../core/buffs.js';
 import { absorbWithShield, shieldRefillAmount } from '../core/shield.js';
@@ -127,6 +127,33 @@ const SPELL_INPUT = {
   offensiveConditions: true, selfConditionsMet: false, spellDamage: 0, targetSpellResist: 0, spellCritChance: 0,
   critDamage: 0, spellVamp: 0, silencedMs: 0, healingMult: 1, healBaseMaxHp: 0, minionAlive: false, damageMult: 1,
 };
+
+// What processArenaSpells hands processSpellsTick, reduced to the fields spellsTickIsQuiet reads.
+const QUIET_INPUT = {
+  dtMs: 0, maxHp: 0, hp: 0, enemyHp: 0, enemyMaxHp: 0, offensiveConditions: SPELL_INPUT.offensiveConditions,
+  selfConditionsMet: SPELL_INPUT.selfConditionsMet, silencedMs: 0, minionAlive: false,
+};
+
+/**
+ * True when this tick of processArenaSpells would only count the caster's spell timers down
+ * (advanceQuietSpells): nothing casts, ticks or ends. The caller checks the pass's own HP clamp.
+ * @param {Array<Object>} runtimes  the caster's spell runtimes
+ * @param {Object} caster @param {Object} target  the entities as the pass would see them
+ * @param {number} dtMs
+ * @param {boolean} lockedOut  castLockoutMs(caster) > 0 as the pass would read it (after the tick's status countdown)
+ * @param {Object|null} [casterMinion]
+ */
+export function arenaSpellsTickIsQuiet(runtimes, caster, target, dtMs, lockedOut, casterMinion = null) {
+  const qi = QUIET_INPUT;
+  qi.dtMs = dtMs;
+  qi.maxHp = caster.maxHp;
+  qi.hp = caster.hp;
+  qi.enemyHp = target.hp;
+  qi.enemyMaxHp = target.maxHp;
+  qi.silencedMs = lockedOut ? 1 : 0;
+  qi.minionAlive = isMinionAlive(casterMinion);
+  return spellsTickIsQuiet(runtimes, qi);
+}
 
 // port of processArenaSpells L1453857-1454667
 /**
