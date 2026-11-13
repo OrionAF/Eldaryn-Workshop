@@ -15,6 +15,7 @@
   import { getOblivionSetup, setOblivionSetup } from '../../lib/oblivionSetup.svelte.js';
   import { untrack } from 'svelte';
   import { formatFlat, formatRate } from '../../lib/format.js';
+  import Num from '../ui/Num.svelte';
   import { oblivionFights } from '../../lib/calibration.js';
   import RunEstimate from '../ui/RunEstimate.svelte';
   import Panel from '../ui/Panel.svelte';
@@ -75,6 +76,7 @@
     }
   });
   const power = $derived(Math.round(Number(stats?.totalOblivionPower) || 0));
+  const flatOrDash = (v) => (v == null ? '-' : formatFlat(v));
   const baseRows = $derived(strainRows(power, from, to));
 
   // The latest scan of this character; its result is read straight off the job.
@@ -130,9 +132,9 @@
     {:else}
       <Panel title="Summary" scope="oblivion">
         <div class="strip">
-          <div><span class="cap-label">Oblivion Power</span><strong class="num" data-testid="power">{formatFlat(power)}</strong></div>
-          <div><span class="cap-label">Attack</span><strong class="num">{stats?.totalAttack == null ? '-' : formatFlat(stats.totalAttack)}</strong></div>
-          <div><span class="cap-label">HP</span><strong class="num">{stats?.totalHp == null ? '-' : formatFlat(stats.totalHp)}</strong></div>
+          <div><span class="cap-label">Oblivion Power</span><strong class="num" data-testid="power"><Num value={power} format={formatFlat} flash="verdict" /></strong></div>
+          <div><span class="cap-label">Attack</span><strong class="num"><Num value={stats?.totalAttack} format={flatOrDash} flash="verdict" /></strong></div>
+          <div><span class="cap-label">HP</span><strong class="num"><Num value={stats?.totalHp} format={flatOrDash} flash="verdict" /></strong></div>
           <div>
             <span class="cap-label">Highest floor won {threshold}%+ of the time</span>
             <strong class="num" data-testid="max-floor">{stale ? '-' : maxLabel}</strong>

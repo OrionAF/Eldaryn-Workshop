@@ -66,7 +66,7 @@
           aria-valuenow={Math.round(f * 100)}
           aria-valuetext="{s.label}, {s.total > 0 && s.done != null ? `${s.done} of ${s.total}` : stateOf(s)}"
         >
-          <i style="width: {f * 100}%"></i>
+          <i style="transform: scaleX({f})"></i>
         </div>
       </div>
     {/each}
@@ -100,8 +100,18 @@
   .lbl b { color: var(--text-ink); font-weight: var(--fw-bold); overflow: hidden; text-overflow: ellipsis; }
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
   .bar { height: calc(var(--sp-1) * 1.25); background: var(--surface-4); border-radius: 1px; overflow: hidden; }
-  .bar i { display: block; height: 100%; background: var(--brass-500); }
-  .is-active .bar i { background: var(--ember-500); box-shadow: var(--glow-ember); }
+  /* The fill scales from the left, so progress eases between updates. A finished segment cools from ember
+     to brass over --dur-flash (a transition, so one that mounts already done does not replay it), and the
+     running one breathes; state still rests on the counts and labels (design-system §2.13). */
+  .bar i {
+    display: block;
+    height: 100%;
+    background: var(--brass-500);
+    transform-origin: left;
+    transition: transform var(--dur-2) linear, background-color var(--dur-flash) var(--ease-out);
+  }
+  .is-active .bar i { background: var(--ember-500); box-shadow: var(--glow-ember); transition: transform var(--dur-2) linear; }
+  .is-active .bar { animation: ember-breathe 1.8s ease-in-out infinite; }
   .is-active .lbl b { color: var(--ember-300); }
   .is-queued .bar, .is-cancelled .bar { background: transparent; border: 1px dashed var(--line-control); }
   .is-queued .lbl, .is-queued .lbl b, .is-cancelled .lbl, .is-cancelled .lbl b { color: var(--text-muted); font-weight: var(--fw-medium); }
@@ -129,5 +139,6 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .bar i { transition: none; }
+    .is-active .bar { animation: none; }
   }
 </style>

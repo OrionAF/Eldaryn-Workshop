@@ -38,6 +38,16 @@
       : `Runs: ${running} running, ${jobsStore.list.filter((j) => j.status !== 'running' && j.status !== 'queued').length} finished`,
   );
 
+  // A run that finishes sends one ring out from the pill (design-system §2.13); the tray holds the result.
+  const finished = $derived(jobsStore.list.filter((j) => j.status === 'finished').length);
+  let pings = $state(0);
+  let lastFinished = null;
+  let pingCount = 0;
+  $effect(() => {
+    if (lastFinished !== null && finished > lastFinished) pings = ++pingCount;
+    lastFinished = finished;
+  });
+
   function close() {
     open = false;
     button?.focus();
@@ -61,10 +71,13 @@
   aria-label={label}
   onclick={() => (open = !open)}
 >
-  <svg class="jobs-ring" viewBox="0 0 20 20" aria-hidden="true">
-    <circle class="track" cx="10" cy="10" r="7.5" />
-    {#if running > 0}<circle class="arc" cx="10" cy="10" r="7.5" stroke-dasharray="16 32" />{/if}
-  </svg>
+  <span class="ring-wrap">
+    <svg class="jobs-ring" viewBox="0 0 20 20" aria-hidden="true">
+      <circle class="track" cx="10" cy="10" r="7.5" />
+      {#if running > 0}<circle class="arc" cx="10" cy="10" r="7.5" stroke-dasharray="16 32" />{/if}
+    </svg>
+    {#key pings}{#if pings > 0}<span class="ping" aria-hidden="true"></span>{/if}{/key}
+  </span>
   <span class="jobs-lbl">Runs</span>
   {#if running > 0}<span class="count" data-testid="jobs-running">{running}</span>{/if}
 </button>
@@ -89,7 +102,16 @@
   }
   .jobs-pill:hover { border-color: var(--line-control-hover); background: var(--surface-3); }
   .jobs-pill[aria-expanded='true'] { border-color: var(--ember-500); background: var(--surface-3); }
+  .ring-wrap { position: relative; display: inline-flex; flex: none; }
   .jobs-ring { width: 18px; height: 18px; flex: none; }
+  .ping {
+    position: absolute;
+    inset: 1px;
+    border-radius: 50%;
+    border: 2px solid var(--brass-200);
+    pointer-events: none;
+    animation: ping var(--dur-flash) var(--ease-out) forwards;
+  }
   .jobs-lbl { max-width: 6ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .jobs-ring circle { fill: none; stroke-width: 2.5; }
   .track { stroke: var(--line-rule); }

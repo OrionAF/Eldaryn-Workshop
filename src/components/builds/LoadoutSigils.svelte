@@ -8,6 +8,7 @@
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { sigilBySpecies, utilitySlotSpellType } from '../../lib/game/sigils.js';
   import { formatFlat } from '../../lib/format.js';
+  import Num from '../ui/Num.svelte';
   import {
     slotUnlockLevel,
     genericSigils,
@@ -130,8 +131,8 @@
   </div>
 
   <p class="totals">
-    Bonus from equipped sigils: Attack <span class="num" data-testid="equip-atk">{formatFlat(totals.attack)}</span>
-    · Health <span class="num" data-testid="equip-hp">{formatFlat(totals.hp)}</span>
+    Bonus from equipped sigils: Attack <span class="num" data-testid="equip-atk"><Num value={totals.attack} format={formatFlat} flash="verdict" /></span>
+    · Health <span class="num" data-testid="equip-hp"><Num value={totals.hp} format={formatFlat} flash="verdict" /></span>
   </p>
 
   <section class="conditions" aria-label="Activation conditions">

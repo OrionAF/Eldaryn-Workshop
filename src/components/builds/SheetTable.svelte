@@ -14,6 +14,7 @@
   import { statNumber, statText, gapText, isFlatStat } from './statText.js';
   import Checkbox from '../ui/Checkbox.svelte';
   import Button from '../ui/Button.svelte';
+  import Num from '../ui/Num.svelte';
   import { orderStats, orderedStatLabel } from '../../lib/ui/statOrder.js';
 
   /** @type {{keys: string[], values: Object<string, number>, computed: Object, contributions?: (() => Object)|null, onChange: (key: string, value: number|null) => void}} */
@@ -159,7 +160,7 @@
               {m.label}
             {/if}
           </th>
-          {#if hasModel}<td class="r num dim" data-label="App" title="The number the app works out for this stat">{statText(m.key, computed?.[m.key])}</td>{/if}
+          {#if hasModel}<td class="r num dim" data-label="App" title="The number the app works out for this stat"><Num value={computed?.[m.key]} format={(v) => statText(m.key, v)} /></td>{/if}
           <td class="r" data-label="In-game stats">
             <span class="input-wrap">
               <input

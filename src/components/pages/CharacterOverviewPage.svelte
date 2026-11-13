@@ -19,6 +19,7 @@
   import NumberField from '../ui/NumberField.svelte';
   import Checkbox from '../ui/Checkbox.svelte';
   import Button from '../ui/Button.svelte';
+  import Num from '../ui/Num.svelte';
   import Modal from '../Modal.svelte';
 
   // eslint-disable-next-line no-unused-vars
@@ -141,11 +142,11 @@
         {#if power}
           <div class="power" data-testid="combat-power">
             <span class="micro-label">Combat Power · {activePreset.name}{realm === 'oblivion' ? ' · Oblivion' : ''}</span>
-            <span class="hero">{formatFlat(power.power)}</span>
+            <span class="hero"><Num value={power.power} format={formatFlat} flash="verdict" /></span>
             <details>
               <summary>Breakdown</summary>
               <dl class="terms">
-                {#each POWER_TERMS as t (t)}<dt>{TERM_LABEL[t]}</dt><dd>{formatFlat(power.terms[t])}</dd>{/each}
+                {#each POWER_TERMS as t (t)}<dt>{TERM_LABEL[t]}</dt><dd><Num value={power.terms[t]} format={formatFlat} flash="verdict" /></dd>{/each}
               </dl>
             </details>
             {#if power.gaps.length}

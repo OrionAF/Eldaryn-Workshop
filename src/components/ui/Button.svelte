@@ -70,8 +70,11 @@
     font-size: var(--fs-14);
     font-weight: var(--fw-bold);
     white-space: nowrap;
-    transition: background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+    transition: transform var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
   }
+  /* Press (§2.13): gives under the pointer at once, comes back on release. A full-width button moves less. */
+  .btn:active { transform: scale(0.97); transition-duration: var(--dur-press); }
+  .btn-block:active { transform: scale(0.99); }
   .btn-primary { background: var(--ember-500); color: var(--on-ember); border-color: var(--ember-700); }
   .btn-primary:hover { background: var(--ember-300); }
   .btn-primary:active { background: var(--ember-600); box-shadow: inset 0 2px 0 color-mix(in srgb, black 25%, transparent); }
@@ -97,6 +100,7 @@
     cursor: not-allowed;
     text-decoration: none;
     box-shadow: none;
+    transform: none;
   }
   .btn[aria-busy='true'] { position: relative; overflow: hidden; pointer-events: none; }
   .btn[aria-busy='true']::after {

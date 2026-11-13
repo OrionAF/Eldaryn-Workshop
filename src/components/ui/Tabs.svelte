@@ -10,6 +10,8 @@
    * `hideSingle` hides the strip while there is only one tab (a page whose other tabs are optional);
    * the tab stays in the DOM so its panel's aria-labelledby still resolves.
    */
+  import { glide } from '../../lib/motion.js';
+
   let { items, value = $bindable(), label = 'Sections', idPrefix = undefined, hideSingle = false, onchange = () => {} } = $props();
   const uid = $props.id();
   const prefix = $derived(idPrefix ?? uid);
@@ -38,7 +40,7 @@
   }
 </script>
 
-<div class="tabs" role="tablist" aria-label={label} tabindex="-1" hidden={hideSingle && items.length < 2} onkeydown={onKeyDown}>
+<div class="tabs" role="tablist" aria-label={label} tabindex="-1" hidden={hideSingle && items.length < 2} onkeydown={onKeyDown} use:glide={{ on: value, selector: '[aria-selected="true"]' }}>
   {#each items as tab (tab.id)}
     <button
       type="button"
@@ -79,6 +81,7 @@
     align-items: center;
     gap: 6px;
     white-space: nowrap;
+    transition: color var(--dur-1) var(--ease-out);
   }
   .tab:hover { color: var(--text-ink); }
   .tab[aria-selected='true'] { color: var(--text-ink); font-weight: var(--fw-bold); }

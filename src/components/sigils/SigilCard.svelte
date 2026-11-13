@@ -7,6 +7,7 @@
    * Adapted from the v1 components/SigilsScreen.svelte card.
    */
   import { rarityClass, formatFlat } from '../../lib/format.js';
+  import Num from '../ui/Num.svelte';
   import { sigilImage } from '../../lib/assets.js';
   import { MAX_SIGIL_LEVEL, isFormSigil, isGrantedSigil } from '../../lib/model/sigils.js';
   import PresetMenu from '../character/PresetMenu.svelte';
@@ -66,9 +67,9 @@
   </div>
 
   <p class="base-stats">
-    Attack <span class="stat-num" data-testid="atk">{formatFlat(attack)}</span>
+    Attack <span class="stat-num" data-testid="atk"><Num value={attack} format={formatFlat} flash="verdict" /></span>
     <span class="sep">|</span>
-    Health <span class="stat-num" data-testid="hp">{formatFlat(hp)}</span>
+    Health <span class="stat-num" data-testid="hp"><Num value={hp} format={formatFlat} flash="verdict" /></span>
   </p>
 
   {#if showEffects}

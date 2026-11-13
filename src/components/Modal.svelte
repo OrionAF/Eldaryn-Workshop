@@ -97,12 +97,34 @@
     max-height: calc(100vh - 64px);
     overflow: hidden;
     box-shadow: var(--elev-3);
+    /* Closed is the resting style, so closing eases back to it; `display` and `overlay` hold the dialog
+       on screen until it has (design-system §2.13). Where those two are not transitionable it just goes. */
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+    transition:
+      opacity var(--dur-1) var(--ease-out),
+      transform var(--dur-1) var(--ease-out),
+      overlay var(--dur-1) allow-discrete,
+      display var(--dur-1) allow-discrete;
+  }
+  .modal[open] { opacity: 1; transform: none; transition-duration: var(--dur-2); }
+  @starting-style {
+    .modal[open] { opacity: 0; transform: translateY(8px) scale(0.98); }
   }
 
   .modal.wide { width: min(var(--modal-wide-w), calc(100vw - 32px)); }
 
   .modal::backdrop {
     background: var(--surface-scrim);
+    opacity: 0;
+    transition:
+      opacity var(--dur-1) var(--ease-out),
+      overlay var(--dur-1) allow-discrete,
+      display var(--dur-1) allow-discrete;
+  }
+  .modal[open]::backdrop { opacity: 1; transition-duration: var(--dur-2); }
+  @starting-style {
+    .modal[open]::backdrop { opacity: 0; }
   }
 
   .modal-body {

@@ -62,7 +62,7 @@
     border-radius: var(--r-2);
     cursor: pointer;
     box-shadow: inset 4px 0 0 var(--r-edge, var(--line-rule)), inset 0 0 18px color-mix(in srgb, var(--r-edge, transparent) 8%, transparent);
-    transition: background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+    transition: transform var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
   }
   .art {
     width: 40px;
@@ -87,8 +87,11 @@
   }
   .meta { font-size: var(--fs-12); color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tile:hover { background: var(--surface-4); border-color: var(--line-control-hover); }
-  .tile:active { background: var(--surface-3); }
+  .tile:active { background: var(--surface-3); transform: scale(0.98); transition-duration: var(--dur-press); }
+  .tile[aria-disabled='true']:active { transform: none; }
+  /* The picked tile lands: it settles into its ember ring (§2.13). */
   .tile[aria-pressed='true'] {
+    animation: land var(--dur-3) var(--ease-spring);
     background: var(--surface-4);
     border-color: var(--ember-500);
     box-shadow: inset 4px 0 0 var(--r-edge, var(--line-rule)), 0 0 0 1px var(--ember-500), inset 0 0 18px color-mix(in srgb, var(--r-edge, transparent) 8%, transparent);

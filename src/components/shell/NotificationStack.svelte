@@ -8,12 +8,13 @@
   import { notifications, dismiss, pauseDismiss, resumeDismiss, runAction } from '../../lib/notify.svelte.js';
   import Banner from '../ui/Banner.svelte';
   import Button from '../ui/Button.svelte';
+  import { leave, settleChildren } from '../../lib/motion.js';
 
   const VARIANT = { info: 'info', success: 'info', warn: 'warn', error: 'error' };
   const LEAD = { success: 'Done.' };
 </script>
 
-<div class="stack" role="status" aria-live="polite" aria-label="Notifications">
+<div class="stack" role="status" aria-live="polite" aria-label="Notifications" use:settleChildren>
   {#each notifications.toasts as t (t.id)}
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
@@ -23,6 +24,7 @@
       onmouseleave={() => resumeDismiss(t.id)}
       onfocusin={() => pauseDismiss(t.id)}
       onfocusout={() => resumeDismiss(t.id)}
+      out:leave={{ x: 24 }}
     >
       <Banner variant={VARIANT[t.kind] ?? 'info'} lead={LEAD[t.kind] ?? ''} onclose={() => dismiss(t.id)}>
         {t.message}
@@ -45,7 +47,7 @@
     z-index: var(--z-toast);
     pointer-events: none;
   }
-  .toast { pointer-events: auto; box-shadow: var(--elev-2); border-radius: var(--r-1); }
+  .toast { pointer-events: auto; box-shadow: var(--elev-2); border-radius: var(--r-1); transform-origin: bottom right; animation: toast-in var(--dur-3) var(--ease-spring); }
   @media (max-width: 700px) {
     .stack { right: var(--sp-4); bottom: calc(56px + var(--sp-3) + env(safe-area-inset-bottom, 0px)); }
   }
