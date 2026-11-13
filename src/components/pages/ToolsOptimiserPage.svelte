@@ -50,6 +50,7 @@
   import Banner from '../ui/Banner.svelte';
   import EmptyState from '../ui/EmptyState.svelte';
   import RunProgress from '../ui/RunProgress.svelte';
+  import RunPulse from '../ui/RunPulse.svelte';
   import StepList from '../ui/StepList.svelte';
   import { searchStepRows } from '../../lib/ui/searchSteps.js';
   import { phasesFor } from '../../lib/ui/runPhases.js';
@@ -522,6 +523,7 @@
 
           {#if segments.length}
             <div data-testid="optimiser-progress"><RunProgress {segments} /></div>
+            {#if live}<RunPulse job={live} count={live.progress?.counts?.fights ?? null} />{/if}
             <details class="phases" data-testid="phase-help">
               <summary>What the steps mean</summary>
               <dl>

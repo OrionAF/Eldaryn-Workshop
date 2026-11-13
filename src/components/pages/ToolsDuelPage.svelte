@@ -40,6 +40,7 @@
   import Banner from '../ui/Banner.svelte';
   import EmptyState from '../ui/EmptyState.svelte';
   import RunProgress from '../ui/RunProgress.svelte';
+  import RunPulse from '../ui/RunPulse.svelte';
   import WinRateTable from '../duel/WinRateTable.svelte';
   import FightersTable from '../duel/FightersTable.svelte';
   import SampleDuel from '../duel/SampleDuel.svelte';
@@ -393,6 +394,7 @@
           {#if segments.length}
             <div data-testid="duel-progress"><RunProgress {segments} /></div>
           {/if}
+          <RunPulse {job} count={job.progress?.done ?? null} />
           {#if job.status === 'failed'}
             <Banner variant="error" lead="The duel could not finish.">{job.error}</Banner>
           {/if}

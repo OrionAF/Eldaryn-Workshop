@@ -6,7 +6,9 @@
    *
    * segments: [{id, label, state: 'done'|'active'|'queued'|'cancelled', done?, total?, text?}]
    * The caption under a segment is `text`, else "done/total", else the state word. The bar fills
-   * to done/total when both are known, fully when done. Each segment is a role=progressbar.
+   * to done/total when both are known, fully when done. Each segment is a role=progressbar; a running
+   * one with no count is an indeterminate progressbar (no aria-valuenow). The running segment always
+   * carries a glint travelling along its bar, so a phase that cannot fill still shows work going on.
    *
    * A known phase id carries its plain-language explanation (lib/ui/runPhases.js) as the label's title and
    * the bar's aria-description; other ids get none.
@@ -26,6 +28,8 @@
     if (s.total > 0 && s.done != null) return Math.min(1, s.done / s.total);
     return 0;
   };
+  // A running segment whose phase reports no count: the bar cannot fill, so it only shows that work goes on.
+  const openEnded = (s) => stateOf(s) === 'active' && !(s.total > 0 && s.done != null);
   const STATE_WORD = { done: 'done', active: 'running', queued: 'queued', cancelled: 'cancelled' };
   // {text, numeric}: counts render in the data face, state words in the UI face
   const caption = (s) => {
@@ -63,7 +67,7 @@
           aria-description={hint || undefined}
           aria-valuemin="0"
           aria-valuemax="100"
-          aria-valuenow={Math.round(f * 100)}
+          aria-valuenow={openEnded(s) ? undefined : Math.round(f * 100)}
           aria-valuetext="{s.label}, {s.total > 0 && s.done != null ? `${s.done} of ${s.total}` : stateOf(s)}"
         >
           <i style="transform: scaleX({f})"></i>
@@ -101,8 +105,9 @@
   .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
   .bar { height: calc(var(--sp-1) * 1.25); background: var(--surface-4); border-radius: 1px; overflow: hidden; }
   /* The fill scales from the left, so progress eases between updates. A finished segment cools from ember
-     to brass over --dur-flash (a transition, so one that mounts already done does not replay it), and the
-     running one breathes; state still rests on the counts and labels (design-system §2.13). */
+     to brass over --dur-flash (a transition, so one that mounts already done does not replay it). The
+     running one has a glint travelling along the whole bar, filled or not; with reduced motion it is a
+     still, dim ember track instead. State still rests on the counts and labels (design-system §2.13). */
   .bar i {
     display: block;
     height: 100%;
@@ -111,7 +116,17 @@
     transition: transform var(--dur-2) linear, background-color var(--dur-flash) var(--ease-out);
   }
   .is-active .bar i { background: var(--ember-500); box-shadow: var(--glow-ember); transition: transform var(--dur-2) linear; }
-  .is-active .bar { animation: ember-breathe 1.8s ease-in-out infinite; }
+  .is-active .bar { position: relative; }
+  .is-active .bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 35%;
+    background: linear-gradient(90deg, transparent, var(--ember-300), transparent);
+    animation: bar-glint 1.5s linear infinite;
+  }
+  @keyframes bar-glint { from { transform: translateX(-100%); } to { transform: translateX(286%); } }
+  :global(:root[data-reduce-motion='true']) .is-active .bar::after { animation: none; width: 100%; background: var(--ember-500); opacity: 0.3; }
   .is-active .lbl b { color: var(--ember-300); }
   .is-queued .bar, .is-cancelled .bar { background: transparent; border: 1px dashed var(--line-control); }
   .is-queued .lbl, .is-queued .lbl b, .is-cancelled .lbl, .is-cancelled .lbl b { color: var(--text-muted); font-weight: var(--fw-medium); }
@@ -139,6 +154,6 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .bar i { transition: none; }
-    .is-active .bar { animation: none; }
+    .is-active .bar::after { animation: none; width: 100%; background: var(--ember-500); opacity: 0.3; }
   }
 </style>

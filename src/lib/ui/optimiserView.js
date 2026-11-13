@@ -377,13 +377,17 @@ export function progressSegments({ progress = null, result = null, status = 'run
       text: p.state === 'not-run' ? 'not run' : `${fmtCount(p.fights)} fights`,
     }));
   }
-  return (progress?.phases ?? []).map((p) => ({
-    id: p.id,
-    label: p.label,
-    state: status === 'cancelled' && p.state === 'current' ? 'cancelled' : p.state === 'current' ? 'active' : p.state,
-    done: p.done,
-    total: p.total,
-  }));
+  // The search reports no count of its own, but it works through the build's parts one by one: those
+  // steps are its progress, so the Search bar fills as they finish.
+  const steps = (progress?.searchSteps ?? []).filter((r) => r && r.state !== 'skipped');
+  const stepsDone = steps.filter((r) => r.state === 'done').length;
+  return (progress?.phases ?? []).map((p) => {
+    const state = status === 'cancelled' && p.state === 'current' ? 'cancelled' : p.state === 'current' ? 'active' : p.state;
+    if (p.id === 'search' && state === 'active' && p.total == null && steps.length > 0) {
+      return { id: p.id, label: p.label, state, done: stepsDone, total: steps.length, text: `step ${Math.min(stepsDone + 1, steps.length)} of ${steps.length}` };
+    }
+    return { id: p.id, label: p.label, state, done: p.done, total: p.total };
+  });
 }
 
 /** One line under the segments: what the search is doing right now. */

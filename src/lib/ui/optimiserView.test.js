@@ -133,6 +133,19 @@ describe('progress', () => {
   it('a cancelled run shows the interrupted phase as cancelled', () => {
     expect(progressSegments({ progress: { phases }, status: 'cancelled' })[1].state).toBe('cancelled');
   });
+  it("the running Search fills from the search's own steps, leaving out the skipped ones", () => {
+    const searchSteps = [
+      { id: 'gear', state: 'done' }, { id: 'talents', state: 'done' }, { id: 'relics', state: 'running' },
+      { id: 'pet', state: 'queued' }, { id: 'mount', state: 'skipped', reason: 'off' },
+    ];
+    // the search itself reports no count (search.js progress)
+    const open = phases.map((p) => ({ ...p, done: null, total: null }));
+    const segs = progressSegments({ progress: { phases: open, searchSteps }, status: 'running' });
+    expect(segs.find((s) => s.id === 'search')).toMatchObject({ state: 'active', done: 2, total: 4, text: 'step 3 of 4' });
+    expect(segs[0]).not.toHaveProperty('text');
+    // a search that does report a count keeps it
+    expect(progressSegments({ progress: { phases, searchSteps }, status: 'running' })[1]).toMatchObject({ done: 40, total: 100 });
+  });
   it('a finished run shows the result phases with their fight counts', () => {
     const segs = progressSegments({ result: dpsResult(), status: 'finished' });
     expect(segs.map((s) => s.id)).toEqual(['screen', 'search', 'minimise', 'confirm', 'attribute']);

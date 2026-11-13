@@ -60,6 +60,7 @@ function launch(id) {
   job.endedAt = null;
   job.error = null;
   job.progress = null;
+  job.progressAt = null;
   job.cancelRequested = false;
   job.finishRequested = false;
   // The pool size is fixed when the job starts (a changed CPU profile applies to the next job) and shown in the tray.
@@ -70,7 +71,10 @@ function launch(id) {
     handle = runner(request, {
       onProgress: (p) => {
         const j = find(id);
-        if (j) j.progress = p;
+        if (!j) return;
+        j.progress = p;
+        // when the last report arrived: the run's sign of life on screen (ui/RunPulse.svelte)
+        j.progressAt = Date.now();
       },
       onCheckpoint: (cp) => {
         const j = find(id);
@@ -152,6 +156,7 @@ export function startJob(spec) {
     workers: null,
     status: 'queued',
     progress: null,
+    progressAt: null,
     result: null,
     error: null,
     checkpoint: null,
@@ -292,6 +297,7 @@ export async function restoreInterrupted() {
       workers: null,
       status: 'cancelled',
       progress: null,
+      progressAt: null,
       result: null,
       error: null,
       checkpoint: r.checkpoint ?? null,

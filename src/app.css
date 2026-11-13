@@ -278,7 +278,6 @@
 @keyframes slide-in-right { from { opacity: 0; transform: translateX(32px); } }  /* drawer */
 @keyframes toast-in { from { opacity: 0; transform: translateY(12px) scale(0.97); } }
 @keyframes land { from { transform: scale(0.95); } }                             /* a selection or a verdict settling */
-@keyframes ember-breathe { 50% { opacity: 0.62; } }                              /* the running segment */
 @keyframes ping { from { opacity: 0.7; transform: scale(1); } to { opacity: 0; transform: scale(1.9); } }
 
 /* The one orchestrated moment: a page's panels rise in, in order (lib/motion.js pageEnter numbers them and

@@ -59,6 +59,7 @@
   import Select from '../ui/Select.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
   import RunProgress from '../ui/RunProgress.svelte';
+  import RunPulse from '../ui/RunPulse.svelte';
   import VerdictChip from '../ui/VerdictChip.svelte';
   import ForestAxis from '../ui/ForestAxis.svelte';
   import CIForest from '../ui/CIForest.svelte';
@@ -549,6 +550,7 @@
             {:else}
               {#if singleJob}
                 <RunProgress segments={segmentsOf(singleJob)} />
+                <RunPulse job={singleJob} />
               {/if}
               {#if singleJob?.status === 'failed'}
                 <Banner variant="error" lead="The check failed.">{singleJob.error}</Banner>
@@ -633,7 +635,7 @@
                 <Button variant="secondary" size="small" disabled={!liveCount} onclick={() => runBatch(liveBag(), { all: bag.all })}>Check again</Button>
               {/if}
             {/snippet}
-            {#if bagJob}<RunProgress segments={segmentsOf(bagJob)} />{/if}
+            {#if bagJob}<RunProgress segments={segmentsOf(bagJob)} /><RunPulse job={bagJob} />{/if}
             {#if screenedOut && !bagBusy}
               <p class="hint" data-testid="bag-screened">
                 {screenedOut} drop{screenedOut === 1 ? '' : 's'} scored well below the best few of {screenedOut === 1 ? 'its' : 'their'} slot on the quick screen and {screenedOut === 1 ? 'was' : 'were'} not simulated.
