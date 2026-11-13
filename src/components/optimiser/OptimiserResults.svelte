@@ -1,4 +1,5 @@
 <script>
+  import { formatFlat, formatRate } from '../../lib/format.js';
   /**
    * OptimiserResults.svelte - the ranked table of an optimiser result or a saved run (ia.md §3.3, A.9):
    * a sticky baseline row ("NOW"), one expandable row per build on a single shared forest axis, tie
@@ -48,13 +49,13 @@
   const axisTitle = $derived(winRun ? 'Change in win rate vs current (percentage points)' : AXIS_TITLE[view.unit]);
   // The win rate the goal banners talk about (optimiserView.js goalWinRate).
   const goalTries = $derived(triesPerClear(goalWinRate(view)));
-  const pct = (x) => `${Math.round(x * 1000) / 10}%`;
+  const pct = (x) => formatRate(x);
   const showBuild = (row) => {
     buildRow = row;
     drawer = true;
   };
   const credit = (row) => fortressDamage(view.fortress, row?.value?.est);
-  const fmtInt = (n) => n.toLocaleString('en-US');
+  const fmtInt = (n) => formatFlat(n);
   function copyResults() {
     const done = (ok) => notify(ok ? 'Copied the results as text.' : 'Copying was blocked by the browser.', { kind: ok ? 'success' : 'warn' });
     try {
@@ -239,7 +240,7 @@
 <style>
   .table { border: 1px solid var(--line-rule); border-radius: var(--r-1); background: var(--surface-2); }
   .table.busy { opacity: 0.55; }
-  .sticky { position: sticky; top: var(--topbar-h, 0); z-index: 2; background: var(--surface-2); border-bottom: 1px solid var(--line-rule); }
+  .sticky { position: sticky; top: var(--sticky-top, 0); z-index: 2; background: var(--surface-2); border-bottom: 1px solid var(--line-rule); }
   .head {
     display: grid;
     grid-template-columns: minmax(calc(var(--sp-10) * 3.25), 1.9fr) minmax(calc(var(--sp-10) * 3.75), 1.3fr) calc(var(--sp-10) * 2.4) calc(var(--sp-10) * 3.75);

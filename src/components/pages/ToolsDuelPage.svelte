@@ -308,7 +308,7 @@
 </script>
 
 <div class="page-tabs">
-  <Tabs items={TABS} bind:value={tabId} label="Duel sections" idPrefix="duel" onchange={onTab} />
+  <Tabs items={TABS} bind:value={tabId} label="Duel sections" idPrefix="duel" hideSingle onchange={onTab} />
 </div>
 
 {#if tabId === 'verify' && verifyShown}

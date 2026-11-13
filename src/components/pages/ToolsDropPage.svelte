@@ -418,7 +418,7 @@
 {#if drop}
   <div class="page">
     <div class="tabs-row">
-      <Tabs items={TABS} bind:value={view} label="Drop Check" idPrefix="dc" onchange={pickTab} />
+      <Tabs items={TABS} bind:value={view} label="Drop Check" idPrefix="dc" hideSingle onchange={pickTab} />
     </div>
 
     {#if view !== 'bag' || !bagShown}

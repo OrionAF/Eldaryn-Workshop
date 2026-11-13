@@ -35,12 +35,12 @@ it('contrast: dps prefers pct, signed', () => {
 });
 
 it('verdict text names N when unresolved; nNeeded', () => {
-  expect(verdictText({ verdict: 'unresolved', n: 4096 })).toBe('Too close to call after 4,096 fights');
+  expect(verdictText({ verdict: 'unresolved', n: 4096 })).toBe('Too close to call after 4.096 fights');
   expect(verdictText({ verdict: 'better', n: 10 })).toBe('Clearly better');
   expect(verdictText({ verdict: 'equivalent', n: 10 })).toBe('About the same');
-  expect(nNeededText({ nNeeded: 16384 })).toBe('about 16,384 fights needed');
+  expect(nNeededText({ nNeeded: 16384 })).toBe('about 16.384 fights needed');
   expect(nNeededText({ nNeeded: null })).toBe('');
-  expect(fmtCount(1234567)).toBe('1,234,567');
+  expect(fmtCount(1234567)).toBe('1.234.567');
 });
 
 it('tone: only significant verdicts take up/down', () => {

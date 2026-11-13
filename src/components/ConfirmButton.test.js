@@ -20,7 +20,7 @@ it('shows only the label button until clicked, then reveals Confirm/Cancel', () 
   flushSync();
 
   const buttons = [...target.querySelectorAll('button')].map((b) => b.textContent);
-  expect(buttons).toEqual(['Confirm', 'Cancel']);
+  expect(buttons).toEqual(['Confirm remove', 'Cancel']);
   unmount(app);
 });
 
@@ -30,7 +30,7 @@ it('does not call onConfirm on the first click - only after the second', () => {
   flushSync();
   expect(onConfirm).not.toHaveBeenCalled();
 
-  [...target.querySelectorAll('button')].find((b) => b.textContent === 'Confirm').click();
+  [...target.querySelectorAll('button')].find((b) => b.textContent === 'Confirm remove').click();
   flushSync();
   expect(onConfirm).toHaveBeenCalledTimes(1);
   unmount(app);
@@ -75,7 +75,7 @@ it('moves focus to the Confirm button when the swap happens', () => {
   const { target, app } = setup();
   target.querySelector('button').click();
   flushSync();
-  expect(document.activeElement).toBe(target.querySelector('.confirm-yes'));
+  expect(document.activeElement).toBe(target.querySelector('[data-confirm-yes]'));
   unmount(app);
 });
 
@@ -84,17 +84,27 @@ it('an unanswered confirm reverts to the label after 4 s', () => {
   const { target, app, onConfirm } = setup();
   target.querySelector('button').click();
   flushSync();
-  expect(target.querySelector('.confirm-yes')).not.toBeNull();
+  expect(target.querySelector('[data-confirm-yes]')).not.toBeNull();
   vi.advanceTimersByTime(3900);
   flushSync();
-  expect(target.querySelector('.confirm-yes')).not.toBeNull();
+  expect(target.querySelector('[data-confirm-yes]')).not.toBeNull();
   vi.advanceTimersByTime(200);
   flushSync();
-  expect(target.querySelector('.confirm-yes')).toBeNull();
+  expect(target.querySelector('[data-confirm-yes]')).toBeNull();
   expect(target.querySelector('button').textContent).toBe('Remove');
   expect(onConfirm).not.toHaveBeenCalled();
   unmount(app);
   vi.useRealTimers();
+});
+
+it('the default look is the danger button, and the confirm verb comes from the label', () => {
+  const { target, app } = setup({ label: 'Reset path and points' });
+  const first = target.querySelector('button');
+  expect(first.className).toContain('btn-danger');
+  first.click();
+  flushSync();
+  expect([...target.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Confirm reset', 'Cancel']);
+  unmount(app);
 });
 
 it('with a variant it renders ui/Button styling, confirms in the danger look, and keeps focus on Confirm', () => {

@@ -1,4 +1,5 @@
 <script>
+  import { formatRate } from '../../lib/format.js';
   /**
    * PushLadder.svelte - the Push result (backlog §10 item 1, simulation.md §Push): a ladder strip from the
    * start rung (rungs the current build clears, rungs only the suggested build clears, the first rung not
@@ -18,7 +19,7 @@
     stop: { glyph: '✕', word: 'not reached' },
     open: { glyph: '?', word: 'not confirmed' },
   };
-  const pct = (p) => `${Math.round((p ?? 0) * 1000) / 10}%`;
+  const pct = (p) => formatRate(p ?? 0);
   const present = $derived(new Set(cells.map((c) => c.state)));
 </script>
 

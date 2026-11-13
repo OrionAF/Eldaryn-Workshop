@@ -26,3 +26,19 @@ export function fitView(width, height, cell, node, minZoom = 0.25) {
     panY: TOOLS_CLEARANCE + (availH - contentH * zoom) / 2 + (node / 2) * zoom,
   };
 }
+
+/** Zoom a phone opens the board at: a node is about 26px, so it can be read and hit. */
+export const PHONE_ZOOM = 0.8;
+
+/**
+ * Zoom and pan for a phone, which cannot show the whole board at a size a finger can hit: open at
+ * `zoom` on the start node (bottom centre, where every path begins), one cell above the bottom edge.
+ * The rest is a drag or a pinch away, and Reset view returns here.
+ */
+export function startView(width, height, cell, node, zoom = PHONE_ZOOM) {
+  return {
+    zoom,
+    panX: width / 2 - (BOARD_SPAN_COLS / 2) * cell * zoom,
+    panY: height - (BOARD_SPAN_ROWS * cell + node / 2 + cell) * zoom,
+  };
+}

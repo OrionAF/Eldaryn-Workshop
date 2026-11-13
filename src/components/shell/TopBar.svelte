@@ -102,6 +102,8 @@
   @media (max-width: 700px) {
     /* two rows: [character . jobs bell settings] over [preset + realm], all reachable at 390 */
     .topbar {
+      /* not pinned on a phone: it scrolls away so the page keeps the height (the area strip stays) */
+      position: relative;
       height: var(--topbar-h-phone);
       flex-wrap: wrap;
       align-content: center;

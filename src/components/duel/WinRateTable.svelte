@@ -1,4 +1,5 @@
 <script>
+  import { formatRate } from '../../lib/format.js';
   /**
    * WinRateTable.svelte - win rate per seat with its 95% Wilson interval on ONE shared axis
    * (design-system §4.15, ia.md §3.4). The mark is the win rate minus 50 points, so the zero line is
@@ -16,7 +17,7 @@
   let { rows, partial = false } = $props();
 
   const pts = (x) => (x - 0.5) * 100;
-  const pct = (x) => `${(x * 100).toFixed(1)}%`;
+  const pct = (x) => formatRate(x, 1, true);
   const signed = (v) => (v > 0 ? `+${v.toFixed(1)}` : v < 0 ? `−${Math.abs(v).toFixed(1)}` : '0.0');
   const items = $derived(
     rows.map((r) => ({ ...r, v: winRateVerdict(r.summary), est: pts(r.summary.p), lo: pts(r.summary.lo), hi: pts(r.summary.hi) })),

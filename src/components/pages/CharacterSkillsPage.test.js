@@ -20,7 +20,7 @@ afterEach(() => view.done());
 it('raises a skill with the stepper and shows level / cap', () => {
   click(view.q('button[aria-label="Increase Hunting"]'));
   expect(rosterStore.current.skills.hunting).toBe(1);
-  expect(view.q('[data-testid="level-hunting"]').textContent).toContain('1 / 10');
+  expect(view.q('[data-testid="level-hunting"]').textContent).toContain('of 10');
 });
 
 it('shows the gems still needed and a total that falls as skills are bought', () => {
@@ -90,7 +90,7 @@ it('Max all leaves locked skills alone and keeps the Oblivion point out while Ob
   rosterStore.setAllSkills('max');
   const maxed = { ...rosterStore.current.skills };
   flushSync();
-  for (const [id, lvl] of Object.entries(maxed)) expect(view.q(`[data-testid="level-${id}"]`).textContent).toContain(`${lvl} / ${lvl}`);
+  for (const [id, lvl] of Object.entries(maxed)) expect(view.q(`[data-testid="level-${id}"]`).textContent).toContain(`of ${lvl}`);
   expect(maxed.hunting).toBe(10); // Oblivion locked: no extra point
   rosterStore.setAllSkills('clear');
   rosterStore.setCharacterLevel(1);

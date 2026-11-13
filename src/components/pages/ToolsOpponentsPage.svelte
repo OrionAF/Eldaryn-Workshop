@@ -82,7 +82,7 @@
     const id = rosterStore.cloneOpponentFromPreset(clonePreset, cloneSpec);
     if (id) {
       pick(id);
-      setStatus('Cloned your preset. Adjust the stats to match the real opponent.');
+      setStatus('Copied your preset. Adjust the stats to match the real opponent.');
     } else setStatus(`At most ${MAX_OPPONENTS} saved opponents.`);
   }
 </script>
@@ -116,7 +116,7 @@
         {:else if allRows.length}
           <EmptyState title="No opponent matches" text="Clear the filter to see all saved opponents." />
         {:else}
-          <EmptyState title="No saved opponents yet" text="Add one below, or clone one of your presets as a starting point." />
+          <EmptyState title="No saved opponents yet" text="Add one below, or copy one of your presets as a starting point." />
         {/if}
       </div>
     </Panel>
@@ -129,9 +129,9 @@
             <Button variant="primary" disabled={full} reason={full ? `At most ${MAX_OPPONENTS} saved opponents.` : ''} onclick={add}>+ New opponent</Button>
           </div>
           <div class="add-group clone">
-            <Select label="Clone my preset" options={presetOptions} value={clonePreset} onchange={(v) => { clonePick = v; cloneSpecPick = null; }} />
+            <Select label="Copy my preset" options={presetOptions} value={clonePreset} onchange={(v) => { clonePick = v; cloneSpecPick = null; }} />
             <Select label="as spec" options={specOptions} value={cloneSpec} onchange={(v) => (cloneSpecPick = v)} />
-            <Button variant="secondary" disabled={full} reason={full ? `At most ${MAX_OPPONENTS} saved opponents.` : ''} onclick={clone}>Clone</Button>
+            <Button variant="secondary" disabled={full} reason={full ? `At most ${MAX_OPPONENTS} saved opponents.` : ''} onclick={clone}>Copy as opponent</Button>
           </div>
         </div>
       </div>

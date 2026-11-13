@@ -202,7 +202,7 @@
 {/if}
 
 <style>
-  .overview { display: grid; gap: var(--sp-4); max-width: 56rem; }
+  .overview { display: grid; gap: var(--sp-4); }
   .identity { display: flex; flex-wrap: wrap; gap: var(--sp-6); align-items: flex-start; }
   .level { display: grid; gap: 4px; }
   .level-label { font-size: var(--fs-12); font-weight: var(--fw-bold); color: var(--text-soft); }

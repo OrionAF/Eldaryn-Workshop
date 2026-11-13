@@ -60,6 +60,8 @@
       'ring   leggings  trinket'
       '.      boots     .';
     gap: var(--sp-2);
+    /* a set width: centred in a flex column (the phone layout) it would otherwise shrink to its icons */
+    width: 100%;
     max-width: 17rem;
   }
   .silhouette.oblivion {

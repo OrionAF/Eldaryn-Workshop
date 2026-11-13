@@ -91,7 +91,7 @@
     {#snippet action()}<Button onclick={() => onNavigate('character/overview')}>Go to Overview</Button>{/snippet}
   </EmptyState>
 {:else}
-  <Panel title="Relics" scope="character">
+  <Panel title="Relic levels" scope="character">
     {#snippet meta()}<span class="sub">{classLabel(character.class)} · levels are character-wide</span>{/snippet}
     <div class="field-row slots-row">
       <div class="slots-field">
@@ -136,7 +136,7 @@
             {#if level === 0}<span class="visually-hidden">shown at level 1</span>{/if}
           </div>
           <div class="equip">
-            <PresetMenu label="Equipped in" items={menuItems(def)} onselect={(id) => rosterStore.togglePresetRelic(id, def.id)} />
+            <PresetMenu label="Used in" items={menuItems(def)} onselect={(id) => rosterStore.togglePresetRelic(id, def.id)} />
           </div>
         </div>
       {/each}
@@ -181,7 +181,7 @@
   .presets .over { color: var(--status-warn, var(--text-ink)); }
   .p-name { margin-right: var(--sp-1); }
   .tier-section { margin-top: var(--sp-4); }
-  /* one column grid for every row on the page: name | level | effects | Equipped in */
+  /* one column grid for every row on the page: name | level | effects | Used in */
   .relic-row {
     display: grid;
     grid-template-columns: minmax(12rem, 18rem) auto minmax(12rem, 1fr) 15rem;
@@ -213,13 +213,13 @@
     .relic-stats { grid-column: 1; }
     .equip { grid-column: 2; justify-self: end; }
   }
-  /* a phone has no room for columns: the name gets its own line, the level and Equipped in share the next
-     (Equipped in drops below when both presets are named), and the effects close the card */
+  /* a phone has no room for columns: the name and its effects share the first line, the level and Used in
+     the next (Used in drops below when both presets are named) */
   @media (max-width: 700px) {
     .relic-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
-    .relic-title { flex: 1 1 100%; }
-    .level-controls { flex: none; }
-    .equip { flex: 0 1 auto; }
-    .relic-stats { flex: 1 1 100%; order: 1; }
+    .relic-title { flex: 1 1 8rem; order: 0; }
+    .relic-stats { flex: 0 1 auto; order: 1; grid-template-columns: auto auto; }
+    .level-controls { flex: none; order: 2; }
+    .equip { flex: 0 1 auto; order: 3; }
   }
 </style>

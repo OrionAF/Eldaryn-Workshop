@@ -29,9 +29,22 @@
   const idFor = (areaId) => `rail-head-${areaId}`;
   /** Phone strip labels that would not fit; the full label stays on the rail and is the link's name. */
   const SHORT_LABEL = { 'tools/oblivion': 'Oblivion' };
+
+  // Keep the current page's link on screen: the phone strip scrolls sideways and the rail scrolls
+  // down on a short window. Only the nav's own scroll moves, never the page.
+  let rail = $state(null);
+  $effect(() => {
+    void route;
+    const link = rail?.querySelector('[aria-current="page"]');
+    if (!link) return;
+    const box = rail.getBoundingClientRect();
+    const at = link.getBoundingClientRect();
+    if (at.left < box.left || at.right > box.right) rail.scrollLeft += at.left - box.left - (box.width - at.width) / 2;
+    if (at.top < box.top || at.bottom > box.bottom) rail.scrollTop += at.top - box.top - (box.height - at.height) / 2;
+  });
 </script>
 
-<nav class="rail" aria-label="Main">
+<nav class="rail" aria-label="Main" bind:this={rail}>
   {#each groups as { area, items } (area.id)}
     <section class="group" class:current={currentArea === area.id} aria-labelledby={idFor(area.id)}>
       <h2 class="group-head micro-label" id={idFor(area.id)}>{area.label}</h2>
@@ -64,7 +77,13 @@
       </ul>
     </section>
   {/each}
-  <p class="privacy">100% local: nothing leaves this device.</p>
+  <div class="foot">
+    <a class="item" href="#/settings" data-tip="Data & Settings" aria-current={route.kind === 'settings' ? 'page' : undefined}>
+      <span class="glyph"><NavIcon name="settings" /></span>
+      <span class="label">Data & Settings</span>
+    </a>
+    <p class="privacy">100% local: nothing leaves this device.</p>
+  </div>
 </nav>
 
 <nav class="areas" aria-label="Areas">
@@ -84,7 +103,7 @@
     height: calc(100vh - var(--topbar-h));
     overflow-y: auto;
     width: var(--rail-w);
-    padding: var(--sp-3) 0 var(--sp-4);
+    padding: var(--sp-3) 0 0;
     background: var(--surface-1);
     border-right: 1px solid var(--line-rule);
     z-index: var(--z-rail);
@@ -126,8 +145,18 @@
     color: var(--text-muted);
     white-space: nowrap;
   }
+  /* Pinned to the bottom of the rail: on a short window the page list scrolls under it, so Settings is
+     always one click away. */
+  .foot {
+    position: sticky;
+    bottom: 0;
+    margin-top: var(--sp-3);
+    padding: var(--sp-1) 0 var(--sp-3);
+    background: var(--surface-1);
+    border-top: 1px solid var(--brass-700);
+  }
   .privacy {
-    margin: var(--sp-6) var(--sp-4) 0;
+    margin: var(--sp-2) var(--sp-4) 0;
     font-size: var(--fs-12);
     color: var(--text-muted);
   }
@@ -166,7 +195,7 @@
   @media (max-width: 700px) {
     .rail {
       position: sticky;
-      top: var(--topbar-h-phone);
+      top: 0;
       width: auto;
       height: auto;
       display: flex;
@@ -178,7 +207,8 @@
       border-bottom: 1px solid var(--line-rule);
       z-index: var(--z-sticky);
     }
-    .group:not(.current), .group-head, .privacy { display: none; }
+    /* Settings stays on the top bar's gear on a phone; the strip lists only the area's pages. */
+    .group:not(.current), .group-head, .privacy, .foot { display: none; }
     .group + .group { margin: 0; }
     ul { display: flex; padding: 0; }
     li { flex: none; scroll-snap-align: start; }

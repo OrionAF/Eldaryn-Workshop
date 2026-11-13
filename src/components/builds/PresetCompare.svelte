@@ -109,7 +109,7 @@
   <p class="scroll-hint">Scroll sideways to see every preset. The property names stay in view.</p>
   <!-- svelte-ignore a11y_no_noninteractive_tabindex (a scrollable region must be focusable) -->
   <div class="scroll" tabindex="0" role="region" aria-label="Preset comparison, scrolls sideways on narrow screens">
-    <table class="compare" data-testid="preset-compare">
+    <table class="compare" data-testid="preset-compare" style="--cols: {presets.length}">
       <thead>
         <tr>
           <th scope="col" class="sticky"><span class="visually-hidden">Property</span></th>
@@ -262,8 +262,16 @@
   .hint { color: var(--text-muted); font-size: var(--fs-12); }
   @media (max-width: 700px) {
     .scroll-hint { display: block; }
-    thead th { min-width: 140px; }
-    tbody th.lbl { white-space: normal; min-width: 92px; max-width: 110px; }
+    /* The label column and two presets fit a 375px screen, so the values being compared are on screen
+       without scrolling; a third preset scrolls in. */
+    table.compare { table-layout: fixed; min-width: 0; width: max(100%, calc(6.5rem + var(--cols, 2) * 6.5rem)); }
+    thead th { width: auto; min-width: 0; padding: var(--sp-2); }
+    thead th.sticky { width: 6.5rem; }
+    td, tbody th { padding: var(--sp-2); overflow-wrap: anywhere; }
+    tbody th.lbl { white-space: normal; overflow-wrap: break-word; }
+    .rename { padding-left: var(--sp-2); padding-right: var(--sp-2); min-height: var(--hit); }
+    .colname, .cell-link { min-height: var(--hit); }
+    .actions { gap: var(--sp-1); }
   }
   .visually-hidden { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 </style>

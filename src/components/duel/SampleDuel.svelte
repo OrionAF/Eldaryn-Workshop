@@ -4,7 +4,7 @@
    * timeline, its swing/avoid/lost/disrupt counts with defined headers, and the event table. The
    * win-rate table above is the evidence; this panel is one draw from it.
    */
-  import { formatFlat } from '../../lib/format.js';
+  import { formatFlat, formatRate } from '../../lib/format.js';
   import { classifyDuelEvent, traceSummary } from '../../lib/features/duel.js';
   import { parseEventType } from '../../lib/engine/pvp/events.js';
   import DuelTimeline from '../DuelTimeline.svelte';
@@ -34,7 +34,7 @@
     const text = String(kind).replace(/_/g, ' ');
     return text.charAt(0).toUpperCase() + text.slice(1);
   };
-  const pct = (x) => `${(x * 100).toFixed(1)}%`;
+  const pct = (x) => formatRate(x, 1, true);
   const secs = (ms) => `${(ms / 1000).toFixed(1)} s`;
 </script>
 

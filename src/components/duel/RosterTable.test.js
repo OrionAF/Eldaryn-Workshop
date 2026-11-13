@@ -21,7 +21,7 @@ it('shows win rate, range and fights per opponent; a name opens that opponent; s
   const a = view.q('[data-testid="roster-row-a"]').textContent;
   expect(a).toContain('75.0%');
   expect(a).toContain('73.0% to 77.0%');
-  expect(a).toContain('3,200');
+  expect(a).toContain('3.200');
   expect(a).toContain('Likely to win');
   expect(view.q('[data-testid="roster-row-e"]').textContent).toContain('Too close to call');
   expect(view.q('[data-testid="roster-row-e"]').textContent).toContain('Setup changed');

@@ -121,10 +121,10 @@ describe('progress', () => {
     const segs = progressSegments({ result: dpsResult(), status: 'finished' });
     expect(segs.map((s) => s.id)).toEqual(['screen', 'search', 'minimise', 'confirm', 'attribute']);
     expect(segs.every((s) => s.state === 'done')).toBe(true);
-    expect(segs[1].text).toBe('19,248 fights');
+    expect(segs[1].text).toBe('19.248 fights');
   });
   it('prints what the search is doing', () => {
-    expect(progressLine({ phases, block: 'relics', counts: { evaluated: 12, fights: 3400 } })).toBe('Search, relics: 12 builds tried, 3,400 fights');
+    expect(progressLine({ phases, block: 'relics', counts: { evaluated: 12, fights: 3400 } })).toBe('Search, relics: 12 builds tried, 3.400 fights');
     expect(progressLine(null)).toBe('Starting');
   });
 });

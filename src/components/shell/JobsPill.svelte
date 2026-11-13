@@ -7,10 +7,28 @@
    */
   import { onMount } from 'svelte';
   import { jobsStore, restoreInterrupted } from '../../lib/jobs.svelte.js';
+  import { router } from '../../lib/router.svelte.js';
   import JobsTray from './JobsTray.svelte';
 
   let open = $state(false);
   let button = $state(null);
+  let wrap = $state(null);
+
+  // The tray is a popover: it closes on Escape from anywhere, on a press outside it, and when the
+  // page changes (it would otherwise cover the page it just opened, most of all on a phone).
+  let lastHash = null;
+  $effect(() => {
+    const hash = router.route?.hash ?? null;
+    if (lastHash !== null && hash !== lastHash) open = false;
+    lastHash = hash;
+  });
+  function onWindowKeydown(e) {
+    if (open && e.key === 'Escape' && !e.defaultPrevented) close();
+  }
+  function onWindowClick(e) {
+    // a row's own button may already be gone from the page (Dismiss), which is not a press outside
+    if (open && wrap && e.target.isConnected && !wrap.contains(e.target)) open = false;
+  }
 
   const total = $derived(jobsStore.list.length);
   const running = $derived(jobsStore.running);
@@ -30,6 +48,9 @@
   });
 </script>
 
+<svelte:window onkeydown={onWindowKeydown} onclick={onWindowClick} />
+
+<span class="jobs-wrap" bind:this={wrap}>
 <button
   bind:this={button}
   type="button"
@@ -49,8 +70,10 @@
 </button>
 
 {#if open}<JobsTray id="jobs-tray" onclose={close} />{/if}
+</span>
 
 <style>
+  .jobs-wrap { display: contents; }
   .jobs-pill {
     display: inline-flex;
     align-items: center;
@@ -87,8 +110,8 @@
   @media (prefers-reduced-motion: reduce) {
     .arc { animation: none; stroke-dasharray: 14 26; }
   }
+  /* The label stays on a phone: a bare ring does not say what it opens. */
   @media (max-width: 700px) {
-    .jobs-lbl { display: none; }
-    .jobs-pill { padding: 0 var(--sp-2); }
+    .jobs-pill { padding: 0 var(--sp-2); gap: var(--sp-1); font-size: var(--fs-12); }
   }
 </style>

@@ -1,4 +1,5 @@
 <script>
+  import { formatRate } from '../../lib/format.js';
   /**
    * ItemEditor.svelte - edit one gear item (rarity, material, item level, Attack/Health, class-gated
    * secondaries, conduit). Generic on purpose: Drop Check reuses it for the candidate item.
@@ -54,7 +55,7 @@
   const quality = $derived(item.itemLevel == null ? null : calculateItemQuality({ secondaryStats: item.secondaryStats, itemLevel: item.itemLevel, realm }));
   const typeChoices = $derived(itemTypesFor(item.rarity));
   const materialOptions = $derived(typeChoices.map((t) => ({ value: t.type, label: t.displayName })));
-  const pct = (f) => `${Math.round(f * 100)}%`;
+  const pct = (f) => formatRate(f, 0);
   const scoreTitle = $derived(
     !score
       ? ''

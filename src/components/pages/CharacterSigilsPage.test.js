@@ -95,7 +95,7 @@ describe('altar', () => {
   it('Evolve lists what it destroys, keeps Ancients and only runs after the confirm', () => {
     own('CATACLYSM', 4);
     own('FLAMEBORN', 1);
-    const evolve = [...target.querySelectorAll('button')].find((b) => b.textContent === 'Evolve Altar');
+    const evolve = [...target.querySelectorAll('button')].find((b) => b.textContent === 'Evolve altar');
     evolve.click();
     flushSync();
     expect(rosterStore.current.sigils.altarTier).toBe(1); // not yet: needs the confirm
@@ -111,7 +111,7 @@ describe('altar', () => {
     own('CATACLYSM', 4);
     rosterStore.setPresetSigils(preset().id, { species: ['CATACLYSM'] });
     flushSync();
-    [...target.querySelectorAll('button')].find((b) => b.textContent === 'Evolve Altar').click();
+    [...target.querySelectorAll('button')].find((b) => b.textContent === 'Evolve altar').click();
     flushSync();
     const text = target.querySelector('dialog[open]').textContent;
     expect(text).toContain('Presets that lose equips');
@@ -123,7 +123,7 @@ describe('altar', () => {
     rosterStore.setSigilAltarTier(5);
     flushSync();
     expect(target.textContent).toContain('cannot be reached by evolving');
-    expect([...target.querySelectorAll('button')].some((b) => b.textContent === 'Evolve Altar')).toBe(false);
+    expect([...target.querySelectorAll('button')].some((b) => b.textContent === 'Evolve altar')).toBe(false);
   });
 });
 
@@ -150,16 +150,16 @@ describe('other classes', () => {
   });
 });
 
-describe('Equip in menu', () => {
+describe('Used in menu', () => {
   const openMenu = (name) => {
-    const btn = card(name).querySelector('.equip-btn');
+    const btn = card(name).querySelector('button[aria-haspopup]');
     if (btn.getAttribute('aria-expanded') !== 'true') btn.click();
     flushSync();
     return [...card(name).querySelectorAll('[role^="menuitem"]')];
   };
 
   it('names every preset, disables an unowned sigil with the reason, and equips on select', () => {
-    expect(card('Cataclysm').textContent).toContain('Unequipped');
+    expect(card('Cataclysm').textContent).toContain('Used in: none');
     expect(openMenu('Cataclysm').every((i) => i.getAttribute('aria-disabled') === 'true')).toBe(true);
     expect(card('Cataclysm').textContent).toContain('not owned');
     own('CATACLYSM', 3);
@@ -168,7 +168,7 @@ describe('Equip in menu', () => {
     items[0].click();
     flushSync();
     expect(preset().sigilSpecies).toEqual(['CATACLYSM']);
-    expect(card('Cataclysm').textContent).toContain(`Equipped in: ${preset().name}`);
+    expect(card('Cataclysm').textContent).toContain(`Used in: ${preset().name}`);
   });
 
   it('unequips from the checked entry and refuses past the unlocked slots', () => {

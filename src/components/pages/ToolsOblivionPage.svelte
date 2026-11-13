@@ -14,7 +14,7 @@
   } from '../../lib/features/oblivionDungeon.js';
   import { getOblivionSetup, setOblivionSetup } from '../../lib/oblivionSetup.svelte.js';
   import { untrack } from 'svelte';
-  import { formatFlat } from '../../lib/format.js';
+  import { formatFlat, formatRate } from '../../lib/format.js';
   import { oblivionFights } from '../../lib/calibration.js';
   import RunEstimate from '../ui/RunEstimate.svelte';
   import Panel from '../ui/Panel.svelte';
@@ -110,7 +110,7 @@
     });
   }
 
-  const pct = (p) => `${(p * 100).toFixed(0)}%`;
+  const pct = (p) => formatRate(p, 0);
   const secs = (ms) => (ms == null ? '-' : `${(ms / 1000).toFixed(1)}s`);
   const maxLabel = $derived(
     result?.maxFloor == null ? '-' : result.scanCapped ? `${result.maxFloor}+ (scan limit)` : String(result.maxFloor),
@@ -120,7 +120,7 @@
 {#if character}
   <section class="obl">
     {#if !unlocked}
-      <Panel title="Oblivion Floors" scope="oblivion">
+      <Panel title="Oblivion hero" scope="oblivion">
         <EmptyState title="The Oblivion hero is locked" text="Unlock it to estimate how far this build climbs.">
           {#snippet action()}
             <Button variant="primary" onclick={() => rosterStore.setOblivionUnlocked(true)}>Unlock Oblivion</Button>

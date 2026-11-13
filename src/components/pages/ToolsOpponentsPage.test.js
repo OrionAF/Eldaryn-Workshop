@@ -43,7 +43,7 @@ it('entering the three required stats clears the Needs line and marks the oppone
 });
 
 it('clones a preset as another spec, duplicates and deletes', () => {
-  click(buttonByText(/^Clone$/));
+  click(buttonByText(/^Copy as opponent$/));
   expect(opp()).toHaveLength(1);
   click(buttonByText(/^Duplicate$/));
   expect(opp()).toHaveLength(2);
@@ -80,7 +80,7 @@ it('Clone defaults "as spec" to the preset\'s own talent-set spec, and follows t
   const selectFor = (text) => document.getElementById([...view.qa('label')].find((l) => l.textContent.trim() === text).htmlFor);
   expect(selectFor('as spec').value).toBe('WARRIOR_TANK');
   const second = rosterStore.current.presets.find((p) => p.talentSet === 1);
-  const presetSelect = selectFor('Clone my preset');
+  const presetSelect = selectFor('Copy my preset');
   presetSelect.value = second.id;
   presetSelect.dispatchEvent(new Event('change', { bubbles: true }));
   flushSync();
@@ -88,12 +88,12 @@ it('Clone defaults "as spec" to the preset\'s own talent-set spec, and follows t
   presetSelect.value = rosterStore.current.presets.find((p) => p.talentSet === 0).id;
   presetSelect.dispatchEvent(new Event('change', { bubbles: true }));
   flushSync();
-  click(buttonByText(/^Clone$/));
+  click(buttonByText(/^Copy as opponent$/));
   expect(opp()[0].spec).toBe('WARRIOR_TANK');
 });
 
 it('the cloned opponent\'s sheet table has no empty Model column', () => {
-  click(buttonByText(/^Clone$/));
+  click(buttonByText(/^Copy as opponent$/));
   const heads = view.qa('[data-testid="opponent-editor"] thead th').map((th) => th.textContent.trim());
   expect(heads).not.toContain('App');
   expect(heads).toContain('In-game stats');

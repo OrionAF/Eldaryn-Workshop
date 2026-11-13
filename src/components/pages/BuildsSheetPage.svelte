@@ -13,7 +13,6 @@
   import { sheetKeysForClass, sheetKeyMeta, normaliseSheetValues } from '../../lib/engine/pipeline/sheet.js';
   import Panel from '../ui/Panel.svelte';
   import Menu from '../ui/Menu.svelte';
-  import Tabs from '../ui/Tabs.svelte';
   import Banner from '../ui/Banner.svelte';
   import Button from '../ui/Button.svelte';
   import ProvenanceTag from '../ui/ProvenanceTag.svelte';
@@ -30,12 +29,8 @@
   const preset = $derived(character.presets.find((p) => p.id === character.activePresetId) ?? character.presets[0]);
   const unlocked = $derived(!!character.oblivion?.unlocked);
 
-  let chosen = $state(null);
-  const realm = $derived(unlocked && (chosen ?? (character.oblivion.activeRealm === 'oblivion' ? 'oblivion' : 'base')) === 'oblivion' ? 'oblivion' : 'base');
-  const tabItems = $derived([
-    { id: 'base', label: `Base realm: ${preset.name}` },
-    { id: 'oblivion', label: 'Oblivion realm: shared', disabled: !unlocked, reason: 'Unlock Oblivion on Overview first.' },
-  ]);
+  // The realm is the one in the top bar (G2): this page has no realm switch of its own.
+  const realm = $derived(unlocked && character.oblivion.activeRealm === 'oblivion' ? 'oblivion' : 'base');
 
   const stats = $derived(computePresetStats(character, preset.id, { realm }));
   const owner = $derived(realm === 'oblivion' ? (character.presets.find((p) => p.id === character.oblivion.sheet?.presetId) ?? null) : preset);
@@ -116,7 +111,10 @@
 </script>
 
 <div class="stack">
-  <Tabs items={tabItems} value={realm} label="Realm" idPrefix="sheet" onchange={(v) => (chosen = v)} />
+  <p class="realm-line" data-testid="sheet-realm">
+    {realm === 'oblivion' ? 'Oblivion realm: one sheet, shared by the character.' : `Base realm: the sheet of ${preset.name}.`}
+    {#if unlocked}Change realm in the top bar.{/if}
+  </p>
 
   {#if undo}
     <Banner variant="info" lead="Done.">
@@ -200,6 +198,7 @@
 <PasteSheetDialog bind:open={pasteOpen} {keys} values={sheetValues} playerClass={character.class} onapply={applyPaste} />
 
 <style>
+  .realm-line { margin: 0; font-size: var(--fs-13); color: var(--text-soft); }
   .stack { display: grid; gap: var(--sp-3); }
   .note { margin: 0; color: var(--text-muted); font-size: var(--fs-12); }
   .copy-menu { position: relative; display: inline-block; }

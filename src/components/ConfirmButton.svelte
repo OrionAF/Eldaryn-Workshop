@@ -1,10 +1,11 @@
 <script>
   /**
-   * ConfirmButton.svelte - a destructive action that requires a second
-   * click to fire ("click Remove, then click Confirm remove"). No typing -
-   * unlike SettingsPanel's hard-reset (deliberately a higher, type-to-confirm
-   * bar for wiping the whole app's data), this is for narrower, single-item
-   * destructive actions (removing one Pet/Mount/Glyph, resetting one build).
+   * ConfirmButton.svelte - the one two-press confirm for a single-item destructive action ("click
+   * Remove, then click Confirm remove"), built on ui/Button (design-system §4.10). No typing: the
+   * type-to-confirm bar is reserved for wiping the whole app's data (settings/DangerZone).
+   *
+   * The second button reads "Confirm <verb>", the verb being the label's first word, so every confirm
+   * in the app is worded the same way; pass `confirmLabel` only when that would read wrong.
    */
   import { onDestroy } from 'svelte';
   import Button from './ui/Button.svelte';
@@ -12,8 +13,9 @@
   /** A confirm that nobody answers reverts after this long (design-system §4.10). */
   const REVERT_MS = 4000;
 
-  // `variant` renders the ui/Button family (the migrated callers); without it `class` styles a plain button (legacy callers).
-  let { label, confirmLabel = 'Confirm', prompt = '', onConfirm, disabled = false, class: className = '', variant = null, size = 'default' } = $props();
+  let { label, confirmLabel = null, prompt = '', onConfirm, disabled = false, reason = '', variant = 'danger', size = 'default' } = $props();
+
+  const yesLabel = $derived(confirmLabel ?? `Confirm ${String(label).trim().split(/\s+/)[0].toLowerCase()}`);
 
   let confirming = $state(false);
   let row = $state(null);
@@ -35,27 +37,18 @@
 
   // Moving to Confirm keeps the keyboard user where the action is (ia.md §5.5).
   $effect(() => {
-    if (confirming) row?.querySelector('.confirm-yes, [data-confirm-yes]')?.focus();
+    if (confirming) row?.querySelector('[data-confirm-yes]')?.focus();
   });
   onDestroy(() => clearTimeout(timer));
 </script>
 
 {#if !confirming}
-  {#if variant}
-    <Button {variant} {size} {disabled} onclick={arm}>{label}</Button>
-  {:else}
-    <button type="button" class={className} {disabled} onclick={arm}>{label}</button>
-  {/if}
+  <Button {variant} {size} {disabled} {reason} onclick={arm}>{label}</Button>
 {:else}
   <span class="confirm-row" bind:this={row} role="group" aria-label={label}>
     {#if prompt}<span class="confirm-prompt">{prompt}</span>{/if}
-    {#if variant}
-      <Button variant="danger" {size} confirming data-confirm-yes onclick={confirm}>{confirmLabel}</Button>
-      <Button variant="ghost" {size} onclick={disarm}>Cancel</Button>
-    {:else}
-      <button type="button" class="confirm-yes" onclick={confirm}>{confirmLabel}</button>
-      <button type="button" onclick={disarm}>Cancel</button>
-    {/if}
+    <Button variant="danger" {size} confirming data-confirm-yes onclick={confirm}>{yesLabel}</Button>
+    <Button variant="ghost" {size} onclick={disarm}>Cancel</Button>
   </span>
 {/if}
 
@@ -67,11 +60,7 @@
     flex-wrap: wrap;
   }
   .confirm-prompt {
-    color: var(--text-muted);
+    color: var(--text-soft);
     font-size: var(--fs-12);
-  }
-  .confirm-yes {
-    border-color: var(--verdict-down);
-    color: var(--verdict-down);
   }
 </style>

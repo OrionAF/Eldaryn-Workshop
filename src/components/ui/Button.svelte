@@ -111,6 +111,6 @@
   }
   @keyframes btn-run { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
   @media (pointer: coarse), (max-width: 700px) {
-    .btn { min-height: var(--hit); }
+    .btn { min-height: var(--hit); min-width: var(--hit); }
   }
 </style>

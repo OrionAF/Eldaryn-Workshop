@@ -1,4 +1,5 @@
 <script>
+  import { formatFlat, formatNumber } from '../../lib/format.js';
   /**
    * ToolsStatPrioritiesPage.svelte - Tools › Stat Priorities: what leaderboard players keep on their
    * gear, per class, spec and level range, as a build-guide card. Needs no character (routes.js noCharacter):
@@ -96,7 +97,7 @@
   }
 
   const gist = (s) => (presetsBySpec[s.spec]?.at(-1)?.priority ?? []).slice(0, 3).map((t) => data.labels[t]).join(' › ');
-  const fmt = (v) => (v == null ? '–' : Number(v).toLocaleString('en-US', { maximumFractionDigits: 1 }));
+  const fmt = (v) => (v == null ? '–' : formatNumber(v));
   const title = (r) => r.charAt(0) + r.slice(1).toLowerCase();
 </script>
 
@@ -107,11 +108,13 @@
     <p class="lede">Loading the leaderboard data…</p>
     <Skeleton lines={6} />
   {:else}
-    <p class="lede">
-      What leaderboard players keep on their gear, read from <span class="num">{data.playerCount.toLocaleString('en-US')}</span> profiles
-      on servers {data.servers.join(', ')} (captured {new Date(data.generatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}).
-      It shows what players do, not a simulation of what is best.
-    </p>
+    <Panel title="Class and level">
+      {#snippet meta()}
+        <span class="sub" data-testid="source-line">
+          <span class="num">{formatFlat(data.playerCount)}</span> profiles · servers {data.servers.join(', ')} · captured {new Date(data.generatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+        </span>
+      {/snippet}
+    <p class="lede">What leaderboard players keep on their gear. It shows what players do, not a simulation of what is best.</p>
 
     {#if opened}
       <p class="hint" data-testid="opened-hint">Opened at your {opened.className}, level <span class="num">{opened.level}</span>.</p>
@@ -132,6 +135,7 @@
     </div>
 
     <LevelRange {data} spec={spec.spec} {presets} value={key} onchange={pickRange} />
+    </Panel>
 
     {#if current.players}
       <PriorityCard {data} {spec} b={current} custom={!preset} {near} oncopy={copy} />
@@ -221,6 +225,7 @@
   .stat-priorities { display: grid; gap: var(--sp-5); }
   .lede { margin: 0; max-width: 72ch; font-size: var(--fs-14); color: var(--text-soft); }
   .hint { margin: 0; font-size: var(--fs-13); color: var(--text-muted); }
+  .sub { color: var(--text-muted); font-size: var(--fs-12); }
   .specs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); }
   .class-col { display: grid; gap: var(--sp-2); align-content: start; }
   .class-col .micro-label { color: var(--brass-400); }

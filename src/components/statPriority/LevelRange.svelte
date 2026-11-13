@@ -1,4 +1,5 @@
 <script>
+  import { formatFlat } from '../../lib/format.js';
   /**
    * LevelRange.svelte - Stat Priorities' level picker: the preset brackets as chips, a field that
    * takes one level or a range ("74", "60-64"), and a players-per-level strip (linear bars from zero)
@@ -62,7 +63,7 @@
   <div class="chips" role="group" aria-label="Level bracket">
     {#each presets as b (b.key)}
       <button type="button" class="chip" aria-pressed={b.key === value} onclick={() => onchange(b.key)}>
-        Lv {b.key}<span class="n">{b.players}</span>
+        Lv {b.key}<span class="n">{formatFlat(b.players)}</span>
       </button>
     {/each}
   </div>
@@ -82,7 +83,7 @@
           onchange={(e) => commit(e.currentTarget.value)}
           onkeydown={(e) => e.key === 'Enter' && commit(e.currentTarget.value)}
         />
-        <span class="count num" aria-live="polite">{count.toLocaleString('en-US')} player{count === 1 ? '' : 's'}</span>
+        <span class="count num" aria-live="polite">{formatFlat(count)} player{count === 1 ? '' : 's'}</span>
       </div>
     </div>
     <div class="strip">

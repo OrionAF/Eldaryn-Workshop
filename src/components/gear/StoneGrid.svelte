@@ -1,4 +1,5 @@
 <script>
+  import { formatRate } from '../../lib/format.js';
   /**
    * StoneGrid.svelte - one pool of enchant stones as a grid of tiles (adapted from the v1 grid).
    * Display order: socketed first, then rarest type first, then quality descending; the stored
@@ -45,7 +46,7 @@
       })
       .join(' | ');
   }
-  const pct = (f) => `${Math.round(f * 100)}%`;
+  const pct = (f) => formatRate(f, 0);
 </script>
 
 <div class="stone-grid">
