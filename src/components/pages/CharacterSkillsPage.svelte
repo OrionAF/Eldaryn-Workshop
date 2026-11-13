@@ -11,6 +11,7 @@
   import { attunementMaxBans, bannableStats } from '../../lib/model/skills.js';
   import { fortressStatLabel, fortressStatValue } from '../character/fortressView.js';
   import { formatFlat } from '../../lib/format.js';
+  import Num from '../ui/Num.svelte';
   import Panel from '../ui/Panel.svelte';
   import Stepper from '../ui/Stepper.svelte';
   import Checkbox from '../ui/Checkbox.svelte';
@@ -127,7 +128,7 @@
           <tfoot>
             <tr>
               <th scope="row" colspan="4">Total gems to max everything (from level 1)</th>
-              <td class="r num" data-testid="gems-total">{formatFlat(totalToMax)}</td>
+              <td class="r num" data-testid="gems-total"><Num value={totalToMax} format={formatFlat} /></td>
             </tr>
           </tfoot>
         </table>

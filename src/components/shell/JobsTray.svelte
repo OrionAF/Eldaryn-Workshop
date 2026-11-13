@@ -22,6 +22,7 @@
   import StepList from '../ui/StepList.svelte';
   import { searchStepRows } from '../../lib/ui/searchSteps.js';
   import Button from '../ui/Button.svelte';
+  import { leave } from '../../lib/motion.js';
 
   const retiredOf = (job) => (job.tool === 'optimiser' ? retiredGoalBlock(job.request) : '');
 
@@ -83,7 +84,7 @@
   }
 </script>
 
-<div {id} class="tray" role="dialog" aria-modal="false" aria-labelledby="{id}-h" tabindex="-1" onkeydown={onKeydown}>
+<div {id} class="tray" role="dialog" aria-modal="false" aria-labelledby="{id}-h" tabindex="-1" onkeydown={onKeydown} out:leave={{ scale: 0.96 }}>
   <div class="tray-head">
     <h2 id="{id}-h">Runs ({jobs.length})</h2>
     <span class="grow"></span>
@@ -199,6 +200,8 @@
     border: 1px solid var(--line-control);
     border-radius: var(--r-3);
     box-shadow: var(--elev-2);
+    transform-origin: top right;
+    animation: pop-in var(--dur-1) var(--ease-out);
   }
   .tray-head { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line-hairline); }
   .tray-head h2 { margin: 0; font-size: var(--fs-16); }

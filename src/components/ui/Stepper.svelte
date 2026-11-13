@@ -72,8 +72,10 @@
     font-family: var(--font-data); /* its minus and plus sit on the centre line */
     font-size: var(--fs-16);
     line-height: 1;
+    transition: transform var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
   }
   button:hover { color: var(--text-ink); background: var(--surface-4); }
+  button:active:not([aria-disabled='true']) { transform: scale(0.9); transition-duration: var(--dur-press); }
   button[aria-disabled='true'] { color: var(--text-disabled); cursor: not-allowed; background: transparent; }
   input {
     width: 56px;

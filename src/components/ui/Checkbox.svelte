@@ -45,8 +45,13 @@
     border-radius: 2px;
     background: var(--surface-3);
     color: transparent;
+    transition: transform var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
   }
+  .check:active input:not(:disabled) + .box { transform: scale(0.9); transition-duration: var(--dur-press); }
   .box svg { width: 12px; height: 12px; }
+  /* The tick draws itself: 21 covers the path's length (20.5), so the offset hides or shows all of it. */
+  .box path { stroke-dasharray: 21; stroke-dashoffset: 21; transition: stroke-dashoffset var(--dur-2) var(--ease-out); }
+  input:checked + .box path { stroke-dashoffset: 0; }
   input:checked + .box { background: var(--brass-400); border-color: var(--brass-400); color: var(--on-brass); }
   input:focus-visible + .box { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
   input:disabled + .box { border-color: var(--line-rule); background: transparent; }
@@ -61,8 +66,9 @@
     height: 12px;
     border-radius: 50%;
     background: var(--text-soft);
-    transition: transform var(--dur-1) var(--ease-out);
+    transition: transform var(--dur-3) var(--ease-spring), background-color var(--dur-1) var(--ease-out);
   }
+  .switch.check:active input:not(:disabled) + .box { transform: none; }
   .switch input:checked + .box { background: var(--brass-tint); border-color: var(--brass-400); }
   .switch input:checked + .box::after { transform: translateX(14px); background: var(--brass-400); }
   @media (pointer: coarse), (max-width: 700px) {

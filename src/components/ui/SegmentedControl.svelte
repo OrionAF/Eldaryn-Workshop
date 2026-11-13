@@ -8,6 +8,8 @@
    * a long `sub` widens the control instead of spilling into the next cell. `stack` lays them out vertically
    * for a narrow column.
    */
+  import { glide } from '../../lib/motion.js';
+
   let { options, value = $bindable(), label = '', stack = false, onchange = () => {} } = $props();
 
   function pick(opt) {
@@ -30,7 +32,7 @@
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<div class="seg" class:stack role="group" aria-label={label || undefined} tabindex="-1" onkeydown={onKeyDown}>
+<div class="seg" class:stack role="group" aria-label={label || undefined} tabindex="-1" onkeydown={onKeyDown} use:glide={{ on: value, selector: '[aria-pressed="true"]', pseudo: ['::before', '::after'] }}>
   {#each options as opt (opt.value)}
     <button
       type="button"
@@ -58,6 +60,7 @@
     background: var(--surface-2);
     padding: 2px;
     gap: 2px;
+    isolation: isolate; /* the pressed cell's thumb sits at z-index -1: over this background, under every label */
   }
   button {
     position: relative;
@@ -79,10 +82,21 @@
     font-family: var(--font-ui);
     font-weight: var(--fw-medium);
     font-size: var(--fs-14);
+    transition: color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
   }
   button:hover { color: var(--text-ink); background: var(--surface-3); }
   button:active { background: var(--surface-4); }
-  button[aria-pressed='true'] { background: var(--surface-4); color: var(--text-ink); font-weight: var(--fw-bold); }
+  /* The pressed cell draws its fill as a thumb (::before) and its rule as ::after, so both can glide from
+     the cell that was pressed before (lib/motion.js glide). */
+  button[aria-pressed='true'] { background: transparent; color: var(--text-ink); font-weight: var(--fw-bold); }
+  button[aria-pressed='true']::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: var(--r-1);
+    background: var(--surface-4);
+  }
   button[aria-pressed='true']::after {
     content: '';
     position: absolute;

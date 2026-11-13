@@ -6,6 +6,8 @@
    * aria-describedby at the role=tooltip element. Shown after `delay` ms, hidden on leave, blur or
    * Escape. Never interactive.
    */
+  import { leave } from '../../lib/motion.js';
+
   let { text, delay = 250, children } = $props();
   const id = $props.id();
   let shown = $state(false);
@@ -36,7 +38,7 @@
 >
   {@render children?.()}
   {#if shown}
-    <span class="tooltip" role="tooltip" id="{id}-tip">{text}</span>
+    <span class="tooltip" role="tooltip" id="{id}-tip" out:leave={{ scale: 0.96 }}>{text}</span>
   {/if}
 </span>
 
@@ -57,5 +59,7 @@
     font-size: var(--fs-12);
     color: var(--text-ink);
     pointer-events: none;
+    transform-origin: top left;
+    animation: pop-in var(--dur-1) var(--ease-out);
   }
 </style>

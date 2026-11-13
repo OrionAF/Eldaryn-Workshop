@@ -40,8 +40,9 @@
     white-space: nowrap;
     color: var(--verdict-side);
   }
-  .up { color: var(--verdict-up); background: var(--verdict-up-tint); border-color: var(--verdict-up); }
-  .down { color: var(--verdict-down); background: var(--verdict-down-tint); border-color: var(--verdict-down); }
+  /* A clear verdict lands (§2.13): the chip settles into place when it resolves from pending. */
+  .up { color: var(--verdict-up); background: var(--verdict-up-tint); border-color: var(--verdict-up); animation: land var(--dur-3) var(--ease-spring); }
+  .down { color: var(--verdict-down); background: var(--verdict-down-tint); border-color: var(--verdict-down); animation: land var(--dur-3) var(--ease-spring); }
   .muted { color: var(--text-muted); font-weight: var(--fw-medium); border-style: dotted; }
   .pending { color: var(--text-muted); font-weight: var(--fw-medium); background: transparent; }
 </style>

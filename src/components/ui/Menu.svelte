@@ -8,6 +8,8 @@
    *
    * items: [{ id, label, meta?, checked?, disabled?, separator? }]
    */
+  import { leave } from '../../lib/motion.js';
+
   let { items, label = 'Menu', onselect = () => {}, onclose = () => {} } = $props();
 
   let el = $state(null);
@@ -45,7 +47,7 @@
   }
 </script>
 
-<div class="menu" role="menu" aria-label={label} tabindex="-1" bind:this={el} onkeydown={onKeyDown}>
+<div class="menu" role="menu" aria-label={label} tabindex="-1" bind:this={el} onkeydown={onKeyDown} out:leave={{ scale: 0.96 }}>
   {#each items as item (item.id)}
     {#if item.separator}
       <div class="menu-sep" role="separator"></div>
@@ -76,6 +78,8 @@
     border-radius: var(--r-3);
     box-shadow: var(--elev-2);
     z-index: var(--z-popover);
+    transform-origin: top;
+    animation: pop-in var(--dur-1) var(--ease-out);
   }
   .menu-item {
     display: flex;

@@ -4,6 +4,8 @@
    * readable and interactive. On open, focus moves into the drawer; on close (Escape or the close
    * button) it returns to whatever held it before. Unique heading id per instance.
    */
+  import { leave } from '../../lib/motion.js';
+
   let { open = $bindable(false), title, meta, onclose = () => {}, children, footer } = $props();
   const id = $props.id();
 
@@ -33,7 +35,7 @@
 </script>
 
 {#if open}
-  <aside class="drawer" bind:this={el} tabindex="-1" aria-labelledby="{id}-title" onkeydown={onKeyDown}>
+  <aside class="drawer" bind:this={el} tabindex="-1" aria-labelledby="{id}-title" onkeydown={onKeyDown} out:leave={{ x: 32 }}>
     <header class="drawer-head">
       <div class="titles">
         <h2 id="{id}-title">{title}</h2>
@@ -60,6 +62,7 @@
     box-shadow: var(--elev-3);
     display: flex;
     flex-direction: column;
+    animation: slide-in-right var(--dur-3) var(--ease-out);
   }
   .drawer:focus-visible { outline: none; }
   .drawer-head {

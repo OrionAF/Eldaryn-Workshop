@@ -14,6 +14,7 @@
   import { navGroups } from '../navVisibility.js';
   import { areaHash } from '../../lib/router.svelte.js';
   import NavIcon from './NavIcon.svelte';
+  import { glide } from '../../lib/motion.js';
 
   let { route, character } = $props();
 
@@ -44,7 +45,7 @@
   });
 </script>
 
-<nav class="rail" aria-label="Main" bind:this={rail}>
+<nav class="rail" aria-label="Main" bind:this={rail} use:glide={{ on: route, selector: '.item[aria-current="page"]', pseudo: '::before' }}>
   {#each groups as { area, items } (area.id)}
     <section class="group" class:current={currentArea === area.id} aria-labelledby={idFor(area.id)}>
       <h2 class="group-head micro-label" id={idFor(area.id)}>{area.label}</h2>
@@ -128,13 +129,23 @@
     color: var(--text-soft);
     text-decoration: none;
     font-size: var(--fs-14);
+    transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
   }
   .item:hover { background: var(--surface-3); color: var(--text-ink); }
   .item[aria-current='page'] {
     background: var(--surface-4);
     color: var(--text-ink);
     font-weight: var(--fw-bold);
-    box-shadow: inset 3px 0 0 var(--ember-500);
+  }
+  /* The current page's ember bar: a pseudo-element so it can glide from the page before (lib/motion.js). */
+  .item[aria-current='page']::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--ember-500);
   }
   .glyph { display: inline-flex; justify-content: center; width: 18px; color: var(--brass-400); }
   .label-short { display: none; }
@@ -213,7 +224,8 @@
     ul { display: flex; padding: 0; }
     li { flex: none; scroll-snap-align: start; }
     .item { min-height: var(--hit); padding: 0 var(--sp-3); }
-    .item[aria-current='page'] { box-shadow: inset 0 -3px 0 var(--brass-400); background: none; }
+    .item[aria-current='page'] { background: none; }
+    .item[aria-current='page']::before { top: auto; right: 0; width: auto; height: 3px; background: var(--brass-400); }
     .item .label, .item .tag { position: static; width: auto; height: auto; clip-path: none; margin: 0; }
     .item .glyph { display: none; }
     .item .label-full { display: none; }

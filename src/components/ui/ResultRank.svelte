@@ -173,7 +173,14 @@
 <style>
   /* a stone change lists its stones one per line, with no "from" */
   .stone-line { display: block; }
-  .rank { border-bottom: 1px solid var(--line-hairline); }
+  /* Results arrive in rank order (§2.13): the first rows step in, the rest come with the last step. */
+  .rank { border-bottom: 1px solid var(--line-hairline); animation: rise-in var(--dur-2) var(--ease-out) backwards; animation-delay: calc(5 * var(--stagger)); }
+  .rank:nth-child(1) { animation-delay: 0ms; }
+  .rank:nth-child(2) { animation-delay: var(--stagger); }
+  .rank:nth-child(3) { animation-delay: calc(2 * var(--stagger)); }
+  .rank:nth-child(4) { animation-delay: calc(3 * var(--stagger)); }
+  .rank:nth-child(5) { animation-delay: calc(4 * var(--stagger)); }
+  .body { animation: rise-in var(--dur-2) var(--ease-out); }
   .line, .abl {
     display: grid;
     grid-template-columns: minmax(calc(var(--sp-10) * 3.25), 1.9fr) minmax(calc(var(--sp-10) * 3.75), 1.3fr) calc(var(--sp-10) * 2.4) calc(var(--sp-10) * 3.75);

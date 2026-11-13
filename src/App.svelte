@@ -21,6 +21,7 @@
   import Button from './components/ui/Button.svelte';
   import { rosterStore } from './lib/rosterStore.svelte.js';
   import { router, go } from './lib/router.svelte.js';
+  import { pageEnter } from './lib/motion.js';
   import { statusMessage, dismissStale } from './lib/notify.svelte.js';
   import InspectorOutlet from './components/InspectorOutlet.svelte';
   import { AFTER_IMPORT_PAGE_ID, DEFAULT_PAGE_ID, pageById } from './lib/routes.js';
@@ -105,7 +106,7 @@
         <div class="page">
           <main id="main" tabindex="-1">
             {#if route.kind === 'settings'}
-              <SettingsPage {setStatus} />
+              <div class="page-enter" use:pageEnter><SettingsPage {setStatus} /></div>
             {:else if page}
               {#if classBlocked}
                 <EmptyState title="Choose a class first" text="This page depends on the character's class. Pick one on Overview.">
@@ -115,7 +116,7 @@
                 </EmptyState>
               {:else}
                 {#key route.id}
-                  <Page {setStatus} {onNavigate} tab={route.tab} />
+                  <div class="page-enter" use:pageEnter><Page {setStatus} {onNavigate} tab={route.tab} /></div>
                 {/key}
               {/if}
             {/if}

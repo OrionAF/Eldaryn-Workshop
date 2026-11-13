@@ -19,6 +19,7 @@
   import { calculateCoreBonuses } from '../../lib/engine/sources/petCore.js';
   import { petSecondaryValue } from '../../lib/engine/sources/pet.js';
   import { rarityClass, formatFlat, formatPct, formatRate } from '../../lib/format.js';
+  import Num from '../ui/Num.svelte';
   import Button from '../ui/Button.svelte';
   import PresetMenu from '../character/PresetMenu.svelte';
 
@@ -69,12 +70,12 @@
       <tr>
         <th scope="row">Attack</th>
         <td class="num">{formatFlat(pet.baseAttack)}</td>
-        {#if flat}<td class="num scaled">{formatFlat(flat.flatAttack)}</td>{/if}
+        {#if flat}<td class="num scaled"><Num value={flat.flatAttack} format={formatFlat} flash="verdict" /></td>{/if}
       </tr>
       <tr>
         <th scope="row">Health</th>
         <td class="num">{formatFlat(pet.baseHp)}</td>
-        {#if flat}<td class="num scaled">{formatFlat(flat.flatHp)}</td>{/if}
+        {#if flat}<td class="num scaled"><Num value={flat.flatHp} format={formatFlat} flash="verdict" /></td>{/if}
       </tr>
     </tbody>
     <tbody>
