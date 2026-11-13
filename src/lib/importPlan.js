@@ -6,7 +6,8 @@
  *   profile   the game's player profile (model/gameProfile.js isGameProfile)
  *   opponent  another player's profile from Rankings (model/opponents.js isRankingsProfile), saved as an opponent
  *   roster    an Eldaryn export, v1 or v2 (has a `characters` list)
- *   fightLog  an arena fight response (`{result: {ticks}}` or `{ticks}`), routed to Duel > Verify
+ *   fightLog  a fight response the replay checks know (features/verifyLog.js detectFightKind: arena,
+ *             dungeon, Village Raid, World Boss, Fortress Boss), routed to Duel > Verify
  *   lootBag   `{pendingItems | oblivionPendingItems}`, routed to Drop Check
  * Anything else is rejected with an ImportError that names the case. A profile's report is the dry
  * run of normaliseCharacter plus the M1/M2/M3 report entries (data-model.md §7), so what the dialog
@@ -17,6 +18,7 @@ import { isGameProfile, gameProfileToCharacter } from './model/gameProfile.js';
 import { normaliseCharacter, normaliseRoster, isV1Roster, SCHEMA_VERSION } from './model/index.js';
 import { describeProfileUpdate } from './model/merge.js';
 import { isRankingsProfile, opponentFromRankingsProfile, MAX_OPPONENTS } from './model/opponents.js';
+import { detectFightKind, fightLogEvents } from './features/verifyLog.js';
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
@@ -26,7 +28,7 @@ export function detectKind(parsed) {
   if (isGameProfile(parsed)) return 'profile';
   if (isRankingsProfile(parsed)) return 'opponent';
   if (Array.isArray(parsed.characters)) return 'roster';
-  if (Array.isArray(parsed.result?.ticks) || Array.isArray(parsed.ticks)) return 'fightLog';
+  if (detectFightKind(parsed)) return 'fightLog';
   if (Array.isArray(parsed.pendingItems) || Array.isArray(parsed.oblivionPendingItems)) return 'lootBag';
   return null;
 }
@@ -189,8 +191,7 @@ export function planImport(text, roster, { now, character: into } = {}) {
   }
 
   if (kind === 'fightLog') {
-    const ticks = parsed.result?.ticks ?? parsed.ticks;
-    return { kind, ticks: ticks.length };
+    return { kind, fight: detectFightKind(parsed), ticks: fightLogEvents(parsed) };
   }
 
   const base = Array.isArray(parsed.pendingItems) ? parsed.pendingItems.length : 0;

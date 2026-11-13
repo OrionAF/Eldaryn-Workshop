@@ -313,7 +313,7 @@
 
 {#if tabId === 'verify' && verifyShown}
   <div role="tabpanel" id="duel-panel-verify">
-    <VerifyFightLog fighters={verifyFighters} handoff={logHandoff} pickOne={allMode} />
+    <VerifyFightLog fighters={verifyFighters} handoff={logHandoff} pickOne={allMode} {character} />
   </div>
 {:else}
   <div role="tabpanel" id="duel-panel-duel" class="panes">

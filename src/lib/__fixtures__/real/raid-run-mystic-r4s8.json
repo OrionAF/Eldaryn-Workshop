@@ -1,0 +1,305 @@
+{
+  "_note": "Real /raid/fight-prepare response captured 2026-10-29: raid_4 (Shadow Enclave) step 8, fought by the user's own level-74 Mystic Mage, lost at 2450 ms. Fight data only: fightId replaced by \"stripped\", keys removed. See Game/combat-pve.md section 21.1.",
+  "fightId": "stripped",
+  "ticks": [
+    {
+      "timestamp": 780,
+      "type": "mob_attack",
+      "damage": 1078000,
+      "playerHpAfter": 913693,
+      "mobHpAfter": 55000000,
+      "mobIndex": 4,
+      "playerShieldHp": 18431
+    },
+    {
+      "timestamp": 1000,
+      "type": "mob_silenced",
+      "damage": 0,
+      "playerHpAfter": 913693,
+      "mobHpAfter": 17906993,
+      "mobIndex": 0,
+      "playerShieldHp": 1096431
+    },
+    {
+      "timestamp": 1000,
+      "type": "spell_cast",
+      "damage": 0,
+      "playerHpAfter": 913693,
+      "mobHpAfter": 17906993,
+      "mobIndex": 0,
+      "spell": {
+        "name": "Null Pulse",
+        "icon": "🌀",
+        "species": "NULL_PULSE"
+      },
+      "momentumStacks": 0,
+      "playerShieldHp": 1096431
+    },
+    {
+      "timestamp": 1000,
+      "type": "spell_damage",
+      "damage": 5193007,
+      "playerHpAfter": 913693,
+      "mobHpAfter": 17906993,
+      "mobIndex": 0,
+      "spell": {
+        "name": "Null Pulse",
+        "icon": "🌀",
+        "species": "NULL_PULSE"
+      },
+      "isCrit": true,
+      "momentumStacks": 0,
+      "playerShieldHp": 1096431
+    },
+    {
+      "timestamp": 1000,
+      "type": "spell_heal_tick",
+      "damage": 2508222,
+      "playerHpAfter": 913693,
+      "mobHpAfter": 17906993,
+      "mobIndex": 0,
+      "spell": {
+        "name": "Null Pulse",
+        "icon": "🌀",
+        "species": "NULL_PULSE"
+      },
+      "momentumStacks": 0,
+      "playerShieldHp": 1096431
+    },
+    {
+      "timestamp": 1100,
+      "type": "player_attack",
+      "damage": 646845,
+      "playerHpAfter": 913693,
+      "mobHpAfter": 17260148,
+      "mobIndex": 0,
+      "playerShieldHp": 1096431
+    },
+    {
+      "timestamp": 1110,
+      "type": "mob_attack",
+      "damage": 638000,
+      "playerHpAfter": 913693,
+      "mobHpAfter": 13200000,
+      "mobIndex": 1,
+      "playerShieldHp": 458431
+    },
+    {
+      "timestamp": 1170,
+      "type": "mob_attack",
+      "damage": 748000,
+      "playerHpAfter": 624124,
+      "mobHpAfter": 38500000,
+      "mobIndex": 3,
+      "playerShieldHp": 0
+    },
+    {
+      "timestamp": 1200,
+      "type": "player_regen",
+      "damage": 0,
+      "playerHpAfter": 632804,
+      "mobHpAfter": 17260148,
+      "mobIndex": 0,
+      "playerShieldHp": 0
+    },
+    {
+      "timestamp": 1300,
+      "type": "player_regen",
+      "damage": 0,
+      "playerHpAfter": 641484,
+      "mobHpAfter": 17260148,
+      "mobIndex": 0,
+      "playerShieldHp": 0
+    },
+    {
+      "timestamp": 1340,
+      "type": "mob_attack",
+      "damage": 484000,
+      "playerHpAfter": 157484,
+      "mobHpAfter": 18700000,
+      "mobIndex": 2,
+      "playerShieldHp": 0
+    },
+    {
+      "timestamp": 1400,
+      "type": "player_regen",
+      "damage": 0,
+      "playerHpAfter": 166164,
+      "mobHpAfter": 17260148,
+      "mobIndex": 0,
+      "playerShieldHp": 0
+    },
+    {
+      "timestamp": 1500,
+      "type": "spell_cast",
+      "damage": 0,
+      "playerHpAfter": 595920,
+      "mobHpAfter": 16370383,
+      "mobIndex": 0,
+      "spell": {
+        "name": "Blinding Affliction",
+        "icon": "🌑",
+        "species": "BLINDING_AFFLICTION"
+      },
+      "momentumStacks": 2,
+      "playerShieldHp": 429756
+    },
+    {
+      "timestamp": 1500,
+      "type": "spell_cast",
+      "damage": 0,
+      "playerHpAfter": 595920,
+      "mobHpAfter": 16370383,
+      "mobIndex": 0,
+      "spell": {
+        "name": "Arcane Momentum",
+        "icon": "🌀",
+        "species": "ARCANE_MOMENTUM"
+      },
+      "momentumStacks": 2,
+      "playerShieldHp": 429756
+    },
+    {
+      "timestamp": 1500,
+      "type": "spell_damage",
+      "damage": 889765,
+      "playerHpAfter": 595920,
+      "mobHpAfter": 16370383,
+      "mobIndex": 0,
+      "spell": {
+        "name": "Arcane Momentum",
+        "icon": "🌀",
+        "species": "ARCANE_MOMENTUM"
+      },
+      "momentumStacks": 2,
+      "playerShieldHp": 429756
+    },
+    {
+      "timestamp": 1500,
+      "type": "spell_heal_tick",
+      "damage": 429756,
+      "playerHpAfter": 595920,
+      "mobHpAfter": 16370383,
+      "mobIndex": 0,
+      "spell": {
+        "name": "Arcane Momentum",
+        "icon": "🌀",
+        "species": "ARCANE_MOMENTUM"
+      },
+      "momentumStacks": 2,
+      "playerShieldHp": 429756
+    },
+    {
+      "timestamp": 1500,
+      "type": "player_regen",
+      "damage": 0,
+      "playerHpAfter": 604600,
+      "mobHpAfter": 16370383,
+      "mobIndex": 0,
+      "playerShieldHp": 429756
+    },
+    {
+      "timestamp": 1510,
+      "type": "mob_blinded",
+      "damage": 0,
+      "playerHpAfter": 885278,
+      "mobHpAfter": 15798736,
+      "mobIndex": 0,
+      "playerShieldHp": 710434
+    },
+    {
+      "timestamp": 1510,
+      "type": "spell_dot_tick",
+      "damage": 571647,
+      "playerHpAfter": 885278,
+      "mobHpAfter": 15798736,
+      "mobIndex": 0,
+      "spell": {
+        "name": "Blinding Affliction",
+        "icon": "🌑",
+        "species": "BLINDING_AFFLICTION"
+      },
+      "momentumStacks": 2,
+      "playerShieldHp": 710434
+    },
+    {
+      "timestamp": 1510,
+      "type": "spell_heal_tick",
+      "damage": 280678,
+      "playerHpAfter": 885278,
+      "mobHpAfter": 15798736,
+      "mobIndex": 0,
+      "spell": {
+        "name": "Blinding Affliction",
+        "icon": "🌑",
+        "species": "BLINDING_AFFLICTION"
+      },
+      "momentumStacks": 2,
+      "playerShieldHp": 710434
+    },
+    {
+      "timestamp": 1600,
+      "type": "player_regen",
+      "damage": 0,
+      "playerHpAfter": 893958,
+      "mobHpAfter": 15798736,
+      "mobIndex": 0,
+      "playerShieldHp": 710434
+    },
+    {
+      "timestamp": 1700,
+      "type": "player_regen",
+      "damage": 0,
+      "playerHpAfter": 902638,
+      "mobHpAfter": 15798736,
+      "mobIndex": 0,
+      "playerShieldHp": 710434
+    },
+    {
+      "timestamp": 1700,
+      "type": "player_attack",
+      "damage": 646845,
+      "playerHpAfter": 913693,
+      "mobHpAfter": 15151891,
+      "mobIndex": 0,
+      "playerShieldHp": 710434
+    },
+    {
+      "timestamp": 1700,
+      "type": "mob_blind",
+      "damage": 0,
+      "playerHpAfter": 913693,
+      "mobHpAfter": 15151891,
+      "mobIndex": 0,
+      "playerShieldHp": 710434
+    },
+    {
+      "timestamp": 2020,
+      "type": "mob_attack",
+      "damage": 638000,
+      "playerHpAfter": 913693,
+      "mobHpAfter": 13200000,
+      "mobIndex": 1,
+      "playerShieldHp": 98474
+    },
+    {
+      "timestamp": 2300,
+      "type": "player_attack",
+      "damage": 646845,
+      "playerHpAfter": 913693,
+      "mobHpAfter": 14505046,
+      "mobIndex": 0,
+      "playerShieldHp": 124514
+    },
+    {
+      "timestamp": 2450,
+      "type": "player_death",
+      "damage": 1078000,
+      "playerHpAfter": 0,
+      "mobHpAfter": 55000000,
+      "mobIndex": 4
+    }
+  ],
+  "totalDuration": 2450,
+  "playerShieldMax": 1096431
+}

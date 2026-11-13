@@ -13,6 +13,7 @@
   import { unitFor } from './importUnits.js';
   import { classLabel } from '../../lib/game/classes.js';
   import { describeReportEntry } from '../../lib/importPlan.js';
+  import { fightKindLabel } from '../../lib/features/verifyLog.js';
   import {
     importFlow,
     closeImport,
@@ -139,7 +140,7 @@
       </div>
     {:else}
       <div class="report">
-        <p class="lead">An arena fight log with {plural(plan.ticks, 'event')}.</p>
+        <p class="lead">{fightKindLabel(plan.fight)} fight log with {plural(plan.ticks, 'event')}.</p>
         <p class="muted">The replay check compares it with the combat rules. Nothing about your characters changes here.</p>
       </div>
     {/if}

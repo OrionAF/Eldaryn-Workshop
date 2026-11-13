@@ -67,4 +67,30 @@ describe('dungeonReplayCheck without a sheet', () => {
     expect(bad.rules.find((r) => r.rule === 'tick-grid').status).toBe('fail');
     expect(bad.rules.find((r) => r.rule === 'transitions').status).toBe('fail');
   });
+
+  it('reads a prepare response (no outcome fields) from its rows; a result missing only some fails shape', () => {
+    const row = (timestamp, type, mobIndex, mobHpAfter, extra = {}) => ({ timestamp, type, damage: 0, playerHpAfter: 10, mobHpAfter, mobIndex, ...extra });
+    const prep = { totalDuration: 1020, ticks: [row(510, 'player_attack', 0, 0, { damage: 4 }), row(510, 'mob_death', 0, 0), row(1020, 'player_death', 1, 7, { playerHpAfter: 0 })] };
+    const report = dungeonReplayCheck(prep);
+    expect(report.mismatches).toEqual([]);
+    const terminal = report.rules.find((r) => r.rule === 'terminal');
+    expect(terminal.status).toBe('pass');
+    expect(terminal.note).toMatch(/loss/);
+    // a loss with rows after player_death still fails without the outcome fields
+    const late = structuredClone(prep);
+    late.ticks.push(row(1030, 'player_regen', 1, 7, { playerHpAfter: 0 }));
+    late.totalDuration = 1030;
+    expect(dungeonReplayCheck(late).rules.find((r) => r.rule === 'terminal').status).toBe('fail');
+    expect(dungeonReplayCheck({ ...prep, success: false }).rules[0].status).toBe('fail');
+  });
+});
+
+describe('mapFightTicks in a raid', () => {
+  it('keeps the index a raid mob behind the target stamped on its event', () => {
+    const rows = mapFightTicks([
+      { timestamp: 780, type: 'defender_hit', damage: 5, attackerHp: 9, defenderHp: 55, mobIndex: 4 },
+      { timestamp: 790, type: 'attacker_hit', damage: 3, attackerHp: 9, defenderHp: 20 },
+    ], 0);
+    expect(rows.map((r) => r.mobIndex)).toEqual([4, 0]);
+  });
 });

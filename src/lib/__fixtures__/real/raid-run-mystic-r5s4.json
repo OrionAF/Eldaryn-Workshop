@@ -1,0 +1,624 @@
+{
+  "_note": "Real /raid/fight-resolve response captured 2026-11-13: raid_5 step 4, fought by the user's own Mystic Mage; mob 1 dies at 4000 ms and the player at 4440 ms, in the gap before the next fight. Fight data only: the result object, without keys, progress, influence or quests. See Game/combat-pve.md section 21.1.",
+  "result": {
+    "success": false,
+    "ticks": [
+      {
+        "timestamp": 780,
+        "type": "mob_attack",
+        "damage": 2304000,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 102400000,
+        "mobIndex": 4,
+        "playerShieldHp": 5090359
+      },
+      {
+        "timestamp": 810,
+        "type": "mob_attack",
+        "damage": 3040000,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 70400000,
+        "mobIndex": 3,
+        "playerShieldHp": 2068617
+      },
+      {
+        "timestamp": 1000,
+        "type": "player_attack",
+        "damage": 2822282,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 205177718,
+        "mobIndex": 0,
+        "playerShieldHp": 2105133
+      },
+      {
+        "timestamp": 1170,
+        "type": "mob_attack",
+        "damage": 2080000,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 89600000,
+        "mobIndex": 1,
+        "playerShieldHp": 43391
+      },
+      {
+        "timestamp": 1220,
+        "type": "mob_attack",
+        "damage": 2560000,
+        "playerHpAfter": 1305332,
+        "mobHpAfter": 128000000,
+        "mobIndex": 2,
+        "playerShieldHp": 0
+      },
+      {
+        "timestamp": 1300,
+        "type": "player_regen",
+        "damage": 0,
+        "playerHpAfter": 1323590,
+        "mobHpAfter": 205177718,
+        "mobIndex": 0,
+        "playerShieldHp": 18258
+      },
+      {
+        "timestamp": 1400,
+        "type": "player_regen",
+        "damage": 0,
+        "playerHpAfter": 1341848,
+        "mobHpAfter": 205177718,
+        "mobIndex": 0,
+        "playerShieldHp": 36516
+      },
+      {
+        "timestamp": 1500,
+        "type": "spell_cast",
+        "damage": 0,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 152277759,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Arcane Momentum",
+          "icon": "🌀",
+          "species": "ARCANE_MOMENTUM"
+        },
+        "momentumStacks": 2,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 1500,
+        "type": "spell_damage",
+        "damage": 35486776,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 152277759,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Arcane Momentum",
+          "icon": "🌀",
+          "species": "ARCANE_MOMENTUM"
+        },
+        "isCrit": true,
+        "momentumStacks": 2,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 1500,
+        "type": "spell_heal_tick",
+        "damage": 15259313,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 152277759,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Arcane Momentum",
+          "icon": "🌀",
+          "species": "ARCANE_MOMENTUM"
+        },
+        "momentumStacks": 2,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 1500,
+        "type": "spell_cast",
+        "damage": 0,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 152277759,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Arcane Barrage",
+          "icon": "💠",
+          "species": "ARCANE_BARRAGE"
+        },
+        "momentumStacks": 2,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 1500,
+        "type": "spell_damage",
+        "damage": 17413183,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 152277759,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Arcane Barrage",
+          "icon": "💠",
+          "species": "ARCANE_BARRAGE"
+        },
+        "isCrit": true,
+        "momentumStacks": 2,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 1500,
+        "type": "spell_heal_tick",
+        "damage": 7626974,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 152277759,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Arcane Barrage",
+          "icon": "💠",
+          "species": "ARCANE_BARRAGE"
+        },
+        "momentumStacks": 2,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 1500,
+        "type": "spell_cast",
+        "damage": 0,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 152277759,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Blinding Affliction",
+          "icon": "🌑",
+          "species": "BLINDING_AFFLICTION"
+        },
+        "momentumStacks": 2,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 1500,
+        "type": "player_attack",
+        "damage": 2822282,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 149455477,
+        "mobIndex": 0,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 1510,
+        "type": "mob_blinded",
+        "damage": 0,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 119432719,
+        "mobIndex": 0,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 1510,
+        "type": "spell_dot_tick",
+        "damage": 30022758,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 119432719,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Blinding Affliction",
+          "icon": "🌑",
+          "species": "BLINDING_AFFLICTION"
+        },
+        "isCrit": true,
+        "momentumStacks": 2,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 1510,
+        "type": "spell_heal_tick",
+        "damage": 13149968,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 119432719,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Blinding Affliction",
+          "icon": "🌑",
+          "species": "BLINDING_AFFLICTION"
+        },
+        "momentumStacks": 2,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 1720,
+        "type": "mob_attack",
+        "damage": 3040000,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 70400000,
+        "mobIndex": 3,
+        "playerShieldHp": 4354359
+      },
+      {
+        "timestamp": 2000,
+        "type": "player_crit",
+        "damage": 12643823,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 106788896,
+        "mobIndex": 0,
+        "playerShieldHp": 4409133
+      },
+      {
+        "timestamp": 2170,
+        "type": "mob_blind",
+        "damage": 0,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 106788896,
+        "mobIndex": 0,
+        "playerShieldHp": 2347391
+      },
+      {
+        "timestamp": 2170,
+        "type": "mob_attack",
+        "damage": 2080000,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 89600000,
+        "mobIndex": 1,
+        "playerShieldHp": 2347391
+      },
+      {
+        "timestamp": 2450,
+        "type": "mob_attack",
+        "damage": 2304000,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 102400000,
+        "mobIndex": 4,
+        "playerShieldHp": 98165
+      },
+      {
+        "timestamp": 2500,
+        "type": "spell_cast",
+        "damage": 0,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 102902025,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Arcane Barrage",
+          "icon": "💠",
+          "species": "ARCANE_BARRAGE"
+        },
+        "momentumStacks": 2,
+        "playerShieldHp": 1818872
+      },
+      {
+        "timestamp": 2500,
+        "type": "spell_damage",
+        "damage": 3886871,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 102902025,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Arcane Barrage",
+          "icon": "💠",
+          "species": "ARCANE_BARRAGE"
+        },
+        "momentumStacks": 2,
+        "playerShieldHp": 1818872
+      },
+      {
+        "timestamp": 2500,
+        "type": "spell_heal_tick",
+        "damage": 1702449,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 102902025,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Arcane Barrage",
+          "icon": "💠",
+          "species": "ARCANE_BARRAGE"
+        },
+        "momentumStacks": 2,
+        "playerShieldHp": 1818872
+      },
+      {
+        "timestamp": 2500,
+        "type": "player_attack",
+        "damage": 2822282,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 100079743,
+        "mobIndex": 0,
+        "playerShieldHp": 1818872
+      },
+      {
+        "timestamp": 2630,
+        "type": "mob_attack",
+        "damage": 3040000,
+        "playerHpAfter": 2600813,
+        "mobHpAfter": 70400000,
+        "mobIndex": 3,
+        "playerShieldHp": 0
+      },
+      {
+        "timestamp": 2650,
+        "type": "mob_attack",
+        "damage": 2560000,
+        "playerHpAfter": 40813,
+        "mobHpAfter": 128000000,
+        "mobIndex": 2,
+        "playerShieldHp": 0
+      },
+      {
+        "timestamp": 2700,
+        "type": "player_regen",
+        "damage": 0,
+        "playerHpAfter": 59071,
+        "mobHpAfter": 100079743,
+        "mobIndex": 0,
+        "playerShieldHp": 18258
+      },
+      {
+        "timestamp": 2800,
+        "type": "player_regen",
+        "damage": 0,
+        "playerHpAfter": 77329,
+        "mobHpAfter": 100079743,
+        "mobIndex": 0,
+        "playerShieldHp": 36516
+      },
+      {
+        "timestamp": 2900,
+        "type": "player_regen",
+        "damage": 0,
+        "playerHpAfter": 95587,
+        "mobHpAfter": 100079743,
+        "mobIndex": 0,
+        "playerShieldHp": 54774
+      },
+      {
+        "timestamp": 3000,
+        "type": "spell_cast",
+        "damage": 0,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 64412717,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Arcane Momentum",
+          "icon": "🌀",
+          "species": "ARCANE_MOMENTUM"
+        },
+        "momentumStacks": 4,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 3000,
+        "type": "spell_damage",
+        "damage": 35667026,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 64412717,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Arcane Momentum",
+          "icon": "🌀",
+          "species": "ARCANE_MOMENTUM"
+        },
+        "isCrit": true,
+        "momentumStacks": 4,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 3000,
+        "type": "spell_heal_tick",
+        "damage": 15622157,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 64412717,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Arcane Momentum",
+          "icon": "🌀",
+          "species": "ARCANE_MOMENTUM"
+        },
+        "momentumStacks": 4,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 3000,
+        "type": "player_attack",
+        "damage": 2822282,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 61590435,
+        "mobIndex": 0,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 3170,
+        "type": "mob_attack",
+        "damage": 2080000,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 89600000,
+        "mobIndex": 1,
+        "playerShieldHp": 5314359
+      },
+      {
+        "timestamp": 3500,
+        "type": "mob_blinded",
+        "damage": 0,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 13914767,
+        "mobIndex": 0,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 3500,
+        "type": "spell_cast",
+        "damage": 0,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 13914767,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Arcane Barrage",
+          "icon": "💠",
+          "species": "ARCANE_BARRAGE"
+        },
+        "momentumStacks": 4,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 3500,
+        "type": "spell_damage",
+        "damage": 17501184,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 13914767,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Arcane Barrage",
+          "icon": "💠",
+          "species": "ARCANE_BARRAGE"
+        },
+        "isCrit": true,
+        "momentumStacks": 4,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 3500,
+        "type": "spell_heal_tick",
+        "damage": 7805528,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 13914767,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Arcane Barrage",
+          "icon": "💠",
+          "species": "ARCANE_BARRAGE"
+        },
+        "momentumStacks": 4,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 3500,
+        "type": "spell_dot_tick",
+        "damage": 30174484,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 13914767,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Blinding Affliction",
+          "icon": "🌑",
+          "species": "BLINDING_AFFLICTION"
+        },
+        "isCrit": true,
+        "momentumStacks": 4,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 3500,
+        "type": "spell_heal_tick",
+        "damage": 13457819,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 13914767,
+        "mobIndex": 0,
+        "spell": {
+          "name": "Blinding Affliction",
+          "icon": "🌑",
+          "species": "BLINDING_AFFLICTION"
+        },
+        "momentumStacks": 4,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 3500,
+        "type": "player_attack",
+        "damage": 2822282,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 11092485,
+        "mobIndex": 0,
+        "playerShieldHp": 7394359
+      },
+      {
+        "timestamp": 3530,
+        "type": "mob_attack",
+        "damage": 3040000,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 70400000,
+        "mobIndex": 3,
+        "playerShieldHp": 4354359
+      },
+      {
+        "timestamp": 4000,
+        "type": "player_crit",
+        "damage": 12643823,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 0,
+        "mobIndex": 0,
+        "playerShieldHp": 4445649
+      },
+      {
+        "timestamp": 4000,
+        "type": "mob_death",
+        "damage": 0,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 0,
+        "mobIndex": 0,
+        "playerShieldHp": 4445649
+      },
+      {
+        "timestamp": 4080,
+        "type": "mob_attack",
+        "damage": 2560000,
+        "playerHpAfter": 3803683,
+        "mobHpAfter": 128000000,
+        "mobIndex": 2,
+        "playerShieldHp": 1885649
+      },
+      {
+        "timestamp": 4120,
+        "type": "mob_attack",
+        "damage": 2304000,
+        "playerHpAfter": 3403590,
+        "mobHpAfter": 102400000,
+        "mobIndex": 4,
+        "playerShieldHp": 0
+      },
+      {
+        "timestamp": 4170,
+        "type": "mob_attack",
+        "damage": 2080000,
+        "playerHpAfter": 1323590,
+        "mobHpAfter": 89600000,
+        "mobIndex": 1,
+        "playerShieldHp": 0
+      },
+      {
+        "timestamp": 4200,
+        "type": "player_regen",
+        "damage": 0,
+        "playerHpAfter": 1341848,
+        "mobHpAfter": 89600000,
+        "mobIndex": 1,
+        "playerShieldHp": 18258
+      },
+      {
+        "timestamp": 4300,
+        "type": "player_regen",
+        "damage": 0,
+        "playerHpAfter": 1360106,
+        "mobHpAfter": 89600000,
+        "mobIndex": 1,
+        "playerShieldHp": 36516
+      },
+      {
+        "timestamp": 4400,
+        "type": "player_regen",
+        "damage": 0,
+        "playerHpAfter": 1378364,
+        "mobHpAfter": 89600000,
+        "mobIndex": 1,
+        "playerShieldHp": 54774
+      },
+      {
+        "timestamp": 4440,
+        "type": "player_death",
+        "damage": 3040000,
+        "playerHpAfter": 0,
+        "mobHpAfter": 70400000,
+        "mobIndex": 3
+      }
+    ],
+    "totalDuration": 4440,
+    "mobsDefeated": 1,
+    "influenceReward": 0,
+    "playerHpRemaining": 0,
+    "playerShieldMax": 7394359
+  }
+}
