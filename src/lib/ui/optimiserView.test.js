@@ -76,6 +76,22 @@ describe('viewResult', () => {
     expect(v.unit).toBe('ms');
     expect(v.baseline.valueNote).toMatch(/^Rarely clears: 18% win rate/);
   });
+  it('a DPS run with a fight length reads as damage per fight: every figure times the seconds, pct unchanged', () => {
+    const r = dpsResult();
+    const raw = viewResult(r);
+    expect(raw.unit).toBe('dps');
+    expect(raw.window).toBeNull();
+    r.objective = { ...r.objective, window: 20 };
+    const v = viewResult(r);
+    expect(v.unit).toBe('damage');
+    expect(v.window).toBe(20);
+    expect(v.baseline.value.est).toBeCloseTo(raw.baseline.value.est * 20);
+    expect(v.rows[0].value.hi).toBeCloseTo(raw.rows[0].value.hi * 20);
+    expect(v.rows[0].vsBaseline.delta).toBeCloseTo(raw.rows[0].vsBaseline.delta * 20);
+    expect(v.rows[0].vsBaseline.lo).toBeCloseTo(raw.rows[0].vsBaseline.lo * 20);
+    expect(v.rows[0].vsBaseline.pct).toBe(raw.rows[0].vsBaseline.pct);
+    expect(v.domain.max).toBeGreaterThanOrEqual(v.rows[0].vsBaseline.hi);
+  });
   it('a failed result has no rows', () => {
     expect(viewResult({ status: 'failed', objective: { unit: 'dps' }, rows: [], baseline: null }).rows).toEqual([]);
   });

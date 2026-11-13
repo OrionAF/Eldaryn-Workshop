@@ -1,5 +1,5 @@
 // ui/statsFormat.js - display of the A.9 Estimate / Contrast shapes. Units come from the objective
-// ('dps' | 'ms' | 'p'). Every signed figure, including both CI bounds, keeps its sign (#77).
+// ('dps' | 'ms' | 'p'), plus 'damage' (a DPS run shown as damage per fight, optimiserView.js viewResult). Every signed figure, including both CI bounds, keeps its sign (#77).
 import { formatFlat } from '../format.js';
 
 const MINUS = '−';

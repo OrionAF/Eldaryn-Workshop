@@ -14,7 +14,7 @@
   const side = (run) => {
     const v = viewRun(run);
     const top = v?.rows?.[0] ?? null;
-    return { run, v, top, unit: run.headline.unit || 'dps' };
+    return { run, v, top, unit: v?.unit || run.headline.unit || 'dps' };
   };
   const A = $derived(side(a));
   const B = $derived(side(b));

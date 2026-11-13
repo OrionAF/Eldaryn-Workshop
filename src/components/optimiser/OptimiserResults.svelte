@@ -37,7 +37,7 @@
   let buildRow = $state(null);
   let drawer = $state(false);
 
-  const AXIS_TITLE = { dps: 'Change in DPS vs current', ms: 'Time saved vs current (positive is faster)', p: 'Change in chance vs current', influence: 'Change in Influence from wins per attack vs current' };
+  const AXIS_TITLE = { dps: 'Change in DPS vs current', damage: 'Change in damage per fight vs current', ms: 'Time saved vs current (positive is faster)', p: 'Change in chance vs current', influence: 'Change in Influence from wins per attack vs current' };
   // A PVE win-rate run (either win-rate goal): one axis in win-rate points and tries per clear on every row; a
   // target goal adds a Meets / Below target chip per row. A Push run's rows are win-rate rows measured on the
   // step the build was found for (simulation.md §Push).
@@ -54,7 +54,8 @@
     buildRow = row;
     drawer = true;
   };
-  const credit = (row) => fortressDamage(view.fortress, row?.value?.est);
+  // fortressDamage takes DPS; a damage-per-fight view divides its fight length back out
+  const credit = (row) => fortressDamage(view.fortress, view.window && Number.isFinite(row?.value?.est) ? row.value.est / view.window : row?.value?.est);
   const fmtInt = (n) => formatFlat(n);
   function copyResults() {
     const done = (ok) => notify(ok ? 'Copied the results as text.' : 'Copying was blocked by the browser.', { kind: ok ? 'success' : 'warn' });
@@ -122,7 +123,7 @@
   {/if}
   <div class="sticky">
     <div class="head" role="presentation">
-      <span class="lbl">Result · likely range</span>
+      <span class="lbl">{view.unit === 'damage' ? `Average damage in ${view.window} s` : 'Result'} · likely range</span>
       <ForestAxis domain={view.domain} title={axisTitle} format={(x) => fmtSigned(view.unit, x)} />
       <span class="lbl right">Change</span>
       <span class="lbl">Verdict</span>
