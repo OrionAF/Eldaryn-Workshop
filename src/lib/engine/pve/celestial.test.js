@@ -99,15 +99,14 @@ describe('boss and add scaling', () => {
     expect(a.attack).toBe(477916);
   });
 
-  it('Mythic level is the duo\'s higher Oblivion Level; rank score orders by boss level, then time', () => {
+  it('Mythic level is the duo\'s higher Oblivion Level; rank score orders by whole seconds, then Oblivion Level (2.9.5)', () => {
     expect(celestialMythicLevel([40, 72])).toBe(72);
     expect(celestialMythicLevel([55, null])).toBe(55);
     expect(celestialMythicLevel([undefined])).toBeNull();
-    expect(celestialRankScore({ clearTimeMs: 90000 }, false)).toBe(90000);
-    const deep = celestialRankScore({ bossLevel: 80, clearTimeMs: 350000 }, true);
-    const fast = celestialRankScore({ bossLevel: 79, clearTimeMs: 20000 }, true);
-    expect(deep).toBeLessThan(fast);
-    expect(celestialRankScore({ bossLevel: 80, clearTimeMs: 1000 }, true)).toBe(-80e9 + 1000);
+    expect(celestialRankScore({ clearTimeMs: 90999 })).toBe(90e6);
+    expect(celestialRankScore({ clearTimeMs: 20000, oblivionLevel: 40 })).toBeLessThan(celestialRankScore({ clearTimeMs: 21000, oblivionLevel: 80 }));
+    expect(celestialRankScore({ clearTimeMs: 20500, oblivionLevel: 80 })).toBeLessThan(celestialRankScore({ clearTimeMs: 20100, oblivionLevel: 79 }));
+    expect(celestialRankScore({ clearTimeMs: -5 })).toBe(0);
   });
 });
 

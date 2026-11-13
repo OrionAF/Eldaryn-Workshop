@@ -43,15 +43,17 @@ export function celestialMythicLevel(oblivionLevels) {
 }
 
 /**
- * port of celestialRankScore (2.9.4 L2131165): lower ranks first; Mythic ranks by boss level, then time.
- * @param {{clearTimeMs: number, bossLevel?: number}} entry
- * @param {boolean} mythic
+ * port of celestialRankScore (2.9.5; pve-content.md §6, 2.9.5 addendum): lower ranks first. Every
+ * difficulty ranks by whole clear seconds; a tie goes to the higher Oblivion Level.
+ * @param {{clearTimeMs: number, oblivionLevel?: number}} entry
  */
-export function celestialRankScore(entry, mythic) {
-  return mythic ? -entry.bossLevel * CELESTIAL_MYTHIC_RANK_LEVEL_WEIGHT + entry.clearTimeMs : entry.clearTimeMs;
+export function celestialRankScore(entry) {
+  return celestialClearSeconds(entry.clearTimeMs) * CELESTIAL_RANK_SECOND_WEIGHT - (entry.oblivionLevel ?? 0);
 }
-/** The boss-level weight of the Mythic rank score (2.9.4 L2131885). */
-export const CELESTIAL_MYTHIC_RANK_LEVEL_WEIGHT = 1e9;
+/** port of celestialClearSeconds (2.9.5): whole seconds, never below 0. */
+export const celestialClearSeconds = (ms) => Math.max(0, Math.floor(ms / 1000));
+/** The per-second weight of the rank score (2.9.5). */
+export const CELESTIAL_RANK_SECOND_WEIGHT = 1e6;
 
 /** Reference-only Mythic Fury scaling; this does not enable Mythic fights (pve-content.md addendum). */
 export function celestialFuryPowerMultiplier(power, difficulty = 'MYTHIC') {
