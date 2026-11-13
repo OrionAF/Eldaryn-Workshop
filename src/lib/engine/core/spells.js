@@ -286,29 +286,56 @@ const SPELL_RESIST_HARD = capConfig('SPELL_RESIST').hard;
 // The cast switch of processSpellsTick acts only on these types; any other idle runtime is a no-op.
 const castsSomething = (t) => t === 'DAMAGE' || t === 'BUFF' || t === 'HEAL' || t === 'DEBUFF';
 
-// The common tick where nothing fires: every idle castable spell is still cooling down after this tick's
-// countdown, and every running effect is a plain timed effect that neither ticks nor ends this tick.
-// processSpellsTick would then only count the timers down and return its empty result. This does the
-// same (same mutations, same result shape and key order) without building the full pass; null when any
-// runtime has work to do (nothing is mutated then).
-function quietSpellsTick(runtimes, dtMs, minionAlive) {
-  let hasMomentum = false;
+// The cast check of processSpellsTick (L1091455-1091542) for an idle castable spell that is off cooldown:
+// true when it casts this tick. A cast lockout, a missing minion or an unmet activation condition keeps
+// it waiting, and the pass then leaves it untouched.
+function readySpellCasts(rt, input, minionAlive) {
+  if ((input.silencedMs ?? 0) > 0) return false;
+  const spell = rt.config.spell;
+  if (!minionAlive && requiresLivingMinion(spell)) return false;
+  const isOffensive = spell.spellType === 'DAMAGE' || spell.spellType === 'DEBUFF';
+  if (!(input.offensiveConditions ?? false) && isOffensive) return true;
+  const maxHp = input.maxHp;
+  const enemyMaxHp = input.enemyMaxHp ?? 0;
+  const myHpPct = maxHp > 0 ? ((input.hp ?? 0) / maxHp) * 100 : 100;
+  const enemyHpPct = enemyMaxHp > 0 ? ((input.enemyHp ?? 0) / enemyMaxHp) * 100 : 100;
+  return isConditionMet(rt.config.activationCondition, myHpPct, enemyHpPct, input.selfConditionsMet ?? false);
+}
+
+/**
+ * True when this tick of `runtimes` is quiet: every idle castable spell is still cooling down after this
+ * tick's countdown or is off cooldown but does not cast (readySpellCasts), and every running effect is a
+ * plain timed effect that neither ticks nor ends this tick. processSpellsTick would then only count the
+ * timers down (advanceQuietSpells) and return its empty result with unchanged buff modifiers. Reads only;
+ * a duel driver asks this before it skips a tick.
+ * @param {SpellRuntime[]} runtimes
+ * @param {SpellTickInput} input  what processSpellsTick would be given this tick; read: dtMs, minionAlive,
+ *   silencedMs, hp, maxHp, enemyHp, enemyMaxHp, offensiveConditions, selfConditionsMet
+ */
+export function spellsTickIsQuiet(runtimes, input) {
+  const dtMs = input.dtMs;
+  const minionAlive = input.minionAlive ?? false;
   for (let i = 0; i < runtimes.length; i++) {
     const rt = runtimes[i];
     const spell = rt.config.spell;
     if (rt.isEffectActive) {
       // the active-effect block of processSpellsTick, reduced to "does anything happen"
       const regen = spell.minionEmpower != null || spell.minionBastion != null;
-      if ((regen || spell.minionFrenzy != null) && !minionAlive) return null;
-      if (!(rt.effectRemaining - dtMs > 0)) return null;
+      if ((regen || spell.minionFrenzy != null) && !minionAlive) return false;
+      if (!(rt.effectRemaining - dtMs > 0)) return false;
       const due = rt.nextTickIn - dtMs <= 0;
-      if (due && ((spell.spellType === 'DAMAGE' && spell.isDoT) || spell.spellType === 'HEAL' || regen)) return null;
+      if (due && ((spell.spellType === 'DAMAGE' && spell.isDoT) || spell.spellType === 'HEAL' || regen)) return false;
     } else if (castsSomething(spell.spellType)
-      && (!(rt.cooldownRemaining > 0) || !(Math.max(0, rt.cooldownRemaining - dtMs) > 0))) {
-      return null;
+      && (!(rt.cooldownRemaining > 0) || !(Math.max(0, rt.cooldownRemaining - dtMs) > 0))
+      && readySpellCasts(rt, input, minionAlive)) {
+      return false;
     }
-    if (!hasMomentum && momentumConfig(spell) !== null) hasMomentum = true;
   }
+  return true;
+}
+
+/** The timer countdown of a quiet tick (spellsTickIsQuiet): the only thing processSpellsTick mutates then. */
+export function advanceQuietSpells(runtimes, dtMs) {
   for (let i = 0; i < runtimes.length; i++) {
     const rt = runtimes[i];
     if (rt.cooldownRemaining > 0) rt.cooldownRemaining = Math.max(0, rt.cooldownRemaining - dtMs);
@@ -317,6 +344,17 @@ function quietSpellsTick(runtimes, dtMs, minionAlive) {
       rt.effectRemaining -= dtMs;
     }
   }
+}
+
+// The quiet tick of processSpellsTick: the same mutations, result shape and key order without building
+// the full pass; null when any runtime has work to do (nothing is mutated then).
+function quietSpellsTick(runtimes, input) {
+  if (!spellsTickIsQuiet(runtimes, input)) return null;
+  let hasMomentum = false;
+  for (let i = 0; i < runtimes.length && !hasMomentum; i++) {
+    hasMomentum = momentumConfig(runtimes[i].config.spell) !== null;
+  }
+  advanceQuietSpells(runtimes, input.dtMs);
   const out = {
     ownerHpDelta: 0, ownerVampHeal: 0, targetHpDelta: 0, events: [],
     buffModifiers: computeActiveBuffModifiers(runtimes), newDebuffs: undefined,
@@ -335,7 +373,7 @@ function quietSpellsTick(runtimes, dtMs, minionAlive) {
  * @returns {SpellTickResult}
  */
 export function processSpellsTick(runtimes, input, rng) {
-  const quiet = quietSpellsTick(runtimes, input.dtMs, input.minionAlive);
+  const quiet = quietSpellsTick(runtimes, input);
   if (quiet) return quiet;
   const {
     maxHp, dtMs, timestamp, attack = 0, healReductionPercent = 0, hp = 0, enemyHp = 0, enemyMaxHp = 0,

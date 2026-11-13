@@ -351,8 +351,12 @@ export function createStackCombat(equipped, active = true, overrides, ctx) {
       if (lossDef) bulwarkOnUnblockedHit(rtSelf, lossDef);
       return t;
     },
-    tick: (dtMs) => { if (targetDef) sunderDecayTick(rtTarget, targetDef, dtMs); },
+    /** Sunder decay. Returns true when a stack was lost (the modifiers changed), else false. */
+    tick: (dtMs) => (targetDef ? sunderDecayTick(rtTarget, targetDef, dtMs) : false),
     resetTarget: () => { rtTarget.stacks = 0; rtTarget.decayAccumMs = 0; },
     snapshot: () => ({ bulwarkStacks: rtSelf.stacks, sunderStacks: rtTarget.stacks }),
+    /** The two counters every modifier above is a function of (with the fixed defs): unchanged counters, unchanged modifiers. */
+    selfStacks: () => rtSelf.stacks,
+    targetStacks: () => rtTarget.stacks,
   };
 }
