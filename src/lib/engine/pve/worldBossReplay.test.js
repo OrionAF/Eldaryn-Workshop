@@ -1,6 +1,6 @@
-// World Boss replay check (worldBossReplay.js). No World Boss log has been captured, so nothing here is held
-// against the server: the codec round-trips, and the app's own fight (as a server-shaped response) passes the
-// rules that can run and fails them when tampered with.
+// World Boss replay check (worldBossReplay.js) on the app's own fights: the codec round-trips, and the app's
+// fight (as a server-shaped response) passes the rules that can run and fails them when tampered with. The one
+// captured server log is held in __fixtures__/real/worldBossReplay.test.js.
 import { describe, it, expect } from 'vitest';
 import sentinelProfile from '../../__fixtures__/real/profile-sentinel-l85-miss.json';
 import mysticProfile from '../../__fixtures__/real/profile-mystic-l50.json';

@@ -254,6 +254,11 @@ function rowsOf(log) {
  */
 export function worldBossResponseOf(sim, { shield = null, fightId = 'app-model', maxBytes = Infinity } = {}) {
   const rows = rowsOf(sim.log ?? []);
+  // a fight the player outlasts ends with a `time_up` row at its last tick (combat-pve.md §16.2)
+  const last = rows.at(-1);
+  if (sim.timedOut && last) {
+    rows.push({ timestamp: sim.timeMs, type: 'time_up', damage: 0, attackerHpAfter: last.attackerHpAfter, defenderHpAfter: last.defenderHpAfter });
+  }
   return {
     fightId,
     bossHp: sim.enemyHpLeft + sim.damageDealt,
@@ -411,6 +416,12 @@ export function worldBossReplayCheck(response, { attacker = null, affinity = nul
       const d = rows[deathAt];
       if (d.attackerHpAfter === 0) c.ok(); else c.bad('the death row has HP left', { index: deathAt, expected: 0, actual: d.attackerHpAfter });
       if (last.timestamp === d.timestamp) c.ok(); else c.bad('rows follow the death tick', { index: deathAt, expected: d.timestamp, actual: last.timestamp });
+    }
+    // the server closes a fight the player outlasts with one `time_up` row (combat-pve.md §16.2)
+    const up = rows.findIndex((e) => e.type === 'time_up');
+    if (up >= 0) {
+      if (up === rows.length - 1 && rows[up].timestamp === response.fightDurationMs && rows[up].damage === 0 && deathAt < 0) c.ok();
+      else c.bad('time_up is not the last row, at fightDurationMs, of a fight the player outlasted', { index: up, expected: response.fightDurationMs, actual: rows[up].timestamp });
     }
     const sum = worldBossDamageOf(rows);
     if (sum === response.damageDealt) c.ok();
