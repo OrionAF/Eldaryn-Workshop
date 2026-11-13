@@ -98,20 +98,36 @@ export function valueNoteOf(row, rows = []) {
   return `Rarely clears: ${Math.round(rate * 100)}% win rate; ${basis}`;
 }
 
+// A DPS run reads as damage per fight: every DPS figure times the fight's seconds. The relative `pct` is unit-free and stays.
+const times = (v, k) => (finite(v) ? v * k : v);
+const scaleEst = (e, k) => (e ? { ...e, est: times(e.est, k), lo: times(e.lo, k), hi: times(e.hi, k) } : e);
+const scaleCon = (c, k) => (c ? { ...c, delta: times(c.delta, k), lo: times(c.lo, k), hi: times(c.hi, k) } : c);
+function damageRow(r, k) {
+  return {
+    ...r,
+    value: scaleEst(r.value, k),
+    vsBaseline: scaleCon(r.vsBaseline, k),
+    changes: (r.changes ?? []).map((c) => ({ ...c, own: scaleCon(c.own, k), needed: scaleCon(c.needed, k) })),
+    remainder: scaleCon(r.remainder, k),
+  };
+}
+
 /**
  * What the results table renders: the baseline, the ranked rows, the table's single forest domain, and
  * how many non-baseline rows were withheld because they list no change (I3 would be broken, so such a
- * row is never shown as a result).
- * @returns {{unit: string, higherIsBetter: boolean, baseline: Object|null, rows: Object[], withheld: number, domain: Object}}
+ * row is never shown as a result). A DPS run with a known fight length (`objective.window`) is shown as
+ * damage per fight (unit 'damage'); `window` is then that length in seconds, else null.
+ * @returns {{unit: string, higherIsBetter: boolean, baseline: Object|null, rows: Object[], withheld: number, domain: Object, window: number|null}}
  */
 export function viewResult(result) {
   const hib = result?.objective?.higherIsBetter !== false;
   const all = (result?.rows ?? []).filter((r) => !r.isBaseline);
-  const listed = all.filter((r) => (r.changes ?? []).length > 0);
+  const window = result?.objective?.unit === 'dps' && result.objective.window > 0 ? result.objective.window : null;
+  const listed = all.filter((r) => (r.changes ?? []).length > 0).map((r) => (window ? damageRow(r, window) : r));
   // Every row fell back to win rate (a saved kill-time run where nothing wins often): draw the axis in
   // win-rate points, the basis the verdicts actually used, and show each build's win rate as its value.
   const winBasis = listed.length > 0 && listed.every((r) => r.vsBaseline?.basis === 'winRate');
-  const unit = winBasis ? 'p' : (result?.objective?.unit ?? 'dps');
+  const unit = winBasis ? 'p' : window ? 'damage' : (result?.objective?.unit ?? 'dps');
   const winRow = (r) => ({
     ...r,
     value: r.aux?.winRate ?? r.value,
@@ -120,7 +136,8 @@ export function viewResult(result) {
     remainder: null,
   });
   const rows = listed.map((r) => (winBasis ? winRow(r) : orientRow(r, hib)));
-  const base = result?.baseline ? { changes: [], ...result.baseline } : null;
+  const rawBase = result?.baseline ? { changes: [], ...result.baseline } : null;
+  const base = rawBase && window ? damageRow(rawBase, window) : rawBase;
   const valueNote = valueNoteOf(base, listed);
   const baseline = base ? { ...base, ...(winBasis && base.aux?.winRate ? { value: base.aux.winRate } : {}), ...(valueNote ? { valueNote } : {}) } : null;
   const items = [];
@@ -140,6 +157,7 @@ export function viewResult(result) {
     rows,
     withheld: all.length - rows.length,
     domain: forestDomain(items),
+    window,
   };
 }
 
@@ -209,7 +227,7 @@ export function viewRun(run) {
   if (run.schema === 2) {
     const push = run.headline?.push ? { ...run.headline.push, rungs: run.detail.push?.rungs ?? [] } : null;
     return viewResult({
-      objective: { unit, higherIsBetter: hib, kind: run.objective?.kind }, target: run.target ?? null, goal: run.headline?.goal ?? null,
+      objective: { unit, higherIsBetter: hib, kind: run.objective?.kind, window: run.objective?.window }, target: run.target ?? null, goal: run.headline?.goal ?? null,
       baseline: run.detail.baseline, rows: run.detail.rows, push,
     });
   }

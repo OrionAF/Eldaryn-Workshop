@@ -100,6 +100,17 @@ it('a time-to-kill row reads in seconds with the sign of "faster", one axis in m
   expect(ui.q('.axis').textContent).toMatch(/Time saved vs current/);
 });
 
+it('a DPS run with a fight length shows average damage per fight and an absolute change, not a DPS %', () => {
+  const r = dpsResult();
+  r.objective = { ...r.objective, window: 20 };
+  const ui = mountResults(r);
+  expect(ui.q('.head').textContent).toMatch(/Average damage in 20 s · likely range/);
+  expect(ui.q('.axis').textContent).toMatch(/Change in damage per fight vs current/);
+  const delta = ui.q('[data-testid="result-row"] .delta').textContent;
+  expect(delta).not.toMatch(/%/);
+  expect(delta).toMatch(/likely range [+−]/);
+});
+
 it('a provisional row is neutral, says Simulating, and its changes say "not measured"', () => {
   const r = dpsResult();
   const row = r.rows[0];

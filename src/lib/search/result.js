@@ -63,6 +63,8 @@ export function objectiveOut(objective) {
     ...objective.spec,
     kind: objective.kind, label: objective.label, unit: objective.unit, higherIsBetter: objective.higherIsBetter,
     statistic: objective.statistic, q: objective.q ?? null,
+    // the fight length in seconds: the results table turns a DPS mean into damage per fight with it
+    ...(objective.unit === 'dps' && objective.window > 0 ? { window: objective.window } : {}),
   };
 }
 
