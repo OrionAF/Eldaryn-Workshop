@@ -21,7 +21,7 @@
   </details>
   <p class="kinds">
     Accepted: your <b>game profile</b> (becomes a character, or updates one), an Eldaryn <b>backup</b>, a
-    <b>Rankings profile</b> (another player, saved as an opponent), a <b>loot bag</b> (new drops for Drop Check) and an arena <b>fight log</b> (for the replay check).
+    <b>Rankings profile</b> (another player, saved as an opponent), a <b>loot bag</b> (new drops for Drop Check) and a <b>fight log</b> from the arena, a dungeon, a Village Raid, the World Boss or a Fortress Boss (for the replay check).
   </p>
 </div>
 

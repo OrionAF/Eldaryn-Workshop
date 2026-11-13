@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import profile from './__fixtures__/real/profile-warrior-l72.json';
 import fightLog from './__fixtures__/real/arena-fight-warrior.json';
+import fortressLog from './__fixtures__/real/fortress-boss-top-fight.json';
+import dungeonLog from './__fixtures__/real/dungeon-run-mystic-d4s8.json';
 import lootBag from './__fixtures__/real/drop-batch.json';
 import { planImport, detectKind, describeReportEntry } from './importPlan.js';
 import { ImportError } from './storage.js';
@@ -95,6 +97,13 @@ describe('planImport', () => {
     expect(planImport(text(lootBag), newRoster())).toMatchObject({ kind: 'lootBag', items: expect.any(Number) });
     const log = planImport(text(fightLog), newRoster());
     expect(log.kind).toBe('fightLog');
+    expect(log.fight).toBe('arena');
     expect(log.ticks).toBeGreaterThan(0);
+  });
+
+  it('a PVE fight log is a fight log too, and the plan names the fight', () => {
+    expect(planImport(text(fortressLog), newRoster())).toMatchObject({ kind: 'fightLog', fight: 'fortressBoss', ticks: fortressLog.combatLog.length });
+    expect(planImport(text(dungeonLog), newRoster())).toMatchObject({ kind: 'fightLog', fight: 'dungeon', ticks: dungeonLog.result.ticks.length });
+    expect(detectKind({ combatLog: { v: 1, types: [], ticks: [] }, damageDealt: 1 })).toBe('fightLog');
   });
 });
