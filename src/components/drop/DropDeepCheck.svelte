@@ -25,6 +25,7 @@
   import Button from '../ui/Button.svelte';
   import Banner from '../ui/Banner.svelte';
   import RunProgress from '../ui/RunProgress.svelte';
+  import RunPulse from '../ui/RunPulse.svelte';
   import VerdictChip from '../ui/VerdictChip.svelte';
   import ScopeChip from '../ui/ScopeChip.svelte';
 
@@ -152,6 +153,7 @@
 
   {#if job}
     <RunProgress {segments} />
+    <RunPulse {job} />
     {#if job.status === 'failed' || result?.status === 'failed'}
       <Banner variant="error" lead="The deep check failed.">{job.error ?? result?.error}</Banner>
     {/if}
