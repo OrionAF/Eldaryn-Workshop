@@ -134,7 +134,6 @@
               />
             {/if}
             <ConfirmButton
-              variant="ghost"
               label={`Reset ${label(index)}`}
               confirmLabel="Confirm reset"
               prompt={`Reset all points spent in ${label(index)}?`}

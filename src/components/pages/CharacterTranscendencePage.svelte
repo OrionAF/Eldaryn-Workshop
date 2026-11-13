@@ -148,7 +148,7 @@
 {:else if !board}
   <EmptyState title="No board" text="There is no Transcendence board for {classLabel(character.class)}." />
 {:else}
-  <Panel title="Transcendence" scope="character">
+  <Panel title="Boards" scope="character">
   {#snippet meta()}
     <span class="hint">
       unlocks at level {TRANSCENDENCE_CONSTANTS.unlockLevel} - {classLabel(character.class)}
@@ -174,9 +174,9 @@
     {:else}
       <Button variant="ghost" size="small" disabled={t.presets.length >= MAX_TRANSCENDENCE_PRESETS} onclick={duplicatePreset}>Duplicate</Button>
       <Button variant="ghost" size="small" onclick={() => { renameDraft = active.name; renaming = true; }}>Rename</Button>
-      <ConfirmButton variant="ghost" size="small" label="Reset board" confirmLabel="Reset" onConfirm={() => rosterStore.resetTranscendencePreset(active.id)} disabled={ids.length === 0} />
+      <ConfirmButton size="small" label="Reset board" prompt="Clears every node on this board." onConfirm={() => rosterStore.resetTranscendencePreset(active.id)} disabled={ids.length === 0} />
       {#if active.id !== DEFAULT_TRANSCENDENCE_ID}
-        <ConfirmButton variant="danger" size="small" label="Delete preset" confirmLabel="Delete" onConfirm={() => rosterStore.deleteTranscendencePreset(active.id)} />
+        <ConfirmButton size="small" label="Delete board" onConfirm={() => rosterStore.deleteTranscendencePreset(active.id)} />
       {/if}
     {/if}
     <span class="hint" data-testid="board-used-by">

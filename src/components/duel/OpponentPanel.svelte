@@ -13,7 +13,7 @@
   import { NEUTRAL_VALUE_TEXT } from '../../lib/engine/pvp/resolver.js';
   import { opponentFighter, missingStats, defaultedLabels, requiredStatsText } from '../../lib/features/duel.js';
   import Chip from '../Chip.svelte';
-  import ConfirmAction from '../tools/ConfirmAction.svelte';
+  import ConfirmButton from '../ConfirmButton.svelte';
   import SheetTable from '../builds/SheetTable.svelte';
   import Panel from '../ui/Panel.svelte';
   import Banner from '../ui/Banner.svelte';
@@ -48,7 +48,7 @@
   <Panel title={opponent.name} level="primary" scope="tool">
     {#snippet meta()}
       <Button variant="ghost" size="small" disabled={full} onclick={() => rosterStore.duplicateOpponent(opponent.id)}>Duplicate</Button>
-      <ConfirmAction label="Delete" confirmLabel="Confirm delete" prompt="Delete this opponent?" onConfirm={remove} />
+      <ConfirmButton size="small" label="Delete" prompt="Delete this opponent?" onConfirm={remove} />
     {/snippet}
 
     {#if missing.length}

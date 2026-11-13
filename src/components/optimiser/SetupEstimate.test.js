@@ -28,7 +28,7 @@ describe('SetupEstimate', () => {
   it('a saved Push run of this setup sets the figures and the time at its observed speed', () => {
     const ui = mount(SetupEstimate, { setup: SETUP, character, history: [pushRun()] });
     expect(ui.q('[data-testid="estimate-source"]').textContent).toBe('From your past run of this setup.');
-    expect(ui.q('[data-testid="estimate-fights"] .num').textContent).toBe('9,182,016');
+    expect(ui.q('[data-testid="estimate-fights"] .num').textContent).toBe('9.182.016');
     expect(ui.q('[data-testid="estimate-time"]').textContent).toMatch(/about 2 min|about 3 min/);
     expect(ui.q('[data-testid="estimate-push"]')).not.toBeNull();
     ui.done();

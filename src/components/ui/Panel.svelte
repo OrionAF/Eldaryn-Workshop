@@ -5,8 +5,11 @@
    * `level` 'primary' is F2 (brass frame, plate header, corner ticks), 'secondary' is F1. A view
    * has at most two primary panels (the screenshot lint counts `.panel.primary`). `scope` draws the
    * 2 px top rule in the scope hue and renders the ONE scope badge as text; `scope="oblivion"` also
-   * adds the realm ring. Loading keeps the header and skeletons the body; error puts a Banner on top.
+   * adds the realm ring. A panel whose scope is the page's own (the context header already carries
+   * that badge) keeps the rule and drops the badge, so a badge on a panel always marks an exception.
+   * Loading keeps the header and skeletons the body; error puts a Banner on top.
    */
+  import { getContext } from 'svelte';
   import Banner from './Banner.svelte';
   import Skeleton from './Skeleton.svelte';
 
@@ -34,7 +37,9 @@
   } = $props();
 
   const id = $props.id();
-  const badge = $derived(scopeLabel ?? (scope ? SCOPES[scope] : null));
+  // Set by the shell (App.svelte); absent in isolation, where every scoped panel shows its badge.
+  const pageScope = getContext('page-scope');
+  const badge = $derived(scopeLabel ?? (scope && scope !== pageScope?.scope ? SCOPES[scope] : null));
 </script>
 
 <section

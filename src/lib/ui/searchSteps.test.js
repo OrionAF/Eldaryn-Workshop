@@ -16,7 +16,7 @@ describe('searchStepRows', () => {
     const out = searchStepRows(rows);
     expect(out.map((r) => [r.label, r.state])).toEqual([['Gear set', 'done'], ['Talent set', 'skipped'], ['Talents', 'active'], ['Pet', 'skipped'], ['Relics', 'queued']]);
     expect(out[0].detail).toBe('3 builds tried · 120 fights · found an improvement');
-    expect(out[2].detail).toBe('pass 2 · 1,782 builds tried · 9,000 fights · no improvement yet');
+    expect(out[2].detail).toBe('pass 2 · 1.782 builds tried · 9.000 fights · no improvement yet');
     expect(out[4].detail).toBe('');
   });
 

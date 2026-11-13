@@ -1,6 +1,7 @@
 // search/estimate.js (backlog §3): what an Optimiser run will cost, before it runs. Pure and cheap (no
 // simulation), so the setup can call it on every change. The model, the prior table and the measurements
 // behind it: docs/Reference/simulation.md §Estimates; the procedure it models is §Search (search.js optimize).
+import { formatFlat } from '../format.js';
 import { BLOCKS } from './space.js';
 import { normaliseRelicBudget } from './relicProgression.js';
 import { normaliseIchorBudget } from './boardAllocation.js';
@@ -434,7 +435,7 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
     const r = (x) => Math.max(1, Math.round(x));
     builds = {
       lo: r(band.builds.lo), likely: r(band.builds.likely), hi: r(band.builds.hi), exact: false,
-      basis: `Coordinate ascent from ${starts} start${starts === 1 ? '' : 's'}; one sweep of the allowed blocks is ${sweep.toLocaleString('en-US')} builds. How many sweeps it takes depends on what it finds${enabled.has('talents') ? ' (each talent move shifts what the next sweep tries, so talents take many more)' : ''}; the sweeps per start come from ${source.kind === 'history' ? 'those runs' : 'the reference runs'}.`,
+      basis: `Coordinate ascent from ${starts} start${starts === 1 ? '' : 's'}; one sweep of the allowed blocks is ${formatFlat(sweep)} builds. How many sweeps it takes depends on what it finds${enabled.has('talents') ? ' (each talent move shifts what the next sweep tries, so talents take many more)' : ''}; the sweeps per start come from ${source.kind === 'history' ? 'those runs' : 'the reference runs'}.`,
     };
   }
   assumptions.push('Builds equal in effect (same engine inputs) are raced once, so a few less may be tried.');
@@ -443,7 +444,7 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
   // every build is sampled to at least the first look (§Racing), a hard floor under the range; on a known
   // no-wins target to at least its race's tie point
   const floor = builds.lo * Math.max(effort.n0, sat?.least ?? 0) * lanes;
-  if (sat) assumptions.push(`A past run at this target found no build that wins, so every build is sampled to at least the point where two win rates of 0 tie (about ${Math.round(sat.perBuild).toLocaleString('en-US')} fights per build).`);
+  if (sat) assumptions.push(`A past run at this target found no build that wins, so every build is sampled to at least the point where two win rates of 0 tie (about ${formatFlat(Math.round(sat.perBuild))} fights per build).`);
   const round = (x) => Math.max(1, Math.round(x));
   const perBuild = Math.round((band.fights.likely * (1 - laterShare)) / Math.max(1, band.builds.likely) / lanes);
   let fights = {
@@ -452,7 +453,7 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
     hi: round(Math.max(floor, band.fights.hi)),
     perBuild,
     laterShare,
-    basis: `About ${perBuild.toLocaleString('en-US')} fights per build tried in the search${lanes > 1 ? ` and matchup (times ${lanes} matchups)` : ''}, plus minimise and confirm (${laterShare < 0.01 ? 'under 1%' : `about ${Math.round(laterShare * 100)}%`} of the total).`,
+    basis: `About ${formatFlat(perBuild)} fights per build tried in the search${lanes > 1 ? ` and matchup (times ${lanes} matchups)` : ''}, plus minimise and confirm (${laterShare < 0.01 ? 'under 1%' : `about ${Math.round(laterShare * 100)}%`} of the total).`,
   };
   if (source.scaled) assumptions.push(`Scaled from ${source.kind === 'history' ? 'runs at another Effort' : 'Quick'}: each Effort level costs about 2 to 4 times the fights per build (n0 doubles, δ halves).`);
   if (effort.budgetMs) assumptions.push(`The time limit stops the search early enough to leave time for minimise and confirm (after ${fmtSeconds(effort.budgetMs * SEARCH_SHARE.min)} to ${fmtSeconds(effort.budgetMs * SEARCH_SHARE.max)}, from the speed the run measures), so the run may try fewer builds than this. Minimise and confirm always finish, so the run can still take a little longer than the limit. The numbers above are for an uncut search.`);
@@ -460,8 +461,8 @@ export function estimateRun(request, { calibration = null, history = [] } = {}) 
   if (already) {
     // the check alone, unless this run's seed lands it short of the target: then the full search above is the top
     const n = round(already.headline.n * lanes);
-    builds = { ...builds, lo: 1, likely: 1, exact: false, basis: `A past run of this setup on this same build stopped after checking the current build (it already clears), so this run very likely stops there too. If the check falls short this time, the search runs and up to ${builds.hi.toLocaleString('en-US')} builds may be tried.` };
-    fights = { ...fights, lo: n, likely: n, hi: Math.max(n, fights.hi), basis: `About ${n.toLocaleString('en-US')} fights to check the current build, as that run did; the top of the range is the whole search.` };
+    builds = { ...builds, lo: 1, likely: 1, exact: false, basis: `A past run of this setup on this same build stopped after checking the current build (it already clears), so this run very likely stops there too. If the check falls short this time, the search runs and up to ${formatFlat(builds.hi)} builds may be tried.` };
+    fights = { ...fights, lo: n, likely: n, hi: Math.max(n, fights.hi), basis: `About ${formatFlat(n)} fights to check the current build, as that run did; the top of the range is the whole search.` };
     source = { ...source, already: true, text: `${source.text} A past run of this setup found the current build already clears it.` };
   }
 
@@ -494,7 +495,7 @@ function observedRate({ runs, costs }, target) {
 function observedTime(fights, { rate, runs }) {
   return {
     lo: fights.lo / rate, likely: fights.likely / rate, hi: fights.hi / rate, rate, workers: null, source: 'observed',
-    basis: `Fights divided by the speed your ${runs === 1 ? 'past run' : `${runs} past runs`} like this ran at (${Math.round(rate).toLocaleString('en-US')} fights/s).`,
+    basis: `Fights divided by the speed your ${runs === 1 ? 'past run' : `${runs} past runs`} like this ran at (${formatFlat(Math.round(rate))} fights/s).`,
   };
 }
 

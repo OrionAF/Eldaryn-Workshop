@@ -1,4 +1,5 @@
 <script>
+  import { formatNumber } from '../../lib/format.js';
   /**
    * KeepRateHeatmap.svelte - keep rate per gear stat (rows, in the top bracket's order) and level
    * range (columns) on the diverging kept/dropped scale; gray is about drop odds. A column header
@@ -29,7 +30,7 @@
     const role = b.priority.includes(s.type) ? 'Priority' : b.ban.includes(s.type) ? `Block list #${b.ban.indexOf(s.type) + 1}` : 'Below drop odds';
     return { b, s, role };
   });
-  const fmt = (v) => (v == null ? '–' : Number(v).toLocaleString('en-US', { maximumFractionDigits: 1 }));
+  const fmt = (v) => (v == null ? '–' : formatNumber(v));
 </script>
 
 <div class="legend">

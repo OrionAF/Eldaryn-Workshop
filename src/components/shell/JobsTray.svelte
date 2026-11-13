@@ -83,8 +83,7 @@
   }
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<section {id} class="tray" role="dialog" aria-modal="false" aria-labelledby="{id}-h" tabindex="-1" onkeydown={onKeydown}>
+<div {id} class="tray" role="dialog" aria-modal="false" aria-labelledby="{id}-h" tabindex="-1" onkeydown={onKeydown}>
   <div class="tray-head">
     <h2 id="{id}-h">Runs ({jobs.length})</h2>
     <span class="grow"></span>
@@ -184,7 +183,7 @@
     {jobsStore.persistCheckpoints ? 'Reloading the page pauses them; Resume picks up from the last saved point.' : 'Reloading the page cancels them.'}
   </div>
   <div class="sr-only" role="status" aria-live="polite">{announce}</div>
-</section>
+</div>
 
 <style>
   .tray {

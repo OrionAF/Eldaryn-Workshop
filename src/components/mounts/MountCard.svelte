@@ -109,7 +109,7 @@
   </div>
 
   <div class="card-foot">
-    <PresetMenu label="Ridden in" items={rideItems} onselect={(id) => onRide(id)} />
+    <PresetMenu label="Used in" items={rideItems} onselect={(id) => onRide(id)} />
     <ConfirmButton variant="danger" size="small" label="Remove" confirmLabel="Confirm remove" onConfirm={onRemove} />
   </div>
 </div>
@@ -167,7 +167,18 @@
   .card-foot { display: flex; gap: var(--sp-2); align-items: center; justify-content: space-between; margin-top: auto; padding-top: var(--sp-2); border-top: 1px solid var(--line-hairline); }
   .card-foot :global(.preset-menu) { min-width: 0; }
   .card-foot :global(.preset-menu > button) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Phone: art beside the name, badge and stars; Health and Attack side by side. About 60% of the tile's height. */
   @media (max-width: 700px) {
     .socket { width: var(--hit); height: var(--hit); }
+    .mount-card { display: grid; grid-template-columns: 64px minmax(0, 1fr); column-gap: var(--sp-3); align-items: center; }
+    .mount-art { grid-column: 1; grid-row: 1 / span 3; width: 64px; height: 64px; margin: 0; }
+    .card-title { grid-column: 2; text-align: left; }
+    .badge { grid-column: 2; justify-self: start; align-self: auto; }
+    .mount-card > :global(.stars) { grid-column: 2; justify-self: start; }
+    .stats, .sockets, .card-foot { grid-column: 1 / -1; }
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--sp-3); }
+    .stat-row { grid-template-columns: minmax(0, 1fr); }
+    .roll { grid-column: 1 / -1; }
+    .sockets { gap: var(--sp-2); }
   }
 </style>

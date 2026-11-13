@@ -66,7 +66,7 @@
   }
 </script>
 
-<Panel title="Awakening" scope="character">
+<Panel title="Path and level" scope="character">
   {#snippet meta()}<span class="sub">one path, shared by all presets · bonuses follow the specialization of {preset.name}</span>{/snippet}
   <!-- the controls on the left, what they give on the right (stacked on narrow screens) -->
   <div class="awk-layout">

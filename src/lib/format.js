@@ -72,6 +72,26 @@ export function formatPct(value) {
   return parseFloat(n.toFixed(3)).toString();
 }
 
+/**
+ * A number that is not tied to a stat key (a count of fights, players or builds, a median): whole
+ * numbers group thousands with "." like every flat in the app, anything else keeps up to
+ * `maxDecimals` with "." as the decimal point and no grouping, so the two can never be confused.
+ */
+export function formatNumber(value, maxDecimals = 1) {
+  const n = parseFloat((Number(value) || 0).toFixed(maxDecimals));
+  return Number.isInteger(n) ? formatFlat(n) : n.toString();
+}
+
+/**
+ * A 0..1 fraction as a percentage: "49.9%", "50%". `fixed` keeps the trailing zero ("50.0%") for a
+ * table column, where the decimal points must line up.
+ */
+export function formatRate(fraction, decimals = 1, fixed = false) {
+  const k = 10 ** decimals;
+  const n = Math.round((Number(fraction) || 0) * 100 * k) / k;
+  return `${fixed ? n.toFixed(decimals) : n}%`;
+}
+
 /** Format a value according to its stat key's kind. */
 export function formatStat(key, value) {
   return isFlatKey(key) ? formatFlat(value) : formatPct(value);

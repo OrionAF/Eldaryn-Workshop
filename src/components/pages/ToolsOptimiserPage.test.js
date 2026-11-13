@@ -65,7 +65,7 @@ it('shows the five setup steps with the effort budgets printed and no time cap',
   const t = text();
   for (const step of ['Build to improve', 'Fight', 'Maximise', 'Allowed to change', 'Effort']) expect(t).toContain(step);
   expect(view.q('[data-testid="effort-plan"]').textContent).toMatch(/Spots differences of 0\.5% or more/);
-  expect(view.q('[data-testid="effort-plan"]').textContent).toMatch(/starts with 16 fights.*up to 32,768/);
+  expect(view.q('[data-testid="effort-plan"]').textContent).toMatch(/starts with 16 fights.*up to 32.768/);
   expect(view.q('[data-testid="effort-cost"]').textContent).toMatch(/no time limit.*about 4 minutes when it may change every part of your build/);
   expect(view.q('[data-testid="plan-summary"]').textContent).toMatch(/15 of 18 parts of your build against Training dummy, 60 s/);
   expect(view.q('[data-testid="relic-cap"]')).not.toBeNull();
@@ -510,8 +510,8 @@ it('§3: the Estimate section shows builds, fights and time, or a link to calibr
   mountPage();
   const sec = () => view.q('[data-testid="setup-estimate"]');
   expect(sec().textContent).toMatch(/Estimate/);
-  expect(view.q('[data-testid="estimate-builds"] .num').textContent).toMatch(/^[\d,]+$/);
-  expect(view.q('[data-testid="estimate-fights"] .num').textContent).toMatch(/^[\d,]+$/);
+  expect(view.q('[data-testid="estimate-builds"] .num').textContent).toMatch(/^[\d.]+$/);
+  expect(view.q('[data-testid="estimate-fights"] .num').textContent).toMatch(/^[\d.]+$/);
   expect(view.q('[data-testid="estimate-time"] a').getAttribute('href')).toBe('#/settings');
   // no saved run like this yet: the measured prior, and it says so
   expect(view.q('[data-testid="estimate-source"]').textContent).toMatch(/reference character/);

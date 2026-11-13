@@ -16,7 +16,7 @@
   import { canAllocateNode, allocCost, boardGraph } from '../../lib/transcendence.js';
   import { TRANSCENDENCE_TIERS } from '../../lib/game/transcendence.js';
   import BoardNode from './BoardNode.svelte';
-  import { fitView } from './boardView.js';
+  import { fitView, startView } from './boardView.js';
   import Button from '../ui/Button.svelte';
 
   let { boardKey, nodes, allocatedIds = [], highlightStats = null, highlightIds = null, readOnly = false, compact = false, onActivate = null, onSelect = null, onHover = null } = $props();
@@ -78,12 +78,15 @@
   let pinchStartDistance = 0;
   let pinchStartZoom = 1;
 
-  // Fit the whole board, centred, below the floating controls (boardView.js).
+  // Fit the whole board, centred, below the floating controls; a phone opens on the start node at a
+  // readable zoom instead (boardView.js).
   function centerOnStart() {
     if (!viewportEl) return;
     const rect = viewportEl.getBoundingClientRect();
     if (rect.width === 0) return;
-    ({ zoom, panX, panY } = fitView(rect.width, rect.height, CELL_SIZE, NODE_SIZE, MIN_ZOOM));
+    ({ zoom, panX, panY } = isMobile && !compact
+      ? startView(rect.width, rect.height, CELL_SIZE, NODE_SIZE)
+      : fitView(rect.width, rect.height, CELL_SIZE, NODE_SIZE, MIN_ZOOM));
   }
 
   function pointerDistance() {

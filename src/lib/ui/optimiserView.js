@@ -4,7 +4,7 @@
 // an Apply plan. No store, no DOM.
 import { forestDomain } from './forestScale.js';
 import { fmtCount, fmtEstimate, fmtContrast, fmtContrastCi, verdictText } from './statsFormat.js';
-import { formatFlat } from '../format.js';
+import { formatFlat, formatRate } from '../format.js';
 import { resolveEffort } from '../search/search.js';
 import { SCOPES } from '../search/patch.js';
 import { arenaRewardConfig } from '../search/arenaRewardObjective.js';
@@ -242,7 +242,7 @@ export function ladderStrip(push) {
 export function pushStopText(push) {
   const s = push?.stop;
   if (!s) return '';
-  const pct = (p) => `${Math.round((p ?? 0) * 1000) / 10}%`;
+  const pct = (p) => formatRate(p ?? 0);
   if (s.reason === 'top') return 'The climb reached the top of the ladder.';
   if (s.reason === 'screen') return `Stopped at ${s.label}: no build one change away came close to ${pct(push.target)}, and no single change raised the win rate (best seen ${pct(s.best?.est)}). Not reached at this effort; the Win rate goal on that ${push.ladder?.unit ?? 'step'} searches further.`;
   return `Stopped at ${s.label}: no build reached ${pct(push.target)} (best ${pct(s.best?.est)}).`;

@@ -1,4 +1,5 @@
 <script>
+  import { formatRate } from '../../lib/format.js';
   /**
    * GlyphCard.svelte - one glyph instance in the inventory (Game/mounts-glyphs.md §8-§11).
    *
@@ -22,7 +23,7 @@
   import { TIER_LABELS, glyphText, majorText, rarityClass, secondaryUnit, secondaryDisplayValue, secondaryInputValue, statLabel } from './mountsView.js';
 
   let { glyph, playerClass = null, mountName = null, inertIn = [], score = null, specName = '', onUpdate, onRemove } = $props();
-  const pct = (f) => `${Math.round(f * 100)}%`;
+  const pct = (f) => formatRate(f, 0);
   const scoreTitle = $derived(
     !score
       ? ''

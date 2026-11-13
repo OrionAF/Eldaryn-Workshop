@@ -80,6 +80,7 @@
     .inner { padding: 0 var(--page-pad-phone); }
     .crumb { display: none; }
     h1 { font-size: var(--fs-20); }
+    .echo { min-height: var(--hit); }
   }
   @media (max-height: 520px) {
     .context-header { position: static; }

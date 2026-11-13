@@ -166,11 +166,13 @@ it('a row expands to the model value split by source, with the interaction remai
 });
 
 it('the Oblivion realm edits the shared Oblivion sheet once unlocked and names its owner', () => {
-  const tab = () => t.qa('[role="tab"]').find((x) => x.textContent.includes('Oblivion'));
-  expect(tab().getAttribute('aria-disabled')).toBe('true');
+  // the realm is the top bar's (G2): the page follows it and has no realm tabs of its own
+  expect(t.qa('[role="tab"]')).toHaveLength(0);
+  expect(t.q('[data-testid="sheet-realm"]').textContent).toContain('Base realm');
   rosterStore.setOblivionUnlocked(true);
+  rosterStore.setActiveRealm('oblivion');
   reopen();
-  click(tab());
+  expect(t.q('[data-testid="sheet-realm"]').textContent).toContain('Oblivion realm');
   enter('totalAttack', '2.000');
   expect(rosterStore.current.oblivion.sheet.values.totalAttack).toBe(2000);
   expect(preset().sheet).toBeNull();
@@ -182,8 +184,8 @@ it('an Oblivion sheet owned by another preset warns and is not applied to this o
   const [a, b] = rosterStore.current.presets;
   rosterStore.setOblivionSheet({ totalAttack: 2000 }, a.id);
   rosterStore.setActivePreset(b.id);
+  rosterStore.setActiveRealm('oblivion');
   reopen();
-  click(t.qa('[role="tab"]').find((x) => x.textContent.includes('Oblivion')));
   expect(t.q('[data-testid="sheet-status"]').textContent).toContain('another preset');
   expect(t.q('[data-testid="oblivion-owner"]').textContent).toContain(a.name);
 });

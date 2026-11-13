@@ -1,4 +1,5 @@
 <script>
+  import { formatRate } from '../../lib/format.js';
   /**
    * RosterTable.svelte - the All opponents run on the Duel page: one row per saved opponent with my
    * win rate, its 95% Wilson interval and N (design-system §4.15), sorted by rosterRows (duel.js).
@@ -12,7 +13,7 @@
 
   let { rows, onpick = () => {} } = $props();
 
-  const pct = (x) => `${(x * 100).toFixed(1)}%`;
+  const pct = (x) => formatRate(x, 1, true);
   const STATUS = { queued: 'Queued', running: 'Running…', cancelled: 'Cancelled', failed: 'Failed', finished: 'No fights' };
   const verdictLabel = (v) => (v?.verdict === 'better' ? 'Likely to win' : v?.verdict === 'worse' ? 'Likely to lose' : 'Too close to call');
 </script>

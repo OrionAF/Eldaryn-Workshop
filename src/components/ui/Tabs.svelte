@@ -6,8 +6,11 @@
    * cannot be selected and carries the reason as its title.
    *
    * items: [{ id, label, count?, sub?, disabled?, reason? }]
+   *
+   * `hideSingle` hides the strip while there is only one tab (a page whose other tabs are optional);
+   * the tab stays in the DOM so its panel's aria-labelledby still resolves.
    */
-  let { items, value = $bindable(), label = 'Sections', idPrefix = undefined, onchange = () => {} } = $props();
+  let { items, value = $bindable(), label = 'Sections', idPrefix = undefined, hideSingle = false, onchange = () => {} } = $props();
   const uid = $props.id();
   const prefix = $derived(idPrefix ?? uid);
 
@@ -35,7 +38,7 @@
   }
 </script>
 
-<div class="tabs" role="tablist" aria-label={label} tabindex="-1" onkeydown={onKeyDown}>
+<div class="tabs" role="tablist" aria-label={label} tabindex="-1" hidden={hideSingle && items.length < 2} onkeydown={onKeyDown}>
   {#each items as tab (tab.id)}
     <button
       type="button"
@@ -60,6 +63,7 @@
 
 <style>
   .tabs { display: flex; gap: var(--sp-1); box-shadow: inset 0 -1px 0 var(--line-hairline); overflow-x: auto; overflow-y: hidden; }
+  .tabs[hidden] { display: none; }
   .tab {
     position: relative;
     height: 36px;

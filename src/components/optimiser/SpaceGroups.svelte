@@ -87,5 +87,8 @@
     color: var(--brass-400); font-size: var(--fs-12); text-decoration: underline; text-underline-offset: 3px;
   }
   .link:disabled { color: var(--text-muted); cursor: default; text-decoration: none; }
+  @media (pointer: coarse), (max-width: 700px) {
+    .link { min-height: var(--hit); min-width: var(--hit); }
+  }
   .note { margin: 0; color: var(--text-muted); font-size: var(--fs-12); }
 </style>

@@ -9,9 +9,9 @@ const pct1 = (x) => `${(x * 100).toFixed(1)}%`;
 
 const finite = (v) => v != null && Number.isFinite(v);
 
-/** Thousands-grouped count for fight totals (UI numbers, not game stats). */
+/** Thousands-grouped count for fight totals, grouped like every other whole number (format.js). */
 export function fmtCount(n) {
-  return finite(n) ? Math.round(n).toLocaleString('en-US') : 'n/a';
+  return finite(n) ? formatFlat(n) : 'n/a';
 }
 
 /** An unsigned value in the objective's unit; null means no reliable number. */

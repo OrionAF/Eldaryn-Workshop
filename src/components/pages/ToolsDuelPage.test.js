@@ -88,20 +88,20 @@ it('Both seats: one job, three rows, the Wilson verdict with nNeeded, and Run mo
   ready();
   __resetJobs({ run: fakeRun((req) => ({ ...summary(0.53, req.n, { trace, traceResult: { attackerWon: true, totalDuration: 30000 } }), swapped: summary(0.51, req.n) })) });
   view = setup(ToolsDuelPage);
-  expect(buttonByText(/^Run /).textContent).toContain('1.600 duels'.replace('.', ',')); // 800 per seat, two seats
+  expect(buttonByText(/^Run /).textContent).toContain('1.600 duels'); // 800 per seat, two seats
   click(buttonByText(/^Run /));
   await vi.waitFor(() => expect(view.q('[data-testid="duel-result"]')).not.toBeNull());
   expect(calls[0]).toMatchObject({ mode: 'duel', n: 800, both: true });
   expect(view.qa('[data-testid^="win-row-"]').map((r) => r.dataset.testid)).toEqual(['win-row-total', 'win-row-attack', 'win-row-defend']);
   // the defender row is the complement of the swapped run (their 0.51 as attacker -> my 0.49)
   expect(view.q('[data-testid="win-row-defend"]').textContent).toContain('49.0%');
-  expect(view.q('[data-testid="win-ci"]').textContent).toContain('1,600 fights');
-  expect(view.q('[data-testid="duel-verdict"]').textContent).toMatch(/Too close to call after 1,600 fights. Around [0-9,]+ fights should show whether a 3-point lead is real/);
+  expect(view.q('[data-testid="win-ci"]').textContent).toContain('1.600 fights');
+  expect(view.q('[data-testid="duel-verdict"]').textContent).toMatch(/Too close to call after 1.600 fights. Around [0-9.]+ fights should show whether a 3-point lead is real/);
 
   click(buttonByText(/Run more/));
   await vi.waitFor(() => expect(calls.length).toBe(2));
   expect(calls[1].n).toBe(3200);
-  await vi.waitFor(() => expect(view.q('[data-testid="win-ci"]').textContent).toContain('6,400 fights'));
+  await vi.waitFor(() => expect(view.q('[data-testid="win-ci"]').textContent).toContain('6.400 fights'));
 });
 
 it('Defender seat puts me in the defender slot and reads the complement', async () => {
@@ -184,12 +184,12 @@ it('the setup (seat, effort, preset) survives leaving the page and the Run label
   view = setup(ToolsDuelPage);
   click(view.q('button[data-value="defender"]'));
   click(view.q('button[data-value="thorough"]'));
-  expect(buttonByText(/^Run /).textContent).toContain('3.200'.replace('.', ','));
+  expect(buttonByText(/^Run /).textContent).toContain('3.200');
   view.done();
   view = setup(ToolsDuelPage);
   expect(view.q('button[data-value="defender"]').getAttribute('aria-pressed')).toBe('true');
   expect(view.q('button[data-value="thorough"]').getAttribute('aria-pressed')).toBe('true');
-  expect(buttonByText(/^Run /).textContent).toContain('3.200'.replace('.', ','));
+  expect(buttonByText(/^Run /).textContent).toContain('3.200');
 });
 
 it('the preference default effort is where the effort starts', () => {
@@ -282,7 +282,7 @@ it('All opponents: one job per opponent with the same N and seed, a sorted table
   pickOpponent('__all__');
   expect(view.q('[data-testid="duel-output"]').textContent).toContain('No run yet');
   expect(view.q('[data-testid="duel-setup"]').textContent).not.toContain('Blanky has no');
-  expect(buttonByText(/^Run /).textContent).toContain('1,600 duels'); // 800 x 2 runnable opponents
+  expect(buttonByText(/^Run /).textContent).toContain('1.600 duels'); // 800 x 2 runnable opponents
   click(buttonByText(/^Run /));
   await vi.waitFor(() => expect(view.q('[data-testid="roster-progress"]').textContent).toContain('2 of 2 duels finished, 1 skipped'));
   expect(calls).toHaveLength(2);

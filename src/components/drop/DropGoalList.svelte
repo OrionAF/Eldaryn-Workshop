@@ -1,4 +1,5 @@
 <script>
+  import { formatRate } from '../../lib/format.js';
   /**
    * DropGoalList.svelte - the goals Drop Check judges a drop by (design: drop-check-goals.md §3-4): the Optimiser's
    * fight and objective, saved on the character. A goal is a judge (its change counts toward up or down) or a
@@ -16,6 +17,7 @@
   import SegmentedControl from '../ui/SegmentedControl.svelte';
   import Checkbox from '../ui/Checkbox.svelte';
   import Button from '../ui/Button.svelte';
+  import ConfirmButton from '../ConfirmButton.svelte';
   import { go } from '../../lib/router.svelte.js';
   import { FASTEST_CLEAR_TRIES } from '../../lib/search/objectives.js';
   import { GUARD_TARGET } from '../../lib/model/dropCheck.js';
@@ -32,7 +34,6 @@
   // null: closed; 'new': adding; else the id of the goal being edited
   let editing = $state(null);
   let draft = $state(structuredClone(NEW_GOAL));
-  let confirmId = $state(null);
 
   const opponents = $derived(character?.opponents ?? []);
   const presets = $derived(character?.presets ?? []);
@@ -50,7 +51,6 @@
   function open(id, goal) {
     draft = { ...structuredClone(NEW_GOAL), ...structuredClone($state.snapshot(goal ?? NEW_GOAL)) };
     editing = id;
-    confirmId = null;
   }
   function save() {
     if (!check?.ok) return;
@@ -67,11 +67,6 @@
     editing = null;
   }
   function remove(id) {
-    if (confirmId !== id) {
-      confirmId = id;
-      return;
-    }
-    confirmId = null;
     if (editing === id) editing = null;
     onremove?.(id);
   }
@@ -81,7 +76,7 @@
     draft.presetIds = next.length === presets.length ? null : next;
   }
 
-  const pct = (v) => `${Math.round(v * 1000) / 10}%`;
+  const pct = (v) => formatRate(v);
   const roleOf = (r) => (r.role === 'guard' ? `Guard, keep ${pct(r.goal.guard?.target ?? GUARD_TARGET.default)}` : '');
   const presetNote = (r) => {
     if (!r.presetIds) return '';
@@ -103,9 +98,7 @@
           </div>
           <div class="acts">
             <Button variant="ghost" size="small" disabled={editing !== null} onclick={() => open(r.goal.id, r.goal)}>Edit</Button>
-            <Button variant="ghost" size="small" confirming={confirmId === r.goal.id} onclick={() => remove(r.goal.id)}>
-              {confirmId === r.goal.id ? 'Confirm remove' : 'Remove'}
-            </Button>
+            <ConfirmButton size="small" label="Remove" onConfirm={() => remove(r.goal.id)} />
           </div>
         </li>
       {/each}

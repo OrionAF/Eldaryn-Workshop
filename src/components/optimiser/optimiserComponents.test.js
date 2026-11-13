@@ -80,8 +80,8 @@ it('a row that is too close to call says how many fights would settle it and off
   toggle(ui, 2);
   const rows = ui.qa('[data-testid="result-row"]');
   expect(rows[2].textContent).toMatch(/Too close to call after/);
-  expect(rows[2].textContent).toMatch(/about 2,400 fights needed/);
-  expect(rows[2].textContent).toMatch(/run more to reach 4,096 fights/);
+  expect(rows[2].textContent).toMatch(/about 2.400 fights needed/);
+  expect(rows[2].textContent).toMatch(/run more to reach 4.096 fights/);
   click([...rows[2].querySelectorAll('button')].find((b) => b.textContent.trim() === 'Run more'));
   expect(onrunmore).toHaveBeenCalledOnce();
   expect(onrunmore.mock.calls[0][0].key).toBe(richResult().rows[2].key);

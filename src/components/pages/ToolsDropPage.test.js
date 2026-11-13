@@ -724,7 +724,7 @@ it('goal profiles: New starts an empty list, switching back shows the first list
   pbtn('Delete').click();
   flushSync();
   expect(rosterStore.current.dropCheck.profiles).toHaveLength(3);
-  [...profile().querySelectorAll('button')].find((x) => x.textContent.trim().startsWith('Delete ')).click();
+  [...profile().querySelectorAll('button')].find((x) => x.textContent.trim() === 'Confirm delete').click();
   flushSync();
   expect(rosterStore.current.dropCheck.profiles).toHaveLength(2);
 });

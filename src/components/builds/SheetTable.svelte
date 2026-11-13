@@ -314,17 +314,30 @@
   /* Phone: one stacked card per stat instead of a 760px-wide table, so Your sheet, Raw, Gap, Tolerance
      and Status are all reachable without sideways scrolling. */
   @media (max-width: 700px) {
-    table.sheet { min-width: 0; }
+    /* .full is named so this out-ranks the desktop min-width above */
+    table.sheet, table.sheet.full { min-width: 0; }
     table.sheet thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
     table.sheet, table.sheet tbody { display: block; }
     tr[data-key] {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: var(--sp-2) var(--sp-3);
+      /* two lines per stat: name and status, then App | In-game | Gap */
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 0.8fr);
+      gap: var(--sp-1) var(--sp-3);
+      align-items: end;
       padding: var(--sp-3) var(--sp-2);
       border-bottom: 1px solid var(--line-hairline);
     }
-    tr[data-key] > th.lbl { grid-column: 1 / -1; display: block; padding: 0; border: 0; }
+    tr[data-key] > th.lbl { grid-column: 1 / span 2; display: block; padding: 0; border: 0; align-self: center; }
+    tr[data-key] > td[data-label='Status'] { grid-column: 3; grid-row: 1; text-align: right; align-self: center; }
+    tr[data-key] > td[data-label='Status']::before { content: none; }
+    /* the tolerance is reference detail; the status already says whether the gap is inside it */
+    tr[data-key] > td[data-label='Allowed gap'] { display: none; }
+    tr[data-key] > td[data-label='App'] { grid-column: 1; grid-row: 2; }
+    tr[data-key] > td[data-label='In-game stats'] { grid-column: 2; grid-row: 2; }
+    table.sheet:not(.full) tr[data-key] > td[data-label='In-game stats'] { grid-column: 1 / span 2; }
+    tr[data-key] > td[data-label='Gap'] { grid-column: 3; grid-row: 2; }
+    tr[data-key] > td.raw { grid-column: 1 / -1; grid-row: 3; }
+    .expand { min-height: var(--hit); }
     tr[data-key] > td { display: block; padding: 0; border: 0; text-align: left; min-width: 0; }
     tr[data-key] > td::before {
       content: attr(data-label);
@@ -337,7 +350,7 @@
     }
     tr[data-key] > td.raw:not(:has(input)) { display: none; }
     .input-wrap { display: flex; }
-    .input-wrap input { width: 100%; min-width: 0; text-align: left; }
+    .input-wrap input { width: 100%; min-width: 0; min-height: var(--hit); text-align: left; }
     .msg { text-align: left; }
     .status { white-space: normal; }
     tr.src-row, tr.src-row > td { display: block; padding: var(--sp-2); }

@@ -45,7 +45,9 @@
 
   let filter = $state('all');
   // One Effects toggle for the whole collection (remembered per device), instead of a Details button per card.
-  let effects = $state(loadUi().views.sigilEffects === 'hidden' ? 'hidden' : 'shown');
+  // A phone starts with them hidden: the collection is a short list there, and Show is one tap away.
+  const phone = typeof matchMedia === 'function' && matchMedia('(max-width: 700px)').matches;
+  let effects = $state((loadUi().views.sigilEffects ?? (phone ? 'hidden' : 'shown')) === 'hidden' ? 'hidden' : 'shown');
   function setEffects(v) {
     effects = v;
     saveUi({ views: { sigilEffects: v } });
@@ -107,13 +109,9 @@
   </EmptyState>
 {:else}
   <div class="sigils">
-    <p class="hint">
-      {classLabel(character.class)} · sigils unlock at level {sigilUnlockLevel(character.class)} · levels set each sigil's stats; each preset equips its own
-      {#if character.class === 'WARRIOR'} · choose your fourth-slot stance in Loadout{/if}
-    </p>
-
     <div class="top-panels">
     <Panel title="Sigil Altar">
+      {#snippet meta()}<span class="sub">{classLabel(character.class)} · sigils unlock at level {sigilUnlockLevel(character.class)}</span>{/snippet}
       <div class="altar-row">
         <div class="stepper-group">
           <span class="label" id="altar-label">Altar tier</span>
@@ -129,7 +127,7 @@
       {/if}
       {#if tier < EVOLVE_TIER_CAP}
         <div class="danger-zone">
-          <Button variant="danger" onclick={() => (evolveOpen = true)}>Evolve Altar</Button>
+          <Button variant="danger" onclick={() => (evolveOpen = true)}>Evolve altar</Button>
           <span class="hint">Destroys forged sigils. Ancients and free stances stay. Shows what is lost first.</span>
         </div>
       {/if}
@@ -142,7 +140,7 @@
           <li><strong>{p.name}</strong><span class="names">{names.length ? names.join(', ') : 'No sigils'}</span></li>
         {/each}
       </ul>
-      <p class="hint">Slots and activation conditions are picked per preset in <a href="#/builds/loadout">Loadout</a>.</p>
+      <p class="hint">Levels set each sigil's stats; each preset equips its own. Slots{character.class === 'WARRIOR' ? ', the fourth-slot stance' : ''} and activation conditions are picked per preset in <a href="#/builds/loadout">Loadout</a>.</p>
     </Panel>
     </div>
 
@@ -213,6 +211,7 @@
 {/if}
 
 <style>
+  .sub { color: var(--text-muted); font-size: var(--fs-12); }
   /* minmax(0, 1fr): no child's minimum (the filter tabs' 24rem) may widen the page past a phone screen */
   .sigils { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); }
   .hint { color: var(--text-muted); font-size: var(--fs-12); margin: 0; }

@@ -50,7 +50,7 @@
       <Button variant="ghost" size="small" disabled={full} reason={`At most ${max} profiles`} onclick={() => onadd?.(`${active.name} copy`, active.id)}>Copy</Button>
       <Button variant="ghost" size="small" onclick={() => { draft = active.name; renaming = true; }}>Rename</Button>
       {#if profiles.length > 1}
-        <ConfirmButton variant="ghost" size="small" label="Delete" confirmLabel="Delete {active.name}" onConfirm={() => onremove?.(active.id)} />
+        <ConfirmButton size="small" label="Delete" prompt={`Delete ${active.name}?`} onConfirm={() => onremove?.(active.id)} />
       {/if}
     {/if}
   </div>

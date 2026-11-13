@@ -9,11 +9,11 @@
   import { rarityClass, formatFlat } from '../../lib/format.js';
   import { sigilImage } from '../../lib/assets.js';
   import { MAX_SIGIL_LEVEL, isFormSigil, isGrantedSigil } from '../../lib/model/sigils.js';
-  import Menu from '../ui/Menu.svelte';
+  import PresetMenu from '../character/PresetMenu.svelte';
   import { getSigilBonusAttack, getSigilBonusHp } from '../../lib/engine/sources/sigilScale.js';
   import { sigilSpellBlocks } from './sigilView.js';
 
-  // `equip` is the "Equip in" menu (sigilView.equipItems); `onEquip(presetId)` toggles the sigil in that preset.
+  // `equip` is the "Used in" menu (sigilView.equipItems); `onEquip(presetId)` toggles the sigil in that preset.
   // `showEffects` is the page's one Effects toggle: every card shows or hides its effects together, so a
   // row of cards never turns ragged because one card was opened.
   let { def, level = 0, tier = 1, spec = null, usedBy = [], note = '', onLevel = () => {}, equip = [], onEquip = () => {}, showEffects = true } = $props();
@@ -22,7 +22,6 @@
   const ancient = $derived(def.rarity === 'Ancient');
   // Ancients are unique and Form sigils are granted, not forged: both stay at level 1 (model/sigils.js clampSigilLevel).
   const fixed = $derived(ancient || isFormSigil(def.species) || isGrantedSigil(def.species));
-  let menuOpen = $state(false);
   // Show level-1 numbers for a sigil that is not owned yet, so the card still reads as a catalogue.
   const shownLevel = $derived(Math.max(1, level));
   const attack = $derived(getSigilBonusAttack(def, shownLevel, tier));
@@ -96,24 +95,10 @@
   {#if note}<p class="notes">{note}</p>{/if}
 
   <div class="card-foot">
-    <span class="used-by">{usedBy.length ? `Equipped in: ${usedBy.join(', ')}` : 'Unequipped'}</span>
     {#if equip.length}
-      <span class="equip-wrap">
-        <button type="button" class="equip-btn" aria-haspopup="menu" aria-expanded={menuOpen} onclick={() => (menuOpen = !menuOpen)}>Equip in ▾</button>
-        {#if menuOpen}
-          <div class="equip-menu">
-            <Menu
-              label="Equip {def.name} in"
-              items={equip}
-              onselect={(item) => {
-                menuOpen = false;
-                onEquip(item.id);
-              }}
-              onclose={() => (menuOpen = false)}
-            />
-          </div>
-        {/if}
-      </span>
+      <PresetMenu label="Used in" items={equip} onselect={(id) => onEquip(id)} />
+    {:else}
+      <span class="used-by">{usedBy.length ? `Used in: ${usedBy.join(', ')}` : 'Used in: none'}</span>
     {/if}
   </div>
 </div>
@@ -185,16 +170,22 @@
     flex-wrap: wrap;
   }
   .used-by { color: var(--text-muted); }
-  .equip-btn {
-    background: transparent;
-    border: 1px solid var(--line-control);
-    color: var(--text-soft);
-    border-radius: var(--r-1);
-    padding: 2px var(--sp-2);
-    font-size: var(--fs-12);
-    cursor: pointer;
+  .card-foot :global(.preset-menu) { min-width: 0; max-width: 100%; }
+  .card-foot :global(.preset-menu > button) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Phone: a row, not a tile. Art beside the name and stats, then the level and Used in on one line, so
+     a card is about a third as tall and the collection is a list you can scan. */
+  @media (max-width: 700px) {
+    .sigil-card { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; column-gap: var(--sp-3); row-gap: var(--sp-1); align-items: center; }
+    .rarity-title { grid-column: 2 / -1; grid-row: 1; text-align: left; }
+    .sigil-art { grid-column: 1; grid-row: 1 / span 2; width: 48px; height: 48px; margin: 0; }
+    .base-stats { grid-column: 2 / -1; grid-row: 2; text-align: left; }
+    .level-slot { grid-column: 1 / span 2; grid-row: 3; justify-content: flex-start; min-width: 0; }
+    .level-row { justify-content: flex-start; gap: var(--sp-2); }
+    .level-caption { position: static; }
+    .owned-toggle { justify-content: flex-start; min-height: var(--hit); }
+    .card-foot { grid-column: 3; grid-row: 3; margin: 0; padding: 0; border: 0; justify-content: flex-end; min-width: 0; max-width: 11rem; }
+    .effects, .notes { grid-column: 1 / -1; }
+    .stepper button { width: var(--hit); }
+    .stepper { height: var(--hit); }
   }
-  .equip-btn:hover { border-color: var(--line-control-hover); color: var(--text-ink); }
-  .equip-wrap { position: relative; }
-  .equip-menu { position: absolute; right: 0; bottom: 100%; z-index: 5; }
 </style>

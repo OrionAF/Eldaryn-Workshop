@@ -11,7 +11,7 @@
   import { viewRun } from '../../lib/ui/optimiserView.js';
   import { runApplyBlock, retiredGoalBlock } from '../../lib/ui/optimiserSetup.js';
   import { fmtScalar, fmtCount } from '../../lib/ui/statsFormat.js';
-  import ConfirmAction from '../tools/ConfirmAction.svelte';
+  import ConfirmButton from '../ConfirmButton.svelte';
   import Button from '../ui/Button.svelte';
   import Checkbox from '../ui/Checkbox.svelte';
   import Panel from '../ui/Panel.svelte';
@@ -71,7 +71,7 @@
     <div class="top">
       <span class="hint">{runs.length} run{runs.length === 1 ? '' : 's'}. Finished runs are saved here automatically.</span>
       {#if runs.length}
-        <ConfirmAction label="Clear unpinned" confirmLabel="Confirm clear" prompt="Pinned runs are kept." onConfirm={() => rosterStore.clearRuns({ keepPinned: true })} />
+        <ConfirmButton size="small" label="Clear unpinned" prompt="Pinned runs are kept." onConfirm={() => rosterStore.clearRuns({ keepPinned: true })} />
       {/if}
     </div>
 
@@ -131,7 +131,7 @@
                 <input type="text" value={run.name} aria-label="Run name" onchange={(e) => rosterStore.setRunName(run.id, e.currentTarget.value)} />
               </label>
               <Button variant="secondary" size="small" disabled={!!retiredGoalBlock(run)} reason={retiredGoalBlock(run)} onclick={() => onrerun(run)}>Run again with these settings</Button>
-              <ConfirmAction label="Delete" confirmLabel="Confirm delete" onConfirm={() => rosterStore.deleteRun(run.id)} />
+              <ConfirmButton size="small" label="Delete" onConfirm={() => rosterStore.deleteRun(run.id)} />
             </div>
             <Textarea label="Notes" rows={2} value={run.notes} oninput={(v) => rosterStore.setRunNotes(run.id, v)} />
             <StepList id="run-steps-{run.id}" title="Search steps" steps={searchStepRows(run.steps)} />

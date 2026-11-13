@@ -165,10 +165,10 @@ it('a Fortress boss result shows raw and credited damage for the rows and the cu
   expect(view.fortress.total).toBe(6.3);
   const ui = mountView(view);
   const base = ui.q('[data-testid="fortress-credit-baseline"]');
-  expect(base.textContent).toMatch(/60,?000/);
-  expect(base.textContent).toMatch(/378,?000/);
+  expect(base.textContent).toMatch(/60.?000/);
+  expect(base.textContent).toMatch(/378.?000/);
   click(ui.qa('[data-testid="result-row"] button[aria-expanded]')[0]);
   const notes = ui.qa('[data-testid="fortress-credit"]');
   expect(notes.length).toBeGreaterThan(0);
-  expect(notes[0].textContent).toMatch(/378,?000/);
+  expect(notes[0].textContent).toMatch(/378.?000/);
 });

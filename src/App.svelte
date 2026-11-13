@@ -5,8 +5,9 @@
    * (lib/router.svelte.js); each route mounts one file from components/pages/, which for now
    * adapts the pre-redesign screen. An empty roster shows the Welcome page instead.
    */
-  import { onMount } from 'svelte';
+  import { onMount, setContext } from 'svelte';
   import { installLeaveGuard } from './lib/leaveGuard.js';
+  import { installTitleTips } from './lib/ui/titleTips.js';
   import WelcomeScreen from './components/WelcomeScreen.svelte';
   import TopBar from './components/shell/TopBar.svelte';
   import JobsPill from './components/shell/JobsPill.svelte';
@@ -26,6 +27,8 @@
 
   // Closing or reloading the tab ends running jobs and loses unsaved edits: ask the browser to confirm.
   onMount(() => installLeaveGuard());
+  // Every `title` in the app shows in the app's own tooltip, touch included (lib/ui/titleTips.js).
+  onMount(() => installTitleTips());
 
   const empty = $derived(rosterStore.roster.characters.length === 0);
   const character = $derived(rosterStore.current);
@@ -33,6 +36,13 @@
   const page = $derived(route.kind === 'page' ? pageById(route.id) : null);
   const Page = $derived(route.kind === 'page' ? PAGE_COMPONENTS[route.id] : null);
   const classBlocked = $derived(!!page?.needsClass && !character?.class);
+
+  // The scope the context header already shows; a Panel of that scope does not repeat the badge.
+  setContext('page-scope', {
+    get scope() {
+      return route.kind === 'settings' ? 'global' : (page?.scope ?? null);
+    },
+  });
 
   // Old screens still call setStatus(msg) / onNavigate(id); both are app services now.
   const setStatus = (msg) => statusMessage(msg);

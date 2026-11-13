@@ -18,7 +18,7 @@
   import { coreName, coreSlots } from '../../lib/model/pets.js';
   import { calculateCoreBonuses } from '../../lib/engine/sources/petCore.js';
   import { petSecondaryValue } from '../../lib/engine/sources/pet.js';
-  import { rarityClass, formatFlat, formatPct } from '../../lib/format.js';
+  import { rarityClass, formatFlat, formatPct, formatRate } from '../../lib/format.js';
   import Button from '../ui/Button.svelte';
   import PresetMenu from '../character/PresetMenu.svelte';
 
@@ -29,7 +29,7 @@
   const secAt = (v) => (altarLevel != null && altarLevel > 1 ? petSecondaryValue(v, altarLevel) : v);
   const label = (type) => statByEnum(type)?.sheetLabel ?? type;
   const useItems = $derived(presets.map((p) => ({ id: p.id, label: p.name, checked: p.petId === pet.id, meta: p.petId && p.petId !== pet.id ? 'uses another' : '' })));
-  const pct = (f) => `${Math.round(f * 100)}%`;
+  const pct = (f) => formatRate(f, 0);
   const scoreTitle = $derived(
     !score
       ? ''

@@ -120,7 +120,7 @@
   <p class="hint">No character selected.</p>
 {:else}
   <div class="page">
-  <Panel title="Mounts &amp; Glyphs" scope="character">
+  <Panel title="Collection" scope="character">
     {#snippet meta()}<span class="sub">unlock at level {UNLOCK_LEVELS.MOUNTS} · sockets: 3 minor, 2 major, 1 mythic · only the ridden mount counts</span>{/snippet}
     {#if !mountsUnlocked(character.level)}
       <Banner variant="info">Mounts unlock at level {UNLOCK_LEVELS.MOUNTS}; this character is level {character.level}, so no mount counts yet.</Banner>

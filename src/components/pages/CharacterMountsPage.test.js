@@ -54,7 +54,7 @@ function addGlyphUi({ tier, glyphType, rarity, sealed = false }) {
 }
 
 it('shows an empty state and offers all 13 species', () => {
-  expect(target.textContent).toContain('Mounts & Glyphs');
+  expect(target.textContent).toContain('Collection');
   expect(target.textContent).toContain('No mounts yet');
   expect(byLabel('Mount species').querySelectorAll('option').length).toBe(MOUNT_SPECIES.length);
 });
@@ -80,7 +80,7 @@ it('the level stars write the level, and the effective bonus follows', () => {
   expect(field(cards()[0], 'Health').value).toBe('48'); // round(34 * 1.4)
 });
 
-it('Ridden in toggles a named preset on the mount', () => {
+it('Used in toggles a named preset on the mount', () => {
   addMountUi('NIGHT_WOLF');
   cards()[0].querySelector('button[aria-haspopup="menu"]').click();
   flushSync();
@@ -88,7 +88,7 @@ it('Ridden in toggles a named preset on the mount', () => {
   [...cards()[0].querySelectorAll('[role^="menuitem"]')][0].click();
   flushSync();
   expect(rosterStore.current.presets.find((p) => p.id === pid).mountId).toBe(rosterStore.current.mounts[0].id);
-  expect(cards()[0].textContent).toContain('Ridden in: ' + rosterStore.current.presets[0].name);
+  expect(cards()[0].textContent).toContain('Used in: ' + rosterStore.current.presets[0].name);
 });
 
 it('major glyph choices are limited to the class', () => {
@@ -188,7 +188,7 @@ it('a major glyph whose sigil is not equipped is inert in the presets that ride 
   expect(glyphCard.textContent).toContain(`Does nothing in ${p0.name}: its sigil is not equipped`);
 });
 
-it('Ridden in names every preset, checks the riders, and rides from the menu', () => {
+it('Used in names every preset, checks the riders, and rides from the menu', () => {
   addMountUi('NIGHT_WOLF');
   const [p0, p1] = rosterStore.current.presets;
   cards()[0].querySelector('button[aria-haspopup="menu"]').click();
@@ -199,7 +199,7 @@ it('Ridden in names every preset, checks the riders, and rides from the menu', (
   flushSync();
   expect(rosterStore.current.presets[1].mountId).toBe(rosterStore.current.mounts[0].id);
   expect(rosterStore.current.presets[0].mountId).toBeNull();
-  expect(cards()[0].textContent).toContain(`Ridden in: ${p1.name}`);
+  expect(cards()[0].textContent).toContain(`Used in: ${p1.name}`);
   expect(p0.name).not.toBe(p1.name);
 });
 

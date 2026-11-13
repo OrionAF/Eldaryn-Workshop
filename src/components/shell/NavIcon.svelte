@@ -31,6 +31,7 @@
     tools: 'M14 4l6 6-9 9-4-1-1-4zM5 20l3-3',
     import: 'M12 16V4M7 9l5-5 5 5M5 14v6h14v-6',
     lock: 'M7 11V8a5 5 0 0 1 10 0v3M5 11h14v9H5z',
+    settings: 'M4 7h7M15 7h5M13 5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM4 17h3M11 17h9M9 15a2 2 0 1 1 0 4 2 2 0 0 1 0-4z',
   };
   const d = $derived(PATHS[name] ?? 'M12 4l8 8-8 8-8-8z');
 </script>

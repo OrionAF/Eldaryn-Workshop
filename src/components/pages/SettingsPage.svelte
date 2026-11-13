@@ -1,4 +1,5 @@
 <script>
+  import { formatFlat } from '../../lib/format.js';
   /**
    * SettingsPage.svelte - G6 route (`#/settings`): Data (export, restore a backup, the one-step undo of
    * "Update <name>", where the data lives), Preferences and Performance (per device, lib/prefs.svelte.js),
@@ -154,7 +155,7 @@
         {#if cal}
           <p class="note" data-testid="calibration-last">
             Last tested {when(cal.measuredAt)} on the {cal.profile} setting, using {cal.workers} {cal.workers === 1 ? 'core' : 'cores'}:
-            {#each Object.entries(cal.fightsPerSec) as [kind, r], i (kind)}{i ? ', ' : ' '}{KIND_LABEL[kind]} <span class="num">{Math.round(r).toLocaleString()}</span> fights/s{/each}.
+            {#each Object.entries(cal.fightsPerSec) as [kind, r], i (kind)}{i ? ', ' : ' '}{KIND_LABEL[kind]} <span class="num">{formatFlat(r)}</span> fights/s{/each}.
           </p>
           {#if stale}<p class="warn" role="status" data-testid="calibration-stale">{STALE_TEXT[stale]} Run the speed test again for accurate time estimates.</p>{/if}
         {:else}
@@ -202,7 +203,7 @@
 </div>
 
 <style>
-  .settings { display: grid; gap: var(--sp-4); max-width: 44rem; }
+  .settings { display: grid; gap: var(--sp-4); }
   .row { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
   .note { margin: 0; font-size: var(--fs-13); color: var(--text-soft); }
   .restore { display: grid; gap: var(--sp-2); margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--line-hairline); }

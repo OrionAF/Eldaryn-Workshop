@@ -1,7 +1,7 @@
 <script>
   /**
-   * PresetMenu.svelte - a "Equipped in ▾" / "Ridden in ▾" button that opens a Menu naming every
-   * preset (ia.md §4.1: no action on a hidden active preset). `items` is
+   * PresetMenu.svelte - the one "Used in: <presets> ▾" button (sigils, pet cores, mounts, relics) that
+   * opens a Menu naming every preset (ia.md §4.1: no action on a hidden active preset). `items` is
    * [{id, label, checked, disabled?, meta?}]; picking one calls `onselect(id)` and closes.
    */
   import Button from '../ui/Button.svelte';

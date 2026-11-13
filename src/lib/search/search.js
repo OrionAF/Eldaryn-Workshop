@@ -1123,8 +1123,8 @@ export async function optimize(request, hooks = {}) {
 
     run.setPhase('search');
     searchOut = await searchPhase(prep, run);
-    if (searchOut.stopped === 'time') warnings.push({ code: 'time-limit', severity: 'info', message: `The search stopped at the time limit after ${st.evaluated.size.toLocaleString('en-US')} builds, before it finished. A longer limit may find a better build. Every result shown is still checked on its own fights.` });
-    else if (searchOut.stopped === 'user') warnings.push({ code: 'stopped-early', severity: 'info', message: `You stopped the search early after ${st.evaluated.size.toLocaleString('en-US')} builds. Letting it finish may find a better build. Every result shown is still checked on its own fights.` });
+    if (searchOut.stopped === 'time') warnings.push({ code: 'time-limit', severity: 'info', message: `The search stopped at the time limit after ${formatFlat(st.evaluated.size)} builds, before it finished. A longer limit may find a better build. Every result shown is still checked on its own fights.` });
+    else if (searchOut.stopped === 'user') warnings.push({ code: 'stopped-early', severity: 'info', message: `You stopped the search early after ${formatFlat(st.evaluated.size)} builds. Letting it finish may find a better build. Every result shown is still checked on its own fights.` });
     const fmap = new Map();
     for (const a of [...searchOut.optima, ...searchOut.contenders]) {
       if (!a || a.key === B.key) continue;
@@ -1283,7 +1283,7 @@ export function powerFloorText(power, floor) {
 }
 
 const pctText = (p) => `${Math.round(p * 1000) / 10}%`;
-const countText = (n) => n.toLocaleString('en-US');
+const countText = (n) => formatFlat(n);
 const ciText = (e) => (e.lo == null || e.hi == null ? '' : ` (likely ${pctText(e.lo)}-${pctText(e.hi)})`);
 
 /**

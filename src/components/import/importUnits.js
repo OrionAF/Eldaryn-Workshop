@@ -4,6 +4,7 @@ const SINGULAR = {
   stones: 'stone',
   points: 'point',
   pets: 'pet',
+  cores: 'core',
   mounts: 'mount',
   glyphs: 'glyph',
   sigils: 'sigil',

@@ -44,7 +44,7 @@ it('an inconclusive set is neutral, names the fights needed and offers Run more'
   });
   expect(t.q('.vchip').textContent).toContain('Too close to call');
   expect(t.q('.vchip.up, .vchip.down')).toBeNull();
-  expect(t.target.textContent).toContain('about 6,400 fights needed');
+  expect(t.target.textContent).toContain('about 6.400 fights needed');
   click([...t.qa('button')].find((b) => b.textContent.includes('Run more')));
   expect(onrunmore).toHaveBeenCalledOnce();
 });

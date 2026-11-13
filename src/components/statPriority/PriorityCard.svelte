@@ -1,4 +1,5 @@
 <script>
+  import { formatFlat, formatNumber } from '../../lib/format.js';
   /**
    * PriorityCard.svelte - one spec at one level range in the build-guide format: Priority (every
    * stat kept above drop odds, ≈ within 10% of its group's first), Avoid (the Attunement block
@@ -20,7 +21,7 @@
   const variants = $derived(data.specs.filter((s) => s.variantOf === spec.spec));
   const typical = $derived(b.typical.map((t) => byType[t]).filter((s) => s.median != null));
   const text = $derived(blockText(data.labels, b));
-  const fmt = (v) => (v == null ? '–' : Number(v).toLocaleString('en-US', { maximumFractionDigits: 1 }));
+  const fmt = (v) => (v == null ? '–' : formatNumber(v));
 </script>
 
 <Panel title="{spec.specName} · Level {b.key}" level="primary">
@@ -29,8 +30,8 @@
   {/snippet}
   <div class="card" data-testid="priority-card">
     <p class="sub">
-      {spec.className} · <span class="num">{b.players.toLocaleString('en-US')}</span> players ·
-      <span class="num">{b.items.toLocaleString('en-US')}</span> gear pieces with stats
+      {spec.className} · <span class="num">{formatFlat(b.players)}</span> players ·
+      <span class="num">{formatFlat(b.items)}</span> gear pieces with stats
     </p>
     {#if custom || b.signal < WEAK_SIGNAL || b.players < SMALL_SAMPLE}
       <div class="flags">
@@ -53,12 +54,12 @@
     {/if}
     {#if custom && tiny}
       <p class="note">
-        Only <span class="num">{b.players}</span> player{b.players === 1 ? '' : 's'} in this range, so one or two builds can reorder
+        Only <span class="num">{formatFlat(b.players)}</span> player{b.players === 1 ? '' : 's'} in this range, so one or two builds can reorder
         the lists. Widen the range{near ? ` or compare with level ${near.key}` : ''}.
       </p>
     {:else if b.players < SMALL_SAMPLE}
       <p class="note">
-        Only <span class="num">{b.players}</span> players of this spec are in this {custom ? 'range; a wider range is' : 'bracket; neighbouring brackets are'} steadier.
+        Only <span class="num">{formatFlat(b.players)}</span> players of this spec are in this {custom ? 'range; a wider range is' : 'bracket; neighbouring brackets are'} steadier.
       </p>
     {/if}
 
