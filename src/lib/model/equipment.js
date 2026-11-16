@@ -75,6 +75,26 @@ export function secondaryStatMaxValue(type, statLevel) {
   return parseFloat(secondaryStatCeiling(def, statLevel).toFixed(def.decimals));
 }
 
+/**
+ * The item at Quality 100: every secondary at the highest value it can roll at the item's level, which is what
+ * Quality 100 means (gear.md §5.1: only an item whose every stat is at 100). Attack, Health and the Conduit are
+ * kept: Quality is computed from the secondaries alone. Null when nothing would change (no item level, no
+ * secondaries, or every one already at its ceiling).
+ */
+export function itemAtFullQuality(item, realm = 'base') {
+  if (!item || item.itemLevel == null || !item.secondaryStats?.length) return null;
+  const L = itemStatLevel(item.itemLevel, realm);
+  let raised = false;
+  const secondaryStats = item.secondaryStats.map((s) => {
+    const max = secondaryStatMaxValue(s.type, L);
+    if (max == null || !(max > s.value)) return s;
+    raised = true;
+    return { ...s, value: max };
+  });
+  if (!raised) return null;
+  return { ...item, secondaryStats, quality: calculateItemQuality({ secondaryStats, itemLevel: item.itemLevel, realm }) };
+}
+
 // stats.md §1.3: stored as multipliers, shown as percent
 const MULTIPLIER_STATS = new Set(['ATTACK_SPEED', 'CRIT_DAMAGE', 'MINION_ATTACK_SPEED']);
 export function isMultiplierStat(type) {

@@ -103,6 +103,27 @@ describe('dropCombo', () => {
     expect(s.total).toMatchObject({ confirmed: true, verdict: 'upgrade' });
   }, 120000);
 
+  it('pools climb on their own: a drop that loses as dropped can be the pick of the pool that has its better variant', async () => {
+    // `helm` is worse than the worn head as dropped; `helm@q100` stands in for it in the second pool
+    const { request } = setup([
+      entry('helm', 'HEAD', gear(1000)),
+      entry('chest', 'CHEST', gear(12000)),
+      { ...entry('helm@q100', 'HEAD', gear(1000, [{ type: 'CRIT_CHANCE', value: 1000 }])), variantOf: 'helm', variant: 'q100' },
+    ]);
+    request.pools = [{ id: 'dropped', entries: ['helm', 'chest'] }, { id: 'q100', entries: ['helm@q100', 'chest'] }];
+    const r = await dropCombo(request);
+    expect(r.combo.sets.map((s) => [s.pool, s.setKey])).toEqual([['dropped', 'set1'], ['q100', 'set1']]);
+    const [dropped, q100] = r.combo.sets;
+    expect(dropped.picks.map((p) => p.entry)).toEqual(['chest']);
+    expect(dropped.alone).toEqual({ helm: 'downgrade', chest: 'upgrade' });
+    expect(q100.picks.map((p) => p.entry).sort()).toEqual(['chest', 'helm@q100']);
+    expect(Object.keys(q100.alone).sort()).toEqual(['chest', 'helm@q100']);
+    expect(q100.total).toMatchObject({ confirmed: true, verdict: 'upgrade' });
+    // one drop in both pools is not "shared between sets"
+    expect(r.combo.shared).toEqual([]);
+    expect(q100.picks.some((p) => p.shared)).toBe(false);
+  }, 60000);
+
   it('no clear upgrade: nothing is picked and nothing more is simulated', async () => {
     const { request } = setup([entry('junk', 'HEAD', gear(100)), entry('same', 'CHEST', gear(5000))]);
     const r = await dropCombo(request);

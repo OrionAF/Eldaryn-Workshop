@@ -201,6 +201,14 @@ describe('comboView', () => {
     expect(comboView({ rounds: 3, sets: [set()] }, twins).sets[0].leftOut[0].reason).toBe('Relic (ilvl 144) is the better pick for this slot');
   });
 
+  it('with pools it shows only the asked pool, and takes "shared" from that pool\'s own picks', () => {
+    const pooled = (pool, o = {}) => ({ ...set(o), pool });
+    const combo = { rounds: 3, shared: ['a'], sets: [pooled('dropped', { picks: [{ entry: 'a', slot: 'HEAD', alone: 'upgrade' }] }), pooled('q100', { picks: [{ entry: 'c', slot: 'CHEST', alone: 'upgrade', shared: true }] })] };
+    expect(comboView(combo, entries, 'dropped').sets.map((s) => s.picks.map((p) => [p.entry.key, p.shared]))).toEqual([[['a', false]]]);
+    expect(comboView(combo, entries, 'q100').sets.map((s) => s.picks.map((p) => [p.entry.key, p.shared]))).toEqual([[['c', true]]]);
+    expect(comboView(combo, entries).sets).toHaveLength(2);
+  });
+
   it('drops picks whose entry has left the bag, and a set left with none; an unmeasured total has no card', () => {
     const rest = entries.filter((e) => e.key !== 'a');
     const [s] = comboView({ rounds: 3, sets: [set({ total: null })] }, rest).sets;
