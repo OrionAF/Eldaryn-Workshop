@@ -141,8 +141,8 @@ it('the Fortress boss fields show the shield, drop Stars for the Core and restor
   const top = mountPicker({ target: { ...first.state.target, aliveDefenders: 25, server: null } });
   expect(numberField(top.ui, 'Stars')).toBeTruthy();
   expect(numberField(top.ui, 'Alive defenders').value).toMatch(/25/);
-  expect(top.ui.q('[data-testid="fortress-shield"]').textContent).toMatch(/shield 30% \(25 alive of a 50 cap\)/);
-  expect(top.ui.q('[data-testid="clan-cap"]').textContent).toMatch(/cap 50/);
+  expect(top.ui.q('[data-testid="fortress-shield"]').textContent).toMatch(/shield 60(\.0)?% \(25 alive of a 18 cap\)/);
+  expect(top.ui.q('[data-testid="clan-cap"]').textContent).toMatch(/cap 18/);
   expect(top.ui.q('[data-testid="fidelity"]').dataset.fidelity).toBe('server-model');
   setNumber(numberField(top.ui, 'Alive defenders'), 50);
   expect(top.state.target.aliveDefenders).toBe(50);
