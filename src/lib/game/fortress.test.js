@@ -5,7 +5,9 @@ import {
 
 describe('clanCapForServer', () => {
   it('uses the per-server override, else the default 50', () => {
-    expect(clanCapForServer(5)).toBe(30);
+    expect(clanCapForServer(5)).toBe(18); // 2.9.6 (was 30, then 24 in 2.9.5)
+    expect(clanCapForServer(6)).toBe(50); // dropped from the overrides
+    expect(clanCapForServer(12)).toBe(18);
     expect(clanCapForServer(7)).toBe(18);
     expect(clanCapForServer(99)).toBe(20);
     expect(clanCapForServer(1)).toBe(50);

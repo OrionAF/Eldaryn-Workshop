@@ -161,8 +161,8 @@ it('the Fortress boss fields show the shield, drop Stars for the Core and restor
 it('the Fortress boss shield follows the server cap, or a typed shield percent', () => {
   const server5 = mountPicker({ target: { kind: 'fortressBoss', group: 'TOP', stars: 5, aliveDefenders: 26, server: 5, kills: 0 } });
   expect(numberField(server5.ui, 'Server').value).toMatch(/5/);
-  expect(server5.ui.q('[data-testid="clan-cap"]').textContent).toMatch(/cap 30/);
-  expect(server5.ui.q('[data-testid="fortress-shield"]').textContent).toMatch(/Boss shield 53\.3% \(26 alive of a 30 cap\)/);
+  expect(server5.ui.q('[data-testid="clan-cap"]').textContent).toMatch(/cap 18/);
+  expect(server5.ui.q('[data-testid="fortress-shield"]').textContent).toMatch(/Boss shield 60(\.0)?% \(26 alive of a 18 cap\)/);
   setNumber(numberField(server5.ui, 'Server'), 7);
   expect(server5.state.target.server).toBe(7);
 
@@ -180,8 +180,8 @@ it('a legacy maxClanSize spec shows its real cap and editing Server drops it so 
   setNumber(numberField(legacy.ui, 'Server'), 5);
   expect('maxClanSize' in legacy.state.target).toBe(false);
   const after = mountPicker({ target: legacy.state.target });
-  expect(after.ui.q('[data-testid="clan-cap"]').textContent).toMatch(/cap 30/);
-  expect(after.ui.q('[data-testid="fortress-shield"]').textContent).toMatch(/26 alive of a 30 cap/);
+  expect(after.ui.q('[data-testid="clan-cap"]').textContent).toMatch(/cap 18/);
+  expect(after.ui.q('[data-testid="fortress-shield"]').textContent).toMatch(/26 alive of a 18 cap/);
 });
 
 it('a new Fortress boss target starts on the character\'s server', () => {
