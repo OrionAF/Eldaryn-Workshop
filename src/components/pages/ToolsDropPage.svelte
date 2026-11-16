@@ -18,7 +18,7 @@
    * goal with its own labelled axis. The closed-form figure is an ESTIMATE under the simulated one, never
    * coloured. Apply names its scope first. Run more raises the precision step (features/dropView.js runMoreRequest).
    */
-  import { untrack } from 'svelte';
+  import { untrack, tick } from 'svelte';
   import { prefs, setPrefs } from '../../lib/prefs.svelte.js';
   import { importFlow, takeHandoff } from '../../lib/importFlow.svelte.js';
   import { rosterStore } from '../../lib/rosterStore.svelte.js';
@@ -35,7 +35,7 @@
   import { dropFights } from '../../lib/calibration.js';
   import RunEstimate from '../ui/RunEstimate.svelte';
   import { dropHasStats } from '../../lib/model/drop.js';
-  import { parseDropBatch, prepareBatch, rankEntries, entryResults, goalCharacter, BATCH_SIM } from '../../lib/features/dropBatch.js';
+  import { parseDropBatch, prepareBatch, rankEntries, entryResults, judgeEntry, goalCharacter, BATCH_SIM } from '../../lib/features/dropBatch.js';
   import { setCards, setLabelOf, chipFor, goalFigure, tally, tallyChips, runMoreRequest, isDowngrade, bagSummaryText, comboView } from '../../lib/features/dropView.js';
   import { EQUIP_SETS } from '../../lib/model/equipment.js';
   import { forestDomain } from '../../lib/ui/forestScale.js';
@@ -407,6 +407,31 @@
     bump += 1;
   }
 
+  /** What tells one drop from another of the same name: slot, realm, rarity and item level (the list row's line). */
+  const entryMeta = (e) => `${slotLabel(character.class, e.slot)}${e.realm === 'oblivion' ? ' · Oblivion' : ''}${e.item.rarity ? ` · ${e.item.rarity}` : ''}${e.item.itemLevel ? ` · ilvl ${e.item.itemLevel}` : ''}`;
+
+  /**
+   * A drop alone in one gear set, as its list row shows it: the lead goal's figure and the verdict chip. The row
+   * itself shows the drop's best set, so the combination of another set asks for its own.
+   */
+  function aloneIn(entry, setKey) {
+    const i = bag.entries.findIndex((e) => e.key === entry.key);
+    if (i < 0) return null;
+    const res = entryResults(bag.offsets, bag.rows, i, bagResults);
+    const at = bag.rows[i].map((_, k) => k).filter((k) => bag.rows[i][k].setKey === setKey);
+    const best = judgeEntry(at.map((k) => bag.rows[i][k]), at.map((k) => res[k]));
+    return best ? { f: figureOf(best), chip: chipOf(best) } : null;
+  }
+  const aloneText = (a) => (a?.f?.kind === 'sim' ? `${fig(a.f, a.f.est)} [${fig(a.f, a.f.lo)}, ${fig(a.f, a.f.hi)}]` : '');
+
+  /** Open a drop's row in the list below (its stats and set cards) and bring it into view. */
+  async function showInList(entry) {
+    if (!shown.some((r) => r.entry.key === entry.key)) hideDowngrades = false;
+    expandedKey = entry.key;
+    await tick();
+    [...document.querySelectorAll('#dc-panel-bag .trow.rank')].find((el) => el.dataset.entry === entry.key)?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+  }
+
   /** Apply a whole combination to its set: every pick goes into its slot and leaves the list. */
   function applyCombo(set) {
     const done = [];
@@ -674,9 +699,22 @@
                     <span class="cap-label">Equip in {s.setLabel}</span>
                     <ol class="picks" data-testid="combo-picks">
                       {#each s.picks as p (p.entry.key)}
+                        {@const a = aloneIn(p.entry, s.setKey)}
                         <li>
-                          <span class="name" style:color="var(--rarity-{String(p.entry.item.rarity ?? '').toLowerCase()}-fg-on-raised, var(--text-ink))">{p.entry.name}</span>
-                          <span class="meta">{slotLabel(character.class, p.entry.slot)}{p.note ? ` · ${p.note}` : ''}{p.shared ? ' · also picked for another set' : ''}</span>
+                          <div class="pick-line">
+                            <span class="pick-id">
+                              <span class="name" style:color="var(--rarity-{String(p.entry.item.rarity ?? '').toLowerCase()}-fg-on-raised, var(--text-ink))">{p.entry.name}</span>
+                              <span class="meta">{entryMeta(p.entry)}</span>
+                            </span>
+                            {#if a}
+                              <span class="pick-alone">
+                                <span class="meta">Alone{aloneText(a) ? `: ${aloneText(a)}` : ''}</span>
+                                <VerdictChip verdict={a.chip.verdict} label={a.chip.label} />
+                              </span>
+                            {/if}
+                            <Button variant="ghost" size="small" onclick={() => showInList(p.entry)}>Show in list</Button>
+                          </div>
+                          {#if p.note || p.shared}<span class="meta">{[p.note, p.shared ? 'Also picked for another set' : ''].filter(Boolean).join(' · ')}</span>{/if}
                         </li>
                       {/each}
                     </ol>
@@ -684,9 +722,22 @@
                       <span class="cap-label">Upgrades alone, not in the combination</span>
                       <ul class="picks" data-testid="combo-left-out">
                         {#each s.leftOut as l (l.entry.key)}
+                          {@const a = aloneIn(l.entry, s.setKey)}
                           <li>
-                            <span class="name">{l.entry.name}</span>
-                            <span class="meta">{slotLabel(character.class, l.entry.slot)} · {l.reason}</span>
+                            <div class="pick-line">
+                              <span class="pick-id">
+                                <span class="name" style:color="var(--rarity-{String(l.entry.item.rarity ?? '').toLowerCase()}-fg-on-raised, var(--text-ink))">{l.entry.name}</span>
+                                <span class="meta">{entryMeta(l.entry)}</span>
+                              </span>
+                              {#if a}
+                                <span class="pick-alone">
+                                  <span class="meta">Alone{aloneText(a) ? `: ${aloneText(a)}` : ''}</span>
+                                  <VerdictChip verdict={a.chip.verdict} label={a.chip.label} />
+                                </span>
+                              {/if}
+                              <Button variant="ghost" size="small" onclick={() => showInList(l.entry)}>Show in list</Button>
+                            </div>
+                            <span class="meta">Left out: {l.reason}</span>
                           </li>
                         {/each}
                       </ul>
@@ -778,13 +829,13 @@
                 {@const f = figures[i]}
                 {@const chip = chipOf(r.best)}
                 {@const open = expandedKey === e.key}
-                <div class="trow rank" role="row" class:open>
+                <div class="trow rank" role="row" class:open data-entry={e.key}>
                   <div role="cell" class="item">
                     <button type="button" class="toggle" aria-expanded={open} aria-controls="dc-x-{i}" onclick={() => (expandedKey = open ? null : e.key)}>
                       <span class="chev" aria-hidden="true">{open ? '▾' : '▸'}</span>
                       <span>
                         <span class="name" style:color="var(--rarity-{String(e.item.rarity ?? '').toLowerCase()}-fg-on-raised, var(--text-ink))">{e.name}</span>
-                        <span class="meta">{slotLabel(character.class, e.slot)}{e.realm === 'oblivion' ? ' · Oblivion' : ''}{e.item.rarity ? ` · ${e.item.rarity}` : ''}{e.item.itemLevel ? ` · ilvl ${e.item.itemLevel}` : ''}</span>
+                        <span class="meta">{entryMeta(e)}</span>
                       </span>
                     </button>
                   </div>
@@ -934,6 +985,10 @@
   .combo { display: grid; gap: var(--sp-2); align-content: start; min-width: 0; }
   .picks { margin: 0; padding-left: var(--sp-5); display: grid; gap: var(--sp-1); }
   .picks li { min-width: 0; }
+  .pick-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3); }
+  .pick-id { flex: 1 1 12rem; min-width: 0; }
+  .pick-alone { display: inline-flex; align-items: center; gap: var(--sp-2); }
+  .pick-alone .meta { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
   @media (max-width: 1023px) {
     .grid { grid-template-columns: minmax(0, 1fr); }
   }
