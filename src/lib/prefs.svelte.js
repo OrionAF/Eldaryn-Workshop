@@ -34,6 +34,9 @@ export const prefs = {
   get dropSets() {
     return state.dropSets;
   },
+  get dropCombine() {
+    return state.dropCombine;
+  },
   get showImport() {
     return state.showImport;
   },

@@ -2,7 +2,7 @@ import { it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import ToolsDropPage from './ToolsDropPage.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
-import { jobsStore, __resetJobs } from '../../lib/jobs.svelte.js';
+import { jobsStore, __resetJobs, summaryOf } from '../../lib/jobs.svelte.js';
 import { loadImportText, confirmImport, resetImportFlow, importFlow } from '../../lib/importFlow.svelte.js';
 import { prefs, setPrefs, applyPrefs } from '../../lib/prefs.svelte.js';
 import { APP_VERSION as ESTIMATE_VERSION } from '../../lib/calibration.js';
@@ -636,6 +636,7 @@ function mixedBagRunner() {
   });
 }
 const countOf = (k) => Number(target.querySelector('.summary .v.' + k + ' .num').textContent);
+const checkbox = (label) => [...target.querySelectorAll('.check')].find((l) => l.textContent.includes(label)).querySelector('input');
 
 it('Loot bag: Hide downgrades drops only downgraded rows and leaves the counts alone', async () => {
   mixedBagRunner();
@@ -647,14 +648,14 @@ it('Loot bag: Hide downgrades drops only downgraded rows and leaves the counts a
   const up = countOf('up');
   expect(down).toBeGreaterThan(0);
   expect(up).toBeGreaterThan(0);
-  target.querySelector('.check input').click();
+  checkbox('Hide downgrades').click();
   flushSync();
   const rows = [...target.querySelectorAll('.trow.rank')];
   expect(rows).toHaveLength(all - down);
   expect(rows.every((r) => !r.querySelector('.vchip')?.textContent.includes('Downgrade'))).toBe(true);
   expect(countOf('down')).toBe(down);
   expect(countOf('up')).toBe(up);
-  target.querySelector('.check input').click();
+  checkbox('Hide downgrades').click();
   flushSync();
   expect(target.querySelectorAll('.trow.rank')).toHaveLength(all);
 });
@@ -672,7 +673,7 @@ it('Loot bag: before the job finishes nothing is hidden, and an all-downgrade ba
   });
   open({ tab: 'bag' });
   paste(lootBag);
-  target.querySelector('.check input').click();
+  checkbox('Hide downgrades').click();
   flushSync();
   expect(target.querySelectorAll('.trow.rank').length).toBe(4);
   await settle();
@@ -689,7 +690,7 @@ it('Loot bag: Copy summary writes the visible rows, and a blocked clipboard is r
   open({ tab: 'bag', setStatus });
   paste(lootBag);
   await settle();
-  target.querySelector('.check input').click();
+  checkbox('Hide downgrades').click();
   flushSync();
   const shownCount = target.querySelectorAll('.trow.rank').length;
   btn('Copy summary').click();
@@ -795,4 +796,105 @@ it('Loot bag: the screen simulates the best few drops of a slot, says how many i
   flushSync();
   await vi.waitFor(() => expect(calls).toHaveLength(2));
   expect(simulated(calls[1])).toBe(8);
+});
+
+// The best combination (features/dropCombo.js): the loot bag job also says which drops to equip together.
+function comboRunner(build) {
+  __resetJobs({
+    run: (request) => {
+      calls.push(request);
+      const results = request.items.map((it) => ({ presetId: it.presetId, goals: goalRes(request, it, metric('better')) }));
+      return { promise: Promise.resolve({ results, combo: build?.(request) ?? null, aborted: false }), cancel() {} };
+    },
+  });
+}
+/** A finished combination for Set 1: the first two entries picked (the second only pays off with the first), the third left out. */
+function comboOf(request) {
+  const [a, b, c] = request.entries;
+  const wearers = [...new Set(request.items.filter((it) => it.setKey === 'set1').map((it) => it.presetId))];
+  const total = wearers.map((presetId) => ({ presetId, goals: goalRes(request, { goalIds: null }, metric('better')) }));
+  return {
+    schema: 'drop-combo/1', seed: { search: 1, confirm: 2 }, rounds: 3, shared: [],
+    sets: [{
+      setKey: 'set1', realm: 'base', status: 'done',
+      picks: [{ entry: a.key, slot: a.slot, alone: 'upgrade' }, { entry: b.key, slot: b.slot, alone: 'downgrade' }],
+      steps: [{ round: 1, move: 'equip', entry: a.key, slot: a.slot, replaces: null, score: 9 }, { round: 2, move: 'equip', entry: b.key, slot: b.slot, replaces: null, score: 3 }],
+      alone: { [a.key]: 'upgrade', [b.key]: 'downgrade', [c.key]: 'upgrade' },
+      onTop: { [c.key]: 'downgrade' },
+      total: {
+        rows: wearers.map((presetId) => ({ presetId, name: `Preset ${presetId}`, setKey: 'set1', method: 'recomputed', approx: false, closed: { pct: 12 }, rawDelta: {} })),
+        results: total, confirmed: true, verdict: 'upgrade', score: 10,
+      },
+    }],
+  };
+}
+
+it('Loot bag: the run also asks for the best combination and shows what to equip together', async () => {
+  comboRunner(comboOf);
+  open({ tab: 'bag' });
+  paste(lootBag);
+  expect(target.querySelector('[data-testid="combo-cost"]')).not.toBeNull();
+  await settle();
+  expect(calls[0].mode).toBe('dropCombo');
+  expect(calls[0].entries.map((e) => e.name)).toEqual(lootBag.pendingItems.map((i) => i.name));
+  const block = target.querySelector('[data-combo="set1"]');
+  const picks = [...block.querySelectorAll('[data-testid="combo-picks"] li')];
+  expect(picks.map((li) => li.querySelector('.name').textContent)).toEqual(lootBag.pendingItems.slice(0, 2).map((i) => i.name));
+  expect(picks[0].textContent).not.toContain('pays off');
+  expect(picks[1].textContent).toContain('Alone it is a downgrade: it pays off with the others on');
+  const left = block.querySelector('[data-testid="combo-left-out"]');
+  expect(left.textContent).toContain(lootBag.pendingItems[2].name);
+  expect(left.textContent).toContain('on top of the picks it is a downgrade');
+  expect(block.querySelector('[data-testid="combo-basis"]').textContent).toContain('all 2 drops together');
+  expect(block.querySelector('[data-set="set1"]').dataset.verdict).toBe('better');
+  expect(summaryOf(jobsStore.list[0]).map((c) => c.text)).toContain('Best combination: 2 drops');
+});
+
+it('Loot bag: Apply all writes every pick of the combination to its set and takes them off the list', async () => {
+  comboRunner(comboOf);
+  open({ tab: 'bag' });
+  paste(lootBag);
+  await settle();
+  const [a, b] = lootBag.pendingItems;
+  btn('Apply all to Set 1').click();
+  flushSync();
+  expect(target.textContent).toContain('This puts these 2 items in Set 1');
+  expect(rosterStore.current.equipment.set1.items[a.slot]?.primaryStats.attack ?? null).not.toBe(a.primaryStats.attack);
+  btn('Confirm apply').click();
+  flushSync();
+  const items = rosterStore.current.equipment.set1.items;
+  expect(items[a.slot].primaryStats).toEqual(a.primaryStats);
+  expect(items[b.slot].primaryStats).toEqual(b.primaryStats);
+  expect(target.querySelectorAll('.trow.rank')).toHaveLength(2);
+  expect(target.querySelector('[data-testid="bag-applied"]').textContent).toContain('2 applied items removed');
+  expect(target.querySelector('[data-testid="combo-none"]').textContent).toContain('Nothing left to combine');
+});
+
+it('Loot bag: no clear upgrade means nothing to combine, and a run that stopped early says so', async () => {
+  comboRunner((request) => ({ schema: 'drop-combo/1', seed: { search: 1, confirm: 2 }, rounds: 1, shared: [], sets: [{ setKey: 'set1', realm: 'base', status: 'none', picks: [], steps: [], alone: Object.fromEntries(request.entries.map((e) => [e.key, 'downgrade'])), onTop: {}, total: null }] }));
+  open({ tab: 'bag' });
+  paste(lootBag);
+  await settle();
+  expect(target.querySelector('[data-testid="combo-none"]').textContent).toContain('nothing to combine');
+  comboRunner(() => null);
+  btn('Check again').click();
+  await settle();
+  flushSync();
+  expect(target.querySelector('[data-testid="combo-pending"]').textContent).toContain('stopped before the combination');
+});
+
+it('Loot bag: with the combination turned off the run is the plain check and the panel is gone', async () => {
+  setPrefs({ dropCombine: false });
+  open({ tab: 'bag' });
+  paste(lootBag);
+  await settle();
+  expect(calls[0].mode).toBe('dropCheck');
+  expect(calls[0].entries).toBeUndefined();
+  expect(target.querySelector('[data-testid="combo-pending"]')).toBeNull();
+  expect(target.querySelector('[data-testid="combo-cost"]')).toBeNull();
+  expect(target.textContent).not.toContain('Best combination');
+  checkbox('Also find the best combination').click();
+  flushSync();
+  expect(prefs.dropCombine).toBe(true);
+  expect(target.querySelector('[data-testid="combo-cost"]')).not.toBeNull();
 });

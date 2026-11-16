@@ -36,7 +36,7 @@
   import RunEstimate from '../ui/RunEstimate.svelte';
   import { dropHasStats } from '../../lib/model/drop.js';
   import { parseDropBatch, prepareBatch, rankEntries, entryResults, goalCharacter, BATCH_SIM } from '../../lib/features/dropBatch.js';
-  import { setCards, setLabelOf, chipFor, goalFigure, tally, tallyChips, runMoreRequest, isDowngrade, bagSummaryText } from '../../lib/features/dropView.js';
+  import { setCards, setLabelOf, chipFor, goalFigure, tally, tallyChips, runMoreRequest, isDowngrade, bagSummaryText, comboView } from '../../lib/features/dropView.js';
   import { EQUIP_SETS } from '../../lib/model/equipment.js';
   import { forestDomain } from '../../lib/ui/forestScale.js';
   import { fmtCount } from '../../lib/ui/statsFormat.js';
@@ -119,6 +119,11 @@
     if (!job) return [];
     const p = job.progress;
     const state = { queued: 'queued', running: 'active', finished: 'done', cancelled: 'cancelled', failed: 'cancelled' }[job.status] ?? 'queued';
+    // a loot bag with its combination reports its passes (dropCombo.js): alone, combination, confirm
+    if (Array.isArray(p?.phases) && p.phases.length) {
+      const over = job.status !== 'queued' && job.status !== 'running';
+      return p.phases.map((ph) => ({ id: ph.id, label: ph.label, state: !over ? ph.state : job.status === 'finished' ? 'done' : ph.state === 'done' ? 'done' : 'cancelled', done: ph.done ?? undefined, total: ph.total ?? undefined }));
+    }
     return [{ id: 'metrics', label: 'Comparisons', state, done: p?.done, total: p?.total, text: job.status === 'failed' ? 'failed' : undefined }];
   }
 
@@ -283,7 +288,10 @@
     goalIdsFor: (r, presetId) => goalIdsFor(resolvedGoals, r, presetId),
     screen: all ? null : { seesDefence: goalsSeeDefence(resolvedGoals) },
   });
-  const bagRequest = $derived(bag && character ? prepareBatch(character, liveBag().entries, { sets: dropSets, ...batchGoals(bag.all) }).request : null);
+  const bagRequest = $derived(bag && character ? prepareBatch(character, liveBag().entries, { sets: dropSets, combine: prefs.dropCombine, ...batchGoals(bag.all) }).request : null);
+  // The best combination (dropCombo.js), worked out by the same job after every drop was checked alone.
+  const comboRaw = $derived(bagJob?.result?.combo ?? null);
+  const combo = $derived(bag ? comboView(comboRaw, bag.entries.filter((e) => !applied.has(e.key))) : null);
   const screenedOut = $derived(bag ? (bag.screened ?? []).filter((k) => !applied.has(k)).length : 0);
   const bagBusy = $derived(bagJob?.status === 'queued' || bagJob?.status === 'running');
   const bagRowState = $derived(stateOf(bagJob));
@@ -332,7 +340,8 @@
 
   function runBatch(base, { precision: withPrecision = precision, maxN = null, all = false } = {}) {
     const sets = dropSets;
-    const prep = prepareBatch(character, base.entries, { sets, ...batchGoals(all) });
+    const combine = prefs.dropCombine;
+    const prep = prepareBatch(character, base.entries, { sets, combine, ...batchGoals(all) });
     const key = character.id;
     let jobId = null;
     if (prep.request) {
@@ -346,11 +355,14 @@
         signature: storeSignature(entryKeys),
         currentSignature: () => storeSignature(entryKeys),
         openRoute: formatHash('tools/drop', 'bag'),
-        summarize: (res) =>
-          tallyChips(tally(rankEntries(base.entries, prep.rows, prep.offsets, res?.results ?? []).map((r) => r.best), base.skipped)),
+        summarize: (res) => {
+          const chips = tallyChips(tally(rankEntries(base.entries, prep.rows, prep.offsets, res?.results ?? []).map((r) => r.best), base.skipped));
+          const picks = Math.max(0, ...(res?.combo?.sets ?? []).map((s) => s.picks.length));
+          return picks > 1 ? [...chips, { tone: 'up', text: `Best combination: ${picks} drops` }] : chips;
+        },
       });
     }
-    keptBags.set(key, { entries: base.entries, skipped: base.skipped, source: base.source, rows: prep.rows, offsets: prep.offsets, jobId, precision: withPrecision, maxN, sets, all, screened: prep.screened });
+    keptBags.set(key, { entries: base.entries, skipped: base.skipped, source: base.source, rows: prep.rows, offsets: prep.offsets, jobId, precision: withPrecision, maxN, sets, all, combine, screened: prep.screened });
     bump += 1;
   }
 
@@ -393,6 +405,22 @@
     if (cur) keptBags.set(character.id, { ...cur, applied: [...(cur.applied ?? []), entry.key] });
     if (expandedKey === entry.key) expandedKey = null;
     bump += 1;
+  }
+
+  /** Apply a whole combination to its set: every pick goes into its slot and leaves the list. */
+  function applyCombo(set) {
+    const done = [];
+    for (const { entry } of set.picks) {
+      rosterStore.startDrop(entry.slot, entry.realm);
+      rosterStore.setDropItem(entry.item);
+      if (rosterStore.applyDropToSet(set.setKey)) done.push(entry.key);
+    }
+    const cur = keptBags.get(character.id);
+    if (cur) keptBags.set(character.id, { ...cur, applied: [...(cur.applied ?? []), ...done] });
+    if (done.includes(expandedKey)) expandedKey = null;
+    bump += 1;
+    const n = set.picks.length;
+    setStatus?.(done.length === n ? `Applied ${n} item${n === 1 ? '' : 's'} to ${set.setLabel}` : `Applied ${done.length} of ${n} items to ${set.setLabel}`);
   }
 
   const cardsOf = (i) => setCards(bag.rows[i], entryResults(bag.offsets, bag.rows, i, bagResults));
@@ -607,12 +635,83 @@
             <span class="cap-label">Effort</span>
             <SegmentedControl label="Effort" bind:value={precision} options={EFFORT} />
           </div>
+          <div class="row">
+            <Checkbox checked={prefs.dropCombine} label="Also find the best combination" onchange={(v) => setPrefs({ dropCombine: v })} />
+            <span class="hint">Checks the drops together: what is still worth equipping once the best ones are on.</span>
+          </div>
           {#if bagRequest}
             <RunEstimate bound="upper" fights={dropFights(bagRequest, DROP_PRECISION[precision].maxN)} />
+            {#if prefs.dropCombine}<p class="hint" data-testid="combo-cost">The estimate covers checking each drop alone. The combination adds one more pass over the bag for each upgrade it takes.</p>{/if}
           {:else}
             <p class="hint" data-testid="run-estimate-bag">Run-time estimate appears once a loot bag is imported.</p>
           {/if}
         </Panel>
+
+        {#if bag?.entries.length && (bag.combine || comboRaw)}
+          <Panel title="Best combination" scope="tool" stale={bagStale}>
+            {#if !comboRaw}
+              <p class="hint" data-testid="combo-pending">
+                {#if bagBusy}
+                  Worked out once every drop has been checked alone: the best upgrade goes on, then the rest are checked again against it, until nothing more is an upgrade.
+                {:else if bagJob}
+                  The run stopped before the combination was worked out.
+                {:else}
+                  Add a goal under Single drop to judge these drops.
+                {/if}
+              </p>
+            {:else if !combo.sets.length}
+              <p class="hint" data-testid="combo-none">
+                {applied.size ? 'Nothing left to combine.' : 'No drop is a clear upgrade on its own, so there is nothing to combine.'}
+              </p>
+            {:else}
+              <p class="hint">
+                The best upgrade is put on first, then every other drop is checked again against that gear, and so on until nothing more is a clear upgrade.
+                A drop is only taken when no goal gets worse. A pair where neither drop is an upgrade by itself is not found.
+              </p>
+              <div class="combos">
+                {#each combo.sets as s (s.setKey)}
+                  <section class="combo" data-combo={s.setKey} aria-label="Best combination for {s.setLabel}">
+                    <span class="cap-label">Equip in {s.setLabel}</span>
+                    <ol class="picks" data-testid="combo-picks">
+                      {#each s.picks as p (p.entry.key)}
+                        <li>
+                          <span class="name" style:color="var(--rarity-{String(p.entry.item.rarity ?? '').toLowerCase()}-fg-on-raised, var(--text-ink))">{p.entry.name}</span>
+                          <span class="meta">{slotLabel(character.class, p.entry.slot)}{p.note ? ` · ${p.note}` : ''}{p.shared ? ' · also picked for another set' : ''}</span>
+                        </li>
+                      {/each}
+                    </ol>
+                    {#if s.leftOut.length}
+                      <span class="cap-label">Upgrades alone, not in the combination</span>
+                      <ul class="picks" data-testid="combo-left-out">
+                        {#each s.leftOut as l (l.entry.key)}
+                          <li>
+                            <span class="name">{l.entry.name}</span>
+                            <span class="meta">{slotLabel(character.class, l.entry.slot)} · {l.reason}</span>
+                          </li>
+                        {/each}
+                      </ul>
+                    {/if}
+                    {#if s.status === 'capped'}
+                      <p class="hint">Stopped after {combo.rounds} passes. Apply these and Check again to look for more.</p>
+                    {:else if s.status === 'cancelled'}
+                      <p class="hint">Cancelled part-way: these are the picks so far.</p>
+                    {/if}
+                    {#if s.card}
+                      <p class="hint" data-testid="combo-basis">
+                        {s.confirmed
+                          ? `The figures are all ${s.picks.length} drops together against your current gear, measured on a fresh set of fights.`
+                          : 'One drop on its own: these are its figures from the list below.'}
+                      </p>
+                      <DropSetCard card={s.card} phase="idle" count={s.picks.length} onapply={() => applyCombo(s)} />
+                    {:else}
+                      <p class="hint">The combination as a whole was not measured.</p>
+                    {/if}
+                  </section>
+                {/each}
+              </div>
+            {/if}
+          </Panel>
+        {/if}
 
         {#if !bag}
           <Panel title="Drops, best first" level="primary" scope="tool">
@@ -831,6 +930,10 @@
   .stat-lines dt { color: var(--text-soft); }
   .stat-lines dd { margin: 0; color: var(--text-ink); }
   .expand { padding: var(--sp-3) 0 var(--sp-4); display: grid; gap: var(--sp-3); border-bottom: 1px solid var(--line-hairline); }
+  .combos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(30rem, 100%), 1fr)); gap: var(--sp-4); align-items: start; }
+  .combo { display: grid; gap: var(--sp-2); align-content: start; min-width: 0; }
+  .picks { margin: 0; padding-left: var(--sp-5); display: grid; gap: var(--sp-1); }
+  .picks li { min-width: 0; }
   @media (max-width: 1023px) {
     .grid { grid-template-columns: minmax(0, 1fr); }
   }
