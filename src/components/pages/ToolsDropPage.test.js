@@ -850,6 +850,30 @@ it('Loot bag: the run also asks for the best combination and shows what to equip
   expect(summaryOf(jobsStore.list[0]).map((c) => c.text)).toContain('Best combination: 2 drops');
 });
 
+// Drops of one kind share a name, so a pick must carry what its list row carries.
+it('Loot bag: a pick shows the same details as its list row, and Show in list opens that row', async () => {
+  comboRunner(comboOf);
+  open({ tab: 'bag' });
+  paste(lootBag);
+  await settle();
+  const [a, , c] = lootBag.pendingItems;
+  const rowMeta = (name) => [...target.querySelectorAll('.trow.rank')].find((r) => r.querySelector('.name').textContent === name).querySelector('.meta').textContent;
+  const block = target.querySelector('[data-combo="set1"]');
+  const pick = block.querySelector('[data-testid="combo-picks"] li');
+  expect(pick.querySelector('.pick-id .meta').textContent).toBe(rowMeta(a.name));
+  expect(pick.querySelector('.pick-id .meta').textContent).toContain(`${a.rarity} · ilvl ${a.itemLevel}`);
+  expect(pick.querySelector('.pick-alone').textContent).toMatch(/Alone: \+10\.0% \[\+6\.0%, \+14\.0%\]/);
+  expect(pick.querySelector('.pick-alone .vchip').textContent).toContain('Upgrade');
+  const left = block.querySelector('[data-testid="combo-left-out"] li');
+  expect(left.querySelector('.pick-id .meta').textContent).toBe(rowMeta(c.name));
+  expect(left.textContent).toContain('Left out: on top of the picks it is a downgrade');
+  expect(target.querySelector('.trow.rank.open')).toBeNull();
+  [...pick.querySelectorAll('button')].find((b) => b.textContent.includes('Show in list')).click();
+  await vi.waitFor(() => { flushSync(); expect(target.querySelector('.trow.rank.open')).not.toBeNull(); });
+  expect(target.querySelector('.trow.rank.open .name').textContent).toBe(a.name);
+  expect(target.querySelector('.expand')).not.toBeNull();
+});
+
 it('Loot bag: Apply all writes every pick of the combination to its set and takes them off the list', async () => {
   comboRunner(comboOf);
   open({ tab: 'bag' });

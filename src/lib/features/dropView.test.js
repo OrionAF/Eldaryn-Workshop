@@ -193,8 +193,12 @@ describe('comboView', () => {
       ['Helm B', 'Helm A is the better pick for this slot'],
       ['Legs D', 'on top of the picks it is a sidegrade'],
     ]);
+    expect(s.leftOut[0].holder.key).toBe('a');
     const [capped] = comboView({ rounds: 12, sets: [set({ status: 'capped', onTop: null })] }, entries).sets;
     expect(capped.leftOut[1].reason).toBe('not judged on top of the picks');
+    // two drops of one name: the item level says which one holds the slot
+    const twins = entries.map((e) => (e.slot === 'HEAD' ? { ...e, name: 'Relic', item: { itemLevel: e.key === 'a' ? 144 : 139 } } : e));
+    expect(comboView({ rounds: 3, sets: [set()] }, twins).sets[0].leftOut[0].reason).toBe('Relic (ilvl 144) is the better pick for this slot');
   });
 
   it('drops picks whose entry has left the bag, and a set left with none; an unmeasured total has no card', () => {

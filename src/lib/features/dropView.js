@@ -188,10 +188,12 @@ export function comboView(combo, entries) {
           const entry = byKey.get(key);
           const holder = byKey.get(picked.get(entry.slot)) ?? null;
           const onTop = s.onTop?.[key] ?? null;
-          const reason = holder ? `${holder.name} is the better pick for this slot`
+          // drops of one kind share a name: the item level tells the pick from the one it beat
+          const named = (e) => (e.item?.itemLevel ? `${e.name} (ilvl ${e.item.itemLevel})` : e.name);
+          const reason = holder ? `${named(holder)} is the better pick for this slot`
             : onTop ? `on top of the picks it is ${ALONE_WORD[onTop] ?? onTop}`
               : 'not judged on top of the picks';
-          return { entry, onTop, reason };
+          return { entry, onTop, holder, reason };
         });
       return {
         setKey: s.setKey,
