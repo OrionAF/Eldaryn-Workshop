@@ -25,7 +25,7 @@ export const RAIDS = fortressData.raids;
 
 /**
  * The server's max clan size (`getClanMaxMembers`, clan-fortress.md §3.1): the per-server override, else
- * the default 50. An unknown or missing server gives the default.
+ * the default, which is 18 on every server (the client's 50/20 entries are not what servers apply).
  */
 export function clanCapForServer(server) {
   const o = Number.isInteger(server) ? FORTRESS_CONSTANTS.maxMembersOverrides[String(server)] : undefined;

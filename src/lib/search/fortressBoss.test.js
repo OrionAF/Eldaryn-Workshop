@@ -90,14 +90,14 @@ describe('Fortress boss target', () => {
     expect(t.fortress.starVulnerability).toBe(11);
   });
 
-  it('takes the server from the character, else the default cap of 50', () => {
+  it('takes the server from the character; every server caps at 18', () => {
     const spec = { kind: 'fortressBoss', group: 'TOP', aliveDefenders: 26 };
     expect(resolveTarget(spec, { character: { server: 5 } }).spec.server).toBe(5);
     expect(resolveTarget(spec, { character: { server: 5 } }).fortress.clanCap).toBe(18);
     expect(resolveTarget({ ...spec, aliveDefenders: 12 }, { character: { server: 5 } }).fortress.shieldPercent).toBe(calculateBossShield(12, 18));
     expect(resolveTarget({ ...spec, server: 7 }, { character: { server: 5 } }).fortress.clanCap).toBe(18);
-    expect(resolveTarget({ ...spec, server: null }, { character: { server: 5 } }).fortress.clanCap).toBe(50);
-    expect(resolveTarget(spec).fortress.clanCap).toBe(50);
+    expect(resolveTarget({ ...spec, server: null }, { character: { server: 5 } }).fortress.clanCap).toBe(18);
+    expect(resolveTarget(spec).fortress.clanCap).toBe(18);
   });
 
   it('a typed shield percent is used directly', () => {
@@ -117,9 +117,9 @@ describe('Fortress boss target', () => {
   it('the echoed target carries the multipliers and the display credit follows them', () => {
     const t = resolveTarget({ kind: 'fortressBoss', group: 'TOP', stars: 4, aliveDefenders: 25, kills: 10 });
     const out = targetOut(t);
-    expect(out.fortress.total).toBeCloseTo(6.3, 12);
+    expect(out.fortress.total).toBeCloseTo(3.6, 12); // 25 alive saturates the 18 cap: shield 60%
     expect(out.assumptions.find((a) => a.id === 'fortress-boss-model').tag).toBe('SERVER');
-    expect(fortressDamage(out.fortress, 1000)).toEqual({ raw: 60000, effective: 378000 });
+    expect(fortressDamage(out.fortress, 1000)).toEqual({ raw: 60000, effective: 216000 });
   });
 
   it('the multipliers are not in the statistic: a short run scores the raw damage per second', () => {
