@@ -18,11 +18,12 @@ export const OPPONENT_ORDERS = ['added', 'newest', 'name', 'ready'];
 /**
  * Preferences (G6): density, reduced motion, the effort tools start with (plan Q4: Standard), and the
  * CPU profile that sizes a job's worker pool (tasks/cpuProfile.js workersFor), and the last speed calibration
- * (calibration.js, null until the user runs it), which gear sets Drop Check compares a drop against, and
+ * (calibration.js, null until the user runs it), which gear sets Drop Check compares a drop against, whether
+ * a loot bag also gets its best combination (features/dropCombo.js), and
  * the Optimiser's debug log level (model/debugLog.js; simulation.md §Debug log), and whether the game-data
  * import tools are shown (off by default: ia.md §5.4, Settings > Advanced).
  */
-export const defaultPrefs = () => ({ density: 'comfortable', reduceMotion: false, defaultEffort: 'standard', cpuProfile: DEFAULT_CPU_PROFILE, calibration: null, dropSets: 'all', debugLog: 'off', showImport: false });
+export const defaultPrefs = () => ({ density: 'comfortable', reduceMotion: false, defaultEffort: 'standard', cpuProfile: DEFAULT_CPU_PROFILE, calibration: null, dropSets: 'all', dropCombine: true, debugLog: 'off', showImport: false });
 
 const defaults = () => ({ v: 1, lastHash: null, lastBackupAt: null, areaLast: {}, optimiserSetups: {}, dropSetups: {}, statPriority: { spec: null, range: null }, coreScoreSpec: null, opponents: { order: 'added', selectedId: null }, views: {}, prefs: defaultPrefs() });
 
@@ -36,13 +37,14 @@ export function normalisePrefs(raw) {
     if (CPU_PROFILES.includes(raw.cpuProfile)) out.cpuProfile = raw.cpuProfile;
     out.calibration = normaliseCalibration(raw.calibration);
     if (DROP_SETS.includes(raw.dropSets)) out.dropSets = raw.dropSets;
+    if (typeof raw.dropCombine === 'boolean') out.dropCombine = raw.dropCombine;
     if (DEBUG_LOG_LEVELS.includes(raw.debugLog)) out.debugLog = raw.debugLog;
     if (typeof raw.showImport === 'boolean') out.showImport = raw.showImport;
   }
   return out;
 }
 
-/** @returns {{v:1, lastHash:string|null, lastBackupAt:number|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, dropSetups:Record<string,object>, statPriority:{spec:string|null, range:string|null}, coreScoreSpec:string|null, opponents:{order:'added'|'newest'|'name'|'ready', selectedId:string|null}, views:Record<string,string>, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string, calibration:object|null, dropSets:'all'|'set1', debugLog:'off'|'builds'|'fights', showImport:boolean}}} */
+/** @returns {{v:1, lastHash:string|null, lastBackupAt:number|null, areaLast:Record<string,string>, optimiserSetups:Record<string,object>, dropSetups:Record<string,object>, statPriority:{spec:string|null, range:string|null}, coreScoreSpec:string|null, opponents:{order:'added'|'newest'|'name'|'ready', selectedId:string|null}, views:Record<string,string>, prefs:{density:string, reduceMotion:boolean, defaultEffort:string, cpuProfile:string, calibration:object|null, dropSets:'all'|'set1', dropCombine:boolean, debugLog:'off'|'builds'|'fights', showImport:boolean}}} */
 export function loadUi() {
   const ui = defaults();
   try {

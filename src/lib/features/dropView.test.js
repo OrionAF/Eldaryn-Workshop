@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { setCards, chipFor, pctInterval, goalFigure, axisOf, tally, tallyChips, runMoreRequest, isDowngrade, bagSummaryText } from './dropView.js';
+import { setCards, chipFor, pctInterval, goalFigure, axisOf, tally, tallyChips, runMoreRequest, isDowngrade, bagSummaryText, comboView } from './dropView.js';
 import { statKeyLabel } from './swap.js';
 
 const row = (setKey, presetId, { pct = 3, rawDelta = { totalAttack: 100 } } = {}) => ({
@@ -154,4 +154,54 @@ describe('bagSummaryText', () => {
     ]);
   });
   it('is empty for no rows', () => expect(bagSummaryText([])).toBe(''));
+});
+
+describe('comboView', () => {
+  const entries = [
+    { key: 'a', name: 'Helm A', slot: 'HEAD' }, { key: 'b', name: 'Helm B', slot: 'HEAD' },
+    { key: 'c', name: 'Chest C', slot: 'CHEST' }, { key: 'd', name: 'Legs D', slot: 'LEGGINGS' },
+  ];
+  const set = (o = {}) => ({
+    setKey: 'set1', realm: 'base', status: 'done',
+    picks: [{ entry: 'a', slot: 'HEAD', alone: 'upgrade' }, { entry: 'c', slot: 'CHEST', alone: 'sidegrade' }],
+    steps: [{}, {}],
+    alone: { a: 'upgrade', b: 'upgrade', c: 'sidegrade', d: 'upgrade' },
+    onTop: { b: 'downgrade', d: 'sidegrade' },
+    total: { rows: [row('set1', 'p1')], results: [{ presetId: 'p1', goals: [metric('better', 80)] }], confirmed: true, verdict: 'upgrade', score: 8 },
+    ...o,
+  });
+
+  it('is null without a combination, and has no sets when nothing was picked', () => {
+    expect(comboView(null, entries)).toBeNull();
+    expect(comboView({ rounds: 1, sets: [set({ picks: [], total: null })] }, entries)).toEqual({ sets: [], rounds: 1 });
+  });
+
+  it('lists the picks in order, flags the one that only pays off with the others, and carries the total as a set card', () => {
+    const v = comboView({ rounds: 3, shared: ['c'], sets: [set()] }, entries);
+    const [s] = v.sets;
+    expect(s).toMatchObject({ setKey: 'set1', setLabel: 'Set 1', status: 'done', confirmed: true, steps: 2 });
+    expect(s.picks.map((p) => [p.entry.name, p.note, p.shared])).toEqual([
+      ['Helm A', '', false],
+      ['Chest C', 'Alone it is a sidegrade: it pays off with the others on', true],
+    ]);
+    expect(s.card).toMatchObject({ setKey: 'set1', verdict: 'upgrade', basis: 'sim', presetNames: ['p1'] });
+  });
+
+  it('says why an upgrade was left out: its slot is taken, or it is none on top of the picks', () => {
+    const [s] = comboView({ rounds: 3, sets: [set()] }, entries).sets;
+    expect(s.leftOut.map((l) => [l.entry.name, l.reason])).toEqual([
+      ['Helm B', 'Helm A is the better pick for this slot'],
+      ['Legs D', 'on top of the picks it is a sidegrade'],
+    ]);
+    const [capped] = comboView({ rounds: 12, sets: [set({ status: 'capped', onTop: null })] }, entries).sets;
+    expect(capped.leftOut[1].reason).toBe('not judged on top of the picks');
+  });
+
+  it('drops picks whose entry has left the bag, and a set left with none; an unmeasured total has no card', () => {
+    const rest = entries.filter((e) => e.key !== 'a');
+    const [s] = comboView({ rounds: 3, sets: [set({ total: null })] }, rest).sets;
+    expect(s.picks.map((p) => p.entry.key)).toEqual(['c']);
+    expect(s.card).toBeNull();
+    expect(comboView({ rounds: 3, sets: [set()] }, entries.filter((e) => e.key === 'd')).sets).toEqual([]);
+  });
 });

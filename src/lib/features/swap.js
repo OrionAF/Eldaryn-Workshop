@@ -125,8 +125,34 @@ export function statDeltas(before, after, keys = DIFF_KEYS) {
 
 /** A clone of `character` whose set `setKey` has `item` in `slot` (everything else shared, not copied). */
 export function withItem(character, setKey, slot, item) {
+  return withItems(character, setKey, [{ slot, item }]);
+}
+
+/** A clone of `character` whose set `setKey` has every change `{slot, item}` written (everything else shared). */
+export function withItems(character, setKey, changes) {
   const set = character.equipment[setKey];
-  return { ...character, equipment: { ...character.equipment, [setKey]: { ...set, items: { ...set.items, [slot]: item } } } };
+  const items = { ...set.items };
+  for (const c of changes) items[c.slot] = c.item;
+  return { ...character, equipment: { ...character.equipment, [setKey]: { ...set, items } } };
+}
+
+/**
+ * itemRawDelta over several slots: the set wearing the changes `to` minus the set wearing `from` (each a list of
+ * `{slot, item}`; a slot a list leaves out holds what `setItems` has). One change against no `from` is
+ * itemRawDelta of that slot.
+ * @returns {Object<string, number>} zero entries are left out
+ */
+export function changesRawDelta(setItems, to, from = []) {
+  const a = new Map(from.map((c) => [c.slot, c.item]));
+  const b = new Map(to.map((c) => [c.slot, c.item]));
+  const acc = {};
+  for (const slot of new Set([...a.keys(), ...b.keys()])) {
+    const cur = setItems?.[slot] ?? null;
+    addItem(acc, b.has(slot) ? b.get(slot) : cur, 1);
+    addItem(acc, a.has(slot) ? a.get(slot) : cur, -1);
+  }
+  for (const k of Object.keys(acc)) if (Math.abs(acc[k]) < 1e-9) delete acc[k];
+  return acc;
 }
 
 /**
@@ -151,52 +177,74 @@ export const setInScope = (setKey, sets = 'all') => sets !== 'set1' || setKey !=
  * }>}  `before` / `after` are Fighters (plain data)
  */
 export function prepareSwap(character, { slot, item, realm = 'base', presetIds = null, sets = 'all' }) {
-  const ids = presetIds ?? character.presets.map((p) => p.id);
-  const out = [];
-  for (const presetId of ids) {
+  const b = swapBuilder(character, { realm, presetIds, sets });
+  return b.presets.map((p) => ({ ...b.row(p, [{ slot, item }]), current: character.equipment?.[p.setKey]?.items?.[slot] ?? null }));
+}
+
+/**
+ * prepareSwap for gear changes over several slots of one realm (the loot bag's combination, dropCombo.js).
+ * `presets` are the presets in scope, each with the set it wears in the realm; `row(preset, to, from)` is a
+ * prepareSwap row (without `current`) whose `after` wears the changes `to` and whose `before` wears `from` (lists
+ * of `{slot, item}`; nothing: the gear as saved). With a sheet both sides are anchored on it by their raw
+ * difference from the saved gear; without one each is recomputed. A preset's saved build and each `from` list
+ * (by identity) are built once.
+ */
+export function swapBuilder(character, { realm = 'base', presetIds = null, sets = 'all' } = {}) {
+  const presets = [];
+  for (const presetId of presetIds ?? character.presets.map((p) => p.id)) {
     const preset = character.presets.find((p) => p.id === presetId);
     if (!preset) continue;
     const setKey = equipSetKey(preset, realm);
-    if (!setInScope(setKey, sets)) continue;
-    const current = character.equipment?.[setKey]?.items?.[slot] ?? null;
-    const rawDelta = itemRawDelta(current, item);
-    const res = computePresetStats(character, presetId, { realm });
-    const before = buildFighter(character, presetId, { realm });
-    let after;
-    let method;
-    let approx = false;
-    let errors = {};
-    if (res.source === 'sheet') {
-      method = 'anchored';
-      const a = anchoredDeltaDetailed(before.stats, rawDelta, { ...res.ctx, exact: res.exact });
-      after = { ...before, stats: a.stats };
-      ({ approx, errors } = a);
-    } else {
-      method = 'recomputed';
-      after = buildFighter(withItem(character, setKey, slot, item), presetId, { realm });
+    if (setInScope(setKey, sets)) presets.push({ presetId, name: preset.name, setKey });
+  }
+  const bases = new Map();
+  const baseOf = (presetId) => {
+    if (!bases.has(presetId)) bases.set(presetId, { res: computePresetStats(character, presetId, { realm }), fighter: buildFighter(character, presetId, { realm }) });
+    return bases.get(presetId);
+  };
+  const NONE = [];
+  const built = new WeakMap();
+  function build(p, changes) {
+    const { res, fighter } = baseOf(p.presetId);
+    const method = res.source === 'sheet' ? 'anchored' : 'recomputed';
+    if (!changes.length) return { fighter, method, approx: false, errors: {} };
+    if (method === 'anchored') {
+      const a = anchoredDeltaDetailed(fighter.stats, changesRawDelta(character.equipment?.[p.setKey]?.items, changes), { ...res.ctx, exact: res.exact });
+      return { fighter: { ...fighter, stats: a.stats }, method, approx: a.approx, errors: a.errors };
     }
-    const cb = autoAttackDps(before.stats);
-    const ca = autoAttackDps(after.stats);
-    out.push({
-      presetId,
-      name: preset.name,
-      setKey,
-      current,
+    return { fighter: buildFighter(withItems(character, p.setKey, changes), p.presetId, { realm }), method, approx: false, errors: {} };
+  }
+  function buildOnce(p, changes) {
+    if (!built.has(changes)) built.set(changes, new Map());
+    const m = built.get(changes);
+    if (!m.has(p.presetId)) m.set(p.presetId, build(p, changes));
+    return m.get(p.presetId);
+  }
+  function row(p, to, from = NONE) {
+    const { res } = baseOf(p.presetId);
+    const b = buildOnce(p, from);
+    const a = build(p, to);
+    const cb = autoAttackDps(b.fighter.stats);
+    const ca = autoAttackDps(a.fighter.stats);
+    return {
+      presetId: p.presetId,
+      name: p.name,
+      setKey: p.setKey,
       source: res.source,
-      method,
-      approx,
-      errors,
+      method: a.method,
+      approx: a.approx || b.approx,
+      errors: a.errors,
       sheetStatus: res.sheetStatus,
       warnings: res.warnings,
-      rawDelta,
-      before,
-      after,
-      statsBefore: before.stats,
-      statsAfter: after.stats,
+      rawDelta: changesRawDelta(character.equipment?.[p.setKey]?.items, to, from),
+      before: b.fighter,
+      after: a.fighter,
+      statsBefore: b.fighter.stats,
+      statsAfter: a.fighter.stats,
       closed: { before: cb, after: ca, delta: ca - cb, pct: cb > 0 ? ((ca - cb) / cb) * 100 : null },
-    });
+    };
   }
-  return out;
+  return { presets, row };
 }
 
 /** Group prepared rows by the equipment set they would change, in set1, set2, oblivion order. */

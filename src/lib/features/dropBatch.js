@@ -144,11 +144,13 @@ export const goalCharacter = (character) => ({ ...JSON.parse(JSON.stringify(char
  * out the presets wearing Set 2 (swap.js setInScope). The unchanged "before" of a preset is simulated once and
  * shared (`baseKey`). With `screen: {top, tol, seesDefence}` an entry the screen drops (screenKeep) stays in the
  * request with no goals, so it is listed but not simulated. Null request when no entry has a goal to run.
+ * With `combine` the request is the 'dropCombo' task's (dropCombo.js): the same items, each naming its entry and
+ * set, plus the entries, so the task can go on from the alone pass to the best combination.
  * @returns {{request: object|null, rows: Array<Array<object>>, offsets: number[], screened: string[]}}
  *   `rows[i]` are entry i's prepareSwap rows; `offsets[i]` is where they start in the request's items;
  *   `screened` the keys of the entries the screen left out
  */
-export function prepareBatch(character, entries, { sets = 'all', goals = [], goalIdsByRealm = {}, goalIdsFor = null, screen = null } = {}) {
+export function prepareBatch(character, entries, { sets = 'all', goals = [], goalIdsByRealm = {}, goalIdsFor = null, screen = null, combine = false } = {}) {
   const rows = entries.map((e) => prepareSwap(character, { slot: e.slot, item: e.item, realm: e.realm, sets }));
   const offsets = [];
   const items = [];
@@ -158,12 +160,18 @@ export function prepareBatch(character, entries, { sets = 'all', goals = [], goa
   entries.forEach((e, i) => {
     offsets.push(items.length);
     for (const row of rows[i]) {
-      items.push({ presetId: row.presetId, baseKey: `${e.realm}:${row.presetId}`, goalIds: keep[i] ? idsFor(e.realm, row.presetId) : [], before: row.before, after: row.after });
+      items.push({
+        presetId: row.presetId, ...(combine ? { entry: e.key, setKey: row.setKey } : {}),
+        baseKey: `${e.realm}:${row.presetId}`, goalIds: keep[i] ? idsFor(e.realm, row.presetId) : [], before: row.before, after: row.after,
+      });
     }
   });
   const screened = entries.filter((_, i) => !keep[i]).map((e) => e.key);
   const live = items.some((it) => it.goalIds.length);
-  const request = live ? { mode: 'dropCheck', items, goals, character: goalCharacter(character), ...BATCH_SIM } : null;
+  const base = { items, goals, character: goalCharacter(character), ...BATCH_SIM };
+  const request = !live ? null
+    : combine ? { mode: 'dropCombo', ...base, sets, entries: entries.map(({ key, name, slot, realm, item }) => ({ key, name, slot, realm, item })) }
+      : { mode: 'dropCheck', ...base };
   return { request, rows, offsets, screened };
 }
 

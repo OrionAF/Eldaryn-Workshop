@@ -9,7 +9,8 @@
    * Apply is scoped: the first press names the scope and the presets it changes, the second writes.
    *
    * Props: card (features/dropView.js setCards entry), phase ('idle'|'queued'|'running'),
-   * onapply(setKey), onrunmore() (null hides Run more).
+   * onapply(setKey), onrunmore() (null hides Run more), count (items the card applies: more than one for a
+   * loot bag's combination, which changes the Apply wording).
    */
   import VerdictChip from '../ui/VerdictChip.svelte';
   import ScopeChip from '../ui/ScopeChip.svelte';
@@ -19,7 +20,7 @@
   import { fmtContrast, fmtContrastCi, fmtCount, fmtScalar, nNeededText } from '../../lib/ui/statsFormat.js';
   import { signedPct } from './dropFormat.js';
 
-  let { card, phase = 'idle', onapply, onrunmore = null } = $props();
+  let { card, phase = 'idle', onapply, onrunmore = null, count = 1 } = $props();
   const id = $props.id();
 
   let confirming = $state(false);
@@ -101,7 +102,7 @@
     {#if card.estimatePct != null}
       Quick estimate (auto-attacks only): <span class="num est">{signedPct(card.estimatePct, 1)}</span> on {card.setLabel}. For reference only; the verdict comes from the simulated fights.
     {:else}
-      No quick estimate for this item.
+      No quick estimate for {count > 1 ? 'these items' : 'this item'}.
     {/if}
   </p>
 
@@ -114,11 +115,11 @@
     {/if}
     {#if !confirming}
       <Button variant={card.verdict === 'upgrade' && card.basis === 'sim' ? 'primary' : 'secondary'} size="small" onclick={() => (confirming = true)}>
-        Apply to {card.setLabel}…
+        Apply {count > 1 ? 'all ' : ''}to {card.setLabel}…
       </Button>
     {:else}
       <span class="confirm" role="group" aria-label="Confirm apply to {card.setLabel}">
-        <span class="hint">This puts the item in {card.setLabel} and changes {names.join(', ')}.{card.verdict === 'mixed' ? ' This helps some presets and hurts others.' : ''}</span>
+        <span class="hint">This puts {count > 1 ? `these ${count} items` : 'the item'} in {card.setLabel} and changes {names.join(', ')}.{card.verdict === 'mixed' ? ' This helps some presets and hurts others.' : ''}</span>
         <Button variant="primary" size="small" confirming onclick={apply}>Confirm apply</Button>
         <Button variant="ghost" size="small" onclick={() => (confirming = false)}>Cancel</Button>
       </span>

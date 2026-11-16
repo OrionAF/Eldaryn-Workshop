@@ -5,6 +5,7 @@
 //   chipFor(verdict, basis, state)   VerdictChip props for a set verdict
 //   setCards(rows, results)          one card per equipment set: Holm verdict, coverage, notJudged, metrics, guards
 //   pctInterval(m), goalFigure(m)    a goal's contrast on its axis (percent of the start, points, or raw)
+//   comboView(combo, entries)        the loot bag's best combination, one block per set that picked something
 //   tally(judged, skipped)           counts for the summary bar
 //   isDowngrade(best)                a judged (simulated) downgrade, the rows "Hide downgrades" drops
 //   bagSummaryText(rows)             the loot bag as plain text lines for the clipboard
@@ -153,6 +154,57 @@ export function tallyChips(t) {
   if (t.pending) out.push({ tone: 'warn', text: `${t.pending} not simulated` });
   if (t.skipped) out.push({ tone: 'warn', text: `! ${t.skipped} skipped` });
   return out;
+}
+
+const ALONE_WORD = { upgrade: 'an upgrade', sidegrade: 'a sidegrade', downgrade: 'a downgrade', mixed: 'mixed', inconclusive: 'too close to call' };
+
+/**
+ * The loot bag's best combination (dropCombo.js `combo`) as one block per equipment set that picked something.
+ * `card` is the whole combination against the saved gear, a setCards entry (null when it was not measured: a
+ * cancelled run). `picks` are the drops to equip, in the order the climb took them; a pick that is no upgrade
+ * alone says so (`note`). `leftOut` are the drops that are an upgrade alone and still not picked, each with
+ * the reason: another pick holds its slot, or it is no longer an upgrade on top of the picks.
+ * @param {object|null} combo
+ * @param {Array<{key: string, name: string, slot: string}>} entries  the bag's entries
+ * @returns {{sets: object[], rounds: number}|null}  null without a combination; `sets` empty when nothing was picked
+ */
+export function comboView(combo, entries) {
+  if (!combo) return null;
+  const byKey = new Map(entries.map((e) => [e.key, e]));
+  const shared = new Set(combo.shared ?? []);
+  const sets = combo.sets
+    .filter((s) => s.picks.some((p) => byKey.has(p.entry)))
+    .map((s) => {
+      const picked = new Map(s.picks.map((p) => [p.slot, p.entry]));
+      const picks = s.picks.filter((p) => byKey.has(p.entry)).map((p) => ({
+        entry: byKey.get(p.entry),
+        alone: p.alone,
+        note: p.alone === 'upgrade' || !p.alone ? '' : `Alone it is ${ALONE_WORD[p.alone] ?? p.alone}: it pays off with the others on`,
+        shared: shared.has(p.entry),
+      }));
+      const leftOut = Object.entries(s.alone ?? {})
+        .filter(([key, v]) => v === 'upgrade' && byKey.has(key) && picked.get(byKey.get(key).slot) !== key)
+        .map(([key]) => {
+          const entry = byKey.get(key);
+          const holder = byKey.get(picked.get(entry.slot)) ?? null;
+          const onTop = s.onTop?.[key] ?? null;
+          const reason = holder ? `${holder.name} is the better pick for this slot`
+            : onTop ? `on top of the picks it is ${ALONE_WORD[onTop] ?? onTop}`
+              : 'not judged on top of the picks';
+          return { entry, onTop, reason };
+        });
+      return {
+        setKey: s.setKey,
+        setLabel: setLabelOf(s.setKey),
+        status: s.status,
+        picks,
+        leftOut,
+        card: s.total ? setCards(s.total.rows, s.total.results)[0] ?? null : null,
+        confirmed: s.total?.confirmed === true,
+        steps: s.steps.length,
+      };
+    });
+  return { sets, rounds: combo.rounds };
 }
 
 /** True only for a finished simulated downgrade; pending, mixed and too-close rows are never hidden. */
