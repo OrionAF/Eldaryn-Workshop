@@ -79,21 +79,22 @@ describe('Fortress boss target', () => {
     expect(fortressBossMultipliers({ group: 'CORE', aliveDefenders: 50, clanCap: 50, kills: 0 }).starVulnerability).toBe(1);
   });
 
-  it('server siege data: 26 alive of server 5\'s cap 30 is 53.333...%, not the defending clan\'s size', () => {
+  it('server siege data: 26 alive of the then cap 30 is 53.333...%, not the defending clan\'s size', () => {
     expect(calculateBossShield(26, 30)).toBe(53.333333333333336);
     expect(calculateBossShield(26, 27)).toBeCloseTo(58.148, 2);
     expect(calculateBossShield(26, 26)).toBe(60);
+    // 2.9.6 cut server 5's cap to 18, so 26 alive now saturates the shield
     const t = resolveTarget({ kind: 'fortressBoss', group: 'TOP', stars: 5, aliveDefenders: 26, server: 5 });
-    expect(t.fortress.shieldPercent).toBe(53.333333333333336);
-    expect(t.fortress.clanCap).toBe(30);
+    expect(t.fortress.shieldPercent).toBe(60);
+    expect(t.fortress.clanCap).toBe(18);
     expect(t.fortress.starVulnerability).toBe(11);
   });
 
   it('takes the server from the character, else the default cap of 50', () => {
     const spec = { kind: 'fortressBoss', group: 'TOP', aliveDefenders: 26 };
     expect(resolveTarget(spec, { character: { server: 5 } }).spec.server).toBe(5);
-    expect(resolveTarget(spec, { character: { server: 5 } }).fortress.clanCap).toBe(30);
-    expect(resolveTarget(spec, { character: { server: 5 } }).fortress.shieldPercent).toBeCloseTo(53.33, 1);
+    expect(resolveTarget(spec, { character: { server: 5 } }).fortress.clanCap).toBe(18);
+    expect(resolveTarget({ ...spec, aliveDefenders: 12 }, { character: { server: 5 } }).fortress.shieldPercent).toBe(calculateBossShield(12, 18));
     expect(resolveTarget({ ...spec, server: 7 }, { character: { server: 5 } }).fortress.clanCap).toBe(18);
     expect(resolveTarget({ ...spec, server: null }, { character: { server: 5 } }).fortress.clanCap).toBe(50);
     expect(resolveTarget(spec).fortress.clanCap).toBe(50);
