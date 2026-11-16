@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { parseDropBatch, prepareBatch, entryResults, judgeEntry, rankEntries, screenKeep, screenScore } from './dropBatch.js';
+import { parseDropBatch, prepareBatch, entryResults, judgeEntry, rankEntries, screenKeep, screenScore, withQualityVariants, dropKeyOf } from './dropBatch.js';
+import { secondaryStatMaxValue, itemAtFullQuality } from '../model/equipment.js';
 import { runSwapMetrics } from './swap.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { clearMetricCache } from '../engine/metrics.js';
@@ -232,5 +233,56 @@ describe('judging per equipment set (#97, #100)', () => {
     const c = sharedSet();
     const { rows } = prepareBatch(c, drop);
     expect(judgeEntry(rows[0], [res(1000, 1, 'unresolved'), res(1000, 0, 'equivalent')]).verdict).toBe('inconclusive');
+  });
+});
+
+describe('Quality 100 variants', () => {
+  const entries = () => parseDropBatch(real, warrior()).entries;
+
+  it('itemAtFullQuality raises every secondary to its ceiling for the item level and keeps the rest', () => {
+    const helm = entries()[0].item;
+    const full = itemAtFullQuality(helm, 'base');
+    expect(helm.quality).toBeLessThan(100);
+    expect(full.quality).toBe(100);
+    expect(full.secondaryStats).toEqual(helm.secondaryStats.map((s) => ({ type: s.type, value: secondaryStatMaxValue(s.type, helm.itemLevel) })));
+    expect({ ...full, secondaryStats: null, quality: null }).toEqual({ ...helm, secondaryStats: null, quality: null });
+    // nothing to raise: already full, no secondaries, or no item level
+    expect(itemAtFullQuality(full, 'base')).toBeNull();
+    expect(itemAtFullQuality({ ...helm, secondaryStats: [] }, 'base')).toBeNull();
+    expect(itemAtFullQuality({ ...helm, itemLevel: null }, 'base')).toBeNull();
+    expect(itemAtFullQuality(null)).toBeNull();
+  });
+
+  it('withQualityVariants adds one variant per drop below Quality 100, after the drops, and is stable when run again', () => {
+    const [helm, legs] = entries();
+    const full = { ...legs, item: itemAtFullQuality(legs.item, 'base') };
+    const plain = { ...helm, key: 'base:9', item: { ...helm.item, secondaryStats: [], quality: null } };
+    const out = withQualityVariants([helm, full, plain]);
+    expect(out.map((e) => e.key)).toEqual([helm.key, legs.key, 'base:9', `${helm.key}@q100`]);
+    const v = out.at(-1);
+    expect(v).toMatchObject({ variantOf: helm.key, variant: 'q100', name: helm.name, slot: helm.slot, realm: helm.realm });
+    expect(v.item).toEqual(itemAtFullQuality(helm.item, 'base'));
+    expect(out.map(dropKeyOf)).toEqual([helm.key, legs.key, 'base:9', helm.key]);
+    expect(withQualityVariants(out)).toEqual(out);
+  });
+
+  it('the screen ranks the variants among themselves, so they never push a drop as dropped out', () => {
+    const mk = (key, variant) => ({ key, slot: 'HEAD', realm: 'base', ...(variant ? { variant } : {}) });
+    const list = [mk('a'), mk('b'), mk('a@q100', 'q100'), mk('b@q100', 'q100')];
+    // one group of four would drop `b` (the lowest); two groups of two keep the best of each
+    expect(screenKeep(list, [5, 1, 9, 8], { top: 1, tol: 0 })).toEqual([true, false, true, false]);
+  });
+
+  it('prepareBatch with combine names the two pools: the drops, and each drop as its variant where it has one', () => {
+    const [helm, legs] = entries();
+    const full = { ...legs, item: itemAtFullQuality(legs.item, 'base') };
+    const list = withQualityVariants([helm, full]);
+    const { request } = prepareBatch(warrior(), list, { ...goalOpts, combine: true });
+    expect(request.pools).toEqual([
+      { id: 'dropped', entries: [helm.key, legs.key] },
+      { id: 'q100', entries: [`${helm.key}@q100`, legs.key] },
+    ]);
+    expect(request.entries.map((e) => e.key)).toEqual(list.map((e) => e.key));
+    expect(prepareBatch(warrior(), [helm, full], { ...goalOpts, combine: true }).request.pools).toBeUndefined();
   });
 });

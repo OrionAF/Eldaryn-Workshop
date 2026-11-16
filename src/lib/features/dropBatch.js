@@ -5,6 +5,7 @@
 // and ranks the verdicts the single-drop view already produces.
 //
 //   parseDropBatch(input, character)   JSON text or object -> {entries, skipped, source, error}
+//   withQualityVariants(entries)       the entries plus each drop again at Quality 100 (when it is below it)
 //   prepareBatch(character, entries, {sets, goals, screen})  -> {request, rows, offsets, screened}: the dropCheck
 //                                      request; with `screen` only the top drops per slot are simulated
 //   screenScores / screenKeep          the screen: closed-form DPS and effective-HP change, top k per slot
@@ -12,7 +13,7 @@
 //   judgeEntry(rows, results)          per equipment set (all presets wearing it), the best set's verdict
 //   rankEntries(...)                   best verdict first
 import { isGameProfile, mapItem } from '../model/gameProfile.js';
-import { normaliseItem } from '../model/equipment.js';
+import { normaliseItem, itemAtFullQuality } from '../model/equipment.js';
 import { dropAscension } from '../model/drop.js';
 import { dropHasStats } from '../model/drop.js';
 import { slotsForRealm } from '../game/gear.js';
@@ -87,6 +88,26 @@ export function parseDropBatch(input, character) {
   return { entries, skipped, source, error: null };
 }
 
+/** The key of the drop an entry stands for: its own, or the drop a Quality 100 variant was made from. */
+export const dropKeyOf = (entry) => entry.variantOf ?? entry.key;
+
+/**
+ * The entries plus, after them, one variant per drop that is below Quality 100: the same item with every
+ * secondary at its ceiling (model/equipment.js itemAtFullQuality), `{key: '<key>@q100', variantOf: '<key>',
+ * variant: 'q100'}`. A drop already at Quality 100, or with no secondary stat, gets none. Variants are judged
+ * like any entry; the page shows a drop as dropped or as its variant.
+ * @param {BatchEntry[]} entries  drops only (variants in the list are dropped and made again)
+ */
+export function withQualityVariants(entries) {
+  const drops = entries.filter((e) => !e.variantOf);
+  const variants = [];
+  for (const e of drops) {
+    const item = itemAtFullQuality(e.item, e.realm);
+    if (item) variants.push({ ...e, key: `${e.key}@q100`, item, variantOf: e.key, variant: 'q100' });
+  }
+  return [...drops, ...variants];
+}
+
 /** The screen keeps this many drops per slot (and realm) by default (drop-check-goals.md §4.4). */
 export const SCREEN_TOP = 5;
 /** A drop whose screen is within this many percent of the k-th kept one is simulated too: the closed forms miss spells, procs and the fight. */
@@ -112,8 +133,9 @@ export function screenScore(rows, { seesDefence = true } = {}) {
 
 /**
  * Which entries the screen keeps: per slot and realm, the `top` best screens and every one within `tol` of the
- * k-th. A slot with `top` drops or fewer keeps them all.
- * @param {Array<{slot: string, realm: string}>} entries
+ * k-th. A slot with `top` drops or fewer keeps them all. Quality 100 variants are screened among themselves,
+ * so they never push the drops as dropped out of the top.
+ * @param {Array<{slot: string, realm: string, variant?: string}>} entries
  * @param {number[]} scores  screenScore per entry
  * @returns {boolean[]}  per entry, kept
  */
@@ -121,7 +143,7 @@ export function screenKeep(entries, scores, { top = SCREEN_TOP, tol = SCREEN_TOL
   const keep = entries.map(() => false);
   const groups = new Map();
   entries.forEach((e, i) => {
-    const k = `${e.realm}|${e.slot}`;
+    const k = `${e.variant ?? ''}|${e.realm}|${e.slot}`;
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(i);
   });
@@ -145,7 +167,8 @@ export const goalCharacter = (character) => ({ ...JSON.parse(JSON.stringify(char
  * shared (`baseKey`). With `screen: {top, tol, seesDefence}` an entry the screen drops (screenKeep) stays in the
  * request with no goals, so it is listed but not simulated. Null request when no entry has a goal to run.
  * With `combine` the request is the 'dropCombo' task's (dropCombo.js): the same items, each naming its entry and
- * set, plus the entries, so the task can go on from the alone pass to the best combination.
+ * set, plus the entries, so the task can go on from the alone pass to the best combination. When the entries
+ * hold Quality 100 variants (withQualityVariants) it also names two `pools`, `dropped` and `q100`.
  * @returns {{request: object|null, rows: Array<Array<object>>, offsets: number[], screened: string[]}}
  *   `rows[i]` are entry i's prepareSwap rows; `offsets[i]` is where they start in the request's items;
  *   `screened` the keys of the entries the screen left out
@@ -169,8 +192,13 @@ export function prepareBatch(character, entries, { sets = 'all', goals = [], goa
   const screened = entries.filter((_, i) => !keep[i]).map((e) => e.key);
   const live = items.some((it) => it.goalIds.length);
   const base = { items, goals, character: goalCharacter(character), ...BATCH_SIM };
+  // with Quality 100 variants the combination is worked out twice: for the drops as dropped, and with every
+  // drop that has a variant standing in as it
+  const variantOf = new Map(entries.filter((e) => e.variantOf).map((e) => [e.variantOf, e.key]));
+  const drops = entries.filter((e) => !e.variantOf);
+  const pools = variantOf.size ? { pools: [{ id: 'dropped', entries: drops.map((e) => e.key) }, { id: 'q100', entries: drops.map((e) => variantOf.get(e.key) ?? e.key) }] } : {};
   const request = !live ? null
-    : combine ? { mode: 'dropCombo', ...base, sets, entries: entries.map(({ key, name, slot, realm, item }) => ({ key, name, slot, realm, item })) }
+    : combine ? { mode: 'dropCombo', ...base, sets, entries: entries.map(({ key, name, slot, realm, item }) => ({ key, name, slot, realm, item })), ...pools }
       : { mode: 'dropCheck', ...base };
   return { request, rows, offsets, screened };
 }

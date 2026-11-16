@@ -37,6 +37,9 @@ export const prefs = {
   get dropCombine() {
     return state.dropCombine;
   },
+  get dropQuality100() {
+    return state.dropQuality100;
+  },
   get showImport() {
     return state.showImport;
   },

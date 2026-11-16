@@ -339,7 +339,9 @@ it('Loot bag: an item applied to a set leaves the list, and Check again judges o
   btn('Check again').click();
   flushSync();
   await settle();
-  expect(calls.at(-1).items).toHaveLength(3 * rosterStore.current.presets.length);
+  // the three drops left, each also at Quality 100
+  expect(calls.at(-1).entries.filter((e) => !e.key.includes('@q100'))).toHaveLength(3);
+  expect(calls.at(-1).items).toHaveLength(calls.at(-1).entries.length * rosterStore.current.presets.length);
   expect(names()).toHaveLength(3);
   expect(names()).not.toContain(first);
 });
@@ -836,7 +838,7 @@ it('Loot bag: the run also asks for the best combination and shows what to equip
   expect(target.querySelector('[data-testid="combo-cost"]')).not.toBeNull();
   await settle();
   expect(calls[0].mode).toBe('dropCombo');
-  expect(calls[0].entries.map((e) => e.name)).toEqual(lootBag.pendingItems.map((i) => i.name));
+  expect(calls[0].entries.filter((e) => !e.key.includes('@q100')).map((e) => e.name)).toEqual(lootBag.pendingItems.map((i) => i.name));
   const block = target.querySelector('[data-combo="set1"]');
   const picks = [...block.querySelectorAll('[data-testid="combo-picks"] li')];
   expect(picks.map((li) => li.querySelector('.name').textContent)).toEqual(lootBag.pendingItems.slice(0, 2).map((i) => i.name));
@@ -921,4 +923,101 @@ it('Loot bag: with the combination turned off the run is the plain check and the
   flushSync();
   expect(prefs.dropCombine).toBe(true);
   expect(target.querySelector('[data-testid="combo-cost"]')).not.toBeNull();
+});
+
+// Quality 100 (features/dropBatch.js withQualityVariants): each drop is also judged with every secondary at its ceiling.
+/** Drops are downgrades as dropped and upgrades at Quality 100. */
+function qualityRunner() {
+  __resetJobs({
+    run: (request) => {
+      calls.push(request);
+      const down = { ...metric('better').delta, delta: -50, lo: -70, hi: -30, verdict: 'worse', significant: true, holmReject: true };
+      const results = request.items.map((it) => {
+        const m = metric('better');
+        const q100 = String(it.entry ?? '').endsWith('@q100');
+        return { presetId: it.presetId, goals: goalRes(request, it, q100 ? m : { ...m, after: { ...m.after, mean: 950 }, delta: down }) };
+      });
+      return { promise: Promise.resolve({ results, combo: null, aborted: false }), cancel() {} };
+    },
+  });
+}
+const segment = (text) => [...target.querySelectorAll('#dc-panel-bag button, #dc-panel-bag [role="radio"]')].find((b) => b.textContent.trim() === text);
+
+it('Loot bag: every drop is also checked at Quality 100, and the list switches between the two', async () => {
+  qualityRunner();
+  open({ tab: 'bag' });
+  paste(lootBag);
+  await settle();
+  const req = calls[0];
+  // each drop below Quality 100 is in the request twice; the variant's secondaries are higher, the rest is kept
+  const drops = req.entries.filter((e) => !e.key.endsWith('@q100'));
+  const variants = req.entries.filter((e) => e.key.endsWith('@q100'));
+  expect(drops).toHaveLength(4);
+  expect(variants).toHaveLength(4);
+  const helm = drops[0];
+  const helm100 = variants.find((e) => e.key === `${helm.key}@q100`);
+  expect(helm100.item.primaryStats).toEqual(helm.item.primaryStats);
+  expect(helm100.item.quality).toBe(100);
+  helm100.item.secondaryStats.forEach((s, i) => expect(s.value).toBeGreaterThan(helm.item.secondaryStats[i].value));
+  expect(req.pools.map((p) => [p.id, p.entries.length])).toEqual([['dropped', 4], ['q100', 4]]);
+
+  // as dropped: four rows, all downgrades, each naming its Quality and its Quality 100 result
+  const rows = () => [...target.querySelectorAll('.trow.rank')];
+  expect(rows()).toHaveLength(4);
+  expect(countOf('down')).toBe(4);
+  expect(rows()[0].querySelector('.meta').textContent).toMatch(/ · Q\d+$/);
+  expect(rows().every((r) => /At Q100: \+10\.0% · Upgrade/.test(r.querySelector('[data-testid="other-quality"]').textContent))).toBe(true);
+  expect(target.querySelector('[data-testid="bag-q100-note"]')).toBeNull();
+
+  // at Quality 100: the same four drops, now upgrades, each naming what it dropped at and its result as dropped
+  segment('At Quality 100').click();
+  flushSync();
+  expect(rows()).toHaveLength(4);
+  expect(countOf('up')).toBe(4);
+  expect(countOf('down')).toBe(0);
+  expect(rows()[0].querySelector('.meta').textContent).toMatch(/ · Q100 \(dropped Q\d+\)$/);
+  expect(rows().every((r) => /As dropped: -5\.0% · Downgrade/.test(r.querySelector('[data-testid="other-quality"]').textContent))).toBe(true);
+  expect(target.querySelector('[data-testid="bag-q100-note"]')).not.toBeNull();
+  expect(target.querySelector('.tabs-row').textContent).toContain('4');
+});
+
+it('Loot bag: at Quality 100 a row expands to the Quality 100 stats, and Apply writes them and takes the drop off both views', async () => {
+  qualityRunner();
+  open({ tab: 'bag' });
+  paste(lootBag);
+  await settle();
+  segment('At Quality 100').click();
+  flushSync();
+  const row = target.querySelector('.trow.rank');
+  const name = row.querySelector('.name').textContent;
+  const variant = calls[0].entries.find((e) => e.name === name && e.key.endsWith('@q100'));
+  row.querySelector('.toggle').click();
+  flushSync();
+  expect(target.querySelector('[data-testid="q100-basis"]').textContent).toContain(`maximum for item level ${variant.item.itemLevel}`);
+  btn('Apply to Set 1…').click();
+  flushSync();
+  btn('Confirm apply').click();
+  flushSync();
+  expect(rosterStore.current.equipment.set1.items[variant.slot].secondaryStats).toEqual(variant.item.secondaryStats);
+  const names = () => [...target.querySelectorAll('.trow.rank .name')].map((n) => n.textContent);
+  expect(names()).toHaveLength(3);
+  expect(names()).not.toContain(name);
+  segment('As dropped').click();
+  flushSync();
+  expect(names()).toHaveLength(3);
+  expect(names()).not.toContain(name);
+});
+
+it('Loot bag: with the Quality 100 check turned off each drop is simulated once and there is no switch', async () => {
+  setPrefs({ dropQuality100: false });
+  open({ tab: 'bag' });
+  paste(lootBag);
+  await settle();
+  expect(calls[0].entries).toHaveLength(4);
+  expect(calls[0].pools).toBeUndefined();
+  expect(segment('At Quality 100')).toBeUndefined();
+  expect(target.querySelector('[data-testid="other-quality"]')).toBeNull();
+  checkbox('Also check each drop at Quality 100').click();
+  flushSync();
+  expect(prefs.dropQuality100).toBe(true);
 });

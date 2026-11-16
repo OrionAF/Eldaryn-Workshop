@@ -35,7 +35,7 @@
   import { dropFights } from '../../lib/calibration.js';
   import RunEstimate from '../ui/RunEstimate.svelte';
   import { dropHasStats } from '../../lib/model/drop.js';
-  import { parseDropBatch, prepareBatch, rankEntries, entryResults, judgeEntry, goalCharacter, BATCH_SIM } from '../../lib/features/dropBatch.js';
+  import { parseDropBatch, prepareBatch, rankEntries, entryResults, judgeEntry, goalCharacter, withQualityVariants, dropKeyOf, BATCH_SIM } from '../../lib/features/dropBatch.js';
   import { setCards, setLabelOf, chipFor, goalFigure, tally, tallyChips, runMoreRequest, isDowngrade, bagSummaryText, comboView } from '../../lib/features/dropView.js';
   import { EQUIP_SETS } from '../../lib/model/equipment.js';
   import { forestDomain } from '../../lib/ui/forestScale.js';
@@ -276,9 +276,26 @@
   const bagResults = $derived(bagJob?.result?.results ?? []);
   // Items applied to a set leave the list (view state, kept with the bag); the job's results stay indexed by import order.
   const applied = $derived(new Set(bag?.applied ?? []));
-  const ranked = $derived(bag ? rankEntries(bag.entries, bag.rows, bag.offsets, bagResults).filter((r) => !applied.has(r.entry.key)) : []);
-  const liveCount = $derived(bag ? bag.entries.filter((e) => !applied.has(e.key)).length : 0);
-  const liveBag = () => ({ ...bag, entries: bag.entries.filter((e) => !applied.has(e.key)) });
+  // Quality (dropBatch.js withQualityVariants): a drop below Quality 100 is in the bag twice, as dropped and as
+  // its Quality 100 variant. The list shows one of the two per drop; `applied` holds drop keys.
+  const QUALITY = [
+    { value: 'dropped', label: 'As dropped' },
+    { value: 'q100', label: 'At Quality 100' },
+  ];
+  let bagQuality = $state('dropped');
+  const variantOfDrop = $derived(new Map((bag?.entries ?? []).filter((e) => e.variantOf).map((e) => [e.variantOf, e])));
+  const hasVariants = $derived(variantOfDrop.size > 0);
+  const quality = $derived(hasVariants ? bagQuality : 'dropped');
+  const liveDrops = $derived(bag ? bag.entries.filter((e) => !e.variantOf && !applied.has(e.key)) : []);
+  /** The entry the list shows for each drop in this view. */
+  const shownKeys = $derived(new Set(liveDrops.map((e) => (quality === 'q100' ? variantOfDrop.get(e.key)?.key ?? e.key : e.key))));
+  const judged = $derived(bag ? rankEntries(bag.entries, bag.rows, bag.offsets, bagResults) : []);
+  const bestOf = $derived(new Map(judged.map((r) => [r.entry.key, r.best])));
+  const ranked = $derived(judged.filter((r) => shownKeys.has(r.entry.key)));
+  const liveCount = $derived(liveDrops.length);
+  const liveBag = () => ({ ...bag, entries: liveDrops });
+  /** The same drop in the other view: its Quality 100 variant, or the drop a variant was made from. */
+  const counterpart = (e) => (e.variantOf ? bag.entries.find((x) => x.key === e.variantOf) ?? null : variantOfDrop.get(e.key) ?? null);
   const counts = $derived(tally(ranked.map((r) => r.best), bag?.skipped ?? []));
   const bagStale = $derived(!!bagJob && (isStale(bagJob) || bag.sets !== dropSets));
   /** The next loot-bag run's request (null before an import), for the run-time estimate. */
@@ -288,11 +305,14 @@
     goalIdsFor: (r, presetId) => goalIdsFor(resolvedGoals, r, presetId),
     screen: all ? null : { seesDefence: goalsSeeDefence(resolvedGoals) },
   });
-  const bagRequest = $derived(bag && character ? prepareBatch(character, liveBag().entries, { sets: dropSets, combine: prefs.dropCombine, ...batchGoals(bag.all) }).request : null);
-  // The best combination (dropCombo.js), worked out by the same job after every drop was checked alone.
+  const batchEntries = (drops) => (prefs.dropQuality100 ? withQualityVariants(drops) : drops);
+  const bagRequest = $derived(bag && character ? prepareBatch(character, batchEntries(liveDrops), { sets: dropSets, combine: prefs.dropCombine, ...batchGoals(bag.all) }).request : null);
+  // The best combination (dropCombo.js), worked out by the same job after every drop was checked alone. With
+  // Quality 100 variants it is worked out once per view (`pool`).
   const comboRaw = $derived(bagJob?.result?.combo ?? null);
-  const combo = $derived(bag ? comboView(comboRaw, bag.entries.filter((e) => !applied.has(e.key))) : null);
-  const screenedOut = $derived(bag ? (bag.screened ?? []).filter((k) => !applied.has(k)).length : 0);
+  const comboPooled = $derived(!!comboRaw?.sets.some((s) => s.pool != null));
+  const combo = $derived(bag ? comboView(comboRaw, bag.entries.filter((e) => !applied.has(dropKeyOf(e))), comboPooled ? quality : undefined) : null);
+  const screenedOut = $derived(bag ? (bag.screened ?? []).filter((k) => shownKeys.has(k)).length : 0);
   const bagBusy = $derived(bagJob?.status === 'queued' || bagJob?.status === 'running');
   const bagRowState = $derived(stateOf(bagJob));
 
@@ -341,28 +361,32 @@
   function runBatch(base, { precision: withPrecision = precision, maxN = null, all = false } = {}) {
     const sets = dropSets;
     const combine = prefs.dropCombine;
-    const prep = prepareBatch(character, base.entries, { sets, combine, ...batchGoals(all) });
+    // the drops, then (when asked for) each one again at Quality 100
+    const drops = base.entries.filter((e) => !e.variantOf);
+    const entries = batchEntries(drops);
+    const prep = prepareBatch(character, entries, { sets, combine, ...batchGoals(all) });
     const key = character.id;
     let jobId = null;
     if (prep.request) {
       const req = { ...prep.request, precision: withPrecision, ...(maxN ? { maxN } : {}) };
-      const entryKeys = `${sets}|${base.entries.map((e) => e.key).join(',')}`;
+      const entryKeys = `${sets}|${entries.map((e) => e.key).join(',')}`;
       jobId = startJob({
         tool: 'drop-bag',
         title: 'Drop Check · Loot bag',
-        context: `${base.entries.length} drop${base.entries.length === 1 ? '' : 's'} · seed ${req.seed}`,
+        context: `${drops.length} drop${drops.length === 1 ? '' : 's'}${entries.length > drops.length ? ', also at Quality 100' : ''} · seed ${req.seed}`,
         request: req,
         signature: storeSignature(entryKeys),
         currentSignature: () => storeSignature(entryKeys),
         openRoute: formatHash('tools/drop', 'bag'),
         summarize: (res) => {
-          const chips = tallyChips(tally(rankEntries(base.entries, prep.rows, prep.offsets, res?.results ?? []).map((r) => r.best), base.skipped));
-          const picks = Math.max(0, ...(res?.combo?.sets ?? []).map((s) => s.picks.length));
+          // the tray counts the drops as dropped
+          const chips = tallyChips(tally(rankEntries(entries, prep.rows, prep.offsets, res?.results ?? []).filter((r) => !r.entry.variantOf).map((r) => r.best), base.skipped));
+          const picks = Math.max(0, ...(res?.combo?.sets ?? []).filter((s) => (s.pool ?? 'dropped') === 'dropped').map((s) => s.picks.length));
           return picks > 1 ? [...chips, { tone: 'up', text: `Best combination: ${picks} drops` }] : chips;
         },
       });
     }
-    keptBags.set(key, { entries: base.entries, skipped: base.skipped, source: base.source, rows: prep.rows, offsets: prep.offsets, jobId, precision: withPrecision, maxN, sets, all, combine, screened: prep.screened });
+    keptBags.set(key, { entries, skipped: base.skipped, source: base.source, rows: prep.rows, offsets: prep.offsets, jobId, precision: withPrecision, maxN, sets, all, combine, screened: prep.screened });
     bump += 1;
   }
 
@@ -402,13 +426,30 @@
     rosterStore.setDropItem(entry.item);
     if (!applyTo(setKey)) return;
     const cur = keptBags.get(character.id);
-    if (cur) keptBags.set(character.id, { ...cur, applied: [...(cur.applied ?? []), entry.key] });
+    if (cur) keptBags.set(character.id, { ...cur, applied: [...(cur.applied ?? []), dropKeyOf(entry)] });
     if (expandedKey === entry.key) expandedKey = null;
     bump += 1;
   }
 
   /** What tells one drop from another of the same name: slot, realm, rarity and item level (the list row's line). */
-  const entryMeta = (e) => `${slotLabel(character.class, e.slot)}${e.realm === 'oblivion' ? ' · Oblivion' : ''}${e.item.rarity ? ` · ${e.item.rarity}` : ''}${e.item.itemLevel ? ` · ilvl ${e.item.itemLevel}` : ''}`;
+  const entryMeta = (e) => `${slotLabel(character.class, e.slot)}${e.realm === 'oblivion' ? ' · Oblivion' : ''}${e.item.rarity ? ` · ${e.item.rarity}` : ''}${e.item.itemLevel ? ` · ilvl ${e.item.itemLevel}` : ''}${qualityText(e)}`;
+  /** A drop's Quality; its Quality 100 variant also says what it dropped at. */
+  function qualityText(e) {
+    if (e.variantOf) {
+      const from = counterpart(e)?.item.quality;
+      return ` · Q100${from != null ? ` (dropped Q${from})` : ''}`;
+    }
+    return e.item.quality != null ? ` · Q${e.item.quality}` : '';
+  }
+  /** The same drop in the other view, as one line for its row ("At Q100: +3.0% · Upgrade"); null without one. */
+  function otherView(e) {
+    const c = bag ? counterpart(e) : null;
+    const best = c ? bestOf.get(c.key) : null;
+    if (!best) return null;
+    const f = figureOf(best);
+    const text = f?.kind === 'sim' ? fig(f, f.est) : f?.est != null ? `${signedPct(f.est, 1)} est.` : '';
+    return { label: c.variantOf ? 'At Q100' : 'As dropped', text, chip: chipOf(best) };
+  }
 
   /**
    * A drop alone in one gear set, as its list row shows it: the lead goal's figure and the verdict chip. The row
@@ -438,11 +479,11 @@
     for (const { entry } of set.picks) {
       rosterStore.startDrop(entry.slot, entry.realm);
       rosterStore.setDropItem(entry.item);
-      if (rosterStore.applyDropToSet(set.setKey)) done.push(entry.key);
+      if (rosterStore.applyDropToSet(set.setKey)) done.push(entry);
     }
     const cur = keptBags.get(character.id);
-    if (cur) keptBags.set(character.id, { ...cur, applied: [...(cur.applied ?? []), ...done] });
-    if (done.includes(expandedKey)) expandedKey = null;
+    if (cur) keptBags.set(character.id, { ...cur, applied: [...(cur.applied ?? []), ...done.map(dropKeyOf)] });
+    if (done.some((e) => e.key === expandedKey)) expandedKey = null;
     bump += 1;
     const n = set.picks.length;
     setStatus?.(done.length === n ? `Applied ${n} item${n === 1 ? '' : 's'} to ${set.setLabel}` : `Applied ${done.length} of ${n} items to ${set.setLabel}`);
@@ -664,6 +705,10 @@
             <Checkbox checked={prefs.dropCombine} label="Also find the best combination" onchange={(v) => setPrefs({ dropCombine: v })} />
             <span class="hint">Checks the drops together: what is still worth equipping once the best ones are on.</span>
           </div>
+          <div class="row">
+            <Checkbox checked={prefs.dropQuality100} label="Also check each drop at Quality 100" onchange={(v) => setPrefs({ dropQuality100: v })} />
+            <span class="hint">What a drop would be worth tempered to Quality 100: every secondary stat at its maximum for the item's level. Simulates each drop twice.</span>
+          </div>
           {#if bagRequest}
             <RunEstimate bound="upper" fights={dropFights(bagRequest, DROP_PRECISION[precision].maxN)} />
             {#if prefs.dropCombine}<p class="hint" data-testid="combo-cost">The estimate covers checking each drop alone. The combination adds one more pass over the bag for each upgrade it takes.</p>{/if}
@@ -692,6 +737,7 @@
               <p class="hint">
                 The best upgrade is put on first, then every other drop is checked again against that gear, and so on until nothing more is a clear upgrade.
                 A drop is only taken when no goal gets worse. A pair where neither drop is an upgrade by itself is not found.
+                {#if comboPooled && quality === 'q100'}<span data-testid="combo-q100">This is the combination with every drop tempered to Quality 100.</span>{/if}
               </p>
               <div class="combos">
                 {#each combo.sets as s (s.setKey)}
@@ -777,6 +823,9 @@
         {:else}
           <Panel title="Drops, best first" level="primary" scope="tool" stale={bagStale}>
             {#snippet meta()}
+              {#if hasVariants}
+                <SegmentedControl label="Judge drops" value={quality} options={QUALITY} onchange={(v) => { bagQuality = v; expandedKey = null; }} />
+              {/if}
               <Checkbox bind:checked={hideDowngrades} label="Hide downgrades" />
               <Button variant="ghost" size="small" disabled={!shown.length} onclick={copyBag}>Copy summary</Button>
               {#if bagBusy}
@@ -815,6 +864,9 @@
             <p class="hint">
               {#if leadGoal}Judged by your goals; the chart shows {leadGoal.label}.{:else}Add a goal under Single drop to judge these drops.{/if}
               {bag.sets === 'set1' ? 'Compared against Set 1 only.' : 'Each drop shows its best gear set.'} A set's verdict covers every preset that wears it.
+              {#if quality === 'q100'}
+                <span data-testid="bag-q100-note">Each drop is judged as if tempered to Quality 100, against your gear as it is now; a drop already there, or with no secondary stat, is shown as dropped.</span>
+              {/if}
             </p>
 
             <div class="tbl" role="table" aria-label="Drops: change on the first goal, with likely range">
@@ -829,6 +881,7 @@
                 {@const f = figures[i]}
                 {@const chip = chipOf(r.best)}
                 {@const open = expandedKey === e.key}
+                {@const other = otherView(e)}
                 <div class="trow rank" role="row" class:open data-entry={e.key}>
                   <div role="cell" class="item">
                     <button type="button" class="toggle" aria-expanded={open} aria-controls="dc-x-{i}" onclick={() => (expandedKey = open ? null : e.key)}>
@@ -859,6 +912,9 @@
                       <span class="est num">{signedPct(f.est, 1)}</span>
                       <span class="ci"><ProvenanceTag kind="estimate" /> no range</span>
                     {/if}
+                    {#if other}
+                      <span class="ci other" data-testid="other-quality">{other.label}: <span class="num">{other.text}</span> · {other.chip.label}</span>
+                    {/if}
                   </div>
                   <div role="cell" class="vd">
                     <VerdictChip verdict={chip.verdict} label={r.best && r.best.basis === 'sim' ? `${chip.label} · ${setLabelOf(r.best.setKey)}` : chip.label} />
@@ -867,6 +923,11 @@
                 {#if open}
                   {@const lines = dropStatLines(e.item)}
                   <div class="expand" id="dc-x-{i}" role="region" aria-label="{e.name}: verdict by gear set">
+                    {#if e.variantOf}
+                      <p class="hint" data-testid="q100-basis">
+                        Shown at Quality 100: every secondary stat at its maximum for item level {e.item.itemLevel}. Attack, Health and the Conduit are as dropped. Apply writes these Quality 100 stats, so temper the item in the game to match.
+                      </p>
+                    {/if}
                     <div class="drop-stats" data-testid="drop-stats" aria-label="Stats of {e.name}">
                       <dl class="stat-lines">
                         {#each lines.primary as l (l.label)}<div><dt>{l.label}</dt><dd class="stat-value">{l.text}</dd></div>{/each}

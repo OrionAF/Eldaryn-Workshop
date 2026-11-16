@@ -41,9 +41,11 @@ function judge(rows, results) {
  *   items: Array<{presetId: string, entry: string, setKey: string, before: Object, after: Object, baseKey?: string, goalIds?: string[]}>,
  *   entries: Array<{key: string, slot: string, realm: 'base'|'oblivion', item: Object}>,
  *   goals: Object[], character: Object, sets?: 'all'|'set1', partner?: Object|null,
+ *   pools?: Array<{id: string, entries: string[]}>,
  *   seed?: number, precision?: string, maxN?: number, n0?: number, maxRounds?: number,
  * }} request  a 'dropCheck' request (dropBatch.js prepareBatch with `combine`) whose items name their entry and
- *   set, plus the entries themselves and the character the later passes are built from
+ *   set, plus the entries themselves and the character the later passes are built from. `pools` (entry keys) climbs
+ *   each pool on its own: a loot bag with Quality 100 variants has `dropped` and `q100` (dropBatch.js)
  * @param {{signal?: AbortSignal, onProgress?: Function, sampleFor?: Function, onGoalDone?: Function}} [hooks]
  *   as runSwapMetrics takes them; progress adds `phases` (alone, combination, confirm) and `round`
  * @returns {Promise<{results: Object[], combo: Object|null, aborted: boolean}>}  `results` as the 'dropCheck' task;
@@ -82,25 +84,35 @@ export async function dropCombo(request, { signal, onProgress, sampleFor, onGoal
   const first = await run(items, seed);
   if (first.aborted) return { results: first.results, combo: null, aborted: true };
 
-  /** Per equipment set: the presets a goal judges, each entry's alone comparisons, and the climb's state. */
+  /**
+   * Per pool and equipment set: the presets a goal judges, each entry's alone comparisons, and the climb's state.
+   * A pool is a set of entries that are candidates together; without `pools` every entry is in the one pool.
+   */
+  const pools = Array.isArray(request.pools) && request.pools.length
+    ? request.pools.map((p) => ({ id: p.id, keys: new Set(p.entries) }))
+    : [{ id: null, keys: null }];
+  const stateId = (pool, setKey) => `${pool.id ?? ''}|${setKey}`;
   const states = new Map();
-  items.forEach((it, i) => {
-    const e = entryOf.get(it.entry);
-    if (!e || !EQUIP_SET_KEYS.includes(it.setKey)) return;
-    if (!states.has(it.setKey)) {
-      states.set(it.setKey, {
-        setKey: it.setKey, realm: realmOfSet(it.setKey), goalIdsOf: new Map(), trials: new Map(), alone: new Map(),
-        chosen: new Map(), visited: new Set(['']), steps: [], onTop: null, active: false, status: 'none', total: null,
-      });
-    }
-    const s = states.get(it.setKey);
-    if (isLive(it) && !s.goalIdsOf.has(it.presetId)) s.goalIdsOf.set(it.presetId, it.goalIds ?? null);
-    if (!s.trials.has(e.key)) s.trials.set(e.key, { rows: [], results: [], live: false });
-    const t = s.trials.get(e.key);
-    t.rows.push({ presetId: it.presetId, setKey: it.setKey, closed: { pct: null }, rawDelta: {} });
-    t.results.push(first.results[i] ?? null);
-    t.live ||= isLive(it);
-  });
+  for (const pool of pools) {
+    items.forEach((it, i) => {
+      const e = entryOf.get(it.entry);
+      if (!e || !EQUIP_SET_KEYS.includes(it.setKey) || (pool.keys && !pool.keys.has(e.key))) return;
+      const id = stateId(pool, it.setKey);
+      if (!states.has(id)) {
+        states.set(id, {
+          id, pool: pool.id, setKey: it.setKey, realm: realmOfSet(it.setKey), goalIdsOf: new Map(), trials: new Map(), alone: new Map(),
+          chosen: new Map(), visited: new Set(['']), steps: [], onTop: null, active: false, status: 'none', total: null,
+        });
+      }
+      const s = states.get(id);
+      if (isLive(it) && !s.goalIdsOf.has(it.presetId)) s.goalIdsOf.set(it.presetId, it.goalIds ?? null);
+      if (!s.trials.has(e.key)) s.trials.set(e.key, { rows: [], results: [], live: false });
+      const t = s.trials.get(e.key);
+      t.rows.push({ presetId: it.presetId, setKey: it.setKey, closed: { pct: null }, rawDelta: {} });
+      t.results.push(first.results[i] ?? null);
+      t.live ||= isLive(it);
+    });
+  }
 
   /** The best move that is a simulated upgrade and leads to gear the climb has not worn yet. */
   const pick = (s, moves) => {
@@ -140,7 +152,7 @@ export async function dropCombo(request, { signal, onProgress, sampleFor, onGoal
   // a preset no goal judges runs nothing (`noGoals`); null ids mean every goal
   const itemsOf = (s, rows) => rows.map((r) => {
     const ids = s.goalIdsOf.has(r.presetId) ? s.goalIdsOf.get(r.presetId) : [];
-    return { presetId: r.presetId, baseKey: `${s.setKey}|${r.presetId}`, ...(ids ? { goalIds: ids } : {}), before: r.before, after: r.after };
+    return { presetId: r.presetId, baseKey: `${s.id}|${r.presetId}`, ...(ids ? { goalIds: ids } : {}), before: r.before, after: r.after };
   });
   const active = () => [...states.values()].filter((s) => s.active);
   let aborted = false;
@@ -225,28 +237,33 @@ export async function dropCombo(request, { signal, onProgress, sampleFor, onGoal
     else for (const s of states.values()) if (s.confirmAt != null) s.total = { results: res.results.slice(s.confirmAt, s.confirmAt + s.totalRows.length), confirmed: true };
   }
 
-  const picked = [...states.values()].flatMap((s) => [...s.chosen.values()]);
+  /** Entries picked by more than one set of a pool. */
+  const sharedIn = (poolId) => {
+    const picked = [...states.values()].filter((s) => s.pool === poolId).flatMap((s) => [...s.chosen.values()]);
+    return [...new Set(picked.filter((key, i) => picked.indexOf(key) !== i))];
+  };
   const verdicts = (m) => Object.fromEntries([...m].map(([key, v]) => [key, typeof v === 'string' ? v : v?.verdict ?? null]));
   const combo = {
     schema: 'drop-combo/1',
     seed: { search: seed, confirm: cSeed },
     rounds: round,
-    sets: EQUIP_SET_KEYS.filter((k) => states.has(k)).map((k) => {
-      const s = states.get(k);
+    sets: pools.flatMap((pool) => EQUIP_SET_KEYS.map((k) => states.get(stateId(pool, k))).filter(Boolean)).map((s) => {
       const lastStep = (key) => s.steps.findLastIndex((st) => st.move === 'equip' && st.entry === key);
       const judged = s.total ? judge(s.totalRows, s.total.results) : null;
+      const shared = sharedIn(s.pool);
       return {
+        ...(s.pool != null ? { pool: s.pool } : {}),
         setKey: s.setKey,
         realm: s.realm,
         status: s.status,
-        picks: [...s.chosen].sort(([, a], [, b]) => lastStep(a) - lastStep(b)).map(([slot, key]) => ({ entry: key, slot, alone: s.alone.get(key)?.verdict ?? null })),
+        picks: [...s.chosen].sort(([, a], [, b]) => lastStep(a) - lastStep(b)).map(([slot, key]) => ({ entry: key, slot, alone: s.alone.get(key)?.verdict ?? null, ...(s.pool != null && shared.includes(key) ? { shared: true } : {}) })),
         steps: s.steps,
         alone: verdicts(s.alone),
         onTop: s.onTop ? verdicts(s.onTop) : null,
         total: s.total ? { rows: s.totalRows.map(stripRow), results: s.total.results, confirmed: s.total.confirmed, verdict: judged?.verdict ?? null, score: judged?.score ?? null } : null,
       };
     }),
-    shared: [...new Set(picked.filter((key, i) => picked.indexOf(key) !== i))],
+    shared: [...new Set(pools.flatMap((pool) => sharedIn(pool.id)))],
   };
   return { results: first.results, combo, aborted };
 }

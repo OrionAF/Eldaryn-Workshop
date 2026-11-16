@@ -166,13 +166,15 @@ const ALONE_WORD = { upgrade: 'an upgrade', sidegrade: 'a sidegrade', downgrade:
  * the reason: another pick holds its slot, or it is no longer an upgrade on top of the picks.
  * @param {object|null} combo
  * @param {Array<{key: string, name: string, slot: string}>} entries  the bag's entries
+ * @param {string|null} [pool]  only the sets of this pool (a bag with Quality 100 variants: 'dropped' or 'q100')
  * @returns {{sets: object[], rounds: number}|null}  null without a combination; `sets` empty when nothing was picked
  */
-export function comboView(combo, entries) {
+export function comboView(combo, entries, pool = undefined) {
   if (!combo) return null;
   const byKey = new Map(entries.map((e) => [e.key, e]));
   const shared = new Set(combo.shared ?? []);
   const sets = combo.sets
+    .filter((s) => pool === undefined || (s.pool ?? null) === pool)
     .filter((s) => s.picks.some((p) => byKey.has(p.entry)))
     .map((s) => {
       const picked = new Map(s.picks.map((p) => [p.slot, p.entry]));
@@ -180,7 +182,7 @@ export function comboView(combo, entries) {
         entry: byKey.get(p.entry),
         alone: p.alone,
         note: p.alone === 'upgrade' || !p.alone ? '' : `Alone it is ${ALONE_WORD[p.alone] ?? p.alone}: it pays off with the others on`,
-        shared: shared.has(p.entry),
+        shared: s.pool != null ? p.shared === true : shared.has(p.entry),
       }));
       const leftOut = Object.entries(s.alone ?? {})
         .filter(([key, v]) => v === 'upgrade' && byKey.has(key) && picked.get(byKey.get(key).slot) !== key)
