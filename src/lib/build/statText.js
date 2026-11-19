@@ -16,14 +16,18 @@ import { isMultiplierStat } from '../model/equipment.js';
 import { glyphSecondaryDef, glyphSecondaryValue, glyphTypeInfo } from '../model/glyphs.js';
 import { mountStatAtLevel } from '../model/mounts.js';
 import { petSecondaryValue } from '../engine/sources/pet.js';
+import { stoneStatValue } from '../engine/sources/stones.js';
 import { formatFlat, formatPct } from '../format.js';
 import { STONE_TYPES } from '../game/stones.js';
 
-/** An owned stone described by the rolls and levels shown in its inventory tile. */
+// A stone's stats as the build receives them: the rolls times its Amplify level (stones.md §8).
+const stoneStatLines = (stone) => (stone.stats ?? []).map((s) => statLine(s.type, stoneStatValue(stone, s)));
+
+/** An owned stone described by its amplified stats and the levels shown in its inventory tile. */
 export function stoneText(stone) {
   if (!stone) return 'None';
   const name = STONE_TYPES.find((type) => type.enum === stone.type)?.name ?? 'Stone';
-  const details = (stone.stats ?? []).map((s) => statLine(s.type, s.value));
+  const details = stoneStatLines(stone);
   if (stone.quality != null) details.push(`Quality ${stone.quality}`);
   if (stone.oblivionLevel != null) details.push(`Grade ${stone.oblivionLevel}`);
   details.push(`Amplify ${stone.amplifyLevel ?? 0}`);
@@ -35,7 +39,7 @@ export function stoneLine(stone) {
   if (!stone) return 'Empty';
   const name = STONE_TYPES.find((type) => type.enum === stone.type)?.name ?? 'Stone';
   const tier = stone.quality != null ? `Q${stone.quality} ` : stone.oblivionLevel != null ? `Grade ${stone.oblivionLevel} ` : '';
-  const stats = (stone.stats ?? []).map((s) => statLine(s.type, s.value)).join(', ');
+  const stats = stoneStatLines(stone).join(', ');
   return `${tier}${name}${stats ? ` · ${stats}` : ''}`;
 }
 
