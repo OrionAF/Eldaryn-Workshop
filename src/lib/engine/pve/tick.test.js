@@ -689,3 +689,31 @@ describe('bystanderSwing', () => {
       .toMatchObject({ type: 'attacker_dead', damage: 600, attackerHp: 0 });
   });
 });
+
+describe('2.9.7 Retribution full-block reflect (combat-pve.md §23)', () => {
+  it('off: a clean block carries no unblockedDamage and draws only the avoid roll', () => {
+    const a = run(player({ blockChance: 40, damageReduction: 20 }), mob({ critChance: 50 }), { timers: E_DUE, rng: scripted([0.05]) });
+    expect(a.r.events[0]).not.toHaveProperty('unblockedDamage');
+    expect(a.rng.draws).toBe(1);
+  });
+  it('on: a clean block carries the DR-mitigated swing; a fresh crit roll when no penetration ran', () => {
+    const opts = { fullBlockReflect: true };
+    const plain = run(player({ blockChance: 40, damageReduction: 20 }), mob(), { timers: E_DUE, opts, rng: scripted([0.05]) });
+    expect(plain.r.events[0]).toMatchObject({ type: 'attacker_block', damage: 0, unblockedDamage: 80 });
+    expect(plain.rng.draws).toBe(1); // no enemy crit chance: no crit draw
+    const crit = run(player({ blockChance: 40, damageReduction: 20 }), mob({ critChance: 10, critDamage: 2 }), { timers: E_DUE, opts, rng: scripted([0.05, PASS]) });
+    expect(crit.r.events[0].unblockedDamage).toBe(160); // 100 * 2, DR 20
+    expect(crit.rng.draws).toBe(2);
+  });
+  it('on: the penetration crit roll is reused, not drawn again', () => {
+    const rng = scripted([0.05, PASS]);
+    const { r } = run(player({ blockChance: 40 }), mob({ penetration: 50, critChance: 10, critDamage: 2 }), { timers: E_DUE, opts: { fullBlockReflect: true }, rng });
+    expect(r.events[0]).toMatchObject({ damage: 100, unblockedDamage: 200 });
+    expect(rng.draws).toBe(2);
+  });
+  it('on: a dodge (Miss > 0) is not a block and carries nothing', () => {
+    const { r } = run(player({ blockChance: 10, missChance: 30 }), mob(), { timers: E_DUE, opts: { fullBlockReflect: true }, rng: scripted([0.05]) });
+    expect(r.events[0].type).toBe('attacker_miss');
+    expect(r.events[0]).not.toHaveProperty('unblockedDamage');
+  });
+});

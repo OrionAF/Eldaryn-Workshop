@@ -71,6 +71,8 @@ export const REGEN_PULSES_PER_SEC = 10;
  *   wrath cut while it holds
  * @property {number} [attackerReflectMult]  the cut on reflected damage (minion thorns); defaults to
  *   attackerOutputMult. The World Boss wrath cut leaves reflects alone (combat-pve.md §16)
+ * @property {boolean} [fullBlockReflect=false]  2.9.7 Retribution at 25+ stacks: a clean block carries
+ *   `unblockedDamage` (combat-pve.md §23)
  */
 
 /**
@@ -171,6 +173,7 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
     minion = null,
     attackerOutputMult = 1,
     attackerReflectMult = attackerOutputMult,
+    fullBlockReflect = false,
   } = opts ?? {};
   const maxHp = attackerMaxHp == null ? player.maxHp : attackerMaxHp;
 
@@ -414,9 +417,11 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
         // penetration path (L1087100-1087236): only when the player's Miss is exactly 0
         let shown = 0;
         let newHp = atkHp;
+        let critMult = null;
         if (enemy.penetration > 0 && player.missChance === 0) {
           const base = Math.round((enemy.attack * enemy.penetration) / 100);
           const mult = rollPenetrationCritMult(enemy, E);
+          critMult = mult;
           const d = mitigateInline(Math.round(base * mult), player.damageReduction);
           const s = absorbWithShield(atkShield, d, mitigation);
           atkShield = s.shieldHp;
@@ -424,12 +429,20 @@ export function processCombatTick(player, enemy, attackerHp, defenderHp, timers,
           shown = Math.round(s.effectiveDamage);
           defHp = enemyLifesteal(enemy, defHp, shown);
         }
+        // 2.9.7 Retribution full-block reflect (combat-pve.md §23): what a clean block would have dealt,
+        // for this tick's thorns; reuses the penetration crit roll, else rolls its own
+        let unblocked;
+        if (fullBlockReflect && player.missChance === 0) {
+          const mult = critMult ?? rollPenetrationCritMult(enemy, E);
+          unblocked = applyDamageReduction(mult === 1 ? enemy.attack : Math.round(enemy.attack * mult), player.damageReduction);
+        }
         events.push({
           timestamp,
           type: player.missChance > 0 ? 'attacker_miss' : 'attacker_block',
           damage: shown,
           attackerHp: newHp,
           defenderHp: defHp,
+          ...(unblocked !== undefined ? { unblockedDamage: unblocked } : {}),
         });
         atkHp = newHp;
         if (player.missChance === 0 && atkHp > 0) {

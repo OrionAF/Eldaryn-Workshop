@@ -1,5 +1,5 @@
 {
- "source": "decompiled.js L1142668-1143967 (RELIC_DEFINITIONS array, module 4130, L1142336-1143998); constants L1142660-1142667; migration map L1143969; MEDAL_EXCHANGE L1143988-1143993. defLine = first line of each definition. Stat values: value at level 1 (base) and at maxLevel (max); linear between (getRelicStatAtLevel L1142576). 2.9.4 (module 4234, RELIC_DEFINITIONS L1166835-1168136): maxLevel and max raised (bronze 15, silver 20, gold 25; relics.md §10); base, cost and defLine (2.7.0) unchanged.",
+ "source": "decompiled.js L1142668-1143967 (RELIC_DEFINITIONS array, module 4130, L1142336-1143998); constants L1142660-1142667; migration map L1143969; MEDAL_EXCHANGE L1143988-1143993. defLine = first line of each definition. Stat values: value at level 1 (base) and at maxLevel (max); linear between (getRelicStatAtLevel L1142576). 2.9.4 (module 4234, RELIC_DEFINITIONS L1166835-1168136): maxLevel and max raised (bronze 15, silver 20, gold 25; relics.md §10); base, cost and defLine (2.7.0) unchanged. 2.9.7 (module 4257): three gold relics added (Everbeat Heart, Lifebloom Seed, Gravebloom Censer; defLine and addedIn are 2.9.7 lines); no existing relic changed.",
  "constants": {
   "baseSlots": 2,
   "maxExtraSlots": 2,
@@ -312,6 +312,29 @@
     }
    ],
    "defLine": 1142898
+  },
+  {
+   "id": "relic_everbeat_heart",
+   "name": "Everbeat Heart",
+   "class": "Warrior",
+   "tier": "gold",
+   "cost": 6,
+   "maxLevel": 25,
+   "specHint": null,
+   "bonuses": [
+    {
+     "stat": "HP_PERCENT",
+     "base": 12,
+     "max": 45.6
+    },
+    {
+     "stat": "HP_REGEN",
+     "base": 5,
+     "max": 19.4
+    }
+   ],
+   "defLine": 1170557,
+   "addedIn": "2.9.7"
   },
   {
    "id": "relic_falcons_eye",
@@ -872,6 +895,29 @@
    "costMaxLevelResolvedFromRegisters": true
   },
   {
+   "id": "relic_lifebloom_seed",
+   "name": "Lifebloom Seed",
+   "class": "Mystic",
+   "tier": "gold",
+   "cost": 6,
+   "maxLevel": 25,
+   "specHint": null,
+   "bonuses": [
+    {
+     "stat": "HP_PERCENT",
+     "base": 12,
+     "max": 45.6
+    },
+    {
+     "stat": "HP_REGEN",
+     "base": 5,
+     "max": 19.4
+    }
+   ],
+   "defLine": 1171107,
+   "addedIn": "2.9.7"
+  },
+  {
    "id": "relic_primal_fang",
    "name": "Primal Fang",
    "class": "Mystic",
@@ -1398,6 +1444,29 @@
     }
    ],
    "defLine": 1143948
+  },
+  {
+   "id": "relic_gravebloom_censer",
+   "name": "Gravebloom Censer",
+   "class": "Necromancer",
+   "tier": "gold",
+   "cost": 6,
+   "maxLevel": 25,
+   "specHint": null,
+   "bonuses": [
+    {
+     "stat": "HP_PERCENT",
+     "base": 12,
+     "max": 45.6
+    },
+    {
+     "stat": "HP_REGEN",
+     "base": 5,
+     "max": 19.4
+    }
+   ],
+   "defLine": 1171647,
+   "addedIn": "2.9.7"
   }
  ]
 }
