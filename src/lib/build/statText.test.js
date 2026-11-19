@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { statLabel, statValueText, statParts, statLine, glyphStatLine, petText, mountText, glyphText, stoneLine } from './statText.js';
+import { statLabel, statValueText, statParts, statLine, glyphStatLine, petText, mountText, glyphText, stoneLine, stoneText } from './statText.js';
 import { fixtureCharacter } from './fixtures.js';
 import { glyphSecondaryQuality } from '../model/glyphs.js';
 
@@ -28,11 +28,18 @@ describe('stat lines (backlog §6: labels, never raw keys)', () => {
 });
 
 describe('stone lines', () => {
+  const stone = { type: 'PVE_ATTACK', quality: 51, amplifyLevel: 0, stats: [{ type: 'CRIT_DAMAGE', value: 0.09 }, { type: 'HEALTH_PERCENT', value: 4.5 }] };
+
   it('reads quality, name and rolls, without the amplify level', () => {
-    const stone = { type: 'PVE_ATTACK', quality: 51, amplifyLevel: 3, stats: [{ type: 'CRIT_DAMAGE', value: 0.09 }, { type: 'HEALTH_PERCENT', value: 4.5 }] };
     expect(stoneLine(stone)).toBe(`Q51 Crimson Warstone · ${statLine('CRIT_DAMAGE', 0.09)}, ${statLine('HEALTH_PERCENT', 4.5)}`);
     expect(stoneLine({ ...stone, quality: null, oblivionLevel: 2, stats: [] })).toBe('Grade 2 Crimson Warstone');
     expect(stoneLine(null)).toBe('Empty');
+  });
+  it('an amplified stone reads its stats at the Amplify level (x1.18 at +3), as the build receives them', () => {
+    const amped = { ...stone, amplifyLevel: 3 };
+    expect(stoneLine(amped)).toBe('Q51 Crimson Warstone · Crit Damage +10.62%, Health +5.31%');
+    expect(stoneText(amped)).toBe('Crimson Warstone · Crit Damage +10.62%, Health +5.31%, Quality 51, Amplify 3');
+    expect(stoneText(stone)).toContain('Crit Damage +9%, Health +4.5%');
   });
 });
 
