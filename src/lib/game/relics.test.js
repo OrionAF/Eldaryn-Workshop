@@ -24,6 +24,16 @@ describe('relic catalogue (relics.md §2, §9)', () => {
     expect(relicById('relic_iron_heart')?.name).toBe('Iron Heart');
     expect(relicById('nope')).toBeNull();
   });
+
+  it('2.9.7 adds one gold HP relic each for Warrior, Mystic and Necromancer (relics.md §11)', () => {
+    expect(RELICS).toHaveLength(71);
+    for (const [id, cls] of [['relic_everbeat_heart', 'WARRIOR'], ['relic_lifebloom_seed', 'MYSTIC'], ['relic_gravebloom_censer', 'NECROMANCER']]) {
+      const r = relicById(id);
+      expect(r).toMatchObject({ tier: 'gold', cost: 6, maxLevel: 25 });
+      expect(r.bonuses).toEqual([{ stat: 'HP_PERCENT', base: 12, max: 45.6 }, { stat: 'HP_REGEN', base: 5, max: 19.4 }]);
+      expect(relicsForClass(cls)).toContain(r);
+    }
+  });
 });
 
 describe('relic slots and migration (relics.md §5, §8)', () => {

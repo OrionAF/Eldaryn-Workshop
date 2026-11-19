@@ -27,6 +27,9 @@ import {
   minionSummonMeta, soulLinkHeal, killMinion, isMinionAlive, createMinion,
 } from '../core/minions.js';
 import { STANCE_FIELDS } from '../core/stances.js';
+import {
+  resolveRetributionKind, createRetributionState, retributionStacks, retributionFullBlockReflect, applyRetribution,
+} from '../core/retribution.js';
 import { getEquippedStanceConfig, stanceRuntimeFields } from '../sources/stance.js';
 import { createPlayerEntity, createMobEntity } from '../core/entity.js';
 import {
@@ -72,7 +75,7 @@ export const PVE_ASSUMPTIONS = Object.freeze({
 
 const A = PVE_ASSUMPTIONS;
 const pveMode = (o) => Object.freeze({
-  perFightCapMs: FIGHT_CAP_MS, interMobGapMs: 0, liveLoop: false, allMobsSwing: false, ...o, assumptions: Object.freeze(o.assumptions),
+  perFightCapMs: FIGHT_CAP_MS, interMobGapMs: 0, liveLoop: false, allMobsSwing: false, retribution: false, ...o, assumptions: Object.freeze(o.assumptions),
 });
 
 /**
@@ -81,16 +84,17 @@ const pveMode = (o) => Object.freeze({
  * `interMobGapMs` the wait before each mob, the minion respawn aged by the same amount; `allMobsSwing`
  * every living mob swings from a random point in its swing, the later ones as bystanders; `perFightCapMs`
  * each mob's own cap when the caller gives no `maxMs` window; `liveLoop` the campaign loop's own rules
- * (opening 'half', mob-only spell resist, next-tick transform); `assumptions` the labels to show.
+ * (opening 'half', mob-only spell resist, next-tick transform); `retribution` the 2.9.7 thorns ramp runs
+ * (Progress and dungeons only, combat-pve.md §23); `assumptions` the labels to show.
  */
 export const PVE_MODES = Object.freeze({
   campaign: pveMode({
     dtMs: PVE_PROGRESS_CONSTANTS.tickIntervalMs, shieldMitigation: PVE_PROGRESS_CONSTANTS.shieldMitigation,
-    liveLoop: true, assumptions: [A.campaignCap],
+    liveLoop: true, retribution: true, assumptions: [A.campaignCap],
   }),
   dungeon: pveMode({
     dtMs: DUNGEON_TICK_MS, shieldMitigation: DUNGEON_SHIELD_MITIGATION, interMobGapMs: INTER_MOB_GAP_MS,
-    assumptions: [A.serverFight],
+    retribution: true, assumptions: [A.serverFight],
   }),
   raid: pveMode({
     dtMs: RAID_CONSTANTS.TICK_INTERVAL_MS, shieldMitigation: 0, interMobGapMs: INTER_MOB_GAP_MS, allMobsSwing: true,
@@ -232,6 +236,9 @@ function sameBuffSet(a, b) {
  *   other living mobs, each swinging at the player on its own `timer` (mutated)
  * @property {{regenTimer:number}|null} [raidClock]  raid: receives the regen timer after each combat tick,
  *   so the pulse keeps its clock through the gap after the target dies (mutated)
+ * @property {{kind:string, elapsedMs:number}|null} [retribution]  2.9.7 Retribution (createRetributionState),
+ *   shared by the mobs of one level or dungeon step; its clock advances one dtMs per tick (mutated,
+ *   combat-pve.md §23)
  */
 
 /**
@@ -294,7 +301,7 @@ export function simulateFight(player, enemy, ctx, rng) {
     dtMs = DEFAULT_DT_MS, startMs = 0, maxMs = FIGHT_CAP_MS, opening = 'zero', spells = null, chrono = null,
     stacks: stackCombat = null, thornsPercent = 0, oblivion = null, minion = null, log = true,
     liveSpellResist = false, enemyAt = null, reboundFor = null, liveLoop = false, outputMult = 1, wrath = null,
-    bystanders = null, raidClock = null,
+    bystanders = null, raidClock = null, retribution = null,
   } = ctx ?? {};
   // the output cut on a landed amount (a positive number); `directMult` adds the World Boss wrath cut
   // to the direct damage (swings, minion, spells, DoT ticks) once it holds
@@ -420,8 +427,15 @@ export function simulateFight(player, enemy, ctx, rng) {
     return lastBuffed;
   };
 
+  // this tick's Retribution stacks, read before the clock advances (2.9.7 L1109366-1109379, combat-pve.md §23)
+  let retStacks = 0;
+
   while (hp > 0 && enemyHp > 0 && ts - startMs < maxMs) {
     ts += dtMs;
+    if (retribution) {
+      retStacks = retributionStacks(retribution.elapsedMs);
+      retribution.elapsedMs += dtMs;
+    }
     if (!wrathOn && ts >= wrathFromTs) {
       wrathOn = true;
       directMult = outputMult * wrath.mult;
@@ -686,6 +700,7 @@ export function simulateFight(player, enemy, ctx, rng) {
     tickOpts.defenderFearedMs = fearedMs;
     tickOpts.attackerShieldHp = shield;
     tickOpts.defenderShieldHp = enemyShield;
+    tickOpts.fullBlockReflect = retribution != null && retributionFullBlockReflect(retStacks);
     const t = processCombatTick(view, enemyNow, hp, enemyHp, timers, dtMs, ts, tickOpts, rng);
     tickDealt += t.attackerDamageDealt;
     hp = t.attackerHp;
@@ -763,7 +778,7 @@ export function simulateFight(player, enemy, ctx, rng) {
             stackCombat.onHitTaken();
             break;
           case 'attacker_block':
-            thorns += stackCombat.blockReflect(ev.damage);
+            thorns += stackCombat.blockReflect(ev.unblockedDamage ?? ev.damage);
             break;
           case 'attacker_miss':
           case 'defender_blind':
@@ -782,13 +797,24 @@ export function simulateFight(player, enemy, ctx, rng) {
         }
       }
     }
-    // 10. thorns reflect on mob-hit events (L1089306-1089397)
+    // 10. thorns reflect on mob-hit events (L1089306-1089397); 2.9.7: also on a block that carries
+    // `unblockedDamage`, which then leaves the event, and Retribution scales the sum (2.9.7 L1110620-1110785,
+    // combat-pve.md §23)
     if (spells) {
       let pct = activeBuffThornsPercent(spells);
       if (thornsPercent > 0 && isSpellBuffActive(spells, 'IRON_BASTION')) pct += thornsPercent;
       if (pct > 0) {
-        for (const ev of events) if (ev.type === 'defender_hit') thorns += Math.round((ev.damage * pct) / 100);
+        for (const ev of events) {
+          if (ev.type === 'defender_hit') thorns += Math.round((ev.damage * pct) / 100);
+          else if (ev.type === 'attacker_block' && ev.unblockedDamage !== undefined) {
+            thorns += Math.round((ev.unblockedDamage * pct) / 100);
+          }
+        }
       }
+    }
+    if (retribution) {
+      if (tickOpts.fullBlockReflect) for (const ev of events) if (ev.unblockedDamage !== undefined) delete ev.unblockedDamage;
+      if (thorns > 0) thorns = applyRetribution(thorns, retStacks, retribution.kind);
     }
     if (reboundFor) for (const ev of events) thorns += reboundFor(ev, enemyNow);
     thorns = cut(thorns);
@@ -1062,6 +1088,7 @@ function prepare(fighter) {
     },
     conduits,
     thornsPercent: combat.ironBastionThornsPercent,
+    retributionKind: resolveRetributionKind(state, cls, spec),
   };
   // the player's state at the start of every fight, copied per fight
   const start = { ...player, hp: player.maxHp, shieldHp: 0, shieldMax: 0 };
@@ -1128,6 +1155,7 @@ export const trainingDummy = (hp = 1e15) => ({ id: 'dummy', hp, attack: 0, attac
  *   from the enemy's `instability` (Oblivion floor mobs)
  * @property {boolean} [applyOutputCut=false]  apply the Oblivion `playerDamageMult` to all player-side
  *   damage (an assumption, pve-content.md §11; the client fight never applies it)
+ * @property {boolean} [retribution]  overrides the mode's Retribution switch (combat-pve.md §23)
  * @property {() => number} rng
  * @property {boolean} [log=false]
  */
@@ -1205,6 +1233,9 @@ export function simulatePve(o) {
   // clocks and the regen pulse run on through the gap, and the next target keeps its clock (combat-pve.md
   // §21.1)
   const raidClock = mode.allMobsSwing ? { regenTimer: 0 } : null;
+  // one Retribution clock for the whole level or dungeon step, carried across its mobs (§23)
+  const retKind = prepared.inputs?.retributionKind ?? null;
+  const retribution = retKind && (o.retribution ?? mode.retribution) ? createRetributionState(retKind) : null;
   const phase = mode.allMobsSwing ? lane(rng, 'raid-phase') : null;
   const group = phase
     ? enemies.map((entity, index) => {
@@ -1253,7 +1284,7 @@ export function simulatePve(o) {
       bystanders: group ? group.slice(i + 1) : null, raidClock, chrono: f.chrono, stacks: f.stacks,
       thornsPercent: f.thornsPercent, oblivion: obl, minion: f.minion, log, liveSpellResist,
       liveLoop: mode.liveLoop, outputMult, enemyAt: wb?.enemyAt ?? null, reboundFor: wb?.reboundFor ?? null,
-      wrath: wb?.wrath ?? null,
+      wrath: wb?.wrath ?? null, retribution,
     }, rng);
     elapsed = r.endTime;
     damageDealt += r.damageDealt;

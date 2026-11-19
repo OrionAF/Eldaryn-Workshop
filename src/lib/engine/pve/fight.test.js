@@ -1192,3 +1192,113 @@ describe('the dungeon constants are stated once', () => {
     expect(PVE_ASSUMPTIONS.customShield.text).toContain(String(PVE_SHIELD_MITIGATION));
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+// 2.9.7 Retribution (combat-pve.md §23)
+
+describe('Retribution (combat-pve.md §23)', () => {
+  const hitBack = { attack: 100, attackSpeed: 1 };
+  const enemyDue = { attackerTimer: 0, defenderTimer: 900, regenTimer: 0 };
+  const reflectStacks = (over = {}) => ({
+    active: true,
+    selfModifiers: () => ({ ...EMPTY_BULWARK_MODIFIERS }),
+    elusiveSelfModifiers: () => ({ ...EMPTY_ELUSIVE_MODIFIERS }),
+    targetModifiers: () => ({ ...EMPTY_SUNDER_MODIFIERS }),
+    onEvaded: vi.fn(), onHitTaken: vi.fn(), onHitLanded: vi.fn(),
+    blockReflect: vi.fn(() => 0), hitTakenReflect: vi.fn(() => 10),
+    tick: vi.fn(), snapshot: () => ({ bulwarkStacks: 0, sunderStacks: 0 }), resetTarget: vi.fn(),
+    ...over,
+  });
+  const thornsOf = (r) => r.ticks.find((e) => e.type === 'thorns_reflect')?.damage;
+
+  it('reads the stacks at the start of the tick, then advances the clock one tick', () => {
+    const at = (elapsedMs, kind = 'JUGGERNAUT') => {
+      const retribution = { kind, elapsedMs };
+      const r = simulateFight(hero(), mob(hitBack), {
+        stacks: reflectStacks(), retribution, maxMs: 100, opening: enemyDue,
+      }, never);
+      return { thorns: thornsOf(r), after: retribution.elapsedMs };
+    };
+    expect(at(9900)).toEqual({ thorns: 10, after: 10000 }); // 0 stacks on this tick
+    expect(at(10000)).toEqual({ thorns: 15, after: 10100 }); // 1 stack: +50 %
+    expect(at(15000)).toEqual({ thorns: 20, after: 15100 }); // 2 stacks: +100 %
+    expect(at(15000, 'DRUID')).toEqual({ thorns: 18, after: 15100 }); // 2 stacks: +80 %
+  });
+
+  it('from 25 stacks a clean block reflects full thorns: the stance and the buff see the unblocked swing', () => {
+    const iron = {
+      species: 'IRON_BASTION', name: 'Iron', icon: null,
+      spell: { spellType: 'BUFF', effects: [], durationMs: 5000, cooldownMs: 15000 },
+    };
+    const run = (elapsedMs) => {
+      const s = reflectStacks({ blockReflect: vi.fn((d) => d / 10) });
+      const r = simulateFight(hero({ totalBlockChance: 50 }), mob(hitBack), {
+        stacks: s, spells: initSpellRuntimes([iron]), thornsPercent: 20, maxMs: 100, opening: enemyDue,
+        retribution: { kind: 'JUGGERNAUT', elapsedMs },
+      }, always);
+      return { s, r };
+    };
+    const below = run(125000); // 24 stacks: the block event's damage (0) is all the stance sees
+    expect(below.s.blockReflect).toHaveBeenCalledWith(0);
+    expect(thornsOf(below.r)).toBeUndefined();
+    const full = run(130000); // 25 stacks: stance 100/10 = 10, Iron Bastion 20 % of 100 = 20; x (1 + 12.5)
+    expect(full.s.blockReflect).toHaveBeenCalledWith(100);
+    expect(thornsOf(full.r)).toBe(405);
+    expect(full.r.ticks.find((e) => e.type === 'attacker_block')).not.toHaveProperty('unblockedDamage');
+  });
+
+  it('no retribution state: thorns as before 2.9.7', () => {
+    const r = simulateFight(hero(), mob(hitBack), { stacks: reflectStacks(), maxMs: 100, opening: enemyDue }, never);
+    expect(thornsOf(r)).toBe(10);
+  });
+
+  describe('simulatePve: Progress and dungeons only, one clock per level or step', () => {
+    const juggernaut = {
+      stats: stats({ totalHp: 1e9, totalAttack: 1, totalBlockChance: 30 }), class: 'WARRIOR', spec: 'WARRIOR_TANK',
+      sigils: [{ species: 'BULWARK_OF_THORNS', level: 1 }], utility: { species: 'JUGGERNAUT_STANCE', level: 1 },
+    };
+    const sumThorns = (r, fromMs = 0, toMs = Infinity) => r.log
+      .filter((e) => e.type === 'thorns_reflect' && e.timestamp > fromMs && e.timestamp <= toMs)
+      .reduce((a, e) => a + e.damage, 0);
+    const foe = (mode) => ({ hp: 1e12, attack: 1000, attackSpeed: 1, mode });
+    const run = (mode, extra = {}) => simulatePve({
+      fighter: juggernaut, enemy: foe(mode), maxMs: 40000, rng: mulberry32(hashSeed('retribution', 1)), log: true, ...extra,
+    });
+
+    it('resolves the kind from the stance; modes switch it', () => {
+      expect(preparePveFighter(juggernaut).inputs.retributionKind).toBe('JUGGERNAUT');
+      expect(preparePveFighter({ ...juggernaut, utility: null }).inputs.retributionKind).toBe(null);
+      expect(Object.entries(PVE_MODES).filter(([, m]) => m.retribution).map(([k]) => k)).toEqual(['campaign', 'dungeon']);
+    });
+
+    for (const mode of ['dungeon', 'campaign']) {
+      it(`${mode}: thorns match the switched-off run before 10 s and grow after`, () => {
+        const on = run(mode);
+        const off = run(mode, { retribution: false });
+        expect(sumThorns(on, 0, 10000)).toBe(sumThorns(off, 0, 10000));
+        expect(sumThorns(off, 10000)).toBeGreaterThan(0);
+        expect(sumThorns(on, 10000)).toBeGreaterThan(sumThorns(off, 10000) * 1.5);
+      });
+    }
+
+    it('raid and custom fights leave thorns alone', () => {
+      for (const mode of ['raid', 'custom']) {
+        expect(sumThorns(run(mode))).toBe(sumThorns(run(mode, { retribution: false })));
+      }
+    });
+
+    it('the clock carries across the mobs of a dungeon step (combat-pve.md §23)', () => {
+      const mobs = [{ hp: 8000, attack: 1000, attackSpeed: 1, mode: 'dungeon' }, { ...foe('dungeon') }];
+      const fighter = { ...juggernaut, stats: stats({ totalHp: 1e9, totalAttack: 1000, totalBlockChance: 30 }) };
+      const go = (retribution) => simulatePve({ fighter, enemy: mobs, maxMs: 20000, rng: mulberry32(hashSeed('retribution', 2)), log: true, retribution });
+      const on = go(undefined);
+      const off = go(false);
+      // the first mob dies before 10 s; a clock reset per mob would leave the next 10 s of the second
+      // mob unscaled, the carried clock scales them from 10 s of total fight ticks
+      const first = on.log.find((e) => e.type === 'defender_dead').timestamp;
+      expect(first).toBeGreaterThan(5000);
+      expect(first).toBeLessThan(10000);
+      expect(sumThorns(on, 10500, first + 10000)).toBeGreaterThan(sumThorns(off, 10500, first + 10000));
+    });
+  });
+});
