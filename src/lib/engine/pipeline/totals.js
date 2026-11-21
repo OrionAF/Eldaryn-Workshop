@@ -45,7 +45,8 @@ const SIGIL = [
   ['healthPercent', 'hpPercent'], ['attackSpeed', 'attackSpeed'], ['missChance', 'missChance'],
   ['hpRegen', 'hpRegen'], ['spellDamage', 'spellDamage'],
 ];
-// Awakening has no minion or dominion fields; its spell fields are nullable (count as 0).
+// Awakening's spell and minion fields are nullable (count as 0); minion health and soul link since 2.7.4
+// (Radiant Necromancer, awakening.md §4).
 const AWAKENING = [
   ['attackPercent', 'attackPercent'], ['healthPercent', 'hpPercent'],
   ['attackSpeed', 'attackSpeedFlat'], ['critChance', 'critChanceFlat'],
@@ -55,7 +56,7 @@ const AWAKENING = [
   ['missChance', 'missChanceFlat'], ['blindChance', 'blindChanceFlat'],
   ['paralyzeChance', 'paralyzeChanceFlat'], ['spellResist', 'spellResistFlat'],
   ['spellDamage', 'spellDamageFlat'], ['spellCritChance', 'spellCritChanceFlat'],
-  ['spellVamp', 'spellVampFlat'],
+  ['spellVamp', 'spellVampFlat'], ['minionHealth', 'minionHealthPercent'], ['soulLink', 'soulLinkFlat'],
 ];
 // a7 is never populated by the client (stats.md §3.1); kept so a caller can still pass one.
 const UNUSED_A7 = [

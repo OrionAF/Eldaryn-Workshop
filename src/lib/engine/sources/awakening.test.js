@@ -4,9 +4,9 @@ import { calculateAwakeningBonuses, awakeningBonusPerLevel } from './awakening.j
 const nz = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== 0));
 
 describe('calculateAwakeningBonuses', () => {
-  it('returns the 17-key zero bundle with no path or level <= 0', () => {
+  it('returns the 19-key zero bundle with no path or level <= 0', () => {
     const z = calculateAwakeningBonuses({ path: null, level: 10 });
-    expect(Object.keys(z)).toHaveLength(17);
+    expect(Object.keys(z)).toHaveLength(19);
     expect(nz(z)).toEqual({});
     expect(nz(calculateAwakeningBonuses({ path: 'SHADOW', level: 0 }))).toEqual({});
   });
@@ -37,9 +37,20 @@ describe('calculateAwakeningBonuses', () => {
     expect(nz(calculateAwakeningBonuses({ path: 'RADIANT', level: 10 }, 'MYSTIC', 'MYSTIC_MAGE'))).toEqual({
       hpPercent: 25, hpRegenFlat: 7, spellResistFlat: 5,
     });
-    expect(nz(calculateAwakeningBonuses({ path: 'RADIANT', level: 3 }, 'NECROMANCER'))).toEqual({
-      hpPercent: 7.5, hpRegenFlat: 2.1, spellResistFlat: 1.5,
+    // 2.7.4+: Minion Health / Soul Link (was HP / Regen / Spell Resist in 2.7.0)
+    expect(nz(calculateAwakeningBonuses({ path: 'RADIANT', level: 3 }, 'NECROMANCER', 'NECROMANCER_DEATHLORD'))).toEqual({
+      minionHealthPercent: 13.5, soulLinkFlat: 1.8,
     });
+  });
+  it('Radiant Necromancer reaches the totals as minion health and soul link', async () => {
+    const { calculateTotalStats } = await import('../pipeline/totals.js');
+    const awk = calculateAwakeningBonuses({ path: 'RADIANT', level: 15 }, 'NECROMANCER', 'NECROMANCER_DEATHLORD');
+    const base = { attack: 100, hp: 1000 };
+    const without = calculateTotalStats(base, undefined, undefined, undefined, undefined, undefined, undefined);
+    const withAwk = calculateTotalStats(base, undefined, undefined, undefined, undefined, undefined, awk);
+    expect(+(withAwk.totalMinionHealth - without.totalMinionHealth).toFixed(1)).toBe(67.5);
+    expect(+(withAwk.totalSoulLink - without.totalSoulLink).toFixed(1)).toBe(9);
+    expect(withAwk.totalHealthPercent).toBe(without.totalHealthPercent);
   });
   it('base bundles have no spell keys, which read as 0', () => {
     const r = calculateAwakeningBonuses({ path: 'RADIANT', level: 15 });

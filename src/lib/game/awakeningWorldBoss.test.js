@@ -3,8 +3,8 @@ import { AWAKENING_PATHS, AWAKENING_KEYS, AWAKENING_CONSTANTS } from './awakenin
 import { WORLD_BOSS_AFFINITIES, WORLD_BOSS_CONSTANTS, WORLD_BOSSES, WORLD_BOSS_POSITION_REWARDS, WORLD_BOSS_SEASON } from './worldBoss.js';
 
 describe('awakening catalogue', () => {
-  it('has the 17 keys and 15 max points', () => {
-    expect(AWAKENING_KEYS).toHaveLength(17);
+  it('has the 19 keys and 15 max points', () => {
+    expect(AWAKENING_KEYS).toHaveLength(19);
     expect(AWAKENING_CONSTANTS.maxPoints).toBe(AWAKENING_CONSTANTS.maxPointLevel - AWAKENING_CONSTANTS.firstPointLevel + 1);
   });
   it('every bundle uses known keys', () => {

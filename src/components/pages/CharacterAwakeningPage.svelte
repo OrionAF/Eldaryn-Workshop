@@ -26,7 +26,7 @@
     critDamageFlat: 'Crit Damage', hpRegenFlat: 'HP Regen', lifestealFlat: 'Lifesteal', damageReductionFlat: 'Damage Reduction',
     blockChanceFlat: 'Block Chance', penetrationFlat: 'Penetration', missChanceFlat: 'Evasion', blindChanceFlat: 'Blind Chance',
     paralyzeChanceFlat: 'Paralyze Chance', spellResistFlat: 'Spell Resist', spellDamageFlat: 'Spell Damage',
-    spellCritChanceFlat: 'Spell Crit', spellVampFlat: 'Spell Vamp',
+    spellCritChanceFlat: 'Spell Crit', spellVampFlat: 'Spell Vamp', minionHealthPercent: 'Minion Health', soulLinkFlat: 'Soul Link',
   };
 
   const character = $derived(rosterStore.current);

@@ -2,9 +2,10 @@
 // See docs/Reference/Game/awakening.md §3-§4.
 import { AWAKENING_PATHS, AWAKENING_KEYS } from '../../game/awakening.js';
 
-const SPELL_KEYS = ['spellResistFlat', 'spellDamageFlat', 'spellCritChanceFlat', 'spellVampFlat'];
+// keys the client reads as (perLevel[k] ?? 0): a bundle literal may leave them out (awakening.md §3)
+const OPTIONAL_KEYS = ['spellResistFlat', 'spellDamageFlat', 'spellCritChanceFlat', 'spellVampFlat', 'minionHealthPercent', 'soulLinkFlat'];
 
-/** All-zero 17-key bundle (L1221995-1221997). */
+/** All-zero bundle, one entry per catalogue key (19 since 2.7.4). */
 export function zeroAwakening() {
   const o = {};
   for (const k of AWAKENING_KEYS) o[k] = 0;
@@ -36,7 +37,7 @@ export function calculateAwakeningBonuses(awakening, playerClass = 'WARRIOR', sp
   if (!per) return zeroAwakening();
   const out = {};
   for (const k of AWAKENING_KEYS) {
-    const v = SPELL_KEYS.includes(k) ? (per[k] ?? 0) : per[k];
+    const v = OPTIONAL_KEYS.includes(k) ? (per[k] ?? 0) : per[k];
     out[k] = parseFloat((v * awakening.level).toFixed(k === 'attackSpeedFlat' ? 2 : 1));
   }
   return out;

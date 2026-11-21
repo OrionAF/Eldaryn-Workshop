@@ -154,6 +154,8 @@
  * @property {number|null} spellResistFlat
  * @property {number|null} spellCritChanceFlat
  * @property {number|null} spellVampFlat
+ * @property {number|null} minionHealthPercent  since 2.7.4 (Radiant Necromancer)
+ * @property {number|null} soulLinkFlat  since 2.7.4 (Radiant Necromancer)
  */
 
 /** @typedef {StoneBonuses} UnusedBonuses  (a7: never populated by the client; pass undefined) */
