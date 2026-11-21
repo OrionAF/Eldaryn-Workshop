@@ -528,7 +528,31 @@ function createRun(prep, hooks) {
     });
   }
 
-  return { st, sampler, log, logCtx, base, armOf, ekOf, getSet, heldSet, prefetch, compare, contrastAt, raceArms, goalCheck, setPhase, progress, checkpoint, noteBest, t0, signal, finishSignal: hooks.finishSignal ?? null, workers: pool?.size ?? 1 };
+  /**
+   * Ceiling stop (simulation.md §Ceiling stop): has the arm won every fight of enough fights to put its rate
+   * within δ of the objective's ceiling? Looks n0, 2n0, ... maxN on the stage, Wilson at alpha / looks: false
+   * at the first look with a loss, true at the first look whose lower bound reaches ceiling − δ (logged).
+   * @returns {Promise<{meets: boolean, n: number}>}  n: the fights read (all lanes)
+   */
+  function ceilingCheck(X, stage) {
+    return step('ceiling', [stage.id, X.key], async () => {
+      const looks = lookSchedule(effort.n0, effort.maxN);
+      const alpha = effort.alpha / looks.length;
+      let n = 0;
+      for (let k = 0; k < looks.length; k++) {
+        const value = objective.estimate(await getSet(X, stage, looks[k]), { alpha }).value;
+        n = value.n;
+        if (!(value.est >= objective.ceiling)) break;
+        if (meetsTarget(value, objective.ceiling, effort.delta) === true) {
+          if (log) logArm(X, stage, { step: 'ceiling', looks: k + 1, n: looks[k], decision: 'kept', basis: 'won every fight: at the ceiling' });
+          return { meets: true, n };
+        }
+      }
+      return { meets: false, n };
+    });
+  }
+
+  return { st, sampler, log, logCtx, base, armOf, ekOf, getSet, heldSet, prefetch, compare, contrastAt, raceArms, goalCheck, ceilingCheck, setPhase, progress, checkpoint, noteBest, t0, signal, finishSignal: hooks.finishSignal ?? null, workers: pool?.size ?? 1 };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -620,6 +644,22 @@ async function searchPhase(prep, run) {
   let raced = false;
   let timedOut = false;
   const timeUp = () => timedOut || (timedOut = raced && pastCutoff());
+  // Ceiling stop (simulation.md §Ceiling stop): on an objective with a ceiling (a chance, at most 1) a build
+  // that wins every fight cannot be beaten, so the search ends there. Like the time limit it only moves
+  // when the search stops: the build is still minimised and confirmed on its own seeds.
+  let capped = null; // the arm that reached the ceiling
+  let cappedN = 0; // the fights it won, all of them
+  const ceilingMemo = new Map();
+  async function atCeiling(a) {
+    if (objective.ceiling == null || timedOut) return false;
+    if (capped) return capped.key === a.key;
+    if (!ceilingMemo.has(a.key)) ceilingMemo.set(a.key, simulable(a) ? await run.ceilingCheck(a, S1) : { meets: false, n: 0 });
+    const c = ceilingMemo.get(a.key);
+    if (c.meets) [capped, cappedN] = [a, c.n];
+    return capped != null;
+  }
+  /** Block boundaries: no further block is visited once the ceiling is reached or the time is up. */
+  const over = () => capped != null || timeUp();
   // Inside a race or an accepting compare: stop at the next look (at least one look always runs). Looks
   // double n, so the next look costs about twice the work since the last check: stop now when ending after
   // it would land further past the cutoff than stopping lands short of it (elapsed + next / 2 >= cutoff).
@@ -798,6 +838,8 @@ async function searchPhase(prep, run) {
   async function ascent(x0, ids) {
     let x = x0;
     const visited = new Set([x.key]);
+    // a start that is already at the ceiling needs no pass around it
+    if (!capped && (await atCeiling(x))) return { x, contenders: [], unresolved: [] };
     for (;;) {
       let accepted = false;
       const contenders = [];
@@ -805,7 +847,7 @@ async function searchPhase(prep, run) {
       const racedHere = [];
       for (const id of ids) {
         if (!enabled.has(id)) continue;
-        if (timeUp()) break;
+        if (over()) break;
         st.block = id;
         await inStep(id, async (row) => {
           const arms = await blockArms(id, x);
@@ -826,10 +868,11 @@ async function searchPhase(prep, run) {
             visited.add(x.key);
             accepted = true;
             row.improved = true;
+            await atCeiling(x);
           }
         });
       }
-      if (!accepted && !timeUp() && ids.includes('talents') && enabled.has('talents')) {
+      if (!accepted && !over() && ids.includes('talents') && enabled.has('talents')) {
         st.block = 'talents';
         await inStep('talents', async (row) => {
           const arms = prepareArms([x, ...twoPointArms(x)]);
@@ -848,10 +891,13 @@ async function searchPhase(prep, run) {
               visited.add(x.key);
               accepted = true;
               row.improved = true;
+              await atCeiling(x);
             }
           }
         });
       }
+      // at the ceiling the pass's ties and open arms no longer matter: only the incumbent goes on
+      if (capped) return { x, contenders: [], unresolved: [] };
       if (!accepted || timedOut) {
         for (const r of racedHere) if (r.unresolved) status.set(r.id, 'unresolved');
         return { x, contenders, unresolved };
@@ -923,7 +969,7 @@ async function searchPhase(prep, run) {
     const optima = [];
     const contenders = [];
     for (const s of distinct) {
-      if (optima.length && timeUp()) break;
+      if (optima.length && over()) break;
       const r = await ascent(s, BLOCKS);
       optima.push(r.x);
       await run.noteBest(r.x);
@@ -931,6 +977,11 @@ async function searchPhase(prep, run) {
       unresolvedOut.push(...r.unresolved);
       st.provisional = optima.map((a) => ({ key: a.key, candidate: a.cand, provisional: true }));
       run.progress();
+    }
+    // an inner ascent (a spec or mount value) can reach the ceiling without the outer one accepting it
+    if (capped && !optima.some((a) => a.key === capped.key)) {
+      optima.push(capped);
+      await run.noteBest(capped);
     }
     return { strategy: 'local', starts: distinct.length, optima, contenders };
   }
@@ -941,21 +992,25 @@ async function searchPhase(prep, run) {
     if (cands) out = await exhaustive(cands);
   }
   if (!out) out = await local();
+  // why the search ended before it converged, if it did; the same word is the cut blocks' status and step reason
+  const cutBy = capped ? 'ceiling' : timedOut ? (stoppedBy === 'user' ? 'user' : 'time') : null;
+  const cutReason = { ceiling: 'ceiling', user: 'stopped', time: 'time-limit' }[cutBy];
   // a block never reached has nothing to show but its reason
-  for (const row of st.steps) if (row.state === 'queued') Object.assign(row, { state: 'skipped', reason: timedOut ? (stoppedBy === 'user' ? 'stopped' : 'time-limit') : 'nothing-to-try' });
+  for (const row of st.steps) if (row.state === 'queued') Object.assign(row, { state: 'skipped', reason: cutReason ?? 'nothing-to-try' });
   run.progress(true);
   const blocks = BLOCKS.map((id) => ({
     id,
     enabled: enabled.has(id),
     domain: enabled.has(id) ? sizes[id] ?? 1 : 1,
     ...(enabled.has(id) && (id === 'mount' || DOMINANCE_BLOCKS.includes(id)) ? { pruned: space.pruned(id, B.cand) } : {}),
-    // a block the time limit cut short is not known to have converged
-    status: !enabled.has(id) ? 'disabled' : timedOut && status.get(id) === 'converged' ? (stoppedBy === 'user' ? 'stopped' : 'time-limit') : status.get(id) ?? 'not-reached',
+    // a block the search was cut in is not known to have converged
+    status: !enabled.has(id) ? 'disabled' : cutBy && status.get(id) === 'converged' ? cutReason : status.get(id) ?? 'not-reached',
   }));
   const optimaKeys = new Set(out.optima.map((a) => a.key));
   return {
     ...out,
-    stopped: timedOut ? (stoppedBy === 'user' ? 'user' : 'time') : 'converged',
+    stopped: cutBy ?? 'converged',
+    capped: capped ? { key: capped.key, n: cappedN } : null,
     jointSize: out.strategy === 'exhaustive' || jointSize <= Number.MAX_SAFE_INTEGER ? jointSize : null,
     blocks,
     optimaCount: optimaKeys.size,
@@ -1125,6 +1180,15 @@ export async function optimize(request, hooks = {}) {
     searchOut = await searchPhase(prep, run);
     if (searchOut.stopped === 'time') warnings.push({ code: 'time-limit', severity: 'info', message: `The search stopped at the time limit after ${formatFlat(st.evaluated.size)} builds, before it finished. A longer limit may find a better build. Every result shown is still checked on its own fights.` });
     else if (searchOut.stopped === 'user') warnings.push({ code: 'stopped-early', severity: 'info', message: `You stopped the search early after ${formatFlat(st.evaluated.size)} builds. Letting it finish may find a better build. Every result shown is still checked on its own fights.` });
+    else if (searchOut.stopped === 'ceiling') {
+      const won = `${objective.kind === 'survival' ? 'survived' : 'won'} all ${formatFlat(searchOut.capped.n)} of its search fights`;
+      warnings.push({
+        code: 'ceiling-reached', severity: 'info',
+        message: searchOut.capped.key === B.key
+          ? `The current build ${won}, so the search stopped: no build can do better.`
+          : `The search stopped early after ${formatFlat(st.evaluated.size)} builds: it found a build that ${won}, and no build can do better. Every result shown is still checked on its own fights.`,
+      });
+    }
     const fmap = new Map();
     for (const a of [...searchOut.optima, ...searchOut.contenders]) {
       if (!a || a.key === B.key) continue;

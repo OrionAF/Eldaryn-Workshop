@@ -93,7 +93,7 @@ export function makePvpObjective(raw, target, { closedFormDps, ehpProxy }) {
   return {
     kind: PVP_OBJECTIVE_KIND, key: PVP_OBJECTIVE_KIND, spec: { kind: PVP_OBJECTIVE_KIND },
     label: 'PVP win rate', unit: 'p', higherIsBetter: true, statistic: 'proportion', q: null, deltaKind: 'absolute',
-    window: null, lanes: lanes.length, screen, tier0: screen,
+    window: null, lanes: lanes.length, screen, tier0: screen, ceiling: 1,
 
     /** Duels from..to-1 of every matchup: main = my wins (0/1), side.ms = duel length, side.timedOut. */
     async sample(fighter, { seed, from = 0, to, signal, trace }) {

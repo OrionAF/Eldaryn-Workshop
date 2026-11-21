@@ -9,6 +9,7 @@ const REASON_TEXT = {
   'nothing-to-try': 'nothing to try',
   'time-limit': 'not reached before the time limit',
   stopped: 'not reached before you stopped the search',
+  ceiling: 'not needed: a build that wins every fight was found',
 };
 // StepList states: the search's 'running' is the list's 'active'
 const STATE = { queued: 'queued', running: 'active', done: 'done', skipped: 'skipped' };

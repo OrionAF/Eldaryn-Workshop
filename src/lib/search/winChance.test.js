@@ -201,3 +201,45 @@ describe('optimize with the highest chance to win', { timeout: 120000 }, () => {
     expect(r.headline.text).toMatch(/^No change was shown to raise the chance to win\. The current build wins 100%/);
   });
 });
+
+describe('ceiling stop (simulation.md §Ceiling stop)', { timeout: 120000 }, () => {
+  // the current build loses now and then; one relic wins every fight, and the talents block comes after relics
+  const req = {
+    character: relicless(), presetId: 'p1', target: { kind: 'custom', mob: { hp: 2e6, attack: 0, attackSpeed: 0 }, seconds: 5 },
+    objective: { kind: 'win-chance' }, space: only('relics', 'talents', 'pet'), effort: { level: 'quick', n0: 8, maxN: 2048, randomStarts: 0 }, seed: 3,
+  };
+  const timeless = (r) => ({ ...r, stats: { ...r.stats, ms: 0 }, phases: r.phases.map((p) => ({ ...p, ms: 0 })) });
+
+  it('only an objective that is a chance to maximise has a ceiling', () => {
+    expect(maxObj.ceiling).toBe(1);
+    expect(makeObjective({ kind: 'survival' }, target).ceiling).toBe(1);
+    expect(tgtObj.ceiling).toBeUndefined();
+    expect(makeObjective({ kind: 'dps' }, target).ceiling).toBeUndefined();
+  });
+
+  it('the search ends at the first build that wins every fight; the build is still confirmed and the stop is said', async () => {
+    const r = await optimize(req);
+    expect(r.status).toBe('done');
+    expect(r.baseline.aux.winRate.est).toBeLessThan(1);
+    expect(r.search).toMatchObject({ strategy: 'local', stopped: 'ceiling' });
+    // relics found it, so talents was never raced and says why
+    expect(r.search.steps.find((s) => s.id === 'relics')).toMatchObject({ state: 'done', improved: true });
+    expect(r.search.steps.find((s) => s.id === 'talents')).toMatchObject({ state: 'skipped', reason: 'ceiling', tried: 0 });
+    expect(r.search.blocks.find((b) => b.id === 'talents').status).toBe('not-reached');
+    expect(r.warnings.find((w) => w.code === 'ceiling-reached')).toMatchObject({ severity: 'info', message: expect.stringMatching(/^The search stopped early after 2 builds: it found a build that won all [\d,.]+ of its search fights/) });
+    expect(r.rows).toHaveLength(1);
+    expect(r.rows[0].aux.winRate.est).toBe(1);
+    expect(r.goal).toMatchObject({ mode: 'max', status: 'best' });
+  });
+
+  it('a run cancelled after the stop resumes to the same result', async () => {
+    const whole = await optimize(req);
+    const ctl = new AbortController();
+    const cps = [];
+    const cut = await optimize(req, { signal: ctl.signal, onCheckpoint: (c) => cps.push(c), onProgress: (p) => { if (p.phase === 'minimise') ctl.abort(); } });
+    expect(cut).toMatchObject({ status: 'cancelled', checkpoint: { phase: 'minimise' } });
+    expect(cps.at(-1).log.some((e) => e.kind === 'ceiling' && e.out.meets)).toBe(true);
+    const resumed = await optimize({ ...req, resumeFrom: JSON.parse(JSON.stringify(cps.at(-1))) });
+    expect(timeless(resumed)).toEqual(timeless(whole));
+  });
+});

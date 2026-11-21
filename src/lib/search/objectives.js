@@ -605,7 +605,7 @@ export function makeObjective(raw = { kind: 'dps' }, target = resolveTarget({ ki
     return withLegacy({
       ...common, key: stableStringify({ kind, seconds }), spec: { kind, ...(isNum(raw.seconds) && raw.seconds > 0 ? { seconds } : {}) },
       label: seconds ? `Survival chance (${seconds} s)` : 'Survival chance (whole fight)', unit: 'p', higherIsBetter: true,
-      statistic: 'proportion', q: null, deltaKind: 'absolute', window: seconds,
+      statistic: 'proportion', q: null, deltaKind: 'absolute', window: seconds, ceiling: 1,
       sample: pveSampler(target, { enemy: target.enemy, maxMs }, (r) => (r.hpLeft > 0 ? 1 : 0)),
       estimate: (s, { alpha = 0.05 } = {}) => ({ value: proportionEstimate(s.main[0], alpha), aux: {} }),
       contrast(x, y, { alpha = 0.05 } = {}) {
@@ -671,6 +671,8 @@ export function makeObjective(raw = { kind: 'dps' }, target = resolveTarget({ ki
       label: max ? 'Highest chance to win' : `Win rate (target ${Math.round(tau * 1000) / 10}%)`, unit: 'p', higherIsBetter: true,
       statistic: 'proportion', q: null, deltaKind: 'absolute', window: target.seconds || null,
       target: max ? null : tau, goal: max ? 'max' : 'target',
+      // the highest chance cannot pass 1, so the search ends at a build that wins every fight (simulation.md §Ceiling stop)
+      ...(max ? { ceiling: 1 } : {}),
       sample: target.kind === CELESTIAL_TARGET_KIND
         ? celestialSampler(target)
         : pveSampler(target, { enemy: target.enemy, maxMs: target.maxMs }, (r, prepared) => winRateFightScore(r, prepared.inputs.player.maxHp)),
