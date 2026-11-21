@@ -103,7 +103,7 @@ describe('world boss', () => {
     const f = worldBossMob('FORTIFIED');
     expect([f.blockChance, f.stats.spellResist]).toEqual([80, 30]);
     const e = worldBossMob('ENRAGED');
-    expect([e.attackSpeed, e.fightDurationMs, e.affinity.lethal]).toEqual([1, 300000, true]);
+    expect([e.attackSpeed, e.fightDurationMs, e.affinity.lethal]).toEqual([1, 360000, true]);
     expect(worldBossMob('x')).toBeNull();
     expect(createMobEntity(f).blockChance).toBe(80);
   });
