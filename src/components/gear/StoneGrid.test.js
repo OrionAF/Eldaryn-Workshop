@@ -32,8 +32,31 @@ it('one tile per stone: type name, quality, amplify, and socket status in each s
   expect(target.querySelector('.stone-head').textContent).toContain('Q34');
   expect(target.textContent).toContain('+3');
   expect(target.textContent).toContain('Block Chance');
-  expect(target.textContent).toContain('+1.2%');
+  expect(target.textContent).toContain('+1.416%'); // 1.2 x (1 + 0.06 x 3)
   expect(target.textContent).toContain('Set 1: Helmet | Set 2: Ring');
+  unmount(app);
+});
+
+it('shows stat values after Amplify, with the stored roll in the tooltip (stones.md §8)', () => {
+  const mythic = stone({
+    type: 'MYTHIC',
+    amplifyLevel: 8,
+    stats: [{ type: 'PVP_ATTACK', value: 25 }, { type: 'PVP_DEFENSE', value: 20 }, { type: 'SPELL_DAMAGE', value: 10 }, { type: 'LIFESTEAL', value: 4 }],
+  });
+  const app = mount(StoneGrid, { target, props: { stones: [mythic], sets: sets(), onSelect: () => {} } });
+  flushSync();
+  const values = [...target.querySelectorAll('.stat-value')];
+  expect(values.map((v) => v.textContent)).toEqual(['+37', '+29.6', '+14.8%', '+5.92%']);
+  expect(values[0].title).toBe('+25 before Amplify +8');
+  unmount(app);
+});
+
+it('an unamplified stone shows its stored values and no tooltip', () => {
+  const app = mount(StoneGrid, { target, props: { stones: [stone()], sets: sets(), onSelect: () => {} } });
+  flushSync();
+  const value = target.querySelector('.stat-value');
+  expect(value.textContent).toBe('+1.2%');
+  expect(value.title).toBe('');
   unmount(app);
 });
 
