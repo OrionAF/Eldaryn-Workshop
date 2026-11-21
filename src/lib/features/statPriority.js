@@ -4,7 +4,8 @@
 // with these same functions, so a level range picked on the page reads like a preset.
 //
 // A spec's data is one aggregate per level: { n players, items, obs[i] pieces carrying pool stat i,
-// exp[i] pieces expected from drop odds, awk {path: players}, tot[i] sheet totals of stat i }.
+// exp[i] pieces expected from drop odds, awk {path: players}, tot[i] sheet totals of stat i,
+// ext[j] sheet totals of the class's j-th extra (data.extras: totals gear never rolls) }.
 
 export const MAX_LEVEL = 100;
 
@@ -19,13 +20,14 @@ const roundTotal = (v) => (v == null ? null : +v.toFixed(Math.abs(v) >= 100 ? 0 
 
 /** Sum one spec's per-level aggregates over levels lo..hi. */
 export function aggregate(byLevel, lo, hi, nStats) {
-  const out = { players: 0, items: 0, obs: new Array(nStats).fill(0), exp: new Array(nStats).fill(0), awk: {}, tot: Array.from({ length: nStats }, () => []) };
+  const out = { players: 0, items: 0, obs: new Array(nStats).fill(0), exp: new Array(nStats).fill(0), awk: {}, tot: Array.from({ length: nStats }, () => []), ext: [] };
   for (const key of Object.keys(byLevel)) {
     const lvl = +key;
     if (lvl < lo || lvl > hi) continue;
     const x = byLevel[key];
     out.players += x.n;
     out.items += x.items;
+    (x.ext ?? []).forEach((values, j) => { (out.ext[j] ??= []).push(...values); });
     for (let i = 0; i < nStats; i++) {
       out.obs[i] += x.obs[i];
       out.exp[i] += x.exp[i];
@@ -91,6 +93,10 @@ export function scoreRange(agg, pool, ctx) {
     belowOdds: belowOdds.map((s) => s.type),
     awakening: awakeningOf(agg.awk),
     typical: priority.slice(0, 6).map((s) => s.type),
+    // totals gear never rolls (Necromancer's Dominion): shown beside the typical totals, never ranked
+    extras: (ctx.extras ?? []).map((e, j) => ({
+      ...e, median: roundTotal(quantile(agg.ext?.[j] ?? [], 0.5)), p75: roundTotal(quantile(agg.ext?.[j] ?? [], 0.75)),
+    })).filter((e) => e.median != null),
     signal: +signal.toFixed(3),
     stats,
   };
@@ -125,6 +131,7 @@ const ctxFor = (data, cls) => ({
   shrink: data.method.SHRINK,
   nearTie: data.method.NEAR_TIE,
   banSlots: data.method.BAN_SLOTS[cls],
+  extras: data.extras?.[cls] ?? [],
 });
 
 /** A spec's levels lo..hi scored, or { players: 0 } when nobody is there. */
@@ -172,5 +179,6 @@ export function blockText(labels, b) {
   const byType = Object.fromEntries(b.stats.map((s) => [s.type, s]));
   const typ = b.typical.filter((t) => byType[t].median != null);
   if (typ.length) lines.push(`Typical: ${typ.map((t) => `${L(t).replace(/ %$/, '')} ${byType[t].median}%`).join(', ')}`);
+  for (const e of b.extras ?? []) lines.push(`${e.label}: ${e.median} (top 25%: ${e.p75}; not from gear)`);
   return lines.join('\n');
 }

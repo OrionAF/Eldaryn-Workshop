@@ -45,29 +45,26 @@ const VARIANTS = [
   { key: 'MYSTIC_DRUID_WOLF', spec: 'MYSTIC_DRUID', name: 'Druid · Wolf', match: (p) => /LUPINE/.test(p.utilitySigil?.species ?? '') },
 ];
 
-// label, computedStats key, display scale, soft cap (docs/Reference/Game/stats.md §4.2; Spell
-// Resist per updates-2.8.2.md §3)
-const STATS = {
-  ATTACK_SPEED: ['Attack Speed', 'totalAttackSpeed', 100, 200],
-  ATTACK_PERCENT: ['Attack %', 'totalAttackPercent', 1, null],
-  HEALTH_PERCENT: ['Health %', 'totalHealthPercent', 1, null],
-  CRIT_CHANCE: ['Crit Chance', 'totalCritChance', 1, 50],
-  CRIT_DAMAGE: ['Crit Damage', 'totalCritDamage', 100, 300],
-  DOUBLE_HIT: ['Double Hit', 'totalDoubleHit', 1, 60],
-  LIFESTEAL: ['Lifesteal', 'totalLifesteal', 1, 40],
-  HP_REGEN: ['HP Regen', 'totalHpRegen', 1, 40],
-  DAMAGE_REDUCTION: ['Damage Reduction', 'totalDamageReduction', 1, 30],
-  BLOCK_CHANCE: ['Block', 'totalBlockChance', 1, 40],
-  MISS_CHANCE: ['Evasion', 'totalMissChance', 1, 50],
-  BLIND_CHANCE: ['Blind', 'totalBlindChance', 1, 30],
-  PARALYZE_CHANCE: ['Paralyze', 'totalParalyzeChance', 1, 8],
-  PENETRATION: ['Penetration', 'totalPenetration', 1, 30],
-  SPELL_DAMAGE: ['Spell Damage', 'totalSpellDamage', 1, null],
-  SPELL_RESIST: ['Spell Resist', 'totalSpellResist', 1, 25],
-  SPELL_CRIT_CHANCE: ['Crit Spell %', 'totalSpellCritChance', 1, 50],
-  SPELL_VAMP: ['Spell Vamp', 'totalSpellVamp', 1, 40],
-  DISRUPTION_CHANCE: ['Disruption', 'totalDisruptionChance', 1, 10],
+// Every stat comes from the game's stat catalogue (src/data/game/stats.json, from
+// docs/Reference/Game/stats.md §4.2), so a stat the game adds is scored without touching this file.
+// A hand-typed list here once left out Necromancer's six minion stats and Fear.
+// The page's shorter names, where the stat sheet's wording is longer or less familiar.
+const LABELS = {
+  ATTACK_PERCENT: 'Attack %', HEALTH_PERCENT: 'Health %', DAMAGE_REDUCTION: 'Damage Reduction', BLOCK_CHANCE: 'Block',
+  MISS_CHANCE: 'Evasion', BLIND_CHANCE: 'Blind', PARALYZE_CHANCE: 'Paralyze',
 };
+// Sheet totals gear never rolls, shown beside the typical totals. Dominion: talents and
+// Transcendence plus a base of 1 (stats.md §3.5; the game's own text says it never comes from gear).
+const EXTRAS = { NECROMANCER: [{ key: 'totalDominion', label: 'Dominion', note: 'From talents and Transcendence, never from gear.' }] };
+// Fear has no sheet total of its own: it is folded into the Disruption total and shares its cap.
+const TOTAL_KEY = { FEAR_CHANCE: 'totalDisruptionChance' };
+const CATALOGUE = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/game/stats.json'), 'utf8')).stats;
+// label, computedStats key, display scale, soft cap in display units
+const STATS = Object.fromEntries(CATALOGUE.map((s) => {
+  const scale = s.displayMult ?? 1;
+  return [s.enumName, [LABELS[s.enumName] ?? s.sheetLabel, s.computedKey ?? TOTAL_KEY[s.enumName], scale,
+    s.softCap == null ? null : s.softCap * scale]];
+}).filter(([, [, key]]) => key));
 
 function loadPlayers() {
   const byId = new Map();
@@ -178,11 +175,16 @@ function inclusion(weights, k) {
 
 // One spec's per-level aggregates (shape in statPriority.js). Sheet totals are all sources after
 // soft caps, in display units.
-function levelsOf(players, pool, odds) {
+function levelsOf(players, pool, odds, extras = []) {
   const byLevel = {};
   for (const p of players) {
-    const x = (byLevel[p.level] ??= { n: 0, items: 0, obs: pool.map(() => 0), exp: pool.map(() => 0), awk: {}, tot: pool.map(() => []) });
+    const x = (byLevel[p.level] ??= { n: 0, items: 0, obs: pool.map(() => 0), exp: pool.map(() => 0), awk: {}, tot: pool.map(() => []),
+      ...(extras.length ? { ext: extras.map(() => []) } : {}) });
     x.n += 1;
+    extras.forEach(({ key }, i) => {
+      const v = p.computedStats?.[key];
+      if (typeof v === 'number') x.ext[i].push(+v.toFixed(1));
+    });
     for (const { rarity, types } of gearOf(p)) {
       x.items += 1;
       const pk = odds(rarity, types.length);
@@ -215,6 +217,7 @@ function build() {
   };
 
   const pools = Object.fromEntries(Object.keys(CLASSES).map((cls) => [cls, Object.keys(weights[cls])]));
+  const onGear = Object.keys(STATS).filter((t) => Object.values(pools).some((pool) => pool.includes(t)));
   const entries = Object.entries(CLASSES).flatMap(([cls, { name, specs }]) => [
     ...Object.entries(specs).map(([spec, specName]) => ({ class: cls, className: name, spec, specName, match: (p) => p.activeSpec === spec })),
     ...VARIANTS.filter((v) => v.spec in specs).map((v) => ({
@@ -225,7 +228,7 @@ function build() {
   const levels = {};
   for (const { match, ...entry } of entries) {
     specs.push(entry);
-    levels[entry.spec] = levelsOf(players.filter(match), pools[entry.class], oddsFor(entry.class));
+    levels[entry.spec] = levelsOf(players.filter(match), pools[entry.class], oddsFor(entry.class), EXTRAS[entry.class]);
   }
 
   const data = {
@@ -234,8 +237,10 @@ function build() {
     playerCount: players.length,
     method: { STRONG_MIN, AVOID_MAX, NEAR_TIE, SHRINK, MIN_PLAYERS, ATTUNEMENT_LEVEL, BAN_SLOTS },
     gammas: Object.fromEntries(Object.entries(gammas).map(([r, x]) => [r, x.gamma])),
-    labels: Object.fromEntries(Object.entries(STATS).map(([t, [l]]) => [t, l])),
-    softCaps: Object.fromEntries(Object.entries(STATS).map(([t, s]) => [t, s[3]])),
+    // only stats some class's gear carries; the catalogue also lists stats gear never rolls
+    labels: Object.fromEntries(onGear.map((t) => [t, STATS[t][0]])),
+    softCaps: Object.fromEntries(onGear.map((t) => [t, STATS[t][3]])),
+    extras: Object.fromEntries(Object.entries(EXTRAS).map(([cls, list]) => [cls, list.map(({ label, note }) => ({ label, note }))])),
     brackets: BRACKETS,
     pools,
     specs,

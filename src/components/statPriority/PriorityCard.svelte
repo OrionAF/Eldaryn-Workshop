@@ -20,6 +20,8 @@
   const tiny = $derived(b.players < m.MIN_PLAYERS);
   const variants = $derived(data.specs.filter((s) => s.variantOf === spec.spec));
   const typical = $derived(b.typical.map((t) => byType[t]).filter((s) => s.median != null));
+  // totals gear never rolls, such as Necromancer's Dominion (plain numbers, not percentages)
+  const extras = $derived(b.extras ?? []);
   const text = $derived(blockText(data.labels, b));
   const fmt = (v) => (v == null ? '–' : formatNumber(v));
 </script>
@@ -139,7 +141,7 @@
     <div class="row">
       <div class="row-label micro-label">Typical</div>
       <div>
-        {#if typical.length}
+        {#if typical.length || extras.length}
           <div class="tiles">
             {#each typical as s (s.type)}
               <div class="tile">
@@ -149,8 +151,17 @@
                 {#if s.softCap != null && s.median > s.softCap}<div class="cap">past soft cap {s.softCap}%</div>{/if}
               </div>
             {/each}
+            {#each extras as e (e.label)}
+              <div class="tile" data-testid="extra-total">
+                <div class="t">{e.label}</div>
+                <div class="v num">{fmt(e.median)}</div>
+                <div class="p">top 25%: <span class="num">{fmt(e.p75)}</span></div>
+              </div>
+            {/each}
           </div>
-          <p class="hint">Median sheet totals from every source, not targets.</p>
+          <p class="hint">
+            Median sheet totals from every source, not targets.{#each extras as e (e.label)}{' '}{e.label}: {e.note}{/each}
+          </p>
         {:else}
           <span class="none">–</span>
         {/if}

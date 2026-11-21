@@ -53,6 +53,45 @@ describe('scoreRange', () => {
   });
 });
 
+describe('extras: sheet totals gear never rolls', () => {
+  const extra = { label: 'Dominion', note: 'From talents and Transcendence, never from gear.' };
+  const withExtras = {
+    ...DATA,
+    extras: { WARRIOR: [extra] },
+    levels: { WARRIOR_DPS: { 64: { ...DATA.levels.WARRIOR_DPS[64], ext: [[1, 2]] }, 74: { ...DATA.levels.WARRIOR_DPS[74], ext: [[3, 3, 5]] } } },
+  };
+
+  it('are summed over the range and reported beside the typical totals, never ranked', () => {
+    expect(aggregate(withExtras.levels.WARRIOR_DPS, 60, 79, 4).ext).toEqual([[1, 2, 3, 3, 5]]);
+    const b = scoreSpecRange(withExtras, 'WARRIOR_DPS', 60, 79);
+    expect(b.extras).toEqual([{ ...extra, median: 3, p75: 3 }]);
+    expect(b.stats.map((s) => s.type).sort()).toEqual(['A', 'B', 'C', 'D']);
+    expect(blockText(withExtras.labels, b).split('\n').at(-1)).toBe('Dominion: 3 (top 25%: 3; not from gear)');
+  });
+
+  it('are absent for a class without them and for data written before they existed', () => {
+    expect(scoreSpecRange(DATA, 'WARRIOR_DPS', 60, 79).extras).toEqual([]);
+    expect(scoreSpecRange({ ...withExtras, levels: DATA.levels }, 'WARRIOR_DPS', 60, 79).extras).toEqual([]);
+    expect(blockText(DATA.labels, scoreSpecRange(DATA, 'WARRIOR_DPS', 60, 79))).not.toContain('not from gear');
+  });
+
+  it('the real data scores every Necromancer gear stat and shows Dominion', async () => {
+    const data = (await import('../../data/statPriority.json')).default;
+    const labels = data.pools.NECROMANCER.map((t) => data.labels[t]);
+    for (const label of ['Minion Attack', 'Minion Health', 'Minion Atk Speed', 'Minion Crit', 'Minion Lifesteal', 'Soul Link', 'Fear Chance']) {
+      expect(labels).toContain(label);
+    }
+    expect(presetBrackets(data, 'NECROMANCER_DEATHLORD')[0].extras[0].label).toBe('Dominion');
+    // every stat of every pool has a label and a soft-cap entry: the generator and the catalogue agree
+    for (const pool of Object.values(data.pools)) {
+      for (const t of pool) {
+        expect(data.labels[t], t).toBeTruthy();
+        expect(t in data.softCaps, t).toBe(true);
+      }
+    }
+  });
+});
+
 describe('priorityTies', () => {
   it('ties against the first stat of the group, so ties cannot chain past 10%', () => {
     const kr = [2, 1.9, 1.85, 1.75].map((keepRate) => ({ keepRate }));
