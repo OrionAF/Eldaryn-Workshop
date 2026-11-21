@@ -65,7 +65,7 @@ describe('resolveTarget', () => {
     expect(resolveTarget({ kind: 'oblivion', floor: 5 }).realm).toBe('oblivion');
     expect(resolveTarget({ kind: 'dummy' }).realm).toBeNull();
     const w = resolveTarget({ kind: 'worldBoss', affinity: 'ENRAGED' });
-    expect([w.maxMs, w.seconds]).toEqual([300000, 300]);
+    expect([w.maxMs, w.seconds]).toEqual([360000, 360]);
     expect(resolveTarget({ kind: 'worldBoss' }).spec.affinity).toBe('NONE');
   });
 

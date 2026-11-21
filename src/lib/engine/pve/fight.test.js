@@ -752,7 +752,7 @@ describe('World Boss through simulatePve', () => {
     expect(pen50 / n / 60).toBeLessThan(610);
   });
 
-  it('Enraged: the 5 minute window, hit-back for 18 % of max HP, the player dies', () => {
+  it('Enraged: the 6 minute window (2.9.8), hit-back for 18 % of max HP, the player dies', () => {
     const r = simulatePve({ fighter: f({ totalHp: 10000 }), enemy: worldBossMob('ENRAGED'), rng: rng(), log: true });
     expect(r.won).toBe(false);
     expect(r.hpLeft).toBe(0);
