@@ -110,7 +110,9 @@ describe('defaultsForCharacter', () => {
 
   it('returns null for a class the data lacks or no class', async () => {
     const data = await real();
-    expect(defaultsForCharacter(data, 'NECROMANCER', 50)).toBeNull();
+    // Drop one class from a copy: the real data gained Necromancer once server 12 was collected.
+    const without = { ...data, specs: data.specs.filter((s) => s.class !== 'NECROMANCER') };
+    expect(defaultsForCharacter(without, 'NECROMANCER', 50)).toBeNull();
     expect(defaultsForCharacter(data, null, 50)).toBeNull();
   });
 });

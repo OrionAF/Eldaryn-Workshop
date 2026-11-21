@@ -25,8 +25,9 @@ const OUT = path.join(ROOT, 'src/data/statPriority.json');
 // how strong a keep rate reads on the page.
 const STRONG_MIN = 1.15; // at or above: a clear pick
 const AVOID_MAX = 0.75; // at or below: clearly dropped
-// Attunement ban slots at max skill level (skills.md §5): 3, plus 1 for Mystic
-const BAN_SLOTS = { WARRIOR: 3, SENTINEL: 3, MYSTIC: 4 };
+// Attunement ban slots at max skill level (skills.md §5): 3, plus 1 for Mystic and Necromancer
+// (classes.js CLASS_ATTUNEMENT_BONUS)
+const BAN_SLOTS = { WARRIOR: 3, SENTINEL: 3, MYSTIC: 4, NECROMANCER: 4 };
 const NEAR_TIE = 1.1; // within this of its group's first stat, a stat reads "≈"
 const SHRINK = 4; // pseudo-items pulling thin samples toward 1
 const MIN_PLAYERS = 20;
@@ -36,6 +37,7 @@ const CLASSES = {
   WARRIOR: { name: 'Warrior', specs: { WARRIOR_DPS: 'Arms', WARRIOR_TANK: 'Protection' } },
   SENTINEL: { name: 'Sentinel', specs: { SENTINEL_MARKSMANSHIP: 'Marksmanship', SENTINEL_DISRUPTION: 'Disruption' } },
   MYSTIC: { name: 'Mystic', specs: { MYSTIC_MAGE: 'Mage', MYSTIC_DRUID: 'Druid · All forms' } },
+  NECROMANCER: { name: 'Necromancer', specs: { NECROMANCER_DEATHLORD: 'Deathlord', NECROMANCER_DOOMWEAVER: 'Doomweaver' } },
 };
 // Druid plays as Bear or Wolf, picked by the utility sigil (sigils.md); shown beside the whole spec.
 const VARIANTS = [
