@@ -17,6 +17,7 @@ import { applyDamageReduction } from '../core/rolls.js';
 import { absorbWithShield, shieldRefillAmount, regenShieldRefillAmount } from '../core/shield.js';
 import { applyCombatCeiling, ceilingFor, capConfig } from '../core/caps.js';
 import { initSpellRuntimes } from '../core/spells.js';
+import { openingSwingTimerStart } from '../core/minions.js';
 import { PVE_MODES, preparePveFighter, mobEntityOf } from './fight.js';
 
 export const MAX_PER_RULE = 5;
@@ -67,7 +68,9 @@ export function mapFightTicks(ticks, mobIndex) {
 /**
  * A simulatePve dungeon run (with `log: true`) in the shape of the server's dungeon result
  * (simulateDungeonStep L1671071-1671135): rows per mob through mapFightTicks, `playerShieldMax` when the
- * player has a shield. The run's log is one array; a mob's rows end at its `defender_dead`.
+ * player has a shield. The run's log is one array; a mob's rows end at its `defender_dead`, or after the
+ * minion rows finishMinionTick adds at the end of that tick (the server log keeps them on the dead mob's
+ * index: the 2026-11-21 Necromancer log, row 40).
  * @param {Object} sim  simulatePve result
  * @param {{shieldMax?: number}} [o]
  */
@@ -78,6 +81,8 @@ export function dungeonResponseOf(sim, { shieldMax = 0 } = {}) {
   const log = sim.log ?? [];
   for (let i = 0; i < log.length; i++) {
     if (log[i].type !== 'defender_dead') continue;
+    const ts = log[i].timestamp;
+    while (i + 1 < log.length && log[i + 1].timestamp === ts && MINION_TRAILER.has(log[i + 1].type)) i++;
     rows.push(...mapFightTicks(log.slice(from, i + 1), mob));
     mob += 1;
     from = i + 1;
@@ -92,10 +97,14 @@ export function dungeonResponseOf(sim, { shieldMax = 0 } = {}) {
 }
 
 const PLAYER_SWING = new Set(['player_attack', 'player_crit', 'mob_block']);
-const MOB_SWING = new Set(['mob_attack', 'player_block', 'player_miss', 'player_death', 'mob_blind', 'mob_paralyze', 'mob_fear']);
+// a mob's swing at a living minion lands on the minion (`minion_damaged`, fight.js)
+const MOB_SWING = new Set(['mob_attack', 'player_block', 'player_miss', 'player_death', 'mob_blind', 'mob_paralyze', 'mob_fear', 'minion_damaged']);
 const MOB_HIT = new Set(['mob_attack', 'player_block', 'player_miss', 'player_death']);
-// rows outside the spell pass that take their damage off the mob
-const MOB_DAMAGE = new Set([...PLAYER_SWING, 'spell_debuff_tick', 'thorns_reflect']);
+// rows outside the spell pass that take their damage off the mob (the minion's swings too)
+const MOB_DAMAGE = new Set([...PLAYER_SWING, 'spell_debuff_tick', 'thorns_reflect', 'minion_hit', 'minion_crit']);
+// what finishMinionTick (fight.js, L1087924-1088000) appends at the end of a tick, after a mob_death too:
+// the Soul Link heal and the minion's death
+const MINION_TRAILER = new Set(['minion_heal', 'minion_dead']);
 const SPELL_PASS = /^spell_(cast|damage|dot_tick|heal_tick|buff_start|end|debuff_applied|debuff_stack)$/;
 // control states the spell pass puts on the target; fight.js emits them ahead of the pass's spell rows
 // with the HP after the pass, as the raid log shows (mob_silenced before Null Pulse's cast)
@@ -108,11 +117,12 @@ const sameList = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]
 const firstDiff = (a, b) => { const i = a.findIndex((v, k) => v !== b[k]); return i < 0 ? Math.min(a.length, b.length) : i; };
 const near = (a, b) => typeof a === 'number' && typeof b === 'number' && Math.abs(a - b) < 1e-6;
 
-/** Swing times of a clock with a constant interval: one timer step per tick from `start` to `end`. */
-function modelSwingTimes(interval, start, end, dt) {
+/** Swing times of a clock with a constant interval: one timer step per tick from `start` to `end`, the
+ * timer starting at `timer0`. */
+function modelSwingTimes(interval, start, end, dt, timer0 = 0) {
   const out = [];
   if (!(interval > 0) || !Number.isFinite(interval)) return out;
-  let timer = 0;
+  let timer = timer0;
   for (let t = start + dt; t <= end; t += dt) {
     timer += dt;
     if (timer >= interval) { timer -= interval; out.push(t); }
@@ -341,22 +351,34 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
       s.last = i;
       segOf[i] = s;
     }
+    // the fight's mob_death: its last row, or the last before the minion rows of the same tick
+    for (const s of segs) {
+      let d = s.last;
+      while (d > s.first && MINION_TRAILER.has(rows[d].type) && rows[d].timestamp === rows[s.last].timestamp) d--;
+      s.deathIdx = rows[d].type === 'mob_death' ? d : -1;
+    }
   }
   let base = 0;
   segs.forEach((s, k) => {
     s.start = k === 0 ? gap : segs[k - 1].end + gap;
     s.end = rows[s.last].timestamp;
-    s.died = raid ? s.deathIdx >= 0 : rows[s.last].type === 'mob_death';
-    s.base = base; // fight-clock time at the segment's start
+    s.died = s.deathIdx >= 0;
+    // the opening summon (fight.js, L1087780-1087856): a minion summoned on the fight's start, before its
+    // first tick; the fight's clocks (ticks, swings, spells, regen) start when the summon window ends, at
+    // the row's `summonReadyMs`. Read from the log, so no rule needs the sheet for it.
+    const e0 = rows[s.first];
+    s.opening = !raid && e0.type === 'minion_summoned' && e0.timestamp === s.start ? s.first : -1;
+    s.clock = s.opening >= 0 && Number.isFinite(e0.summonReadyMs) && e0.summonReadyMs >= s.start ? e0.summonReadyMs : s.start;
+    s.base = base; // fight-clock time at the segment's clock start
     // raid: the segment also holds the gap before its fight, in which the mobs and the regen pulse run on
     // (§21.1); `from` is the wall-clock time the segment's rows come after
     s.from = raid && k > 0 ? segs[k - 1].end : s.start;
     s.t = []; // the target's own rows (a dungeon fight's are all of them)
     for (let i = s.first; i <= s.last; i++) if (rows[i].mobIndex === s.mob) s.t.push(i);
-    base += s.end - s.start;
+    base += s.end - s.clock;
   });
   const fcEnd = base;
-  const segAtFc = (fc) => segs.find((s) => fc > s.base && fc <= s.base + (s.end - s.start));
+  const segAtFc = (fc) => segs.find((s) => fc > s.base && fc <= s.base + (s.end - s.clock));
   // the length of the spell pass at the head of one tick's rows: spell rows, with the control rows the
   // pass emits ahead of them (only when a spell row follows)
   const passLen = (list) => {
@@ -385,17 +407,18 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
       if (timer >= REGEN_PULSE_MS) { timer -= REGEN_PULSE_MS; raidPulses.add(t); }
     }
   }
-  const isPulse = (t, s) => (raid ? raidPulses.has(t) : t > s.start && (t - s.start) % REGEN_PULSE_MS === 0);
+  const isPulse = (t, s) => (raid ? raidPulses.has(t) : t > s.clock && (t - s.clock) % REGEN_PULSE_MS === 0);
   const pulseNote = raid ? 'regen pulse off the 100 ms clock that runs from the first fight' : 'regen pulse off the 100 ms grid of its fight';
 
   // ---- tick-grid: every row on the mode's tick, counted from its fight's start ----
   // raid: from the first fight's start, since the mobs swing through the gaps (§21.1)
   run('tick-grid', (c) => {
     for (const s of segs) {
-      const o = raid ? segs[0].start : s.start;
+      const o = raid ? segs[0].start : s.clock;
       for (let i = s.first; i <= s.last; i++) {
         const t = rows[i].timestamp;
-        if (t > o && (t - o) % dt === 0) c.ok();
+        if (i === s.opening) c.ok(); // on the fight's start, before its first tick
+        else if (t > o && (t - o) % dt === 0) c.ok();
         else c.bad(`row off the ${dt} ms tick grid of its fight (start ${s.start})`, { index: i, timestamp: t });
       }
     }
@@ -421,7 +444,7 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
     }
     const hpLeft = Number.isFinite(res.playerHpRemaining) ? [res.playerHpRemaining] : [];
     if (success) {
-      if (last.type === 'mob_death') c.ok(); else c.bad('a win does not end on mob_death', { actual: last.type });
+      if (segs.at(-1)?.died) c.ok(); else c.bad('a win does not end on mob_death', { actual: last.type });
       if (hpLeft.length) {
         if (res.playerHpRemaining === last.playerHpAfter) c.ok(); else c.bad('playerHpRemaining is not the last HP', { expected: last.playerHpAfter, actual: res.playerHpRemaining });
       }
@@ -472,7 +495,7 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
   run('transitions', (c) => {
     segs.forEach((s, k) => {
       const nxt = segs[k + 1];
-      const deathRow = raid ? s.deathIdx : s.last;
+      const deathRow = s.deathIdx;
       if (nxt) {
         if (s.died) c.ok(); else c.bad(`mob ${s.mob + 1}'s rows end without mob_death`, { index: s.last, actual: rows[s.last].type });
         if (deathRow >= 0 && rows[deathRow].mobHpAfter === 0) c.ok(); else c.bad('mob_death with HP left', { index: deathRow, actual: rows[deathRow]?.mobHpAfter });
@@ -484,29 +507,38 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
           if (GAP_TYPES.has(rows[i].type)) c.ok();
           else c.bad(`${rows[i].type} in the ${gap} ms before mob ${s.mob + 1}'s fight`, { index: i, expected: `> ${s.start}`, actual: rows[i].timestamp });
         }
+      } else if (s.opening >= 0) {
+        // the opening summon sits on the start; the fight's own rows wait for the summon window
+        const nx = s.first < s.last ? rows[s.first + 1] : null;
+        if (!nx || nx.timestamp > s.clock) c.ok();
+        else c.bad(`mob ${s.mob + 1}: a row inside the opening summon window (ready at ${s.clock})`, { index: s.first + 1, expected: `> ${s.clock}`, actual: nx.timestamp });
       } else if (rows[s.first].timestamp > s.start) c.ok();
       else c.bad(`mob ${s.mob + 1}'s first row is not after its start (${k ? 'death + ' : ''}${gap} ms)`, { index: s.first, expected: `> ${s.start}`, actual: rows[s.first].timestamp });
       for (let i = s.first; i < s.last; i++) {
         const e = rows[i];
         if (e.type === 'player_death') c.bad('rows follow a death in the same fight', { index: i + 1 });
         else if (e.type === 'mob_death') {
-          // raid: after a swing kill the mobs behind the target still swing in that tick (fight.js)
-          const after = rows.slice(i + 1, s.last + 1);
-          if (!raid || after.some((r) => r.timestamp !== e.timestamp || r.mobIndex === s.mob)) c.bad('rows follow a death in the same fight', { index: i + 1 });
+          // the minion's end-of-tick rows (Soul Link heal, its death) follow the death in its tick; raid:
+          // after a swing kill the mobs behind the target still swing in that tick (fight.js)
+          const after = rows.slice(i + 1, s.last + 1).filter((r) => !(r.timestamp === e.timestamp && MINION_TRAILER.has(r.type)));
+          if (!after.length) c.ok();
+          else if (!raid || after.some((r) => r.timestamp !== e.timestamp || r.mobIndex === s.mob)) c.bad('rows follow a death in the same fight', { index: i + 1 });
           else c.ok();
         }
       }
     });
   });
 
-  // ---- player-swings: round(1000 / attackSpeed) ms from each fight's start, remainder carried (§4) ----
+  // a fight's swing timers start at 0; after an opening summon each is capped at its interval less 400 ms
+  // (openingSwingTimerStart L1094757-1094789), which only matters for an interval under 400 ms
+  const openingTimer = (interval, s) => (s.opening >= 0 ? openingSwingTimerStart(interval, s.clock - s.start, 0) : 0);
+  // ---- player-swings: round(1000 / attackSpeed) ms from each fight's clock, remainder carried (§4) ----
   run('player-swings', (c) => {
     if (!P) return c.skip(needSheet);
-    if (M.summon) return c.skip('a summon opening shifts the swing clock');
     if (M.stacks || buffs(M.spells, ['ATTACK_SPEED'])) return c.skip('an attack-speed buff or Elusive changes the swing clock');
     const interval = Math.round(1000 / P.attackSpeed);
     for (const s of segs) {
-      let want = modelSwingTimes(interval, s.start, s.end, dt);
+      let want = modelSwingTimes(interval, s.clock, s.end, dt, openingTimer(interval, s));
       if (spellKill(s)) want = want.filter((t) => t !== s.end);
       // raid: the player swings at the target only (§21.1)
       const got = [...new Set(s.t.map((i) => rows[i]).filter((e) => PLAYER_SWING.has(e.type)).map((e) => e.timestamp))];
@@ -522,14 +554,13 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
     if (!M.mobs) return c.skip(needMobs);
     if (raid) return raidMobSwings(c);
     if (rows.some((e) => /^spell_debuff/.test(e.type))) return c.skip('a debuff on the mob may slow its swing clock');
-    if (M.summon) return c.skip('a summon opening shifts the swing clock');
     const notes = [];
     for (const s of segs) {
       const mob = M.mobs[s.mob];
       if (!mob) continue;
       const interval = Math.round(1000 / mob.attackSpeed);
       notes.push(interval);
-      let want = modelSwingTimes(interval, s.start, s.end, dt);
+      let want = modelSwingTimes(interval, s.clock, s.end, dt, openingTimer(interval, s));
       if (s.died && !thornsKill(s)) want = want.filter((t) => t !== s.end);
       const got = [...new Set(rows.slice(s.first, s.last + 1).filter((e) => MOB_SWING.has(e.type)).map((e) => e.timestamp))];
       if (sameList(got, want)) { for (let i = 0; i < got.length; i++) c.ok(); continue; }
@@ -599,7 +630,7 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
     if (damageConfigs.length < configs.length) c.note('only the DAMAGE spells\' schedule is compared');
     const want = damageSpellSchedule(damageConfigs, dt, fcEnd).map(([fc, type, sp]) => {
       const s = segAtFc(fc);
-      return `${s.start + fc - s.base} ${type} ${sp}`;
+      return `${s.clock + fc - s.base} ${type} ${sp}`;
     });
     const got = rows.filter((e) => SCHEDULE_TYPES.has(e.type) && species.has(e.spell?.species))
       .map((e) => `${e.timestamp} ${e.type} ${e.spell.species}`);
@@ -802,7 +833,7 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
       }
       const times = new Set(byTs.keys());
       if (raid) { for (const t of raidPulses) if (t > s.from && t <= s.end) times.add(t); } else {
-        for (let t = s.start + REGEN_PULSE_MS; t <= s.end; t += REGEN_PULSE_MS) times.add(t);
+        for (let t = s.clock + REGEN_PULSE_MS; t <= s.end; t += REGEN_PULSE_MS) times.add(t);
       }
       for (const t of [...times].sort((a, b) => a - b)) {
         const idx = byTs.get(t) ?? [];
