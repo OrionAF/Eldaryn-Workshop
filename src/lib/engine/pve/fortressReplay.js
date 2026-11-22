@@ -15,7 +15,7 @@ import { openingSummonWindowMs } from '../core/minions.js';
 import { fighterDuelArgs } from '../pvp/resolver.js';
 import { laneRng } from '../rng.js';
 import {
-  FORTRESS_FIGHT_RULES, fortressPlayerDuelArgs, fortressBossDuelArgs, simulateFortressBoss,
+  FORTRESS_FIGHT_RULES, fortressPlayerDuelArgs, fortressBossDuelArgs, simulateFortressBoss, bossSpellResistOf,
 } from './fortressBoss.js';
 
 const TICK = FORTRESS_CONSTANTS.bossTickIntervalMs;
@@ -173,9 +173,11 @@ export function fortressReplayCheck(response, { attacker = null, group = null, r
     if (response.bossMaxHp === boss.baseHp) c.ok(); else c.bad('bossMaxHp is not the table HP', { expected: boss.baseHp, actual: response.bossMaxHp });
     if (response.bossName == null) c.note('no bossName in the response');
     else if (response.bossName === boss.name) c.ok(); else c.bad('bossName is not the table name', { expected: boss.name, actual: response.bossName });
+    const resist = bossSpellResistOf(group, R);
     if (response.bossSpellResist == null) c.note('no bossSpellResist in the response');
-    else if (response.bossSpellResist === R.bossSpellResist) c.ok();
-    else c.bad('bossSpellResist differs from the model', { expected: R.bossSpellResist, actual: response.bossSpellResist });
+    else if (response.bossSpellResist === resist.value) c.ok();
+    else if (!resist.known) c.note(`${group}'s spell resist is not yet known (the model assumes ${resist.value}); this log says ${response.bossSpellResist}`);
+    else c.bad('bossSpellResist differs from the model', { expected: resist.value, actual: response.bossSpellResist });
     if (rows[0]?.defenderHpAfter <= boss.baseHp) c.ok(); else c.bad('boss HP starts above the table HP', { actual: rows[0]?.defenderHpAfter });
   });
 

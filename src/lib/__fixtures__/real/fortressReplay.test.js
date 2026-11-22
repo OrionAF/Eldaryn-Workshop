@@ -86,3 +86,23 @@ describe('real Fortress boss fight (TOP, Sentinel L85)', () => {
     expect(rule(check(early), 'spell-casts').status).toBe('fail');
   });
 });
+
+describe('real Fortress boss fight (CORE, Necromancer, 2026-11-22 live feed)', () => {
+  it('the CORE boss has spell resist 30, and the check holds the log to it', async () => {
+    const core = (await import('./fortress-boss-core-fight.json')).default;
+    expect(core.bossName).toBe('Core Overlord');
+    expect(core.bossSpellResist).toBe(30);
+    const report = fortressReplayCheck(core, { group: 'CORE' });
+    expect(rule(report, 'boss').failed).toBe(0);
+    expect(report.mismatches.filter((m) => m.rule === 'boss')).toEqual([]);
+    const wrong = fortressReplayCheck({ ...core, bossSpellResist: 20 }, { group: 'CORE' });
+    expect(wrong.mismatches.find((m) => m.rule === 'boss')).toMatchObject({ expected: 30, actual: 20 });
+  });
+
+  it('a group with no logged resist is a note, not a failure', () => {
+    const report = fortressReplayCheck({ ...clone(), bossName: 'x', bossSpellResist: 45 }, { group: 'BOTTOM' });
+    const boss = rule(report, 'boss');
+    expect(report.mismatches.filter((m) => m.rule === 'boss' && /SpellResist/.test(m.message))).toEqual([]);
+    expect(boss.note).toMatch(/BOTTOM's spell resist is not yet known \(the model assumes 20\); this log says 45/);
+  });
+});
