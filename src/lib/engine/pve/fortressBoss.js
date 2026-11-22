@@ -38,13 +38,21 @@ export const FORTRESS_FIGHT_RULES = Object.freeze({
   bossBlindable: false,
   /** each boss swing is its attack times a draw in [0.85, 1.15], rounded (uniform is assumed) */
   bossDamageVariance: 0.15,
-  /** the boss's spell resist (the log's `bossSpellResist`; TOP only, the other groups assumed the same) */
+  /** the boss's spell resist where no group value is known (the TOP log's `bossSpellResist`; assumed for BOTTOM) */
   bossSpellResist: 20,
+  /** spell resist per boss group, from each group's server log (`bossSpellResist`; clan-fortress.md §1.4) */
+  bossSpellResistByGroup: Object.freeze({ TOP: 20, CORE: 30 }),
   /** the log ends at `time_up` with no death row after it */
   timeUpDeadRow: false,
   /** a double hit's first row carries the boss HP after that strike, not after the whole swing */
   perStrikeBossHp: true,
 });
+
+/** The boss group's spell resist, and whether a server log showed it (false: the default is assumed). */
+export function bossSpellResistOf(group, rules = FORTRESS_FIGHT_RULES) {
+  const known = rules.bossSpellResistByGroup?.[group];
+  return known != null ? { value: known, known: true } : { value: rules.bossSpellResist, known: false };
+}
 
 /** The Fortress model's labelled assumption, shown with the target (objectives.js resolveTarget). */
 export const FORTRESS_ASSUMPTIONS = Object.freeze([
@@ -52,7 +60,8 @@ export const FORTRESS_ASSUMPTIONS = Object.freeze([
     key: 'fortress-boss-model',
     text: 'The Fortress boss fight is server-run. It is played as the arena duel (the player attacks, the boss defends) '
       + 'with the rules one server log shows: no x8 HP, no PVP Attack or Defense, no sigil stacks, the boss cannot be '
-      + `blinded, boss hits vary ±${FORTRESS_FIGHT_RULES.bossDamageVariance * 100}% and the boss has ${FORTRESS_FIGHT_RULES.bossSpellResist} spell resist.`,
+      + `blinded and boss hits vary ±${FORTRESS_FIGHT_RULES.bossDamageVariance * 100}%. Spell resist is TOP ${FORTRESS_FIGHT_RULES.bossSpellResistByGroup.TOP}, `
+      + `CORE ${FORTRESS_FIGHT_RULES.bossSpellResistByGroup.CORE} and BOTTOM assumed ${FORTRESS_FIGHT_RULES.bossSpellResist}.`,
   }),
 ]);
 
@@ -61,7 +70,7 @@ export function fortressBossDuelArgs(group, rules = FORTRESS_FIGHT_RULES) {
   const b = FORTRESS_BOSSES[group];
   if (!b) throw new Error(`unknown Fortress boss group '${group}'`);
   const { stats } = completeDuelStats({
-    totalHp: b.baseHp, totalAttack: b.attack, totalAttackSpeed: b.attackSpeed, totalSpellResist: rules.bossSpellResist,
+    totalHp: b.baseHp, totalAttack: b.attack, totalAttackSpeed: b.attackSpeed, totalSpellResist: bossSpellResistOf(group, rules).value,
   });
   return { stats, spells: null, equipped: [], glyphCombat: null, shield: null, stackCtx: {}, summon: null };
 }
