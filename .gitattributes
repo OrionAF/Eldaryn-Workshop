@@ -1,0 +1,3 @@
+# Vitest writes snapshots with LF and rewrites any file that differs byte for byte,
+# so a CRLF checkout (core.autocrlf=true) shows as modified after every test run.
+*.snap text eol=lf
