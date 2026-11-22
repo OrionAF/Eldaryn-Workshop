@@ -26,6 +26,7 @@
   import StoneGrid from '../gear/StoneGrid.svelte';
   import StoneForm from '../gear/StoneForm.svelte';
   import { STONE_COLOR, slotLabel, statLabel, formatStatValue } from '../gear/gearFormat.js';
+  import { stoneStatValue } from '../../lib/engine/sources/stones.js';
   import { coreScoreBasis } from '../../lib/features/coreScore.js';
   import { gearScore } from '../../lib/features/gearScore.js';
   import { loadUi, saveUi } from '../../lib/uiState.js';
@@ -223,7 +224,7 @@
                 {slotLabel(character.class, slot)} socket: <strong>{typeName(equippedStone.type)}</strong>
                 {#if !equippedStone.activated}<em>(inactive)</em>{/if}
                 {#each equippedStone.stats as st (st.type)}
-                  <span class="mono stat">{statLabel(st.type)} {formatStatValue(st.type, st.value)}</span>
+                  <span class="mono stat">{statLabel(st.type)} {formatStatValue(st.type, stoneStatValue(equippedStone, st))}</span>
                 {/each}
               </span>
               <Button variant="ghost" size="small" onclick={() => rosterStore.unsocketStone(setKey, slot)}>Unsocket</Button>

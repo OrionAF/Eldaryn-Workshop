@@ -4,7 +4,8 @@
    * StoneGrid.svelte - one pool of enchant stones as a grid of tiles (adapted from the v1 grid).
    * Display order: socketed first, then rarest type first, then quality descending; the stored
    * array is never reordered. Each tile grades its roll (model/stones.js stoneRollGrade): a letter
-   * on the roll at Q100, the mean % of range now and at Q100, plus one bar per stat. Props:
+   * on the roll at Q100, the mean % of range now and at Q100, plus one bar per stat. Values show
+   * after Amplify (engine stoneStatValue); bars and grade read the stored roll. Props:
    *   stones          the pool (character.enchantStones or .oblivionEnchantStones)
    *   sets            the sets that draw from this pool: [{ key, label, enchantSlots }]
    *   selectedStoneId, onSelect(id | null), equippedStoneId (stone in the selected slot: gold ring)
@@ -13,6 +14,7 @@
   import { slotLabel, statLabel, formatStatValue, STONE_COLOR } from './gearFormat.js';
   import { BASE_SLOTS } from '../../lib/game/gear.js';
   import { statRollFraction, stoneRollGrade } from '../../lib/model/stones.js';
+  import { stoneStatValue } from '../../lib/engine/sources/stones.js';
 
   let { stones, sets, cls = null, selectedStoneId = null, onSelect, equippedStoneId = null, typeFilter = '', sortBy = 'default' } = $props();
 
@@ -92,7 +94,11 @@
           {@const f = statRollFraction(line.type, line.value)}
           <span class="stone-stat">
             <span class="stat-label">{statLabel(line.type)}</span>
-            <span class="stat-value">{formatStatValue(line.type, line.value)}</span>
+            <span
+              class="stat-value"
+              title={stone.amplifyLevel > 0 ? `${formatStatValue(line.type, line.value)} before Amplify +${stone.amplifyLevel}` : undefined}
+              >{formatStatValue(line.type, stoneStatValue(stone, line))}</span
+            >
             {#if f != null}
               <span class="stat-bar" title="{pct(f)} of range"><span class="stat-fill" style="width: {pct(f)}"></span></span>
             {/if}
