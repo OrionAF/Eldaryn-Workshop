@@ -439,7 +439,8 @@ export function gameProfileToCharacter(profile, { now = new Date().toISOString()
     level: player.level,
     equipment: {
       set1: mapEquip(profile.equipment, profile.enchantSlots, baseSlots),
-      set2: mapEquip(profile.equipment2, profile.enchantSlots2, baseSlots),
+      // baseSlotsForSet (2.9.8 L1211537): Set 2 sockets fall back to Set 1's while enchantSlots2 is null
+      set2: mapEquip(profile.equipment2, profile.enchantSlots2 ?? profile.enchantSlots, baseSlots),
       oblivion: mapEquip(hero?.equipment, hero?.enchantSlots, allSlots),
     },
     enchantStones: arr(profile.enchantStones).map(mapStone).filter(Boolean),
