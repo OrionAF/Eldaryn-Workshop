@@ -430,25 +430,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
   :root { --topbar-h: var(--topbar-h-phone); --sticky-top: var(--hit); }
 }
 
-/* Legacy button classes, kept until U2a ships .btn variants. .btn-gold is the
-   brass-outline secondary; the ember primary is .btn-primary (components.css). */
+/* Base for any bare <button>; the five variants live in ui/Button.svelte. */
 button { font-size: var(--fs-12); border-radius: var(--r-1); padding: 0.4rem 0.75rem; cursor: pointer; border: 1px solid transparent; background: none; }
 button:hover { border-color: var(--brass-400); }
 button:disabled { color: var(--text-disabled); cursor: not-allowed; }
-.btn-gold { background: none; border: 1px solid var(--brass-500); color: var(--brass-200); font-size: var(--fs-12); font-weight: var(--fw-bold); border-radius: var(--r-1); padding: 6px 14px; }
-.btn-gold:hover { background: var(--brass-tint); border-color: var(--brass-400); }
-.btn-ghost { background: none; border: 1px solid var(--line-control); color: var(--text-soft); font-size: var(--fs-12); border-radius: var(--r-1); padding: 5px 12px; }
-.btn-ghost:hover { border-color: var(--line-control-hover); color: var(--text-ink); background: var(--surface-3); }
-.btn-danger { background: none; font-size: var(--fs-12); padding: 5px 12px; border-radius: var(--r-1); border: 1px solid color-mix(in srgb, var(--verdict-down) 70%, transparent); color: var(--verdict-down); }
-.btn-danger:hover { background: var(--verdict-down-tint); }
-.btn-danger.is-confirming { background: var(--verdict-down); border-color: var(--verdict-down); color: var(--on-ember); }
-.btn-danger.is-expanding { transition: flex-grow 140ms var(--ease-out); }
-.btn-danger.is-expanding.is-confirming { flex: 1 1 100%; width: 100%; font-weight: var(--fw-bold); }
-.rank-controls button { width: 26px; padding: 2px 0; font-size: 13px; border-radius: var(--r-1); background: var(--surface-3); border: 1px solid var(--line-control); color: var(--text-ink); }
-.rank-controls button:hover { border-color: var(--brass-400); }
-/* Press: the control gives under the pointer and comes back on release (§2.13). */
-:is(.btn-gold, .btn-ghost, .btn-danger, .rank-controls button) { transition: transform var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
-:is(.btn-gold, .btn-ghost, .btn-danger, .rank-controls button):active:not(:disabled) { transform: scale(0.97); transition-duration: var(--dur-press); }
 /* Grade letters (format.js gradeLetter): the stone roll grade and the Pet Core score. */
 .roll-grade { font-weight: 700; font-size: var(--fs-12); }
 .grade-S { color: var(--brass-200); }
@@ -460,9 +445,6 @@ button:disabled { color: var(--text-disabled); cursor: not-allowed; }
    lift the others), and an unlabelled item in the row drops to the controls' line. */
 .field-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--sp-2) var(--sp-4); }
 .control-align { margin-top: calc(var(--field-label-h) + var(--field-gap)); }
-/* .subheading is the legacy name of the micro label. */
-.subheading { font-family: var(--font-ui); font-weight: var(--fw-bold); font-size: var(--fs-11); letter-spacing: var(--track-label); color: var(--text-soft); text-transform: uppercase; }
-
 /**
  * Rarity theming. A `.rarity-<tier>` class only *rebinds* four local custom
  * properties; it paints nothing itself. Any card/badge/label then styles
@@ -532,20 +514,11 @@ select {
 
 /* Mobile (same 700px contract as App.svelte/Sidebar.svelte): fields must be
    >=16px or iOS Safari zooms the whole page in on focus and never zooms back
-   out. Rank steppers get a real touch target instead of their compact
-   26x20px desktop size - they're the most-repeated tap in the app
-   (talents/relics/Awakening leveling). */
+   out. (Stepper's own touch target is in ui/Stepper.svelte.) */
 @media (max-width: 700px) {
   input,
   select,
   textarea {
-    font-size: 16px;
-  }
-
-  .rank-controls button {
-    width: 44px;
-    height: 44px;
-    padding: 0;
     font-size: 16px;
   }
 }

@@ -6,7 +6,9 @@
    * closes it and returns focus here.
    */
   import { onMount } from 'svelte';
-  import { jobsStore, restoreInterrupted } from '../../lib/jobs.svelte.js';
+  import { jobsStore, restoreInterrupted, setRestoredSignatureResolver } from '../../lib/jobs.svelte.js';
+  import { restoredJobSignature } from '../../lib/ui/jobSignatures.js';
+  import { rosterStore } from '../../lib/rosterStore.svelte.js';
   import { router } from '../../lib/router.svelte.js';
   import JobsTray from './JobsTray.svelte';
 
@@ -54,6 +56,10 @@
   }
 
   onMount(() => {
+    // a restored job's staleness is judged against the roster as it is now (null: its character is gone)
+    setRestoredSignatureResolver((job) =>
+      restoredJobSignature(job, (id) => rosterStore.roster.characters.find((c) => c.id === id) ?? null),
+    );
     void restoreInterrupted();
   });
 </script>

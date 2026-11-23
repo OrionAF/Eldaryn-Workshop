@@ -27,7 +27,7 @@ vi.mock('./tasks/index.js', () => ({
 
 const {
   startJob, cancelJob, finishJob, resumeJob, retryJob, dismissJob, clearFinished, isStale, jobsStore, jobSignature,
-  progressOf, openResult, setPersistCheckpoints, restoreInterrupted, __resetJobs, MAX_RUNNING,
+  progressOf, openResult, setPersistCheckpoints, restoreInterrupted, setRestoredSignatureResolver, __resetJobs, MAX_RUNNING,
 } = await import('./jobs.svelte.js');
 const { router, syncRouter } = await import('./router.svelte.js');
 const { notifications, resetNotifications } = await import('./notify.svelte.js');
@@ -197,5 +197,82 @@ describe('the started notice belongs to the job', () => {
     await settled(b, 'failed');
     expect(notifications.toasts).toHaveLength(0);
     resetNotifications();
+  });
+});
+
+describe('a Cancel that lands after the work is done (C6)', () => {
+  const manual = () => {
+    let resolve;
+    const promise = new Promise((r) => (resolve = r));
+    const cancel = vi.fn();
+    return { run: () => ({ promise, cancel }), resolve, cancel };
+  };
+
+  it('keeps the full result: finished, onFinish once, checkpoint cleared and removed', async () => {
+    const m = manual();
+    const removed = [];
+    const checkpointDb = { put: async () => {}, remove: async (id) => void removed.push(id), all: async () => [] };
+    __resetJobs({ run: m.run, checkpointDb, persist: true });
+    const onFinish = vi.fn();
+    const id = startJob({ tool: 'optimize', title: 't', request: { mode: 'optimize' }, onFinish });
+    job(id).checkpoint = { next: 3 };
+    cancelJob(id);
+    expect(m.cancel).toHaveBeenCalledOnce();
+    expect(jobsStore.running).toBe(0);
+    m.resolve({ done: true, acc: 5 }); // complete: no `aborted`
+    await settled(id, 'finished');
+    expect(job(id).result).toEqual({ done: true, acc: 5 });
+    expect(job(id).checkpoint).toBeNull();
+    expect(onFinish).toHaveBeenCalledOnce();
+    expect(removed).toContain(id);
+  });
+
+  it('still ends cancelled, with its checkpoint, when the task reports aborted', async () => {
+    const m = manual();
+    const rows = new Map();
+    const checkpointDb = { put: async (r) => void rows.set(r.id, r), remove: async () => {}, all: async () => [] };
+    __resetJobs({ run: m.run, checkpointDb, persist: true });
+    const onFinish = vi.fn();
+    const id = startJob({ tool: 'optimize', title: 't', request: { mode: 'optimize' }, onFinish });
+    job(id).checkpoint = { next: 3 };
+    cancelJob(id);
+    m.resolve({ aborted: true, acc: 1 });
+    await settled(id, 'cancelled');
+    expect(job(id).checkpoint).toEqual({ next: 3 });
+    expect(onFinish).not.toHaveBeenCalled();
+    expect(rows.has(id)).toBe(true);
+  });
+});
+
+describe('restored jobs are checked for staleness', () => {
+  const restore = async (record, resolver) => {
+    const rows = new Map([[record.id, record]]);
+    __resetJobs({ run: undefined, checkpointDb: { put: async () => {}, remove: async () => {}, all: async () => [...rows.values()] }, persist: true });
+    if (resolver) setRestoredSignatureResolver(resolver);
+    await restoreInterrupted();
+    return jobsStore.list[0];
+  };
+  const record = { id: 'job-9', tool: 'drop', title: 'Drop', request: { mode: 'optimize' }, signature: jobSignature({ characterKey: 'c1', inputs: 'a' }), checkpoint: { next: 1 }, at: 1 };
+
+  it('is not stale when nothing changed, stale when the inputs change or the character is gone', async () => {
+    let current = record.signature;
+    const j = await restore(record, () => current);
+    expect(isStale(j)).toBe(false);
+    current = jobSignature({ characterKey: 'c1', inputs: 'b' });
+    expect(isStale(j)).toBe(true);
+    current = null; // character or preset no longer exists
+    expect(isStale(j)).toBe(true);
+  });
+
+  it('hands the resolver the restored job, with its saved meta', async () => {
+    const seen = vi.fn(() => record.signature);
+    const j = await restore({ ...record, meta: { extra: 'k' } }, seen);
+    isStale(j);
+    expect(seen.mock.calls[0][0]).toMatchObject({ tool: 'drop', meta: { extra: 'k' }, signature: record.signature });
+  });
+
+  it('counts as current while no resolver is registered', async () => {
+    const j = await restore(record);
+    expect(isStale(j)).toBe(false);
   });
 });

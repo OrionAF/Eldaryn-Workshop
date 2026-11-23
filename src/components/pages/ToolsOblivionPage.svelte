@@ -104,6 +104,7 @@
       title: `Oblivion floors ${o.from}-${o.to}`,
       context: id,
       request: floorScanRequest(character, o),
+      meta: { opts: { ...o } },
       signature: jobSignature({ characterKey: id, inputs: floorScanInputs(character, o) }),
       currentSignature: () => jobSignature({ characterKey: id, inputs: floorScanInputs(rosterStore.current, opts) }),
       openRoute: 'tools/oblivion',
