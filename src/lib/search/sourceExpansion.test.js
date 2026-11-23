@@ -143,6 +143,23 @@ describe('board reallocation and Awakening search', () => {
     expect(idle(off)).toEqual([]);
     expect(runningBoardOf(c, off).allocatedNodeIds).not.toContain(sigilBySpecies('FLAMEBORN').transcendenceNode);
   });
+  it('dropping an equipped Ancient frees its node in the same change; canonicalise cannot put the node back', () => {
+    const raw = equipAncient(structuredClone(fixtureCharacter('WARRIOR')), 'FLAMEBORN');
+    raw.presets[1].ancientSigilSpecies = null;
+    const c = normaliseCharacter(raw);
+    const node = sigilBySpecies('FLAMEBORN').transcendenceNode;
+    const s = createBuildSpace(c, 'p1', { toggles: only('boardAllocation', 'ancient', 'sigils') });
+    expect(s.start.ancientSigilSpecies).toBe('FLAMEBORN');
+    const off = domain(s, 'ancient').find((x) => x.ancientSigilSpecies === null);
+    expect(runningBoardOf(c, off).allocatedNodeIds).not.toContain(node);
+    const { candidate } = canonicalise(s, s.start, off);
+    expect(candidate.ancientSigilSpecies).toBeNull();
+    expect(runningBoardOf(c, candidate).allocatedNodeIds).not.toContain(node);
+    // a node the saved board already leaves idle is not touched by unrelated moves
+    const idle = normaliseCharacter({ ...structuredClone(c), presets: c.presets.map((p) => ({ ...p, ancientSigilSpecies: null })) });
+    const t = createBuildSpace(idle, 'p1', { toggles: only('boardAllocation', 'sigils') });
+    for (const x of domain(t, 'sigils')) expect(x.boardAllocation ?? null).toBeNull();
+  });
   it('materialises only the chosen existing board and Awakening immutably, with shared-preset effects', () => {
     const c = fixture(), before = structuredClone(c), s = spaceOf(c, { boardIchorBudget: 10 });
     const X = { ...domain(s, 'boardAllocation')[0], awakening: { path: 'RADIANT', level: awakeningCap(c) } };
