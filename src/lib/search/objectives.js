@@ -26,7 +26,7 @@ import {
 } from '../engine/metrics.js';
 import { decide, quantileInterval, censoredQuantile, pairedQuantileDiff } from '../engine/stats/index.js';
 import { preparePveFighter, preparePveEnemy, simulatePve, trainingDummy, PVE_MODES } from '../engine/pve/fight.js';
-import { chapterMobs, dungeonMobs, raidMobs, oblivionFloorMob, worldBossMob } from '../engine/pve/enemies.js';
+import { chapterMobs, previousChapterLevel, dungeonMobs, raidMobs, oblivionFloorMob, worldBossMob } from '../engine/pve/enemies.js';
 import { raidById } from '../game/fortress.js';
 import { CLASSIC_DUNGEONS } from '../game/pveContent.js';
 import { WORLD_BOSS_AFFINITIES } from '../game/worldBoss.js';
@@ -138,6 +138,7 @@ export function resolveTarget(raw = { kind: 'dummy' }, { character, partner } = 
   if (!TARGET_KINDS.includes(kind)) throw new Error(`unknown target kind '${kind}'`);
   const t = { kind, spec: null, label: '', realm: null, enemy: null, maxMs: undefined, seconds: 0, opts: {} };
   let cut = false;
+  let leadIn = null;
   if (kind === 'dummy') {
     t.seconds = isNum(raw.seconds) && raw.seconds > 0 ? raw.seconds : 60;
     t.maxMs = t.seconds * 1000;
@@ -147,9 +148,13 @@ export function resolveTarget(raw = { kind: 'dummy' }, { character, partner } = 
   } else if (kind === 'chapter') {
     const mobs = posInt(raw.chapter) && posInt(raw.level) ? chapterMobs(raw.chapter, raw.level) : null;
     if (!mobs) throw new Error(`chapter ${raw.chapter} level ${raw.level} does not exist`);
-    t.spec = { kind, chapter: raw.chapter, level: raw.level };
+    // the bar carries from the level before unless asked for a retry (empty bar, sigils.md §9)
+    const empty = raw.flux === 'empty';
+    t.spec = { kind, chapter: raw.chapter, level: raw.level, ...(empty ? { flux: 'empty' } : {}) };
     t.enemy = mobs;
-    t.label = `${raw.chapter > 11 ? 'Hard chapter' : 'Chapter'} ${raw.chapter}, level ${raw.level}`;
+    t.label = `${raw.chapter > 11 ? 'Hard chapter' : 'Chapter'} ${raw.chapter}, level ${raw.level}${empty ? ', empty Chrono Flux' : ''}`;
+    const prev = empty ? null : previousChapterLevel(raw.chapter, raw.level);
+    if (prev) leadIn = chapterMobs(prev.chapter, prev.level);
   } else if (kind === 'dungeon') {
     const mobs = posInt(raw.step) && typeof raw.id === 'string' ? dungeonMobs(raw.id, raw.step) : null;
     if (!mobs) throw new Error(`dungeon '${raw.id}' step ${raw.step} does not exist`);
@@ -221,7 +226,7 @@ export function resolveTarget(raw = { kind: 'dummy' }, { character, partner } = 
     t.label = `Custom mob (${formatFlat(m.hp)} HP)`;
   }
   t.mode = kind === 'chapter' ? 'campaign' : kind;
-  t.opts = { mode: t.mode, ...(cut ? { applyOutputCut: true } : {}) };
+  t.opts = { mode: t.mode, ...(cut ? { applyOutputCut: true } : {}), ...(leadIn ? { leadIn } : {}) };
   t.assumptions = assumptionsOf(t.mode, { applyOutputCut: cut });
   t.fidelity = t.assumptions.some((a) => SERVER_RUN.has(a.id)) ? 'server-model' : 'client';
   t.key = stableStringify(t.spec);

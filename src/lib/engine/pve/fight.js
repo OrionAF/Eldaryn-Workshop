@@ -1120,6 +1120,33 @@ function prepare(fighter) {
   };
 }
 
+const isTransformRt = (rt) => rt.config.spell.spellType === 'TRANSFORM';
+
+/**
+ * Campaign level start after the previous level was won (combat-pve.md §10.7): full HP and fresh spell
+ * runtimes (so the transform fire count is 0 again, resetProgressSpells L1103000), but the Chrono Flux
+ * bar keeps its value (level advance L1101940-1101956) and a transform still running carries over with
+ * its remaining time (carryRunningTransform L1097198-1097267). `o.leadIn` is the previous level's mobs,
+ * played first on its own rng lane; a lost lead-in starts the level empty, as a retry does (the bar
+ * resets on LEVEL_FAILED, L1102144-1102182). Skipped when nothing could carry (no transform or no conduit).
+ */
+function carriedLevelState(o, prepared) {
+  const f = prepared.fresh();
+  if (!f.chrono || !f.spells?.some(isTransformRt)) return f;
+  const lead = prepared.fresh();
+  const r = simulatePve({ ...o, enemy: o.leadIn, leadIn: null, log: false, maxMs: undefined, state: lead, rng: lane(o.rng, 'lead-in') });
+  if (!r.won) return f;
+  f.chrono.flux = lead.chrono.flux;
+  const running = lead.spells.find((rt) => isTransformRt(rt) && rt.isEffectActive);
+  const next = running && f.spells.find((rt) => isTransformRt(rt) && rt.config.species === running.config.species);
+  if (next) {
+    next.isEffectActive = true;
+    next.effectRemaining = running.effectRemaining;
+    next.transformEffects = running.transformEffects;
+  }
+  return f;
+}
+
 /**
  * Enemy entity from a MobSpec: createMobEntity plus the optional crit fields and any numeric
  * `stats` entry that names an entity field (spellResist, missChance, ...).
@@ -1157,6 +1184,9 @@ export const trainingDummy = (hp = 1e15) => ({ id: 'dummy', hp, attack: 0, attac
  * @property {boolean} [applyOutputCut=false]  apply the Oblivion `playerDamageMult` to all player-side
  *   damage (an assumption, pve-content.md §11; the client fight never applies it)
  * @property {boolean} [retribution]  overrides the mode's Retribution switch (combat-pve.md §23)
+ * @property {import('../types.js').MobSpec[]} [leadIn]  campaign only: the previous level, played first so
+ *   its Chrono Flux and a running transform carry into this one (`carriedLevelState`)
+ * @property {Object} [state]  internal: a `fresh()` state to run on (the lead-in reads it back)
  * @property {() => number} rng
  * @property {boolean} [log=false]
  */
@@ -1214,7 +1244,7 @@ export function simulatePve(o) {
         Math.max(0, Math.round(first.instability ?? 0) - Math.round(o.oblivion.power ?? 0)), first.instability ?? 0);
   }
   const outputMult = obl && o.applyOutputCut === true ? obl.playerDamageMult ?? 1 : 1;
-  const f = prepared.fresh();
+  const f = o.state ?? (o.leadIn && mode.liveLoop ? carriedLevelState(o, prepared) : prepared.fresh());
   // the mode's caller sets the mitigation (combat-pve.md §13); the World Boss reads its affinity record
   f.player.shieldMitigation = modeId === 'worldBoss'
     ? first.affinity?.shieldMitigation ?? mode.shieldMitigation
