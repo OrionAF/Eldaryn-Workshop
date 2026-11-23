@@ -203,9 +203,9 @@ describe('optimize with the highest chance to win', { timeout: 120000 }, () => {
 });
 
 describe('ceiling stop (simulation.md §Ceiling stop)', { timeout: 120000 }, () => {
-  // the current build loses now and then; one relic wins every fight, and the talents block comes after relics
+  // the current build loses now and then (97 %); one relic wins every fight, and the talents block comes after relics
   const req = {
-    character: relicless(), presetId: 'p1', target: { kind: 'custom', mob: { hp: 2e6, attack: 0, attackSpeed: 0 }, seconds: 5 },
+    character: relicless(), presetId: 'p1', target: { kind: 'custom', mob: { hp: 1.6e6, attack: 0, attackSpeed: 0 }, seconds: 5 },
     objective: { kind: 'win-chance' }, space: only('relics', 'talents', 'pet'), effort: { level: 'quick', n0: 8, maxN: 2048, randomStarts: 0 }, seed: 3,
   };
   const timeless = (r) => ({ ...r, stats: { ...r.stats, ms: 0 }, phases: r.phases.map((p) => ({ ...p, ms: 0 })) });

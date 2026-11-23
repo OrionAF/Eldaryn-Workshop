@@ -354,3 +354,13 @@ describe('Monte Carlo rolls', () => {
     expect(() => simulateCelestial({ party: [tank({})], difficulty: 'HARD' })).toThrow(/rng/);
   });
 });
+
+describe('Chrono Flux by difficulty (celestialChronoFluxEnabled, 2.9.8 L1194096)', () => {
+  it('Hard charges the bar of a conduit carrier, Normal never does', () => {
+    const party = [fighter({ totalFlameConduit: 500, totalHp: 50_000_000, totalAttack: 1 }, { ancient: { species: 'FLAMEBORN', level: 1 } })];
+    const flux = (difficulty) => Math.max(0, ...simulateCelestial({ party, difficulty, log: true, rolls: scripted() })
+      .log.flatMap((t) => t.chronoFlux ?? []));
+    expect(flux('HARD')).toBeGreaterThan(0);
+    expect(flux('NORMAL')).toBe(0);
+  });
+});

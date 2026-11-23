@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fixtureCharacter } from './fixtures.js';
+import { fixtureCharacter, equipAncient } from './fixtures.js';
 import { describeBuild, describeBoard } from './describe.js';
 import { buildFighter } from './fighter.js';
 import { SIGIL_CATALOGUE, sigilClasses, isSigilSpeciesActiveForSpec } from '../game/sigils.js';
@@ -10,7 +10,7 @@ describe('describeBuild', () => {
   const c = fixtureCharacter('WARRIOR');
 
   it('resolves every dimension to plain text', () => {
-    const lines = describeBuild(c, 'p1');
+    const lines = describeBuild(equipAncient(JSON.parse(JSON.stringify(c)), 'FLAMEBORN'), 'p1');
     expect(line(lines, 'Gear set')).toBe('Set 1');
     expect(line(lines, 'Talents')).toMatch(/^Arms - Sharpened Blade 5\/5/);
     expect(line(lines, 'Pet')).toMatch(/^Legendary Core \(/);
@@ -79,8 +79,9 @@ describe('describeBuild', () => {
   });
 
   it('dropping the Ancient changes only the Ancient line (B1, #91)', () => {
-    const base = describeBuild(c, c.presets[0]);
-    const dropped = describeBuild(c, { ...c.presets[0], ancientSigilSpecies: null });
+    const e = equipAncient(JSON.parse(JSON.stringify(c)), 'FLAMEBORN');
+    const base = describeBuild(e, e.presets[0]);
+    const dropped = describeBuild(e, { ...e.presets[0], ancientSigilSpecies: null });
     expect(base.filter((l, i) => l.value !== dropped[i].value).map((l) => l.label)).toEqual(['Ancient sigil']);
   });
 

@@ -5,7 +5,7 @@ import { changesOf, writesOf } from './effect.js';
 import { rowViolations } from './result.js';
 import { legalityOf } from './legality.js';
 import { makeObjective, resolveTarget } from './objectives.js';
-import { fixtureCharacter } from '../build/fixtures.js';
+import { fixtureCharacter, equipAncient } from '../build/fixtures.js';
 import { normaliseCharacter } from '../model/index.js';
 import { genericSigils } from '../model/sigils.js';
 import { sanitiseAllocation } from '../model/talents.js';
@@ -182,13 +182,13 @@ describe('optimize: changes are the effect oracle\'s, never describe-line diffs 
   });
 
   it('toggling the Ancient sigil is listed as an ancient change', async () => {
-    const character = edit((raw) => { raw.presets[0].ancientSigilSpecies = null; });
+    const character = edit((raw) => { raw.presets[0].sigilSpecies = raw.presets[0].sigilSpecies.slice(0, 2); }); // a free slot, so only the Ancient changes
     const r = await optimize({ character, presetId: 'p1', target: SHORT, space: only('ancient'), effort: TINY, seed: 1 });
     expect(r.rows[0].changes.map((c) => [c.id, c.from])).toEqual([['ancient', 'None']]);
   });
 
   it('removing the Ancient sigil is an ancient change too (the oracle, both directions)', () => {
-    const character = fixtureCharacter('WARRIOR');
+    const character = equipAncient(fixtureCharacter('WARRIOR'), 'FLAMEBORN');
     const space = createBuildSpace(character, 'p1', {});
     const B = space.start;
     expect(B.ancientSigilSpecies).toBe('FLAMEBORN');
@@ -252,6 +252,7 @@ describe('optimize: no inert or target-inert riders (#53, #71)', { timeout: 1200
 describe('optimize: coverage (#52, #57, #70)', { timeout: 120000 }, () => {
   it('a deliberately poor 29-point allocation climbs to the converged optimum (old default: 3 points, +9 %)', async () => {
     const character = edit((raw) => {
+      equipAncient(raw, 'FLAMEBORN');
       const spec = raw.talentSets[0].spec;
       const defensive = (t) => (['hpPercent', 'hpRegenFlat', 'lifestealFlat', 'damageReductionFlat', 'blockChanceFlat'].includes(t.bonusPerRank.stat) ? 0 : 1);
       const alloc = {};

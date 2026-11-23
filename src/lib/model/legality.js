@@ -140,7 +140,8 @@ export function checkPreset(character, preset) {
   for (const id of preset.relicIds ?? []) if (!(character.relics?.[id] > 0)) add('relicOwned', 'relicIds', `Relic ${id} is not owned`);
 
   const slots = sigilSlotCap(L, cls);
-  if ((preset.sigilSpecies ?? []).length > slots) add('sigilSlots', 'sigilSpecies', `${preset.sigilSpecies.length} sigils equipped, ${slots} slots`);
+  const used = (preset.sigilSpecies ?? []).length + (preset.ancientSigilSpecies ? 1 : 0);
+  if (used > slots) add('sigilSlots', 'sigilSpecies', `${used} sigils equipped (the Ancient takes a slot), ${slots} slots`);
   const owned = character.sigils?.owned ?? {};
   const equipped = [...(preset.sigilSpecies ?? []), preset.utilitySigilSpecies, preset.ancientSigilSpecies].filter(Boolean);
   for (const sp of equipped) if (!owned[sp]) add('sigilOwned', 'sigilSpecies', `Sigil ${sp} is not owned`);

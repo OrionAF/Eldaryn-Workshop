@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { legalityOf, assertLegal } from './legality.js';
 import { candidateOf } from './space.js';
-import { fixtureCharacter } from '../build/fixtures.js';
+import { fixtureCharacter, equipAncient } from '../build/fixtures.js';
 import { normaliseCharacter } from '../model/index.js';
 import { talentSpec } from '../game/talents.js';
 
@@ -53,7 +53,7 @@ describe('legalityOf', () => {
   });
 
   it('an Ancient on a board without its node is illegal for a candidate (Q3 strict, #55)', () => {
-    const c = fixture('WARRIOR', (r) => { r.transcendence.presets.push({ id: 'bare', name: 'Bare', allocatedNodeIds: [] }); });
+    const c = fixture('WARRIOR', (r) => { equipAncient(r, 'FLAMEBORN'); r.transcendence.presets.push({ id: 'bare', name: 'Bare', allocatedNodeIds: [] }); });
     const r = legalityOf(c, 'p1', { ...candidateOf(c, 'p1'), transcendencePresetId: 'bare' });
     expect(gates(r)).toEqual(['ancientBoard']);
   });
@@ -89,7 +89,7 @@ describe('legalityOf', () => {
   });
 
   it('below 55 an Ancient is illegal for a candidate even when the board allocates its node (Q3 strict)', () => {
-    const c = fixture('WARRIOR', (r) => { r.level = 54; });
+    const c = fixture('WARRIOR', (r) => { equipAncient(r, 'FLAMEBORN'); r.level = 54; });
     expect(gates(legalityOf(c, 'p1', candidateOf(c, 'p1')))).toContain('ancientBoard');
     expect(legalityOf(c, 'p1', { ...candidateOf(c, 'p1'), ancientSigilSpecies: null }).ok).toBe(true);
   });

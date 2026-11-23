@@ -199,12 +199,12 @@ describe('sheet integrity (#90, #88, #17)', () => {
     const fresh = computePresetStats(c, 'p1');
     c.presets[0].petId = null;
     const r = computePresetStats(c, 'p1');
-    expect(r.effective.totalAttack).toBe(95238); // the stale sheet said 168 778 (95 237 / 168 777 before the 2.9.4 relic tables)
+    expect(r.effective.totalAttack).toBe(55937); // the stale sheet said 125 923 (was 95 238 / 168 778 while Main also carried the Ancient)
     expect(r.residual).toEqual({});
     expect(fresh.sheetStatus).toBe('fresh');
     expect(r.source).toBe('computed');
     expect(r.sheetStatus).toBe('stale');
-    expect(r.sheet.values.totalAttack).toBe(168778); // still shown, for re-entry
+    expect(r.sheet.values.totalAttack).toBe(125923); // still shown, for re-entry
     expect(r.warnings.some((w) => /out of date/i.test(w))).toBe(true);
   });
 

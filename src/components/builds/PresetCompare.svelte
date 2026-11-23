@@ -72,7 +72,7 @@
         label: 'Sigils',
         cells: presets.map((p) => {
           const n = p.sigilSpecies.length + (p.utilitySigilSpecies ? 1 : 0) + (p.ancientSigilSpecies ? 1 : 0);
-          return `${n} equipped (${p.sigilSpecies.length} of ${sigilSlotCap(character.level, character.class)} regular slots)`;
+          return `${n} equipped (${p.sigilSpecies.length + (p.ancientSigilSpecies ? 1 : 0)} of ${sigilSlotCap(character.level, character.class)} slots)`;
         }),
       },
       { id: 'board', edit: true, label: 'Transcendence board', cells: presets.map(boardOf) },

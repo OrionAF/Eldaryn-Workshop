@@ -945,6 +945,9 @@ describe('PVE modes (combat-pve.md §2, §13, §14)', () => {
     const pick = (m) => [m.dtMs, m.shieldMitigation, m.interMobGapMs, m.perFightCapMs, m.liveLoop];
     expect(pick(PVE_MODES.campaign)).toEqual([100, 0.5, 0, FIGHT_CAP_MS, true]);
     expect(pick(PVE_MODES.dungeon)).toEqual([10, 0.5, 500, FIGHT_CAP_MS, false]);
+    // Ancient transforms: campaign, dungeons, Oblivion and World Boss charge Chrono Flux, raids do not
+    expect(Object.fromEntries(Object.entries(PVE_MODES).map(([k, m]) => [k, m.chronoFlux]))).toMatchObject(
+      { campaign: true, dungeon: true, oblivion: true, worldBoss: true, raid: false });
     expect(pick(PVE_MODES.raid)).toEqual([10, 0, 500, FIGHT_CAP_MS, false]);
     expect(pick(PVE_MODES.oblivion)).toEqual([10, 0.5, 500, FIGHT_CAP_MS, false]);
     expect(pick(PVE_MODES.worldBoss)).toEqual([100, 0, 0, FIGHT_CAP_MS, false]);

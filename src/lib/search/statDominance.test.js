@@ -209,10 +209,12 @@ describe('damage-only comparison', () => {
 });
 
 describe('a full optimise with pruning', () => {
-  // Measured for this request on c37a4ce, before pruning: the best build's dps (400 dummy fights on their own
-  // seed) and the search phase's fights.
-  const BEFORE_DPS = 929150.512666667;
-  const BEFORE_SEARCH_FIGHTS = 17720;
+  // Measured for this request with `effort.dominance: false` (before pruning): the best build's dps (400 dummy
+  // fights on their own seed) and the search phase's fights. Re-measured when an equipped Ancient started to
+  // take a sigil slot (the fixture's Main then has three generics and no Ancient); the old figures were
+  // 929150.51 and 17720 on the illegal three-generics-plus-Ancient build.
+  const BEFORE_DPS = 593528.7991666667;
+  const BEFORE_SEARCH_FIGHTS = 16384;
   // both were measured on the pre-2.9.4 relic tables (Game/relics.md §10)
   let restore;
   beforeAll(() => { restore = usePre294Relics(); });

@@ -14,9 +14,9 @@ import PushLadder from '../../components/optimiser/PushLadder.svelte';
 
 const only = (...on) => Object.fromEntries(BLOCKS.map((b) => [b, on.includes(b)]));
 const timeless = (r) => ({ ...r, stats: { ...r.stats, ms: 0 }, phases: r.phases.map((p) => ({ ...p, ms: 0 })) });
-// the Warrior fixture is at about 90 % on campaign level 9-1: one relic or pet change makes it clear
+// the Warrior fixture (three generic sigils, no Ancient) is about at 90 % on campaign level 8-8: one relic or pet change makes it clear
 const REQUEST = {
-  character: fixtureCharacter('WARRIOR'), presetId: 'p1', target: { kind: 'chapter', chapter: 9, level: 1 },
+  character: fixtureCharacter('WARRIOR'), presetId: 'p1', target: { kind: 'chapter', chapter: 8, level: 8 },
   objective: { kind: 'push', target: 0.9 }, space: only('relics', 'pet'), effort: { level: 'quick', n0: 8, maxN: 256, randomStarts: 0 }, seed: 1,
 };
 
@@ -25,8 +25,8 @@ describe('Push, live', () => {
     const full = await push(REQUEST);
     expect(full.status).toBe('done');
     expect(full.objective).toMatchObject({ kind: 'push', target: 0.9 });
-    expect(full.push).toMatchObject({ status: 'pushed', target: 0.9, ladder: { kind: 'chapter', label: 'Campaign', size: 110 }, start: { index: 80, label: 'level 9-1' } });
-    expect(full.push.reached.deepest).toBeGreaterThanOrEqual(80);
+    expect(full.push).toMatchObject({ status: 'pushed', target: 0.9, ladder: { kind: 'chapter', label: 'Campaign', size: 110 }, start: { index: 77, label: 'level 8-8' } });
+    expect(full.push.reached.deepest).toBeGreaterThanOrEqual(77);
     expect(full.push.baseline.deepest ?? -1).toBeLessThan(full.push.reached.deepest);
     expect(full.headline.text).toMatch(/^Reaches level \d+-\d+ \(now: /);
     // the suggested build is a row Apply can write: its changes, measured where it was found
@@ -42,7 +42,7 @@ describe('Push, live', () => {
     expect(JSON.parse(JSON.stringify(full))).toEqual(full);
     // the first optimised rung's search is what a saved Push run's cost is made of (simulation.md §Estimates)
     expect(full.optimised).toMatchObject({ rungs: expect.any(Number), search: { strategy: 'exhaustive', evaluated: expect.any(Number) } });
-    expect(full.optimised.index).toBeGreaterThanOrEqual(80);
+    expect(full.optimised.index).toBeGreaterThanOrEqual(77);
     const saved = runFromResult(full, { id: 'push' });
     expect(saved.cost).toMatchObject({ strategy: 'exhaustive', lanes: 1, rung: { key: full.optimised.key, label: full.optimised.label } });
     expect(saved.cost.fights.total).toBe(full.optimised.search.fights.total);
@@ -76,7 +76,7 @@ describe('Push, live', () => {
     expect(cut).toMatchObject({ status: 'cancelled', aborted: true, checkpoint: { jobId: 'j', resumable: true } });
     expect(cp.schema).toBe(PUSH_CHECKPOINT_SCHEMA);
     expect(cp.inner?.checkpoint?.schema).toBe('optimiser-checkpoint/1');
-    expect(steps.at(-1)[0]).toMatchObject({ label: 'Level 9-1', state: 'current' });
+    expect(steps.at(-1)[0]).toMatchObject({ label: 'Level 8-8', state: 'current' });
     const resumed = await push({ ...REQUEST, resumeFrom: cp });
     expect(timeless(resumed)).toEqual(timeless(full));
 

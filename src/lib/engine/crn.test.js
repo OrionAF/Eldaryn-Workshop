@@ -200,7 +200,9 @@ describe('lanes pair builds more tightly than one shared stream', () => {
     const f = { ...fighterOf('SENTINEL'), level: 50 };
     const A = fighterDuelArgs(f);
     const G = fighterDuelArgs(faster(f));
-    const B = fighterDuelArgs({ ...fighterOf('MYSTIC'), level: 50 });
+    // the Mystic's HP is halved: the Sentinel fixture has no Ancient (it takes a sigil slot), and the full-HP Mystic wins every duel
+    const mystic = fighterOf('MYSTIC');
+    const B = fighterDuelArgs({ ...mystic, level: 50, stats: { ...mystic.stats, totalHp: mystic.stats.totalHp * 0.5 } });
     const discordant = (mk) => {
       let n = 0;
       for (let i = 0; i < 100; i++) {

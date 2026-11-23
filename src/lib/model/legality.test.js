@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fixtureCharacter } from '../build/fixtures.js';
+import { fixtureCharacter, equipAncient } from '../build/fixtures.js';
 import { buildFighter } from '../build/fighter.js';
 import { computePresetStats } from '../build/stats.js';
 import { normaliseCharacter } from './index.js';
@@ -153,7 +153,7 @@ describe('sigil conditions are character-wide', () => {
 
 describe('Ancient follows the board (Q3 strict)', () => {
   it('Flameborn on a board without its node is dropped from the fighter with a warning', () => {
-    const c = fixtureCharacter('WARRIOR');
+    const c = equipAncient(fixtureCharacter('WARRIOR'), 'FLAMEBORN');
     expect(buildFighter(c, 'p1').ancient).toEqual({ species: 'FLAMEBORN', level: 1 });
     const board = c.transcendence.presets[0];
     board.allocatedNodeIds = board.allocatedNodeIds.filter((id) => !id.startsWith('sig_'));
@@ -173,6 +173,14 @@ describe('checkPreset', () => {
     const v = L.checkPreset(c, c.presets[1]);
     expect(v.some((x) => x.gate === 'dualEquip')).toBe(true);
     expect(v.some((x) => x.gate === 'altarTier' && x.warn)).toBe(true);
+  });
+
+  it('an Ancient takes a sigil slot: 3 generics + an Ancient reports sigilSlots, 2 + an Ancient does not', () => {
+    const c = equipAncient(fixtureCharacter('WARRIOR'), 'FLAMEBORN'); // 2 generics + Ancient on 3 slots
+    expect(L.checkPreset(c, c.presets[0]).some((x) => x.gate === 'sigilSlots')).toBe(false);
+    const p = { ...c.presets[0], sigilSpecies: fixtureCharacter('WARRIOR').presets[0].sigilSpecies }; // 3 generics + Ancient
+    expect(p.sigilSpecies).toHaveLength(3);
+    expect(L.checkPreset(c, p).some((x) => x.gate === 'sigilSlots')).toBe(true);
   });
 
   it('below 58 a link to another board is advisory (the build ignores it); a no-op link is not reported', () => {
@@ -210,7 +218,7 @@ describe('effectiveTranscendencePreset: the board the stats run on (transcendenc
   });
 
   it('an Ancient is ignored below 55 even when the board allocates its node', () => {
-    const c = fixtureCharacter('WARRIOR');
+    const c = equipAncient(fixtureCharacter('WARRIOR'), 'FLAMEBORN');
     const p = c.presets[0]; // FLAMEBORN on a board that allocates its node
     const ancient = (level) => L.checkPreset({ ...c, level }, p).filter((x) => x.gate === 'ancientBoard');
     expect(ancient(55)).toEqual([]);

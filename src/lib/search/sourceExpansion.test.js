@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fixtureCharacter } from '../build/fixtures.js';
+import { fixtureCharacter, equipAncient } from '../build/fixtures.js';
 import { normaliseCharacter } from '../model/index.js';
 import { boardKeyFor, boardGraph, canAllocateNode, setTotalCost, validateAllocation } from '../transcendence.js';
 import { sigilBySpecies } from '../game/sigils.js';
@@ -94,7 +94,7 @@ describe('board reallocation and Awakening search', () => {
     for (const cand of domain(s, 'boardAllocation')) expect(cand.boardAllocation.boardId).toBe('default');
   });
   it('preserves the node of an equipped Ancient and its connectivity through all generated moves', () => {
-    const c = fixtureCharacter('WARRIOR'), s = spaceOf(c);
+    const c = equipAncient(fixtureCharacter('WARRIOR'), 'FLAMEBORN'), s = spaceOf(c);
     const required = sigilBySpecies(s.start.ancientSigilSpecies).transcendenceNode;
     expect(required).toBeTruthy();
     for (const cand of domain(s, 'boardAllocation')) {
