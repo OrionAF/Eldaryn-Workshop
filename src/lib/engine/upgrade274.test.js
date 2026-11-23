@@ -121,7 +121,10 @@ describe('2.7.4 saved builds and stats', () => {
     expect(normaliseCharacter(c).presets[0].utilitySigilSpecies).toBeNull();
     c.level = 25;
     c.sigils.owned = {};
-    expect(normaliseCharacter(c).sigils.owned).toEqual({ BATTLE_STANCE: { level: 1 }, GUARDIAN_STANCE: { level: 1 } });
+    // the free stances, plus the Ancients the fixture board's sigil nodes grant (sigils.md §9)
+    expect(normaliseCharacter(c).sigils.owned).toEqual({
+      BATTLE_STANCE: { level: 1 }, GUARDIAN_STANCE: { level: 1 }, FLAMEBORN: { level: 1 }, EARTHWARDEN: { level: 1 },
+    });
   });
   it('adds flat stats once, HP before percent and resist before the cap, and exposes runtime fields', () => {
     const c = character();

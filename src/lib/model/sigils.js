@@ -110,6 +110,27 @@ export function ancientSigils(playerClass) {
   return SIGIL_CATALOGUE.filter((s) => s.rarity === 'Ancient' && sigilClasses(s).includes(playerClass));
 }
 
+/** The Ancient a class gets from a Transcendence sigil node, or null (sigils.md §9 node mapping). */
+export function ancientForNode(playerClass, nodeId) {
+  return ancientSigils(playerClass).find((s) => s.transcendenceNode === nodeId)?.species ?? null;
+}
+
+/**
+ * `owned` plus every Ancient whose node a Transcendence board of the character allocates: allocating
+ * the node grants the sigil (transcendence.md §3, `grantedSigil`). Returns `owned` itself when nothing
+ * is added; never removes (whether removing the node revokes it is [SERVER]).
+ */
+export function withBoardAncients(character, owned = character.sigils?.owned ?? {}) {
+  let out = owned;
+  for (const b of character.transcendence?.presets ?? []) {
+    for (const id of b.allocatedNodeIds ?? []) {
+      const sp = ancientForNode(character.class, id);
+      if (sp && !out[sp]) out = { ...out, [sp]: { level: 1 } };
+    }
+  }
+  return out;
+}
+
 /** Every species a class can own (generic, utility of every spec, Ancients), catalogue order. */
 export function ownableSigils(playerClass) {
   return SIGIL_CATALOGUE.filter((s) => sigilClasses(s).includes(playerClass));
@@ -265,6 +286,7 @@ export function reconcileSigils(character) {
   const slots = cls ? maxSigilSlots(character.level ?? 100, cls) : 0;
   if (slots > 0 && character.sigils) {
     for (const def of ownableSigils(cls)) if (def.granted) owned[def.species] = { level: 1 };
+    for (const [sp, v] of Object.entries(withBoardAncients(character, {}))) owned[sp] ??= v;
   }
   for (const p of character.presets ?? []) {
     const spec = presetSpec(character, p);

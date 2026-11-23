@@ -8,7 +8,7 @@
 //   character  the chosen talent set's allocation and the activation conditions (one per owned sigil)
 //   mount      the sockets of the candidate's mount
 // The Candidate shape: docs/Reference/simulation.md §Build space.
-import { DEFAULT_CONDITION } from '../model/sigils.js';
+import { DEFAULT_CONDITION, withBoardAncients } from '../model/sigils.js';
 import { resolveTranscendencePreset } from '../model/legality.js';
 
 export const SCOPES = Object.freeze(['preset', 'character', 'mount']);
@@ -100,5 +100,8 @@ export function applyCandidate(character, presetId, cand, { include = SCOPES } =
   if (on.has('mount') && w.mount) {
     out.mounts = (character.mounts ?? []).map((m) => (m.id === w.mount.mountId ? { ...m, glyphs: w.mount.glyphs } : m));
   }
+  // a board that now allocates an Ancient's node grants that Ancient (sigils.md §9)
+  const owned = withBoardAncients(out, out.sigils?.owned ?? {});
+  if (out.sigils && owned !== out.sigils.owned) out.sigils = { ...out.sigils, owned };
   return out;
 }

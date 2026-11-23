@@ -102,6 +102,29 @@ describe('board reallocation and Awakening search', () => {
       expect(cand.ancientSigilSpecies).toBe(s.start.ancientSigilSpecies);
     }
   });
+  it('one move paths to an Ancient node and equips it (the node grants it); one frees the node and unequips it', () => {
+    const raw = structuredClone(fixtureCharacter('WARRIOR'));
+    const node = sigilBySpecies('FLAMEBORN').transcendenceNode;
+    for (const b of raw.transcendence.presets) b.allocatedNodeIds = b.allocatedNodeIds.filter((id) => !id.startsWith('sig_'));
+    for (const sp of ['FLAMEBORN', 'EARTHWARDEN']) delete raw.sigils.owned[sp];
+    const c = normaliseCharacter(raw);
+    expect(c.sigils.owned.FLAMEBORN).toBeUndefined();
+    const s = createBuildSpace(c, 'p1', { toggles: only('boardAllocation', 'ancient'), boardIchorBudget: 1e6 });
+    expect(s.start.ancientSigilSpecies).toBeNull();
+    const joint = domain(s, 'boardAllocation').filter((x) => x.ancientSigilSpecies === 'FLAMEBORN');
+    expect(joint.length).toBeGreaterThan(0);
+    for (const x of joint) {
+      expect(runningBoardOf(c, x).allocatedNodeIds).toContain(node);
+      expect(x.sigilSpecies).toHaveLength(2); // the Ancient takes one of the three slots
+      expect(legalityOf(c, 'p1', x).ok).toBe(true);
+      expect(materialise(c, 'p1', x).sigils.owned.FLAMEBORN).toEqual({ level: 1 });
+    }
+    // the reverse: from the equipped Ancient, a single move gives up the node and the Ancient together
+    const from = joint[0];
+    const back = domain(s, 'boardAllocation', from).filter((x) => x.ancientSigilSpecies === null);
+    expect(back.length).toBeGreaterThan(0);
+    for (const x of back) expect(runningBoardOf(c, x).allocatedNodeIds).not.toContain(node);
+  });
   it('materialises only the chosen existing board and Awakening immutably, with shared-preset effects', () => {
     const c = fixture(), before = structuredClone(c), s = spaceOf(c, { boardIchorBudget: 10 });
     const X = { ...domain(s, 'boardAllocation')[0], awakening: { path: 'RADIANT', level: awakeningCap(c) } };
