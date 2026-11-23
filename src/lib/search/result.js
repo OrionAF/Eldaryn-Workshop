@@ -26,6 +26,8 @@ const ASSUMPTION_TAG = {
   'celestial-server': 'SERVER', 'celestial-add-phase': 'SERVER', 'celestial-stack-player': 'SERVER',
   'celestial-overload-end': 'UNRESOLVED', 'celestial-overload-judgment': 'UNRESOLVED', 'celestial-time-limit': 'UNRESOLVED',
   'celestial-max-alive': 'UNRESOLVED', 'celestial-fury-stacking': 'UNRESOLVED',
+  // Crusade (combat-pve.md §21): the client's port, never checked against a solo server log
+  'crusade-server-fight': 'UNRESOLVED', 'crusade-solo-scaling': 'SERVER', 'crusade-drops': 'SERVER',
 };
 
 const fin = (x) => (typeof x === 'number' && Number.isFinite(x) ? x : null);

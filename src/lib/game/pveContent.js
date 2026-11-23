@@ -1,6 +1,7 @@
-// L1 catalogue: Oblivion XP curve and floors, Oblivion drop weights, classic dungeons and campaign
-// progress chapters. Lookups only. Sources: Game/pve-content.md; data/pve-content.json
-// (oblivion: decompile L1189711-1190344, L1706365-1706694; dungeons L1062171-1062963).
+// L1 catalogue: Oblivion XP curve and floors, Oblivion drop weights, classic dungeons, campaign
+// progress chapters and the Hell Crusade tables. Lookups only. Sources: Game/pve-content.md;
+// data/pve-content.json (oblivion: decompile L1189711-1190344, L1706365-1706694; dungeons
+// L1062171-1062963; crusade L1702151-1702426).
 import contentData from '../../data/game/pve-content.json';
 
 /** Oblivion XP per level: { toLevel, xpCost, cumulative } entries from level 2 to 100. */
@@ -23,6 +24,19 @@ export const classicDungeon = (id) => CLASSIC_DUNGEONS.find((d) => d.id === id) 
 
 /** Hell Crusade entry gates by difficulty and the Mythic+ growth (pve-content.md §5). */
 export const CRUSADE_POWER_REQUIREMENT = contentData.crusadePowerRequirement;
+
+/**
+ * The Hell Crusade tables (pve-content.md §5): `constants` (CRUSADE_CONSTANTS), `playerCountScaling` by
+ * party size, `difficulties` (CRUSADE_DIFFICULTY_CONFIG), `mythicPlus` (MYTHIC_PLUS_CONSTANTS), the Ichor
+ * reward per Mythic+ level and `maps` (the Hell map's three bosses, in fight order).
+ */
+export const CRUSADE = contentData.crusade;
+/** The difficulties in the client's order. */
+export const CRUSADE_DIFFICULTIES = Object.freeze(Object.keys(CRUSADE.difficulties));
+/** A difficulty's config, or null. */
+export const crusadeDifficulty = (difficulty) => CRUSADE.difficulties[difficulty] ?? null;
+/** The Hell Crusade bosses in fight order ({id, name, hp, attack, attackSpeed}). */
+export const CRUSADE_HELL_BOSSES = CRUSADE.maps.find((m) => m.id === 'hell_crusade').bosses;
 
 /**
  * getCrusadePowerRequirement for the Hell Crusade: the Combat Power a difficulty asks for; Mythic at

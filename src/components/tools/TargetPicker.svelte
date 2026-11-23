@@ -8,12 +8,17 @@
    * The PVP branch is disabled, with a link to Opponents, while the character has none.
    * The Celestial Trial (simulation.md §Celestial Trial) picks a partner from `characters` (the roster's
    * other characters, then one of their presets) or from `opponents`, or none.
+   * The Crusade (simulation.md §Crusade) is a solo run: the difficulties the game offers no solo run at are
+   * shown but disabled.
    */
   import { TARGET_KINDS, objectiveKindsFor, resolveTarget } from '../../lib/search/objectives.js';
   import { targetOut } from '../../lib/search/result.js';
   import { PVP_MAX_OPPONENTS, PVP_SEATS } from '../../lib/search/pvpObjective.js';
   import { defaultCelestialTactics, CELESTIAL_FOCUSES } from '../../lib/search/celestialObjective.js';
   import { celestialMaxHoldCount } from '../../lib/engine/pve/celestial.js';
+  import { CRUSADE_TIME_LIMIT_MS } from '../../lib/engine/pve/crusade.js';
+  import { crusadeSoloAllowed, CRUSADE_DIFFICULTY_LABEL } from '../../lib/search/crusadeObjective.js';
+  import { CRUSADE_DIFFICULTIES, crusadeDifficulty } from '../../lib/game/pveContent.js';
   import { CELESTIAL_DIFFICULTIES, CELESTIAL_CONSTANTS } from '../../lib/game/celestial.js';
   import { targetContext } from '../../lib/ui/optimiserSetup.js';
   import { PVE_CHAPTERS, PVE_HARD_CHAPTERS, PVE_PROGRESS_CONSTANTS, chapterLabel } from '../../lib/game/combatPve.js';
@@ -61,10 +66,11 @@
   const celestialDefault = () => ({
     kind: 'celestial', difficulty: 'HARD', partner: null, tank: 'auto', starter: 'me', tactics: defaultCelestialTactics('HARD'),
   });
+  const crusadeDefault = () => ({ kind: 'crusade', difficulty: 'NORMAL' });
   const pvpDefault = () => ({ kind: 'pvp', opponentIds: opponents.slice(0, 1).map((o) => o.id), seats: 'attacker' });
   const SEAT_LABEL = { attacker: 'Attacker', defender: 'Defender', both: 'Both' };
 
-  const kinds = $derived([...TARGET_KINDS.filter((k) => k !== 'oblivion' || oblivionUnlocked || target.kind === 'oblivion'), 'celestial', 'pvp']);
+  const kinds = $derived([...TARGET_KINDS.filter((k) => k !== 'oblivion' || oblivionUnlocked || target.kind === 'oblivion'), 'celestial', 'crusade', 'pvp']);
   const kindOptions = $derived(
     kinds.map((k) => ({
       value: k,
@@ -90,7 +96,7 @@
 
   function pickKind(kind) {
     if (kind === target.kind) return;
-    target = kind === 'pvp' ? pvpDefault() : kind === 'celestial' ? celestialDefault() : structuredClone(DEFAULTS[kind]);
+    target = kind === 'pvp' ? pvpDefault() : kind === 'celestial' ? celestialDefault() : kind === 'crusade' ? crusadeDefault() : structuredClone(DEFAULTS[kind]);
     const allowed = objectiveKindsFor(kind, kind === 'pvp' ? null : target);
     if (!allowed.includes(objective.kind)) objective = { kind: allowed[0] };
   }
@@ -149,6 +155,13 @@
     const holdCount = t.holdCount <= celestialMaxHoldCount(d) ? t.holdCount : defaultCelestialTactics(d).holdCount;
     target = { ...target, difficulty: d, tactics: { focus: t.focus, holdCount } };
   }
+
+  // ---- Crusade ----
+  const crusadeDifficultyOptions = CRUSADE_DIFFICULTIES.map((d) => ({
+    value: d, label: CRUSADE_DIFFICULTY_LABEL[d] ?? d, disabled: !crusadeSoloAllowed(d),
+  }));
+  const crusadePartyOnly = CRUSADE_DIFFICULTIES.filter((d) => !crusadeSoloAllowed(d))
+    .map((d) => `${CRUSADE_DIFFICULTY_LABEL[d] ?? d}${d === 'MYTHIC' ? ' and Mythic+' : ''} ${crusadeDifficulty(d).minPlayers}`).join(', ');
 
   const patch = (p) => (target = { ...target, ...p });
   /** An emptied or invalid number field leaves the target as it was (resolveTarget would throw on NaN). */
@@ -235,6 +248,17 @@
     {/if}
     {#if resolvedFull.error}
       <p class="hint warn" role="alert" data-testid="celestial-error">{resolvedFull.error}</p>
+    {/if}
+  {:else if target.kind === 'crusade'}
+    <div class="field" data-testid="crusade-difficulty">
+      <span class="lbl">Difficulty</span>
+      <SegmentedControl label="Difficulty" options={crusadeDifficultyOptions} value={target.difficulty} onchange={(d) => (target = { kind: 'crusade', difficulty: d })} />
+    </div>
+    <span class="hint" data-testid="crusade-solo">
+      A solo run: three bosses in a row inside one <span class="num">{CRUSADE_TIME_LIMIT_MS / 1000}</span> s budget. The game offers a solo run on Normal only; the others need a party ({crusadePartyOnly} players).
+    </span>
+    {#if resolvedFull.error}
+      <p class="hint warn" role="alert" data-testid="crusade-error">{resolvedFull.error}</p>
     {/if}
   {:else if target.kind === 'dummy'}
     <NumberField label="Seconds" unit="s" min={5} max={600} value={target.seconds} onchange={(v) => patch({ seconds: Math.round(v) })} />
@@ -327,6 +351,7 @@
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
   .hint { margin: 0; color: var(--text-muted); font-size: var(--fs-12); }
   .hint.warn { color: var(--status-warn); }
+  .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
   .assume { list-style: none; margin: var(--sp-1) 0 0; padding: 0; display: grid; gap: 3px; font-size: var(--fs-12); color: var(--text-soft); }
   .tag {
     display: inline-block;
