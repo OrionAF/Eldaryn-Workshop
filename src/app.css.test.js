@@ -24,9 +24,10 @@ describe('app.css tokens', () => {
     expect(css).toMatch(/\.num[^{]*\{[^}]*var\(--font-data\)[^}]*tabular-nums/);
   });
 
-  it('keeps legacy class aliases', () => {
-    for (const c of ['.btn-gold', '.btn-ghost', '.btn-danger.is-confirming', '.rank-controls button', '.subheading', '.micro-label'])
-      expect(css).toContain(c);
+  it('defines the micro label and no longer carries the pre-redesign button, rank-control or subheading classes', () => {
+    expect(css).toContain('.micro-label');
+    for (const c of ['.btn-gold', '.btn-ghost', '.btn-danger', '.rank-controls', '.subheading'])
+      expect(css).not.toContain(c);
   });
 });
 
