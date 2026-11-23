@@ -1,6 +1,6 @@
 // L1 catalogue: transcendence boards, tiers, cost brackets and socket positions. Lookups only.
 // Imported statically and read synchronously by the stat pipeline and the build layer (rebuild-plan §8 Size).
-// Sources: Game/transcendence.md; data/transcendence.json (decompile L1217888-1221319).
+// Sources: Game/transcendence.md; data/transcendence.json (2.9.8 module L1257979-1261700).
 import transcendenceJson from '../../data/game/transcendence.json';
 
 export const TRANSCENDENCE_CONSTANTS = transcendenceJson.constants;
@@ -13,9 +13,10 @@ export const TRANSCENDENCE_NOTABLE_BASE = transcendenceJson.notableBase;
 export const TRANSCENDENCE_NOTABLE_OVERRIDES = transcendenceJson.notableOverrides;
 export const TRANSCENDENCE_SIGIL_BASE = transcendenceJson.sigilBase;
 export const TRANSCENDENCE_SIGIL_OVERRIDES = transcendenceJson.sigilOverrides;
-export const TRANSCENDENCE_DEATHLORD_META = transcendenceJson.deathlordMinorMeta;
+/** Necromancer Dominion cells and value (transcendence.md §5). */
+export const TRANSCENDENCE_NECRO_DOMINION = transcendenceJson.necroDominion;
 
-/** The six boards, keyed 'CLASS' or 'CLASS/FLAVOR' (flavor splits Mystic and Necromancer specs). */
+/** The five boards, keyed 'CLASS' or 'CLASS/FLAVOR' (only Mystic's specs split: boardFlavor 2.9.8 L1258167). */
 export const TRANSCENDENCE_BOARDS = transcendenceJson.boards;
 export const TRANSCENDENCE_BOARD_KEYS = Object.keys(TRANSCENDENCE_BOARDS);
 
@@ -26,8 +27,8 @@ const BOARD_KEY_BY_SPEC = {
   SENTINEL_DISRUPTION: 'SENTINEL',
   MYSTIC_MAGE: 'MYSTIC/MAGE',
   MYSTIC_DRUID: 'MYSTIC/DRUID',
-  NECROMANCER_DEATHLORD: 'NECROMANCER/DEATHLORD',
-  NECROMANCER_DOOMWEAVER: 'NECROMANCER/DOOMWEAVER',
+  NECROMANCER_DEATHLORD: 'NECROMANCER',
+  NECROMANCER_DOOMWEAVER: 'NECROMANCER',
 };
 
 /** Board key for a spec key (see classes.js SPECS), or null. */

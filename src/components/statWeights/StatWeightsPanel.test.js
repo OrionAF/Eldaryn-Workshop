@@ -67,6 +67,9 @@ it('the Stat Sheet page runs stat weights as a job for the active preset and ren
   const survival = target.querySelector('[data-chart="survival"]');
   expect(damage).not.toBeNull();
   expect(survival).not.toBeNull();
+  // each chart's heading is the micro label (the retired .subheading's replacement)
+  expect(damage.querySelector('h3.micro-label')).not.toBeNull();
+  expect(survival.querySelector('h3.micro-label')).not.toBeNull();
   expect(target.querySelector('[data-testid="chart-label-damage"]').textContent).toContain('training dummy');
   expect(target.querySelector('[data-testid="chart-label-survival"]').textContent).toContain('reference enemy');
 

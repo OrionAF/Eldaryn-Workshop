@@ -34,7 +34,8 @@
     "ccDiminishing": null,
     "symmetricControl": false,
     "lateFightHealDecay": null,
-    "lateFightDamage": null
+    "lateFightDamage": null,
+    "minionTieBreakCredit": null
    },
    "DEFAULT": {
     "hpMultiplier": {
@@ -68,6 +69,10 @@
      "startMs": 40000,
      "multiplier": 2,
      "rampMs": 0
+    },
+    "minionTieBreakCredit": {
+     "OVERLORDS_PACT": 0.15,
+     "DREADGUARDS_PACT": 0.3
     }
    },
    "FORTRESS": {
@@ -81,7 +86,8 @@
     "ccDiminishing": null,
     "symmetricControl": false,
     "lateFightHealDecay": null,
-    "lateFightDamage": null
+    "lateFightDamage": null,
+    "minionTieBreakCredit": null
    }
   },
   "note": "LEGACY reads ARENA_CONSTANTS.PVP_HP_MULTIPLIER and PVP_SHIELD_BASE_MULTIPLIER; DEFAULT spreads LEGACY and replaces hpMultiplier and lateFightDamage; FORTRESS is the empty base with a flat x1 HP multiplier. simulateArenaPvP takes the config as its 15th argument (default LEGACY); the Arena Buff badge (module 5733) reads DEFAULT. Game/updates-2.8.2.md §1-§2."
@@ -636,7 +642,14 @@
    "LOW_HP_THRESHOLD_PCT": 25,
    "SWING_LEAD_MS": 400,
    "REGEN_LOG_INTERVAL_MS": 1000,
-   "TICK_ORDER": "alternate"
+   "TICK_ORDER": "alternate",
+   "LOG_BUDGET_EVENTS": 15000,
+   "LOG_HARD_CAP_EVENTS": 40000,
+   "STRICT_LOG": false,
+   "MINION_TIE_BREAK_CREDIT": {
+    "OVERLORDS_PACT": 0.15,
+    "DREADGUARDS_PACT": 0.3
+   }
   }
  },
  "stackSigilDefs": {

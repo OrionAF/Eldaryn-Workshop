@@ -11,7 +11,8 @@
  * Cancel is soft (plan A.10): the task posts its checkpoint, then resolves `aborted: true`; the job
  * becomes `cancelled`, keeps the checkpoint and the best-so-far result, and can be resumed: the same
  * request is re-run with `request.resumeFrom = checkpoint`, which the task guarantees equals an
- * uninterrupted run. Retry (failed) re-runs from scratch.
+ * uninterrupted run. A Cancel that arrives after the task completed (result not `aborted`) settles as
+ * `finished` with the full result. Retry (failed) re-runs from scratch.
  *
  * Staleness: `signature` = characterKey + preset + inputs, taken when the job starts. The caller
  * may pass `currentSignature()` (reading reactive state); `isStale(job)` is true once it differs,
@@ -33,6 +34,9 @@ let seq = 1;
 let jobs = $state([]);
 let persistCheckpoints = $state(readFlag());
 let runner = runOptimizerTask;
+// (job) => current signature | null, for jobs restored after a reload. Registered by the shell (the job
+// store may not import pages or the roster store); null means the job's inputs no longer exist.
+let restoredResolver = null;
 let db = createCheckpointDb();
 const handles = new Map(); // id -> {cancel}
 // id -> an Optimiser run's full debug log (simulation.md §Debug log). Kept out of the reactive job, whose
@@ -87,7 +91,9 @@ function launch(id) {
   }
   handles.set(id, handle);
   handle.promise.then(
-    (result) => settle(id, find(id)?.cancelRequested || result?.aborted ? 'cancelled' : 'finished', { result }),
+    // Only the task's own `aborted` makes a job cancelled: a Cancel that lands after the work was done
+    // still returns the full result, and that is kept as a normal finish (decision C6).
+    (result) => settle(id, result?.aborted ? 'cancelled' : 'finished', { result }),
     (error) => settle(id, 'failed', { error }),
   );
 }
@@ -127,6 +133,7 @@ function saveCheckpoint(job) {
     title: job.title,
     context: job.context,
     request: job.request,
+    meta: job.meta,
     signature: job.signature,
     openRoute: job.openRoute,
     checkpoint: job.checkpoint,
@@ -135,10 +142,11 @@ function saveCheckpoint(job) {
 }
 
 /**
- * @param {{ tool: string, title: string, context?: string, request: object, signature?: string,
+ * @param {{ tool: string, title: string, context?: string, request: object, meta?: object, signature?: string,
  *   currentSignature?: () => string, openRoute?: string, notice?: string,
  *   summarize?: (result) => Array<{tone?: string, text: string}>, onFinish?: (job) => void }} spec
- * `onFinish` runs once when the job finishes (not when it is cancelled or fails).
+ * `onFinish` runs once when the job finishes (not when it is cancelled or fails). `meta` is plain data the
+ * saved checkpoint keeps so a restored job's signature can be recomputed (setRestoredSignatureResolver).
  * @returns {string} the job id
  */
 export function startJob(spec) {
@@ -150,6 +158,7 @@ export function startJob(spec) {
     request: plain(spec.request),
     signature: spec.signature ?? null,
     currentSignature: spec.currentSignature ?? null,
+    meta: plain(spec.meta),
     openRoute: spec.openRoute ?? null,
     summarize: spec.summarize ?? null,
     onFinish: spec.onFinish ?? null,
@@ -275,6 +284,17 @@ export function setPersistCheckpoints(on) {
   }
 }
 
+const restoredJob = (recordId) => jobs.find((j) => j.restoredFrom === recordId);
+
+/**
+ * Register how a restored job's current signature is computed: `fn(job)` reads job.tool, job.request,
+ * job.meta and job.signature and returns the signature the same run would get now, or null when its
+ * character or preset no longer exists (that counts as stale).
+ */
+export function setRestoredSignatureResolver(fn) {
+  restoredResolver = typeof fn === 'function' ? fn : null;
+}
+
 /** Offer Resume for checkpoints saved before a reload (call once at start-up when enabled). */
 export async function restoreInterrupted() {
   if (!persistCheckpoints) return 0;
@@ -289,8 +309,11 @@ export async function restoreInterrupted() {
       title: r.title,
       context: r.context ?? '',
       request: r.request,
+      meta: r.meta ?? null,
       signature: r.signature ?? null,
-      currentSignature: null,
+      // Lazy, so a resolver registered after the restore still applies. Without one the job cannot be
+      // judged and counts as current.
+      currentSignature: () => (restoredResolver ? restoredResolver(restoredJob(r.id)) : r.signature ?? null),
       openRoute: r.openRoute ?? null,
       summarize: null,
       onFinish: null,
@@ -339,6 +362,7 @@ export function __resetJobs({ run = runOptimizerTask, checkpointDb = createCheck
   jobs = [];
   seq = 1;
   runner = run;
+  restoredResolver = null;
   db = checkpointDb;
   persistCheckpoints = persist;
 }

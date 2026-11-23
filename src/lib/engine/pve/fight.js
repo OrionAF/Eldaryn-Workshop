@@ -1110,7 +1110,7 @@ function prepare(fighter) {
       return {
         player: p,
         spells: inputs.spells.length > 0 ? initSpellRuntimes(inputs.spells) : null,
-        minion: createMinion(inputs.summon, p, inputs.minionStats),
+        minion: createMinion(inputs.summon, p, inputs.minionStats, 'PVE'),
         stacks: sc.active ? sc : null,
         chrono: c.flame > 0 || c.earthen > 0 || c.dark > 0
           ? { flux: 0, flameConduit: c.flame, earthenConduit: c.earthen, darkConduit: c.dark } : null,

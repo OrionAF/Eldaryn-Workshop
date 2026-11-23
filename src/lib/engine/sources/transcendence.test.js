@@ -21,16 +21,18 @@ describe('calculateTranscendenceBonuses', () => {
       missChanceFlat: 0.8, attackPercent: 0.8,
     });
   });
-  it('Deathlord board carries minion stats and dominion', () => {
-    const b = transcendenceBoardForSpec('NECROMANCER_DEATHLORD');
-    expect(nz(calculateTranscendenceBonuses(['n_0,-1', 'n_-1,-2', 'n_0,-2'], b))).toEqual({
-      minionHealthPercent: 1.5, hpPercent: 1, dominionFlat: 1,
-    });
+  it('the Necromancer board carries minion stats and Dominion, the same for both specs (2.9.8 L1260679-1260733)', () => {
+    for (const spec of ['NECROMANCER_DEATHLORD', 'NECROMANCER_DOOMWEAVER']) {
+      const b = transcendenceBoardForSpec(spec);
+      expect(nz(calculateTranscendenceBonuses(['n_0,-1', 'n_-1,-2', 'n_0,-2', 'n_-3,-7'], b))).toEqual({
+        hpPercent: 1, minionAttackPercent: 0.8, attackPercent: 0.8, dominionFlat: 1,
+      });
+    }
   });
-  it('Mage vs Doomweaver vs Druid boards differ', () => {
+  it('Mage vs Necromancer vs Druid boards differ', () => {
     const ids = ['n_-1,-2'];
     expect(nz(calculateTranscendenceBonuses(ids, transcendenceBoardForSpec('MYSTIC_MAGE')))).toEqual({ hpRegenFlat: 0.6 });
-    expect(nz(calculateTranscendenceBonuses(ids, transcendenceBoardForSpec('NECROMANCER_DOOMWEAVER')))).toEqual({ hpRegenFlat: 0.6 });
+    expect(nz(calculateTranscendenceBonuses(ids, transcendenceBoardForSpec('NECROMANCER_DOOMWEAVER')))).toEqual({ minionAttackPercent: 0.8 });
     expect(nz(calculateTranscendenceBonuses(ids, transcendenceBoardForSpec('MYSTIC_DRUID')))).toEqual({ damageReductionFlat: 0.4 });
   });
   it('allocating a whole board only touches known keys', () => {

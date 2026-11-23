@@ -124,7 +124,7 @@
   {#each charts as c (c.kind)}
     {@const f = chartFormat(c.kind)}
     <div class="chart" data-chart={c.kind}>
-      <h3 class="subheading">{c.title}</h3>
+      <h3 class="micro-label">{c.title}</h3>
       <p class="caption" data-testid="chart-label-{c.kind}">
         {c.chart.label}. Simulated, not a game value; base
         {#if c.kind === 'damage'}<span class="num">{formatFlat(Math.round(c.chart.base.mean))}</span> DPS{:else}<span class="num">{Math.round(c.chart.base.mean * 100)}%</span>{/if}

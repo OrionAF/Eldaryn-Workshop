@@ -14,9 +14,9 @@
   import { getDuelSetup, setDuelSetup } from '../../lib/duelSetup.svelte.js';
   import { go } from '../../lib/router.svelte.js';
   import { formatHash } from '../../lib/routes.js';
-  import { startJob, cancelJob, resumeJob, isStale, jobsStore, jobSignature } from '../../lib/jobs.svelte.js';
+  import { startJob, cancelJob, resumeJob, isStale, jobsStore } from '../../lib/jobs.svelte.js';
   import { runOptimizerTask } from '../../lib/optimizerClient.js';
-  import { metricKey } from '../../lib/engine/metrics.js';
+  import { duelSignature } from '../../lib/ui/jobSignatures.js';
   import {
     presetDuelFighter,
     opponentFighter,
@@ -119,11 +119,7 @@
 
   /** What a run depends on: the two fighters as the engine will read them, the seat and N. */
   function signatureFor(presetId, opponentId, seatId, n) {
-    const c = rosterStore.current;
-    const o = c?.opponents.find((x) => x.id === opponentId);
-    if (!c || !o || !c.presets.some((p) => p.id === presetId)) return null;
-    const inputs = metricKey('duel-inputs', presetDuelFighter(c, presetId), opponentFighter(o), seatId, n);
-    return jobSignature({ characterKey: c.id, presetId, inputs });
+    return duelSignature(rosterStore.current, presetId, opponentId, seatId, n);
   }
 
   function launch(request, meta) {

@@ -10,12 +10,12 @@ import { lane } from '../rng.js';
 // Module 3965 (L1092725-1092929): cast order and opening delays
 // ---------------------------------------------------------------------------------------------
 
-/** Spell-type sort key within a tick (L1092869-1092913). */
+/** Spell-type sort key within a tick (2.9.8 L1119843-1119890; STANCE 11 at L1119887-1119890). */
 export const SPELL_TYPE_CAST_ORDER = Object.freeze({
   DEFENSE: 0, BUFF: 1, HEAL: 2, DAMAGE: 3, DEBUFF: 4, AURA: 5,
-  TRANSFORM: 6, STACK: 7, SHIELD: 8, FORM: 9, SUMMON: 10,
+  TRANSFORM: 6, STACK: 7, SHIELD: 8, FORM: 9, SUMMON: 10, STANCE: 11,
 });
-/** Sort key of an unknown spell type: the register holding 9 at L1092914. */
+/** Sort key of an unknown spell type: the register holding 9 (FORM's), 2.9.8 L1119892. */
 export const SPELL_TYPE_CAST_ORDER_FALLBACK = 9;
 /** First-cast delay of DAMAGE and DEBUFF spells (L1092915). */
 export const OFFENSIVE_OPENING_DELAY_MS = 1000;

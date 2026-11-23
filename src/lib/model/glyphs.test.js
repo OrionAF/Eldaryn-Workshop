@@ -117,12 +117,35 @@ describe('secondary value (doc §9)', () => {
     expect(glyphSecondaryValue({ stat: 'bogus', quality: 1 })).toBe(0);
   });
 
-  it('quality is the inverse, clamped to [0, 1.2] (Game/updates-2.8.2.md §4)', () => {
+  it('quality is the inverse, clamped to [0, 1.4] (GLYPH_MAX_QUALITY, 2.9.8 L1266675)', () => {
     expect(glyphSecondaryQuality('critChance', 2.8)).toBeCloseTo(0.5, 5);
-    expect(glyphSecondaryQuality('critChance', 99)).toBe(1.2);
+    expect(glyphSecondaryQuality('critChance', 99)).toBe(1.4);
+    // 5.9 is the 1.2 value: the inverse stops at 1.2, so the value round-trips past the second floor
+    expect(glyphSecondaryQuality('critChance', 5.9)).toBe(1.2);
+    expect(glyphSecondaryValue({ stat: 'critChance', quality: glyphSecondaryQuality('critChance', 6) })).toBe(6);
     expect(glyphSecondaryQuality('critChance', -3)).toBe(0);
     const q = glyphSecondaryQuality('lifesteal', 4.5);
     expect(glyphSecondaryValue({ stat: 'lifesteal', quality: q })).toBe(4.5);
+  });
+});
+
+describe('Ancient glyphs (2.9.8 L1266607-1266627, bands L1266700-1266721)', () => {
+  it('Primordial Edge and Elder Ward are Ancient minor types', () => {
+    expect(glyphTypeInfo('g-primordial')).toMatchObject({ name: 'Primordial Edge', tier: 'minor', rarity: 'Ancient' });
+    expect(glyphTypeInfo('g-elderward')).toMatchObject({ name: 'Elder Ward', tier: 'minor', rarity: 'Ancient' });
+    expect(glyphRarityOptions('g-elderward')).toEqual(['Ancient']);
+  });
+  it('an Ancient secondary rolls in [1.21, 1.4] and survives normalisation; its value passes the second step floor', () => {
+    const q = (quality) => normaliseGlyph({ glyphType: 'g-primordial', secondary: { stat: 'critChance', quality } }).secondary.quality;
+    expect(q(1.35)).toBe(1.35);
+    expect(q(2)).toBe(1.4);
+    // critChance at 1.21: max(5.924, 5.0 + 0.1, value(1.2) 5.9 + 0.1) = 6.0; at 1.4: 6.76 -> 6.8
+    expect(glyphSecondaryValue({ stat: 'critChance', quality: 1.21 })).toBe(6);
+    expect(glyphSecondaryValue({ stat: 'critChance', quality: 1.4 })).toBe(6.8);
+  });
+  it('a profile glyph of rarity ANCIENT imports instead of being dropped', () => {
+    const g = normaliseGlyph({ id: 'a1', glyphType: 'g-elderward', rarity: 'Ancient', secondary: { stat: 'lifesteal', quality: 1.3 } });
+    expect(g).toMatchObject({ id: 'a1', glyphType: 'g-elderward', rarity: 'Ancient', secondary: { stat: 'lifesteal', quality: 1.3 } });
   });
 });
 

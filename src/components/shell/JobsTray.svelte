@@ -98,7 +98,7 @@
 
   {#each jobs as job (job.id)}
     {@const st = STATUS[job.status]}
-    {@const stale = job.status === 'finished' && isStale(job)}
+    {@const stale = (job.status === 'finished' || job.status === 'cancelled') && isStale(job)}
     <article class="job" aria-label="{job.title}, {st.word.toLowerCase()}">
       <div class="job-top">
         <div class="t">
@@ -127,7 +127,7 @@
         </p>
       {/if}
       {#if stale}
-        <p class="note stale"><span aria-hidden="true">!</span> Out of date: your character or preset changed after this ran. Run it again.</p>
+        <p class="note stale"><span aria-hidden="true">!</span> Out of date: your character or preset changed after this ran. {job.status === 'cancelled' ? 'Resume would continue the old setup; start a new run instead.' : 'Run it again.'}</p>
       {/if}
 
       {#if job.status === 'finished'}
