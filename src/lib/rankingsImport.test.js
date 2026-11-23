@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 // Backlog §2: a Rankings profile imported as a PVP opponent and offered as a Celestial partner.
 import { describe, it, expect, beforeEach } from 'vitest';
 import rankings from './__fixtures__/real/leaderboard-warrior-l95-tank.json';

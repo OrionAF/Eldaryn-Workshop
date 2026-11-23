@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { it, expect, beforeEach, vi } from 'vitest';
 import { loadUi, saveUi } from './uiState.js';
 

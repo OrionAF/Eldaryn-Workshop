@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { tierChangeLosses, boardUsers, relicUsers, inertGlyphPresets } from './usage.js';
 import { rosterStore } from '../rosterStore.svelte.js';

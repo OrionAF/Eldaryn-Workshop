@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 // Push through the real build space, objectives and optimiser (simulation.md §Push): the result shape,
 // the routed worker task, and cancel + resume through the Push checkpoint (an optimisation cancelled
 // mid-run resumes from its own checkpoint) equal to the uninterrupted run.

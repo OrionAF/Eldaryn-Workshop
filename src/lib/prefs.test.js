@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
 import { loadUi, saveUi, normalisePrefs, defaultPrefs, UI_KEY } from './uiState.js';
 import { prefs, setPrefs, applyPrefs } from './prefs.svelte.js';

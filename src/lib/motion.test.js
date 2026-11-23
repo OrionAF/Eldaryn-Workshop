@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { motionOK, cssMs, glide, pageEnter, leave, settleChildren } from './motion.js';
 
