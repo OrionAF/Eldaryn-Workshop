@@ -3578,7 +3578,7 @@
    "HARD": 11000,
    "MYTHIC": 13000
   },
-  "mythicPlusGrowthPerLevel": 1.18,
-  "citation": "getCrusadePowerRequirement L1701736-1701800; table L1702277-1702305"
+  "mythicPlusGrowthPerLevel": 1.15,
+  "citation": "getCrusadePowerRequirement L1701736-1701800; table L1702277-1702305; growth 1.15 since client 2.9.3, 1.18 in 2.7.0-2.9.2 (2.9.8 decompiled.js L2045482-2045483)"
  }
 }
