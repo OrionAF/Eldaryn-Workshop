@@ -125,6 +125,24 @@ describe('board reallocation and Awakening search', () => {
     expect(back.length).toBeGreaterThan(0);
     for (const x of back) expect(runningBoardOf(c, x).allocatedNodeIds).not.toContain(node);
   });
+  it('never writes a board holding an Ancient node its build does not equip; unequipping gives the node back', () => {
+    const raw = structuredClone(fixtureCharacter('WARRIOR'));
+    for (const b of raw.transcendence.presets) b.allocatedNodeIds = b.allocatedNodeIds.filter((id) => !id.startsWith('sig_'));
+    for (const sp of ['FLAMEBORN', 'EARTHWARDEN']) delete raw.sigils.owned[sp];
+    raw.presets[1].ancientSigilSpecies = null;
+    const c = normaliseCharacter(raw);
+    const s = createBuildSpace(c, 'p1', { toggles: only('boardAllocation', 'ancient'), boardIchorBudget: 1e6 });
+    const idle = (x) => (runningBoardOf(c, x).allocatedNodeIds ?? []).filter((id) => id.startsWith('sig_')
+      && id !== sigilBySpecies(x.ancientSigilSpecies)?.transcendenceNode);
+    const moves = domain(s, 'boardAllocation');
+    expect(moves.length).toBeGreaterThan(0);
+    for (const x of moves) expect(idle(x)).toEqual([]);
+    // equipped, then unequipped through the ancient block: the node goes too
+    const equipped = moves.find((x) => x.ancientSigilSpecies === 'FLAMEBORN');
+    const off = domain(s, 'ancient', equipped).find((x) => x.ancientSigilSpecies === null);
+    expect(idle(off)).toEqual([]);
+    expect(runningBoardOf(c, off).allocatedNodeIds).not.toContain(sigilBySpecies('FLAMEBORN').transcendenceNode);
+  });
   it('materialises only the chosen existing board and Awakening immutably, with shared-preset effects', () => {
     const c = fixture(), before = structuredClone(c), s = spaceOf(c, { boardIchorBudget: 10 });
     const X = { ...domain(s, 'boardAllocation')[0], awakening: { path: 'RADIANT', level: awakeningCap(c) } };

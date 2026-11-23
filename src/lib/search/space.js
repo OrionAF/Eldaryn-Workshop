@@ -28,8 +28,9 @@ import { engineView, paretoFilter } from './dominance.js';
 import { EngineInputError } from '../engine/validate.js';
 import { canonicalStoneAssignment, stoneAssignmentNeighbours, stoneSetKey } from './stoneAssignments.js';
 import { canonicalRelicLevels, normaliseRelicBudget, relicLevel, relicProgressionAllowed, relicProgressionNeighbours } from './relicProgression.js';
-import { canonicalBoardAllocation, boardAllocationNeighbours, boardAllocationAllowed, normaliseIchorBudget } from './boardAllocation.js';
+import { canonicalBoardAllocation, boardAllocationNeighbours, boardAllocationAllowed, normaliseIchorBudget, allocationOf, boardKeyOf } from './boardAllocation.js';
 import { canonicalAwakening, awakeningNeighbours, awakeningViolations } from './awakeningChoices.js';
+import { canRemoveNode } from '../transcendence.js';
 
 /** Search blocks in their fixed order (A.3). */
 export const BLOCKS = Object.freeze([
@@ -371,6 +372,23 @@ export function createBuildSpace(character, presetOrId, {
    * usable on the spec, slot caps, the Ancient on its board) plus the search's own: conditions valid for
    * the spec, and changed major glyphs that would be inert are taken back out (#47 #50 #55).
    */
+  /**
+   * A board the search writes holds no Ancient sigil node that no preset on it equips: the node has no
+   * stats, so allocating it without using its Ancient only wastes points (the user's rule, sigils.md §9).
+   * Other presets running the same board keep the nodes of the Ancients they equip.
+   */
+  function withoutIdleSigilNodes(c) {
+    const { boardId } = c.boardAllocation;
+    const used = new Set([sigilBySpecies(c.ancientSigilSpecies)?.transcendenceNode]);
+    for (const p of character.presets) {
+      if (p.id !== presetId && effectiveTranscendencePreset(character, p)?.id === boardId) used.add(sigilBySpecies(p.ancientSigilSpecies)?.transcendenceNode);
+    }
+    const key = boardKeyOf(character, c);
+    let ids = c.boardAllocation.allocatedNodeIds;
+    for (const id of ids) if (id.startsWith('sig_') && !used.has(id) && canRemoveNode(key, ids, id)) ids = ids.filter((x) => x !== id);
+    return ids === c.boardAllocation.allocatedNodeIds ? c.boardAllocation : canonicalBoardAllocation(character, { boardId, allocatedNodeIds: ids });
+  }
+
   function legalise(c0) {
     const c = canon(c0);
     if (c.boardAllocation && c.boardAllocation.boardId !== runningBoardOf(character, { ...c, boardAllocation: undefined })?.id) delete c.boardAllocation;
@@ -389,6 +407,7 @@ export function createBuildSpace(character, presetOrId, {
     if (!(slots > 0 && ancient.has(anc) && isSigilSpeciesActiveForSpec(anc, cls, spec) && ancientActive(anc, runningBoardOf(character, c)))) {
       c.ancientSigilSpecies = null;
     }
+    if (c.boardAllocation) c.boardAllocation = withoutIdleSigilNodes(c);
     // the Ancient takes one of the generic slots (sigils.md §2)
     c.sigilSpecies = c.sigilSpecies.filter((sp) => owned[sp] && generic.has(sp)).slice(0, genericSlots(c));
     c.relicIds = c.relicIds.filter((id) => classRelics.has(id) && relicLevel(character, c, id) > 0).slice(0, relicCap);
@@ -540,7 +559,10 @@ export function createBuildSpace(character, presetOrId, {
       const board = runningBoardOf(character, c);
       const pool = ancientSigils(cls).map((s) => s.species)
         .filter((sp) => isSigilSpeciesActiveForSpec(sp, cls, spec) && ancientActive(sp, board));
-      return [legalise({ ...c, ancientSigilSpecies: null }), ...pool.flatMap((sp) => withAncient(c, sp).map(legalise))];
+      // unequipping also gives back its node when the board may change (no idle sigil nodes)
+      const off = { ...c, ancientSigilSpecies: null };
+      if (on.boardAllocation && board && c.ancientSigilSpecies && !c.boardAllocation) off.boardAllocation = { boardId: board.id, allocatedNodeIds: [...allocationOf(character, c, board.id)] };
+      return [legalise(off), ...pool.flatMap((sp) => withAncient(c, sp).map(legalise))];
     },
     conditions(c) {
       if (!conditionsUnlocked(L)) return [];
