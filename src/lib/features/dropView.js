@@ -10,7 +10,7 @@
 //   isDowngrade(best)                a judged (simulated) downgrade, the rows "Hide downgrades" drops
 //   bagSummaryText(rows)             the loot bag as plain text lines for the clipboard
 //   runMoreRequest(request)          a stricter request for the same inputs, or null at the ceiling
-import { groupBySet, verdictFor, aggregateVerdict, statKeyLabel, guardText, DROP_PRECISION } from './swap.js';
+import { groupBySet, verdictFor, aggregateVerdict, aggregateCaveat, statKeyLabel, guardText, DROP_PRECISION } from './swap.js';
 import { EQUIP_SETS } from '../model/equipment.js';
 
 export const setLabelOf = (setKey) => EQUIP_SETS.find((s) => s.key === setKey)?.label ?? setKey;
@@ -111,6 +111,8 @@ export function setCards(rows, results = {}) {
       coverageLabel: [...new Set(per.map((p) => p.v.coverageLabel))].join('; '),
       notJudged: [...new Set(per.flatMap((p) => p.v.notJudged))].map(statKeyLabel),
       unresolved: per.some((p) => p.v.unresolved.length > 0),
+      // goals too close to call under an upgrade verdict (swap.js verdictFor): the card says so under the chip
+      caveat: aggregateCaveat(per.map((p) => p.v)),
       nNeeded: needed.length ? Math.max(...needed) : null,
       presetNames: all0.map((p) => p.row.name),
       unjudgedNames: per === all0 ? [] : unjudged.map((p) => p.row.name),
@@ -120,6 +122,7 @@ export function setCards(rows, results = {}) {
         method: p.row.method,
         approx: p.row.approx,
         verdict: p.v.verdict,
+        caveat: p.v.caveatLabels,
         metrics: metricsOf(p.res),
         guards: guardsOf(p.res),
       })),

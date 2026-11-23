@@ -17,7 +17,7 @@ import { normaliseItem, itemAtFullQuality } from '../model/equipment.js';
 import { dropAscension } from '../model/drop.js';
 import { dropHasStats } from '../model/drop.js';
 import { slotsForRealm } from '../game/gear.js';
-import { prepareSwap, verdictFor, aggregateVerdict } from './swap.js';
+import { prepareSwap, verdictFor, aggregateVerdict, aggregateCaveat } from './swap.js';
 import { ehpProxy } from '../search/objectives.js';
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -213,6 +213,9 @@ export function entryResults(offsets, rows, i, results) {
 
 const VERDICT_RANK = { upgrade: 4, mixed: 3, inconclusive: 2, sidegrade: 1, downgrade: 0 };
 
+/** Screen rank of a judgement: a caveated upgrade (goals too close to call) sits half a step under a clean one, above mixed. */
+const rankOf = (j) => (j ? VERDICT_RANK[j.verdict] - (j.caveat?.length ? 0.5 : 0) : -1);
+
 /**
  * Percent change of a row, for ordering within a verdict: the summed relative gain over its judged goals (a
  * shorter clear time counts as a gain), so "PvP +3 %, Celestial flat" sorts above "PvP +1 %"
@@ -228,7 +231,7 @@ function scoreOf(row, res) {
  * The best verdict across the equipment sets an item could go into. Applying a drop writes to a whole
  * set, so every preset wearing that set is judged together (aggregateVerdict, as the single view does):
  * an item that helps one preset and hurts another on the same set is `mixed` (#97). Sets rank
- * upgrade, mixed, inconclusive, sidegrade, downgrade; ties go to the larger mean change. Rows without
+ * upgrade, upgrade with a caveat, mixed, inconclusive, sidegrade, downgrade; ties go to the larger mean change. Rows without
  * a finished simulation are judged on the closed form (`basis: 'closed'`, an estimate).
  *
  * @param {Array<object>} rows  the item's prepareSwap rows
@@ -254,19 +257,19 @@ export function judgeEntry(rows, results = []) {
     const lead = members.reduce((a, m) => (m.score > a.score ? m : a), members[0]);
     const coverage = [...new Set(members.flatMap((m) => m.v.coverage))];
     return {
-      setKey, verdict, score, lead, members, coverage,
+      setKey, verdict, score, lead, members, coverage, caveat: aggregateCaveat(members.map((m) => m.v)),
       basis: members.every((m) => m.v.basis === 'sim') ? 'sim' : 'closed',
     };
   });
   let best = null;
   for (const s of sets) {
-    if (!best || VERDICT_RANK[s.verdict] > VERDICT_RANK[best.verdict]
-      || (VERDICT_RANK[s.verdict] === VERDICT_RANK[best.verdict] && s.score > best.score)) best = s;
+    if (!best || rankOf(s) > rankOf(best) || (rankOf(s) === rankOf(best) && s.score > best.score)) best = s;
   }
   if (!best) return null;
   const notJudged = [...new Set(best.members.flatMap((m) => m.v.notJudged))];
   return {
     verdict: best.verdict,
+    caveat: best.caveat,
     basis: best.basis,
     score: best.score,
     row: best.lead.row,
@@ -287,8 +290,6 @@ export function rankEntries(entries, rows, offsets, results) {
   return entries
     .map((entry, i) => ({ entry, order: i, best: judgeEntry(rows[i], entryResults(offsets, rows, i, results)) }))
     .sort((a, b) => {
-      const ra = a.best ? VERDICT_RANK[a.best.verdict] : -1;
-      const rb = b.best ? VERDICT_RANK[b.best.verdict] : -1;
-      return rb - ra || (b.best?.score ?? 0) - (a.best?.score ?? 0) || a.order - b.order;
+      return rankOf(b.best) - rankOf(a.best) || (b.best?.score ?? 0) - (a.best?.score ?? 0) || a.order - b.order;
     });
 }

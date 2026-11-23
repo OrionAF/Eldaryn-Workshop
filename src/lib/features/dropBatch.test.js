@@ -229,6 +229,22 @@ describe('judging per equipment set (#97, #100)', () => {
     expect(best.notJudged).toContain('totalHealthPercent');
   });
 
+  it('C2: a caveated upgrade is an upgrade, ranks under a clean one and above mixed', () => {
+    const c = sharedSet();
+    const { rows, offsets } = prepareBatch(c, drop);
+    const two = (a, b) => ({ goals: [res(1000, 60, a).goals[0], { ...res(1000, 1, b).goals[0], goalId: 'cel', label: 'Celestial' }] });
+    const cav = [two('better', 'unresolved'), two('better', 'unresolved')];
+    const best = judgeEntry(rows[0], cav);
+    expect(best.verdict).toBe('upgrade');
+    expect(best.caveat).toEqual(['Celestial']);
+    const clean = [res(1000, 60, 'better'), res(1000, 60, 'better')];
+    expect(judgeEntry(rows[0], clean).caveat).toEqual([]);
+    const mixed = [res(1000, 60, 'better'), res(1000, -90, 'worse')];
+    const entries = [{ ...drop[0], key: 'mix' }, { ...drop[0], key: 'cav' }, { ...drop[0], key: 'clean' }];
+    const order = rankEntries(entries, [rows[0], rows[0], rows[0]], [0, 2, 4], [...mixed, ...cav, ...clean]).map((r) => r.entry.key);
+    expect(order).toEqual(['clean', 'cav', 'mix']);
+  });
+
   it('a metric unresolved at maxN ranks above a proven sidegrade and is labelled inconclusive', () => {
     const c = sharedSet();
     const { rows } = prepareBatch(c, drop);

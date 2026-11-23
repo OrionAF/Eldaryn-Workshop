@@ -16,6 +16,16 @@ const metric = (verdict, delta, o = {}) => ({
 });
 
 describe('setCards', () => {
+  it('C2: an upgrade with a goal too close to call carries the caveat labels', () => {
+    const rows = [row('set1', 'a')];
+    const [c] = setCards(rows, { a: { goals: [metric('better', 60), { ...metric('unresolved', 2, { holmReject: false }), goalId: 'fort', label: 'Fortress boss' }] } });
+    expect(c.verdict).toBe('upgrade');
+    expect(c.caveat).toEqual(['Fortress boss']);
+    expect(c.unresolved).toBe(true);
+    const [clean] = setCards(rows, { a: { goals: [metric('better', 60)] } });
+    expect(clean.caveat).toEqual([]);
+  });
+
   it('a comparison unresolved at maxN makes the set inconclusive ("Too close to call"), not a sidegrade', () => {
     const rows = [row('set1', 'a')];
     const [c] = setCards(rows, { a: { goals: [metric('unresolved', 2, { nNeeded: 90000, holmReject: false })] } });
