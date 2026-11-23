@@ -1,0 +1,533 @@
+{
+ "_note": "Stripped capture of a real player profile (Necromancer L31 with Bone Servant, Graveborn Vigor and Withering Hex), one of the user's own characters, from /player/full-state of 2026-11-23 21:55 UTC, right before the two Village Raid fast-pass fights in raid-fastpass-necromancer-r2.json. Game state plus the server's computedStats and totalPower: no name, player ids, clan, quests or economy.",
+ "equipment": {
+  "HEAD": {
+   "primaryStats": {
+    "attack": 656,
+    "hp": 1904
+   },
+   "id": "7392befe-4ed7-4702-ac53-9055ef406bd8",
+   "name": "Shadow Helmet",
+   "itemType": "SHADOW",
+   "slot": "HEAD",
+   "rarity": "EPIC",
+   "itemLevel": 46,
+   "secondaryStats": [
+    {
+     "type": "MINION_ATTACK",
+     "value": 4.1
+    }
+   ],
+   "qualityBonus": 0,
+   "createdAt": 1795373239060,
+   "class": "NECROMANCER"
+  },
+  "SHOULDERS": {
+   "primaryStats": {
+    "attack": 529,
+    "hp": 1520
+   },
+   "id": "1fa029c4-48a5-4cf8-b2e7-ca65c18626af",
+   "name": "Shadow Shoulderplates",
+   "itemType": "SHADOW",
+   "slot": "SHOULDERS",
+   "rarity": "EPIC",
+   "itemLevel": 40,
+   "secondaryStats": [
+    {
+     "type": "ATTACK_PERCENT",
+     "value": 5.4
+    }
+   ],
+   "qualityBonus": 0,
+   "createdAt": 1795372764880,
+   "class": "NECROMANCER"
+  },
+  "CHEST": {
+   "primaryStats": {
+    "attack": 846,
+    "hp": 2576
+   },
+   "id": "a80e0898-f8b3-4e1a-81db-5a844ac66fd8",
+   "name": "Shadow Chestplate",
+   "itemType": "SHADOW",
+   "slot": "CHEST",
+   "rarity": "EPIC",
+   "itemLevel": 65,
+   "secondaryStats": [
+    {
+     "type": "MINION_ATTACK_SPEED",
+     "value": 0.04
+    }
+   ],
+   "qualityBonus": 0,
+   "createdAt": 1795373247967,
+   "class": "NECROMANCER"
+  },
+  "LEGGINGS": {
+   "primaryStats": {
+    "attack": 1082,
+    "hp": 3415
+   },
+   "id": "97f8d782-1799-42e3-a44f-9e566cc8d1c0",
+   "name": "Infernal Leggings",
+   "itemType": "INFERNAL",
+   "slot": "LEGGINGS",
+   "rarity": "LEGENDARY",
+   "itemLevel": 4,
+   "secondaryStats": [
+    {
+     "type": "MINION_ATTACK",
+     "value": 5.7
+    },
+    {
+     "type": "CRIT_DAMAGE",
+     "value": 0.13
+    }
+   ],
+   "qualityBonus": 0,
+   "createdAt": 1795273917408,
+   "class": "NECROMANCER",
+   "upgradedFrom": {
+    "primaryStats": {
+     "attack": 588,
+     "hp": 1692
+    },
+    "rarity": "EPIC",
+    "itemType": "ARCANE",
+    "name": "Arcane Leggings",
+    "itemLevel": 28,
+    "secondaryStats": [
+     {
+      "type": "CRIT_DAMAGE",
+      "value": 0.09
+     }
+    ]
+   }
+  },
+  "BOOTS": {
+   "primaryStats": {
+    "attack": 582,
+    "hp": 1422
+   },
+   "id": "03271771-da7c-4f27-a62f-72e575e2de9f",
+   "name": "Arcane Boots",
+   "itemType": "ARCANE",
+   "slot": "BOOTS",
+   "rarity": "EPIC",
+   "itemLevel": 54,
+   "secondaryStats": [
+    {
+     "type": "ATTACK_SPEED",
+     "value": 0.09
+    }
+   ],
+   "qualityBonus": 0,
+   "createdAt": 1795373101163,
+   "class": "NECROMANCER"
+  },
+  "WEAPON": {
+   "primaryStats": {
+    "attack": 1585,
+    "hp": 392
+   },
+   "id": "a9caf6d2-041b-4a99-bcf8-9e54f3991fbe",
+   "name": "Arcane Scythe",
+   "itemType": "ARCANE",
+   "slot": "WEAPON",
+   "rarity": "EPIC",
+   "itemLevel": 52,
+   "secondaryStats": [
+    {
+     "type": "ATTACK_PERCENT",
+     "value": 3.9
+    }
+   ],
+   "qualityBonus": 0,
+   "createdAt": 1795373266092,
+   "class": "NECROMANCER"
+  },
+  "OFFHAND": {
+   "primaryStats": {
+    "attack": 525,
+    "hp": 1875
+   },
+   "id": "7b6b7390-e19d-4856-9462-c3c060dcc26e",
+   "name": "Shadow Soul Lantern",
+   "itemType": "SHADOW",
+   "slot": "OFFHAND",
+   "rarity": "EPIC",
+   "itemLevel": 33,
+   "secondaryStats": [
+    {
+     "type": "ATTACK_SPEED",
+     "value": 0.11
+    }
+   ],
+   "qualityBonus": 0,
+   "createdAt": 1795276377627,
+   "class": "NECROMANCER"
+  },
+  "RING": {
+   "primaryStats": {
+    "attack": 1053,
+    "hp": 127
+   },
+   "id": "d853e76d-6ae1-4ba5-b210-aac795fd3da6",
+   "name": "Arcane Ring",
+   "itemType": "ARCANE",
+   "slot": "RING",
+   "rarity": "EPIC",
+   "itemLevel": 35,
+   "secondaryStats": [
+    {
+     "type": "ATTACK_PERCENT",
+     "value": 6.3
+    }
+   ],
+   "qualityBonus": 0,
+   "createdAt": 1795372307233,
+   "class": "NECROMANCER"
+  },
+  "TRINKET": {
+   "primaryStats": {
+    "attack": 565,
+    "hp": 533
+   },
+   "id": "fa5c28ae-8267-4129-9c73-8c40377705d0",
+   "name": "Shadow Amulet",
+   "itemType": "SHADOW",
+   "slot": "TRINKET",
+   "rarity": "EPIC",
+   "itemLevel": 16,
+   "secondaryStats": [
+    {
+     "type": "ATTACK_SPEED",
+     "value": 0.11
+    }
+   ],
+   "qualityBonus": 0,
+   "createdAt": 1795282201740,
+   "class": "NECROMANCER"
+  },
+  "BELT": null,
+  "GLOVES": null,
+  "RIFT_CORE": null
+ },
+ "equipment2": {
+  "HEAD": null,
+  "SHOULDERS": null,
+  "CHEST": null,
+  "LEGGINGS": null,
+  "BOOTS": null,
+  "WEAPON": null,
+  "OFFHAND": null,
+  "RING": null,
+  "TRINKET": null,
+  "BELT": null,
+  "GLOVES": null,
+  "RIFT_CORE": null
+ },
+ "activeEquipmentSet": 1,
+ "skills": {
+  "huntingLevel": 3,
+  "luckLevel": 4,
+  "vitalityLevel": 4,
+  "petDiscountLevel": 3,
+  "masteryLevel": 2,
+  "sigilDiscountLevel": 1,
+  "miningChargesLevel": 1,
+  "crusadeDiscountLevel": 1,
+  "midasTouchLevel": 1,
+  "artisanLevel": 1,
+  "summonLuckLevel": 1,
+  "ascensionLevel": 1,
+  "attunementLevel": 1,
+  "keySaveLevel": 1
+ },
+ "excludedDropStats": [
+  "SPELL_RESIST"
+ ],
+ "talentState": {
+  "specialization": "NECROMANCER_DEATHLORD",
+  "allocation": {
+   "death_t1_bone_reinforcement": 5,
+   "death_t2_deathless_flesh": 5,
+   "death_t3_undying_flesh": 5,
+   "death_t4_overlords_presence": 1
+  },
+  "talentPointsSpent": 16,
+  "availablePoints": 1
+ },
+ "talentState2": {
+  "specialization": null,
+  "allocation": {},
+  "talentPointsSpent": 0,
+  "availablePoints": 17
+ },
+ "activeTalentSet": 1,
+ "presets": [
+  {
+   "id": "default",
+   "name": "DEFAULT",
+   "icon": "shield",
+   "equipmentSet": 1,
+   "talentSet": 1,
+   "petId": null,
+   "mountId": null,
+   "relicIds": [],
+   "sigilSpecies": [
+    "GRAVEBORN_VIGOR",
+    "WITHERING_HEX"
+   ],
+   "utilitySigilSpecies": "BONE_SERVANT",
+   "transcendencePresetId": null,
+   "petV2CoreId": "ebbed4e5-620d-4d32-8f38-5ba65c50f630",
+   "petV2BaseId": "lizard",
+   "petV2SkinId": "lizard_fire",
+   "isDefault": true
+  }
+ ],
+ "activePresetId": "default",
+ "awakeningState": {
+  "path": null,
+  "level": 0
+ },
+ "transcendence": {
+  "allocatedNodeIds": []
+ },
+ "transcendencePresets": [
+  {
+   "id": "default",
+   "name": "DEFAULT",
+   "icon": "core",
+   "allocatedNodeIds": [],
+   "isDefault": true
+  }
+ ],
+ "activeTranscendencePresetId": "default",
+ "enchantSlots": {
+  "HEAD": null,
+  "SHOULDERS": null,
+  "CHEST": null,
+  "LEGGINGS": null,
+  "BOOTS": null,
+  "WEAPON": null,
+  "OFFHAND": null,
+  "RING": null,
+  "TRINKET": null,
+  "BELT": null,
+  "GLOVES": null,
+  "RIFT_CORE": null
+ },
+ "enchantSlots2": {
+  "HEAD": null,
+  "SHOULDERS": null,
+  "CHEST": null,
+  "LEGGINGS": null,
+  "BOOTS": null,
+  "WEAPON": null,
+  "OFFHAND": null,
+  "RING": null,
+  "TRINKET": null,
+  "BELT": null,
+  "GLOVES": null,
+  "RIFT_CORE": null
+ },
+ "enchantStones": [],
+ "computedStats": {
+  "totalAttack": 10083,
+  "totalHp": 25317,
+  "totalAttackSpeed": 1.31,
+  "totalDoubleHit": 0,
+  "totalCritChance": 0,
+  "totalCritDamage": 1.63,
+  "totalHpRegen": 0,
+  "totalLifesteal": 0,
+  "totalHealthPercent": 15.5,
+  "totalAttackPercent": 15.6,
+  "totalDamageReduction": 0,
+  "totalBlockChance": 0,
+  "totalMissChance": 0,
+  "totalBlindChance": 0,
+  "totalParalyzeChance": 0,
+  "totalPenetration": 0,
+  "totalPvpAttack": 0,
+  "totalPvpDefense": 0,
+  "totalSpellDamage": 0,
+  "totalSpellResist": 0,
+  "totalSpellCritChance": 0,
+  "totalSpellVamp": 0,
+  "totalDisruptionChance": 0,
+  "disruptionEffect": "FEAR",
+  "totalMinionAttack": 9.8,
+  "totalMinionHealth": 25,
+  "totalMinionCritChance": 0,
+  "totalMinionLifesteal": 0,
+  "totalSoulLink": 0,
+  "totalMinionAttackSpeed": 0.04,
+  "totalDominion": 1,
+  "totalOblivionPower": 0,
+  "totalFlameConduit": 0,
+  "totalEarthenConduit": 0,
+  "totalDarkConduit": 0
+ },
+ "totalPower": 4612,
+ "fortressBuffs": null,
+ "petState": {
+  "ownedPets": [],
+  "eggs": [],
+  "equippedPetId": null,
+  "favoritePetIds": [],
+  "altar": {
+   "totalXp": 0,
+   "tier": 1
+  },
+  "totalPetsPurchased": 0
+ },
+ "petV2": {
+  "activeBaseId": "lizard",
+  "activeSkinId": "lizard_fire",
+  "activeCoreId": "ebbed4e5-620d-4d32-8f38-5ba65c50f630",
+  "unlockedBaseIds": [
+   "wolf",
+   "lizard"
+  ],
+  "ownedSkinIds": [
+   "wolf_default",
+   "lizard_default",
+   "lizard_fire"
+  ],
+  "skinByBase": {
+   "wolf": "wolf_default",
+   "lizard": "lizard_fire"
+  },
+  "cores": [
+   {
+    "id": "ebbed4e5-620d-4d32-8f38-5ba65c50f630",
+    "rarity": "COMMON",
+    "baseAttack": 198,
+    "baseHp": 549,
+    "secondaryStats": [
+     {
+      "type": "HEALTH_PERCENT",
+      "value": 2.4
+     }
+    ],
+    "createdAt": 1793823173787
+   }
+  ],
+  "sealedCores": [],
+  "favoriteCoreIds": [],
+  "altar": {
+   "totalXp": 570,
+   "tier": 1,
+   "xpTableVersion": 3
+  },
+  "totalSummoned": 20
+ },
+ "mountState": {
+  "ownedMounts": [],
+  "altar": {
+   "tier": "COMMON",
+   "tierSummons": 0,
+   "totalSummons": 0
+  },
+  "activeMountId": null
+ },
+ "sigilState": {
+  "ownedSigils": [
+   {
+    "species": "BONE_SERVANT",
+    "rarity": "COMMON",
+    "level": 3,
+    "fragments": 2,
+    "createdAt": 1793825020124
+   },
+   {
+    "species": "GRAVE_RENEWAL",
+    "rarity": "COMMON",
+    "level": 4,
+    "fragments": 0,
+    "createdAt": 1793890690523
+   },
+   {
+    "species": "SOUL_SPIKE",
+    "rarity": "COMMON",
+    "level": 3,
+    "fragments": 1,
+    "createdAt": 1793890697004
+   },
+   {
+    "species": "WITHERING_HEX",
+    "rarity": "UNCOMMON",
+    "level": 1,
+    "fragments": 0,
+    "createdAt": 1793890698193
+   },
+   {
+    "species": "GRAVEBORN_VIGOR",
+    "rarity": "UNCOMMON",
+    "level": 1,
+    "fragments": 0,
+    "createdAt": 1795270061638
+   }
+  ],
+  "equippedSpecies": [
+   "GRAVEBORN_VIGOR",
+   "WITHERING_HEX"
+  ],
+  "druidEquippedSpecies": [],
+  "utilitySlotSpecies": "BONE_SERVANT",
+  "druidUtilitySlotSpecies": null,
+  "totalSigilsPurchased": 27,
+  "altarTier": 1
+ },
+ "relicState": {
+  "ownedRelics": [],
+  "equippedRelicIds": [],
+  "extraSlotsPurchased": 0
+ },
+ "oblivionPrestige": {
+  "enabled": true,
+  "unlocked": false,
+  "unlockLevel": 95,
+  "unlockPending": false,
+  "activeRealm": "BASE",
+  "energyCarry": {
+   "current": 9060,
+   "kept": 9060,
+   "lost": 0,
+   "bonus": 0,
+   "bonusLevels": 0,
+   "carried": 9060,
+   "ownCap": 20000
+  },
+  "oblivion": null,
+  "keys": {
+   "oblivionDungeon": 3
+  },
+  "prestige": {
+   "level": 0,
+   "xp": 0,
+   "xpIntoLevel": 0,
+   "xpToNext": 0,
+   "committedAt": null
+  },
+  "canActivate": false,
+  "activationOpensAt": 1787756400000,
+  "canCommit": false,
+  "requirements": {
+   "levelOk": false,
+   "oblivionSetOwned": 0,
+   "oblivionSetNeeded": 9,
+   "fullSetRequired": true
+  }
+ },
+ "player": {
+  "name": "Fixture Necromancer L31",
+  "class": "NECROMANCER",
+  "level": 31,
+  "glyphs": []
+ }
+}

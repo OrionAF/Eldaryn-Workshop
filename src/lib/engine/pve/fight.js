@@ -20,7 +20,7 @@ import { initDebuffState, applyDebuff, processDebuffsTick, slowedAttackSpeed, we
 import { applySunderToTarget, applyBulwarkDr, applyElusiveBuff, createStackCombat } from '../core/stacks.js';
 import { CHRONO_FLUX, clampChronoFlux, chronoFluxFromEvents } from '../core/chronoFlux.js';
 import {
-  createHealBudget, refillHealBudget, spendHealBudget, shieldRefillAmount, regenShieldRefillAmount,
+  createHealBudget, refillHealBudget, spendHealBudget, shieldRefillAmount,
 } from '../core/shield.js';
 import {
   advanceMinionRespawn, elapseMinionRespawn, resummonIfDead, expireMinionDeathWard, minionDeathWardLeft, openingSummonWindowMs, openingSwingTimerStart,
@@ -37,7 +37,7 @@ import {
 } from '../core/spellConfig.js';
 import { glyphCombatMods } from '../core/glyphMods.js';
 import {
-  processCombatTick, routeSpellHealToMinion, bystanderSwing, REGEN_INTERVAL_MS, REGEN_PULSES_PER_SEC,
+  processCombatTick, routeSpellHealToMinion, bystanderSwing,
 } from './tick.js';
 import { lane } from '../rng.js';
 import { EngineInputError, assertFiniteEntity, assertPositive } from '../validate.js';
@@ -66,7 +66,7 @@ const note = (key, text) => Object.freeze({ key, text });
 export const PVE_ASSUMPTIONS = Object.freeze({
   serverFight: note('server-fight', "Server-run fight: simulated with the client's shared engine; whether the server runs it is unresolved."),
   campaignCap: note('campaign-cap', 'The campaign loop has no time limit; a fight past 20 minutes is reported as timed out.'),
-  raidGroup: note('raid-group', 'Read from two server logs: every living raid mob swings at once, each from a random point in its swing; the shield takes hits in full; after a mob dies the others keep swinging and regen keeps pulsing through the 500 ms before the next one, which keeps its own swing clock. Assumed: the player waits those 500 ms before swinging or casting again, and thorns and reflects reach only the mob being fought.'),
+  raidGroup: note('raid-group', 'Read from three server logs: every living raid mob swings at once, each from a random point in its swing; the shield takes hits in full; when a mob dies the next one is fought at once, with no wait, and every clock (swings, spells, minion, regen) runs on. Assumed: thorns and reflects reach only the mob being fought.'),
   oblivionConstants: note('oblivion-constants', `Oblivion floors assume the dungeon tick (${DUNGEON_TICK_MS} ms), shield mitigation (${DUNGEON_SHIELD_MITIGATION}) and ${INTER_MOB_GAP_MS} ms start gap: the floor config carries none.`),
   oblivionOutputCut: note('oblivion-output-cut', 'The instability output cut is off unless switched on: the client fight never applies it, and where the server does is unresolved.'),
   worldBossModel: note('world-boss-model', 'World Boss hit-back, ramp and rebound are modelled from the affinity record; the fight itself is server-run.'),
@@ -83,7 +83,8 @@ const pveMode = (o) => Object.freeze({
  * Chrono Flux, so an Ancient transform cannot fire (raids; sigils.md §9 content list). `dtMs` the tick; `shieldMitigation` what the
  * mode's caller stamps on the player (World Boss: the affinity record's value, read at run time);
  * `interMobGapMs` the wait before each mob, the minion respawn aged by the same amount; `allMobsSwing`
- * every living mob swings from a random point in its swing, the later ones as bystanders; `perFightCapMs`
+ * every living mob swings from a random point in its swing, the later ones as bystanders, and the wait
+ * comes only before the first mob: the next target is fought at once (combat-pve.md §21.3); `perFightCapMs`
  * each mob's own cap when the caller gives no `maxMs` window; `liveLoop` the campaign loop's own rules
  * (opening 'half', mob-only spell resist, next-tick transform); `retribution` the 2.9.7 thorns ramp runs
  * (Progress and dungeons only, combat-pve.md §23); `assumptions` the labels to show.
@@ -235,8 +236,10 @@ function sameBuffSet(a, b) {
  *   damage; thorns and rebound do not (combat-pve.md §16)
  * @property {Array<{index:number, entity:Object, hp:number, timer:number}>|null} [bystanders]  raid: the
  *   other living mobs, each swinging at the player on its own `timer` (mutated)
- * @property {{regenTimer:number}|null} [raidClock]  raid: receives the regen timer after each combat tick,
- *   so the pulse keeps its clock through the gap after the target dies (mutated)
+ * @property {{regenTimer:number, attackerTimer:number, resume:Object|null}|null} [raidClock]  raid: receives
+ *   the regen and swing timers after each combat tick, so the next target is fought on the same clocks; on a
+ *   kill by the spell or debuff pass `resume` keeps that tick's views, and the next fight runs the rest of the
+ *   tick (its combat part) before its own first tick (combat-pve.md §21.3) (mutated)
  * @property {{kind:string, elapsedMs:number}|null} [retribution]  2.9.7 Retribution (createRetributionState),
  *   shared by the mobs of one level or dungeon step; its clock advances one dtMs per tick (mutated,
  *   combat-pve.md §23)
@@ -351,12 +354,17 @@ export function simulateFight(player, enemy, ctx, rng) {
   let tickDealt = 0;
   let tickFrom = 0;
   let minionAliveAtStart = false;
+  // raid (§21.3): the previous target died to the spell or debuff pass of this fight's start tick, so the
+  // rest of that tick, its combat part, runs against this target first: no clock advances, the spell pass
+  // does not run again, and its views carry over
+  let resume = raidClock?.resume ?? null;
+  if (raidClock) raidClock.resume = null;
 
   if (!(hp > 0) || !(enemyHp > 0)) return fightResult(ticks, ts, false, hp, shield, enemyHp, enemyHp0, damageTaken);
 
   // --- opening: a pending minion respawn is summoned before the first tick (L1087780-1087856); its
   // Death Ward leaves the shield (2.8.2 L1097986-1097996)
-  if (minion && hp > 0 && resummonIfDead(minion)) {
+  if (minion && hp > 0 && !resume && resummonIfDead(minion)) {
     shield = expireMinionDeathWard(minion, shield);
     const windowMs = openingSummonWindowMs([minion]);
     if (emit) {
@@ -372,6 +380,12 @@ export function simulateFight(player, enemy, ctx, rng) {
       defenderTimer: openingSwingTimerStart(Math.round(1000 / enemy.attackSpeed), windowMs, timers.defenderTimer),
     };
     minion.timer = openingSwingTimerStart(Math.round(1000 / minion.attackSpeed), windowMs, minion.timer);
+    // raid: the window caps every mob's clock, the ones behind the target too (2026-11-23 log, §21.3)
+    if (bystanders) {
+      for (const b of bystanders) {
+        if (b.entity.attackSpeed > 0) b.timer = openingSwingTimerStart(Math.round(1000 / b.entity.attackSpeed), windowMs, b.timer);
+      }
+    }
   }
   // the wrath clock starts after the opening summon window (worldBossWrathStartLogMs, 2.8.2 L2021380-2021405)
   const wrathFromTs = wrath && wrath.mult !== 1 ? ts + wrath.afterMs : Infinity;
@@ -432,225 +446,253 @@ export function simulateFight(player, enemy, ctx, rng) {
   let retStacks = 0;
 
   while (hp > 0 && enemyHp > 0 && ts - startMs < maxMs) {
-    ts += dtMs;
-    if (retribution) {
-      retStacks = retributionStacks(retribution.elapsedMs);
-      retribution.elapsedMs += dtMs;
-    }
-    if (!wrathOn && ts >= wrathFromTs) {
-      wrathOn = true;
-      directMult = outputMult * wrath.mult;
-      tickOpts.attackerOutputMult = directMult;
-    }
+    if (resume) {
+      ({ playerView, buffHpPct, buffedMaxHp, totalHpPct, stackHpPct } = resume);
+      enemyView = enemy;
+      transformFired = false;
+      transformHeal = 0;
+      if (minion) {
+        tickFrom = ticks.length;
+        tickDealt = 0;
+        minionAliveAtStart = minion.alive;
+      }
+      resume = null;
+    } else {
+      ts += dtMs;
+      if (retribution) {
+        retStacks = retributionStacks(retribution.elapsedMs);
+        retribution.elapsedMs += dtMs;
+      }
+      if (!wrathOn && ts >= wrathFromTs) {
+        wrathOn = true;
+        directMult = outputMult * wrath.mult;
+        tickOpts.attackerOutputMult = directMult;
+      }
 
-    // 1. minion respawn (L1088096-1088119); the Death Ward leaves the shield (2.8.2 L1098272-1098285)
-    if (minion) {
-      tickFrom = ticks.length;
-      tickDealt = 0;
-      if (advanceMinionRespawn(minion, dtMs)) {
-        shield = expireMinionDeathWard(minion, shield);
-        if (emit) {
-          emit({
-            timestamp: ts, type: 'minion_summoned', damage: 0, attackerHp: hp, defenderHp: enemyHp,
-            ...minionSummonMeta(minion),
-          });
-        }
-      }
-      minionAliveAtStart = minion.alive;
-    }
-    // 3. heal budget refill (L1088127; runs before the instability pulse in the code)
-    if (healBudget) refillHealBudget(healBudget, dtMs);
-
-    // 2. Oblivion instability pulse (L1088142-1088208): true damage, ramping with the pulse count
-    if (oblivionOn) {
-      pulseAccum += dtMs;
-      if (pulseAccum >= oblivion.pulseMs) {
-        pulseAccum -= oblivion.pulseMs;
-        const ramp = Math.min(oblivion.rampMaxMult, 1 + ((pulseCount * oblivion.pulseMs) / 1000) * oblivion.rampPerSecond);
-        pulseCount += 1;
-        const dmg = oblivion.trueDamagePercentPerPulse > 0
-          ? Math.max(1, Math.round((player.maxHp * oblivion.trueDamagePercentPerPulse * ramp) / 100)) : 0;
-        if (dmg > 0) {
-          hp = Math.max(0, hp - dmg);
-          damageTaken += dmg;
-          if (emit) emit({ timestamp: ts, type: 'attacker_instability', damage: dmg, attackerHp: hp, defenderHp: enemyHp });
-          if (hp <= 0) {
-            if (emit) emit({ timestamp: ts, type: 'attacker_dead', damage: 0, attackerHp: 0, defenderHp: enemyHp });
-            if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart, shield);
-            return fightResult(ticks, ts, false, 0, 0, enemyHp, enemyHp0, damageTaken);
-          }
-        }
-      }
-    }
-
-    // 4. spell pass context: Bulwark's HP share and Sunder's cut of the enemy's defences (L1088209-1088279)
-    stackHpPct = stacksOn ? stackCombat.selfModifiers().hpPercent : 0;
-    enemyView = enemy;
-    if (stacksOn) {
-      const tm = stackCombat.targetModifiers();
-      if (tm.drReductionPercent > 0 || tm.blindReductionPercent > 0 || tm.blockReductionPercent > 0 ||
-        tm.missReductionPercent > 0 || tm.hpRegenReductionPercent > 0) {
-        const s = applySunderToTarget(
-          enemy.damageReduction, enemy.blindChance, enemy.blockChance, enemy.missChance, enemy.hpRegen, tm);
-        enemyView = {
-          ...enemy, damageReduction: s.damageReduction, blindChance: s.blindChance, blockChance: s.blockChance,
-          missChance: s.missChance, hpRegen: s.hpRegen,
-        };
-      }
-    }
-
-    playerView = player;
-    buffHpPct = 0;
-    buffedMaxHp = player.maxHp;
-    totalHpPct = stackHpPct;
-
-    // live loop: a bar filled last tick fires the transform now, before the spell pass (L1074747-1074773)
-    transformFired = false;
-    transformHeal = 0;
-    if (liveLoop && chronoOn && spells && chrono.flux >= CHRONO_FLUX.MAX) {
-      const tr = triggerTransformSpell(spells, ts, hp, player.maxHp, player);
-      if (tr.triggered) {
-        transformFired = true;
-        transformHeal = tr.ownerHpDelta;
-        chrono.flux = 0;
-        if (emit) {
-          for (const ev of tr.events) {
-            emit({ timestamp: ts, type: ev.type, damage: ev.value, attackerHp: hp, defenderHp: enemyHp, spell: ev.spell, chronoFlux: 0 });
-          }
-        }
-      }
-    }
-
-    // 4. the spell pass and everything it applies (L1088292-1088735); the enemy dying to a spell
-    // pre-empts the swing
-    if (spells) {
-      spellInput.timestamp = ts;
-      spellInput.hp = hp;
-      spellInput.enemyHp = enemyHp;
-      spellInput.targetSpellResist = liveSpellResist
-        ? enemyView.spellResist : enemyView.spellResist + enemyView.damageReduction;
-      spellInput.minionAlive = isMinionAlive(minion);
-      const res = processSpellsTick(spells, spellInput, rng);
-      const minionEvents = routeSpellHealToMinion(minion, res, player.maxHp);
-      // live loop: the transform's heal joins the spell heal and its clamp (L1074900-1074909)
-      if (transformHeal > 0) res.ownerHpDelta += transformHeal;
-      const bm = res.buffModifiers;
-      playerView = hasActiveBuffs(bm) ? buffedPlayer(bm) : player;
-      buffHpPct = bm.hpPercent;
-      totalHpPct = bm.hpPercent + stackHpPct;
-      buffedMaxHp = getBuffedMaxHp(player.maxHp, totalHpPct);
-
-      if (res.ownerHpDelta > 0) {
-        const prev = hp;
-        const want = healingMult < 1 ? Math.floor(res.ownerHpDelta * healingMult) : res.ownerHpDelta;
-        const granted = spendHealBudget(healBudget, want);
-        hp = Math.min(buffedMaxHp, hp + granted);
-        const refillEv = healingMult < 1
-          ? {
-            ownerHpDelta: granted,
-            ownerVampHeal: Math.floor(res.ownerVampHeal * healingMult),
-            ownerShieldRefill: Math.floor((res.ownerShieldRefill ?? 0) * healingMult),
-          }
-          : res;
-        const raw = blocksShieldOverflow
-          ? (refillEv.ownerShieldRefill ?? 0)
-          : shieldRefillAmount(refillEv, hp - prev, player.shieldVampAlwaysRefills);
-        const refill = spendHealBudget(healBudget, raw);
-        if (refill > 0 && player.shieldMax > 0 && shield < player.shieldMax) {
-          shield = Math.min(player.shieldMax, shield + refill);
-        }
-      }
-      if (totalHpPct <= 0 && hp > player.maxHp) hp = player.maxHp;
-
-      if (res.targetHpDelta < 0) {
-        const before = enemyHp;
-        enemyHp = Math.max(0, enemyHp - cutDirect(-res.targetHpDelta));
-        tickDealt += before - enemyHp;
-      }
-      if (res.targetParalyzeMs && enemyHp > 0) {
-        paralyzedMs = Math.max(paralyzedMs, res.targetParalyzeMs);
-        if (emit) {
-          emit({
-            timestamp: ts, type: 'defender_paralyzed', damage: 0, attackerHp: hp, defenderHp: enemyHp,
-            paralyzeMs: res.targetParalyzeMs,
-          });
-        }
-      }
-      if (res.targetSilenceMs && enemyHp > 0) {
-        silencedMs = Math.max(silencedMs, res.targetSilenceMs);
-        if (emit) emit({ timestamp: ts, type: 'defender_silenced', damage: 0, attackerHp: hp, defenderHp: enemyHp });
-      }
-      if (res.targetFearMs && enemyHp > 0) {
-        fearedMs = Math.max(fearedMs, res.targetFearMs);
-        if (emit) {
-          emit({
-            timestamp: ts, type: 'defender_feared', damage: 0, attackerHp: hp, defenderHp: enemyHp, fearMs: res.targetFearMs,
-          });
-        }
-      }
-      if (res.targetBlinded && enemyHp > 0) {
-        if (emit) emit({ timestamp: ts, type: 'defender_blinded', damage: 0, attackerHp: hp, defenderHp: enemyHp });
-        blinded = true;
-      }
-      if (res.newDebuffs) {
-        for (const spec of res.newDebuffs) {
-          const applied = applyDebuff(debuffs, spec, ts);
+      // 1. minion respawn (L1088096-1088119); the Death Ward leaves the shield (2.8.2 L1098272-1098285)
+      if (minion) {
+        tickFrom = ticks.length;
+        tickDealt = 0;
+        if (advanceMinionRespawn(minion, dtMs)) {
+          shield = expireMinionDeathWard(minion, shield);
           if (emit) {
             emit({
-              timestamp: ts,
-              type: applied.type === 'debuff_applied' ? 'spell_debuff_applied' : 'spell_debuff_stack',
-              damage: 0, attackerHp: hp, defenderHp: enemyHp, spell: applied.source, debuffStacks: applied.stacks,
-              debuffMaxStacks: applied.maxStacks, debuffPermanent: applied.permanent, damagePerTick: applied.damagePerTick,
+              timestamp: ts, type: 'minion_summoned', damage: 0, attackerHp: hp, defenderHp: enemyHp,
+              ...minionSummonMeta(minion),
             });
           }
         }
+        minionAliveAtStart = minion.alive;
       }
-      if (emit) {
-        for (const ev of res.events) {
-          emit({
-            timestamp: ev.timestamp, type: ev.type, damage: ev.value, attackerHp: hp, defenderHp: enemyHp,
-            spell: ev.spell, ...(ev.isCrit ? { isCrit: true } : {}),
-            ...(res.ownerMomentumStacks !== undefined ? { momentumStacks: res.ownerMomentumStacks } : {}),
-          });
-        }
-        for (const ev of minionEvents) {
-          emit({
-            timestamp: ev.timestamp, type: ev.type, damage: ev.healed, attackerHp: hp, defenderHp: enemyHp,
-            spell: ev.spell, ...(ev.minionMaxHp !== undefined ? { minionMaxHp: ev.minionMaxHp } : {}),
-          });
-        }
-      }
-      if (enemyHp <= 0) {
-        if (emit) emit({ timestamp: ts, type: 'defender_dead', damage: 0, attackerHp: hp, defenderHp: 0 });
-        if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart, shield);
-        return fightResult(ticks, ts, true, hp, shield, enemyHp, enemyHp0, damageTaken);
-      }
-    }
+      // 3. heal budget refill (L1088127; runs before the instability pulse in the code)
+      if (healBudget) refillHealBudget(healBudget, dtMs);
 
-    // 5. processDebuffsTick on the enemy (L1088736)
-    if (debuffs.length > 0) {
-      const d = processDebuffsTick(debuffs, dtMs, ts, rng);
-      if (d.targetHpDelta < 0) {
-        const before = enemyHp;
-        enemyHp = Math.max(0, enemyHp - cutDirect(-d.targetHpDelta));
-        tickDealt += before - enemyHp;
-      }
-      if (emit) {
-        for (const ev of d.events) {
-          emit({
-            timestamp: ev.timestamp,
-            type: ev.type === 'debuff_tick' ? 'spell_debuff_tick' : 'spell_debuff_expired',
-            damage: ev.value, attackerHp: hp, defenderHp: enemyHp, spell: ev.source,
-            debuffStacks: ev.stacks, debuffMaxStacks: ev.maxStacks, debuffPermanent: ev.permanent,
-            damagePerTick: ev.damagePerTick, ...(ev.isCrit ? { isCrit: true } : {}),
-          });
+      // 2. Oblivion instability pulse (L1088142-1088208): true damage, ramping with the pulse count
+      if (oblivionOn) {
+        pulseAccum += dtMs;
+        if (pulseAccum >= oblivion.pulseMs) {
+          pulseAccum -= oblivion.pulseMs;
+          const ramp = Math.min(oblivion.rampMaxMult, 1 + ((pulseCount * oblivion.pulseMs) / 1000) * oblivion.rampPerSecond);
+          pulseCount += 1;
+          const dmg = oblivion.trueDamagePercentPerPulse > 0
+            ? Math.max(1, Math.round((player.maxHp * oblivion.trueDamagePercentPerPulse * ramp) / 100)) : 0;
+          if (dmg > 0) {
+            hp = Math.max(0, hp - dmg);
+            damageTaken += dmg;
+            if (emit) emit({ timestamp: ts, type: 'attacker_instability', damage: dmg, attackerHp: hp, defenderHp: enemyHp });
+            if (hp <= 0) {
+              if (emit) emit({ timestamp: ts, type: 'attacker_dead', damage: 0, attackerHp: 0, defenderHp: enemyHp });
+              if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart, shield);
+              return fightResult(ticks, ts, false, 0, 0, enemyHp, enemyHp0, damageTaken);
+            }
+          }
         }
       }
-      if (enemyHp <= 0) {
-        if (emit) emit({ timestamp: ts, type: 'defender_dead', damage: 0, attackerHp: hp, defenderHp: 0 });
-        if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart, shield);
-        return fightResult(ticks, ts, true, hp, shield, enemyHp, enemyHp0, damageTaken);
+
+      // 4. spell pass context: Bulwark's HP share and Sunder's cut of the enemy's defences (L1088209-1088279)
+      stackHpPct = stacksOn ? stackCombat.selfModifiers().hpPercent : 0;
+      enemyView = enemy;
+      if (stacksOn) {
+        const tm = stackCombat.targetModifiers();
+        if (tm.drReductionPercent > 0 || tm.blindReductionPercent > 0 || tm.blockReductionPercent > 0 ||
+          tm.missReductionPercent > 0 || tm.hpRegenReductionPercent > 0) {
+          const s = applySunderToTarget(
+            enemy.damageReduction, enemy.blindChance, enemy.blockChance, enemy.missChance, enemy.hpRegen, tm);
+          enemyView = {
+            ...enemy, damageReduction: s.damageReduction, blindChance: s.blindChance, blockChance: s.blockChance,
+            missChance: s.missChance, hpRegen: s.hpRegen,
+          };
+        }
       }
+
+      playerView = player;
+      buffHpPct = 0;
+      buffedMaxHp = player.maxHp;
+      totalHpPct = stackHpPct;
+
+      // live loop: a bar filled last tick fires the transform now, before the spell pass (L1074747-1074773)
+      transformFired = false;
+      transformHeal = 0;
+      if (liveLoop && chronoOn && spells && chrono.flux >= CHRONO_FLUX.MAX) {
+        const tr = triggerTransformSpell(spells, ts, hp, player.maxHp, player);
+        if (tr.triggered) {
+          transformFired = true;
+          transformHeal = tr.ownerHpDelta;
+          chrono.flux = 0;
+          if (emit) {
+            for (const ev of tr.events) {
+              emit({ timestamp: ts, type: ev.type, damage: ev.value, attackerHp: hp, defenderHp: enemyHp, spell: ev.spell, chronoFlux: 0 });
+            }
+          }
+        }
+      }
+
+      // 4. the spell pass and everything it applies (L1088292-1088735); the enemy dying to a spell
+      // pre-empts the swing
+      if (spells) {
+        spellInput.timestamp = ts;
+        spellInput.hp = hp;
+        spellInput.enemyHp = enemyHp;
+        spellInput.targetSpellResist = liveSpellResist
+          ? enemyView.spellResist : enemyView.spellResist + enemyView.damageReduction;
+        spellInput.minionAlive = isMinionAlive(minion);
+        const res = processSpellsTick(spells, spellInput, rng);
+        const minionEvents = routeSpellHealToMinion(minion, res, player.maxHp);
+        // live loop: the transform's heal joins the spell heal and its clamp (L1074900-1074909)
+        if (transformHeal > 0) res.ownerHpDelta += transformHeal;
+        const bm = res.buffModifiers;
+        playerView = hasActiveBuffs(bm) ? buffedPlayer(bm) : player;
+        buffHpPct = bm.hpPercent;
+        totalHpPct = bm.hpPercent + stackHpPct;
+        buffedMaxHp = getBuffedMaxHp(player.maxHp, totalHpPct);
+
+        if (res.ownerHpDelta > 0) {
+          const prev = hp;
+          const want = healingMult < 1 ? Math.floor(res.ownerHpDelta * healingMult) : res.ownerHpDelta;
+          const granted = spendHealBudget(healBudget, want);
+          hp = Math.min(buffedMaxHp, hp + granted);
+          const refillEv = healingMult < 1
+            ? {
+              ownerHpDelta: granted,
+              ownerVampHeal: Math.floor(res.ownerVampHeal * healingMult),
+              ownerShieldRefill: Math.floor((res.ownerShieldRefill ?? 0) * healingMult),
+            }
+            : res;
+          const raw = blocksShieldOverflow
+            ? (refillEv.ownerShieldRefill ?? 0)
+            : shieldRefillAmount(refillEv, hp - prev, player.shieldVampAlwaysRefills);
+          const refill = spendHealBudget(healBudget, raw);
+          if (refill > 0 && player.shieldMax > 0 && shield < player.shieldMax) {
+            shield = Math.min(player.shieldMax, shield + refill);
+          }
+        }
+        if (totalHpPct <= 0 && hp > player.maxHp) hp = player.maxHp;
+
+        if (res.targetHpDelta < 0) {
+          const before = enemyHp;
+          enemyHp = Math.max(0, enemyHp - cutDirect(-res.targetHpDelta));
+          tickDealt += before - enemyHp;
+        }
+        if (res.targetParalyzeMs && enemyHp > 0) {
+          paralyzedMs = Math.max(paralyzedMs, res.targetParalyzeMs);
+          if (emit) {
+            emit({
+              timestamp: ts, type: 'defender_paralyzed', damage: 0, attackerHp: hp, defenderHp: enemyHp,
+              paralyzeMs: res.targetParalyzeMs,
+            });
+          }
+        }
+        if (res.targetSilenceMs && enemyHp > 0) {
+          silencedMs = Math.max(silencedMs, res.targetSilenceMs);
+          if (emit) emit({ timestamp: ts, type: 'defender_silenced', damage: 0, attackerHp: hp, defenderHp: enemyHp });
+        }
+        if (res.targetFearMs && enemyHp > 0) {
+          fearedMs = Math.max(fearedMs, res.targetFearMs);
+          if (emit) {
+            emit({
+              timestamp: ts, type: 'defender_feared', damage: 0, attackerHp: hp, defenderHp: enemyHp, fearMs: res.targetFearMs,
+            });
+          }
+        }
+        if (res.targetBlinded && enemyHp > 0) {
+          if (emit) emit({ timestamp: ts, type: 'defender_blinded', damage: 0, attackerHp: hp, defenderHp: enemyHp });
+          blinded = true;
+        }
+        // a debuff's row follows its spell's cast, as the 2026-11-23 raid log shows (spell_cast, then
+        // spell_debuff_applied, §21.3); one with no cast row in the tick follows the pass's rows
+        const debuffRows = [];
+        if (res.newDebuffs) {
+          for (const spec of res.newDebuffs) {
+            const applied = applyDebuff(debuffs, spec, ts);
+            if (emit) {
+              debuffRows.push({
+                timestamp: ts,
+                type: applied.type === 'debuff_applied' ? 'spell_debuff_applied' : 'spell_debuff_stack',
+                damage: 0, attackerHp: hp, defenderHp: enemyHp, spell: applied.source, debuffStacks: applied.stacks,
+                debuffMaxStacks: applied.maxStacks, debuffPermanent: applied.permanent, damagePerTick: applied.damagePerTick,
+              });
+            }
+          }
+        }
+        if (emit) {
+          const flushDebuffs = (species) => {
+            for (let k = 0; k < debuffRows.length; k++) {
+              if (species !== undefined && debuffRows[k].spell?.species !== species) continue;
+              emit(debuffRows[k]);
+              debuffRows.splice(k--, 1);
+            }
+          };
+          for (const ev of res.events) {
+            emit({
+              timestamp: ev.timestamp, type: ev.type, damage: ev.value, attackerHp: hp, defenderHp: enemyHp,
+              spell: ev.spell, ...(ev.isCrit ? { isCrit: true } : {}),
+              ...(res.ownerMomentumStacks !== undefined ? { momentumStacks: res.ownerMomentumStacks } : {}),
+            });
+            if (ev.type === 'spell_cast' && debuffRows.length) flushDebuffs(ev.spell?.species);
+          }
+          flushDebuffs();
+          for (const ev of minionEvents) {
+            emit({
+              timestamp: ev.timestamp, type: ev.type, damage: ev.healed, attackerHp: hp, defenderHp: enemyHp,
+              spell: ev.spell, ...(ev.minionMaxHp !== undefined ? { minionMaxHp: ev.minionMaxHp } : {}),
+            });
+          }
+        }
+        if (enemyHp <= 0) {
+          if (emit) emit({ timestamp: ts, type: 'defender_dead', damage: 0, attackerHp: hp, defenderHp: 0 });
+          if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart, shield);
+          if (raidClock) raidClock.resume = { playerView, buffHpPct, buffedMaxHp, totalHpPct, stackHpPct };
+          return fightResult(ticks, ts, true, hp, shield, enemyHp, enemyHp0, damageTaken);
+        }
+      }
+
+      // 5. processDebuffsTick on the enemy (L1088736)
+      if (debuffs.length > 0) {
+        const d = processDebuffsTick(debuffs, dtMs, ts, rng);
+        if (d.targetHpDelta < 0) {
+          const before = enemyHp;
+          enemyHp = Math.max(0, enemyHp - cutDirect(-d.targetHpDelta));
+          tickDealt += before - enemyHp;
+        }
+        if (emit) {
+          for (const ev of d.events) {
+            emit({
+              timestamp: ev.timestamp,
+              type: ev.type === 'debuff_tick' ? 'spell_debuff_tick' : 'spell_debuff_expired',
+              damage: ev.value, attackerHp: hp, defenderHp: enemyHp, spell: ev.source,
+              debuffStacks: ev.stacks, debuffMaxStacks: ev.maxStacks, debuffPermanent: ev.permanent,
+              damagePerTick: ev.damagePerTick, ...(ev.isCrit ? { isCrit: true } : {}),
+            });
+          }
+        }
+        if (enemyHp <= 0) {
+          if (emit) emit({ timestamp: ts, type: 'defender_dead', damage: 0, attackerHp: hp, defenderHp: 0 });
+          if (minion) finishMinionTick(minion, tickDealt, hp, enemyHp, ts, ticks, log, tickFrom, minionAliveAtStart, shield);
+          if (raidClock) raidClock.resume = { playerView, buffHpPct, buffedMaxHp, totalHpPct, stackHpPct };
+          return fightResult(ticks, ts, true, hp, shield, enemyHp, enemyHp0, damageTaken);
+        }
+      }
+
     }
 
     // 6. recompute self buffs: Bulwark DR / HP, Elusive, Oblivion bite, Slow on the enemy (L1088825-1088950)
@@ -715,8 +757,19 @@ export function simulateFight(player, enemy, ctx, rng) {
     fearedMs = t.defenderFearedMs;
     shield = t.attackerShieldHp;
     enemyShield = t.defenderShieldHp;
-    if (raidClock) raidClock.regenTimer = timers.regenTimer;
+    if (raidClock) {
+      raidClock.regenTimer = timers.regenTimer;
+      raidClock.attackerTimer = timers.attackerTimer;
+    }
     const events = t.events;
+    // raid (§21.3): a swing kill does not end the tick for the minion, whose clock still steps (the port
+    // returns before the minion's swing, L1086896; the 2026-11-23 log runs its clock straight through). A
+    // swing due on that very tick is carried to the next tick, against the next target.
+    if (bystanders && minion && minion.alive && enemyHp <= 0
+      && !events.some((ev) => ev.type === 'minion_hit' || ev.type === 'minion_crit')) {
+      minion.timer += dtMs;
+      if ((minion.reapCooldownMs ?? 0) > 0) minion.reapCooldownMs = Math.max(0, minion.reapCooldownMs - dtMs);
+    }
     // 2.8.2 (L1099196-1099235): a minion that died this tick shields its owner with its Death Ward
     if (minion && minion.deathWardPercent > 0) {
       for (const ev of events) if (ev.type === 'minion_dead' && ev.minionDeathWard) shield += ev.minionDeathWard;
@@ -888,50 +941,6 @@ function swingGroup(mobs, view, hp, shield, minion, ts, dtMs, rng, shieldMax) {
     }
   }
   return { hp, shield, taken, events };
-}
-
-/**
- * The gap after a raid target dies: the player neither swings nor casts (an assumption, §21.1), but every
- * living mob keeps swinging on its own clock and the regen pulse keeps its 100 ms clock, as the
- * 2026-11-13 log shows. The pulse is processCombatTick's (L1086337-1086420) without Oblivion, which a raid
- * does not have; buffs are not applied in the gap. Mutates `mobs`, `clock` and the minion.
- * @param {Object} player  the player entity (maxHp, hpRegen, defences, shieldMax, shieldMitigation)
- * @param {Array<{index:number, entity:Object, hp:number, timer:number}>} mobs  the living mobs, the next
- *   target first
- * @returns {{hp:number, shield:number, taken:number, events:Object[], endMs:number}}
- */
-function raidGap(player, hp, shield, mobs, clock, minion, fromMs, gapMs, dtMs, rng) {
-  const events = [];
-  let taken = 0;
-  let ts = fromMs;
-  const next = mobs[0];
-  while (hp > 0 && ts < fromMs + gapMs) {
-    ts += dtMs;
-    const tick = [];
-    clock.regenTimer += dtMs;
-    if (clock.regenTimer >= REGEN_INTERVAL_MS) {
-      clock.regenTimer -= REGEN_INTERVAL_MS;
-      if (player.hpRegen > 0) {
-        const pulse = Math.max(1, Math.round((player.maxHp * player.hpRegen) / 100 / REGEN_PULSES_PER_SEC));
-        const applied = hp < player.maxHp ? Math.min(player.maxHp - hp, pulse) : 0;
-        if (applied > 0) {
-          hp += applied;
-          tick.push({ timestamp: ts, type: 'attacker_regen', damage: 0, attackerHp: hp, defenderHp: next.hp, mobIndex: next.index });
-        }
-        const refill = regenShieldRefillAmount(pulse, applied, player.shieldRegenAlwaysRefills);
-        if (refill > 0 && player.shieldMax > 0 && shield < player.shieldMax) shield = Math.min(player.shieldMax, shield + refill);
-      }
-    }
-    const g = swingGroup(mobs, player, hp, shield, minion, ts, dtMs, rng, player.shieldMax);
-    hp = g.hp;
-    shield = g.shield;
-    taken += g.taken;
-    for (const ev of [...tick, ...g.events]) {
-      if (player.shieldMax > 0) ev.attackerShieldHp = shield;
-      events.push(ev);
-    }
-  }
-  return { hp, shield: hp > 0 ? shield : 0, taken, events, endMs: ts };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1260,10 +1269,10 @@ export function simulatePve(o) {
   const logOut = log ? [] : undefined;
   let lost = false;
   let timedOut = false;
-  // raid: each mob's swing clock starts at a random point of its swing; after a target dies the mobs'
-  // clocks and the regen pulse run on through the gap, and the next target keeps its clock (combat-pve.md
-  // §21.1)
-  const raidClock = mode.allMobsSwing ? { regenTimer: 0 } : null;
+  // raid: each mob's swing clock starts at a random point of its swing; when a target dies the next one is
+  // fought at once, every clock running on: the mobs', the player's swing, the spells, the minion and the
+  // regen pulse (combat-pve.md §21.1, §21.3)
+  const raidClock = mode.allMobsSwing ? { regenTimer: 0, attackerTimer: 0, resume: null } : null;
   // one Retribution clock for the whole level or dungeon step, carried across its mobs (§23)
   const retKind = prepared.inputs?.retributionKind ?? null;
   const retribution = retKind && (o.retribution ?? mode.retribution) ? createRetributionState(retKind) : null;
@@ -1283,23 +1292,13 @@ export function simulatePve(o) {
       enemyHpLeft += enemy.hp;
       continue;
     }
-    if (group && i > 0 && gapMs > 0) {
-      const g = raidGap(player, player.hp, player.shieldHp, group.slice(i), raidClock, f.minion,
-        elapsed, windowMs != null ? Math.min(gapMs, windowMs - elapsed) : gapMs, dtMs, rng);
-      damageTaken += g.taken;
-      if (logOut) for (const ev of g.events) logOut.push(ev);
-      player = { ...player, hp: g.hp, shieldHp: g.shield };
-      if (g.hp <= 0) {
-        elapsed = g.endMs;
-        lost = true;
-        enemyHpLeft += enemy.hp;
-        continue;
-      }
-    }
     // the dungeon family waits before every mob and ages a pending minion respawn by the same amount;
-    // a living minion is left as it is in every mode (L1671080-1671084; live loop L1077281-1077640)
-    const startMs = elapsed + gapMs;
-    if (gapMs > 0 && f.minion) elapseMinionRespawn(f.minion, gapMs);
+    // a living minion is left as it is in every mode (L1671080-1671084; live loop L1077281-1077640). A
+    // raid waits only before its first mob (§21.3); after a kill by the spell or debuff pass the next
+    // fight opens on that same tick (raidClock.resume)
+    const waitMs = group && i > 0 ? 0 : gapMs;
+    const startMs = elapsed + waitMs;
+    if (waitMs > 0 && f.minion) elapseMinionRespawn(f.minion, waitMs);
     if (i > 0) f.stacks?.resetTarget();
     const maxMs = windowMs != null ? windowMs - startMs : mob.fightDurationMs ?? mode.perFightCapMs;
     if (!(maxMs > 0)) {
@@ -1311,7 +1310,7 @@ export function simulatePve(o) {
     const wb = mob.affinity ? worldBossHooks(mob.affinity, player.maxHp) : null;
     const r = simulateFight(player, enemy, {
       dtMs, startMs, maxMs, spells: f.spells,
-      opening: group ? { attackerTimer: 0, defenderTimer: group[i].timer, regenTimer: raidClock.regenTimer } : opening,
+      opening: group ? { attackerTimer: raidClock.attackerTimer, defenderTimer: group[i].timer, regenTimer: raidClock.regenTimer } : opening,
       bystanders: group ? group.slice(i + 1) : null, raidClock, chrono: mode.chronoFlux ? f.chrono : null, stacks: f.stacks,
       thornsPercent: f.thornsPercent, oblivion: obl, minion: f.minion, log, liveSpellResist,
       liveLoop: mode.liveLoop, outputMult, enemyAt: wb?.enemyAt ?? null, reboundFor: wb?.reboundFor ?? null,
