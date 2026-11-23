@@ -41,9 +41,10 @@
   "SIGIL_ALTAR_CONSTANTS": {
    "MAX_LEVEL": 30,
    "MAX_TIER": 8,
-   "EVOLVE_TIER_CAP": 3,
+   "EVOLVE_TIER_CAP": 4,
    "TIER_STAT_MULT": 3,
    "TIER_XP_MULT": 2,
+   "FORGE_COST_LAST_DOUBLING_TIER": 3,
    "LEG_UNLOCK_TIER": 2,
    "EVOLVE_HONOR_KEEP_RATIO": 0.75
   },
@@ -1905,33 +1906,89 @@
     "respawnCooldownMs": 10000,
     "summonCastMs": 1500
    },
-   "dominionTiers": [
-    {
-     "blockChance": 0,
-     "damageReduction": 0,
-     "thornsPercent": 0
-    },
-    {
-     "blockChance": 6,
-     "damageReduction": 6,
-     "thornsPercent": 0
-    },
-    {
-     "blockChance": 12,
-     "damageReduction": 12,
-     "thornsPercent": 0
-    },
-    {
-     "blockChance": 12,
-     "damageReduction": 12,
-     "thornsPercent": 10
-    },
-    {
-     "blockChance": 18,
-     "damageReduction": 18,
-     "thornsPercent": 10
-    }
-   ]
+   "dominionTiers": {
+    "PVE": [
+     {
+      "blockChance": 0,
+      "damageReduction": 0,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 6,
+      "damageReduction": 6,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 12,
+      "damageReduction": 12,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 12,
+      "damageReduction": 12,
+      "thornsPercent": 10
+     },
+     {
+      "blockChance": 18,
+      "damageReduction": 18,
+      "thornsPercent": 10
+     }
+    ],
+    "PVP": [
+     {
+      "blockChance": 0,
+      "damageReduction": 0,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 6,
+      "damageReduction": 6,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 12,
+      "damageReduction": 12,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 12,
+      "damageReduction": 12,
+      "thornsPercent": 10
+     },
+     {
+      "blockChance": 18,
+      "damageReduction": 18,
+      "thornsPercent": 10
+     }
+    ],
+    "CELESTIAL": [
+     {
+      "blockChance": 0,
+      "damageReduction": 0,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 6,
+      "damageReduction": 6,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 12,
+      "damageReduction": 12,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 12,
+      "damageReduction": 12,
+      "thornsPercent": 10
+     },
+     {
+      "blockChance": 18,
+      "damageReduction": 18,
+      "thornsPercent": 10
+     }
+    ]
+   }
   },
   {
    "id": "soul-spike",
@@ -2057,43 +2114,119 @@
     "respawnCooldownMs": 10000,
     "summonCastMs": 1500
    },
-   "dominionTiers": [
-    {
-     "attackSpeedPercent": 0,
-     "attackPercent": 0,
-     "critChance": 0
-    },
-    {
-     "attackSpeedPercent": 15,
-     "attackPercent": 0,
-     "critChance": 0
-    },
-    {
-     "attackSpeedPercent": 15,
-     "attackPercent": 15,
-     "critChance": 10
-    },
-    {
-     "attackSpeedPercent": 15,
-     "attackPercent": 15,
-     "critChance": 10,
-     "reap": {
-      "chancePercent": 6,
-      "paralyzeMs": 1000,
-      "cooldownMs": 5000
+   "dominionTiers": {
+    "PVE": [
+     {
+      "attackSpeedPercent": 0,
+      "attackPercent": 0,
+      "critChance": 0
+     },
+     {
+      "attackSpeedPercent": 15,
+      "attackPercent": 0,
+      "critChance": 0
+     },
+     {
+      "attackSpeedPercent": 15,
+      "attackPercent": 15,
+      "critChance": 10
+     },
+     {
+      "attackSpeedPercent": 15,
+      "attackPercent": 15,
+      "critChance": 10,
+      "reap": {
+       "chancePercent": 6,
+       "paralyzeMs": 1000,
+       "cooldownMs": 5000
+      }
+     },
+     {
+      "attackSpeedPercent": 25,
+      "attackPercent": 30,
+      "critChance": 10,
+      "reap": {
+       "chancePercent": 6,
+       "paralyzeMs": 1000,
+       "cooldownMs": 5000
+      }
      }
-    },
-    {
-     "attackSpeedPercent": 25,
-     "attackPercent": 30,
-     "critChance": 10,
-     "reap": {
-      "chancePercent": 6,
-      "paralyzeMs": 1000,
-      "cooldownMs": 5000
+    ],
+    "PVP": [
+     {
+      "attackSpeedPercent": 0,
+      "attackPercent": 0,
+      "critChance": 0
+     },
+     {
+      "attackSpeedPercent": 15,
+      "attackPercent": 0,
+      "critChance": 0
+     },
+     {
+      "attackSpeedPercent": 15,
+      "attackPercent": 15,
+      "critChance": 10
+     },
+     {
+      "attackSpeedPercent": 15,
+      "attackPercent": 15,
+      "critChance": 10,
+      "reap": {
+       "chancePercent": 6,
+       "paralyzeMs": 1000,
+       "cooldownMs": 5000
+      }
+     },
+     {
+      "attackSpeedPercent": 25,
+      "attackPercent": 30,
+      "critChance": 10,
+      "reap": {
+       "chancePercent": 6,
+       "paralyzeMs": 1000,
+       "cooldownMs": 5000
+      }
      }
-    }
-   ]
+    ],
+    "CELESTIAL": [
+     {
+      "attackSpeedPercent": 0,
+      "attackPercent": 0,
+      "critChance": 0
+     },
+     {
+      "attackSpeedPercent": 15,
+      "attackPercent": 0,
+      "critChance": 0
+     },
+     {
+      "attackSpeedPercent": 15,
+      "attackPercent": 15,
+      "critChance": 10
+     },
+     {
+      "attackSpeedPercent": 15,
+      "attackPercent": 15,
+      "critChance": 10,
+      "reap": {
+       "chancePercent": 6,
+       "paralyzeMs": 1000,
+       "cooldownMs": 5000
+      }
+     },
+     {
+      "attackSpeedPercent": 25,
+      "attackPercent": 30,
+      "critChance": 10,
+      "reap": {
+       "chancePercent": 6,
+       "paralyzeMs": 1000,
+       "cooldownMs": 5000
+      }
+     }
+    ]
+   }
   },
   {
    "id": "ravenous-frenzy",
@@ -2263,33 +2396,94 @@
   {
    "id": "dreadguards-pact",
    "species": "DREADGUARDS_PACT",
-   "dominionTiers": [
-    {
-     "blockChance": 0,
-     "damageReduction": 0,
-     "thornsPercent": 0
-    },
-    {
-     "blockChance": 8,
-     "damageReduction": 8,
-     "thornsPercent": 0
-    },
-    {
-     "blockChance": 16,
-     "damageReduction": 16,
-     "thornsPercent": 0
-    },
-    {
-     "blockChance": 16,
-     "damageReduction": 16,
-     "thornsPercent": 15
-    },
-    {
-     "blockChance": 24,
-     "damageReduction": 24,
-     "thornsPercent": 15
-    }
-   ],
+   "dominionTiers": {
+    "PVE": [
+     {
+      "blockChance": 0,
+      "damageReduction": 0,
+      "thornsPercent": 0,
+      "maxHpPercent": 0
+     },
+     {
+      "blockChance": 8,
+      "damageReduction": 8,
+      "thornsPercent": 0,
+      "maxHpPercent": 20
+     },
+     {
+      "blockChance": 16,
+      "damageReduction": 16,
+      "thornsPercent": 0,
+      "maxHpPercent": 40
+     },
+     {
+      "blockChance": 16,
+      "damageReduction": 16,
+      "thornsPercent": 15,
+      "maxHpPercent": 40
+     },
+     {
+      "blockChance": 24,
+      "damageReduction": 24,
+      "thornsPercent": 15,
+      "maxHpPercent": 40
+     }
+    ],
+    "PVP": [
+     {
+      "blockChance": 0,
+      "damageReduction": 0,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 8,
+      "damageReduction": 8,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 16,
+      "damageReduction": 16,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 16,
+      "damageReduction": 16,
+      "thornsPercent": 15
+     },
+     {
+      "blockChance": 24,
+      "damageReduction": 24,
+      "thornsPercent": 15
+     }
+    ],
+    "CELESTIAL": [
+     {
+      "blockChance": 0,
+      "damageReduction": 0,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 8,
+      "damageReduction": 8,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 16,
+      "damageReduction": 16,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 16,
+      "damageReduction": 16,
+      "thornsPercent": 15
+     },
+     {
+      "blockChance": 24,
+      "damageReduction": 24,
+      "thornsPercent": 15
+     }
+    ]
+   },
    "name": "Dreadguard's Pact",
    "class": "Necromancer",
    "rarity": "Epic",
@@ -2386,33 +2580,94 @@
   {
    "id": "overlords-pact",
    "species": "OVERLORDS_PACT",
-   "dominionTiers": [
-    {
-     "blockChance": 0,
-     "damageReduction": 0,
-     "thornsPercent": 0
-    },
-    {
-     "blockChance": 10,
-     "damageReduction": 10,
-     "thornsPercent": 0
-    },
-    {
-     "blockChance": 20,
-     "damageReduction": 20,
-     "thornsPercent": 0
-    },
-    {
-     "blockChance": 20,
-     "damageReduction": 20,
-     "thornsPercent": 20
-    },
-    {
-     "blockChance": 30,
-     "damageReduction": 30,
-     "thornsPercent": 20
-    }
-   ],
+   "dominionTiers": {
+    "PVE": [
+     {
+      "blockChance": 0,
+      "damageReduction": 0,
+      "thornsPercent": 0,
+      "maxHpPercent": 0
+     },
+     {
+      "blockChance": 10,
+      "damageReduction": 10,
+      "thornsPercent": 0,
+      "maxHpPercent": 30
+     },
+     {
+      "blockChance": 20,
+      "damageReduction": 20,
+      "thornsPercent": 0,
+      "maxHpPercent": 70
+     },
+     {
+      "blockChance": 20,
+      "damageReduction": 20,
+      "thornsPercent": 20,
+      "maxHpPercent": 70
+     },
+     {
+      "blockChance": 30,
+      "damageReduction": 30,
+      "thornsPercent": 20,
+      "maxHpPercent": 70
+     }
+    ],
+    "PVP": [
+     {
+      "blockChance": 0,
+      "damageReduction": 0,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 10,
+      "damageReduction": 10,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 20,
+      "damageReduction": 20,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 20,
+      "damageReduction": 20,
+      "thornsPercent": 20
+     },
+     {
+      "blockChance": 30,
+      "damageReduction": 30,
+      "thornsPercent": 20
+     }
+    ],
+    "CELESTIAL": [
+     {
+      "blockChance": 0,
+      "damageReduction": 0,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 10,
+      "damageReduction": 10,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 20,
+      "damageReduction": 20,
+      "thornsPercent": 0
+     },
+     {
+      "blockChance": 20,
+      "damageReduction": 20,
+      "thornsPercent": 20
+     },
+     {
+      "blockChance": 30,
+      "damageReduction": 30,
+      "thornsPercent": 20
+     }
+    ]
+   },
    "name": "Overlord's Pact",
    "class": "Necromancer",
    "rarity": "Legendary",

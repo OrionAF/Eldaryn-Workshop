@@ -235,7 +235,9 @@ export function replayCheck(response, fighters = {}) {
       if (res.totalDuration !== FIGHT_MS + window) {
         c.bad('a timeout ends at 60000 ms plus the opening window', { expected: FIGHT_MS + window, actual: res.totalDuration });
       } else c.ok();
-      const wins = timeUp.attackerHpAfter > timeUp.defenderHpAfter; // strictly more HP wins, a tie goes to the defender
+      // strictly more HP wins, a tie goes to the defender; a demon's tie-break credit, when logged, replaces raw HP
+      // (combat-pvp.md Â§10; the row carries it rounded, so a near tie can read as a tie)
+      const wins = (timeUp.attackerTieBreakHp ?? timeUp.attackerHpAfter) > (timeUp.defenderTieBreakHp ?? timeUp.defenderHpAfter);
       if (wins !== res.attackerWon) c.bad('time_up HP does not decide the winner', { expected: wins, actual: res.attackerWon });
       else c.ok();
     } else {

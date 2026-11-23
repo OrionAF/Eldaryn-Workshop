@@ -18,9 +18,9 @@ const ready = (configs) => initSpellRuntimes(configs).map((rt) => ({ ...rt, cool
 const base = { maxHp: 1000, hp: 1000, dtMs: 100, timestamp: 5000, attack: 1000, enemyHp: 1000, enemyMaxHp: 1000 };
 
 describe('cast order and opening delay (module 3965, L1092725-1092929)', () => {
-  it('type order DEFENSE 0 .. SUMMON 10, unknown types 9', () => {
-    expect(['DEFENSE', 'BUFF', 'HEAL', 'DAMAGE', 'DEBUFF', 'AURA', 'TRANSFORM', 'STACK', 'SHIELD', 'FORM', 'SUMMON']
-      .map(getSpellTypeCastOrder)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  it('type order DEFENSE 0 .. SUMMON 10, STANCE 11 (2.9.8 L1119887-1119890), unknown types 9', () => {
+    expect(['DEFENSE', 'BUFF', 'HEAL', 'DAMAGE', 'DEBUFF', 'AURA', 'TRANSFORM', 'STACK', 'SHIELD', 'FORM', 'SUMMON', 'STANCE']
+      .map(getSpellTypeCastOrder)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     expect(getSpellTypeCastOrder('NOPE')).toBe(9);
   });
   it('opening rank 100 except NULL_PULSE 0; delay 1000 / 500 for DAMAGE and DEBUFF only', () => {

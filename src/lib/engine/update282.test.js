@@ -118,7 +118,8 @@ describe('2.8.2 Mythic+ glyph quality 1.01-1.20 (§4)', () => {
     // critChance 0.6-5.0 at one decimal
     expect(glyphSecondaryValue({ stat: 'critChance', quality: 1.2 })).toBe(5.9);
     expect(glyphSecondaryValue({ stat: 'critChance', quality: 1.001 })).toBe(5.1);
-    expect(glyphSecondaryValue({ stat: 'critChance', quality: 9 })).toBe(5.9);
+    // 2.9.8 clamps at 1.4 (Ancient), so 9 reads as 1.4: 0.6 + 4.4 x 1.4 = 6.76 -> 6.8 (L1265761-1265843)
+    expect(glyphSecondaryValue({ stat: 'critChance', quality: 9 })).toBe(6.8);
     expect(glyphSecondaryQuality('critChance', 5.9)).toBeCloseTo(1.2, 10);
   });
   it('normalise keeps a pre-2.8.2 Mythic glyph at quality 1 and clamps to 1.2', () => {

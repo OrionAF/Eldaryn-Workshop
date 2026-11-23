@@ -2,7 +2,6 @@
  "source": {
   "file": "decompiled.js",
   "version": "2.7.0",
-  "overrides": { "SPELL_RESIST": "2.8.2 decompiled.js L1089410-L1089411; updates-2.8.2.md §3 (2.7.5 was 40/90)" },
   "citations": {
    "calculateTotalStats": "L1215735-1217872",
    "SOFT_CAPS": "L1080443-1080485",
@@ -553,7 +552,7 @@
   {
    "key": "totalAttack",
    "unit": "integer",
-   "formula": "floor((base.attack + sum(gear primaryStats.attack) + pet.flatAttack + sigil.flatAttack + stone.flatAttack) * (1 + attackPercentSum/100) * (formConfig.attackMult ?? 1))",
+   "formula": "floor((base.attack + sum(gear primaryStats.attack) + pet.flatAttack + sigil.flatAttack + stone.flatAttack) * (1 + attackPercentSum/100) * (formConfig.attackMult ?? 1) * (stanceConfig.attackMult ?? 1))",
    "citation": "L1217155-1217165"
   },
   {

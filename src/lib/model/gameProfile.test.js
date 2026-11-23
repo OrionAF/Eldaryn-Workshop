@@ -235,6 +235,20 @@ describe('gameProfileToCharacter', () => {
     expect(c.equipment.set2.enchantSlots.WEAPON).toBe('stone-b');
   });
 
+  it('Set 2 sockets fall back to Set 1 while enchantSlots2 is null (baseSlotsForSet, 2.9.8 L1211537)', () => {
+    for (const missing of [null, undefined]) {
+      const f = fixture();
+      f.enchantSlots2 = missing;
+      const out = normaliseCharacter(gameProfileToCharacter(f, { now: 1 }));
+      expect(out.equipment.set2.enchantSlots.HEAD).toBe('stone-a');
+      expect(out.equipment.set2.enchantSlots.WEAPON).toBeNull();
+    }
+    // an empty Set 2 map is not null: no fallback
+    const f = fixture();
+    f.enchantSlots2 = {};
+    expect(normaliseCharacter(gameProfileToCharacter(f, { now: 1 })).equipment.set2.enchantSlots.HEAD).toBeNull();
+  });
+
   it('talents: client sets 1|2 become 0|1, presets point at the renumbered set', () => {
     expect(c.talentSets[0]).toEqual({ spec: 'WARRIOR_DPS', allocation: { dps_t1_sharpened_blade: 2 } });
     expect(c.talentSets[1]).toEqual({ spec: 'WARRIOR_TANK', allocation: { tank_t1_fortitude: 4, tank_t1_thick_skin: 3 } });

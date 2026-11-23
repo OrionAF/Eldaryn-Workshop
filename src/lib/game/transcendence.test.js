@@ -5,10 +5,8 @@ import {
 } from './transcendence.js';
 
 describe('game/transcendence catalogue', () => {
-  it('six boards keyed by class (and flavor for Mystic and Necromancer)', () => {
-    expect(TRANSCENDENCE_BOARD_KEYS).toEqual([
-      'WARRIOR', 'SENTINEL', 'MYSTIC/MAGE', 'MYSTIC/DRUID', 'NECROMANCER/DOOMWEAVER', 'NECROMANCER/DEATHLORD',
-    ]);
+  it('five boards keyed by class (and flavor for Mystic; Necromancer has one NECRO board, 2.9.8 L1258167)', () => {
+    expect(TRANSCENDENCE_BOARD_KEYS).toEqual(['WARRIOR', 'SENTINEL', 'MYSTIC/MAGE', 'MYSTIC/DRUID', 'NECROMANCER']);
   });
   it('board node counts match nodeCount', () => {
     for (const key of TRANSCENDENCE_BOARD_KEYS) {
@@ -23,7 +21,9 @@ describe('game/transcendence catalogue', () => {
     expect(transcendenceBoardKeyForSpec('WARRIOR_DPS')).toBe('WARRIOR');
     expect(transcendenceBoardKeyForSpec('MYSTIC_DRUID')).toBe('MYSTIC/DRUID');
     expect(transcendenceBoardKeyForSpec('NOPE')).toBeNull();
-    expect(transcendenceBoardForSpec('NECROMANCER_DEATHLORD').flavor).toBe('DEATHLORD');
+    expect(transcendenceBoardKeyForSpec('NECROMANCER_DEATHLORD')).toBe('NECROMANCER');
+    expect(transcendenceBoardKeyForSpec('NECROMANCER_DOOMWEAVER')).toBe('NECROMANCER');
+    expect(transcendenceBoardForSpec('NECROMANCER_DEATHLORD').flavor).toBe('NECRO');
   });
   it('tiers', () => {
     expect(TRANSCENDENCE_TIERS).toHaveLength(5);
