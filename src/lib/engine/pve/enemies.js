@@ -97,6 +97,17 @@ export function chapterMobs(chapter, level) {
     .map((m) => toMobSpec(m, 'campaign'));
 }
 
+/**
+ * The level played just before `chapter`/`level` in a campaign run: the level before it, or the last
+ * level of the chapter before. Null for the first level of the normal and of the hard campaign (no
+ * lead-in is assumed across the switch to hard chapters).
+ */
+export function previousChapterLevel(chapter, level) {
+  if (level > 1) return { chapter, level: level - 1 };
+  if (chapter <= 1 || chapter === PVE_HARD_CHAPTER_OFFSET + 1) return null;
+  return { chapter: chapter - 1, level: LEVELS_PER_CHAPTER };
+}
+
 /** Every level of a chapter ({level, mobs: MobSpec[], influenceReward}), or null. */
 export function chapterLevels(chapter) {
   const ch = chapterRecord(chapter);
