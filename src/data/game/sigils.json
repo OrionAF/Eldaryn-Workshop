@@ -1072,7 +1072,9 @@
    "transcendenceNode": "sig_13,-25",
    "classes": [
     "Warrior",
-    "Sentinel"
+    "Sentinel",
+    "Mystic",
+    "Necromancer"
    ],
    "unique": true
   },
@@ -1105,7 +1107,9 @@
    },
    "transcendenceNode": "sig_-13,-25",
    "classes": [
-    "Warrior"
+    "Warrior",
+    "Mystic",
+    "Necromancer"
    ],
    "unique": true
   },

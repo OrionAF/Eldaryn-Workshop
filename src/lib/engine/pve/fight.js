@@ -75,11 +75,12 @@ export const PVE_ASSUMPTIONS = Object.freeze({
 
 const A = PVE_ASSUMPTIONS;
 const pveMode = (o) => Object.freeze({
-  perFightCapMs: FIGHT_CAP_MS, interMobGapMs: 0, liveLoop: false, allMobsSwing: false, retribution: false, ...o, assumptions: Object.freeze(o.assumptions),
+  perFightCapMs: FIGHT_CAP_MS, interMobGapMs: 0, liveLoop: false, allMobsSwing: false, retribution: false, chronoFlux: true, ...o, assumptions: Object.freeze(o.assumptions),
 });
 
 /**
- * Per-mode engine settings (combat-pve.md §2, §13, §14). `dtMs` the tick; `shieldMitigation` what the
+ * Per-mode engine settings (combat-pve.md §2, §13, §14). `chronoFlux` false: the mode never charges
+ * Chrono Flux, so an Ancient transform cannot fire (raids; sigils.md §9 content list). `dtMs` the tick; `shieldMitigation` what the
  * mode's caller stamps on the player (World Boss: the affinity record's value, read at run time);
  * `interMobGapMs` the wait before each mob, the minion respawn aged by the same amount; `allMobsSwing`
  * every living mob swings from a random point in its swing, the later ones as bystanders; `perFightCapMs`
@@ -97,7 +98,7 @@ export const PVE_MODES = Object.freeze({
     retribution: true, assumptions: [A.serverFight],
   }),
   raid: pveMode({
-    dtMs: RAID_CONSTANTS.TICK_INTERVAL_MS, shieldMitigation: 0, interMobGapMs: INTER_MOB_GAP_MS, allMobsSwing: true,
+    dtMs: RAID_CONSTANTS.TICK_INTERVAL_MS, shieldMitigation: 0, interMobGapMs: INTER_MOB_GAP_MS, allMobsSwing: true, chronoFlux: false,
     assumptions: [A.serverFight, A.raidGroup],
   }),
   oblivion: pveMode({
@@ -1281,7 +1282,7 @@ export function simulatePve(o) {
     const r = simulateFight(player, enemy, {
       dtMs, startMs, maxMs, spells: f.spells,
       opening: group ? { attackerTimer: 0, defenderTimer: group[i].timer, regenTimer: raidClock.regenTimer } : opening,
-      bystanders: group ? group.slice(i + 1) : null, raidClock, chrono: f.chrono, stacks: f.stacks,
+      bystanders: group ? group.slice(i + 1) : null, raidClock, chrono: mode.chronoFlux ? f.chrono : null, stacks: f.stacks,
       thornsPercent: f.thornsPercent, oblivion: obl, minion: f.minion, log, liveSpellResist,
       liveLoop: mode.liveLoop, outputMult, enemyAt: wb?.enemyAt ?? null, reboundFor: wb?.reboundFor ?? null,
       wrath: wb?.wrath ?? null, retribution,

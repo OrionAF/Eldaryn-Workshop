@@ -343,7 +343,8 @@ export function simulateCelestial(o) {
       thornsPercent: (perSlot ? carries : stacks != null) ? f.thornsPercent : 0,
       snapMods: null,
       thorns: 0,
-      chrono: f.chrono,
+      // port of celestialChronoFluxEnabled (2.9.8 L1194096): only HARD and MYTHIC charge Chrono Flux
+      chrono: difficulty === 'HARD' || difficulty === 'MYTHIC' ? f.chrono : null,
       // this tick's Chrono Flux events: own landed hits, hits taken, own avoids
       fluxHits: 0,
       fluxTaken: 0,

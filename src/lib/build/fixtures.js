@@ -187,7 +187,8 @@ export function fixtureCharacter(cls, { spec = FIXTURE_SPECS[cls] } = {}) {
     presets: [
       {
         id: 'p1', name: 'Main', equipmentSet: 1, talentSet: 0, petId: 'pet-a', mountId: 'mount-a', relicIds,
-        sigilSpecies: loadout.generic, utilitySigilSpecies: loadout.utility, ancientSigilSpecies: loadout.ancient,
+        // three generics fill every slot, so no Ancient here; the Alt preset carries it (sigils.md §2)
+        sigilSpecies: loadout.generic, utilitySigilSpecies: loadout.utility, ancientSigilSpecies: null,
         transcendencePresetId: 'default', sheet: null,
       },
       {
@@ -199,4 +200,16 @@ export function fixtureCharacter(cls, { spec = FIXTURE_SPECS[cls] } = {}) {
     activePresetId: 'p1',
   };
   return normaliseCharacter(raw);
+}
+
+/**
+ * Equip an Ancient on a preset the way the game allows it: the Ancient takes one of the sigil slots,
+ * so the last generic is dropped to make room (sigils.md §2). The fixture's Main preset carries three
+ * generics and no Ancient; its Alt preset already has two generics and one. Mutates and returns `c`.
+ */
+export function equipAncient(c, species, presetId = 'p1') {
+  const p = c.presets.find((x) => x.id === presetId);
+  p.sigilSpecies = p.sigilSpecies.slice(0, 2);
+  p.ancientSigilSpecies = species;
+  return c;
 }

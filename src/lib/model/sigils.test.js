@@ -151,6 +151,15 @@ describe('reconcileSigils', () => {
     expect(c.presets[0].sigilSpecies).toEqual(['CATACLYSM', 'IRON_BASTION']);
   });
 
+  it('an equipped Ancient takes a slot: 3 generics + an Ancient at a 3-slot level keeps the Ancient and the first 2 generics', () => {
+    const c = warrior(); // level 100: 3 slots
+    c.presets[0].sigilSpecies = ['CATACLYSM', 'IRON_BASTION', 'REJUVENATION'];
+    c.presets[0].ancientSigilSpecies = 'FLAMEBORN';
+    reconcileSigils(c);
+    expect(c.presets[0].ancientSigilSpecies).toBe('FLAMEBORN');
+    expect(c.presets[0].sigilSpecies).toEqual(['CATACLYSM', 'IRON_BASTION']);
+  });
+
   it('clears everything below the unlock level', () => {
     const c = warrior({ level: 24 });
     c.presets[0].sigilSpecies = ['CATACLYSM'];
@@ -211,10 +220,20 @@ describe('class and spec eligibility (sigils.md §2)', () => {
     expect(utilitySigils('SENTINEL', null)).toEqual([]);
   });
 
-  it('Ancients per class (sigils.md §8): Warrior 2, Sentinel Stormcaller + Flameborn', () => {
+  it('Ancients per class (sigils.md §9 node mapping): Sentinel Stormcaller + Flameborn, every other class Earthwarden + Flameborn', () => {
     expect(names(ancientSigils('WARRIOR')).sort()).toEqual(['EARTHWARDEN', 'FLAMEBORN']);
     expect(names(ancientSigils('SENTINEL')).sort()).toEqual(['FLAMEBORN', 'STORMCALLER']);
-    expect(ancientSigils('MYSTIC')).toEqual([]);
+    expect(names(ancientSigils('MYSTIC')).sort()).toEqual(['EARTHWARDEN', 'FLAMEBORN']);
+    expect(names(ancientSigils('NECROMANCER')).sort()).toEqual(['EARTHWARDEN', 'FLAMEBORN']);
+  });
+
+  it('a Mystic keeps an owned Flameborn and its preset equip', () => {
+    const c = newCharacter('M', 'MYSTIC');
+    c.sigils.owned.FLAMEBORN = { level: 1 };
+    c.presets[0].ancientSigilSpecies = 'FLAMEBORN';
+    const out = normaliseCharacter(c);
+    expect(out.sigils.owned.FLAMEBORN).toEqual({ level: 1 });
+    expect(out.presets[0].ancientSigilSpecies).toBe('FLAMEBORN');
   });
 
   it('condition options follow the spell family; Druid forms with mixed families fall back', () => {

@@ -71,6 +71,11 @@ export function clampSigilLevel(species, level) {
   return clampInt(level, 1, MAX_SIGIL_LEVEL, 1);
 }
 
+/** Generic slots left once an equipped Ancient takes one of the level's sigil slots (sigils.md §2). */
+export function genericSigilSlots(level, playerClass, ancientSpecies) {
+  return Math.max(0, maxSigilSlots(level, playerClass) - (ancientSpecies ? 1 : 0));
+}
+
 // port of getMaxSigilSlots L1067168-1067210 (the last unlock row whose level <= player level, else 0)
 export function maxSigilSlots(level, playerClass) {
   const table = playerClass === 'MYSTIC' || playerClass === 'NECROMANCER' ? SIGIL_SLOT_UNLOCKS_MYSTIC : SIGIL_SLOT_UNLOCKS;
@@ -278,9 +283,10 @@ export function reconcileSigils(character) {
       else if (utility.has(sp) && utilityType && !pickUtility) pickUtility = sp;
       else if (generic.has(sp) && !picks.includes(sp)) picks.push(sp);
     }
-    p.sigilSpecies = picks.slice(0, slots);
     p.utilitySigilSpecies = pickUtility && ok(pickUtility) && utility.has(pickUtility) ? pickUtility : null;
     p.ancientSigilSpecies = pickAncient && ok(pickAncient) && ancient.has(pickAncient) ? pickAncient : null;
+    // an equipped Ancient takes one of the slots; the last generic pick gives way
+    p.sigilSpecies = picks.slice(0, Math.max(0, slots - (p.ancientSigilSpecies ? 1 : 0)));
 
   }
   reconcileConditions(character);

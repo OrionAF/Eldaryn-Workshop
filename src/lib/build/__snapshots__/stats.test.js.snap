@@ -235,7 +235,7 @@ exports[`golden totals per class (fixture characters) > SENTINEL: both presets a
 {
   "oblivion": {
     "rawPenetration": 34,
-    "totalAttack": 218982,
+    "totalAttack": 176049,
     "totalAttackPercent": 138.5,
     "totalAttackSpeed": 1.92,
     "totalBlindChance": 3.2,
@@ -250,7 +250,7 @@ exports[`golden totals per class (fixture characters) > SENTINEL: both presets a
     "totalEarthenConduit": 0,
     "totalFlameConduit": 0,
     "totalHealthPercent": 47.1,
-    "totalHp": 767091,
+    "totalHp": 590571,
     "totalHpRegen": 12.6,
     "totalLifesteal": 25.6,
     "totalMinionAttack": 0,
@@ -271,7 +271,7 @@ exports[`golden totals per class (fixture characters) > SENTINEL: both presets a
     "totalSpellVamp": 0,
   },
   "p1": {
-    "totalAttack": 146667,
+    "totalAttack": 106902,
     "totalAttackPercent": 120.9,
     "totalAttackSpeed": 1.92,
     "totalBlindChance": 3.2,
@@ -286,7 +286,7 @@ exports[`golden totals per class (fixture characters) > SENTINEL: both presets a
     "totalEarthenConduit": 40,
     "totalFlameConduit": 80,
     "totalHealthPercent": 36.7,
-    "totalHp": 481221,
+    "totalHp": 317157,
     "totalHpRegen": 8.8,
     "totalLifesteal": 21,
     "totalMinionAttack": 0,
@@ -349,7 +349,7 @@ exports[`golden totals per class (fixture characters) > WARRIOR: both presets an
 {
   "oblivion": {
     "rawPenetration": 34,
-    "totalAttack": 236234,
+    "totalAttack": 192083,
     "totalAttackPercent": 145.3,
     "totalAttackSpeed": 1.64,
     "totalBlindChance": 0,
@@ -364,7 +364,7 @@ exports[`golden totals per class (fixture characters) > WARRIOR: both presets an
     "totalEarthenConduit": 0,
     "totalFlameConduit": 0,
     "totalHealthPercent": 66.5,
-    "totalHp": 926063,
+    "totalHp": 726211,
     "totalHpRegen": 12,
     "totalLifesteal": 19.6,
     "totalMinionAttack": 0,
@@ -385,7 +385,7 @@ exports[`golden totals per class (fixture characters) > WARRIOR: both presets an
     "totalSpellVamp": 0,
   },
   "p1": {
-    "totalAttack": 168778,
+    "totalAttack": 125923,
     "totalAttackPercent": 138.1,
     "totalAttackSpeed": 1.58,
     "totalBlindChance": 0,
@@ -400,7 +400,7 @@ exports[`golden totals per class (fixture characters) > WARRIOR: both presets an
     "totalEarthenConduit": 40,
     "totalFlameConduit": 80,
     "totalHealthPercent": 56.2,
-    "totalHp": 603649,
+    "totalHp": 416253,
     "totalHpRegen": 8.2,
     "totalLifesteal": 15,
     "totalMinionAttack": 0,
@@ -500,7 +500,7 @@ exports[`golden totals per class (fixture characters) > the Mage and Tank varian
 
 exports[`golden totals per class (fixture characters) > the Mage and Tank variants build too (spec drives talents, sigils and the board) 2`] = `
 {
-  "totalAttack": 140777,
+  "totalAttack": 105031,
   "totalAttackPercent": 98.6,
   "totalAttackSpeed": 1.44,
   "totalBlindChance": 0,
@@ -515,7 +515,7 @@ exports[`golden totals per class (fixture characters) > the Mage and Tank varian
   "totalEarthenConduit": 40,
   "totalFlameConduit": 80,
   "totalHealthPercent": 91.2,
-  "totalHp": 738941,
+  "totalHp": 509546,
   "totalHpRegen": 11.7,
   "totalLifesteal": 16.5,
   "totalMinionAttack": 0,

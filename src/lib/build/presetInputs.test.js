@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fixtureCharacter } from './fixtures.js';
+import { fixtureCharacter, equipAncient } from './fixtures.js';
 import { computePresetStats } from './stats.js';
 import { transcendencePreset, buildPresetInputs } from './presetInputs.js';
 import { powerInputs } from './power.js';
@@ -9,7 +9,7 @@ describe('Transcendence level gates in the build (transcendence.md §1, §9)', (
   const boardBonus = (r) => r.args[9];
 
   it('below 55 the board adds nothing, the Ancient drops and power counts no nodes; from 55 it all counts', () => {
-    const c = fixtureCharacter('WARRIOR'); // p1: FLAMEBORN on a default board that allocates its node
+    const c = equipAncient(fixtureCharacter('WARRIOR'), 'FLAMEBORN'); // p1: FLAMEBORN on a default board that allocates its node
     expect(Object.values(boardBonus(at(c, 54))).every((v) => v === 0)).toBe(true);
     expect(at(c, 54).ancientDropped).toBe(true);
     expect(at(c, 54).warnings).toEqual(['FLAMEBORN is not used: Transcendence unlocks at level 55.']);

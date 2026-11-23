@@ -74,7 +74,7 @@
   "tieGroup": null,
   "isBaseline": true,
   "provisional": false,
-  "key": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":null,\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+  "key": "{\"ancientSigilSpecies\":null,\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":null,\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
   "engineKey": "engine-pve:1afqgyx20oqm1:1466",
   "candidate": {
    "equipmentSet": 1,
@@ -90,7 +90,7 @@
     "CATACLYSM"
    ],
    "utilitySigilSpecies": null,
-   "ancientSigilSpecies": "FLAMEBORN",
+   "ancientSigilSpecies": null,
    "transcendencePresetId": "default",
    "sigilConditions": {}
   },
@@ -153,7 +153,7 @@
    },
    {
     "label": "Ancient sigil",
-    "value": "Flameborn"
+    "value": "None"
    },
    {
     "label": "Conditions",
@@ -171,7 +171,7 @@
    "tieGroup": 1,
    "isBaseline": false,
    "provisional": false,
-   "key": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":2,\"dps_t1_quick_strikes\":3,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":4,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":2,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+   "key": "{\"ancientSigilSpecies\":null,\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":2,\"dps_t1_quick_strikes\":3,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":4,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":2,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
    "engineKey": "engine-pve:2tsrag1e5rgns:1465",
    "candidate": {
     "equipmentSet": 1,
@@ -202,7 +202,7 @@
      "CATACLYSM"
     ],
     "utilitySigilSpecies": null,
-    "ancientSigilSpecies": "FLAMEBORN",
+    "ancientSigilSpecies": null,
     "transcendencePresetId": "default",
     "sigilConditions": {}
    },
@@ -396,7 +396,7 @@
     },
     {
      "label": "Ancient sigil",
-     "value": "Flameborn"
+     "value": "None"
     },
     {
      "label": "Conditions",
@@ -413,7 +413,7 @@
    "tieGroup": 1,
    "isBaseline": false,
    "provisional": false,
-   "key": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":2,\"dps_t1_quick_strikes\":3,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":5,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":1,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+   "key": "{\"ancientSigilSpecies\":null,\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":2,\"dps_t1_quick_strikes\":3,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":5,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":1,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
    "engineKey": "engine-pve:1ujnib31fgrn6v:1464",
    "candidate": {
     "equipmentSet": 1,
@@ -444,7 +444,7 @@
      "CATACLYSM"
     ],
     "utilitySigilSpecies": null,
-    "ancientSigilSpecies": "FLAMEBORN",
+    "ancientSigilSpecies": null,
     "transcendencePresetId": "default",
     "sigilConditions": {}
    },
@@ -638,7 +638,7 @@
     },
     {
      "label": "Ancient sigil",
-     "value": "Flameborn"
+     "value": "None"
     },
     {
      "label": "Conditions",
@@ -655,7 +655,7 @@
    "tieGroup": 1,
    "isBaseline": false,
    "provisional": false,
-   "key": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":1,\"dps_t1_quick_strikes\":3,\"dps_t1_sharpened_blade\":1,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":4,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":2,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+   "key": "{\"ancientSigilSpecies\":null,\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":1,\"dps_t1_quick_strikes\":3,\"dps_t1_sharpened_blade\":1,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":4,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":2,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
    "engineKey": "engine-pve:14wbp1761fo4a:1465",
    "candidate": {
     "equipmentSet": 1,
@@ -687,7 +687,7 @@
      "CATACLYSM"
     ],
     "utilitySigilSpecies": null,
-    "ancientSigilSpecies": "FLAMEBORN",
+    "ancientSigilSpecies": null,
     "transcendencePresetId": "default",
     "sigilConditions": {}
    },
@@ -881,7 +881,7 @@
     },
     {
      "label": "Ancient sigil",
-     "value": "Flameborn"
+     "value": "None"
     },
     {
      "label": "Conditions",
@@ -994,8 +994,8 @@
   "converged": true,
   "unresolved": [
    {
-    "fromKey": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":2,\"dps_t1_quick_strikes\":3,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":5,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":1,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
-    "toKey": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":2,\"dps_t1_quick_strikes\":3,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":5,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":1,\"dps_t5_lethality\":2,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+    "fromKey": "{\"ancientSigilSpecies\":null,\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":2,\"dps_t1_quick_strikes\":3,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":5,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":1,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+    "toKey": "{\"ancientSigilSpecies\":null,\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":2,\"dps_t1_quick_strikes\":3,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":5,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":1,\"dps_t5_lethality\":2,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
     "change": "Talents (set 1): Precision 2, Quick Strikes 3, Combat Frenzy 3, Keen Edge 3, Relentless Assault 1, Savage Blows 3, Executioner 5, Swift Fury 2, Berserker's Might 1, Lethality 3, Warlord's Fury 3 -> Precision 2, Quick Strikes 3, Combat Frenzy 3, Keen Edge 3, Relentless Assault 1, Savage Blows 3, Executioner 5, Swift Fury 2, Berserker's Might 1, Lethality 2, Warlord's Fury 3",
     "contrast": {
      "delta": -17664.387499999993,
@@ -1014,8 +1014,8 @@
     }
    },
    {
-    "fromKey": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":2,\"dps_t1_quick_strikes\":3,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":5,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":1,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
-    "toKey": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":1,\"dps_t1_quick_strikes\":3,\"dps_t1_sharpened_blade\":1,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":5,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":1,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+    "fromKey": "{\"ancientSigilSpecies\":null,\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":2,\"dps_t1_quick_strikes\":3,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":5,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":1,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+    "toKey": "{\"ancientSigilSpecies\":null,\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\",\"relic_war_charm\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":{\"dps_t1_precision\":1,\"dps_t1_quick_strikes\":3,\"dps_t1_sharpened_blade\":1,\"dps_t2_combat_frenzy\":3,\"dps_t2_keen_edge\":3,\"dps_t3_relentless_assault\":1,\"dps_t3_savage_blows\":3,\"dps_t4_executioner\":5,\"dps_t4_swift_fury\":2,\"dps_t5_berserkers_might\":1,\"dps_t5_lethality\":3,\"dps_t6_warlords_fury\":3},\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
     "change": "Talents (set 1): Precision 2, Quick Strikes 3, Combat Frenzy 3, Keen Edge 3, Relentless Assault 1, Savage Blows 3, Executioner 5, Swift Fury 2, Berserker's Might 1, Lethality 3, Warlord's Fury 3 -> Precision 1, Quick Strikes 3, Sharpened Blade 1, Combat Frenzy 3, Keen Edge 3, Relentless Assault 1, Savage Blows 3, Executioner 5, Swift Fury 2, Berserker's Might 1, Lethality 3, Warlord's Fury 3",
     "contrast": {
      "delta": -1928.8125000000073,

@@ -1,7 +1,7 @@
 import { it, expect, beforeEach, afterEach, describe } from 'vitest';
 import BuildsLoadoutPage from './BuildsLoadoutPage.svelte';
 import { rosterStore } from '../../lib/rosterStore.svelte.js';
-import { fixtureCharacter } from '../../lib/build/fixtures.js';
+import { fixtureCharacter, equipAncient } from '../../lib/build/fixtures.js';
 import { relicSlotCap } from '../../lib/model/legality.js';
 import { relicsForClass } from '../../lib/game/relics.js';
 import { setup, click } from '../ui/testkit.js';
@@ -174,6 +174,7 @@ it('a condition names the other presets that equip the sigil (CHARACTER scope) a
 
 it('checkPreset badges show: an Ancient without its board node reads as a note', () => {
   const c = rosterStore.current;
+  equipAncient(c, 'FLAMEBORN'); // Main carries three generics; the Ancient takes a slot
   c.transcendence.presets.forEach((p) => (p.allocatedNodeIds = []));
   reopen();
   const ancient = preset().ancientSigilSpecies;

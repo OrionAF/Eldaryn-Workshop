@@ -3,7 +3,7 @@ import {
   createBuildSpace, candidateOf, canonical, materialise, BLOCKS, SPACE_DEFAULTS, conditionOptionsFor, glyphLabel, runningSigils,
 } from './space.js';
 import { legalityOf } from './legality.js';
-import { fixtureCharacter } from '../build/fixtures.js';
+import { fixtureCharacter, equipAncient } from '../build/fixtures.js';
 import { buildFighter } from '../build/fighter.js';
 import { computePresetStats } from '../build/stats.js';
 import { normaliseCharacter } from '../model/index.js';
@@ -206,6 +206,7 @@ describe('block domains', () => {
 
   it('the Ancient is offered only on a board that allocates its node; a board switch drops it (#55, Q3)', () => {
     const c = fixture('WARRIOR', (r) => {
+      equipAncient(r, 'FLAMEBORN');
       r.transcendence.presets.push({ id: 'bare', name: 'Bare', allocatedNodeIds: [] });
     });
     const space = createBuildSpace(c, 'p1');
@@ -214,6 +215,24 @@ describe('block domains', () => {
     expect(bare.transcendencePresetId).toBe('bare');
     expect(bare.ancientSigilSpecies).toBeNull();
     expect(block(space, 'ancient').domain(bare)).toEqual([]);
+  });
+
+  it('with an Ancient equipped the sigils block offers at most two generics; the ancient block drops one generic per candidate from a full preset', () => {
+    const withAncient = createBuildSpace(fixture('WARRIOR', (r) => { equipAncient(r, 'FLAMEBORN'); }), 'p1');
+    const sizes = block(withAncient, 'sigils').domain(withAncient.start).map((x) => x.sigilSpecies.length);
+    expect(Math.max(...sizes)).toBe(2);
+    expect(withAncient.start.ancientSigilSpecies).toBe('FLAMEBORN');
+    // no Ancient: all three slots are generic
+    const plain = createBuildSpace(fixture('WARRIOR'), 'p1');
+    expect(plain.start.sigilSpecies).toHaveLength(3);
+    expect(Math.max(...block(plain, 'sigils').domain(plain.start).map((x) => x.sigilSpecies.length))).toBe(3);
+    // equipping an Ancient from three generics gives up one generic each way
+    const equips = block(plain, 'ancient').domain(plain.start).filter((x) => x.ancientSigilSpecies);
+    expect(equips.length).toBeGreaterThan(0);
+    for (const x of equips) expect(x.sigilSpecies).toHaveLength(2);
+    const one = equips.filter((x) => x.ancientSigilSpecies === equips[0].ancientSigilSpecies);
+    expect(one).toHaveLength(3);
+    expect(new Set(one.map((x) => plain.start.sigilSpecies.find((sp) => !x.sigilSpecies.includes(sp)))).size).toBe(3);
   });
 
   it('below 55 the Ancient is never offered, even on a board that allocates its node; the fighter agrees', () => {
