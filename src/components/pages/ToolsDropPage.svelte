@@ -29,7 +29,8 @@
   import { otherCharacters } from '../../lib/ui/optimiserSetup.js';
   import { activeDropProfile, DROP_GOAL_MAX, DROP_PROFILE_MAX } from '../../lib/model/dropCheck.js';
   import { formatHash } from '../../lib/routes.js';
-  import { jobsStore, startJob, cancelJob, jobSignature, isStale } from '../../lib/jobs.svelte.js';
+  import { dropSignature } from '../../lib/ui/jobSignatures.js';
+  import { jobsStore, startJob, cancelJob, isStale } from '../../lib/jobs.svelte.js';
   import { prepareSwap, setInScope, DROP_PRECISION } from '../../lib/features/swap.js';
   import { equipSetKey } from '../../lib/build/presetInputs.js';
   import { dropFights } from '../../lib/calibration.js';
@@ -109,8 +110,7 @@
 
   /** Staleness of a job against the saved character: gear, presets and drop (the inputs of any verdict). */
   function storeSignature(extra = '') {
-    const c = rosterStore.current;
-    return jobSignature({ characterKey: c?.id ?? '', presetId: '', inputs: JSON.stringify([c?.equipment, c?.presets, c?.drop ?? null, c?.dropCheck ?? null, extra]) });
+    return dropSignature(rosterStore.current, extra);
   }
   const ownedBy = (j, tool) => j.tool === tool && (() => { try { return JSON.parse(j.signature)[0] === character?.id; } catch { return false; } })();
   const stateOf = (job) => (job?.status === 'queued' ? 'queued' : job?.status === 'running' ? 'running' : 'idle');
@@ -375,6 +375,7 @@
         title: 'Drop Check · Loot bag',
         context: `${drops.length} drop${drops.length === 1 ? '' : 's'}${entries.length > drops.length ? ', also at Quality 100' : ''} · seed ${req.seed}`,
         request: req,
+        meta: { extra: entryKeys },
         signature: storeSignature(entryKeys),
         currentSignature: () => storeSignature(entryKeys),
         openRoute: formatHash('tools/drop', 'bag'),
