@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import * as swap from './swap.js';
 import {
   itemRawDelta, autoAttackDps, prepareSwap, groupBySet, runSwapMetrics,
-  metricSignal, verdictFor, aggregateVerdict, statDeltas, secondaryKey, NEUTRAL_PCT,
+  metricSignal, verdictFor, aggregateVerdict, aggregateCaveat, statDeltas, secondaryKey, NEUTRAL_PCT,
   applyFamily, goalObjective, goalIsDamageOnly, goalEffort, DROP_OBJECTIVE_KINDS, DROP_PRECISION,
 } from './swap.js';
 import { fixtureCharacter } from '../build/fixtures.js';
@@ -357,8 +357,47 @@ describe('verdict', () => {
     expect(verdictFor(row(5), res(goal('a', ci(40, 10, 70)), goal('b', ci(-0.1, -0.2, -0.02)))).verdict).toBe('mixed');
     expect(verdictFor(row(0), res(goal('a', ci(0, -5, 5, 10)), goal('b', ci(0.2, 0.1, 0.3)))).verdict).toBe('upgrade');
     const u = verdictFor(row(0), res(goal('a', ci(40, 10, 70)), goal('b', ci(0.02, -0.1, 0.14, 0.01))));
-    expect(u.verdict).toBe('inconclusive');
+    expect(u.verdict).toBe('upgrade');
     expect(u.unresolved).toEqual(['b']);
+  });
+
+  it('C2: one goal up and the rest unresolved is an upgrade whose caveat names them', () => {
+    const u = verdictFor(row(0), res(goal('a', ci(40, 10, 70)), goal('b', ci(0.02, -0.1, 0.14, 0.01))));
+    expect(u.verdict).toBe('upgrade');
+    expect(u.caveat).toEqual(['b']);
+    expect(u.caveatLabels).toEqual(['b']);
+    // a clean upgrade, and every other verdict, carries none
+    expect(verdictFor(row(5), res(goal('a', ci(40, 10, 70)))).caveat).toEqual([]);
+    expect(verdictFor(row(5), res(goal('a', ci(2, -30, 34, 10)))).caveat).toEqual([]);
+    // unresolved only: still too close to call
+    expect(verdictFor(row(5), res(goal('a', ci(2, -30, 34, 10)), goal('b', ci(0.02, -0.1, 0.14, 0.01)))).verdict).toBe('inconclusive');
+    // a goal down with another unresolved: no invented "downgrade with caveat"
+    const d = verdictFor(row(5), res(goal('a', ci(-40, -70, -10)), goal('b', ci(0.02, -0.1, 0.14, 0.01))));
+    expect(d.verdict).toBe('inconclusive');
+    expect(d.caveat).toEqual([]);
+    // up and down stays mixed
+    expect(verdictFor(row(5), res(goal('a', ci(40, 10, 70)), goal('b', ci(-0.1, -0.2, -0.02)), goal('c', ci(0.02, -0.1, 0.14, 0.01)))).verdict).toBe('mixed');
+  });
+
+  it('C2: an unresolved guard still turns the upgrade into inconclusive, with no caveat; a failed guard downgrades', () => {
+    const gd = (status) => ({ goalId: `g-${status}`, label: 'Dungeon', role: 'guard', guard: { status, target: 0.95, after: { est: 0.88 } } });
+    const up = goal('a', ci(40, 10, 70));
+    const open = goal('b', ci(0.02, -0.1, 0.14, 0.01));
+    const a = verdictFor(row(5), res(up, open, gd('unresolved')));
+    expect(a.verdict).toBe('inconclusive');
+    expect(a.caveat).toEqual([]);
+    expect(a.unresolved).toEqual(['b', 'g-unresolved']);
+    expect(verdictFor(row(5), res(up, open, gd('fail'))).verdict).toBe('downgrade');
+    expect(verdictFor(row(5), res(up, open, gd('pass')))).toMatchObject({ verdict: 'upgrade', caveat: ['b'] });
+  });
+
+  it('C2: aggregateCaveat unions the preset caveats of an upgrade and is empty otherwise', () => {
+    const cav = verdictFor(row(0), res(goal('a', ci(40, 10, 70)), goal('b', ci(0.02, -0.1, 0.14, 0.01))));
+    const clean = verdictFor(row(5), res(goal('a', ci(40, 10, 70))));
+    const inc = verdictFor(row(5), res(goal('a', ci(2, -30, 34, 10))));
+    expect(aggregateCaveat([cav, clean])).toEqual(['b']);
+    expect(aggregateCaveat([clean])).toEqual([]);
+    expect(aggregateCaveat([cav, inc])).toEqual([]);
   });
 
   it('guards: a failed guard is a downgrade whatever the judges say; an open guard blocks an upgrade or sidegrade', () => {

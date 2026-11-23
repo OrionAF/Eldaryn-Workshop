@@ -563,13 +563,14 @@ export function guardText(g) {
 
 /**
  * Verdict for one preset. Over the judges:
- *  'upgrade'      something improves, nothing worsens, nothing is unresolved
+ *  'upgrade'      something improves and nothing worsens. A goal still unresolved at its maxN does not stop it
+ *                 (the difference is within noise, so at worst a small loss there): `caveat` names those goals
  *  'downgrade'    the reverse
  *  'mixed'        something improves and something worsens
  *  'sidegrade'    every measured goal is equivalent within the precision zone
- *  'inconclusive' a goal was still unresolved at its maxN ("too close to call") and nothing contradicts
+ *  'inconclusive' a goal was still unresolved at its maxN ("too close to call") and no goal improves
  * Then the guards (drop-check-goals.md §4.3): a failed guard makes it a downgrade whatever the judges say; an
- * unresolved guard turns an upgrade into inconclusive. A guard never makes a drop an upgrade, and one already
+ * unresolved guard turns an upgrade into inconclusive (a guard is a floor, so it takes no caveat). A guard never makes a drop an upgrade, and one already
  * failing without the drop (`below`) does not count.
  * Without a simulation the closed-form estimate decides (`basis: 'closed'`, `estimate: true`).
  *
@@ -580,7 +581,7 @@ export function guardText(g) {
  * @param {Object|null} [simResult]  its runSwapMetrics result, when it has run
  * @returns {{
  *   verdict: 'upgrade'|'sidegrade'|'downgrade'|'mixed'|'inconclusive', basis: 'sim'|'closed', estimate: boolean,
- *   signals: Object<string, string>, unresolved: string[], coverage: string[], coverageLabel: string, notJudged: string[],
+ *   signals: Object<string, string>, unresolved: string[], caveat: string[] (goal ids; empty unless an upgrade), caveatLabels: string[], coverage: string[], coverageLabel: string, notJudged: string[],
  * }}
  */
 export function verdictFor(row, simResult = null) {
@@ -595,12 +596,17 @@ export function verdictFor(row, simResult = null) {
   const up = all.includes('up');
   const down = all.includes('down');
   const unresolved = Object.keys(signals).filter((k) => signals[k] === 'unknown');
-  let verdict = up && down ? 'mixed' : unresolved.length ? 'inconclusive' : up ? 'upgrade' : down ? 'downgrade' : 'sidegrade';
+  // an up goal with the rest unresolved is an upgrade carrying a caveat; a down goal with unresolved ones is left alone
+  let verdict = up && down ? 'mixed' : up && !down ? 'upgrade' : unresolved.length ? 'inconclusive' : down ? 'downgrade' : 'sidegrade';
+  const caveat = verdict === 'upgrade' ? [...unresolved] : [];
   const failed = guards.filter((g) => g.guard.status === 'fail');
   const guardOpen = guards.filter((g) => g.guard.status === 'unresolved').map((g) => g.goalId);
   unresolved.push(...guardOpen);
   if (failed.length) verdict = 'downgrade';
   else if (guardOpen.length && (verdict === 'upgrade' || verdict === 'sidegrade')) verdict = 'inconclusive';
+  if (verdict !== 'upgrade') caveat.length = 0;
+  const labelOf = new Map(measured.map((g) => [g.goalId, g.label]));
+  const caveatLabels = caveat.map((id) => labelOf.get(id) ?? (id === 'dps' ? 'Auto-attack damage' : id));
   const seesDefence = guards.length > 0 || measured.some((g) => !g.damageOnly);
   const notJudged = seesDefence ? [] : Object.keys(row?.rawDelta ?? {}).filter((k) => !DPS_STAT_KEYS.has(k));
   const labels = [...measured.map((g) => g.label), ...guards.map((g) => `Guard: ${g.label}`)].join('; ');
@@ -608,7 +614,16 @@ export function verdictFor(row, simResult = null) {
     : seesDefence ? labels
       : `${labels}. Damage only: defence not measured`;
   const guardNotes = guards.filter((g) => g.guard.status !== 'pass').map((g) => ({ goalId: g.goalId, status: g.guard.status, text: guardText(g) }));
-  return { verdict, basis, estimate: basis === 'closed', signals, unresolved, coverage, coverageLabel, notJudged, guardNotes, failedGuards: failed.map((g) => g.goalId) };
+  return { verdict, basis, estimate: basis === 'closed', signals, unresolved, caveat, caveatLabels, coverage, coverageLabel, notJudged, guardNotes, failedGuards: failed.map((g) => g.goalId) };
+}
+
+/**
+ * The caveat of an aggregated upgrade: the labels of the goals any of its presets left too close to call, de-duplicated;
+ * empty for any other aggregate verdict. `perPreset` are verdictFor results.
+ */
+export function aggregateCaveat(perPreset) {
+  if (aggregateVerdict(perPreset.map((v) => v.verdict)) !== 'upgrade') return [];
+  return [...new Set(perPreset.flatMap((v) => v.caveatLabels ?? []))];
 }
 
 /** Aggregate verdict of a set of preset verdicts (an Apply button writes to the whole set). */

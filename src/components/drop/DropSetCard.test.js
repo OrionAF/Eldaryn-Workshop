@@ -73,3 +73,16 @@ it('a too-close-to-call set card carries the neutral inconclusive treatment', ()
   expect(t.q('.card').classList.contains('inconclusive')).toBe(true);
   expect(t.q('.vchip.up, .vchip.down')).toBeNull();
 });
+
+it('C2: a caveated upgrade reads Upgrade, with one line naming the goals too close to call', () => {
+  t = setup(DropSetCard, { card: card({ unresolved: true, caveat: ['Fortress boss', 'Dungeon 8'] }), onapply: () => {} });
+  expect(t.q('.vchip.up').textContent).toContain('Upgrade');
+  expect(t.q('[data-caveat]').textContent).toBe('Too close to call: Fortress boss, Dungeon 8');
+  expect(t.q('.coverage').textContent).not.toContain('Still too close to call');
+  expect(t.q('.card.inconclusive')).toBeNull();
+});
+
+it('C2: a clean upgrade has no caveat line', () => {
+  t = setup(DropSetCard, { card: card({ caveat: [] }), onapply: () => {} });
+  expect(t.q('[data-caveat]')).toBeNull();
+});

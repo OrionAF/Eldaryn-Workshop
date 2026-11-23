@@ -32,7 +32,7 @@
     [
       card.basis === 'sim' ? card.coverageLabel : pending ? 'Check not finished' : 'Not checked yet',
       card.notJudged.length ? `Not checked: ${card.notJudged.join(', ')}` : '',
-      card.unresolved ? 'Still too close to call after the most fights allowed' : '',
+      card.unresolved && !card.caveat?.length ? 'Still too close to call after the most fights allowed' : '',
       card.failedGuard ? 'Fails a guard' : '',
       card.unjudgedNames?.length ? `No goal judges ${card.unjudgedNames.join(', ')}` : '',
     ].filter(Boolean).join('. '),
@@ -70,6 +70,9 @@
   </header>
 
   <p class="coverage" data-coverage={card.basis}>{coverage}</p>
+  {#if card.basis === 'sim' && card.caveat?.length}
+    <p class="coverage" data-caveat>Too close to call: {card.caveat.join(', ')}</p>
+  {/if}
 
   {#if card.basis === 'sim'}
     <div class="body">

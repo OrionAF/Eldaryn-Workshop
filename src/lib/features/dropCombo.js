@@ -11,8 +11,9 @@
 //   3. Confirm:  a combination of more than one step against the saved gear on a fresh seed, never the search
 //                seed: each step was the best of many on those fights, so its gain there is flattered.
 //
-// A move is taken only when the set's verdict is a simulated `upgrade` (dropBatch.js judgeEntry: nothing worsens,
-// nothing is unresolved, no guard fails), so the climb never trades one goal for another. It tests one move at a
+// A move is taken only when the set's verdict is a simulated `upgrade` with no caveat (dropBatch.js judgeEntry: nothing
+// worsens, nothing is unresolved, no guard fails; an upgrade that leaves a goal too close to call is shown in the
+// list but never stacked), so the climb never trades one goal for another. It tests one move at a
 // time: two drops that only pay off together are not found. Pure over swap.js; runs in the worker
 // (tasks/dropCombo.js). Cancelling keeps the finished alone pass and the picks so far.
 import { hashSeed } from '../engine/rng.js';
@@ -33,7 +34,7 @@ const usable = (r) => (r?.goals?.length || r?.noGoals ? r : null);
 
 function judge(rows, results) {
   const j = judgeEntry(rows, results.map(usable));
-  return j ? { verdict: j.verdict, score: j.score, basis: j.basis } : null;
+  return j ? { verdict: j.verdict, score: j.score, basis: j.basis, caveat: j.caveat } : null;
 }
 
 /**
@@ -118,7 +119,7 @@ export async function dropCombo(request, { signal, onProgress, sampleFor, onGoal
   const pick = (s, moves) => {
     let best = null;
     for (const m of moves) {
-      if (m.judged?.verdict !== 'upgrade' || m.judged.basis !== 'sim' || s.visited.has(configKey(m.next))) continue;
+      if (m.judged?.verdict !== 'upgrade' || m.judged.caveat?.length || m.judged.basis !== 'sim' || s.visited.has(configKey(m.next))) continue;
       if (!best || m.judged.score > best.judged.score) best = m;
     }
     return best;
