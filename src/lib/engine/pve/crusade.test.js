@@ -1,12 +1,15 @@
-// The Crusade port (combat-pve.md §21): boss scaling, the drop table, the run of three bosses inside one
+// The Crusade port (combat-pve.md §24, 2.9.8 client): boss scaling, the drop table, the run of three bosses inside one
 // 300 s budget, full against partial clears, the boss fight's own rules (no boss crit roll, 1:1 shield,
 // seat targeting) and the injected rng.
 import { describe, it, expect, vi } from 'vitest';
 import {
   simulateCrusade, simulateBossFight, crusadeBossEntity, mythicPlusBossMultiplier, crusadeEnchantRate,
   expectedEnchantStones, rollEnchantDrops, rollEnchantStoneType, CRUSADE_TIME_LIMIT_MS, CRUSADE_TICK_MS,
-  BOSS_START_GAP_MS, CRUSADE_ASSUMPTIONS,
+  BOSS_START_GAP_MS, CRUSADE_ASSUMPTIONS, resolvePartyStacks, prepareCrusadeMember, NO_PARTY_STACKS,
 } from './crusade.js';
+import { initSpellRuntimes } from '../core/spells.js';
+import { getSigilSpellScaled } from '../sources/sigilScale.js';
+import { sigilBySpecies } from '../../game/sigils.js';
 import { createPlayerEntity } from '../core/entity.js';
 import { createStackCombat } from '../core/stacks.js';
 import { fightRng, scripted } from '../rng.js';
@@ -63,7 +66,7 @@ describe('Crusade bosses and rewards (pve-content.md §5)', () => {
   });
 });
 
-describe('simulateCrusadeFight (L1868835-1869345)', () => {
+describe('simulateCrusadeFight (L2237818-2238308)', () => {
   it('three bosses in order on one run clock: 500 ms before each, HP reset per boss, then the full-clear drop', () => {
     const r = simulateCrusade({ party: [fighter()], difficulty: 'NORMAL', rng: half, log: true });
     expect(r.success).toBe(true);
@@ -150,7 +153,7 @@ describe('simulateCrusadeFight (L1868835-1869345)', () => {
   });
 });
 
-describe('simulateBossFight rules (L1862921-1868584)', () => {
+describe('simulateBossFight rules (L2231333-2237566)', () => {
   // a run state with hand-built seats (no spells, no minions)
   const state = (seats) => ({
     entities: seats.map((o) => createPlayerEntity(stats(o))),
@@ -165,7 +168,7 @@ describe('simulateBossFight rules (L1862921-1868584)', () => {
     minions: seats.map(() => null),
   });
   const opts = (o = {}) => ({
-    dtMs: 10, elapsed: 0, limit: 3000, stack: createStackCombat([], true), stackIndex: 0, thornsPercent: 0, focus: null, log: true, ...o,
+    dtMs: 10, elapsed: 0, limit: 3000, party: NO_PARTY_STACKS, focus: null, log: true, ...o,
   });
   // a seat that never swings inside the window
   const idle = { totalAttackSpeed: 0.001 };
@@ -198,5 +201,178 @@ describe('simulateBossFight rules (L1862921-1868584)', () => {
     const s = state([{ ...idle, totalBlockChance: 50 }]);
     const r = simulateBossFight(0, crusadeBossEntity(SENTINEL, 1, 'NORMAL'), s, opts({ limit: 1500 }), () => 0);
     expect(r.ticks.filter((e) => e.type.startsWith('player_')).map((e) => [e.type, e.damage])).toEqual([['player_block', 0]]);
+  });
+
+  // --- 2.9.8 mechanics (combat-pve.md §24.2) ---
+  // a hand-built living minion that never swings unless given an attack speed
+  const minion = (o = {}) => ({
+    species: 'BONE_SERVANT', name: 'm', icon: null, kind: 'm', attack: 10, maxHp: 1e9, hp: 1e9, attackSpeed: 0,
+    critChance: 0, critDamage: 1, lifesteal: 0, soulLink: 0, timer: 0, alive: true, respawnCooldownMs: 0,
+    respawnMs: 0, summonCastMs: 0, ...o,
+  });
+  const withMinion = (seat, m) => { const s = state([seat]); s.minions[0] = m; return s; };
+  const WAR = { playerClass: 'WARRIOR', activeSpec: 'WARRIOR_TANK' };
+
+  it('a boss hit on a living minion goes through damageMinion as a swing: minion DR, not the seat\'s; its thorns can kill the boss at step 6', () => {
+    const s = withMinion({ ...idle, totalDamageReduction: 90 }, minion({ dominion: { blockChance: 0, damageReduction: 50, thornsPercent: 10 } }));
+    const boss = crusadeBossEntity(SENTINEL, 1, 'NORMAL');
+    boss.hp = 100;
+    const r = simulateBossFight(0, boss, s, opts(), scripted([]));
+    // round(3038 * 0.5) = 1519 to the minion; thorns round(1519 * 10%) = 152 take the last 100
+    expect(r.ticks.find((e) => e.type === 'minion_damaged')).toMatchObject({ timestamp: 1410, damage: 1519 });
+    expect(r.ticks.find((e) => e.type === 'minion_thorns')).toMatchObject({ timestamp: 1410, damage: 100, playerIndex: 0 });
+    expect(r.ticks.at(-1)).toMatchObject({ type: 'boss_death', timestamp: 1410 });
+    expect(r.success).toBe(true);
+    expect(r.totalDuration).toBe(1410);
+  });
+
+  it('the minion\'s block stops the boss swing whole (no boss penetration): no thorns', () => {
+    const s = withMinion(idle, minion({ dominion: { blockChance: 50, damageReduction: 0, thornsPercent: 10 } }));
+    const r = simulateBossFight(0, crusadeBossEntity(SENTINEL, 1, 'NORMAL'), s, opts({ limit: 1500 }), scripted([0]));
+    expect(r.ticks.find((e) => e.type === 'minion_damaged')).toMatchObject({ damage: 0, minionBlocked: true });
+    expect(r.ticks.some((e) => e.type === 'minion_thorns')).toBe(false);
+  });
+
+  it('2.8.2 death ward: a minion the boss kills grants its owner a shield; a respawn takes the unspent part back', () => {
+    const ward = () => withMinion(idle, minion({ maxHp: 1000, hp: 1000, deathWardPercent: 10, deathWard: 0, respawnCooldownMs: 500 }));
+    const s = ward();
+    const r = simulateBossFight(0, crusadeBossEntity(SENTINEL, 1, 'NORMAL'), s, opts({ limit: 1500 }), scripted([]));
+    // floor(1000 * 10%) = 100, uncapped by the 0 shield max
+    expect(s.shieldCur).toEqual([100]);
+    expect(r.ticks.find((e) => e.type === 'minion_dead')).toMatchObject({ timestamp: 1410, minionDeathWard: 100, playerMinionWards: [100, 0, 0] });
+    const s2 = ward();
+    const r2 = simulateBossFight(0, crusadeBossEntity(SENTINEL, 1, 'NORMAL'), s2, opts({ limit: 2000 }), scripted([]));
+    expect(r2.ticks.find((e) => e.type === 'minion_summoned')).toMatchObject({ timestamp: 1910 });
+    expect(s2.shieldCur).toEqual([0]);
+    expect(s2.minions[0].deathWard).toBe(0);
+  });
+
+  it('2.8.2 death ward: a dead minion resummoned at the opening takes its unspent ward out of the carried shield', () => {
+    const s = withMinion({ ...idle, shield: 150 }, minion({ alive: false, hp: 0, deathWard: 100, deathWardPercent: 10 }));
+    simulateBossFight(0, crusadeBossEntity(SENTINEL, 1, 'NORMAL'), s, opts({ limit: 600 }), scripted([]));
+    expect(s.shieldCur).toEqual([50]);
+    expect(s.minions[0]).toMatchObject({ alive: true, deathWard: 0 });
+  });
+
+  it('2.7.5: the boss\'s attack is weakened while a debuff is up (Tyrant\'s Burden, 5% a stack)', () => {
+    const d = sigilBySpecies('TYRANTS_BURDEN');
+    const rt = initSpellRuntimes([{ species: 'TYRANTS_BURDEN', name: d.name, spell: { ...getSigilSpellScaled(d.spell, 1, d.spellType), spellType: d.spellType } }]);
+    rt[0].cooldownRemaining = 0;
+    const s = state([idle]);
+    s.spells[0] = rt;
+    const r = simulateBossFight(0, crusadeBossEntity(SENTINEL, 1, 'NORMAL'), s, opts({ limit: 1500 }), () => 0.99);
+    expect(r.ticks.find((e) => e.type === 'boss_attack').damage).toBe(Math.floor(3038 * 0.95));
+  });
+
+  it('Shield Bash: a block by a seat with no miss chance may stun the boss; a seat with miss chance never rolls it', () => {
+    const bash = { ...idle, totalBlockChance: 100, stanceShieldBashChance: 100, stanceShieldBashStunMs: 1500 };
+    // draws: the boss's negate roll, then the bash; the paralysed swing at 2320 draws nothing
+    const r = simulateBossFight(0, crusadeBossEntity(SENTINEL, 1, 'NORMAL'), state([bash]), opts({ limit: 2400 }), scripted([0, 0]));
+    expect(r.ticks.find((e) => e.type === 'boss_paralyzed')).toMatchObject({ timestamp: 1410, paralyzeMs: 1500, stunSource: 'SHIELD_BASH' });
+    expect(r.ticks.find((e) => e.type === 'boss_paralyze')).toMatchObject({ timestamp: 2320 });
+    const miss = simulateBossFight(0, crusadeBossEntity(SENTINEL, 1, 'NORMAL'), state([{ ...bash, totalBlockChance: 50, totalMissChance: 50 }]), opts({ limit: 1500 }), scripted([0]));
+    expect(miss.ticks.map((e) => e.type)).toContain('player_miss');
+    expect(miss.ticks.some((e) => e.type === 'boss_paralyzed')).toBe(false);
+  });
+
+  it('Reap: after a minion hit the boss survives, a Reap-tier minion off cooldown stuns it', () => {
+    const s = withMinion(idle, minion({ attackSpeed: 1, reap: { chancePercent: 100, paralyzeMs: 1000, cooldownMs: 5000 }, reapCooldownMs: 0 }));
+    const r = simulateBossFight(0, crusadeBossEntity(SENTINEL, 1, 'NORMAL'), s, opts({ limit: 2400 }), scripted([0]));
+    expect(r.ticks.find((e) => e.type === 'minion_hit')).toMatchObject({ timestamp: 1500, damage: 10 });
+    expect(r.ticks.find((e) => e.type === 'boss_paralyzed')).toMatchObject({ timestamp: 1500, paralyzeMs: 1000, stunSource: 'REAP' });
+    expect(r.ticks.find((e) => e.type === 'boss_paralyze')).toMatchObject({ timestamp: 2320 });
+    expect(s.minions[0].reapCooldownMs).toBeGreaterThan(0);
+  });
+
+  it('stance Daze: rolled after the swing\'s other procs, sets the seat\'s timer, and changes nothing for the boss', () => {
+    const seat = { totalAttack: 1, totalBlindChance: 50, stanceDazeChance: 100, stanceDazeDurationMs: 2000 };
+    // draws at the 1500 swing: crit, blind (fails), daze; the boss swings draw nothing
+    const rng = scripted([0.99, 0.99, 0]);
+    const r = simulateBossFight(0, crusadeBossEntity(SENTINEL, 1, 'NORMAL'), state([seat]), opts({ limit: 2400 }), rng);
+    expect(rng.remaining).toBe(0);
+    expect(r.ticks.find((e) => e.type === 'boss_dazed')).toMatchObject({ timestamp: 1500, dazeMs: 2000, playerIndex: 0 });
+    expect(r.ticks.filter((e) => e.type === 'boss_attack').map((e) => e.damage)).toEqual([3038, 3038]);
+  });
+
+  it('the killing hit is logged as player_death with the full hit, so it feeds no thorns', () => {
+    const s = state([{ ...idle, totalHp: 5000 }]);
+    const party = { stacks: [null, null, null], ibThornsPct: [0, 0, 0], reactSlots: [0], legacySlot: 0, perSlotOut: false };
+    const st = createStackCombat(['BULWARK_OF_THORNS'], true, null, WAR);
+    party.stacks[0] = st;
+    const r = simulateBossFight(0, crusadeBossEntity(SENTINEL, 1, 'NORMAL'), s, opts({ party }), scripted([]));
+    expect(r.ticks.filter((e) => e.playerIndex === 0 && e.type.match(/boss_attack|player_death/)).map((e) => [e.type, e.damage])).toEqual([['boss_attack', 3038], ['player_death', 3038]]);
+    expect(r.ticks.some((e) => e.type === 'thorns_reflect')).toBe(false);
+  });
+
+  it('2.9.2 per-seat stacks: each seat\'s own runtime takes its own events and gives it Bulwark DR (resolveEffectiveTarget)', () => {
+    // seat 1 (more HP) is the boss's target: first swing blocked, second lands
+    const seats = () => state([{ ...idle, totalHp: 1_000_000 }, { ...idle, totalHp: 2_000_000, totalBlockChance: 50 }]);
+    const alt = () => { let k = 0; return () => (k++ % 2 === 0 ? 0 : 0.99); };
+    const bulwark = () => createStackCombat(['BULWARK_OF_THORNS'], true, null, WAR);
+    const legacy = { stacks: [bulwark(), null, null], ibThornsPct: [0, 0, 0], reactSlots: [0], legacySlot: 0, perSlotOut: false };
+    const perSlot = { stacks: [null, bulwark(), null], ibThornsPct: [0, 0, 0], reactSlots: [0, 1, 2], legacySlot: 0, perSlotOut: true };
+    const boss = () => crusadeBossEntity(SENTINEL, 2, 'NORMAL');
+    const a = simulateBossFight(0, boss(), seats(), opts({ party: legacy, limit: 2400 }), alt());
+    const b = simulateBossFight(0, boss(), seats(), opts({ party: perSlot, limit: 2400 }), alt());
+    const hitA = a.ticks.find((e) => e.type === 'boss_attack');
+    const hitB = b.ticks.find((e) => e.type === 'boss_attack');
+    // legacy: seat 0's runtime never sees seat 1's block; per-slot: seat 1 has 1 Bulwark stack (4 % DR)
+    expect(legacy.stacks[0].snapshot().bulwarkStacks).toBe(0);
+    expect(hitB.damage).toBe(Math.max(1, Math.round(hitA.damage * (1 - 4 / 100))));
+    // the block tick logs the stack; the landed hit then costs it (annotated after step 7)
+    expect(b.ticks.find((e) => e.type === 'player_block').playerBulwarkStacks).toEqual([0, 1, 0]);
+    expect(hitB.playerBulwarkStacks).toEqual([0, 0, 0]);
+    // the block reflect reads the block's 0 damage: no thorns on the block; the hit at 1 stack reflects 7 %
+    const blockTs = b.ticks.find((e) => e.type === 'player_block').timestamp;
+    expect(b.ticks.filter((e) => e.type === 'thorns_reflect').map((e) => [e.timestamp, e.damage, e.playerIndex]))
+      .toEqual([[hitB.timestamp, Math.round((hitB.damage * 7) / 100), 1]]);
+    expect(hitB.timestamp).not.toBe(blockTs);
+  });
+
+  it('Iron Bastion glyph thorns count only while that seat\'s Iron Bastion buff is up', () => {
+    const party = { stacks: [null, null, null], ibThornsPct: [50, 0, 0], reactSlots: [0], legacySlot: 0, perSlotOut: false };
+    const r = simulateBossFight(0, crusadeBossEntity(SENTINEL, 1, 'NORMAL'), state([idle]), opts({ party, limit: 1500 }), scripted([]));
+    expect(r.ticks.some((e) => e.type === 'boss_attack')).toBe(true);
+    expect(r.ticks.some((e) => e.type === 'thorns_reflect')).toBe(false);
+  });
+});
+
+describe('resolvePartyStacks (L2238400-2238651, 2.9.2)', () => {
+  const WAR = { playerClass: 'WARRIOR', activeSpec: 'WARRIOR_TANK' };
+  const member = (equipped, thornsPercent = 0) => ({ inputs: { stack: { equipped, glyph: null, ctx: WAR }, thornsPercent } });
+
+  it('legacy: only the stack player reacts, with its own sigils and Iron Bastion glyph; out of range, nobody', () => {
+    const ms = [member(['SUNDER_MARK'], 7), member(['BULWARK_OF_THORNS'], 9)];
+    const p = resolvePartyStacks(ms, { stackPlayerIndex: 1 });
+    expect(p.reactSlots).toEqual([1]);
+    expect(p.legacySlot).toBe(1);
+    expect(p.stacks.map((x) => x != null)).toEqual([false, true, false]);
+    expect(p.ibThornsPct).toEqual([0, 9, 0]);
+    expect(p.perSlotOut).toBe(false);
+    expect(resolvePartyStacks(ms, { stackPlayerIndex: 3 })).toMatchObject({ reactSlots: [], legacySlot: -1 });
+  });
+
+  it('per-slot: any stackSigils entry switches every seat to a react slot; a truthy one gives that seat its own runtime', () => {
+    const ms = [member(['SUNDER_MARK'], 7), member(['BULWARK_OF_THORNS'], 9)];
+    const p = resolvePartyStacks(ms, { stackPlayerIndex: 0, stackSigils: [false, true] });
+    expect(p.reactSlots).toEqual([0, 1, 2]);
+    expect(p.stacks.map((x) => x != null)).toEqual([false, true, false]);
+    expect(p.ibThornsPct).toEqual([0, 9, 0]);
+    expect(p.perSlotOut).toBe(true);
+    expect(p.legacySlot).toBe(0);
+    expect(resolvePartyStacks(ms, { stackSigils: [null] }).perSlotOut).toBe(false);
+  });
+
+  it('simulateCrusade: a per-slot Bulwark carries from boss to boss and logs per-seat tuples', () => {
+    const base = prepareCrusadeMember(fighter({ totalAttack: 200_000, totalBlockChance: 50 }));
+    const tank = { ...base, inputs: { ...base.inputs, stack: { equipped: ['BULWARK_OF_THORNS'], glyph: null, ctx: WAR } } };
+    const r = simulateCrusade({ party: [tank], difficulty: 'NORMAL', stackSigils: [true], rng: fightRng(3, 1), log: true });
+    const firstTuple = (b) => r.bossResults[b].ticks.find((e) => e.playerBulwarkStacks)?.playerBulwarkStacks;
+    const lastTuple = (b) => r.bossResults[b].ticks.findLast((e) => e.playerBulwarkStacks)?.playerBulwarkStacks;
+    expect(lastTuple(0)[0]).toBeGreaterThan(0);
+    expect(firstTuple(1)[0]).toBeGreaterThanOrEqual(lastTuple(0)[0] - 1);
+    const legacy = simulateCrusade({ party: [tank], difficulty: 'NORMAL', rng: fightRng(3, 1), log: true });
+    expect(legacy.bossResults[0].ticks.some((e) => e.bulwarkStacks > 0)).toBe(true);
+    expect(legacy.bossResults[0].ticks.some((e) => e.playerBulwarkStacks)).toBe(false);
   });
 });
