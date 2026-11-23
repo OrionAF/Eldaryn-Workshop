@@ -1,5 +1,5 @@
 {
- "source": "Eldaryn 2.7.0 decompiled.js: OBLIVION_PRESTIGE L669119; XP curve L1190285 (module 4212 L1189711-1190344); drop weights L1190296-1190330; dungeons L1062720-1062962 (module 3943); oblivion dungeon L1706694 (module ~4314); progress chapters via progress_chapters.json (L~1084788-1085500); crusade/celestial/world boss live in sibling JSONs celestial.json, crusade.json, world_boss.json (not duplicated)",
+ "source": "Eldaryn 2.7.0 decompiled.js: OBLIVION_PRESTIGE L669119; XP curve L1190285 (module 4212 L1189711-1190344); drop weights L1190296-1190330; dungeons L1062720-1062962 (module 3943); oblivion dungeon L1706694 (module ~4314); progress chapters via progress_chapters.json (L~1084788-1085500); celestial and world boss live in sibling JSONs celestial.json, world_boss.json (not duplicated); the Hell Crusade tables are the crusade block here (checked against Eldaryn 2.9.8 decompiled.js L2045330-2045598, citation in the block)",
  "oblivionXpCurve": {
   "formula": "xpCost(toLevel L, 2..100)=floor(85000*L*ramp(L)); ramp per code L1189711+; max level 100",
   "table": [
@@ -3578,7 +3578,183 @@
    "HARD": 11000,
    "MYTHIC": 13000
   },
-  "mythicPlusGrowthPerLevel": 1.18,
-  "citation": "getCrusadePowerRequirement L1701736-1701800; table L1702277-1702305"
+  "mythicPlusGrowthPerLevel": 1.15,
+  "citation": "getCrusadePowerRequirement L1701736-1701800; table L1702277-1702305; growth 1.15 since client 2.9.3, 1.18 in 2.7.0-2.9.2 (2.9.8 decompiled.js L2045482-2045483)"
+ },
+ "crusade": {
+  "citation": "CRUSADE_CONSTANTS L2045330; CRUSADE_DIFFICULTY_CONFIG L2045339-2045455; CRUSADE_POWER_GATES L2045456-2045484; MYTHIC_PLUS_CONSTANTS L2045587; MYTHIC_ICHOR_REWARD_BY_LEVEL L2045589; CRUSADE_MAPS (Hell) L2045591-2045598; getMythicPlusEnchantWeights L2044717; getMythicPlusBossMultiplier L2045074; enchantWeights key order is the client object order (rollEnchantStoneType walks Object.entries, L2045207-2045291) (client 2.9.8)",
+  "constants": {
+   "BOSS_TIME_LIMIT_MS": 300000,
+   "TICK_INTERVAL_MS": 10,
+   "GROUP_SIZE": 3,
+   "SOLO_MODE_ENABLED": true,
+   "ENTRY_COST_HONORS": 10,
+   "INITIAL_KEYS": 2,
+   "KEYS_PER_DAY": 2,
+   "RESET_HOUR": 0
+  },
+  "playerCountScaling": {
+   "1": {
+    "hpMultiplier": 0.4,
+    "attackMultiplier": 0.45,
+    "attackSpeedMultiplier": 1
+   },
+   "2": {
+    "hpMultiplier": 0.75,
+    "attackMultiplier": 0.75,
+    "attackSpeedMultiplier": 1
+   },
+   "3": {
+    "hpMultiplier": 1,
+    "attackMultiplier": 1,
+    "attackSpeedMultiplier": 1
+   }
+  },
+  "difficulties": {
+   "NORMAL": {
+    "bossStatMultiplier": 1,
+    "bossAttackMultiplier": 0.5,
+    "bossHpMultiplier": 0.8,
+    "minPlayers": 1,
+    "entryHonorCost": 0,
+    "enchantDropChance": {
+     "1": {
+      "1": 0.1,
+      "2": 0.25,
+      "3": 0.35
+     },
+     "2": {
+      "1": 0.2,
+      "2": 0.4,
+      "3": 0.65
+     },
+     "3": {
+      "1": 0.4,
+      "2": 0.7,
+      "3": 1
+     }
+    },
+    "enchantWeights": {
+     "PVE_ATTACK": 40,
+     "PVE_DEFENSE": 40,
+     "PVP": 20,
+     "ULTIMATE": 0,
+     "MYTHIC": 0,
+     "OBLIVION": 0
+    }
+   },
+   "HARD": {
+    "bossStatMultiplier": 1.7,
+    "minPlayers": 2,
+    "entryHonorCost": 0,
+    "enchantDropChance": {
+     "1": {
+      "1": 0.2,
+      "2": 0.43,
+      "3": 0.72
+     },
+     "2": {
+      "1": 0.4,
+      "2": 0.69,
+      "3": 1.04
+     },
+     "3": {
+      "1": 0.8,
+      "2": 1.2,
+      "3": 1.6
+     }
+    },
+    "enchantWeights": {
+     "PVE_ATTACK": 25,
+     "PVE_DEFENSE": 25,
+     "PVP": 40,
+     "ULTIMATE": 10,
+     "MYTHIC": 0,
+     "OBLIVION": 0
+    }
+   },
+   "MYTHIC": {
+    "bossStatMultiplier": 2.9,
+    "bossHpMultiplier": 2,
+    "minPlayers": 3,
+    "entryHonorCost": 10,
+    "enchantDropChance": {
+     "1": {
+      "1": 0.38,
+      "2": 0.75,
+      "3": 1.11
+     },
+     "2": {
+      "1": 0.75,
+      "2": 1.2,
+      "3": 1.82
+     },
+     "3": {
+      "1": 1.5,
+      "2": 2.1,
+      "3": 2.8
+     }
+    },
+    "enchantWeights": {
+     "PVE_ATTACK": 15,
+     "PVE_DEFENSE": 15,
+     "PVP": 30,
+     "ULTIMATE": 40,
+     "MYTHIC": 0,
+     "OBLIVION": 0
+    }
+   }
+  },
+  "mythicPlus": {
+   "STAT_MULTIPLIER_PER_LEVEL": 1.35,
+   "STEEPEN_ABOVE_LEVEL": 3,
+   "STAT_MULTIPLIER_PER_LEVEL_HIGH": 1.5,
+   "FULL_CLEAR_DROP_RATE": 3,
+   "MYTHIC_STONE_BASE_WEIGHT": 0,
+   "MYTHIC_STONE_WEIGHT_PER_LEVEL": 8,
+   "MIN_PLAYERS": 3
+  },
+  "ichorByMythicPlusLevel": [
+   1,
+   2,
+   2,
+   3,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9
+  ],
+  "maps": [
+   {
+    "id": "hell_crusade",
+    "name": "Hell Crusade",
+    "bosses": [
+     {
+      "id": "obsidian_sentinel",
+      "name": "Obsidian Sentinel",
+      "hp": 4860000,
+      "attack": 13500,
+      "attackSpeed": 1.1
+     },
+     {
+      "id": "infernal_demon",
+      "name": "Infernal Demon",
+      "hp": 7290000,
+      "attack": 15600,
+      "attackSpeed": 1.3
+     },
+     {
+      "id": "fire_lord",
+      "name": "Fire Lord",
+      "hp": 9294750,
+      "attack": 18300,
+      "attackSpeed": 1.5
+     }
+    ]
+   }
+  ]
  }
 }

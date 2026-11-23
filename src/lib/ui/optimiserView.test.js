@@ -182,6 +182,8 @@ describe('effortPlan', () => {
     const t = effortPlan('thorough', { kind: 'pvp-winrate' });
     expect(t).toMatchObject({ zone: '0.5 points', n0: 32, maxN: 131072, relative: false });
     expect(Object.keys(q)).not.toContain('maxMs');
+    // the Crusade stones objective's zone is in stones per run, not probability points
+    expect(effortPlan('standard', { kind: 'stones' })).toMatchObject({ zone: '0.01 stones', relative: false });
   });
 
   it('Fastest clear is relative like dps (its zone is a share of the time)', () => {

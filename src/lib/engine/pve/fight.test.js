@@ -657,6 +657,22 @@ describe('simulatePve', () => {
     expect(r.log).toBeUndefined();
   });
 
+  it('campaign: a won lead-in level hands its Chrono Flux to the next level; a lost one or none starts empty', () => {
+    const carrier = fighter({ stats: stats({ totalFlameConduit: 50 }), ancient: { species: 'FLAMEBORN', level: 1 } });
+    const level = (hp) => [1, 2, 3].map(() => ({ hp, attack: 1, attackSpeed: 1, mode: 'campaign' }));
+    const firstFlux = (o) => simulatePve({ fighter: carrier, enemy: level(3000), log: true, rng: rng(), ...o })
+      .log.find((e) => e.chronoFlux !== undefined)?.chronoFlux ?? 0;
+    const cold = firstFlux({});
+    expect(firstFlux({ leadIn: level(3000) })).toBeGreaterThan(cold);
+    // a lead-in the fighter cannot win (attack 1e9 kills it) leaves the bar empty, as a retry does
+    expect(firstFlux({ leadIn: [{ hp: 3000, attack: 1e9, attackSpeed: 5, mode: 'campaign' }] })).toBe(cold);
+    // without a transform nothing carries and the lead-in is not even played
+    const plain = fighter({ stats: stats({ totalFlameConduit: 50 }) });
+    const a = simulatePve({ fighter: plain, enemy: level(3000), rng: rng() });
+    const b = simulatePve({ fighter: plain, enemy: level(3000), leadIn: level(3000), rng: rng() });
+    expect(b).toEqual(a);
+  });
+
   it('log:true returns the event log', () => {
     const r = simulatePve({ fighter: fighter(), enemy: { hp: 2000, attack: 0, attackSpeed: 0 }, rng: rng(), log: true });
     expect(r.log.map((e) => e.type)).toEqual(['attacker_hit', 'attacker_hit', 'defender_dead']);

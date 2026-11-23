@@ -1,5 +1,5 @@
 // Benchmark: the batch-drop Minimise (the default since 2026-10-28) against one at a time (effort.batchDrop: false)
-// on real sanitised fixtures (docs/WIP/being-worked-on/minimise-batch-drop.md). Slow, so it runs only with
+// on real sanitised fixtures (docs/Reference/Notes/minimise-batch-drop.md). Slow, so it runs only with
 // BATCH_DROP=1 set; BATCH_DROP_SETUP picks one setup by id, BATCH_DROP_SEEDS the seeds (default 1,2,3):
 //   BATCH_DROP=1 npx vitest run src/lib/search/minimise.batch.bench.test.js
 // Per run it prints the Minimise fights, compares and builds, the other phases' fights, and every row.

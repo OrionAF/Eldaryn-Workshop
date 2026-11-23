@@ -28,6 +28,7 @@ export const TARGET_KIND_LABEL = Object.freeze({
   fortressBoss: 'Fortress boss',
   custom: 'Custom mob',
   celestial: 'Celestial Trial',
+  crusade: 'Crusade (solo)',
   pvp: 'PVP vs my saved opponents',
 });
 
@@ -38,6 +39,7 @@ export const OBJECTIVE_LABEL = Object.freeze({
   'win-rate': 'Reach a win rate',
   push: 'Push (deepest step)',
   'fastest-clear': 'Fastest clear (rankings)',
+  stones: 'Expected enchant stones per run',
   'pvp-winrate': 'PVP win rate',
   'arena-reward': 'Arena Influence from wins',
 });
@@ -437,7 +439,9 @@ export function effortPlan(level, objective, target) {
   const e = resolveEffort(level, { deltaKind: relative ? 'relative' : 'absolute', deltaScale });
   const zone = objective?.kind === 'arena-reward'
     ? deltaScale == null ? 'a reward difference (enter Arena positions)' : `${+e.delta.toFixed(3)} Influence per attack`
-    : relative ? `${+(e.delta * 100).toFixed(2)}%` : `${+(e.delta * 100).toFixed(1)} points`;
+    : relative ? `${+(e.delta * 100).toFixed(2)}%`
+    // the stones objective's absolute zone is in stones per run, not in probability points
+    : objective?.kind === 'stones' ? `${+e.delta.toFixed(4)} stones` : `${+(e.delta * 100).toFixed(1)} points`;
   return { ...e, zone, relative, sub: `spots ${zone} or more` };
 }
 
