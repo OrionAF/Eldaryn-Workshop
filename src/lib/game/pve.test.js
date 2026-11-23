@@ -53,10 +53,10 @@ describe('game/combatPvp catalogue', () => {
 });
 
 describe('Hell Crusade Combat Power gates (pve-content.md §5)', () => {
-  it('Normal 0, Hard 11 000, Mythic 13 000 and Mythic+L = round(13 000 * 1.18^L)', () => {
+  it('Normal 0, Hard 11 000, Mythic 13 000 and Mythic+L = round(13 000 * 1.15^L)', () => {
     expect([crusadePowerRequirement('NORMAL'), crusadePowerRequirement('HARD'), crusadePowerRequirement('MYTHIC')]).toEqual([0, 11000, 13000]);
-    expect(crusadePowerRequirement('MYTHIC', 1)).toBe(15340);
-    expect(crusadePowerRequirement('MYTHIC', 10)).toBe(Math.round(13000 * 1.18 ** 10));
+    expect(crusadePowerRequirement('MYTHIC', 1)).toBe(14950);
+    expect(crusadePowerRequirement('MYTHIC', 10)).toBe(Math.round(13000 * 1.15 ** 10));
     expect(crusadePowerRequirement('HARD', 3)).toBe(11000); // the plus level applies to Mythic only
     expect(crusadePowerRequirement('NOPE')).toBe(0);
   });

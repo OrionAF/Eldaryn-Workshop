@@ -1,5 +1,5 @@
 {
- "source": "Eldaryn 2.7.0 decompiled.js: OBLIVION_PRESTIGE L669119; XP curve L1190285 (module 4212 L1189711-1190344); drop weights L1190296-1190330; dungeons L1062720-1062962 (module 3943); oblivion dungeon L1706694 (module ~4314); progress chapters via progress_chapters.json (L~1084788-1085500); celestial and world boss live in sibling JSONs celestial.json, world_boss.json (not duplicated); the Hell Crusade tables are the crusade block here (L1702151-1702426)",
+ "source": "Eldaryn 2.7.0 decompiled.js: OBLIVION_PRESTIGE L669119; XP curve L1190285 (module 4212 L1189711-1190344); drop weights L1190296-1190330; dungeons L1062720-1062962 (module 3943); oblivion dungeon L1706694 (module ~4314); progress chapters via progress_chapters.json (L~1084788-1085500); celestial and world boss live in sibling JSONs celestial.json, world_boss.json (not duplicated); the Hell Crusade tables are the crusade block here (checked against Eldaryn 2.9.8 decompiled.js L2045330-2045598, citation in the block)",
  "oblivionXpCurve": {
   "formula": "xpCost(toLevel L, 2..100)=floor(85000*L*ramp(L)); ramp per code L1189711+; max level 100",
   "table": [
@@ -3578,11 +3578,11 @@
    "HARD": 11000,
    "MYTHIC": 13000
   },
-  "mythicPlusGrowthPerLevel": 1.18,
-  "citation": "getCrusadePowerRequirement L1701736-1701800; table L1702277-1702305"
+  "mythicPlusGrowthPerLevel": 1.15,
+  "citation": "getCrusadePowerRequirement L1701736-1701800; table L1702277-1702305; growth 1.15 since client 2.9.3, 1.18 in 2.7.0-2.9.2 (2.9.8 decompiled.js L2045482-2045483)"
  },
  "crusade": {
-  "citation": "CRUSADE_CONSTANTS L1702151; CRUSADE_DIFFICULTY_CONFIG L1702160-1702268; MYTHIC_PLUS_CONSTANTS L1702390; MYTHIC_ICHOR_REWARD_BY_LEVEL L1702392; CRUSADE_MAPS (Hell) L1702394-1702404; enchantWeights key order is the client object order (rollEnchantStoneType walks Object.entries, L1702035-1702108)",
+  "citation": "CRUSADE_CONSTANTS L2045330; CRUSADE_DIFFICULTY_CONFIG L2045339-2045455; CRUSADE_POWER_GATES L2045456-2045484; MYTHIC_PLUS_CONSTANTS L2045587; MYTHIC_ICHOR_REWARD_BY_LEVEL L2045589; CRUSADE_MAPS (Hell) L2045591-2045598; getMythicPlusEnchantWeights L2044717; getMythicPlusBossMultiplier L2045074; enchantWeights key order is the client object order (rollEnchantStoneType walks Object.entries, L2045207-2045291) (client 2.9.8)",
   "constants": {
    "BOSS_TIME_LIMIT_MS": 300000,
    "TICK_INTERVAL_MS": 10,

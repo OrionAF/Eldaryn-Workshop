@@ -161,21 +161,21 @@ describe('Combat Power floor in the setup', () => {
   it('the current Crusade gate: the highest of Hard, Mythic and Mythic+N the Power meets', () => {
     expect(currentCrusadeGate(10999)).toBeNull();
     expect(currentCrusadeGate(12000)).toEqual({ value: 11000, label: 'Crusade Hard (11.000)' });
-    expect(currentCrusadeGate(15339)).toEqual({ value: 13000, label: 'Crusade Mythic (13.000)' });
-    expect(currentCrusadeGate(15340)).toEqual({ value: 15340, label: 'Crusade Mythic+1 (15.340)' });
-    // round(13000 * 1.18^17) = 216 739 <= 250 969 < 255 752 = round(13000 * 1.18^18)
-    expect(currentCrusadeGate(250969).label).toMatch(/^Crusade Mythic\+17 /);
+    expect(currentCrusadeGate(14949)).toEqual({ value: 13000, label: 'Crusade Mythic (13.000)' });
+    expect(currentCrusadeGate(14950)).toEqual({ value: 14950, label: 'Crusade Mythic+1 (14.950)' });
+    // round(13000 * 1.15^21) = 244 680 <= 250 969 < 281 382 = round(13000 * 1.15^22)
+    expect(currentCrusadeGate(250969).label).toMatch(/^Crusade Mythic\+21 /);
   });
   it('quick picks: the current Power, its gate above Mythic+10, Crusade Hard, Mythic and Mythic+1..10', () => {
     expect(powerFloorPicks(20000)).toHaveLength(13);
     const picks = powerFloorPicks(250969);
     expect(picks).toHaveLength(14);
     expect(picks[0]).toEqual({ value: 250969, label: 'Current Power (250.969)' });
-    expect(picks[1].label).toMatch(/^Crusade Mythic\+17 /);
+    expect(picks[1].label).toMatch(/^Crusade Mythic\+21 /);
     expect(picks.slice(2, 5)).toEqual([
       { value: 11000, label: 'Crusade Hard (11.000)' },
       { value: 13000, label: 'Crusade Mythic (13.000)' },
-      { value: 15340, label: 'Crusade Mythic+1 (15.340)' },
+      { value: 14950, label: 'Crusade Mythic+1 (14.950)' },
     ]);
     expect(picks.at(-1).label).toMatch(/^Crusade Mythic\+10 /);
     expect(powerFloorPicks(null)).toHaveLength(12);
