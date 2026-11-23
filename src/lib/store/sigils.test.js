@@ -38,15 +38,16 @@ it('Ancients are always level 1', () => {
   expect(sigils().owned).toEqual({ BATTLE_STANCE: { level: 1 }, GUARDIAN_STANCE: { level: 1 } });
 });
 
-it('evolveSigilAltar raises the tier to the cap of 3, wiping non-Ancients, then refuses', () => {
+it('evolveSigilAltar raises the tier to the cap of 4 (client EVOLVE_TIER_CAP, L1092531), wiping non-Ancients, then refuses', () => {
   rosterStore.setSigilLevel('CATACLYSM', 5);
   rosterStore.setSigilOwned('EARTHWARDEN', true);
   expect(rosterStore.evolveSigilAltar()).toBe(true);
   expect(rosterStore.evolveSigilAltar()).toBe(true);
-  expect(sigils().altarTier).toBe(3);
+  expect(rosterStore.evolveSigilAltar()).toBe(true);
+  expect(sigils().altarTier).toBe(4);
   expect(Object.keys(sigils().owned).sort()).toEqual(['BATTLE_STANCE', 'EARTHWARDEN', 'GUARDIAN_STANCE']);
   expect(rosterStore.evolveSigilAltar()).toBe(false);
-  expect(sigils().altarTier).toBe(3);
+  expect(sigils().altarTier).toBe(4);
 });
 
 it('persists: the saved roster round-trips the sigil state', () => {

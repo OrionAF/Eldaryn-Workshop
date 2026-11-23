@@ -165,7 +165,7 @@ describe('Ancient follows the board (Q3 strict)', () => {
 });
 
 describe('checkPreset', () => {
-  it('flags set 2 at level 20 and advises on an altar tier above 3; a fixture is clean', () => {
+  it('flags set 2 at level 20 and advises on an altar tier above 4 (EVOLVE_TIER_CAP, L1092531); a fixture is clean', () => {
     const c = fixtureCharacter('WARRIOR');
     expect(L.checkPreset(c, c.presets[0])).toEqual([]);
     c.level = 20;
@@ -173,6 +173,8 @@ describe('checkPreset', () => {
     const v = L.checkPreset(c, c.presets[1]);
     expect(v.some((x) => x.gate === 'dualEquip')).toBe(true);
     expect(v.some((x) => x.gate === 'altarTier' && x.warn)).toBe(true);
+    c.sigils.altarTier = 4;
+    expect(L.checkPreset(c, c.presets[1]).some((x) => x.gate === 'altarTier')).toBe(false);
   });
 
   it('an Ancient takes a sigil slot: 3 generics + an Ancient reports sigilSlots, 2 + an Ancient does not', () => {
