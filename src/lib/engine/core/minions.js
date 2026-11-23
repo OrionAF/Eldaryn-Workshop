@@ -17,22 +17,41 @@ export function minionAttackSpeed(playerAttackSpeed, totalMinionAttackSpeed) {
   return applyCombatCeiling(playerAttackSpeed + gain, CEIL_ATK_SPEED());
 }
 
-// port of createMinion L1094500-1094612
+/** The Dominion contexts the client keys its summon tier tables by (DOMINION_CONTEXTS, 2.9.8 L1123631). */
+export const DOMINION_CONTEXTS = ['PVE', 'PVP', 'CELESTIAL'];
+
+// port of getSummonDominionTier 2.9.8 L1123588-1123614 (clampDominionLevel L1123471-1123494)
+/** The summon's Dominion bonus for `mode`, or null when the species has no table (the client's all-zero bonus). */
+export function summonDominionTier(species, totalDominion, mode) {
+  const tiers = sigilBySpecies(species)?.dominionTiers?.[mode];
+  if (!tiers) return null;
+  const level = totalDominion != null && totalDominion >= 1 ? Math.min(tiers.length, Math.floor(totalDominion)) : 1;
+  return tiers[level - 1] ?? null;
+}
+
+// port of minionMaxHpWithTier 2.9.8 L1121355-1121392
+/** floor(owner max HP x hpPercent x (1 + Minion Health)), times (1 + the tier's maxHpPercent) when it is above 0; at least 1. */
+export function minionMaxHpWithTier(ownerMaxHp, hpPercent, stats, tierMaxHpPercent) {
+  const base = ((ownerMaxHp * hpPercent) / 100) * (1 + (stats.totalMinionHealth ?? 0) / 100);
+  return Math.max(1, Math.floor(tierMaxHpPercent > 0 ? base * (1 + tierMaxHpPercent / 100) : base));
+}
+
+// port of createMinion 2.9.8 L1121784-1121960
 /**
- * Build a (dead, hp 0) minion from the summon config `d` and player combat stats `p`.
+ * Build a (dead, hp 0) minion from the summon config `d` and player combat stats `p`. `mode` picks the
+ * Dominion table: the PVE fight passes 'PVE' (L1097364-1097378), the arena resolver 'PVP' (L1693588-1693605).
  * @param {{species?,name?,icon?,minion?,hpPercent:number,attackPercent:number,respawnCooldownMs?:number,summonCastMs?:number,deathWardPercent?:number}|null} d
  * @param {{maxHp:number, attack:number, attackSpeed:number, critDamage:number}} p
  * @param {object} stats ComputedStats-shaped (`total*` keys)
+ * @param {'PVE'|'PVP'|'CELESTIAL'} [mode] the app's callers pass it; tests may leave it to PVE
  * @returns {object|null} null when there is no summon config
  */
-export function createMinion(d, p, stats) {
+export function createMinion(d, p, stats, mode = 'PVE') {
   if (!d) return null;
-  const tiers = sigilBySpecies(d.species)?.dominionTiers;
-  const level = Number.isFinite(stats.totalDominion) ? Math.max(1, Math.min(tiers?.length ?? 1, Math.floor(stats.totalDominion))) : 1;
-  const dominion = tiers?.[level - 1];
-  // 2.7.4+ (2.8.2 L1105525-1105708): a Dominion tier also adds Minion Attack, attack speed and crit, and Reap
+  if (!DOMINION_CONTEXTS.includes(mode)) throw new Error(`createMinion: unknown Dominion mode ${mode}`);
+  const dominion = summonDominionTier(d.species, stats.totalDominion, mode);
+  // a Dominion tier adds Minion Attack, attack speed, crit, Reap and (PVE pacts) max HP
   const atk = ((stats.totalMinionAttack ?? 0) + (dominion?.attackPercent ?? 0)) / 100;
-  const hpb = (stats.totalMinionHealth ?? 0) / 100;
   const speed = minionAttackSpeed(p.attackSpeed, stats.totalMinionAttackSpeed ?? 0);
   const crit = stats.totalMinionCritChance ?? 0;
   return {
@@ -41,7 +60,7 @@ export function createMinion(d, p, stats) {
     icon: d.icon,
     kind: d.minion,
     attack: Math.max(1, Math.floor(((p.attack * d.attackPercent) / 100) * (1 + atk))),
-    maxHp: Math.max(1, Math.floor(((p.maxHp * d.hpPercent) / 100) * (1 + hpb))),
+    maxHp: minionMaxHpWithTier(p.maxHp, d.hpPercent, stats, dominion?.maxHpPercent ?? 0),
     hp: 0,
     attackSpeed: dominion?.attackSpeedPercent > 0
       ? applyCombatCeiling(speed * (1 + dominion.attackSpeedPercent / 100), CEIL_ATK_SPEED()) : speed,

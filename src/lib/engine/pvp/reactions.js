@@ -107,8 +107,8 @@ export function initEntityShield(entity, cfg) {
 export function createDuelState(a) {
   const attacker = createPlayerEntity(a.attackerStats);
   const defender = createPlayerEntity(a.defenderStats);
-  const attackerMinion = createMinion(a.attackerSummon ?? null, attacker, a.attackerStats);
-  const defenderMinion = createMinion(a.defenderSummon ?? null, defender, a.defenderStats);
+  const attackerMinion = createMinion(a.attackerSummon ?? null, attacker, a.attackerStats, 'PVP');
+  const defenderMinion = createMinion(a.defenderSummon ?? null, defender, a.defenderStats, 'PVP');
   initEntityShield(attacker, a.attackerShield);
   initEntityShield(defender, a.defenderShield);
   const attackerStack = createStackCombat(a.attackerEquipped, true, a.attackerGlyphCombat?.stack, a.attackerStackCtx);

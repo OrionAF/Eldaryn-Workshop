@@ -4,7 +4,7 @@ import {
   advanceMinionRespawn, elapseMinionRespawn, resummonIfDead, damageMinion, killMinion, summonMinion,
   soulLinkHeal, healMinionLifesteal, endMinionEmpower, carryMinionIntoNewFight, minionMsUntilSwing,
   mitigateMinionHit, openingSummonWindowMs, openingSwingTimerStart, minionCurrentLifesteal, currentSoulLink,
-  minionDeathMeta, minionDeathWardLeft, expireMinionDeathWard, rollMinionReap, endMinionBastion,
+  minionDeathMeta, minionDeathWardLeft, expireMinionDeathWard, rollMinionReap, endMinionBastion, summonDominionTier,
 } from './minions.js';
 import { applyCombatCeiling, capConfig, softCapGainFromSheet } from './caps.js';
 import { scripted } from '../rng.js';
@@ -187,6 +187,31 @@ describe('Dominion tiers, Reap and Infernal Bastion (2.8.2 L1105444-1106900, L11
     expect(createMinion({ ...d, species: 'BONE_SERVANT' }, p, { totalDominion: 5 }).dominion).toEqual({ blockChance: 18, damageReduction: 18, thornsPercent: 10 });
     const dg = { ...d, species: 'DREADGUARDS_PACT', minion: 'DEMON' };
     expect(createMinion(dg, p, { totalDominion: 4 }).dominion).toEqual({ blockChance: 16, damageReduction: 16, thornsPercent: 15 });
+  });
+  it('PVE pact tiers add minion max HP; PVP and CELESTIAL do not (2.9.8 L1123698-1123752, minionMaxHpWithTier L1121355)', () => {
+    const owner = { maxHp: 1000, attack: 500, attackSpeed: 1, critDamage: 1.5 };
+    const dg = { ...d, species: 'DREADGUARDS_PACT', minion: 'DEMON', hpPercent: 100 };
+    const ol = { ...d, species: 'OVERLORDS_PACT', minion: 'GREATER_DEMON', hpPercent: 100 };
+    const hp = (cfg, dom, mode, extra = {}) => createMinion(cfg, owner, { totalDominion: dom, ...extra }, mode).maxHp;
+    // Dreadguard's Pact PVE tiers 1-5: +0/20/40/40/40 %; Overlord's Pact +0/30/70/70/70 %
+    expect([1, 2, 3, 4, 5].map((t) => hp(dg, t, 'PVE'))).toEqual([1000, 1200, 1400, 1400, 1400]);
+    expect([1, 2, 3, 4, 5].map((t) => hp(ol, t, 'PVE'))).toEqual([1000, 1300, 1700, 1700, 1700]);
+    for (const mode of ['PVP', 'CELESTIAL']) {
+      expect(hp(dg, 5, mode)).toBe(1000);
+      expect(hp(ol, 5, mode)).toBe(1000);
+    }
+    // stacks multiplicatively on Minion Health: floor(1000 * 1.1 * 1.7) = 1870
+    expect(hp(ol, 3, 'PVE', { totalMinionHealth: 10 })).toBe(1870);
+    // block/DR/thorns are the same in every mode
+    expect(createMinion(ol, owner, { totalDominion: 5 }, 'PVP').dominion).toEqual({ blockChance: 30, damageReduction: 30, thornsPercent: 20 });
+    expect(createMinion(ol, owner, { totalDominion: 5 }, 'PVE').dominion).toEqual({ blockChance: 30, damageReduction: 30, thornsPercent: 20 });
+    expect(() => createMinion(dg, owner, {}, 'ARENA')).toThrow(/Dominion mode/);
+  });
+  it('summonDominionTier clamps the level to 1-5 and is null for a species without a table', () => {
+    expect(summonDominionTier('DREADGUARDS_PACT', 99, 'PVE').maxHpPercent).toBe(40);
+    expect(summonDominionTier('DREADGUARDS_PACT', 0.5, 'PVE').maxHpPercent).toBe(0);
+    expect(summonDominionTier('DREADGUARDS_PACT', Number.NaN, 'PVE').maxHpPercent).toBe(0);
+    expect(summonDominionTier('CATACLYSM', 5, 'PVE')).toBeNull();
   });
   it('rollMinionReap: one draw off cooldown, then the cooldown; minionSwing counts it down', () => {
     const m = createMinion(reaper, p2, { totalDominion: 4 });
