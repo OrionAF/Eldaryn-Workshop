@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createContext } from './context.js';
 import { createCharactersStore } from './characters.js';

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 // M3: import and persistence integrity (plan M3; findings #121 #124).
 import { it, expect, vi, beforeEach } from 'vitest';
 import { saveRoster, importJson, ImportError, KEY } from './storage.js';

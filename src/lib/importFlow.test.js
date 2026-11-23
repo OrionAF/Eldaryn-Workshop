@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import profile from './__fixtures__/real/profile-warrior-l72.json';
 import lootBag from './__fixtures__/real/drop-batch.json';
