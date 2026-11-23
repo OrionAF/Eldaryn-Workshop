@@ -1,0 +1,1589 @@
+{
+ "_note": "Two POST /raid/fast-pass responses of 2026-11-23 21:56 UTC (Village Raid raid_2, steps 1 and 2), captured by the live feed: the request and the response's result only (no keys, progress, influence, fast-pass charges or quests). The character is profile-necromancer-l31.json. Game/combat-pve.md section 21.3.",
+ "fights": [
+  {
+   "at": "2026-11-23T21:56:48.146Z",
+   "request": {
+    "raidId": "raid_2",
+    "stepNumber": 1
+   },
+   "result": {
+    "success": true,
+    "ticks": [
+     {
+      "timestamp": 500,
+      "type": "minion_summoned",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 26400,
+      "mobIndex": 0,
+      "minionHp": 22025,
+      "minionMaxHp": 22025,
+      "spell": {
+       "name": "Bone Servant",
+       "icon": "💀",
+       "species": "BONE_SERVANT"
+      },
+      "summonReadyMs": 2000
+     },
+     {
+      "timestamp": 2010,
+      "type": "spell_cast",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 26400,
+      "mobIndex": 0,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 27531
+     },
+     {
+      "timestamp": 2010,
+      "type": "spell_buff_start",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 26400,
+      "mobIndex": 0,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 27531
+     },
+     {
+      "timestamp": 2010,
+      "type": "minion_buff",
+      "damage": 5506,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 26400,
+      "mobIndex": 0,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionMaxHp": 27531,
+      "minionHp": 27531
+     },
+     {
+      "timestamp": 2400,
+      "type": "minion_damaged",
+      "damage": 1200,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 48000,
+      "mobIndex": 4,
+      "minionHp": 26331
+     },
+     {
+      "timestamp": 2480,
+      "type": "minion_damaged",
+      "damage": 816,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 24000,
+      "mobIndex": 3,
+      "minionHp": 25515
+     },
+     {
+      "timestamp": 2500,
+      "type": "minion_damaged",
+      "damage": 1056,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 21600,
+      "mobIndex": 2,
+      "minionHp": 24459
+     },
+     {
+      "timestamp": 2750,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 23832,
+      "mobIndex": 0,
+      "minionHp": 24459
+     },
+     {
+      "timestamp": 2770,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 13749,
+      "mobIndex": 0,
+      "minionHp": 24459
+     },
+     {
+      "timestamp": 2930,
+      "type": "minion_damaged",
+      "damage": 720,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 13749,
+      "mobIndex": 0,
+      "minionHp": 23739
+     },
+     {
+      "timestamp": 3000,
+      "type": "spell_cast",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 13749,
+      "mobIndex": 0,
+      "spell": {
+       "name": "Withering Hex",
+       "icon": "🦴",
+       "species": "WITHERING_HEX"
+      },
+      "minionHp": 23739
+     },
+     {
+      "timestamp": 3000,
+      "type": "spell_debuff_applied",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 13749,
+      "mobIndex": 0,
+      "spell": {
+       "name": "Withering Hex",
+       "icon": "🦴",
+       "species": "WITHERING_HEX"
+      },
+      "debuffStacks": 1,
+      "debuffMaxStacks": 1,
+      "debuffPermanent": false,
+      "minionHp": 23739
+     },
+     {
+      "timestamp": 3010,
+      "type": "spell_dot_tick",
+      "damage": 3529,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 10220,
+      "mobIndex": 0,
+      "spell": {
+       "name": "Withering Hex",
+       "icon": "🦴",
+       "species": "WITHERING_HEX"
+      },
+      "minionHp": 24564
+     },
+     {
+      "timestamp": 3010,
+      "type": "minion_heal",
+      "damage": 825,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 10220,
+      "mobIndex": 0,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 24564
+     },
+     {
+      "timestamp": 3120,
+      "type": "minion_damaged",
+      "damage": 864,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 33600,
+      "mobIndex": 1,
+      "minionHp": 23700
+     },
+     {
+      "timestamp": 3490,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 7652,
+      "mobIndex": 0,
+      "minionHp": 23700
+     },
+     {
+      "timestamp": 3500,
+      "type": "minion_damaged",
+      "damage": 1056,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 21600,
+      "mobIndex": 2,
+      "minionHp": 22644
+     },
+     {
+      "timestamp": 3530,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 0,
+      "minionHp": 22644
+     },
+     {
+      "timestamp": 3530,
+      "type": "mob_death",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 0,
+      "minionHp": 22644
+     },
+     {
+      "timestamp": 3910,
+      "type": "minion_damaged",
+      "damage": 816,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 24000,
+      "mobIndex": 3,
+      "minionHp": 21828
+     },
+     {
+      "timestamp": 4010,
+      "type": "minion_heal",
+      "damage": 825,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 33600,
+      "mobIndex": 1,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 22653
+     },
+     {
+      "timestamp": 4230,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 31032,
+      "mobIndex": 1,
+      "minionHp": 22653
+     },
+     {
+      "timestamp": 4290,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 20949,
+      "mobIndex": 1,
+      "minionHp": 22653
+     },
+     {
+      "timestamp": 4400,
+      "type": "minion_damaged",
+      "damage": 1200,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 48000,
+      "mobIndex": 4,
+      "minionHp": 21453
+     },
+     {
+      "timestamp": 4500,
+      "type": "minion_damaged",
+      "damage": 1056,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 21600,
+      "mobIndex": 2,
+      "minionHp": 20397
+     },
+     {
+      "timestamp": 4780,
+      "type": "minion_damaged",
+      "damage": 864,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 20949,
+      "mobIndex": 1,
+      "minionHp": 19533
+     },
+     {
+      "timestamp": 4970,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 18381,
+      "mobIndex": 1,
+      "minionHp": 19533
+     },
+     {
+      "timestamp": 5000,
+      "type": "spell_dot_tick",
+      "damage": 3529,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 14852,
+      "mobIndex": 1,
+      "spell": {
+       "name": "Withering Hex",
+       "icon": "🦴",
+       "species": "WITHERING_HEX"
+      },
+      "minionHp": 19533
+     },
+     {
+      "timestamp": 5010,
+      "type": "minion_heal",
+      "damage": 825,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 14852,
+      "mobIndex": 1,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 20358
+     },
+     {
+      "timestamp": 5060,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 4769,
+      "mobIndex": 1,
+      "minionHp": 20358
+     },
+     {
+      "timestamp": 5340,
+      "type": "minion_damaged",
+      "damage": 816,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 24000,
+      "mobIndex": 3,
+      "minionHp": 19542
+     },
+     {
+      "timestamp": 5500,
+      "type": "minion_damaged",
+      "damage": 1056,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 21600,
+      "mobIndex": 2,
+      "minionHp": 18486
+     },
+     {
+      "timestamp": 5710,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 2201,
+      "mobIndex": 1,
+      "minionHp": 18486
+     },
+     {
+      "timestamp": 5820,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 1,
+      "minionHp": 18486
+     },
+     {
+      "timestamp": 5820,
+      "type": "mob_death",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 1,
+      "minionHp": 18486
+     },
+     {
+      "timestamp": 6010,
+      "type": "minion_heal",
+      "damage": 825,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 21600,
+      "mobIndex": 2,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 19311
+     },
+     {
+      "timestamp": 6400,
+      "type": "minion_damaged",
+      "damage": 1200,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 48000,
+      "mobIndex": 4,
+      "minionHp": 18111
+     },
+     {
+      "timestamp": 6450,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 19032,
+      "mobIndex": 2,
+      "minionHp": 18111
+     },
+     {
+      "timestamp": 6500,
+      "type": "minion_damaged",
+      "damage": 1056,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 19032,
+      "mobIndex": 2,
+      "minionHp": 17055
+     },
+     {
+      "timestamp": 6580,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 8949,
+      "mobIndex": 2,
+      "minionHp": 17055
+     },
+     {
+      "timestamp": 6770,
+      "type": "minion_damaged",
+      "damage": 816,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 24000,
+      "mobIndex": 3,
+      "minionHp": 16239
+     },
+     {
+      "timestamp": 7000,
+      "type": "spell_dot_tick",
+      "damage": 3529,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 5420,
+      "mobIndex": 2,
+      "spell": {
+       "name": "Withering Hex",
+       "icon": "🦴",
+       "species": "WITHERING_HEX"
+      },
+      "minionHp": 16239
+     },
+     {
+      "timestamp": 7010,
+      "type": "minion_heal",
+      "damage": 825,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 5420,
+      "mobIndex": 2,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 17064
+     },
+     {
+      "timestamp": 7190,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 2852,
+      "mobIndex": 2,
+      "minionHp": 17064
+     },
+     {
+      "timestamp": 7350,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 2,
+      "minionHp": 17064
+     },
+     {
+      "timestamp": 7350,
+      "type": "mob_death",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 2,
+      "minionHp": 17064
+     },
+     {
+      "timestamp": 7930,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 21432,
+      "mobIndex": 3,
+      "minionHp": 17064
+     },
+     {
+      "timestamp": 8010,
+      "type": "minion_heal",
+      "damage": 825,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 21432,
+      "mobIndex": 3,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 17889
+     },
+     {
+      "timestamp": 8110,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 11349,
+      "mobIndex": 3,
+      "minionHp": 17889
+     },
+     {
+      "timestamp": 8200,
+      "type": "minion_damaged",
+      "damage": 816,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 11349,
+      "mobIndex": 3,
+      "minionHp": 17073
+     },
+     {
+      "timestamp": 8400,
+      "type": "minion_damaged",
+      "damage": 1200,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 48000,
+      "mobIndex": 4,
+      "minionHp": 15873
+     },
+     {
+      "timestamp": 8670,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 8781,
+      "mobIndex": 3,
+      "minionHp": 15873
+     },
+     {
+      "timestamp": 8870,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 3,
+      "minionHp": 15873
+     },
+     {
+      "timestamp": 8870,
+      "type": "mob_death",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 3,
+      "minionHp": 15873
+     },
+     {
+      "timestamp": 9000,
+      "type": "spell_dot_tick",
+      "damage": 3529,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 44471,
+      "mobIndex": 4,
+      "spell": {
+       "name": "Withering Hex",
+       "icon": "🦴",
+       "species": "WITHERING_HEX"
+      },
+      "minionHp": 15873
+     },
+     {
+      "timestamp": 9010,
+      "type": "minion_heal",
+      "damage": 825,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 44471,
+      "mobIndex": 4,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 16698
+     },
+     {
+      "timestamp": 9410,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 41903,
+      "mobIndex": 4,
+      "minionHp": 16698
+     },
+     {
+      "timestamp": 9630,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 31820,
+      "mobIndex": 4,
+      "minionHp": 16698
+     },
+     {
+      "timestamp": 10010,
+      "type": "spell_end",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 31820,
+      "mobIndex": 4,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 17523
+     },
+     {
+      "timestamp": 10010,
+      "type": "minion_heal",
+      "damage": 825,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 31820,
+      "mobIndex": 4,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 17523
+     },
+     {
+      "timestamp": 10010,
+      "type": "minion_buff_end",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 31820,
+      "mobIndex": 4,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionMaxHp": 22025,
+      "minionHp": 17523
+     },
+     {
+      "timestamp": 10160,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 29252,
+      "mobIndex": 4,
+      "minionHp": 17523
+     },
+     {
+      "timestamp": 10400,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 19169,
+      "mobIndex": 4,
+      "minionHp": 16323
+     },
+     {
+      "timestamp": 10400,
+      "type": "minion_damaged",
+      "damage": 1200,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 19169,
+      "mobIndex": 4,
+      "minionHp": 16323
+     },
+     {
+      "timestamp": 10900,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 16601,
+      "mobIndex": 4,
+      "minionHp": 16323
+     },
+     {
+      "timestamp": 11000,
+      "type": "spell_dot_tick",
+      "damage": 3529,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 13072,
+      "mobIndex": 4,
+      "spell": {
+       "name": "Withering Hex",
+       "icon": "🦴",
+       "species": "WITHERING_HEX"
+      },
+      "minionHp": 16323
+     },
+     {
+      "timestamp": 11160,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 2989,
+      "mobIndex": 4,
+      "minionHp": 16323
+     },
+     {
+      "timestamp": 11640,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 421,
+      "mobIndex": 4,
+      "minionHp": 16323
+     },
+     {
+      "timestamp": 11920,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 4,
+      "minionHp": 16323
+     },
+     {
+      "timestamp": 11920,
+      "type": "mob_death",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 4,
+      "minionHp": 16323
+     }
+    ],
+    "totalDuration": 11920,
+    "mobsDefeated": 5,
+    "influenceReward": 100,
+    "playerHpRemaining": 25317
+   }
+  },
+  {
+   "at": "2026-11-23T21:56:50.466Z",
+   "request": {
+    "raidId": "raid_2",
+    "stepNumber": 2
+   },
+   "result": {
+    "success": true,
+    "ticks": [
+     {
+      "timestamp": 500,
+      "type": "minion_summoned",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 26100,
+      "mobIndex": 0,
+      "minionHp": 22025,
+      "minionMaxHp": 22025,
+      "spell": {
+       "name": "Bone Servant",
+       "icon": "💀",
+       "species": "BONE_SERVANT"
+      },
+      "summonReadyMs": 2000
+     },
+     {
+      "timestamp": 2010,
+      "type": "spell_cast",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 26100,
+      "mobIndex": 0,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 27531
+     },
+     {
+      "timestamp": 2010,
+      "type": "spell_buff_start",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 26100,
+      "mobIndex": 0,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 27531
+     },
+     {
+      "timestamp": 2010,
+      "type": "minion_buff",
+      "damage": 5506,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 26100,
+      "mobIndex": 0,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionMaxHp": 27531,
+      "minionHp": 27531
+     },
+     {
+      "timestamp": 2400,
+      "type": "minion_damaged",
+      "damage": 870,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 31900,
+      "mobIndex": 3,
+      "minionHp": 25617
+     },
+     {
+      "timestamp": 2400,
+      "type": "minion_damaged",
+      "damage": 1044,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 40600,
+      "mobIndex": 4,
+      "minionHp": 25617
+     },
+     {
+      "timestamp": 2750,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 23532,
+      "mobIndex": 0,
+      "minionHp": 25617
+     },
+     {
+      "timestamp": 2770,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 13449,
+      "mobIndex": 0,
+      "minionHp": 25617
+     },
+     {
+      "timestamp": 2840,
+      "type": "minion_damaged",
+      "damage": 1276,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 13449,
+      "mobIndex": 0,
+      "minionHp": 24341
+     },
+     {
+      "timestamp": 2960,
+      "type": "minion_damaged",
+      "damage": 986,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 29000,
+      "mobIndex": 1,
+      "minionHp": 23355
+     },
+     {
+      "timestamp": 3000,
+      "type": "spell_cast",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 13449,
+      "mobIndex": 0,
+      "spell": {
+       "name": "Withering Hex",
+       "icon": "🦴",
+       "species": "WITHERING_HEX"
+      },
+      "minionHp": 21905
+     },
+     {
+      "timestamp": 3000,
+      "type": "spell_debuff_applied",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 13449,
+      "mobIndex": 0,
+      "spell": {
+       "name": "Withering Hex",
+       "icon": "🦴",
+       "species": "WITHERING_HEX"
+      },
+      "debuffStacks": 1,
+      "debuffMaxStacks": 1,
+      "debuffPermanent": false,
+      "minionHp": 21905
+     },
+     {
+      "timestamp": 3000,
+      "type": "minion_damaged",
+      "damage": 1450,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 58000,
+      "mobIndex": 2,
+      "minionHp": 21905
+     },
+     {
+      "timestamp": 3010,
+      "type": "spell_dot_tick",
+      "damage": 3529,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 9920,
+      "mobIndex": 0,
+      "spell": {
+       "name": "Withering Hex",
+       "icon": "🦴",
+       "species": "WITHERING_HEX"
+      },
+      "minionHp": 22730
+     },
+     {
+      "timestamp": 3010,
+      "type": "minion_heal",
+      "damage": 825,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 9920,
+      "mobIndex": 0,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 22730
+     },
+     {
+      "timestamp": 3490,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 7352,
+      "mobIndex": 0,
+      "minionHp": 22730
+     },
+     {
+      "timestamp": 3520,
+      "type": "minion_damaged",
+      "damage": 870,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 31900,
+      "mobIndex": 3,
+      "minionHp": 21860
+     },
+     {
+      "timestamp": 3530,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 0,
+      "minionHp": 21860
+     },
+     {
+      "timestamp": 3530,
+      "type": "mob_death",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 0,
+      "minionHp": 21860
+     },
+     {
+      "timestamp": 4010,
+      "type": "minion_heal",
+      "damage": 825,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 29000,
+      "mobIndex": 1,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 22685
+     },
+     {
+      "timestamp": 4070,
+      "type": "minion_damaged",
+      "damage": 1044,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 40600,
+      "mobIndex": 4,
+      "minionHp": 21641
+     },
+     {
+      "timestamp": 4230,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 26432,
+      "mobIndex": 1,
+      "minionHp": 21641
+     },
+     {
+      "timestamp": 4290,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 16349,
+      "mobIndex": 1,
+      "minionHp": 21641
+     },
+     {
+      "timestamp": 4390,
+      "type": "minion_damaged",
+      "damage": 986,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 16349,
+      "mobIndex": 1,
+      "minionHp": 20655
+     },
+     {
+      "timestamp": 4630,
+      "type": "minion_damaged",
+      "damage": 870,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 31900,
+      "mobIndex": 3,
+      "minionHp": 19785
+     },
+     {
+      "timestamp": 4970,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 13781,
+      "mobIndex": 1,
+      "minionHp": 19785
+     },
+     {
+      "timestamp": 5000,
+      "type": "spell_dot_tick",
+      "damage": 3529,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 10252,
+      "mobIndex": 1,
+      "spell": {
+       "name": "Withering Hex",
+       "icon": "🦴",
+       "species": "WITHERING_HEX"
+      },
+      "minionHp": 18335
+     },
+     {
+      "timestamp": 5000,
+      "type": "minion_damaged",
+      "damage": 1450,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 58000,
+      "mobIndex": 2,
+      "minionHp": 18335
+     },
+     {
+      "timestamp": 5010,
+      "type": "minion_heal",
+      "damage": 825,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 10252,
+      "mobIndex": 1,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 19160
+     },
+     {
+      "timestamp": 5060,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 169,
+      "mobIndex": 1,
+      "minionHp": 19160
+     },
+     {
+      "timestamp": 5710,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 1,
+      "minionHp": 19160
+     },
+     {
+      "timestamp": 5710,
+      "type": "mob_death",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 1,
+      "minionHp": 19160
+     },
+     {
+      "timestamp": 5740,
+      "type": "minion_damaged",
+      "damage": 870,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 31900,
+      "mobIndex": 3,
+      "minionHp": 17246
+     },
+     {
+      "timestamp": 5740,
+      "type": "minion_damaged",
+      "damage": 1044,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 40600,
+      "mobIndex": 4,
+      "minionHp": 17246
+     },
+     {
+      "timestamp": 5820,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 47917,
+      "mobIndex": 2,
+      "minionHp": 17246
+     },
+     {
+      "timestamp": 6010,
+      "type": "minion_heal",
+      "damage": 825,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 47917,
+      "mobIndex": 2,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 18071
+     },
+     {
+      "timestamp": 6450,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 45349,
+      "mobIndex": 2,
+      "minionHp": 18071
+     },
+     {
+      "timestamp": 6580,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 35266,
+      "mobIndex": 2,
+      "minionHp": 18071
+     },
+     {
+      "timestamp": 6850,
+      "type": "minion_damaged",
+      "damage": 870,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 31900,
+      "mobIndex": 3,
+      "minionHp": 17201
+     },
+     {
+      "timestamp": 7000,
+      "type": "spell_dot_tick",
+      "damage": 3529,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 31737,
+      "mobIndex": 2,
+      "spell": {
+       "name": "Withering Hex",
+       "icon": "🦴",
+       "species": "WITHERING_HEX"
+      },
+      "minionHp": 15751
+     },
+     {
+      "timestamp": 7000,
+      "type": "minion_damaged",
+      "damage": 1450,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 31737,
+      "mobIndex": 2,
+      "minionHp": 15751
+     },
+     {
+      "timestamp": 7010,
+      "type": "minion_heal",
+      "damage": 825,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 31737,
+      "mobIndex": 2,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 16576
+     },
+     {
+      "timestamp": 7190,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 29169,
+      "mobIndex": 2,
+      "minionHp": 16576
+     },
+     {
+      "timestamp": 7350,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 19086,
+      "mobIndex": 2,
+      "minionHp": 16576
+     },
+     {
+      "timestamp": 7410,
+      "type": "minion_damaged",
+      "damage": 1044,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 40600,
+      "mobIndex": 4,
+      "minionHp": 15532
+     },
+     {
+      "timestamp": 7930,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 16518,
+      "mobIndex": 2,
+      "minionHp": 15532
+     },
+     {
+      "timestamp": 7960,
+      "type": "minion_damaged",
+      "damage": 870,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 31900,
+      "mobIndex": 3,
+      "minionHp": 14662
+     },
+     {
+      "timestamp": 8010,
+      "type": "minion_heal",
+      "damage": 825,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 16518,
+      "mobIndex": 2,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 15487
+     },
+     {
+      "timestamp": 8110,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 6435,
+      "mobIndex": 2,
+      "minionHp": 15487
+     },
+     {
+      "timestamp": 8670,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 3867,
+      "mobIndex": 2,
+      "minionHp": 15487
+     },
+     {
+      "timestamp": 8870,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 2,
+      "minionHp": 15487
+     },
+     {
+      "timestamp": 8870,
+      "type": "mob_death",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 2,
+      "minionHp": 15487
+     },
+     {
+      "timestamp": 9000,
+      "type": "spell_dot_tick",
+      "damage": 3529,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 28371,
+      "mobIndex": 3,
+      "spell": {
+       "name": "Withering Hex",
+       "icon": "🦴",
+       "species": "WITHERING_HEX"
+      },
+      "minionHp": 15487
+     },
+     {
+      "timestamp": 9010,
+      "type": "minion_heal",
+      "damage": 825,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 28371,
+      "mobIndex": 3,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 16312
+     },
+     {
+      "timestamp": 9070,
+      "type": "minion_damaged",
+      "damage": 870,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 28371,
+      "mobIndex": 3,
+      "minionHp": 14398
+     },
+     {
+      "timestamp": 9070,
+      "type": "minion_damaged",
+      "damage": 1044,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 40600,
+      "mobIndex": 4,
+      "minionHp": 14398
+     },
+     {
+      "timestamp": 9410,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 25803,
+      "mobIndex": 3,
+      "minionHp": 14398
+     },
+     {
+      "timestamp": 9630,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 15720,
+      "mobIndex": 3,
+      "minionHp": 14398
+     },
+     {
+      "timestamp": 10010,
+      "type": "spell_end",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 15720,
+      "mobIndex": 3,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 15223
+     },
+     {
+      "timestamp": 10010,
+      "type": "minion_heal",
+      "damage": 825,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 15720,
+      "mobIndex": 3,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionHp": 15223
+     },
+     {
+      "timestamp": 10010,
+      "type": "minion_buff_end",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 15720,
+      "mobIndex": 3,
+      "spell": {
+       "name": "Graveborn Vigor",
+       "icon": "🫀",
+       "species": "GRAVEBORN_VIGOR"
+      },
+      "minionMaxHp": 22025,
+      "minionHp": 15223
+     },
+     {
+      "timestamp": 10160,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 13152,
+      "mobIndex": 3,
+      "minionHp": 15223
+     },
+     {
+      "timestamp": 10180,
+      "type": "minion_damaged",
+      "damage": 870,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 13152,
+      "mobIndex": 3,
+      "minionHp": 14353
+     },
+     {
+      "timestamp": 10400,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 3069,
+      "mobIndex": 3,
+      "minionHp": 14353
+     },
+     {
+      "timestamp": 10740,
+      "type": "minion_damaged",
+      "damage": 1044,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 40600,
+      "mobIndex": 4,
+      "minionHp": 13309
+     },
+     {
+      "timestamp": 10900,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 501,
+      "mobIndex": 3,
+      "minionHp": 13309
+     },
+     {
+      "timestamp": 11000,
+      "type": "spell_dot_tick",
+      "damage": 3529,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 3,
+      "spell": {
+       "name": "Withering Hex",
+       "icon": "🦴",
+       "species": "WITHERING_HEX"
+      },
+      "minionHp": 13309
+     },
+     {
+      "timestamp": 11000,
+      "type": "mob_death",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 3,
+      "minionHp": 13309
+     },
+     {
+      "timestamp": 11160,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 30517,
+      "mobIndex": 4,
+      "minionHp": 13309
+     },
+     {
+      "timestamp": 11640,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 27949,
+      "mobIndex": 4,
+      "minionHp": 13309
+     },
+     {
+      "timestamp": 11920,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 17866,
+      "mobIndex": 4,
+      "minionHp": 13309
+     },
+     {
+      "timestamp": 12380,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 15298,
+      "mobIndex": 4,
+      "minionHp": 13309
+     },
+     {
+      "timestamp": 12410,
+      "type": "minion_damaged",
+      "damage": 1044,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 15298,
+      "mobIndex": 4,
+      "minionHp": 12265
+     },
+     {
+      "timestamp": 12690,
+      "type": "player_attack",
+      "damage": 10083,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 5215,
+      "mobIndex": 4,
+      "minionHp": 12265
+     },
+     {
+      "timestamp": 13000,
+      "type": "spell_dot_tick",
+      "damage": 3529,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 1686,
+      "mobIndex": 4,
+      "spell": {
+       "name": "Withering Hex",
+       "icon": "🦴",
+       "species": "WITHERING_HEX"
+      },
+      "minionHp": 12265
+     },
+     {
+      "timestamp": 13120,
+      "type": "minion_hit",
+      "damage": 2568,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 4,
+      "minionHp": 12265
+     },
+     {
+      "timestamp": 13120,
+      "type": "mob_death",
+      "damage": 0,
+      "playerHpAfter": 25317,
+      "mobHpAfter": 0,
+      "mobIndex": 4,
+      "minionHp": 12265
+     }
+    ],
+    "totalDuration": 13120,
+    "mobsDefeated": 5,
+    "influenceReward": 105,
+    "playerHpRemaining": 25317
+   }
+  }
+ ]
+}

@@ -7,9 +7,10 @@
 // Only attack rows carry the shield, so the shield is rebuilt between them: spell heals, regen pulses on
 // the 100 ms grid (rows only while HP is below max), lifesteal and absorbs. A rule whose substantive
 // comparison did not run reports `skipped` with the reason, never a pass. Pure; no rng.
-// The raid mode (`mode: 'raid'`, Game/combat-pve.md §21.1) reads the same row shape, but every living mob
-// swings while the player fights the first one: rows of the mobs behind the target interleave with the
-// target's, each mob's clock starts at an unknown point of its swing, and the shield takes hits 1:1. The
+// The raid mode (`mode: 'raid'`, Game/combat-pve.md §21.1, §21.3) reads the same row shape, but every living
+// mob swings while the player fights the first one: rows of the mobs behind the target interleave with the
+// target's, each mob's clock starts at an unknown point of its swing, and the shield takes hits 1:1. A raid
+// waits only before its first fight: the next target is fought at once, on the clocks that ran before. The
 // raid rules follow the target through its fights and check the mobs behind it on their own clocks; see
 // RAID_REPLAY_RULES. A `/raid/fight-prepare` (or dungeon prepare) response has no outcome fields, so
 // the outcome is read from the rows.
@@ -110,8 +111,6 @@ const SPELL_PASS = /^spell_(cast|damage|dot_tick|heal_tick|buff_start|end|debuff
 // with the HP after the pass, as the raid log shows (mob_silenced before Null Pulse's cast)
 const SPELL_CONTROL = new Set(['mob_paralyzed', 'mob_silenced', 'mob_feared', 'mob_blinded']);
 const SCHEDULE_TYPES = new Set(['spell_cast', 'spell_dot_tick', 'spell_damage', 'spell_end']);
-// what a raid's gap between fights can log: the mobs' swings and the regen pulse (§21.1)
-const GAP_TYPES = new Set([...MOB_SWING, 'player_regen', 'minion_damaged', 'minion_dead']);
 const OUTCOME_FIELDS = ['success', 'mobsDefeated', 'playerHpRemaining'];
 const sameList = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
 const firstDiff = (a, b) => { const i = a.findIndex((v, k) => v !== b[k]); return i < 0 ? Math.min(a.length, b.length) : i; };
@@ -134,10 +133,11 @@ function modelSwingTimes(interval, start, end, dt, timer0 = 0) {
  * A raid mob's swings when its clock starts at some timer value: one timer step per tick the mob may
  * swing in (`opp`, their timestamps), a swing whenever the timer reaches the interval. The start point is
  * unknown (combat-pve.md §21.1), so every start that yields the observed first swing is tried. The interval
- * and the tick are whole ms, so whole-ms starts cover every case. Returns the best candidate: an exact
+ * and the tick are whole ms, so whole-ms starts cover every case; `maxT0` caps the start (an opening
+ * summon's openingSwingTimerStart). Returns the best candidate: an exact
  * match when one exists, else the one agreeing longest with `got`.
  */
-function fitRandomClock(interval, opp, got, dt) {
+function fitRandomClock(interval, opp, got, dt, maxT0 = interval - 1) {
   const run = (t0) => {
     const out = [];
     let timer = t0;
@@ -148,13 +148,13 @@ function fitRandomClock(interval, opp, got, dt) {
     return out;
   };
   let lo = 0;
-  let hi = interval - 1;
+  let hi = Math.min(interval - 1, maxT0);
   if (got.length) {
     const n = opp.indexOf(got[0]);
     if (n < 0) return { match: false, want: run(0) };
     // the first swing is the (n+1)th step: t0 + (n+1) dt >= interval > t0 + n dt
     lo = Math.max(0, interval - (n + 1) * dt);
-    hi = Math.min(interval - 1, interval - n * dt - 1);
+    hi = Math.min(hi, interval - n * dt - 1);
   }
   let best = null;
   for (let t0 = lo; t0 <= hi; t0++) {
@@ -327,22 +327,29 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
   const needMobs = 'needs the step\'s mobs';
   const last = rows.at(-1);
 
-  // segments: one per fight, from its start (previous end + gap; the first at the gap) to its last row.
-  // A dungeon fight's rows carry its mob's index. A raid fight is the target's: it also holds the rows of
-  // the mobs behind it, including those on the target's death tick (fight.js lets them swing after a
-  // swing kill), so the target only changes on a later tick.
+  // segments: one per fight, from its start (previous end + gap; the first at the gap; a raid's later ones
+  // at the previous end) to its last row. A dungeon fight's rows carry its mob's index. A raid fight is the
+  // target's: it also holds the rows of the mobs behind it. After a swing kill those swing in the death
+  // tick too (fight.js), so the target changes on the next tick. After a kill by the spell or debuff pass
+  // the rest of that tick, its combat part, is the next target's (§21.3): the target changes right after
+  // the mob_death row and the minion rows that close the dying fight.
   const segs = [];
   const segOf = [];
   if (raid) {
     let target = 0;
     let deathTs = null;
+    let early = false; // the death came from the spell or debuff pass
     rows.forEach((e, i) => {
-      if (deathTs !== null && e.timestamp > deathTs) { target += 1; deathTs = null; }
+      if (deathTs !== null && (e.timestamp > deathTs || (early && !MINION_TRAILER.has(e.type)))) { target += 1; deathTs = null; }
       let s = segs[target];
       if (!s) segs[target] = s = { mob: target, first: i, last: i, deathIdx: -1 };
       s.last = i;
       segOf[i] = s;
-      if (e.type === 'mob_death' && e.mobIndex === target && deathTs === null) { deathTs = e.timestamp; s.deathIdx = i; }
+      if (e.type === 'mob_death' && e.mobIndex === target && deathTs === null) {
+        deathTs = e.timestamp;
+        s.deathIdx = i;
+        early = rows.slice(s.first, i).some((r) => r.timestamp === e.timestamp && r.mobIndex === target && r.type.startsWith('spell_') && r.mobHpAfter <= 0);
+      }
     });
   } else {
     for (const [i, e] of rows.entries()) {
@@ -358,23 +365,25 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
       s.deathIdx = rows[d].type === 'mob_death' ? d : -1;
     }
   }
+  // the mob died to the spell or debuff pass of its last tick (spells run before the swings, §2)
+  const spellKill = (s) => s.died && s.t.some((i) => rows[i].timestamp === s.end && rows[i].type.startsWith('spell_') && rows[i].mobHpAfter <= 0);
   let base = 0;
   segs.forEach((s, k) => {
-    s.start = k === 0 ? gap : segs[k - 1].end + gap;
+    s.start = k === 0 ? gap : segs[k - 1].end + (raid ? 0 : gap);
     s.end = rows[s.last].timestamp;
     s.died = s.deathIdx >= 0;
     // the opening summon (fight.js, L1087780-1087856): a minion summoned on the fight's start, before its
     // first tick; the fight's clocks (ticks, swings, spells, regen) start when the summon window ends, at
     // the row's `summonReadyMs`. Read from the log, so no rule needs the sheet for it.
     const e0 = rows[s.first];
-    s.opening = !raid && e0.type === 'minion_summoned' && e0.timestamp === s.start ? s.first : -1;
+    s.opening = (!raid || k === 0) && e0.type === 'minion_summoned' && e0.timestamp === s.start ? s.first : -1;
     s.clock = s.opening >= 0 && Number.isFinite(e0.summonReadyMs) && e0.summonReadyMs >= s.start ? e0.summonReadyMs : s.start;
     s.base = base; // fight-clock time at the segment's clock start
-    // raid: the segment also holds the gap before its fight, in which the mobs and the regen pulse run on
-    // (§21.1); `from` is the wall-clock time the segment's rows come after
-    s.from = raid && k > 0 ? segs[k - 1].end : s.start;
     s.t = []; // the target's own rows (a dungeon fight's are all of them)
     for (let i = s.first; i <= s.last; i++) if (rows[i].mobIndex === s.mob) s.t.push(i);
+    // raid: the wall-clock time the segment's ticks come after: the previous end, or the tick before it
+    // when the spell or debuff pass made that kill, since the rest of that tick is this fight's (§21.3)
+    s.from = raid && k > 0 ? segs[k - 1].end - (spellKill(segs[k - 1]) ? dt : 0) : s.clock;
     base += s.end - s.clock;
   });
   const fcEnd = base;
@@ -390,19 +399,15 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
     }
     return spell ? k : 0;
   };
-  // the mob died to the spell or debuff pass of its last tick (spells run before the swings, §2)
-  const spellKill = (s) => s.died && s.t.some((i) => rows[i].timestamp === s.end && rows[i].type.startsWith('spell_') && rows[i].mobHpAfter <= 0);
   // the mob died to thorns, which land after its own swing in that tick (fight.js step 10)
   const thornsKill = (s) => s.died && s.t.some((i) => rows[i].timestamp === s.end && rows[i].type === 'thorns_reflect' && rows[i].mobHpAfter <= 0);
   // the regen pulses. A dungeon's restart with each fight, every 100 ms of it. A raid's run on one clock
-  // from the first fight's start, gaps included (§21.1); it steps on every combat tick, so not on a tick
-  // whose spell or debuff pass killed the target (fight.js returns before the combat tick).
+  // from the first fight's clock start through every later fight (§21.1, §21.3); it steps on every combat
+  // tick, and a tick whose spell or debuff pass killed the target still has one, against the next target.
   const raidPulses = new Set();
   if (raid && segs.length) {
-    const skip = new Set(segs.filter(spellKill).map((s) => s.end));
     let timer = 0;
-    for (let t = segs[0].start + dt; t <= last.timestamp; t += dt) {
-      if (skip.has(t)) continue;
+    for (let t = segs[0].clock + dt; t <= last.timestamp; t += dt) {
       timer += dt;
       if (timer >= REGEN_PULSE_MS) { timer -= REGEN_PULSE_MS; raidPulses.add(t); }
     }
@@ -411,10 +416,10 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
   const pulseNote = raid ? 'regen pulse off the 100 ms clock that runs from the first fight' : 'regen pulse off the 100 ms grid of its fight';
 
   // ---- tick-grid: every row on the mode's tick, counted from its fight's start ----
-  // raid: from the first fight's start, since the mobs swing through the gaps (§21.1)
+  // raid: from the first fight's clock start, since every clock runs on through the later fights (§21.3)
   run('tick-grid', (c) => {
     for (const s of segs) {
-      const o = raid ? segs[0].start : s.clock;
+      const o = raid ? segs[0].clock : s.clock;
       for (let i = s.first; i <= s.last; i++) {
         const t = rows[i].timestamp;
         if (i === s.opening) c.ok(); // on the fight's start, before its first tick
@@ -501,12 +506,9 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
         if (deathRow >= 0 && rows[deathRow].mobHpAfter === 0) c.ok(); else c.bad('mob_death with HP left', { index: deathRow, actual: rows[deathRow]?.mobHpAfter });
       }
       if (raid && k > 0) {
-        // the gap before a raid fight holds only the mobs' swings and regen pulses; the player's own
-        // swings and spells wait for the fight's start (an assumption of §21.1)
-        for (let i = s.first; i <= s.last && rows[i].timestamp <= s.start; i++) {
-          if (GAP_TYPES.has(rows[i].type)) c.ok();
-          else c.bad(`${rows[i].type} in the ${gap} ms before mob ${s.mob + 1}'s fight`, { index: i, expected: `> ${s.start}`, actual: rows[i].timestamp });
-        }
+        // a raid's next fight starts when the target dies, with no wait (§21.3)
+        if (rows[s.first].timestamp >= s.start) c.ok();
+        else c.bad(`mob ${s.mob + 1}'s first row is before the previous mob's death (${s.start} ms)`, { index: s.first, expected: `>= ${s.start}`, actual: rows[s.first].timestamp });
       } else if (s.opening >= 0) {
         // the opening summon sits on the start; the fight's own rows wait for the summon window
         const nx = s.first < s.last ? rows[s.first + 1] : null;
@@ -531,12 +533,25 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
 
   // a fight's swing timers start at 0; after an opening summon each is capped at its interval less 400 ms
   // (openingSwingTimerStart L1094757-1094789), which only matters for an interval under 400 ms
-  const openingTimer = (interval, s) => (s.opening >= 0 ? openingSwingTimerStart(interval, s.clock - s.start, 0) : 0);
+  const openingTimer = (interval, s, timer = 0) => (s.opening >= 0 ? openingSwingTimerStart(interval, s.clock - s.start, timer) : timer);
   // ---- player-swings: round(1000 / attackSpeed) ms from each fight's clock, remainder carried (§4) ----
+  // raid: one clock from the first fight's clock start, carried into each next target (§21.3); a tick whose
+  // spell or debuff pass killed the target still steps it, and the player swings at the target only
   run('player-swings', (c) => {
     if (!P) return c.skip(needSheet);
     if (M.stacks || buffs(M.spells, ['ATTACK_SPEED'])) return c.skip('an attack-speed buff or Elusive changes the swing clock');
     const interval = Math.round(1000 / P.attackSpeed);
+    if (raid) {
+      const want = modelSwingTimes(interval, segs[0].clock, last.timestamp, dt, openingTimer(interval, segs[0]))
+        .filter((t) => !(t === last.timestamp && spellKill(segs.at(-1))));
+      const got = [...new Set(rows.filter((e) => PLAYER_SWING.has(e.type)).map((e) => e.timestamp))];
+      if (sameList(got, want)) for (let i = 0; i < got.length; i++) c.ok();
+      else {
+        const at = firstDiff(got, want);
+        c.bad(`player swing times differ from one ${interval} ms clock through every fight`, { timestamp: got[at] ?? want[at], expected: want[at], actual: got[at] });
+      }
+      return c.note(`${interval} ms`);
+    }
     for (const s of segs) {
       let want = modelSwingTimes(interval, s.clock, s.end, dt, openingTimer(interval, s));
       if (spellKill(s)) want = want.filter((t) => t !== s.end);
@@ -570,18 +585,20 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
     if (notes.length) c.note(`${notes.join(' / ')} ms`);
   });
 
-  // Raid clocks (combat-pve.md §21.1): every living mob swings, each from an unknown point of its swing,
-  // so a mob's first swing only has to come within one interval, and every later swing follows from it.
-  // The clocks run on the wall clock from the first fight's start, through the gaps after a target's
-  // death, and a mob that becomes the target keeps its clock (the 2026-11-13 log). Inside one tick the
-  // mobs swing by index (the target is the first living one); none swings once the player is dead, and
-  // none behind the target on a tick the spell or debuff pass killed it (fight.js returns before the
-  // combat tick).
+  // Raid clocks (combat-pve.md §21.1, §21.3): every living mob swings, each from an unknown point of its
+  // swing, so a mob's first swing only has to come within one interval, and every later swing follows from
+  // it. The clocks run on the wall clock from the first fight's clock start through every later fight, and
+  // a mob that becomes the target keeps its clock. An opening summon caps every mob's start point at its
+  // interval less 400 ms (openingSwingTimerStart; the 2026-11-23 log). Inside one tick the mobs swing by
+  // index (the target is the first living one); none swings once the player is dead. On a tick whose spell
+  // or debuff pass killed the target, the swings are the next fight's (its segment starts a tick early). A
+  // swing at a living minion (`minion_damaged`) is a swing like any other.
   function raidMobSwings(c) {
-    if (M.summon) return c.skip('a minion takes the mobs\' swings');
     const lastRow = rows.length - 1;
     const killer = last.type === 'player_death' ? last.mobIndex : null;
-    const debuffed = rows.some((e) => /^spell_debuff/.test(e.type));
+    // a debuff (Withering Hex's slow) stays on the mob it was applied to: the next targets keep their
+    // clocks while its DoT runs on (§21.3)
+    const debuffed = new Set(rows.filter((e) => /^spell_debuff/.test(e.type)).map((e) => e.mobIndex));
     const held = new Set(rows.filter((e, i) => (e.type === 'mob_paralyzed' || e.type === 'mob_feared') && e.mobIndex === segOf[i].mob).map((e) => e.mobIndex));
     const notes = [];
     const skipped = [];
@@ -589,7 +606,7 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
       const interval = Math.round(1000 / mob.attackSpeed);
       if (!(interval > 0) || !Number.isFinite(interval)) return;
       // a debuff or a paralysis on the target may hold its clock; the mobs behind it carry none
-      if ((debuffed || held.has(j)) && j < segs.length) { skipped.push(j + 1); return; }
+      if ((debuffed.has(j) || held.has(j)) && j < segs.length) { skipped.push(j + 1); return; }
       notes.push(interval);
       const opp = [];
       for (const s of segs) {
@@ -602,7 +619,7 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
         }
       }
       const got = [...new Set(rows.filter((e) => e.mobIndex === j && MOB_SWING.has(e.type)).map((e) => e.timestamp))];
-      const fit = fitRandomClock(interval, opp, got, dt);
+      const fit = fitRandomClock(interval, opp, got, dt, openingTimer(interval, segs[0], interval - 1));
       if (fit.match) {
         if (got.length) for (let i = 0; i < got.length; i++) c.ok();
         else c.ok(); // no swing, and a start exists that leaves none in the window
@@ -864,9 +881,10 @@ export function dungeonReplayCheck(response, { attacker = null, mobs = null, mod
           pending.push(i);
         }
         const rest = idx.slice(k);
-        // a mob killed by the spell pass takes no combat tick, and the mobs behind it do not swing
+        // a mob killed by the spell pass takes no combat tick, and the mobs behind it do not swing (raid:
+        // the tick's combat part is the next fight's, §21.3)
         if (spellIdx.some((i) => rows[i].mobHpAfter <= 0)) {
-          for (const i of rest) if (rows[i].type !== 'mob_death') out.hp.push(['a combat row after a spell kill', { index: i, timestamp: t }]);
+          for (const i of rest) if (rows[i].type !== 'mob_death' && !MINION_TRAILER.has(rows[i].type)) out.hp.push(['a combat row after a spell kill', { index: i, timestamp: t }]);
           for (const i of pending) checkShield(i, t, 'at the end of its tick');
           continue;
         }

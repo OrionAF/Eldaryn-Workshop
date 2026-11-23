@@ -207,17 +207,14 @@ describe('the app\'s raid fight (simulatePve raid mode) against the replay rules
     for (const e of behind) expect(e.mobHpAfter).toBe(stepMobs[e.mobIndex].hp);
   });
 
-  it('the app runs the mobs and the regen pulse through the 500 ms after a target dies', () => {
+  it('the app fights the next target at once: the player swings at it within 500 ms of a death (§21.3)', () => {
     const stepMobs = raidMobs('raid_3', 7);
     const sim = simulatePve({ fighter: prepared, enemy: stepMobs, mode: 'raid', rng: laneRng(1), log: true });
     const t = dungeonResponseOf(sim, { shieldMax }).result.ticks;
-    const gapRows = [];
-    let death = null;
-    for (const e of t) {
-      if (e.type === 'mob_death') death = e.timestamp;
-      else if (death !== null && e.timestamp > death && e.timestamp <= death + 500) gapRows.push(e);
-    }
-    expect(gapRows.some((e) => e.type === 'mob_attack')).toBe(true);
-    expect(gapRows.every((e) => e.type === 'mob_attack' || e.type === 'player_regen' || e.type === 'player_block')).toBe(true);
+    const deaths = t.filter((e) => e.type === 'mob_death').map((e) => e.timestamp);
+    expect(deaths.length).toBeGreaterThan(1);
+    const early = t.filter((e) => (e.type === 'player_attack' || e.type === 'player_crit')
+      && deaths.some((d) => e.timestamp > d && e.timestamp < d + 500));
+    expect(early.length).toBeGreaterThan(0);
   });
 });
