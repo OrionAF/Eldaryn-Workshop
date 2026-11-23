@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { it, expect, vi, beforeEach } from 'vitest';
 import { defaultExportFilename, downloadRoster, loadRoster } from './storage.js';
 import { newRoster } from './model/index.js';

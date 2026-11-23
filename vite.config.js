@@ -30,6 +30,15 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    // Logic tests (engine, model, search, game data, scripts) never touch the DOM, so they run in plain
+    // Node; building a jsdom window per file cost about 0.85 s each. The few src/lib tests that do need
+    // localStorage/document/window declare `// @vitest-environment jsdom` on their first line, and one that
+    // forgets fails loudly with a ReferenceError. Component tests and src/*.test.js keep the jsdom default.
+    environmentMatchGlobs: [
+      ['src/lib/**', 'node'],
+      ['src/data/**', 'node'],
+      ['scripts/**', 'node'],
+    ],
     setupFiles: ['./src/test-setup.js'],
     // Agent worktrees live under .claude/worktrees inside the checkout; never collect their copies.
     exclude: [...configDefaults.exclude, '.claude/**'],

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { it, expect, beforeEach } from 'vitest';
 import { rosterStore } from '../rosterStore.svelte.js';
 import { floorScanInputs, floorScanRequest, FLOOR_EFFORT } from './oblivionDungeon.js';

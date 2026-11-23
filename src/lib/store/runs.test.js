@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
 import { rosterStore as store } from '../rosterStore.svelte.js';
 import { KEY } from '../storage.js';
