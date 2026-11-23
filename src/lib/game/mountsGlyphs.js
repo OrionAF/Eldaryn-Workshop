@@ -8,10 +8,14 @@ export const MOUNT_ALTAR_TIERS = mountsJson.altarTiers;
 export const MINOR_GLYPH_TYPES = mountsJson.minorGlyphTypes;
 export const MYTHIC_GLYPH_TYPES = mountsJson.mythicGlyphTypes;
 export const GLYPH_QUALITY_BANDS = mountsJson.glyphQualityBands;
-/** Highest secondary quality (Mythic and above roll past 1; Game/updates-2.8.2.md §4). */
+/** Highest secondary quality, 1.4 (Ancient and above; mounts-glyphs.md §9). */
 export const GLYPH_MAX_QUALITY = mountsJson.glyphMaxQuality;
-/** Weighted {from, to, weight} sub-bands of a Mythic+ roll. */
+/** Highest Mythic secondary quality, 1.2: the second display-step floor sits above it. */
+export const MYTHIC_GLYPH_MAX_QUALITY = mountsJson.mythicGlyphMaxQuality;
+/** Weighted {from, to, weight} sub-bands of a Mythic roll. */
 export const MYTHIC_GLYPH_QUALITY_TIERS = mountsJson.mythicGlyphQualityTiers;
+/** Weighted {from, to, weight} sub-bands of an Ancient roll. */
+export const ANCIENT_GLYPH_QUALITY_TIERS = mountsJson.ancientGlyphQualityTiers;
 export const GLYPH_SECONDARY_POOL = mountsJson.glyphSecondaryPool;
 /** 58 major glyph modifiers (16 Necromancer since 2.8.2). perRarity arrays index Common..Legendary (0..4). */
 export const MAJOR_GLYPHS = mountsJson.majorGlyphModifiers;

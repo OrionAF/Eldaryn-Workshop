@@ -1,7 +1,7 @@
 // Mount source (a10): the ridden mount's base percentages plus its socketed minor-glyph secondaries.
 // Pure; the caller resolves which glyphs are socketed on the ridden mount. Facts:
 // docs/Reference/Game/mounts-glyphs.md §4, §5, §9.
-import { GLYPH_SECONDARY_POOL } from '../../game/mountsGlyphs.js';
+import { GLYPH_SECONDARY_POOL, GLYPH_MAX_QUALITY, MYTHIC_GLYPH_MAX_QUALITY } from '../../game/mountsGlyphs.js';
 import { secondaryKey } from './pet.js';
 
 /** MOUNT_LEVEL_STAT_BONUS (mounts-glyphs.md §4) */
@@ -28,12 +28,22 @@ for (const p of GLYPH_SECONDARY_POOL) {
   poolByStat.set(p.stat, p);
 }
 
-// port of getGlyphSecondaryValue L1225432-1225546; stat may be the enum name or the camel key
+// port of glyphDisplayValue 2.9.8 L1265794-1265843 (mounts-glyphs.md Â§9): min + (max - min) x q; above
+// quality 1 at least max + one display step; above 1.2 (the Mythic top) at least the q = 1.2 value + one step
+function glyphDisplayValue(d, q) {
+  const step = 10 ** -d.decimals;
+  let v = d.minValue + (d.maxValue - d.minValue) * q;
+  if (q > 1) v = Math.max(v, d.maxValue + step);
+  if (q > MYTHIC_GLYPH_MAX_QUALITY) v = Math.max(v, glyphDisplayValue(d, MYTHIC_GLYPH_MAX_QUALITY) + step);
+  return parseFloat(v.toFixed(d.decimals));
+}
+
+// port of getGlyphSecondaryValue 2.9.8 L1266106-1266136 (clampGlyphQuality L1265761-1265773: [0, 1.4]);
+// stat may be the enum name or the camel key
 export function glyphSecondaryValue({ stat, quality }) {
   const d = poolByStat.get(stat);
   if (!d) return 0;
-  const q = Math.max(0, Math.min(1, quality));
-  return parseFloat((d.minValue + (d.maxValue - d.minValue) * q).toFixed(d.decimals));
+  return glyphDisplayValue(d, Math.max(0, Math.min(GLYPH_MAX_QUALITY, quality)));
 }
 
 /**
