@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { it, expect, afterEach } from 'vitest';
 import { createRawSnippet } from 'svelte';
 import { inspector } from './inspector.svelte.js';

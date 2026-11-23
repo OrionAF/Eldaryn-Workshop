@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
 import { router, go, areaHash, syncRouter } from './router.svelte.js';
 import { UI_KEY, loadUi, saveUi, defaultPrefs } from './uiState.js';
