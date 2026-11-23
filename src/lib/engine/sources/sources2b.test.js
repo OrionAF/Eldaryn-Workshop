@@ -109,6 +109,13 @@ describe('mount source', () => {
     expect(b.healthPercent).toBe(15);
     expect(b.critChance).toBe(0);
   });
+  it('a secondary above quality 1 adds its full value (glyphDisplayValue, 2.9.8 L1265794-1265843; clamp 1.4 L1265761)', () => {
+    // CRIT_CHANCE 0.6-5.0, one decimal: past 1 at least max + 0.1; past 1.2 at least value(1.2) + 0.1
+    const v = (quality) => glyphSecondaryValue({ stat: 'CRIT_CHANCE', quality });
+    expect([v(1), v(1.01), v(1.2), v(1.21), v(1.4), v(9)]).toEqual([5, 5.1, 5.9, 6, 6.8, 6.8]);
+    const b = calculateMountBonuses({ baseHp: 10, baseAtk: 8, level: 1 }, [{ sealed: false, secondary: { stat: 'CRIT_CHANCE', quality: 1.2 } }]);
+    expect(b.critChance).toBe(5.9);
+  });
   it('no mount gives zeros', () => {
     expect(Object.values(calculateMountBonuses(null)).every((v) => v === 0)).toBe(true);
   });

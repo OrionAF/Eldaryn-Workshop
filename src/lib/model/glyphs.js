@@ -22,12 +22,13 @@ import {
   GLYPH_SECONDARY_POOL,
   GLYPH_QUALITY_BANDS,
   GLYPH_MAX_QUALITY,
+  MYTHIC_GLYPH_MAX_QUALITY,
 } from '../game/mountsGlyphs.js';
 import { available } from '../game/classes.js';
 import { newId } from './character.js';
 
 /** Doc §8: rarity ladder for minor/major/mythic glyphs. Minor types fix their rarity; others pick per instance. */
-export const GLYPH_RARITY_LADDER = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic'];
+export const GLYPH_RARITY_LADDER = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Ancient'];
 /** Rarities a major or mythic-tier glyph can have (doc §8: top reachable is Legendary). Indexes perRarity arrays. */
 export const FREE_GLYPH_RARITIES = GLYPH_RARITY_LADDER.slice(0, 5);
 export const GLYPH_TIERS = ['minor', 'major', 'mythic'];
@@ -87,29 +88,39 @@ export function characterSpecs(character) {
   return [...new Set((character?.talentSets ?? []).map((t) => t?.spec).filter(Boolean))];
 }
 
-// clampGlyphQuality 2.8.2 L1249320-1249334
+// clampGlyphQuality 2.9.8 L1265761-1265773
 const clampQuality = (q) => Math.max(0, Math.min(GLYPH_MAX_QUALITY, q));
 
+// glyphDisplayValue 2.9.8 L1265794-1265843 (same rule as engine/sources/mount.js, which L3 may not import)
+function displayValue(def, q) {
+  const step = 10 ** -def.decimals;
+  let v = def.minValue + (def.maxValue - def.minValue) * q;
+  if (q > 1) v = Math.max(v, def.maxValue + step);
+  if (q > MYTHIC_GLYPH_MAX_QUALITY) v = Math.max(v, displayValue(def, MYTHIC_GLYPH_MAX_QUALITY) + step);
+  return parseFloat(v.toFixed(def.decimals));
+}
+
 /**
- * Value of a rolled secondary (getGlyphSecondaryValue 2.8.2 L1249592-1249648): `min + (max-min)*quality`
- * with quality clamped to [0, GLYPH_MAX_QUALITY]; above quality 1 at least one display step past max;
- * then parseFloat(toFixed(decimals)). Game/updates-2.8.2.md §4.
+ * Value of a rolled secondary (getGlyphSecondaryValue 2.9.8 L1266106-1266136): `min + (max-min)*quality`
+ * with quality clamped to [0, GLYPH_MAX_QUALITY 1.4]; above quality 1 at least one display step past max,
+ * above 1.2 at least one step past the 1.2 value; then parseFloat(toFixed(decimals)). Doc §9.
  */
 export function glyphSecondaryValue(secondary) {
   const def = poolByStat.get(secondary?.stat);
   if (!def) return 0;
-  const q = clampQuality(Number(secondary.quality) || 0);
-  let v = def.minValue + (def.maxValue - def.minValue) * q;
-  if (q > 1) v = Math.max(v, def.maxValue + 10 ** -def.decimals);
-  return parseFloat(v.toFixed(def.decimals));
+  return displayValue(def, clampQuality(Number(secondary.quality) || 0));
 }
 
-/** Inverse of glyphSecondaryValue: the quality (0..GLYPH_MAX_QUALITY) that gives `value`, clamped. */
+/**
+ * Inverse of glyphSecondaryValue: the quality (0..GLYPH_MAX_QUALITY) that gives `value`, clamped. A value
+ * at or below the 1.2 value maps to at most 1.2, so the floor above 1.2 does not push it one step up.
+ */
 export function glyphSecondaryQuality(stat, value) {
   const def = poolByStat.get(stat);
   const v = Number(value);
   if (!def || !Number.isFinite(v)) return 0;
-  return clampQuality((v - def.minValue) / (def.maxValue - def.minValue));
+  const q = clampQuality((v - def.minValue) / (def.maxValue - def.minValue));
+  return q > MYTHIC_GLYPH_MAX_QUALITY && v <= displayValue(def, MYTHIC_GLYPH_MAX_QUALITY) ? MYTHIC_GLYPH_MAX_QUALITY : q;
 }
 
 export const glyphSecondaryDef = (stat) => poolByStat.get(stat) ?? null;

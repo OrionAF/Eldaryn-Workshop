@@ -4,7 +4,7 @@ import {
   advanceMinionRespawn, elapseMinionRespawn, resummonIfDead, damageMinion, killMinion, summonMinion,
   soulLinkHeal, healMinionLifesteal, endMinionEmpower, carryMinionIntoNewFight, minionMsUntilSwing,
   mitigateMinionHit, openingSummonWindowMs, openingSwingTimerStart, minionCurrentLifesteal, currentSoulLink,
-  minionDeathMeta, minionDeathWardLeft, expireMinionDeathWard, rollMinionReap, endMinionBastion,
+  minionDeathMeta, minionDeathWardLeft, expireMinionDeathWard, rollMinionReap, endMinionBastion, summonDominionTier, minionTieBreakHp, minionBaseMaxHp,
 } from './minions.js';
 import { applyCombatCeiling, capConfig, softCapGainFromSheet } from './caps.js';
 import { scripted } from '../rng.js';
@@ -188,6 +188,31 @@ describe('Dominion tiers, Reap and Infernal Bastion (2.8.2 L1105444-1106900, L11
     const dg = { ...d, species: 'DREADGUARDS_PACT', minion: 'DEMON' };
     expect(createMinion(dg, p, { totalDominion: 4 }).dominion).toEqual({ blockChance: 16, damageReduction: 16, thornsPercent: 15 });
   });
+  it('PVE pact tiers add minion max HP; PVP and CELESTIAL do not (2.9.8 L1123698-1123752, minionMaxHpWithTier L1121355)', () => {
+    const owner = { maxHp: 1000, attack: 500, attackSpeed: 1, critDamage: 1.5 };
+    const dg = { ...d, species: 'DREADGUARDS_PACT', minion: 'DEMON', hpPercent: 100 };
+    const ol = { ...d, species: 'OVERLORDS_PACT', minion: 'GREATER_DEMON', hpPercent: 100 };
+    const hp = (cfg, dom, mode, extra = {}) => createMinion(cfg, owner, { totalDominion: dom, ...extra }, mode).maxHp;
+    // Dreadguard's Pact PVE tiers 1-5: +0/20/40/40/40 %; Overlord's Pact +0/30/70/70/70 %
+    expect([1, 2, 3, 4, 5].map((t) => hp(dg, t, 'PVE'))).toEqual([1000, 1200, 1400, 1400, 1400]);
+    expect([1, 2, 3, 4, 5].map((t) => hp(ol, t, 'PVE'))).toEqual([1000, 1300, 1700, 1700, 1700]);
+    for (const mode of ['PVP', 'CELESTIAL']) {
+      expect(hp(dg, 5, mode)).toBe(1000);
+      expect(hp(ol, 5, mode)).toBe(1000);
+    }
+    // stacks multiplicatively on Minion Health: floor(1000 * 1.1 * 1.7) = 1870
+    expect(hp(ol, 3, 'PVE', { totalMinionHealth: 10 })).toBe(1870);
+    // block/DR/thorns are the same in every mode
+    expect(createMinion(ol, owner, { totalDominion: 5 }, 'PVP').dominion).toEqual({ blockChance: 30, damageReduction: 30, thornsPercent: 20 });
+    expect(createMinion(ol, owner, { totalDominion: 5 }, 'PVE').dominion).toEqual({ blockChance: 30, damageReduction: 30, thornsPercent: 20 });
+    expect(() => createMinion(dg, owner, {}, 'ARENA')).toThrow(/Dominion mode/);
+  });
+  it('summonDominionTier clamps the level to 1-5 and is null for a species without a table', () => {
+    expect(summonDominionTier('DREADGUARDS_PACT', 99, 'PVE').maxHpPercent).toBe(40);
+    expect(summonDominionTier('DREADGUARDS_PACT', 0.5, 'PVE').maxHpPercent).toBe(0);
+    expect(summonDominionTier('DREADGUARDS_PACT', Number.NaN, 'PVE').maxHpPercent).toBe(0);
+    expect(summonDominionTier('CATACLYSM', 5, 'PVE')).toBeNull();
+  });
   it('rollMinionReap: one draw off cooldown, then the cooldown; minionSwing counts it down', () => {
     const m = createMinion(reaper, p2, { totalDominion: 4 });
     summonMinion(m);
@@ -241,5 +266,23 @@ describe('heals and buffs', () => {
     expect(mitigateMinionHit(1, 99)).toBe(1);
     expect(mitigateMinionHit(100, 0)).toBe(100);
     expect(openingSummonWindowMs([mk(), null])).toBe(1500);
+  });
+});
+
+describe('minionTieBreakHp (2.9.8 L1121960-1121995)', () => {
+  const m = (o) => ({ maxHp: 1000, hp: 1000, alive: true, ...o });
+  it('owner HP alone without a minion or a credit', () => {
+    expect(minionTieBreakHp(5000, null, 0.3)).toBe(5000);
+    expect(minionTieBreakHp(5000, m(), undefined)).toBe(5000);
+  });
+  it('less the missing base HP, plus credit x base HP; a dead minion counts as all missing', () => {
+    expect(minionTieBreakHp(5000, m(), 0.3)).toBe(5300);
+    expect(minionTieBreakHp(5000, m({ hp: 400 }), 0.3)).toBe(5000 - 600 + 300);
+    expect(minionTieBreakHp(5000, m({ alive: false, hp: 0 }), 0.15)).toBe(5000 - 1000 + 150);
+  });
+  it('an empower bonus is left out of the base, and HP above the base is capped at it', () => {
+    const e = m({ maxHp: 1200, hp: 1200, empowerBonusHp: 200 });
+    expect(minionBaseMaxHp(e)).toBe(1000);
+    expect(minionTieBreakHp(5000, e, 0.3)).toBe(5300);
   });
 });

@@ -28,7 +28,7 @@ import {
 import { applyBuffsToEntity, hasActiveBuffs, getBuffedMaxHp } from '../core/buffs.js';
 import { absorbWithShield } from '../core/shield.js';
 import {
-  advanceMinionRespawn, expireMinionDeathWard, minionSummonMeta, openingSummonWindowMs, openingSwingTimerStart, summonMinion,
+  advanceMinionRespawn, expireMinionDeathWard, minionSummonMeta, minionTieBreakHp, openingSummonWindowMs, openingSwingTimerStart, summonMinion,
 } from '../core/minions.js';
 import {
   buildCombatSpells, getEquippedShieldConfig, getEquippedSummonConfig, classifyShieldVariant,
@@ -608,12 +608,27 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
 
   // --- the result (L1457456-1457621) ---
   let attackerWon;
-  if (A.hp > 0 && D.hp > 0) { // time up (L1457456-1457524): clamp to max HP, strictly more raw HP wins
+  if (A.hp > 0 && D.hp > 0) {
+    // time up (2.9.8 L1695817-1695866): clamp to max HP; strictly more tie-break HP wins. A balance's
+    // minionTieBreakCredit (DEFAULT: the demon pacts) counts a living minion's HP for its owner
+    // (minionTieBreakHp); other species and configs without a credit compare raw HP.
     A.hp = Math.min(A.hp, A.maxHp);
     D.hp = Math.min(D.hp, D.maxHp);
-    attackerWon = A.hp > D.hp;
+    const credit = balance.minionTieBreakCredit;
+    const aCredit = aMin && credit ? credit[aMin.species] : undefined;
+    const dCredit = dMin && credit ? credit[dMin.species] : undefined;
+    const aTie = minionTieBreakHp(A.hp, aMin, aCredit);
+    const dTie = minionTieBreakHp(D.hp, dMin, dCredit);
+    attackerWon = aTie > dTie;
     const from = events.length;
-    if (log) events.push(duelEvent(elapsed, 'time_up', 0, A, D, false));
+    if (log) {
+      const ev = duelEvent(elapsed, 'time_up', 0, A, D, false);
+      if (aCredit !== undefined || dCredit !== undefined) {
+        ev.attackerTieBreakHp = Math.round(aTie);
+        ev.defenderTieBreakHp = Math.round(dTie);
+      }
+      events.push(ev);
+    }
     if (s.hasMinions) R.killMinionsOfDead(!attackerWon, attackerWon);
     if (log) {
       events.push(duelEvent(elapsed, attackerWon ? 'defender_dead' : 'attacker_dead', 0, A, D, false));

@@ -11,7 +11,7 @@ const DEFAULT_BOARD_BY_CLASS = {
   WARRIOR: 'WARRIOR',
   SENTINEL: 'SENTINEL',
   MYSTIC: 'MYSTIC/MAGE',
-  NECROMANCER: 'NECROMANCER/DOOMWEAVER',
+  NECROMANCER: 'NECROMANCER',
 };
 
 /** Core is free and pre-owned; sockets are inert in 2.7.0 (doc §7). */
@@ -19,7 +19,7 @@ export const isAllocatableKind = (kind) => ALLOCATABLE_KINDS.has(kind);
 
 /**
  * Board key for a class and (optional) spec key. Without a usable spec this is the class's default
- * flavour (Mage / Doomweaver), which has the same geometry as every other board of the class.
+ * board (Mystic: Mage), which has the same geometry as every other board of the class.
  */
 export function boardKeyFor(cls, spec = null) {
   const bySpec = spec ? transcendenceBoardKeyForSpec(spec) : null;
@@ -117,6 +117,15 @@ export function sanitiseAllocation(boardKey, ids) {
   return valid.filter((id) => connected.has(id));
 }
 
+/** A Necromancer Dominion node: priced on its own ladder, outside the slot counter (doc §5-§6, isDominionNode 2.9.8 L1259286). */
+export const isDominionNode = (node) => node?.special === 'DOMINION';
+
+/** Ichor of the d-th (0-indexed) Dominion node: [1, 5, 20, 50], the last repeating (dominionNodeCost 2.9.8 L1259294). */
+export function dominionNodeCost(d) {
+  const costs = TRANSCENDENCE_CONSTANTS.dominionNodeIchorCosts;
+  return costs[Math.min(Math.max(0, Math.floor(d)), costs.length - 1)];
+}
+
 /** Price of the n-th (1-indexed) filled slot (doc §6 brackets). */
 export function slotPrice(n) {
   return TRANSCENDENCE_COST_BRACKETS.find((x) => x.upTo == null || n <= x.upTo).cost;
@@ -137,15 +146,24 @@ export function nextNodeCost(count, kind) {
   return c;
 }
 
-/** Total Ichor in use by an allocation (doc §6 setTotalCost). Unknown ids and the core are skipped. */
+/**
+ * Total Ichor in use by an allocation (doc §6, setTotalCost 2.9.8 L1259429-1259527). Unknown ids and the
+ * core are skipped; a Dominion node takes the next Dominion price and leaves the slot counter alone.
+ */
 export function setTotalCost(boardKey, ids) {
   const g = boardGraph(boardKey);
   if (!g) return 0;
   let count = 0;
+  let dominions = 0;
   let total = 0;
   for (const id of ids) {
     const node = g.byId.get(id);
     if (!node || id === g.coreId) continue;
+    if (isDominionNode(node)) {
+      total += dominionNodeCost(dominions);
+      dominions += 1;
+      continue;
+    }
     total += nextNodeCost(count, node.kind);
     count += slotWeight(node.kind);
   }

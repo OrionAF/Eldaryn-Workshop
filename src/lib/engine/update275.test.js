@@ -148,7 +148,7 @@ describe('2.7.5 Greater Demon', () => {
     expect(r.hp).toBe(1e8);
     expect(r.ticks.find(x => x.type === 'minion_damaged').damage).toBe(70);
     expect(r.ticks.find(x => x.type === 'minion_thorns').damage).toBe(14);
-    expect(m.hp).toBe(15000 - 70);
+    expect(m.hp).toBe(25500 - 70); // PVE Overlord's Pact tier 5: 15000 x 1.7 (2.9.8 L1123698-1123752)
   });
   it('also intercepts PvP swings and reflects thorns; traced and quiet results agree', () => {
     const run = log => simulateArenaPvP(

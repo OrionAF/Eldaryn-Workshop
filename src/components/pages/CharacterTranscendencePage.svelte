@@ -152,7 +152,7 @@
   {#snippet meta()}
     <span class="hint">
       unlocks at level {TRANSCENDENCE_CONSTANTS.unlockLevel} - {classLabel(character.class)}
-      {board.flavor && board.flavor !== 'MAGE' ? board.flavor.toLowerCase() : ''} board · style follows the specialization of the active preset
+      {board.flavor === 'DRUID' ? 'druid' : ''} board{character.class === 'MYSTIC' ? ' · style follows the specialization of the active preset' : ''}
     </span>
   {/snippet}
 
