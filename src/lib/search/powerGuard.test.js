@@ -5,7 +5,8 @@ import { optimize } from './search.js';
 import { BLOCKS, createBuildSpace, normalisePowerFloor } from './space.js';
 import { rowViolations } from './result.js';
 import { makeObjective, resolveTarget } from './objectives.js';
-import { fixtureCharacter } from '../build/fixtures.js';
+import { fixtureCharacter, equipAncient } from '../build/fixtures.js';
+import { normaliseCharacter } from '../model/index.js';
 import { presetPower } from '../build/power.js';
 import { stableStringify } from '../engine/metrics.js';
 
@@ -14,8 +15,9 @@ const TINY = { level: 'quick', n0: 8, maxN: 32, randomStarts: 0 };
 const SHORT = { kind: 'dummy', seconds: 10 };
 // Full relic sets only are tried (stat dominance, backlog §16), so the saved set holds the strongest relics and the
 // others are weaker: swapping one in costs Power, which is what the guard must catch.
+// Main equips Flameborn, so the board holds no idle Ancient node for the space to give back (sigils.md §9).
 const character = (() => {
-  const c = fixtureCharacter('WARRIOR');
+  const c = normaliseCharacter(equipAncient(structuredClone(fixtureCharacter('WARRIOR')), 'FLAMEBORN'));
   const ids = Object.keys(c.relics);
   return { ...c, extraRelicSlots: 1, relics: Object.fromEntries(ids.map((id, i) => [id, 7 - i])) };
 })();
@@ -35,6 +37,16 @@ describe('the build space with a floor', () => {
     expect(free.admissible(free.start)).toBe(true);
     expect(createBuildSpace(character, 'p1', { powerFloor: P0 }).admissible(free.start)).toBe(true);
     expect(createBuildSpace(character, 'p1', { powerFloor: P0 + 1 }).admissible(free.start)).toBe(false);
+  });
+
+  it('an idle Ancient node costs Power, so under a floor it is kept; without one the start gives it back', () => {
+    const idle = fixtureCharacter('WARRIOR'); // Main equips no Ancient; the board still holds Flameborn's node
+    const P = presetPower(idle, 'p1').power;
+    const toggles = only('boardAllocation', 'relics');
+    expect(createBuildSpace(idle, 'p1', { toggles }).powerOf(createBuildSpace(idle, 'p1', { toggles }).start)).toBeLessThan(P);
+    const guarded = createBuildSpace(idle, 'p1', { toggles, powerFloor: P });
+    expect(guarded.powerOf(guarded.start)).toBe(P);
+    expect(guarded.admissible(guarded.start)).toBe(true);
   });
 
   it('every relic or pet choice below the floor is inadmissible, every one at or above it admissible', () => {

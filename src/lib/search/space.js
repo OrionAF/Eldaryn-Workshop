@@ -30,7 +30,7 @@ import { canonicalStoneAssignment, stoneAssignmentNeighbours, stoneSetKey } from
 import { canonicalRelicLevels, normaliseRelicBudget, relicLevel, relicProgressionAllowed, relicProgressionNeighbours } from './relicProgression.js';
 import { canonicalBoardAllocation, boardAllocationNeighbours, boardAllocationAllowed, normaliseIchorBudget, boardKeyOf } from './boardAllocation.js';
 import { canonicalAwakening, awakeningNeighbours, awakeningViolations } from './awakeningChoices.js';
-import { canRemoveNode } from '../transcendence.js';
+import { canRemoveNode, canAllocateNode } from '../transcendence.js';
 
 /** Search blocks in their fixed order (A.3). */
 export const BLOCKS = Object.freeze([
@@ -376,27 +376,35 @@ export function createBuildSpace(character, presetOrId, {
    * No Ancient sigil node without its Ancient (the user's rule, sigils.md §9): the node has no stats, so
    * one that no preset on the board equips only wastes points. When the board may change, a candidate
    * that does not equip a node's Ancient gives the node back, so unequipping and freeing are one change
-   * (canonicalise cannot revert the freeing alone). Nodes the saved board already leaves idle, and nodes
-   * another preset on the board equips, are left alone. Returns the new boardAllocation, or undefined.
+   * (canonicalise cannot revert the freeing alone). A node the saved board already leaves idle is freed
+   * too; only a node another preset on the board equips stays. Returns the new boardAllocation, or undefined.
    */
   function releaseIdleSigilNodes(c) {
     const board = runningBoardOf(character, c);
     if (!board) return undefined;
-    const saved = savedBoardIds(board.id);
-    const startUses = sigilBySpecies(preset.ancientSigilSpecies)?.transcendenceNode;
     const used = new Set([sigilBySpecies(c.ancientSigilSpecies)?.transcendenceNode]);
     for (const p of character.presets) {
       if (p.id !== presetId && effectiveTranscendencePreset(character, p)?.id === board.id) used.add(sigilBySpecies(p.ancientSigilSpecies)?.transcendenceNode);
     }
     const key = boardKeyOf(character, c);
     let ids = board.allocatedNodeIds ?? [];
-    for (const id of ids) {
-      const idleBefore = saved.includes(id) && id !== startUses;
-      if (id.startsWith('sig_') && !used.has(id) && !idleBefore && canRemoveNode(key, ids, id)) ids = ids.filter((x) => x !== id);
-    }
+    for (const id of ids) if (id.startsWith('sig_') && !used.has(id) && canRemoveNode(key, ids, id)) ids = ids.filter((x) => x !== id);
     return ids === board.allocatedNodeIds ? undefined : canonicalBoardAllocation(character, { boardId: board.id, allocatedNodeIds: ids });
   }
-  const savedBoardIds = (id) => character.transcendence?.presets?.find((b) => b.id === id)?.allocatedNodeIds ?? [];
+
+  /**
+   * The saved build, with any idle Ancient node already given back when the board may change: the node
+   * has no stats, so the score is the same, and every result then carries the freeing (sigils.md §9).
+   */
+  // An allocated node still counts towards Combat Power, so under a Power floor the node is kept: freeing
+  // it would push the saved build, and every move from it, below a floor set at the current Power.
+  function releasesIdleNodes() { return on.boardAllocation && floor == null; }
+
+  function startCandidate() {
+    const c = candidateOf(character, preset);
+    const released = releasesIdleNodes() ? releaseIdleSigilNodes(c) : undefined;
+    return released === undefined ? c : { ...c, boardAllocation: released };
+  }
 
   function legalise(c0) {
     const c = canon(c0);
@@ -416,7 +424,7 @@ export function createBuildSpace(character, presetOrId, {
     if (!(slots > 0 && ancient.has(anc) && isSigilSpeciesActiveForSpec(anc, cls, spec) && ancientActive(anc, runningBoardOf(character, c)))) {
       c.ancientSigilSpecies = null;
     }
-    if (on.boardAllocation) {
+    if (releasesIdleNodes()) {
       const released = releaseIdleSigilNodes(c);
       if (released !== undefined) c.boardAllocation = released;
     }
@@ -569,10 +577,21 @@ export function createBuildSpace(character, presetOrId, {
       if (slots === 0) return [];
       const spec = specOf(c);
       const board = runningBoardOf(character, c);
-      const pool = ancientSigils(cls).map((s) => s.species)
-        .filter((sp) => isSigilSpeciesActiveForSpec(sp, cls, spec) && ancientActive(sp, board));
+      const usable = ancientSigils(cls).filter((s) => isSigilSpeciesActiveForSpec(s.species, cls, spec));
+      const pool = usable.filter((s) => ancientActive(s.species, board)).map((s) => s.species);
+      // when the board may change, an Ancient whose path is already in place can take its node back in
+      // the same step (the start gives an idle node back, sigils.md §9); the budget is checked on admission
+      const reclaim = [];
+      if (on.boardAllocation && board) {
+        const ids = board.allocatedNodeIds ?? [], key = boardKeyOf(character, c);
+        for (const s of usable) {
+          if (pool.includes(s.species) || !s.transcendenceNode || !canAllocateNode(key, ids, s.transcendenceNode)) continue;
+          const withNode = { ...c, boardAllocation: canonicalBoardAllocation(character, { boardId: board.id, allocatedNodeIds: [...ids, s.transcendenceNode] }) };
+          reclaim.push(...withAncient(withNode, s.species));
+        }
+      }
       // unequipping also gives back its node when the board may change (legalise, no idle sigil nodes)
-      return [legalise({ ...c, ancientSigilSpecies: null }), ...pool.flatMap((sp) => withAncient(c, sp).map(legalise))];
+      return [legalise({ ...c, ancientSigilSpecies: null }), ...pool.flatMap((sp) => withAncient(c, sp)).map(legalise), ...reclaim.map(legalise)];
     },
     conditions(c) {
       if (!conditionsUnlocked(L)) return [];
@@ -762,7 +781,7 @@ export function createBuildSpace(character, presetOrId, {
     toggles: on,
     relicBudget: medals,
     boardIchorBudget: ichor,
-    start: candidateOf(character, preset),
+    start: startCandidate(),
     blocks,
     key,
     canonical: canon,
