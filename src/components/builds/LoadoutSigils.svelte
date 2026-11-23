@@ -32,6 +32,8 @@
   const owned = $derived(character.sigils.owned);
   const tier = $derived(character.sigils.altarTier);
   const slots = $derived(sigilSlotCap(character.level, cls));
+  // an equipped Ancient takes one of the sigil slots (sigils.md §2)
+  const genericCap = $derived(Math.max(0, slots - (preset.ancientSigilSpecies ? 1 : 0)));
   const utilityType = $derived(utilitySlotSpellType(cls, spec));
   const conditionsOpen = $derived(character.level >= SIGIL_CONDITIONS_LEVEL);
 
@@ -80,7 +82,7 @@
   {#snippet meta()}<span class="note">Altar tier <span class="num">{tier}</span> (same for all presets)</span>{/snippet}
   <div class="sigil-slots">
     {#each [0, 1, 2] as i (i)}
-      {#if i < slots}
+      {#if i < genericCap}
         {@const current = picks[i] ?? ''}
         <Select
           label="Sigil {i + 1}"
@@ -88,6 +90,11 @@
           options={[{ value: '', label: 'Empty' }, ...genericOptions.map((s) => ({ value: s.species, label: label(s), disabled: picks.includes(s.species) && current !== s.species }))]}
           onchange={(v) => setGeneric(i, v)}
         />
+      {:else if i < slots}
+        <div class="slot locked">
+          <span class="lbl">Sigil {i + 1}</span>
+          <span class="lock">Used by {sigilBySpecies(preset.ancientSigilSpecies)?.name ?? 'the Ancient'}</span>
+        </div>
       {:else}
         <div class="slot locked">
           <span class="lbl">Sigil {i + 1}</span>
@@ -120,7 +127,8 @@
           options={[{ value: '', label: 'Empty' }, ...ancientOptions.map((s) => ({ value: s.species, label: s.name }))]}
           onchange={(v) => rosterStore.setPresetSigils(preset.id, { ancient: v || null })}
         />
-        {#if ancientOptions.length === 0}<span class="hint">Unlock an Ancient in <a href="#/character/sigils">Sigils</a> first</span>{/if}
+        {#if ancientOptions.length === 0}<span class="hint">Unlock an Ancient in <a href="#/character/sigils">Sigils</a> first</span>
+        {:else}<span class="hint">Takes one of your {slots} sigil slots{!preset.ancientSigilSpecies && picks.length >= slots ? `; equipping it removes ${sigilBySpecies(picks.at(-1))?.name}` : ''}</span>{/if}
       </div>
     {:else}
       <div class="slot locked">

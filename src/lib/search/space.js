@@ -327,6 +327,7 @@ export function createBuildSpace(character, presetOrId, {
   const cls = character.class;
   const L = LEVEL(character);
   const slots = cls && sigilsUnlocked(L, cls) ? Math.min(PRESET_SIGIL_CAP, sigilSlotCap(L, cls)) : 0;
+  const genericSlots = (c) => Math.max(0, slots - (c.ancientSigilSpecies ? 1 : 0));
   const relicCap = relicSlotCap(L, character.extraRelicSlots);
   const talentCap = talentPointsForLevel(L);
   const owned = character.sigils?.owned ?? {};
@@ -377,13 +378,14 @@ export function createBuildSpace(character, presetOrId, {
     const generic = new Set(genericSigils(cls, spec).map((s) => s.species));
     const utility = new Set(utilitySigils(cls, spec).map((s) => s.species));
     const ancient = new Set(ancientSigils(cls).map((s) => s.species));
-    c.sigilSpecies = c.sigilSpecies.filter((sp) => owned[sp] && generic.has(sp)).slice(0, slots);
     if (!(slots > 0 && owned[c.utilitySigilSpecies] && utility.has(c.utilitySigilSpecies))) c.utilitySigilSpecies = null;
     if (!boardIds.includes(c.transcendencePresetId)) c.transcendencePresetId = boardOf(character, { transcendencePresetId: null })?.id ?? null;
     const anc = c.ancientSigilSpecies;
     if (!(slots > 0 && owned[anc] && ancient.has(anc) && isSigilSpeciesActiveForSpec(anc, cls, spec) && ancientActive(anc, runningBoardOf(character, c)))) {
       c.ancientSigilSpecies = null;
     }
+    // the Ancient takes one of the generic slots (sigils.md §2)
+    c.sigilSpecies = c.sigilSpecies.filter((sp) => owned[sp] && generic.has(sp)).slice(0, genericSlots(c));
     c.relicIds = c.relicIds.filter((id) => classRelics.has(id) && relicLevel(character, c, id) > 0).slice(0, relicCap);
     // Progression of an unequipped relic cannot improve this build.
     if (c.relicLevels) c.relicLevels = Object.fromEntries(Object.entries(c.relicLevels).filter(([id]) => c.relicIds.includes(id)));
@@ -498,7 +500,7 @@ export function createBuildSpace(character, presetOrId, {
       if (slots === 0) return [];
       const spec = specOf(c);
       const pool = genericSigils(cls, spec).map((s) => s.species).filter((sp) => owned[sp]);
-      return subsetsUpTo(pool, slots).map((sigilSpecies) => legalise({ ...c, sigilSpecies }));
+      return subsetsUpTo(pool, genericSlots(c)).map((sigilSpecies) => legalise({ ...c, sigilSpecies }));
     },
     utility(c) {
       if (slots === 0) return [];
@@ -511,7 +513,11 @@ export function createBuildSpace(character, presetOrId, {
       const board = runningBoardOf(character, c);
       const pool = ancientSigils(cls).map((s) => s.species)
         .filter((sp) => owned[sp] && isSigilSpeciesActiveForSpec(sp, cls, spec) && ancientActive(sp, board));
-      return [null, ...pool].map((ancientSigilSpecies) => legalise({ ...c, ancientSigilSpecies }));
+      // equipping into full slots means giving up one generic sigil: offer each one
+      const full = c.sigilSpecies.length >= slots;
+      return [null, ...pool].flatMap((ancientSigilSpecies) => (!ancientSigilSpecies || !full || c.ancientSigilSpecies
+        ? [legalise({ ...c, ancientSigilSpecies })]
+        : c.sigilSpecies.map((drop) => legalise({ ...c, ancientSigilSpecies, sigilSpecies: c.sigilSpecies.filter((sp) => sp !== drop) }))));
     },
     conditions(c) {
       if (!conditionsUnlocked(L)) return [];

@@ -3,7 +3,7 @@
 // Field meanings: Game/sigils.md §5-§6.
 import { scaledSigilSpell, spellTypeOf } from '../../lib/engine/sources/sigilScale.js';
 import { sigilBySpecies } from '../../lib/game/sigils.js';
-import { conditionLabel, ancientSigils, utilitySigils, genericSigils, maxSigilSlots, slotUnlockLevel } from '../../lib/model/sigils.js';
+import { conditionLabel, ancientSigils, utilitySigils, genericSigils, maxSigilSlots, genericSigilSlots, slotUnlockLevel } from '../../lib/model/sigils.js';
 
 const STAT_LABELS = {
   ATTACK_PERCENT: 'Attack',
@@ -208,7 +208,9 @@ export function equipItems(character, species) {
       if (!owned) reason = 'not owned';
       else if (!kind) reason = 'not usable on this spec';
       else if (slots === 0) reason = `unlocks at level ${slotUnlockLevel(1, character.class)}`;
-      else if (kind === 'generic' && preset.sigilSpecies.length >= slots) reason = 'no free slot';
+      else if (kind === 'generic' && preset.sigilSpecies.length >= genericSigilSlots(character.level, character.class, preset.ancientSigilSpecies)) {
+        reason = preset.ancientSigilSpecies ? 'no free slot (the Ancient takes one)' : 'no free slot';
+      }
     }
     return { id: preset.id, label: preset.name, checked: equipped, disabled: !!reason, meta: reason || undefined };
   });

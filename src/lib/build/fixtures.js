@@ -187,7 +187,8 @@ export function fixtureCharacter(cls, { spec = FIXTURE_SPECS[cls] } = {}) {
     presets: [
       {
         id: 'p1', name: 'Main', equipmentSet: 1, talentSet: 0, petId: 'pet-a', mountId: 'mount-a', relicIds,
-        sigilSpecies: loadout.generic, utilitySigilSpecies: loadout.utility, ancientSigilSpecies: loadout.ancient,
+        // three generics fill every slot, so no Ancient here; the Alt preset carries it (sigils.md §2)
+        sigilSpecies: loadout.generic, utilitySigilSpecies: loadout.utility, ancientSigilSpecies: null,
         transcendencePresetId: 'default', sheet: null,
       },
       {
