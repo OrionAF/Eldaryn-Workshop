@@ -1,7 +1,7 @@
 /**
- * Eldaryn Workshop base stylesheet. Design: docs/WIP/being-worked-on/redesign/
- * design-system.md ("Forge & Ember on Obsidian"); the token block below is
- * tokens.css verbatim except the font stacks, which add the size-adjusted
+ * Eldaryn Workshop base stylesheet. Design: docs/Reference/ui/design-system.md
+ * ("Forge & Ember on Obsidian"); the token block below is tokens.css (beside
+ * that file) verbatim except the font stacks, which add the size-adjusted
  * fallbacks declared here. Fonts are self-hosted (src/assets/fonts, OFL texts
  * alongside); the fallback metrics are approximate, not per-glyph measured.
  * Hex colours live only inside :root blocks (src/app.css.test.js enforces it).
