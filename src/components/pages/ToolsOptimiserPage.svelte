@@ -156,7 +156,7 @@
     return [...floorBlock, ...fightBlockers()];
   });
   function fightBlockers() {
-    if (setup.target.kind === 'celestial') return resolvedFull.error ? [{ text: resolvedFull.error }] : [];
+    if (setup.target.kind === 'celestial' || setup.target.kind === 'crusade') return resolvedFull.error ? [{ text: resolvedFull.error }] : [];
     if (!isPvp) return [];
     if (!opponents.length) return [{ text: 'PVP needs a saved opponent.', fix: 'Open Opponents', to: '#/tools/opponents' }];
     if (!pvpIds.length) return [{ text: 'Pick at least one opponent.' }];
@@ -405,7 +405,7 @@
             <span class="hint">Leave empty to survive the whole fight.</span>
           {/if}
           {#if setup.objective.kind === 'win-chance'}
-            <span class="hint" data-testid="win-chance-explain">Finds the build with the best chance to clear this. If builds are equal, it picks the one with the fewest changes. Speed does not matter.</span>
+            <span class="hint" data-testid="win-chance-explain">Finds the build with the best chance to clear this. If builds are equal, it picks the one with the fewest changes. {setup.target.kind === 'crusade' ? `Speed counts only through the run's ${resolvedTarget?.seconds ?? ''} s budget for all three bosses.` : 'Speed does not matter.'}</span>
           {/if}
           {#if setup.objective.kind === 'fastest-clear'}
             <NumberField
@@ -416,6 +416,9 @@
               onchange={(v) => (setup.objective = { kind: 'fastest-clear', tries: Math.round(v) })}
             />
             <span class="hint" data-testid="fastest-clear-explain">Rankings keep your best time, so this finds the build with the fastest clear you would get about once in this many tries. A failed try counts as no time.</span>
+          {/if}
+          {#if setup.objective.kind === 'stones'}
+            <span class="hint" data-testid="stones-explain">Counts the enchant stones the drop table gives per run for the bosses killed (a solo Normal run: 0.10, 0.25 or 0.35); the drop roll itself is not sampled.</span>
           {/if}
           {#if setup.objective.kind === 'win-rate' || setup.objective.kind === 'push'}
             <WinRateTarget bind:objective={setup.objective} start={targetLabel} rung={setup.target.kind === 'celestial' ? 'level' : 'step'} />

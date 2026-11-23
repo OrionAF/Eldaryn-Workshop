@@ -27,6 +27,13 @@ it('scalar and estimate formatting; null is n/a', () => {
   expect(fmtEstimate('p', null)).toBe('n/a');
 });
 
+it('Crusade stones print a fraction of a stone, signed for a contrast', () => {
+  expect(fmtScalar('stones', 0.35)).toBe('0.350 stones');
+  expect(fmtEstimate('stones', { est: 0.25, lo: 0.2, hi: 0.3 })).toBe('0.250 stones (0.200 stones to 0.300 stones)');
+  expect(fmtSigned('stones', -0.1)).toBe(`${M}0.100 stones`);
+  expect(fmtContrast('stones', { delta: 0.15, pct: 0.6 })).toBe('+0.150 stones');
+});
+
 it('contrast: dps prefers pct, signed', () => {
   expect(fmtContrast('dps', { delta: 500, pct: 0.068 })).toBe('+6.80%');
   expect(fmtContrast('dps', { delta: -500, pct: -0.068 })).toBe(`${M}6.80%`);

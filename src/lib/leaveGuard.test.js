@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const save = vi.hoisted(() => ({ state: { ok: true } }));

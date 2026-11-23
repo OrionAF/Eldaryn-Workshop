@@ -37,7 +37,7 @@ const optionsOf = (ui, label) =>
 it('lists the target kinds, with Oblivion only when unlocked and PVP disabled without opponents', () => {
   const { ui } = mountPicker();
   const kinds = [...ui.target.querySelectorAll('option')].map((o) => [o.value, o.disabled]);
-  expect(kinds.map(([v]) => v)).toEqual(['dummy', 'chapter', 'dungeon', 'raid', 'worldBoss', 'fortressBoss', 'custom', 'celestial', 'pvp']);
+  expect(kinds.map(([v]) => v)).toEqual(['dummy', 'chapter', 'dungeon', 'raid', 'worldBoss', 'fortressBoss', 'custom', 'celestial', 'crusade', 'pvp']);
   expect(kinds.find(([v]) => v === 'pvp')[1]).toBe(true);
   expect(ui.q('[data-testid="pvp-hint"]').textContent).toMatch(/saved opponent/);
 });
@@ -265,6 +265,25 @@ it('the Celestial difficulty, focus and hold count edit the tactics within the c
   setNumber(numberField(lv.ui, 'Level'), 95);
   expect(lv.state.target.level).toBe(95);
   expect(remount(lv.state).ui.q('[data-testid="celestial-level"]').textContent).toMatch(/Scaling level 95/);
+});
+
+it('the Crusade is a solo Normal run: Hard and Mythic are shown but disabled, with the win-rate objectives and stones', () => {
+  const { ui, state } = mountPicker();
+  pick(ui, 'Fight', 'crusade');
+  expect(state.target).toEqual({ kind: 'crusade', difficulty: 'NORMAL' });
+  expect(state.objective).toEqual({ kind: 'win-chance' });
+  const shown = mountPicker({ target: state.target, objective: state.objective });
+  const buttons = [...shown.ui.qa('[data-testid="crusade-difficulty"] button')].map((b) => [b.textContent.trim(), b.disabled]);
+  expect(buttons).toEqual([['Normal', false], ['Hard', true], ['Mythic', true]]);
+  expect(shown.ui.q('[data-testid="crusade-solo"]').textContent).toMatch(/Normal only.*Hard 2, Mythic and Mythic\+ 3 players/);
+  const box = shown.ui.q('[data-testid="fidelity"]');
+  expect(box.dataset.fidelity).toBe('server-model');
+  expect(box.textContent).toMatch(/simulateCrusadeFight/);
+  expect(box.textContent).toMatch(/UNRESOLVED/);
+  // a saved Mythic+ spec cannot run solo: it says why instead of throwing
+  const mythic = mountPicker({ target: { kind: 'crusade', difficulty: 'MYTHIC', mythicPlus: 3 }, objective: { kind: 'win-chance' } });
+  expect(mythic.ui.q('[data-testid="crusade-error"]').textContent).toMatch(/Mythic\+3 needs a party of 3/);
+  expect(mythic.ui.q('[data-testid="fidelity"]')).toBeNull();
 });
 
 it('a Celestial partner that is gone shows why the fight cannot run, without throwing', () => {

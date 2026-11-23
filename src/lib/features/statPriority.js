@@ -1,5 +1,5 @@
 // Stat priorities from leaderboard players (Tools › Stat Priorities). Pure: no imports, no store.
-// Method: docs/WIP/being-worked-on/spec-guide.md §Leaderboard guide. The data is
+// Method: docs/Reference/Notes/spec-guide.md §Leaderboard guide. The data is
 // src/data/statPriority.json, written by scripts/statPriority.mjs, which scores its preset brackets
 // with these same functions, so a level range picked on the page reads like a preset.
 //

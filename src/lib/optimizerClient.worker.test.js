@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Tests the Worker branch of optimizerClient.js and optimizerWorker.js with a fake Worker
  * (redesign plan A.10, finding #108).

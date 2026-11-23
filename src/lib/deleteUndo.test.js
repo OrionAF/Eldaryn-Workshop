@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { rosterStore } from './rosterStore.svelte.js';
 import { notifications, runAction, resetNotifications } from './notify.svelte.js';
