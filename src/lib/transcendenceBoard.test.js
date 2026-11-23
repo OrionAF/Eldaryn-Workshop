@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   boardKeyFor, boardGraph, isReachable, canAllocateNode, canRemoveNode, sanitiseAllocation, setTotalCost,
-  allocCost, removeRefund, validateAllocation, transcendenceBonuses, sideProgress, slotPrice,
+  allocCost, removeRefund, validateAllocation, transcendenceBonuses, sideProgress, slotPrice, dominionNodeCost,
 } from './transcendence.js';
 import { TRANSCENDENCE_BOARD_KEYS, transcendenceBoard } from './game/transcendence.js';
 import { normaliseCharacter, newCharacter, migrateCharacterFromV1, normaliseRoster } from './model/index.js';
@@ -95,8 +95,71 @@ describe('reachability, removal, cost', () => {
   it('boardKeyFor maps specs and falls back to the class default', () => {
     expect(boardKeyFor('MYSTIC', 'MYSTIC_DRUID')).toBe('MYSTIC/DRUID');
     expect(boardKeyFor('MYSTIC', null)).toBe('MYSTIC/MAGE');
-    expect(boardKeyFor('NECROMANCER', 'WARRIOR_TANK')).toBe('NECROMANCER/DOOMWEAVER');
+    expect(boardKeyFor('NECROMANCER', 'WARRIOR_TANK')).toBe('NECROMANCER');
+    expect(boardKeyFor('NECROMANCER', 'NECROMANCER_DEATHLORD')).toBe('NECROMANCER');
+    expect(boardKeyFor('NECROMANCER', 'NECROMANCER_DOOMWEAVER')).toBe('NECROMANCER');
     expect(boardKeyFor(null)).toBeNull();
+  });
+});
+
+describe('the Necromancer board (2.9.8: one NECRO board, Dominion nodes)', () => {
+  const bfs = (key) => {
+    const g = boardGraph(key);
+    const order = [];
+    const seen = new Set(['core']);
+    const queue = ['core'];
+    while (queue.length) {
+      for (const n of g.neighbors.get(queue.shift())) {
+        if (seen.has(n) || g.byId.get(n).kind === 'socket') continue;
+        seen.add(n);
+        order.push(n);
+        queue.push(n);
+      }
+    }
+    return order;
+  };
+  it('column 0 is the core side, left defense, right attack (necroSide L1258200)', () => {
+    const g = boardGraph('NECROMANCER');
+    expect(['n_0,-1', 'n_-1,-2', 'n_1,-2'].map((id) => g.byId.get(id).side)).toEqual(['core', 'defense', 'attack']);
+    expect(transcendenceBonuses('NECROMANCER', ['n_0,-1', 'n_0,-2', 'n_-1,-2', 'n_1,-2'])).toEqual({
+      hpPercent: 1, attackPercent: 0.8, minionAttackPercent: 0.8, spellDamageFlat: 0.8,
+    });
+  });
+  it('Dominion nodes sit at -3,-7 -4,-13 -5,-19 -8,-22 (L1260725-1260733) and cost 1/5/20/50 outside the slot counter (L1259294, L1259429)', () => {
+    const g = boardGraph('NECROMANCER');
+    const dom = [...g.byId.values()].filter((n) => n.special === 'DOMINION').map((n) => `${n.col},${n.row}`);
+    expect(dom).toEqual(['-3,-7', '-4,-13', '-5,-19', '-8,-22']);
+    expect(g.byId.get('n_-3,-7')).toMatchObject({ side: 'defense', kind: 'minor', name: 'Dominion', stats: [{ stat: 'dominionFlat', value: 1 }] });
+    expect([0, 1, 2, 3, 4, -1].map(dominionNodeCost)).toEqual([1, 5, 20, 50, 50, 1]);
+    const path = bfs('NECROMANCER');
+    const upTo = (id) => path.slice(0, path.indexOf(id) + 1);
+    // the first Dominion costs 1 and the next common still pays the slot price it would have paid without it
+    const before = upTo('n_-3,-7').filter((id) => id !== 'n_-3,-7');
+    expect(allocCost('NECROMANCER', before, 'n_-3,-7')).toBe(1);
+    const next = path[path.indexOf('n_-3,-7') + 1];
+    expect(g.byId.get(next).special).toBeUndefined();
+    expect(allocCost('NECROMANCER', [...before, 'n_-3,-7'], next)).toBe(allocCost('NECROMANCER', before, next));
+    expect(removeRefund('NECROMANCER', [...before, 'n_-3,-7'], 'n_-3,-7')).toBe(1);
+  });
+  it('the full board costs 13041 Ichor and reaches the documented ceilings (transcendence.md §6, §8)', () => {
+    const order = bfs('NECROMANCER');
+    expect(order).toHaveLength(271);
+    expect(validateAllocation('NECROMANCER', order)).toBe(13041);
+    const b = transcendenceBonuses('NECROMANCER', order);
+    const want = {
+      hpPercent: 41, attackPercent: 16.8, attackSpeedFlat: 0.06, hpRegenFlat: 12.6, spellDamageFlat: 17.6, spellCritChanceFlat: 8,
+      critDamageFlat: 26.6, spellVampFlat: 8.5, fearChanceFlat: 2.55, spellResistFlat: 6, minionAttackPercent: 14.4,
+      minionHealthPercent: 28.5, minionCritChanceFlat: 8, minionLifestealFlat: 8.5, soulLinkFlat: 3.4, minionAttackSpeedFlat: 0.17, dominionFlat: 4,
+    };
+    expect(Object.keys(b).sort()).toEqual(Object.keys(want).sort());
+    for (const [k, v] of Object.entries(want)) expect(b[k], k).toBeCloseTo(v, 6);
+  });
+  it('a saved allocation from the old Doomweaver/Deathlord boards keeps every id (same cells, same kinds)', () => {
+    // n_0,-2 and n_0,-5 were Dominion on the old Deathlord board; they now give Attack and HP Regen
+    const ids = ['n_0,-1', 'n_0,-2', 'not_0,-3', 'n_0,-4', 'n_0,-5', 'n_-1,-2', 'n_-1,-3', 'n_1,-2'];
+    const c = normaliseCharacter({ class: 'NECROMANCER', transcendence: { presets: [{ id: 'default', allocatedNodeIds: ids }], activePresetId: 'default' } });
+    expect(c.transcendence.presets[0].allocatedNodeIds).toEqual(ids);
+    expect(transcendenceBonuses('NECROMANCER', ['n_0,-2', 'n_0,-5'])).toEqual({ attackPercent: 0.8, hpRegenFlat: 0.6 });
   });
 });
 
