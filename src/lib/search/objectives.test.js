@@ -3,6 +3,7 @@ import {
   resolveTarget, makeObjective, objectiveKindsFor, closedFormDps, ehpProxy, SCREEN_SPELL_WEIGHT,
   TARGET_KINDS, residualFor, goalRetired, WIN_RATE_TARGET,
 } from './objectives.js';
+import { chapterMobs } from '../engine/pve/enemies.js';
 import { contrastSets } from './sampler.js';
 import { buildFighter } from '../build/fighter.js';
 import { fixtureCharacter } from '../build/fixtures.js';
@@ -42,7 +43,14 @@ describe('resolveTarget', () => {
     const c = resolveTarget({ kind: 'chapter', chapter: 2, level: 4 });
     expect(c.enemy).toHaveLength(3);
     // the engine's mode picks the tick, opening, resist rule and sequencing (fight.js PVE_MODES)
-    expect(c.opts).toEqual({ mode: 'campaign' });
+    // the previous level is the lead-in its Chrono Flux carries from; a retry ('empty') has none
+    expect(c.opts).toEqual({ mode: 'campaign', leadIn: chapterMobs(2, 3) });
+    expect(resolveTarget({ kind: 'chapter', chapter: 2, level: 1 }).opts.leadIn).toEqual(chapterMobs(1, 10));
+    expect(resolveTarget({ kind: 'chapter', chapter: 1, level: 1 }).opts).toEqual({ mode: 'campaign' });
+    expect(resolveTarget({ kind: 'chapter', chapter: 12, level: 1 }).opts).toEqual({ mode: 'campaign' });
+    const retry = resolveTarget({ kind: 'chapter', chapter: 2, level: 4, flux: 'empty' });
+    expect(retry.opts).toEqual({ mode: 'campaign' });
+    expect(retry.key).not.toBe(c.key);
     expect(resolveTarget({ kind: 'dungeon', id: 'dungeon_1', step: 1 }).opts).toEqual({ mode: 'dungeon' });
     expect(resolveTarget({ kind: 'raid', id: 'raid_1', step: 1 }).opts).toEqual({ mode: 'raid' });
     expect(resolveTarget({ kind: 'oblivion', floor: 3 }).opts).toEqual({ mode: 'oblivion' });

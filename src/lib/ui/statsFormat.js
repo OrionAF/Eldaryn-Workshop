@@ -1,11 +1,13 @@
 // ui/statsFormat.js - display of the A.9 Estimate / Contrast shapes. Units come from the objective
-// ('dps' | 'ms' | 'p'), plus 'damage' (a DPS run shown as damage per fight, optimiserView.js viewResult). Every signed figure, including both CI bounds, keeps its sign (#77).
+// ('dps' | 'ms' | 'p' | 'stones'), plus 'damage' (a DPS run shown as damage per fight, optimiserView.js viewResult). Every signed figure, including both CI bounds, keeps its sign (#77).
 import { formatFlat } from '../format.js';
 
 const MINUS = '−';
 
 const sec = (ms) => `${(ms / 1000).toFixed(2)} s`;
 const pct1 = (x) => `${(x * 100).toFixed(1)}%`;
+// enchant stones per run: a fraction of one stone (a Normal solo clear is 0.35), so three decimals
+const stones = (x) => `${x.toFixed(3)} stones`;
 
 const finite = (v) => v != null && Number.isFinite(v);
 
@@ -20,6 +22,7 @@ export function fmtScalar(unit, v) {
   if (unit === 'ms') return sec(v);
   if (unit === 'p') return pct1(v);
   if (unit === 'influence') return `${+v.toFixed(3)} Influence`;
+  if (unit === 'stones') return stones(v);
   return formatFlat(v);
 }
 
@@ -27,6 +30,7 @@ function body(unit, abs) {
   if (unit === 'ms') return sec(abs);
   if (unit === 'p') return `${(abs * 100).toFixed(1)} pts`;
   if (unit === 'influence') return `${+abs.toFixed(3)} Influence`;
+  if (unit === 'stones') return stones(abs);
   return formatFlat(abs).replace(/^-/, '');
 }
 

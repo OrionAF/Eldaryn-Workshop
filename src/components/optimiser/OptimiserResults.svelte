@@ -37,7 +37,10 @@
   let buildRow = $state(null);
   let drawer = $state(false);
 
-  const AXIS_TITLE = { dps: 'Change in DPS vs current', damage: 'Change in damage per fight vs current', ms: 'Time saved vs current (positive is faster)', p: 'Change in chance vs current', influence: 'Change in Influence from wins per attack vs current' };
+  const AXIS_TITLE = {
+    dps: 'Change in DPS vs current', damage: 'Change in damage per fight vs current', ms: 'Time saved vs current (positive is faster)', p: 'Change in chance vs current',
+    influence: 'Change in Influence from wins per attack vs current', stones: 'Change in expected enchant stones per run vs current',
+  };
   // A PVE win-rate run (either win-rate goal): one axis in win-rate points and tries per clear on every row; a
   // target goal adds a Meets / Below target chip per row. A Push run's rows are win-rate rows measured on the
   // step the build was found for (simulation.md §Push).

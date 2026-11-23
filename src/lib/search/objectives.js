@@ -15,18 +15,20 @@
 //   {kind: 'pvp', opponentIds: string[], seats}       saved opponents (pvpObjective.js); needs `{character}`
 //   {kind: 'celestial', difficulty, level?, partner, tank?, starter?, tactics?}   the Celestial Trial with a fixed
 //                                                     partner (celestialObjective.js); needs `{character, partner?}`
+//   {kind: 'crusade', difficulty, mythicPlus?}        a solo Hell Crusade run, 3 bosses in 300 s (crusadeObjective.js)
 // An OBJECTIVE is what "better" means: {kind: 'dps'|'survival', seconds?} (survival: custom mobs only) or
 // {kind: 'win-chance'} (the highest chance to clear the step before dying or the time cap),
 // {kind: 'win-rate', target?: 0.01..1} (the fewest changes that clear it at least that often; default 0.95) or
 // {kind: 'push', target?: 0.1..1} (the deepest rung of the target's ladder cleared at that rate; search/push.js runs it) or
 // {kind: 'fastest-clear', tries?: 2..100} (Celestial only: the clear time beaten about once in `tries` fights).
+// {kind: 'stones'} (Crusade only: the expected enchant stones per run).
 import { fightRng } from '../engine/rng.js';
 import {
   stableStringify, meanInterval, wilsonInterval, pairedT, pairedProportion, binomialUpper,
 } from '../engine/metrics.js';
 import { decide, quantileInterval, censoredQuantile, pairedQuantileDiff } from '../engine/stats/index.js';
 import { preparePveFighter, preparePveEnemy, simulatePve, trainingDummy, PVE_MODES } from '../engine/pve/fight.js';
-import { chapterMobs, dungeonMobs, raidMobs, oblivionFloorMob, worldBossMob } from '../engine/pve/enemies.js';
+import { chapterMobs, previousChapterLevel, dungeonMobs, raidMobs, oblivionFloorMob, worldBossMob } from '../engine/pve/enemies.js';
 import { raidById } from '../game/fortress.js';
 import { CLASSIC_DUNGEONS } from '../game/pveContent.js';
 import { WORLD_BOSS_AFFINITIES } from '../game/worldBoss.js';
@@ -42,9 +44,10 @@ import { ARENA_REWARD_KIND, makeArenaRewardObjective } from './arenaRewardObject
 import {
   resolveCelestialTarget, celestialRunner, celestialFightScore, celestialClearTime, CELESTIAL_TARGET_KIND,
 } from './celestialObjective.js';
+import { resolveCrusadeTarget, crusadeRunner, crusadeFightScore, crusadeStoneScore, CRUSADE_TARGET_KIND } from './crusadeObjective.js';
 
 // The PVE kinds. The PVP pair is kept apart: it is only valid together and needs the character's opponents.
-export const OBJECTIVE_KINDS = ['dps', 'survival', 'win-chance', 'win-rate', 'push', 'fastest-clear'];
+export const OBJECTIVE_KINDS = ['dps', 'survival', 'win-chance', 'win-rate', 'push', 'fastest-clear', 'stones'];
 
 /** The two win-rate goals (simulation.md §Win rate): 'win-chance' maximises the clear rate, 'win-rate' reaches a target. */
 export const isWinRateKind = (kind) => kind === 'win-chance' || kind === 'win-rate';
@@ -62,6 +65,7 @@ const COMPAT = {
   custom: ['dps', 'win-chance', 'win-rate', 'survival'],
   [PVP_TARGET_KIND]: [PVP_OBJECTIVE_KIND, ARENA_REWARD_KIND],
   [CELESTIAL_TARGET_KIND]: ['win-chance', 'win-rate', 'push', 'fastest-clear'],
+  [CRUSADE_TARGET_KIND]: ['win-chance', 'win-rate', 'stones'],
 };
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -135,9 +139,11 @@ export function resolveTarget(raw = { kind: 'dummy' }, { character, partner } = 
   const kind = raw?.kind;
   if (kind === PVP_TARGET_KIND) return resolvePvpTarget(raw, character);
   if (kind === CELESTIAL_TARGET_KIND) return resolveCelestialTarget(raw, { character, partner });
+  if (kind === CRUSADE_TARGET_KIND) return resolveCrusadeTarget(raw);
   if (!TARGET_KINDS.includes(kind)) throw new Error(`unknown target kind '${kind}'`);
   const t = { kind, spec: null, label: '', realm: null, enemy: null, maxMs: undefined, seconds: 0, opts: {} };
   let cut = false;
+  let leadIn = null;
   if (kind === 'dummy') {
     t.seconds = isNum(raw.seconds) && raw.seconds > 0 ? raw.seconds : 60;
     t.maxMs = t.seconds * 1000;
@@ -147,9 +153,13 @@ export function resolveTarget(raw = { kind: 'dummy' }, { character, partner } = 
   } else if (kind === 'chapter') {
     const mobs = posInt(raw.chapter) && posInt(raw.level) ? chapterMobs(raw.chapter, raw.level) : null;
     if (!mobs) throw new Error(`chapter ${raw.chapter} level ${raw.level} does not exist`);
-    t.spec = { kind, chapter: raw.chapter, level: raw.level };
+    // the bar carries from the level before unless asked for a retry (empty bar, sigils.md §9)
+    const empty = raw.flux === 'empty';
+    t.spec = { kind, chapter: raw.chapter, level: raw.level, ...(empty ? { flux: 'empty' } : {}) };
     t.enemy = mobs;
-    t.label = `${raw.chapter > 11 ? 'Hard chapter' : 'Chapter'} ${raw.chapter}, level ${raw.level}`;
+    t.label = `${raw.chapter > 11 ? 'Hard chapter' : 'Chapter'} ${raw.chapter}, level ${raw.level}${empty ? ', empty Chrono Flux' : ''}`;
+    const prev = empty ? null : previousChapterLevel(raw.chapter, raw.level);
+    if (prev) leadIn = chapterMobs(prev.chapter, prev.level);
   } else if (kind === 'dungeon') {
     const mobs = posInt(raw.step) && typeof raw.id === 'string' ? dungeonMobs(raw.id, raw.step) : null;
     if (!mobs) throw new Error(`dungeon '${raw.id}' step ${raw.step} does not exist`);
@@ -221,7 +231,7 @@ export function resolveTarget(raw = { kind: 'dummy' }, { character, partner } = 
     t.label = `Custom mob (${formatFlat(m.hp)} HP)`;
   }
   t.mode = kind === 'chapter' ? 'campaign' : kind;
-  t.opts = { mode: t.mode, ...(cut ? { applyOutputCut: true } : {}) };
+  t.opts = { mode: t.mode, ...(cut ? { applyOutputCut: true } : {}), ...(leadIn ? { leadIn } : {}) };
   t.assumptions = assumptionsOf(t.mode, { applyOutputCut: cut });
   t.fidelity = t.assumptions.some((a) => SERVER_RUN.has(a.id)) ? 'server-model' : 'client';
   t.key = stableStringify(t.spec);
@@ -348,6 +358,23 @@ function celestialSampler(target, outcome = celestialFightScore) {
       tr?.add(0, t0, r.timeMs);
     }
     return chunkOf(out, tr, false);
+  };
+}
+
+/**
+ * The Crusade sampler (simulation.md §Crusade): fight i is the solo run with rng fightRng(seed, i); the
+ * outcome is `score` of the run (crusadeFightScore for the win-rate family, crusadeStoneScore for stones).
+ */
+function crusadeSampler(target, score) {
+  const runner = crusadeRunner(target);
+  return (fighter, { seed, from = 0, to, signal }) => {
+    const { fight } = runner(fighter);
+    const out = [];
+    for (let i = from; i < to; i++) {
+      if (signal?.aborted) return { main: [out], side: {}, aborted: true };
+      out.push(score(fight(fightRng(seed, i))));
+    }
+    return { main: [out], side: {}, aborted: false };
   };
 }
 
@@ -615,6 +642,25 @@ export function makeObjective(raw = { kind: 'dps' }, target = resolveTarget({ ki
     });
   }
 
+  if (kind === 'stones') {
+    // the mean of each run's expected stones (the drop table's rate for the bosses it killed): the drop roll
+    // itself is not sampled, so the only noise is the fight's
+    return withLegacy({
+      ...common, key: stableStringify({ kind }), spec: { kind },
+      label: 'Expected enchant stones per run', unit: 'stones', higherIsBetter: true, statistic: 'mean', q: null,
+      deltaKind: 'absolute', window: target.seconds,
+      sample: crusadeSampler(target, crusadeStoneScore),
+      estimate(s, { alpha = 0.05 } = {}) {
+        const m = meanInterval(s.main[0], { alpha });
+        return { value: { est: m.est, lo: m.lo, hi: m.hi, n: s.n, level: level(alpha), alphaAdj: alpha, method: 't' }, aux: {} };
+      },
+      contrast(x, y, { alpha = 0.05 } = {}) {
+        return { ...pairedT(x.main[0], y.main[0], { alpha }), method: 'paired-t', ref: meanInterval(y.main[0]).est };
+      },
+      score: (s) => meanInterval(s.main[0]).est ?? 0,
+    });
+  }
+
   if (kind === 'push') {
     // Push (simulation.md §Push) scores each rung with the win-rate objective; this echo names the goal
     const w = makeObjective({ kind: 'win-rate', target: pushTarget(raw.target) }, target);
@@ -675,7 +721,9 @@ export function makeObjective(raw = { kind: 'dps' }, target = resolveTarget({ ki
       ...(max ? { ceiling: 1 } : {}),
       sample: target.kind === CELESTIAL_TARGET_KIND
         ? celestialSampler(target)
-        : pveSampler(target, { enemy: target.enemy, maxMs: target.maxMs }, (r, prepared) => winRateFightScore(r, prepared.inputs.player.maxHp)),
+        : target.kind === CRUSADE_TARGET_KIND
+          ? crusadeSampler(target, crusadeFightScore)
+          : pveSampler(target, { enemy: target.enemy, maxMs: target.maxMs }, (r, prepared) => winRateFightScore(r, prepared.inputs.player.maxHp)),
       /** The per-fight point a remainder is measured in: the win bit (win-rate points). */
       pointOf: winBit,
       estimate(s, { alpha = 0.05 } = {}) {
