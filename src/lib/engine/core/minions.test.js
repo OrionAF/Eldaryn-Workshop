@@ -4,7 +4,7 @@ import {
   advanceMinionRespawn, elapseMinionRespawn, resummonIfDead, damageMinion, killMinion, summonMinion,
   soulLinkHeal, healMinionLifesteal, endMinionEmpower, carryMinionIntoNewFight, minionMsUntilSwing,
   mitigateMinionHit, openingSummonWindowMs, openingSwingTimerStart, minionCurrentLifesteal, currentSoulLink,
-  minionDeathMeta, minionDeathWardLeft, expireMinionDeathWard, rollMinionReap, endMinionBastion, summonDominionTier,
+  minionDeathMeta, minionDeathWardLeft, expireMinionDeathWard, rollMinionReap, endMinionBastion, summonDominionTier, minionTieBreakHp, minionBaseMaxHp,
 } from './minions.js';
 import { applyCombatCeiling, capConfig, softCapGainFromSheet } from './caps.js';
 import { scripted } from '../rng.js';
@@ -266,5 +266,23 @@ describe('heals and buffs', () => {
     expect(mitigateMinionHit(1, 99)).toBe(1);
     expect(mitigateMinionHit(100, 0)).toBe(100);
     expect(openingSummonWindowMs([mk(), null])).toBe(1500);
+  });
+});
+
+describe('minionTieBreakHp (2.9.8 L1121960-1121995)', () => {
+  const m = (o) => ({ maxHp: 1000, hp: 1000, alive: true, ...o });
+  it('owner HP alone without a minion or a credit', () => {
+    expect(minionTieBreakHp(5000, null, 0.3)).toBe(5000);
+    expect(minionTieBreakHp(5000, m(), undefined)).toBe(5000);
+  });
+  it('less the missing base HP, plus credit x base HP; a dead minion counts as all missing', () => {
+    expect(minionTieBreakHp(5000, m(), 0.3)).toBe(5300);
+    expect(minionTieBreakHp(5000, m({ hp: 400 }), 0.3)).toBe(5000 - 600 + 300);
+    expect(minionTieBreakHp(5000, m({ alive: false, hp: 0 }), 0.15)).toBe(5000 - 1000 + 150);
+  });
+  it('an empower bonus is left out of the base, and HP above the base is capped at it', () => {
+    const e = m({ maxHp: 1200, hp: 1200, empowerBonusHp: 200 });
+    expect(minionBaseMaxHp(e)).toBe(1000);
+    expect(minionTieBreakHp(5000, e, 0.3)).toBe(5300);
   });
 });
