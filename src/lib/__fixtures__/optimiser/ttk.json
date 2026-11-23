@@ -83,7 +83,7 @@
   "tieGroup": null,
   "isBaseline": true,
   "provisional": false,
-  "key": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":null,\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+  "key": "{\"ancientSigilSpecies\":null,\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":null,\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
   "engineKey": "engine-pve:1afqgyx20oqm1:1466",
   "candidate": {
    "equipmentSet": 1,
@@ -99,7 +99,7 @@
     "CATACLYSM"
    ],
    "utilitySigilSpecies": null,
-   "ancientSigilSpecies": "FLAMEBORN",
+   "ancientSigilSpecies": null,
    "transcendencePresetId": "default",
    "sigilConditions": {}
   },
@@ -174,7 +174,7 @@
    },
    {
     "label": "Ancient sigil",
-    "value": "Flameborn"
+    "value": "None"
    },
    {
     "label": "Conditions",
@@ -192,7 +192,7 @@
    "tieGroup": null,
    "isBaseline": false,
    "provisional": false,
-   "key": "{\"ancientSigilSpecies\":\"FLAMEBORN\",\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":null,\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
+   "key": "{\"ancientSigilSpecies\":null,\"equipmentSet\":1,\"mountGlyphs\":null,\"mountId\":\"mount-a\",\"petId\":\"pet-a\",\"relicIds\":[\"relic_swift_emblem\"],\"sigilConditions\":{},\"sigilSpecies\":[\"BERSERK_STANCE\",\"WARBORN_FURY\",\"CATACLYSM\"],\"talentAllocation\":null,\"talentSet\":0,\"transcendencePresetId\":\"default\",\"utilitySigilSpecies\":null}",
    "engineKey": "engine-pve:v6959j1fyxc3f:1466",
    "candidate": {
     "equipmentSet": 1,
@@ -210,7 +210,7 @@
      "CATACLYSM"
     ],
     "utilitySigilSpecies": null,
-    "ancientSigilSpecies": "FLAMEBORN",
+    "ancientSigilSpecies": null,
     "transcendencePresetId": "default",
     "sigilConditions": {}
    },
@@ -356,7 +356,7 @@
     },
     {
      "label": "Ancient sigil",
-     "value": "Flameborn"
+     "value": "None"
     },
     {
      "label": "Conditions",

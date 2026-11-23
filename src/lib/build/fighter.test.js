@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fixtureCharacter } from './fixtures.js';
+import { fixtureCharacter, equipAncient } from './fixtures.js';
 import { buildFighter } from './fighter.js';
 import { computePresetStats } from './stats.js';
 import { newCharacter } from '../model/index.js';
@@ -34,7 +34,7 @@ describe('buildFighter', () => {
   });
 
   it('Warrior: ancient and glyphMods; utility is empty', () => {
-    const f = buildFighter(fixtureCharacter('WARRIOR'), 'p1');
+    const f = buildFighter(equipAncient(fixtureCharacter('WARRIOR'), 'FLAMEBORN'), 'p1');
     expect(f.ancient).toEqual({ species: 'FLAMEBORN', level: 1 });
     expect(f.utility).toBeNull();
     expect(f.glyphMods).toEqual([{ glyphType: 'sg-warborn-cd', rarity: 'Rare' }]);

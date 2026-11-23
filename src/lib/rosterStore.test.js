@@ -195,7 +195,7 @@ describe('presets', () => {
       equipmentSet: 2,
       talentSet: 1,
       relicIds: WR.slice(0, 4),
-      sigilSpecies: ['DEFENSE_STANCE', 'BERSERK_STANCE', 'CATACLYSM'],
+      sigilSpecies: ['DEFENSE_STANCE', 'BERSERK_STANCE'], // the Ancient takes the third slot
       utilitySigilSpecies: null, // a Warrior has no utility slot
       ancientSigilSpecies: 'FLAMEBORN',
     });

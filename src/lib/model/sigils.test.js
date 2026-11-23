@@ -151,6 +151,15 @@ describe('reconcileSigils', () => {
     expect(c.presets[0].sigilSpecies).toEqual(['CATACLYSM', 'IRON_BASTION']);
   });
 
+  it('an equipped Ancient takes a slot: 3 generics + an Ancient at a 3-slot level keeps the Ancient and the first 2 generics', () => {
+    const c = warrior(); // level 100: 3 slots
+    c.presets[0].sigilSpecies = ['CATACLYSM', 'IRON_BASTION', 'REJUVENATION'];
+    c.presets[0].ancientSigilSpecies = 'FLAMEBORN';
+    reconcileSigils(c);
+    expect(c.presets[0].ancientSigilSpecies).toBe('FLAMEBORN');
+    expect(c.presets[0].sigilSpecies).toEqual(['CATACLYSM', 'IRON_BASTION']);
+  });
+
   it('clears everything below the unlock level', () => {
     const c = warrior({ level: 24 });
     c.presets[0].sigilSpecies = ['CATACLYSM'];
