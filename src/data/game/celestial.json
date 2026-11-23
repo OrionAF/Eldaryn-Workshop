@@ -24,7 +24,7 @@
     "playerPowerProxy": "celestialPlayerPowerProxy(stats, resonanceMult) L1157065 = totalAttack*totalAttackSpeed*(1+totalCritChance/100*(totalCritDamage-1))*(1+totalDoubleHit/100)*resonanceMult",
     "partyPowerProxy": "celestialPartyPowerProxy(members, aggregation='MAX') L1158572: MAX (or SUM) of playerPowerProxy",
     "partyPowerHpMultiplier": "celestialPartyPowerHpMultiplier(proxy, cfg) L1158649 = proxy finite & >0 ? max(1, multiplier*(proxy/referenceProxy)^exponent) : 1  (MYTHIC only: 2.5, 0.75, 139e6; disabled since 2.9.4, L1186989)",
-    "rankScore": "celestialRankScore(entry, mythic) 2.9.4 L2131165 = mythic ? -bossLevel*1e9 + clearTimeMs : clearTimeMs (1e9 at L2131885); lower ranks first, so Mythic ranks by boss Oblivion Level, then time",
+    "rankScore": "celestialRankScore(entry) 2.9.8 L2144406-2144418 = celestialClearSeconds(clearTimeMs) * 1e6 - oblivionLevel, every difficulty; celestialClearSeconds(ms) = max(0, floor(ms / 1000)) L2144391-2144403; 1e6 at L2145183",
     "committedScalingLevel": "celestialCommittedScalingLevel(OL, difficulty) L1158449 = round(intercept + perOblivionLevel*max(1,OL)); null for MYTHIC. Presumably maps an Oblivion-committed character to a NORMAL/HARD boss level (caller server-side).",
     "dustRange": "get*DustRange(level, difficulty) L1157278/L1157386/L1157498: avg=baseAvgAtRef+max(0,level-ref)*perLevel; min=max(1,floor(avg)), max=max(1,ceil(avg)); roll=min+floor(rand*(max-min+1)); total split 1 unit at a time to random participants (rollCelestialDrops L1158913).",
     "glyphChance": "getGlyphRarityChances(tierCfg, level) L1157088: per rarity, linear interpolation between anchor levels, clamped to first/last anchor. Each rarity rolled independently (rand < chance), winner = random participant.",
@@ -884,7 +884,8 @@
           "attackPerBlockStack": 0.12,
           "maxBlockStacks": 60,
           "blockFuryDecayPerSec": 1.5,
-          "controlFuryFraction": 0.7
+          "controlFuryFraction": 0.7,
+          "blindedTankFuryFraction": 0.75
         },
         "JUDGMENT_STRIKE": {
           "enabled": true,
@@ -987,6 +988,7 @@
           "maxBlockStacks": 60,
           "blockFuryDecayPerSec": 1.5,
           "controlFuryFraction": 0.7,
+          "blindedTankFuryFraction": 0.75,
           "furyOblivionMaxBonus": 2,
           "furyOblivionHalfPoint": 120,
           "controlResonanceFloor": 15,
