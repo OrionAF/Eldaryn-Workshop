@@ -19,7 +19,7 @@
   import { fitView, startView } from './boardView.js';
   import Button from '../ui/Button.svelte';
 
-  let { boardKey, nodes, allocatedIds = [], highlightStats = null, highlightIds = null, readOnly = false, compact = false, onActivate = null, onSelect = null, onHover = null } = $props();
+  let { boardKey, nodes, allocatedIds = [], highlightStats = null, highlightIds = null, removedIds = null, readOnly = false, compact = false, onActivate = null, onSelect = null, onHover = null } = $props();
 
   // Same 700px breakpoint as the rest of the mobile nav contract - nodes are
   // the only interaction on this screen, so they need a real touch target
@@ -53,6 +53,19 @@
     for (const [id, near] of g.neighbors) {
       if (!owned(id)) continue;
       for (const other of near) if (id < other && owned(other)) out.push([g.byId.get(id), g.byId.get(other)]);
+    }
+    return out;
+  });
+  // A read-only diff's dropped links: each joins a removed node to a node the baseline tree also owned.
+  const removedEdges = $derived.by(() => {
+    const g = boardGraph(boardKey);
+    if (!g || !removedIds?.size) return [];
+    const was = (id) => id === g.coreId || allocatedSet.has(id) || removedIds.has(id);
+    const out = [];
+    for (const id of removedIds) {
+      for (const other of g.neighbors.get(id) ?? []) {
+        if (was(other) && !(removedIds.has(other) && other < id)) out.push([g.byId.get(id), g.byId.get(other)]);
+      }
     }
     return out;
   });
@@ -227,6 +240,9 @@
       {#each edges as [a, z] (a.id + z.id)}
         <line x1={cx(a.col)} y1={cy(a.row)} x2={cx(z.col)} y2={cy(z.row)} />
       {/each}
+      {#each removedEdges as [a, z] (a.id + z.id)}
+        <line class="removed" x1={cx(a.col)} y1={cy(a.row)} x2={cx(z.col)} y2={cy(z.row)} />
+      {/each}
     </svg>
     {#each nodes as node (node.id)}
       {@const unlockable = !readOnly && canAllocateNode(boardKey, allocatedIds, node.id)}
@@ -236,6 +252,7 @@
         {unlockable}
         cost={costOf(node, unlockable)}
         {readOnly}
+        removed={!!removedIds?.has(node.id)}
         highlighted={!!highlightIds?.has(node.id) || (!!highlightStats?.size && node.stats.some((s) => highlightStats.has(s.stat)))}
         onSelect={handleSelect}
         {onHover}
@@ -319,5 +336,11 @@
     stroke-width: calc(var(--cell-size) * 0.1);
     stroke-linecap: round;
     filter: drop-shadow(0 0 3px var(--tc-allocated));
+  }
+  .edges line.removed {
+    stroke: var(--tc-removed);
+    stroke-width: calc(var(--cell-size) * 0.07);
+    stroke-dasharray: calc(var(--cell-size) * 0.12) calc(var(--cell-size) * 0.16);
+    filter: none;
   }
 </style>
