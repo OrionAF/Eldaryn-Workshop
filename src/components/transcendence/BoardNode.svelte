@@ -13,7 +13,7 @@
   import { KIND_LABEL } from './statLabels.js';
   import { transcendenceImage } from '../../lib/assets/transcendence.js';
 
-  let { node, unlocked = false, unlockable = false, highlighted = false, readOnly = false, cost = null, onSelect = null, onHover = null } = $props();
+  let { node, unlocked = false, unlockable = false, highlighted = false, removed = false, readOnly = false, cost = null, onSelect = null, onHover = null } = $props();
 
   const SIDE_ICON = { attack: 'sword', defense: 'shield' };
   const icon = $derived(node.kind === 'socket' ? 'hex' : (SIDE_ICON[node.side] ?? null));
@@ -21,7 +21,7 @@
   const inert = $derived(node.kind === 'socket' || node.kind === 'start');
   const showCost = $derived(unlockable && cost != null);
   const checked = $derived(unlocked && (node.kind === 'notable' || node.kind === 'sigil'));
-  const stateText = $derived(readOnly ? (unlocked ? ', allocated' : ', not allocated') : showCost ? `, costs ${cost} Ichor` : unlocked ? ', allocated' : '');
+  const stateText = $derived(readOnly ? (removed ? ', removed by this build' : unlocked ? ', allocated' : ', not allocated') : showCost ? `, costs ${cost} Ichor` : unlocked ? ', allocated' : '');
 </script>
 
 <button
@@ -30,6 +30,7 @@
   class:unlocked
   class:unlockable
   class:highlighted
+  class:removed
   class:inert
   class:read-only={readOnly}
   disabled={inert && !readOnly}
@@ -71,6 +72,11 @@
   {/if}
   {#if node.kind === 'socket'}<span class="soon" aria-hidden="true">Soon</span>{/if}
   {#if showCost}<span class="cost num" aria-hidden="true">{cost}</span>{/if}
+  {#if removed}
+    <span class="minus" aria-hidden="true">
+      <svg viewBox="0 0 12 12"><path d="M3 6h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+    </span>
+  {/if}
   {#if checked}
     <span class="check" aria-hidden="true">
       <svg viewBox="0 0 12 12"><path d="M2.5 6.2 5 8.5l4.5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
@@ -166,6 +172,15 @@
     outline-offset: 2px;
   }
 
+  /* Dropped by a recommended tree (RecommendedTree's diff): its own colour, a dashed ring and a minus
+     badge, so it never reads as allocated or as merely unallocated. */
+  .tnode.removed {
+    border: 2px dashed var(--tc-removed);
+    background: linear-gradient(var(--tc-removed-tint), var(--tc-removed-tint)) var(--tc-node);
+    box-shadow: 0 0 8px var(--tc-removed-tint);
+    color: var(--tc-removed);
+  }
+
   .icon {
     width: 55%;
     height: 55%;
@@ -225,5 +240,17 @@
     color: var(--text-ink);
     pointer-events: none;
   }
-  .check svg { width: 100%; height: 100%; }
+  .check svg, .minus svg { width: 100%; height: 100%; }
+  .minus {
+    position: absolute;
+    top: calc(var(--node-size, 24px) * -0.2);
+    right: calc(var(--node-size, 24px) * -0.2);
+    width: calc(var(--node-size, 24px) * 0.42);
+    height: calc(var(--node-size, 24px) * 0.42);
+    display: flex;
+    border-radius: 50%;
+    background: var(--tc-removed);
+    color: var(--tc-board);
+    pointer-events: none;
+  }
 </style>

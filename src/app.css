@@ -171,6 +171,8 @@
   --tc-socket: #2dd4bf;
   --tc-socket-tint: rgba(45, 212, 191, 0.10);
   --tc-sigil: #4fa4ff;
+  --tc-removed: #b98cff;         /* a node a recommended tree drops (read-only diff); 7.4:1 on tc-board */
+  --tc-removed-tint: rgba(185, 140, 255, 0.18);
 
   /* ── Type ─────────────────────────────────────────────────────────────── */
   --font-display: 'Grenze', 'Grenze Fallback', 'Iowan Old Style', Georgia, serif;          /* titles >= 16px only */

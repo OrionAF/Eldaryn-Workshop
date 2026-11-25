@@ -416,9 +416,15 @@ it('Show full build draws the row\'s Transcendence tree read only, with its chan
   expect(tree.querySelector('[role="application"]').getAttribute('aria-label')).toMatch(/read only/);
   expect(tree.querySelectorAll('.tnode.unlocked')).toHaveLength(3);
   expect(tree.querySelectorAll('.tnode.highlighted')).toHaveLength(1);
+  const gone = tree.querySelectorAll('.tnode.removed');
+  expect(gone).toHaveLength(1);
+  expect(gone[0].classList.contains('unlocked')).toBe(false);
+  expect(gone[0].getAttribute('aria-label')).toMatch(/removed by this build/);
   expect(tree.querySelectorAll('.tnode.unlockable')).toHaveLength(0);
   click([...tree.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Open full tree'));
   expect(ui.q('dialog.modal.wide[open] [role="application"]')).not.toBeNull();
+  expect(ui.q('dialog.modal.wide[open] [data-testid="tree-legend"]').textContent).toMatch(/Added\s*Removed/);
+  expect(ui.qa('dialog.modal.wide[open] .tnode.removed')).toHaveLength(1);
 });
 
 it('Show full build omits the tree when the row kept none', () => {
