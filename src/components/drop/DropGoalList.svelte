@@ -11,7 +11,6 @@
    * the drop), max, onadd(goal), onupdate(id, goal), onremove(id).
    */
   import TargetPicker from '../tools/TargetPicker.svelte';
-  import ArenaRewardInputs from '../optimiser/ArenaRewardInputs.svelte';
   import Select from '../ui/Select.svelte';
   import NumberField from '../ui/NumberField.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
@@ -134,10 +133,7 @@
         label={draft.role === 'guard' ? 'Rate to keep' : 'Judge by'}
         options={allowed.map((k) => ({ value: k, label: OBJECTIVE_LABEL[k] ?? k }))}
         value={draft.objective.kind}
-        onchange={(v) => {
-          draft.objective = { kind: v };
-          if (v === 'arena-reward') draft.target = { ...draft.target, seats: 'attacker' };
-        }}
+        onchange={(v) => (draft.objective = { kind: v })}
       />
       {#if draft.role === 'guard'}
         <NumberField
@@ -148,9 +144,6 @@
           value={Math.round((draft.guard?.target ?? GUARD_TARGET.default) * 1000) / 10}
           onchange={(v) => (draft.guard = { target: Math.min(GUARD_TARGET.max, Math.max(GUARD_TARGET.min, v / 100)) })}
         />
-      {/if}
-      {#if draft.objective.kind === 'arena-reward'}
-        <ArenaRewardInputs bind:objective={draft.objective} target={draft.target} {opponents} />
       {/if}
       {#if draft.objective.kind === 'survival'}
         <NumberField

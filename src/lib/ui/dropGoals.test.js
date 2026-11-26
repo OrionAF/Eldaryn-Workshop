@@ -12,7 +12,7 @@ describe('ui/dropGoals', () => {
     expect(dropObjectiveKinds('dungeon')).toEqual(['win-chance']);
     expect(dropObjectiveKinds('dummy')).toEqual(['dps']);
     expect(dropObjectiveKinds('celestial')).toEqual(['win-chance', 'fastest-clear']);
-    expect(dropObjectiveKinds('pvp')).toEqual(['pvp-winrate', 'arena-reward']);
+    expect(dropObjectiveKinds('pvp')).toEqual(['pvp-winrate']);
   });
 
   it('a guard is offered only the rates it can hold', () => {

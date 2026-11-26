@@ -182,8 +182,8 @@
           {/each}
           {#if r.aux?.matchups?.length}
             <table class="matchups" data-testid="matchups">
-              <caption>{view.unit === 'influence' ? 'Influence from wins against each selected opponent' : 'Win rate against each opponent, as attacker and as defender'}</caption>
-              <thead><tr><th scope="col">Opponent</th><th scope="col">Seat</th><th scope="col">{view.unit === 'influence' ? 'Influence per attack' : 'Win rate'}</th><th scope="col">Fights</th><th scope="col">vs current</th></tr></thead>
+              <caption>Win rate against each opponent, as attacker and as defender</caption>
+              <thead><tr><th scope="col">Opponent</th><th scope="col">Seat</th><th scope="col">Win rate</th><th scope="col">Fights</th><th scope="col">vs current</th></tr></thead>
               <tbody>
                 {#each r.aux.matchups as m (m.opponentId + m.seat)}
                   <tr>
@@ -198,9 +198,7 @@
             </table>
             <details class="basis">
               <summary>How this works</summary>
-              {#if view.unit === 'influence'}
-                <p>Each attempt pays the displayed Influence only when it wins. The combined result gives each selected opponent equal weight. Exact binomial limits cover the reward-scaled win rates; paired comparisons reuse the same fights. Loss rewards and matchmaking are unknown.</p>
-              {:else}<p>Each row is measured on its own fights. Its likely range is a Wilson interval, and the ranges are not corrected for the number of rows.</p>{/if}
+              <p>Each row is measured on its own fights. Its likely range is a Wilson interval, and the ranges are not corrected for the number of rows.</p>
             </details>
           {/if}
           {#if r.aux?.winRate && !winRun}

@@ -7,7 +7,6 @@ import { fmtCount, fmtEstimate, fmtContrast, fmtContrastCi, verdictText } from '
 import { formatFlat, formatRate } from '../format.js';
 import { resolveEffort } from '../search/search.js';
 import { SCOPES } from '../search/patch.js';
-import { arenaRewardConfig } from '../search/arenaRewardObjective.js';
 
 /**
  * Measured cost of the Quick level on the Warrior fixture (simulation.md §Cost: measured before the A5
@@ -41,6 +40,7 @@ export const OBJECTIVE_LABEL = Object.freeze({
   'fastest-clear': 'Fastest clear (rankings)',
   stones: 'Expected enchant stones per run',
   'pvp-winrate': 'PVP win rate',
+  // retired 2026-11-26 (game 2.9.9: Arena rank no longer comes from Influence); the label stays for saved runs and goals
   'arena-reward': 'Arena Influence from wins',
 });
 
@@ -432,14 +432,8 @@ export function bestLine(progress) {
 export function effortPlan(level, objective, target) {
   // the objectives whose deltaKind is 'relative' (objectives.js makeObjective)
   const relative = objective?.kind === 'dps' || objective?.kind === 'fastest-clear';
-  let deltaScale;
-  if (objective?.kind === 'arena-reward') {
-    try { deltaScale = arenaRewardConfig(objective, target).scale; } catch { /* incomplete form */ }
-  }
-  const e = resolveEffort(level, { deltaKind: relative ? 'relative' : 'absolute', deltaScale });
-  const zone = objective?.kind === 'arena-reward'
-    ? deltaScale == null ? 'a reward difference (enter Arena positions)' : `${+e.delta.toFixed(3)} Influence per attack`
-    : relative ? `${+(e.delta * 100).toFixed(2)}%`
+  const e = resolveEffort(level, { deltaKind: relative ? 'relative' : 'absolute' });
+  const zone = relative ? `${+(e.delta * 100).toFixed(2)}%`
     // the stones objective's absolute zone is in stones per run, not in probability points
     : objective?.kind === 'stones' ? `${+e.delta.toFixed(4)} stones` : `${+(e.delta * 100).toFixed(1)} points`;
   return { ...e, zone, relative, sub: `spots ${zone} or more` };
