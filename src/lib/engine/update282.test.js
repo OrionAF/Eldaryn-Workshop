@@ -7,7 +7,7 @@ import { initSpellRuntimes, processSpellsTick } from './core/spells.js';
 import { getSigilSpellScaled } from './sources/sigilScale.js';
 import { sigilBySpecies } from '../game/sigils.js';
 import {
-  LEGACY_PVP_BALANCE, DEFAULT_PVP_BALANCE, FORTRESS_PVP_BALANCE, pvpFightLevel, pvpHpMultiplierFor,
+  LEGACY_PVP_BALANCE, DEFAULT_PVP_BALANCE, pvpFightLevel, pvpHpMultiplierFor,
   pvpLateFightDamageMult, rampDamage, rampDebuffTick,
 } from './pvp/balance.js';
 import { applyPvpHpBuff, applyPvpHpBuffPair } from './pvp/hpBuff.js';
@@ -30,10 +30,10 @@ describe('2.8.2 PVP HP level curve (§1)', () => {
     expect(hp(100)).toBe(24);
     expect(hp(undefined)).toBe(24);
   });
-  it('LEGACY is flat x8 and FORTRESS flat x1 at any level', () => {
+  it('LEGACY is flat x8 at any level, and a flat config returns its value', () => {
     for (const l of [1, 50, 95, undefined]) {
       expect(pvpHpMultiplierFor(LEGACY_PVP_BALANCE, l)).toBe(8);
-      expect(pvpHpMultiplierFor(FORTRESS_PVP_BALANCE, l)).toBe(1);
+      expect(pvpHpMultiplierFor({ hpMultiplier: { kind: 'flat', value: 1 } }, l)).toBe(1);
     }
   });
   it('both sides take one multiplier at the attacker\'s level, else the defender\'s', () => {

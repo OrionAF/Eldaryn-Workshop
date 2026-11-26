@@ -1,4 +1,4 @@
-// PvP balance configs (2.8.2 module 5735) and the damage ramp helpers of module 5734. Pure; no rng.
+// PvP balance configs (2.8.2 module 5735; LEGACY and DEFAULT only since 2.9.9, module 4914 @2.9.9 L1399346) and the damage ramp helpers of module 5734. Pure; no rng.
 // Rules: Game/updates-2.8.2.md §1-§2.
 import { PVP_BALANCE } from '../../game/combatPvp.js';
 
@@ -6,8 +6,6 @@ import { PVP_BALANCE } from '../../game/combatPvp.js';
 export const LEGACY_PVP_BALANCE = PVP_BALANCE.LEGACY;
 /** The live Arena / Clan War config: level-curve HP and double damage after 40 s. */
 export const DEFAULT_PVP_BALANCE = PVP_BALANCE.DEFAULT;
-/** Flat x1 HP, no late-fight rule. */
-export const FORTRESS_PVP_BALANCE = PVP_BALANCE.FORTRESS;
 
 // port of pvpFightLevel L1610891-1610903
 /** `level`, or `fallback` when level is null or undefined. */
@@ -41,7 +39,7 @@ export function pvpHpMultiplierFor(balance, level) {
 }
 
 // port of pvpDamageRampMult L1610998-1611029
-/** Early-fight damage ramp: startMult rising linearly to 1 over rampMs. 1 without a ramp (all three configs). */
+/** Early-fight damage ramp: startMult rising linearly to 1 over rampMs. 1 without a ramp (both configs). */
 export function pvpDamageRampMult(ramp, elapsedMs) {
   if (!ramp) return 1;
   if (!(elapsedMs < ramp.rampMs)) return 1;

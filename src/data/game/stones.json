@@ -1,5 +1,5 @@
 {
- "source": "decompiled.js: stat pools/type config L1205311-1205628 (module 4279); amplify constants L1206371-1206403 (module 4281); oblivion grades/base stats L1206738-1206809 (module 4282; 2.9.4: docs/2.9.4/gamedata/decompiled.js L1245099-1245521, module 4437); stone-type enum L669842-669854",
+ "source": "decompiled.js: stat pools/type config L1205311-1205628 (module 4279); amplify constants L1206371-1206403 (module 4281); oblivion grades/base stats L1206738-1206809 (module 4282; 2.9.4: docs/2.9.4/gamedata/decompiled.js L1245099-1245521, module 4437); stone-type enum L669842-669854; ATTACK_PERCENT added in 2.9.9: docs/2.9.9/gamedata/decompiled.js L1250931, attack pool L1250966, full pool L1251099",
  "notes": "Ranges are the client copy of server roll ranges. Full-pool stats exclude penetration. Percent stats are stored as percent numbers (2.5 = 2.5%). weightExponent is 2 for every stat. allowDuplicateStats=false for every type.",
  "weightExponent": 2,
  "stats": [
@@ -62,6 +62,16 @@
    "inPveAttackPool": true,
    "inPveDefensePool": false,
    "inFullPool": false
+  },
+  {
+   "stat": "attackPercent",
+   "gameEnum": "ATTACK_PERCENT",
+   "min": 0.9,
+   "max": 7.5,
+   "decimals": 1,
+   "inPveAttackPool": true,
+   "inPveDefensePool": false,
+   "inFullPool": true
   },
   {
    "stat": "spellDamage",
