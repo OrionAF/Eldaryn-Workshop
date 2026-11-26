@@ -120,6 +120,12 @@ it('the PVP branch picks opponents and a seat', () => {
   both.click();
   flushSync();
   expect(state.target.seats).toBe('both');
+  expect(ui.q('[data-testid="pvp-defence-hint"]')).toBeNull();
+  [...ui.qa('[data-testid="pvp-seats"] button')].find((b) => b.textContent.trim() === 'Defender').click();
+  flushSync();
+  expect(state.target.seats).toBe('defender');
+  const defending = mountPicker({ target: { kind: 'pvp', opponentIds: ['o1'], seats: 'defender' }, objective: { kind: 'pvp-winrate' } }, { opponents });
+  expect(defending.ui.q('[data-testid="pvp-defence-hint"]').textContent).toMatch(/Arena Defense Preset/);
 });
 
 const numberField = (ui, label) => [...ui.target.querySelectorAll('.field')].find((f) => f.querySelector('label')?.textContent.trim() === label)?.querySelector('input');
