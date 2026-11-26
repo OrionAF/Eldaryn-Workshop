@@ -40,7 +40,6 @@ import {
 import { formatFlat } from '../format.js';
 import { setOf, fightTrace } from './sampler.js';
 import { resolvePvpTarget, makePvpObjective, PVP_TARGET_KIND, PVP_OBJECTIVE_KIND } from './pvpObjective.js';
-import { ARENA_REWARD_KIND, makeArenaRewardObjective } from './arenaRewardObjective.js';
 import {
   resolveCelestialTarget, celestialRunner, celestialFightScore, celestialClearTime, CELESTIAL_TARGET_KIND,
 } from './celestialObjective.js';
@@ -63,7 +62,7 @@ const COMPAT = {
   worldBoss: ['dps'],
   fortressBoss: ['dps'],
   custom: ['dps', 'win-chance', 'win-rate', 'survival'],
-  [PVP_TARGET_KIND]: [PVP_OBJECTIVE_KIND, ARENA_REWARD_KIND],
+  [PVP_TARGET_KIND]: [PVP_OBJECTIVE_KIND],
   [CELESTIAL_TARGET_KIND]: ['win-chance', 'win-rate', 'push', 'fastest-clear'],
   [CRUSADE_TARGET_KIND]: ['win-chance', 'win-rate', 'stones'],
 };
@@ -592,10 +591,9 @@ const SCORE_SCALE = 1e6;
  */
 export function makeObjective(raw = { kind: 'dps' }, target = resolveTarget({ kind: 'dummy' })) {
   const kind = raw?.kind;
-  if (kind !== PVP_OBJECTIVE_KIND && kind !== ARENA_REWARD_KIND && !OBJECTIVE_KINDS.includes(kind)) throw new Error(`unknown objective kind '${kind}'`);
+  if (kind !== PVP_OBJECTIVE_KIND && !OBJECTIVE_KINDS.includes(kind)) throw new Error(`unknown objective kind '${kind}'`);
   if (!COMPAT[target.kind].includes(kind)) throw new Error(`objective '${kind}' cannot score a '${target.kind}' target`);
   if (kind === PVP_OBJECTIVE_KIND) return withLegacy(makePvpObjective(raw, target, { closedFormDps, ehpProxy }));
-  if (kind === ARENA_REWARD_KIND) return withLegacy(makeArenaRewardObjective(raw, target, makePvpObjective({ kind: PVP_OBJECTIVE_KIND }, target, { closedFormDps, ehpProxy })));
   if (kind === 'survival' && !enemyDealsDamage(target.enemy)) {
     throw new Error(`objective 'survival' cannot score '${target.label}': it deals no damage`);
   }

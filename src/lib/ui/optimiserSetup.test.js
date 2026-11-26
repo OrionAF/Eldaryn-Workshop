@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { defaultSetup, normaliseSetup, setupFromRun, requestOf, withTimeReserve, TIME_LIMITS, searchCharacter, signatureOf, runIsStale, runApplyBlock, powerFloorPicks, currentCrusadeGate } from './optimiserSetup.js';
+import { defaultSetup, normaliseSetup, setupFromRun, requestOf, withTimeReserve, TIME_LIMITS, searchCharacter, signatureOf, runIsStale, runApplyBlock, powerFloorPicks, currentCrusadeGate, retiredGoalBlock, RETIRED_GOAL_REASON } from './optimiserSetup.js';
 import { fixtureCharacter } from '../build/fixtures.js';
 import { normaliseCharacter } from '../model/index.js';
 import { cloneAsOpponent } from '../features/duel.js';
@@ -45,6 +45,12 @@ describe('normaliseSetup', () => {
     const s = normaliseSetup({ target: { kind: 'pvp', opponentIds: ['opp-a', 'ghost'], seats: 'both' }, objective: { kind: 'pvp-winrate' } }, c);
     expect(s.target).toEqual({ kind: 'pvp', opponentIds: ['opp-a'], seats: 'both' });
     expect(s.objective.kind).toBe('pvp-winrate');
+  });
+  it('a saved Arena Influence objective (retired) falls back to the PVP win rate and is marked retired', () => {
+    const c = withOpponent();
+    const s = normaliseSetup({ target: { kind: 'pvp', opponentIds: ['opp-a'], seats: 'attacker' }, objective: { kind: 'arena-reward', rank: 'INITIATE', position: 10 } }, c);
+    expect(s.objective).toEqual({ kind: 'pvp-winrate' });
+    expect(retiredGoalBlock({ target: { kind: 'pvp' }, objective: { kind: 'arena-reward' } })).toBe(RETIRED_GOAL_REASON);
   });
   it('keeps unticked blocks as explicit false and ignores unknown keys', () => {
     const s = normaliseSetup({ space: { relics: false, nonsense: true } }, character());

@@ -31,8 +31,6 @@ export function benchmarkCases(manifest) {
     { name: 'warrior-dummy', character: w, target: { kind: 'dummy', seconds: 60 }, objective: { kind: 'dps' } },
     { name: 'warrior-dungeon', character: w, target: { kind: 'dungeon', id: 'dungeon_4', step: 1 }, objective: { kind: 'win-chance' } },
     { name: 'arena-winrate', character: w, target: { kind: 'pvp', opponentIds: ['opponent'], seats: 'attacker' }, objective: { kind: 'pvp-winrate' } },
-    { name: 'arena-influence', character: w, target: { kind: 'pvp', opponentIds: ['opponent'], seats: 'attacker' },
-      objective: { kind: 'arena-reward', rank: 'INITIATE', position: 10, opponentPositions: { opponent: 7 } } },
     { name: 'fortress', character: w, target: { kind: 'fortressBoss', group: 'TOP', stars: 1, aliveDefenders: 0, server: 5, kills: 0 }, objective: { kind: 'dps' } },
     { name: 'mage-dummy', character: m, target: { kind: 'dummy', seconds: 60 }, objective: { kind: 'dps' } },
   ];

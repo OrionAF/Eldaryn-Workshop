@@ -284,7 +284,7 @@ const precisionOf = (p) => DROP_PRECISION[p] ?? DROP_PRECISION.standard;
  * Objective kinds Drop Check judges a drop by. `win-rate` ("fewest changes to reach X") and `push` (a ladder
  * search) mean nothing for one swap (docs/Reference/Notes/drop-check-goals.md §3.2).
  */
-export const DROP_OBJECTIVE_KINDS = Object.freeze(['dps', 'win-chance', 'fastest-clear', 'pvp-winrate', 'arena-reward', 'survival']);
+export const DROP_OBJECTIVE_KINDS = Object.freeze(['dps', 'win-chance', 'fastest-clear', 'pvp-winrate', 'survival']);
 /** Objective kinds a guard can hold to a rate: the ones whose statistic is a proportion. */
 export const GUARD_OBJECTIVE_KINDS = Object.freeze(['win-chance', 'pvp-winrate', 'survival']);
 const DEFAULT_GUARD_TARGET = 0.95;
