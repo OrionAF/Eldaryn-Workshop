@@ -197,9 +197,12 @@
         {/each}
       </div>
     </div>
-      <div class="field" data-testid="pvp-seats">
+    <div class="field" data-testid="pvp-seats">
       <span class="lbl">My seat</span>
       <SegmentedControl label="My seat" options={seatOptions} value={target.seats} onchange={(v) => patch({ seats: v })} />
+      {#if target.seats === 'defender'}
+        <span class="hint" data-testid="pvp-defence-hint">Scores this build as your Arena Defense Preset: the opponents attack it.</span>
+      {/if}
     </div>
   {:else if target.kind === 'celestial'}
     <div class="field" data-testid="celestial-difficulty">
