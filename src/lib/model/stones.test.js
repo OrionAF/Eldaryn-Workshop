@@ -41,17 +41,18 @@ describe('stoneRecipe (stones.md §1)', () => {
   it('PVE stones: 2 free stats from their own pool, nothing guaranteed', () => {
     const atk = stoneRecipe('PVE_ATTACK');
     expect(atk).toMatchObject({ guaranteed: [], choice: null, freeCount: 2 });
-    expect(atk.freePool).toHaveLength(14);
+    expect(atk.freePool).toHaveLength(15);
+    expect(atk.freePool).toContain('ATTACK_PERCENT');
     expect(atk.freePool).toContain('PENETRATION');
     const def = stoneRecipe('PVE_DEFENSE');
     expect(def.freePool).toHaveLength(11);
   });
 
-  it('Azure: one PvP stat from a weighted pair plus one free stat from the full pool of 24', () => {
+  it('Azure: one PvP stat from a weighted pair plus one free stat from the full pool of 25', () => {
     const r = stoneRecipe('PVP');
     expect(r.choice).toEqual(['PVP_ATTACK', 'PVP_DEFENSE']);
     expect(r.freeCount).toBe(1);
-    expect(r.freePool).toHaveLength(24);
+    expect(r.freePool).toHaveLength(25);
     expect(r.freePool).not.toContain('PENETRATION');
   });
 

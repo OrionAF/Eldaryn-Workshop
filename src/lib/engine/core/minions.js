@@ -238,17 +238,17 @@ export function soulLinkHeal(m, damage) {
 /** Max HP without a running empower's bonus. */
 export const minionBaseMaxHp = (m) => m.maxHp - (m.empowerBonusHp ?? 0);
 
-// port of minionTieBreakHp 2.9.8 L1121960-1121995
+// port of minionTieBreakHp 2.9.9 L1117897-1117930
 /**
  * The owner's HP for the PvP timeout tie-break (combat-pvp.md Â§10): without a minion or a credit for its
- * species, `ownerHp`; else `ownerHp` less the minion's missing base HP (all of it when dead), plus
- * `credit` x its base max HP.
+ * species, `ownerHp`; else `ownerHp` plus `credit` x the living minion's HP, capped at its base max HP
+ * (a dead minion adds nothing).
  */
 export function minionTieBreakHp(ownerHp, m, credit) {
   if (!m || credit === undefined) return ownerHp;
   const base = minionBaseMaxHp(m);
   const left = m.alive ? Math.max(0, Math.min(m.hp, base)) : 0;
-  return ownerHp - (base - left) + credit * base;
+  return ownerHp + credit * left;
 }
 
 // port of endMinionEmpower: removes the empower bonus HP; true when an empower was active.

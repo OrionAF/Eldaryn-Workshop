@@ -3,7 +3,7 @@ import { simulateArenaPvP, runDuel, fighterDuelArgs, completeDuelStats, NEUTRAL_
 import { applyPvpHpBuff } from './hpBuff.js';
 import { parseEventType, duelEvent, SIDE_EVENT_KINDS } from './events.js';
 import { mulberry32, scripted } from '../rng.js';
-import { LEGACY_PVP_BALANCE, DEFAULT_PVP_BALANCE, FORTRESS_PVP_BALANCE } from './balance.js';
+import { LEGACY_PVP_BALANCE, DEFAULT_PVP_BALANCE } from './balance.js';
 import { getEquippedSummonConfig } from '../core/spellConfig.js';
 import { createMinion } from '../core/minions.js';
 
@@ -77,7 +77,7 @@ describe('simulateArenaPvP: time up (L1457456-1457524)', () => {
     expect(r.ticks.at(-1).type).toBe('attacker_dead');
   });
 
-  it('DEFAULT credits a living demon pact (Dreadguard 0.3 of its base HP, 2.9.8 L1395089-1395098, L1695817-1695866)', () => {
+  it('DEFAULT credits a living demon pact (0.4 of its current HP, 2.9.9 L1400096-1400106, L1117897-1117930)', () => {
     const cfg = getEquippedSummonConfig({ ownedSigils: [{ species: 'DREADGUARDS_PACT', level: 1 }], utilitySlotSpecies: 'DREADGUARDS_PACT' });
     const a = sheet({ totalHp: 980, totalAttack: 0 }); // 7840
     const d = sheet({ totalAttack: 0 }); // 8000, less the demon's 1-damage strikes
@@ -86,15 +86,15 @@ describe('simulateArenaPvP: time up (L1457456-1457524)', () => {
     const legacy = duel(LEGACY_PVP_BALANCE);
     expect(legacy.attackerWon).toBe(false);
     expect(legacy.ticks.find((e) => e.type === 'time_up')).not.toHaveProperty('attackerTieBreakHp');
-    // DEFAULT: 7840 + 0.3 x the untouched demon's max HP beats 7920
+    // DEFAULT: 7840 + 0.4 x the untouched demon's HP beats 7920
     const demonHp = createMinion(cfg, { maxHp: 7840, attack: 0, attackSpeed: 1, critDamage: 1.5 }, a, 'PVP').maxHp;
     const live = duel(DEFAULT_PVP_BALANCE);
     expect(live.attackerWon).toBe(true);
     expect(live.ticks.find((e) => e.type === 'time_up')).toMatchObject({
-      attackerHpAfter: 7840, defenderHpAfter: 7920, attackerTieBreakHp: Math.round(7840 + 0.3 * demonHp), defenderTieBreakHp: 7920,
+      attackerHpAfter: 7840, defenderHpAfter: 7920, attackerTieBreakHp: Math.round(7840 + 0.4 * demonHp), defenderTieBreakHp: 7920,
     });
-    expect(DEFAULT_PVP_BALANCE.minionTieBreakCredit).toEqual({ OVERLORDS_PACT: 0.15, DREADGUARDS_PACT: 0.3 });
-    expect([LEGACY_PVP_BALANCE.minionTieBreakCredit, FORTRESS_PVP_BALANCE.minionTieBreakCredit]).toEqual([null, null]);
+    expect(DEFAULT_PVP_BALANCE.minionTieBreakCredit).toEqual({ OVERLORDS_PACT: 0.4, DREADGUARDS_PACT: 0.4 });
+    expect(LEGACY_PVP_BALANCE.minionTieBreakCredit).toBeNull();
   });
 
   it('reports both x8 pools', () => {

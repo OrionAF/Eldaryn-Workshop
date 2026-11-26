@@ -71,26 +71,12 @@
      "rampMs": 0
     },
     "minionTieBreakCredit": {
-     "OVERLORDS_PACT": 0.15,
-     "DREADGUARDS_PACT": 0.3
+     "OVERLORDS_PACT": 0.4,
+     "DREADGUARDS_PACT": 0.4
     }
-   },
-   "FORTRESS": {
-    "hpMultiplier": {
-     "kind": "flat",
-     "value": 1
-    },
-    "shieldBaseMultiplier": 2,
-    "damageRamp": null,
-    "spellCritDamageFactor": 1,
-    "ccDiminishing": null,
-    "symmetricControl": false,
-    "lateFightHealDecay": null,
-    "lateFightDamage": null,
-    "minionTieBreakCredit": null
    }
   },
-  "note": "LEGACY reads ARENA_CONSTANTS.PVP_HP_MULTIPLIER and PVP_SHIELD_BASE_MULTIPLIER; DEFAULT spreads LEGACY and replaces hpMultiplier and lateFightDamage; FORTRESS is the empty base with a flat x1 HP multiplier. simulateArenaPvP takes the config as its 15th argument (default LEGACY); the Arena Buff badge (module 5733) reads DEFAULT. Game/updates-2.8.2.md §1-§2."
+  "note": "LEGACY reads ARENA_CONSTANTS.PVP_HP_MULTIPLIER and PVP_SHIELD_BASE_MULTIPLIER; DEFAULT spreads LEGACY and replaces hpMultiplier, lateFightDamage and minionTieBreakCredit (0.4 for both demon pacts since 2.9.9, L1400096-1400106). FORTRESS (flat x1 HP) was removed from the client in 2.9.9: module 4914 @2.9.9 L1399346 exports LEGACY and DEFAULT only. simulateArenaPvP takes the config as its 15th argument (default LEGACY); the Arena Buff badge (module 5733) reads DEFAULT. Game/updates-2.8.2.md §1-§2."
  },
  "ranks": {
   "lines": [
@@ -647,8 +633,8 @@
    "LOG_HARD_CAP_EVENTS": 40000,
    "STRICT_LOG": false,
    "MINION_TIE_BREAK_CREDIT": {
-    "OVERLORDS_PACT": 0.15,
-    "DREADGUARDS_PACT": 0.3
+    "OVERLORDS_PACT": 0.4,
+    "DREADGUARDS_PACT": 0.4
    }
   }
  },

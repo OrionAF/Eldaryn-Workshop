@@ -269,20 +269,22 @@ describe('heals and buffs', () => {
   });
 });
 
-describe('minionTieBreakHp (2.9.8 L1121960-1121995)', () => {
+describe('minionTieBreakHp (2.9.9 L1117897-1117930)', () => {
   const m = (o) => ({ maxHp: 1000, hp: 1000, alive: true, ...o });
   it('owner HP alone without a minion or a credit', () => {
     expect(minionTieBreakHp(5000, null, 0.3)).toBe(5000);
     expect(minionTieBreakHp(5000, m(), undefined)).toBe(5000);
   });
-  it('less the missing base HP, plus credit x base HP; a dead minion counts as all missing', () => {
-    expect(minionTieBreakHp(5000, m(), 0.3)).toBe(5300);
-    expect(minionTieBreakHp(5000, m({ hp: 400 }), 0.3)).toBe(5000 - 600 + 300);
-    expect(minionTieBreakHp(5000, m({ alive: false, hp: 0 }), 0.15)).toBe(5000 - 1000 + 150);
+  it('plus credit x the living minion\'s current HP; a dead minion adds nothing', () => {
+    expect(minionTieBreakHp(5000, m(), 0.4)).toBe(5400);
+    expect(minionTieBreakHp(5000, m({ hp: 400 }), 0.4)).toBe(5160);
+    expect(minionTieBreakHp(5000, m({ hp: -5 }), 0.4)).toBe(5000);
+    expect(minionTieBreakHp(5000, m({ alive: false, hp: 0 }), 0.4)).toBe(5000);
+    expect(minionTieBreakHp(5000, m({ alive: false, hp: 700 }), 0.4)).toBe(5000);
   });
   it('an empower bonus is left out of the base, and HP above the base is capped at it', () => {
     const e = m({ maxHp: 1200, hp: 1200, empowerBonusHp: 200 });
     expect(minionBaseMaxHp(e)).toBe(1000);
-    expect(minionTieBreakHp(5000, e, 0.3)).toBe(5300);
+    expect(minionTieBreakHp(5000, e, 0.4)).toBe(5400);
   });
 });
