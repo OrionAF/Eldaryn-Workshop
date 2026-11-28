@@ -105,6 +105,7 @@ function corpus(c, opponent) {
 // following its spell's cast (log hashes only outside raids),
 // and re-recorded when an equipped Ancient started to take a sigil slot (the Warrior DPS fixture, which is also
 // every spec's PVP opponent, lost its Ancient).
+// 2.9.10: Sentinel Disruption as PVP attacker re-recorded for the control hold windows (combat-pvp.md §4.1).
 const EXPECTED = {
   'WARRIOR_DPS': {
     dummy: ['218b107f', 'f6cca40d'],
@@ -151,7 +152,7 @@ const EXPECTED = {
     oblivion: ['3442aa4c', 'ede90ad8'],
     'oblivion-cut': ['03615ee2', '4e0faa89'],
     worldBoss: ['c5d4ae4c', '61ae1aaf'],
-    'pvp-attacker': ['634f5cef', '8d7b1f88'],
+    'pvp-attacker': ['c024d8d4', 'f17d38d8'],
     'pvp-defender': ['ca485f19', '541f4817'],
   },
   'MYSTIC_MAGE': {

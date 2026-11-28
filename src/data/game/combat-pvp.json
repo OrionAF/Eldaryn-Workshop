@@ -21,7 +21,7 @@
   "note": "REQUIRED_PLAYER_LEVEL = UNLOCK_LEVELS.CLASH (decompiled.js L668649, CLASH: 18). SESSION_ANCHOR_MS assigned at L667971-667979."
  },
  "pvpBalance": {
-  "lines": "2.8.2 decompiled.js module 5735 L1610521-1611264 (configs L1611217-1611257)",
+  "lines": "2.9.10 decompiled.js module 4955 (configs L1403060-1403098; symmetricControl true in DEFAULT since 2.9.10)",
   "values": {
    "LEGACY": {
     "hpMultiplier": {
@@ -63,7 +63,7 @@
     "damageRamp": null,
     "spellCritDamageFactor": 1,
     "ccDiminishing": null,
-    "symmetricControl": false,
+    "symmetricControl": true,
     "lateFightHealDecay": null,
     "lateFightDamage": {
      "startMs": 40000,

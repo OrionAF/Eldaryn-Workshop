@@ -949,12 +949,12 @@
           },
           {
             "fromLevel": 45,
-            "hpGrowthPerLevel": 0.125,
+            "hpGrowthPerLevel": 0.1,
             "attackGrowthPerLevel": 0.02
           },
           {
             "fromLevel": 61,
-            "hpGrowthPerLevel": 0.1,
+            "hpGrowthPerLevel": 0.06,
             "attackGrowthPerLevel": 0.02
           }
         ]

@@ -82,12 +82,12 @@ describe('boss and add scaling', () => {
     expect(() => run({ party: [tank({})], difficulty: 'MYTHIC' })).toThrow(/not simulated/);
   });
 
-  it('2.9.4 MYTHIC: boss from 3e10 HP with bands at 2/45/61, adds on their own HP curve', () => {
+  it('MYTHIC: boss from 3e10 HP with bands at 2/45/61 (2.9.10 growth 0.05, 0.1, 0.06), adds on their own HP curve', () => {
     expect(celestialBossStats(1, 'MYTHIC')).toEqual({ hp: 30000000000, attack: 75000, attackSpeed: 1.9, spellResist: 45 });
     expect(celestialBossStats(44, 'MYTHIC')).toMatchObject({ hp: 244490007986, attack: 175739 });
-    expect(celestialBossStats(45, 'MYTHIC')).toMatchObject({ hp: 275051258984, attack: 179254 });
-    expect(celestialBossStats(61, 'MYTHIC')).toMatchObject({ hp: 1770492775848, attack: 246077 });
-    expect(celestialBossStats(100, 'MYTHIC')).toMatchObject({ hp: 72846531839721, attack: 532695 });
+    expect(celestialBossStats(45, 'MYTHIC')).toMatchObject({ hp: 268939008785, attack: 179254 });
+    expect(celestialBossStats(61, 'MYTHIC')).toMatchObject({ hp: 1190830481059, attack: 246077 });
+    expect(celestialBossStats(100, 'MYTHIC')).toMatchObject({ hp: 11555232489719, attack: 532695 });
     // addHpCurve: 625e6 * 1.04^(L-1), independent of the boss HP; attack stays 0.2 of the boss's
     expect(celestialAddStats(1, 'MYTHIC')).toMatchObject({ hp: 625000000, attack: 15000, attackSpeed: 1 });
     expect(celestialAddStats(100, 'MYTHIC')).toMatchObject({ hp: 30351531361, attack: 106539 });
