@@ -122,6 +122,42 @@ function syncStatus(to, from) {
   for (const f of STATUS_FIELDS) to[f] = from[f];
 }
 
+// Control hold windows (balance.symmetricControl, Game/combat-pvp.md §4.1; 2.9.10 readCc L1704163-1704199,
+// holdCc L1702253-1702376, releaseCc L1702377-1702490). The timers a hold covers; blinded is the fifth field.
+const CC_TIMERS = ['paralyzedMs', 'silencedMs', 'fearedMs', 'dazedMs'];
+const newCc = () => ({ paralyzedMs: 0, silencedMs: 0, fearedMs: 0, dazedMs: 0, blinded: false });
+function readCc(e, out) {
+  for (const k of CC_TIMERS) out[k] = e[k] ?? 0;
+  out.blinded = e.blinded === true;
+  return out;
+}
+// Reverts on `v0` (and `v1`, the buffed copy, when it is another object) every control effect that rose since
+// `before`, remembering it in `held` (-1 = timer not held). False when nothing rose.
+function holdCc(before, v0, v1, held) {
+  let changed = false;
+  for (const k of CC_TIMERS) {
+    const cur = v0[k] ?? 0;
+    if (cur > before[k]) { held[k] = cur; changed = true; } else held[k] = -1;
+  }
+  held.blinded = v0.blinded === true && !before.blinded;
+  if (!changed && !held.blinded) return false;
+  for (let i = 0; i < 2; i++) {
+    const v = i === 0 ? v0 : v1;
+    if (i === 1 && (!v || v === v0)) break;
+    for (const k of CC_TIMERS) if (held[k] >= 0) v[k] = before[k];
+    if (held.blinded) v.blinded = false;
+  }
+  return true;
+}
+function releaseCc(held, v0, v1) {
+  for (let i = 0; i < 2; i++) {
+    const v = i === 0 ? v0 : v1;
+    if (i === 1 && (!v || v === v0)) break;
+    for (const k of CC_TIMERS) if (held[k] >= 0) v[k] = Math.max(v[k] ?? 0, held[k]);
+    if (held.blinded) v.blinded = true;
+  }
+}
+
 // port of simulateArenaPvP L1454718-1457623 (setup L1455734-1456044, loop L1456045-1457455, end and
 // result L1457456-1457621)
 /**
@@ -154,6 +190,11 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
   if (typeof rng !== 'function') throw new TypeError('simulateArenaPvP: opts.rng is required');
   const log = opts.log !== false;
   const balance = opts.balance ?? LEGACY_PVP_BALANCE;
+  // cc diminishing (gateCc) is not ported: it is null in both shipped configs (combat-pvp.md §3)
+  if (balance.ccDiminishing != null) throw new Error('simulateArenaPvP: balance.ccDiminishing is not ported');
+  const symmetric = balance.symmetricControl === true;
+  const ccBefore = symmetric ? newCc() : null;
+  const ccHeld = symmetric ? newCc() : null;
 
   const s = createDuelState({
     attackerStats: a0, defenderStats: a1, attackerSummon: a12, defenderSummon: a13,
@@ -437,6 +478,8 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     const dBuffBefore = dMods;
     let aBuff = null;
     let dBuff = null;
+    // hold window 1: control the attacker's spells put on the defender waits for the defender's casts
+    if (symmetric) readCc(D, ccBefore);
     if (aRt) {
       aSpellIn.timestamp = t;
       aSpellIn.damageMult = s.damageMult;
@@ -449,6 +492,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
       aMaxHp = getBuffedMaxHp(A.maxHp, aBuff.hpPercent);
       qHpPctA = (aBuff.hpPercent ?? 0) + aStackHp;
     }
+    let heldCc = symmetric && holdCc(ccBefore, D, null, ccHeld);
     if (dRt) {
       dSpellIn.timestamp = t;
       dSpellIn.damageMult = s.damageMult;
@@ -461,6 +505,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
       dMaxHp = getBuffedMaxHp(D.maxHp, dBuff.hpPercent);
       qHpPctD = (dBuff.hpPercent ?? 0) + dStackHp;
     }
+    if (heldCc) releaseCc(ccHeld, D, null);
     // Bulwark's max-HP bonus stacks on the spell one and clamps HP (L1456422-1456487)
     qBulwarkA = false;
     qBulwarkD = false;
@@ -537,6 +582,8 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
       if (dE !== D) dE.shieldHp = D.shieldHp;
     }
 
+    // hold window 2: control the attacker's swing and minion put on the defender waits for the defender's
+    if (symmetric) readCc(D, ccBefore);
     // the attacker swings first (L1456989-1457109) ...
     const undoElusiveA = R.applyElusiveToSwinger(aE, aStack);
     const attackA = aE.attack;
@@ -550,6 +597,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     aE.attack = attackA;
     undoElusiveA();
     if (aMin) R.minionStrike(aMin, 'attacker', D, dE, dStack, aStack, dMin, aE);
+    heldCc = symmetric && holdCc(ccBefore, D, dE, ccHeld);
 
     // ... then the defender, even if the attacker's swing killed it (L1457110-1457230)
     const undoElusiveD = R.applyElusiveToSwinger(dE, dStack);
@@ -572,6 +620,7 @@ export function simulateArenaPvP(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a1
     dE.attack = attackD;
     undoElusiveD();
     if (dMin) R.minionStrike(dMin, 'defender', A, aE, aStack, dStack, aMin, dE);
+    if (heldCc) releaseCc(ccHeld, D, dE);
 
     // end of tick (L1457231-1457309)
     if (s.hasMinions) R.finishMinionTick(start);

@@ -344,3 +344,43 @@ describe('the neutral-value wording', () => {
     expect(NEUTRAL_VALUE_TEXT.warning('Rival', ['Crit Chance', 'Lifesteal'])).toBe('Rival: Crit Chance, Lifesteal left blank in its sheet, so neutral values were used.');
   });
 });
+
+describe('simulateArenaPvP: control hold windows (symmetricControl, combat-pvp.md §4.1)', () => {
+  const para = sheet({ totalParalyzeChance: 100 });
+  const first = (balance) => bare(para, sheet(), { rng: () => 0.5, balance }).ticks.filter((e) => e.timestamp === 1000).map((e) => e.type);
+
+  it('off (LEGACY): the attacker\'s paralyze takes the defender\'s swing due in the same tick', () => {
+    expect(first({ ...LEGACY_PVP_BALANCE })).toEqual(['attacker_hit', 'defender_paralyzed', 'defender_paralyze']);
+  });
+
+  it('on: the defender keeps that swing, and is paralyzed from the next tick', () => {
+    const on = { ...LEGACY_PVP_BALANCE, symmetricControl: true };
+    expect(first(on)).toEqual(['attacker_hit', 'defender_paralyzed', 'defender_hit']);
+    // equal speeds: the 1000 ms paralyze has run out when both swing again, and the new one is held again,
+    // so the defender never loses a swing
+    const even = bare(para, sheet({ totalAttack: 0 }), { rng: () => 0.5, balance: on });
+    expect(even.ticks.filter((e) => e.type === 'defender_hit')).toHaveLength(60);
+    expect(even.ticks.some((e) => e.type === 'defender_paralyze')).toBe(false);
+    // a defender swinging every 500 ms keeps the swing at t=1000 and loses the one at t=1500
+    const fast = bare(para, sheet({ totalAttack: 0, totalAttackSpeed: 2 }), { rng: () => 0.5, balance: on });
+    const dRows = fast.ticks.filter((e) => e.timestamp <= 1500 && (e.type === 'defender_hit' || e.type === 'defender_paralyze'));
+    expect(dRows.map((e) => [e.timestamp, e.type])).toEqual([[500, 'defender_hit'], [1000, 'defender_hit'], [1500, 'defender_paralyze']]);
+  });
+
+  it('on: a blind is held too, and costs the defender its next swing instead', () => {
+    const blind = sheet({ totalBlindChance: 100 });
+    const on = { ...LEGACY_PVP_BALANCE, symmetricControl: true };
+    const at = (r, t) => r.ticks.filter((e) => e.timestamp === t && e.type.startsWith('defender_') && !e.type.endsWith('_blinded')).map((e) => e.type);
+    const off = bare(blind, sheet(), { rng: () => 0.5, balance: { ...LEGACY_PVP_BALANCE } });
+    const held = bare(blind, sheet(), { rng: () => 0.5, balance: on });
+    expect(at(off, 1000)).toEqual(['defender_blind']);
+    expect(at(held, 1000)).toEqual(['defender_hit']);
+    expect(at(held, 2000)).toEqual(['defender_blind']);
+  });
+
+  it('DEFAULT has it on; a config with cc diminishing is refused', () => {
+    expect(DEFAULT_PVP_BALANCE.symmetricControl).toBe(true);
+    expect(LEGACY_PVP_BALANCE.symmetricControl).toBe(false);
+    expect(() => bare(sheet(), sheet(), { rng: noCrit, balance: { ...LEGACY_PVP_BALANCE, ccDiminishing: {} } })).toThrow(/ccDiminishing/);
+  });
+});
